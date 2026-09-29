@@ -25,8 +25,24 @@ pub(crate) struct RuntimeStatePort<'a, P> {
     pub port: &'a P,
     pub turn_ref: &'a AgentTurnRef,
     pub previewed: std::collections::HashMap<String, std::collections::HashSet<String>>,
+    pub animations: std::collections::HashMap<String, crate::presentation_animation::RenderedAnimation>,
+    pub plots: std::collections::HashMap<String, crate::presentation_plot::PlotAsset>,
 }
 impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
+    fn persist_goal(&mut self, goal: &runtime::goal::ResidentGoal) -> Result<(), ToolError> {
+        self.port.with_app(|state| {
+            let mut candidate = state.agent_history.clone();
+            let session = candidate.sessions.iter_mut().find(|s| s.id == self.turn_ref.session_id)
+                .ok_or_else(|| agent_history_internal("Goal session disappeared"))?;
+            let stored = session.goals.iter_mut().find(|g| g.id == goal.id)
+                .ok_or_else(|| agent_history_internal("Goal disappeared"))?;
+            if stored.revision > goal.revision {
+                return Err(agent_history_internal("Goal revision moved ahead of this run"));
+            }
+            *stored = goal.clone();
+            commit_agent_history_candidate(state, candidate)
+        })
+    }
     fn author_presentation(
         &mut self,
         request: runtime::presentation_author::AuthorRequest,
@@ -90,6 +106,7 @@ impl<P: AppStatePort> CompactionCheckpointSink for RunCheckpointSink<'_, P> {
 }
 
 pub(crate) struct PreparedAgentChat {
+    pub goal: Option<runtime::goal::ResidentGoal>,
     pub book: Arc<Book>,
     pub turn_ref: AgentTurnRef,
     pub message: String,
@@ -156,6 +173,8 @@ fn execute_observed(
         OuterConfig::default(),
         adapter.model_runtime_profile(),
     );
+    context.goal = prepared.goal.clone();
+    context.current_user_message = Some(prepared.message.clone());
     context.cancellation = cancellation.clone();
     let observation_run = observability.and_then(|runtime| {
         runtime.start_run(&prepared.book.base.book_id, &prepared.turn_ref.session_id)

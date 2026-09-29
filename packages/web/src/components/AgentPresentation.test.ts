@@ -6,6 +6,7 @@ import AgentPresentation from "./AgentPresentation.vue";
 
 it("keeps the live frame when a parent renders the same version reference again", async () => {
   const read = vi.spyOn(api, "presentationRead").mockResolvedValue({
+    animation_assets: {},
     reference: { presentation_id: "p", revision: 1 }, title: "Experiment", entrypoint: "index.html",
     content_files: { "index.html": "<p>Experiment</p>" }, sources: [], assumptions: [], initial_state: {},
     restored_state: null, restored_state_revision: null, readable_view: { parts: [], sources: [] },

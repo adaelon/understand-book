@@ -29,9 +29,65 @@ const baseProps = {
   gotoBack: () => "1.1",
 };
 
+describe("RightRail history recovery", () => {
+  it("keeps the draft editable, blocks chat changes until recovery, and offers retry", async () => {
+    const wrapper = mount(RightRail, { props: { ...baseProps, agentInput: "保留草稿", historyLoading: true } });
+    expect(wrapper.get('[role="status"]').text()).toContain("正在恢复对话");
+    expect((wrapper.get(".new-chat").element as HTMLButtonElement).disabled).toBe(true);
+    expect((wrapper.get(".agent-input textarea").element as HTMLTextAreaElement).disabled).toBe(false);
+    expect((wrapper.get(".agent-input button:last-child").element as HTMLButtonElement).disabled).toBe(true);
+    await wrapper.setProps({ historyLoading: false, historyError: "暂时无法连接" });
+    await wrapper.get('[role="alert"] button').trigger("click");
+    expect(wrapper.emitted("retry-history")).toHaveLength(1);
+    await wrapper.setProps({ historyError: null });
+    expect((wrapper.get(".agent-input button:last-child").element as HTMLButtonElement).disabled).toBe(false);
+    wrapper.unmount();
+  });
+});
+
 afterEach(() => {
   document.body.replaceChildren();
   vi.unstubAllGlobals();
+});
+
+describe("RightRail fullscreen", () => {
+  it("keeps the live answer and draft mounted across fullscreen changes, and exits with Escape", async () => {
+    const wrapper = mount(RightRail, {
+      attachTo: document.body,
+      props: { ...baseProps, agentInput: "未发送的问题", chat: [{ turnId: "turn-1", user: "问题", outcome: null, pending: true, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [], runStatus: "正在运行" }] },
+    });
+    const transcript = wrapper.get(".transcript").element;
+    const input = wrapper.get(".agent-input textarea").element;
+    await wrapper.get(".fullscreen-button").trigger("click");
+    expect(wrapper.emitted("toggle-fullscreen")).toHaveLength(1);
+    await wrapper.setProps({ fullscreen: true });
+    expect(wrapper.classes()).toContain("fullscreen");
+    expect(wrapper.find(".context-tabs").exists()).toBe(false);
+    expect(wrapper.get(".transcript").element).toBe(transcript);
+    expect(wrapper.get(".agent-input textarea").element).toBe(input);
+    expect((input as HTMLTextAreaElement).value).toBe("未发送的问题");
+    expect(wrapper.text()).toContain("正在运行");
+
+    await wrapper.get(".history-button").trigger("click");
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await flushPromises();
+    expect(document.body.querySelector(".history-backdrop")).toBeNull();
+    expect(wrapper.emitted("toggle-fullscreen")).toHaveLength(1);
+
+    const presentation = document.createElement("div");
+    presentation.className = "agent-presentation expanded";
+    document.body.append(presentation);
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(wrapper.emitted("toggle-fullscreen")).toHaveLength(1);
+    presentation.remove();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(wrapper.emitted("toggle-fullscreen")).toHaveLength(2);
+    await wrapper.setProps({ fullscreen: false });
+    expect(wrapper.classes()).not.toContain("fullscreen");
+    expect(wrapper.get(".transcript").element).toBe(transcript);
+    wrapper.unmount();
+  });
 });
 
 describe("RightRail Note placement actions", () => {
@@ -783,6 +839,36 @@ describe("Resident activities", () => {
     expect(wrapper.find(".run-status").text()).toBe("已停止");
     expect(wrapper.findAll('.agent-activity[data-status="cancelled"]')).toHaveLength(2);
     wrapper.unmount();
+  });
+});
+
+describe("RightRail Resident task controls", () => {
+  it("does not leave a completed task notice in the input area", () => {
+    const wrapper = mount(RightRail, { props: { ...baseProps, chatGoals: [{
+      id: "goal-1", revision: 2, interpretation: "解释术语", requirements: [],
+      result_refs: ["answer:t1"], status: "completed" as const, last_stop_reason: null,
+    }] } });
+    expect(wrapper.find(".goal-card").exists()).toBe(false);
+    expect(wrapper.find(".agent-input").text()).not.toContain("最近任务已完成");
+  });
+  it("shows a saved open task and sends explicit continue and cancel targets", async () => {
+    const wrapper = mount(RightRail, { props: { ...baseProps, chatGoals: [{
+      id: "goal-1", revision: 2, interpretation: "把这一章做成演示页",
+      requirements: [{ id: "page", description: "交付演示", basis_turn_id: "t1", verification: "presentation_delivery" as const }],
+      result_refs: ["answer:t1"], status: "open" as const, last_stop_reason: "TURN_LIMIT_EXCEEDED",
+    }] } });
+    expect(wrapper.find(".goal-card").text()).toContain("页面交付待确认");
+    expect(wrapper.find(".goal-card").text()).toContain("本次达到运行上限");
+    await wrapper.findAll(".goal-actions button")[0]!.trigger("click");
+    await wrapper.findAll(".goal-actions button")[1]!.trigger("click");
+    await wrapper.findAll(".goal-actions button")[2]!.trigger("click");
+    expect(wrapper.emitted("continue-goal")?.[0]).toEqual(["goal-1"]);
+    expect(wrapper.emitted("target-goal")?.[0]).toEqual(["goal-1"]);
+    expect(wrapper.emitted("cancel-goal")?.[0]).toEqual(["goal-1"]);
+    await wrapper.setProps({ targetGoalId: "goal-1" });
+    expect(wrapper.find(".goal-target").text()).toContain("补充任务：把这一章做成演示页");
+    await wrapper.get('[aria-label="取消补充任务"]').trigger("click");
+    expect(wrapper.emitted("clear-goal-target")).toHaveLength(1);
   });
 });
 

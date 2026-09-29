@@ -1,3 +1,6 @@
+import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "../../packages/core/src/build-execution-profile";
+import { validateAutomaticBuildProtocolDoctorBoundaryV3 } from "./codex-build-doctor";
+export { validateAutomaticBuildProtocolDoctorBoundaryV3 } from "./codex-build-doctor";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
@@ -66,6 +69,7 @@ import type { Pass2PlanChoice } from "../../packages/core/src/build-capability";
 import { mapLegacyBuildInvocation } from "../../packages/core/src/build-intent-controller";
 import {
   readAutomaticBuildAttemptSnapshot,
+  readAutomaticBuildAttemptRecord,
   listAutomaticBuildStoredAttempts,
   recordAutomaticBuildAttemptEvent,
   type AutomaticBuildAttemptRecord,
@@ -106,6 +110,7 @@ import {
   automaticBuildStageMetricsSummaryPath,
   automaticBuildUsageReceiptPath,
   buildAutomaticBuildStageMetricsSummary,
+  readAutomaticBuildStageUsage,
   recordAutomaticBuildInputObservation,
   type AutomaticBuildStageMetricsSummaryV1,
   writeAutomaticBuildStageMetricsSummary,
@@ -176,17 +181,6 @@ import {
 } from "../../packages/core/src/automatic-build-dispatch-runtime";
 import { issueAutomaticBuildOpaqueHandoff } from "../../packages/core/src/automatic-build-executor-session";
 import {
-  BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3,
-  BuildExecutorConnectionOpenError,
-  createBuildExecutorStdioConnectionCapability,
-  validateBuildExecutorRoleConfigV3,
-} from "../../packages/core/src/build-executor-connection-capability";
-import {
-  BUILD_EXECUTOR_MCP_CONTRACT_V3,
-  validateBuildExecutorSharedMcpConfigV3,
-} from "../../packages/core/src/build-executor-tool-adapter";
-import { CODEX_EXECUTOR_TRANSPORT_PROFILE_V2 } from "../../packages/core/src/executor-transport";
-import {
   composeAutomaticBuildExecutorPrompt,
   type AutomaticBuildExecutorPromptMode,
 } from "./executor-prompt";
@@ -221,6 +215,7 @@ const AUTOMATIC_BUILD_STAGES: AutomaticBuildStage[] = [
 ];
 
 export interface AutomaticBuildNextOptions extends AutomaticBuildTargetResolutionOptions {
+  execution_profile?: BuildExecutionProfileV1;
   owner?: string;
   now?: string;
   lease_ttl_ms?: number;
@@ -239,6 +234,7 @@ export interface AutomaticBuildNextOptions extends AutomaticBuildTargetResolutio
 }
 
 export interface AutomaticBuildPlanOptions extends AutomaticBuildTargetResolutionOptions {
+  execution_profile?: BuildExecutionProfileV1;
   quality_profile?: ExtractionQualityProfile;
   budget?: AutomaticBuildBudgetLimitsV1;
   wall_budget?: AutomaticBuildWallBudgetV1;
@@ -1068,26 +1064,18 @@ function historicalPerformanceForStage(
 function actualUsageForBuildPlan(
   target: AutomaticBuildTarget,
   plan: BuildPlanV1,
-  snapshot: ReturnType<typeof buildAutomaticBuildSnapshot>,
-  now: string,
 ): AutomaticBuildPlanActualUsageV1 {
   let attempts = 0;
   let knownAttempts = 0;
   let exactInputTokens = 0;
   let exactOutputTokens = 0;
   for (const stage of plan.public_stage_closure as AutomaticBuildStage[]) {
-    const stageState = snapshot.stages.find((item) => item.stage === stage);
-    const summary = buildAutomaticBuildStageMetricsSummary(target, stage, {
-      now,
-      work_units: stageState?.work_units ?? [],
-    });
-    const stageAttempts = summary.usage.fully_known_attempts
-      + summary.usage.partially_known_attempts
-      + summary.usage.unavailable_attempts;
+    const usage = readAutomaticBuildStageUsage(target, stage);
+    const stageAttempts = usage.fully_known_attempts + usage.partially_known_attempts + usage.unavailable_attempts;
     attempts += stageAttempts;
-    knownAttempts += summary.usage.fully_known_attempts + summary.usage.partially_known_attempts;
-    exactInputTokens += summary.usage.input_tokens;
-    exactOutputTokens += summary.usage.output_tokens;
+    knownAttempts += usage.fully_known_attempts + usage.partially_known_attempts;
+    exactInputTokens += usage.input_tokens;
+    exactOutputTokens += usage.output_tokens;
   }
   return {
     known_usage_coverage: attempts ? knownAttempts / attempts : 0,
@@ -1099,13 +1087,11 @@ function actualUsageForBuildPlan(
 function buildPlanBudgetEvaluation(
   target: AutomaticBuildTarget,
   plan: BuildPlanV1,
-  snapshot: ReturnType<typeof buildAutomaticBuildSnapshot>,
-  now: string,
   preflight?: AutomaticBuildPreflightV2,
 ): AutomaticBuildPlanBudgetEvaluationV2 {
   return evaluateAutomaticBuildPlanBudget({
     plan,
-    actual_usage: actualUsageForBuildPlan(target, plan, snapshot, now),
+    actual_usage: actualUsageForBuildPlan(target, plan),
     ...(preflight ? {
       current_forecast: {
         estimated_total_tokens_upper: preflight.cost_scope.remaining.estimated_total_tokens_upper,
@@ -1116,6 +1102,7 @@ function buildPlanBudgetEvaluation(
 }
 
 function preflightForAction(
+  executionProfile: BuildExecutionProfileV1,
   target: AutomaticBuildTarget,
   snapshot: ReturnType<typeof buildAutomaticBuildSnapshot>,
   action: ReturnType<typeof nextAutomaticBuildAction> | ReturnType<typeof nextPlannedAutomaticBuildAction>,
@@ -1133,6 +1120,7 @@ function preflightForAction(
   const historicalMetrics = historicalUsageForStage(target, action.stage);
   const historicalPerformance = historicalPerformanceForStage(target, action.stage);
   return buildAutomaticBuildPreflight({
+    execution_profile: executionProfile,
     target_ref: target.target_ref,
     stage: action.stage,
     work_units: stage.work_units,
@@ -1273,7 +1261,7 @@ export function automaticBuildPlan(
   const requestedWorkers = options.requested_workers ?? 1;
   const availableAgentSlots = options.available_agent_slots ?? requestedWorkers;
   const budget = options.budget ?? DEFAULT_AUTOMATIC_BUILD_BUDGET;
-  const snapshotRoute = routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile });
+  const snapshotRoute = routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, execution_profile: options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1 });
   if (snapshotRoute.status === "blocked") {
     return {
       version: "automatic_build_plan.v1",
@@ -1292,6 +1280,7 @@ export function automaticBuildPlan(
       })
     : nextAutomaticBuildAction(snapshot, Number.MAX_SAFE_INTEGER);
   const preflight = preflightForAction(
+    options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1,
     target,
     snapshot,
     nextAction,
@@ -1322,11 +1311,12 @@ export function prepareExplicitLegacyBuildPlan(
     budget?: BuildPlanV1["budget"];
     book_id?: string;
     pass2?: Pass2PlanChoice;
+    execution_profile?: Readonly<BuildExecutionProfileV1>;
   } = {},
 ) {
   const target = resolveAutomaticBuildTarget(targetInput, rootDir, { book_id: options.book_id });
   const now = options.now ?? new Date().toISOString();
-  const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: "full" });
+  const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: "full", execution_profile: options.execution_profile });
   const selection = mapLegacyBuildInvocation({
     invocation: "explicit_full_build",
     target: {
@@ -1423,6 +1413,7 @@ function freezeAutomaticBuildGenerationTask(
 }
 
 function expandAction(
+  executionProfile: BuildExecutionProfileV1,
   target: AutomaticBuildTarget,
   maxParallel: number,
   leaseOptions: { owner: string; now: string; reserve_ttl_ms: number; run_ttl_ms?: number },
@@ -1442,7 +1433,7 @@ function expandAction(
   const snapshotRoute = decisionSnapshot
     && canonicalAutomaticBuildJson(decisionSnapshot.target.target_ref) === canonicalAutomaticBuildJson(target.target_ref)
     ? { status: "ready" as const, value: decisionSnapshot }
-    : routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile });
+    : routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, execution_profile: executionProfile });
   if (snapshotRoute.status === "blocked") {
     return {
       snapshot: { target, stages: [] },
@@ -1459,7 +1450,7 @@ function expandAction(
     && buildPlan.public_stage_closure.includes(stage.stage));
   for (const stage of preparationStages) {
     if (!stage.policy_set) throw new Error("preparation stage is missing policy set");
-    const prepared = prepareAutomaticBuildSnapshot(target, stage.policy_set.stage, { quality_profile: qualityProfile });
+    const prepared = prepareAutomaticBuildSnapshot(target, stage.policy_set.stage, { quality_profile: qualityProfile, execution_profile: executionProfile });
     if (prepared.status === "blocked") return { snapshot, action: automaticBuildRecoveryAction(prepared.recovery) };
     snapshot = prepared.value;
   }
@@ -1470,7 +1461,7 @@ function expandAction(
 
   const settledPlanBudget = action.kind === "extract"
     ? undefined
-    : buildPlanBudgetEvaluation(target, buildPlan, snapshot, leaseOptions.now);
+    : buildPlanBudgetEvaluation(target, buildPlan);
   if (settledPlanBudget?.status === "exceeded"
     && !sameAutomaticBuildBudgetEvidence(acceptedPlanBudgetEvidence, settledPlanBudget)) {
     return {
@@ -1488,7 +1479,9 @@ function expandAction(
     const productionStageState = snapshot.stages.find((stage) => stage.stage === action.stage);
     if (!productionStageState) throw new Error(`automatic stage state is missing: ${action.stage}`);
     const targetInput = targetCommandInput(target);
-    const legacyAudit = auditAutomaticBuildLegacy(target, action.stage);
+    const legacyAudit = auditAutomaticBuildLegacy(target, action.stage,
+      qualityProfile === "full" && executionProfile.profile_id === CODEX_BUILD_EXECUTION_PROFILE_V1.profile_id
+        ? { snapshot } : {});
     if (legacyAudit.legacy_artifacts || legacyAudit.invalid_artifacts) {
       const migration = readAutomaticBuildMigrationDecision(target);
       if (!migration) {
@@ -1526,7 +1519,6 @@ function expandAction(
         };
       }
     }
-    const attempts = readAutomaticBuildAttemptSnapshot(target).stages[action.stage] ?? {};
     const descriptors = new Map((productionStageState.work_units ?? [])
       .map((descriptor) => [descriptor.work_unit_id, descriptor]));
     const claimInspections = action.task_ids.map((taskId) => {
@@ -1536,8 +1528,8 @@ function expandAction(
       if (!binding) throw new Error(`automatic semantic task is missing policy binding: ${action.stage}/${taskId}`);
       return {
         task_id: taskId,
-        last_attempt: attempts[taskId]?.last_attempt ?? 0,
         inspection: inspectAutomaticBuildTaskClaim(target, action.stage, taskId, {
+          execution_profile: executionProfile,
           now: leaseOptions.now,
           descriptor,
           binding,
@@ -1577,8 +1569,9 @@ function expandAction(
       const reason = executionBlockers.some((item) => item.inspection.status === "retry_exhausted")
         ? "retry_exhausted"
         : "executor_instability";
-      const resetCommands = executionBlockers.flatMap(({ task_id, last_attempt, inspection }) => {
+      const resetCommands = executionBlockers.flatMap(({ task_id, inspection }) => {
         if ("attempt_scope_digest" in inspection && inspection.attempt_scope_digest) return [];
+        const last_attempt = readAutomaticBuildAttemptRecord(target, action.stage, task_id)?.last_attempt ?? 0;
         if (last_attempt < 1) throw new Error(`execution blocker is missing attempt state: ${action.stage}/${task_id}`);
         return [scriptCommand("automatic-build.ts", [
           "record-attempt", targetInput, action.stage, task_id, "reset",
@@ -1602,6 +1595,7 @@ function expandAction(
       };
     }
     const preflight = preflightForAction(
+      executionProfile,
       target,
       snapshot,
       action,
@@ -1613,7 +1607,7 @@ function expandAction(
       executorProvenance,
       buildPlan,
     )!;
-    const planBudget = buildPlanBudgetEvaluation(target, buildPlan, snapshot, leaseOptions.now, preflight);
+    const planBudget = buildPlanBudgetEvaluation(target, buildPlan, preflight);
     if (planBudget.status === "exceeded"
       && !sameAutomaticBuildBudgetEvidence(acceptedPlanBudgetEvidence, planBudget)) {
       return {
@@ -1943,6 +1937,7 @@ function expandAction(
           { now: leaseOptions.now, dispatch_run_id: dispatchRunId },
         );
         const opaqueHandoff = issueAutomaticBuildOpaqueHandoff({
+          execution_profile: executionProfile,
           target,
           kind: "public_dispatch",
           owner_identity: {
@@ -2026,6 +2021,7 @@ function expandAction(
       if (!binding) throw new Error(`automatic semantic task is missing policy binding: ${action.stage}/${taskId}`);
       freezeAutomaticBuildGenerationTask(target, productionStageState, taskId);
       const claim = claimAutomaticBuildTask(target, action.stage, taskId, {
+        execution_profile: executionProfile,
         owner: leaseOptions.owner,
         now: leaseOptions.now,
         reserve_ttl_ms: leaseOptions.reserve_ttl_ms,
@@ -2134,7 +2130,7 @@ function expandAction(
     if (action.stage !== "paper_reading_guide") {
       const stageState = snapshot.stages.find((stage) => stage.stage === action.stage);
       if (!stageState) throw new Error(`quality gate stage is missing from snapshot: ${action.stage}`);
-      const qualityReport = collectAutomaticBuildStageQuality(target, stageState, qualityProfile);
+      const qualityReport = collectAutomaticBuildStageQuality(target, stageState, qualityProfile, executionProfile);
       if (qualityReport.gate_status !== "passed") {
         return {
           snapshot,
@@ -2214,6 +2210,7 @@ export function automaticBuildNext(
     release: AUTOMATIC_BUILD_ACTIVE_RELEASE,
     routing_release: AUTOMATIC_BUILD_ROUTING_RELEASE,
     ...expandAction(
+      options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1,
       target,
       maxParallel,
       leaseOptions,
@@ -2652,310 +2649,7 @@ function buildAutomaticBuildReleaseContractCheck(profileId: AutomaticBuildTarget
   }
 }
 
-const AUTOMATIC_BUILD_DOCTOR_POLICY_EVIDENCE_FORBIDDEN_FIELDS = [
-  "current_policy_digest",
-  "current_proof_digest",
-  "current_route_digest",
-  "evidence_digest",
-  "file_sha256",
-  "preflight_evaluation_digest",
-  "proof_digest",
-  "policy_digest",
-  "policy_set_digest",
-  "receipt_digest",
-  "resolution_digest",
-] as const;
-
-const AUTOMATIC_BUILD_DOCTOR_TRANSPORT_FORBIDDEN_FIELDS = [
-  "delivery_ledger_digest",
-  "output_contract_digest",
-  "pack_digest",
-  "payload_sha256",
-  "profile_digest",
-  "serialized_response_sha256",
-  "transport_profile_digest",
-] as const;
-
-interface AutomaticBuildProtocolDoctorBoundaryInputV3 {
-  agent_template: string;
-  plugin_mcp_projections: readonly string[];
-  launcher_projections: readonly string[];
-  release_contract: unknown;
-}
-
-function isDoctorRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === "object" && !Array.isArray(value);
-}
-
-function countOwnDoctorFields(
-  value: unknown,
-  fields: readonly string[],
-): number {
-  if (!isDoctorRecord(value)) return 0;
-  return fields.filter((field) => Object.hasOwn(value, field)).length;
-}
-
-function validateDirectTextProjections(projections: readonly string[], label: string): string {
-  if (projections.length === 0 || projections.some((projection) => projection.length === 0)) {
-    throw new Error(`${label} projection is missing`);
-  }
-  const canonical = projections[0];
-  if (projections.some((projection) => projection !== canonical)) {
-    throw new Error(`${label} projections differ by direct text comparison`);
-  }
-  return canonical;
-}
-
-function validateBuildExecutorLauncherV3(text: string): void {
-  const normalizedLines = text.replace(/\r\n?/gu, "\n").split("\n").map((line) => line.trim());
-  const expectedCommand = `"%BUILD_EXECUTOR_BIN%" executor.mcp --bootstrap-version ${
-    BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.version
-  } --protocol-generation ${BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.session_protocol}`;
-  if (normalizedLines.filter((line) => line === expectedCommand).length !== 1
-    || normalizedLines.some((line) => line.includes("--agent-bootstrap-digest"))) {
-    throw new Error("Build Executor launcher bootstrap or session protocol is incompatible");
-  }
-}
-
-function releasePolicySets(releaseContract: unknown): Record<string, unknown>[] {
-  if (!isDoctorRecord(releaseContract)
-    || releaseContract.status !== "compatible"
-    || !Array.isArray(releaseContract.policy_sets)) {
-    return [];
-  }
-  return releaseContract.policy_sets.filter(isDoctorRecord);
-}
-
-function releasePolicyMembers(policySets: readonly Record<string, unknown>[]): Record<string, unknown>[] {
-  return policySets.flatMap((policySet) => (
-    Array.isArray(policySet.members) ? policySet.members.filter(isDoctorRecord) : []
-  ));
-}
-
-export function validateAutomaticBuildProtocolDoctorBoundaryV3(
-  input: AutomaticBuildProtocolDoctorBoundaryInputV3,
-) {
-  let executorRole:
-    | {
-      status: "compatible";
-      agent_name: "understand_book_executor";
-      mcp_servers_in_role: 0;
-    }
-    | { status: "incompatible"; diagnostic_code: "executor_role_incompatible" };
-  try {
-    const role = validateBuildExecutorRoleConfigV3(input.agent_template);
-    executorRole = {
-      status: "compatible",
-      agent_name: role.agent_name,
-      mcp_servers_in_role: role.mcp_servers_in_role,
-    };
-  } catch {
-    executorRole = { status: "incompatible", diagnostic_code: "executor_role_incompatible" };
-  }
-
-  let sharedExecutorMcp:
-    | {
-      status: "compatible";
-      registration_scope: "root_shared";
-      bootstrap_version: "automatic_build_executor_bootstrap.v3";
-      session_protocol: "automatic_build_executor_session.v3";
-      required: false;
-      default_tools_approval_mode: "approve";
-      executor_tool_count: 4;
-    }
-    | { status: "incompatible"; diagnostic_code: "shared_executor_mcp_incompatible" };
-  try {
-    if (input.plugin_mcp_projections.length !== input.launcher_projections.length) {
-      throw new Error("Build Executor config and launcher projection counts differ");
-    }
-    validateDirectTextProjections(input.plugin_mcp_projections, "Build Executor MCP config");
-    const launcher = validateDirectTextProjections(
-      input.launcher_projections,
-      "Build Executor launcher",
-    );
-    const sharedConfigs = input.plugin_mcp_projections.map((projection) => (
-      validateBuildExecutorSharedMcpConfigV3(projection)
-    ));
-    validateBuildExecutorLauncherV3(launcher);
-    const shared = sharedConfigs[0];
-    if (!shared
-      || shared.registration_scope !== BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.registration_scope
-      || shared.tool_names.length !== BUILD_EXECUTOR_MCP_CONTRACT_V3.tools.length
-      || shared.tool_names.some((toolName, index) => (
-        toolName !== BUILD_EXECUTOR_MCP_CONTRACT_V3.tools[index]?.name
-      ))) {
-      throw new Error("Build Executor shared MCP identity is incompatible");
-    }
-    sharedExecutorMcp = {
-      status: "compatible",
-      registration_scope: shared.registration_scope,
-      bootstrap_version: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.version,
-      session_protocol: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.session_protocol,
-      required: shared.required,
-      default_tools_approval_mode: shared.default_tools_approval_mode,
-      executor_tool_count: 4,
-    };
-  } catch {
-    sharedExecutorMcp = {
-      status: "incompatible",
-      diagnostic_code: "shared_executor_mcp_incompatible",
-    };
-  }
-
-  const policySets = releasePolicySets(input.release_contract);
-  const members = releasePolicyMembers(policySets);
-  const policyEvidenceObjects = [input.release_contract, ...policySets, ...members];
-  const toolSchemaObjects = BUILD_EXECUTOR_MCP_CONTRACT_V3.tools.flatMap((tool) => [
-    tool,
-    tool.input_schema,
-    tool.input_schema.properties,
-  ]);
-  const forbiddenDigestFieldCount = countOwnDoctorFields(
-    BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3,
-    ["bootstrap_digest"],
-  ) + countOwnDoctorFields(
-    CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
-    AUTOMATIC_BUILD_DOCTOR_TRANSPORT_FORBIDDEN_FIELDS,
-  ) + toolSchemaObjects.reduce<number>((count, value) => count + countOwnDoctorFields(
-    value,
-    AUTOMATIC_BUILD_DOCTOR_TRANSPORT_FORBIDDEN_FIELDS,
-  ), 0) + policyEvidenceObjects.reduce<number>((count, value) => count + countOwnDoctorFields(
-    value,
-    AUTOMATIC_BUILD_DOCTOR_POLICY_EVIDENCE_FORBIDDEN_FIELDS,
-  ), 0);
-  let connectionIntegrity:
-    | {
-      status: "compatible";
-      model_parameter: false;
-      caller_role_authenticated: false;
-      cross_handoff_rejected: true;
-      session_private_root_bound: true;
-      forbidden_digest_field_count: 0;
-    }
-    | {
-      status: "incompatible";
-      diagnostic_code: "connection_integrity_incompatible";
-      forbidden_digest_field_count: number;
-    };
-  try {
-    const connection = createBuildExecutorStdioConnectionCapability({
-      bootstrap_version: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.version,
-      protocol_generation: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.session_protocol,
-      session_private_root: path.resolve(PLUGIN_ROOT, ".automatic-build-executor-private"),
-    });
-    const firstOpen = {
-      tool_name: "executor.open" as const,
-      request: {
-        version: "automatic_build_executor_open_request.v3",
-        opaque_handoff_ref: `abhandoff1_${"a".repeat(64)}`,
-      },
-    };
-    const crossHandoffOpen = {
-      tool_name: "executor.open" as const,
-      request: {
-        version: "automatic_build_executor_open_request.v3",
-        opaque_handoff_ref: `abhandoff1_${"b".repeat(64)}`,
-      },
-    };
-    let relativeRootRejected = false;
-    try {
-      createBuildExecutorStdioConnectionCapability({
-        bootstrap_version: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.version,
-        protocol_generation: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.session_protocol,
-        session_private_root: "relative-root-is-not-bound",
-      });
-    } catch {
-      relativeRootRejected = true;
-    }
-    const serializedToolContract = JSON.stringify(BUILD_EXECUTOR_MCP_CONTRACT_V3);
-    const firstOpenAccepted = connection.authorize_connection(connection.connection_capability, firstOpen);
-    let crossHandoffRejected = false;
-    try {
-      connection.authorize_connection(connection.connection_capability, crossHandoffOpen);
-    } catch (error) {
-      crossHandoffRejected = error instanceof BuildExecutorConnectionOpenError
-        && error.diagnostic_code === "handoff_ref_mismatch";
-    }
-    if (connection.authorize_connection(Symbol("root"), firstOpen)
-      || !firstOpenAccepted
-      || !crossHandoffRejected
-      || JSON.stringify(connection.connection_capability) !== undefined
-      || !relativeRootRejected
-      || BUILD_EXECUTOR_MCP_CONTRACT_V3.caller_role_authenticated !== false
-      || serializedToolContract.includes("connection_capability")
-      || serializedToolContract.includes("session_private_root")
-      || forbiddenDigestFieldCount !== 0) {
-      throw new Error("Build Executor connection integrity evidence is incompatible");
-    }
-    connectionIntegrity = {
-      status: "compatible",
-      model_parameter: false,
-      caller_role_authenticated: false,
-      cross_handoff_rejected: true,
-      session_private_root_bound: true,
-      forbidden_digest_field_count: 0,
-    };
-  } catch {
-    connectionIntegrity = {
-      status: "incompatible",
-      diagnostic_code: "connection_integrity_incompatible",
-      forbidden_digest_field_count: forbiddenDigestFieldCount,
-    };
-  }
-
-  const policyGenerationIsExplicit = members.length > 0 && members.every((member) => (
-    typeof member.policy_generation_id === "string"
-    && member.policy_generation_id.length > 0
-    && isDoctorRecord(member.semantic_contract)
-    && typeof member.semantic_contract.prompt_sha256 === "string"
-    && /^[a-f0-9]{64}$/u.test(member.semantic_contract.prompt_sha256)
-  ));
-  const largeContentHashConsumersPresent = members.length > 0 && members.every((member) => (
-    typeof member.prompt_sha256 === "string"
-    && /^[a-f0-9]{64}$/u.test(member.prompt_sha256)
-    && typeof member.rendered_input_sha256 === "string"
-    && /^[a-f0-9]{64}$/u.test(member.rendered_input_sha256)
-  ));
-  const semanticIdentityForbiddenFieldCount = policyEvidenceObjects.reduce<number>(
-    (count, value) => count + countOwnDoctorFields(
-      value,
-      AUTOMATIC_BUILD_DOCTOR_POLICY_EVIDENCE_FORBIDDEN_FIELDS,
-    ),
-    0,
-  );
-  const budgetProofIsFreshnessIdentity = semanticIdentityForbiddenFieldCount > 0;
-  const semanticReuseIdentity = !budgetProofIsFreshnessIdentity
-    && policyGenerationIsExplicit
-    && largeContentHashConsumersPresent
-    ? {
-      status: "compatible" as const,
-      budget_proof_is_freshness_identity: false as const,
-      policy_generation_is_explicit: true as const,
-      large_content_hash_consumers_present: true as const,
-    }
-    : {
-      status: "incompatible" as const,
-      diagnostic_code: "semantic_reuse_identity_incompatible" as const,
-      budget_proof_is_freshness_identity: budgetProofIsFreshnessIdentity,
-      policy_generation_is_explicit: policyGenerationIsExplicit,
-      large_content_hash_consumers_present: largeContentHashConsumersPresent,
-    };
-
-  const checks = {
-    executor_role: executorRole,
-    shared_executor_mcp: sharedExecutorMcp,
-    connection_integrity: connectionIntegrity,
-    semantic_reuse_identity: semanticReuseIdentity,
-  };
-  return {
-    status: Object.values(checks).every((check) => check.status === "compatible")
-      ? "compatible" as const
-      : "incompatible" as const,
-    checks,
-  };
-}
-
-export function automaticBuildProtocolContract(
+export function automaticBuildEngineContract(
   targetInput: string,
   rootDir: string,
   options: AutomaticBuildPlanOptions = {},
@@ -3004,6 +2698,37 @@ export function automaticBuildProtocolContract(
       handoffDiagnostic = "handoff_preparation_failed";
     }
   }
+  const checks = {
+    release_contract: releaseContract,
+    prompt_provider: {
+      status: promptDiagnostic ? "incompatible" as const : "compatible" as const,
+      source: promptSource,
+      checked_extractors: checkedExtractors,
+      ...(promptDiagnostic ? { diagnostic_code: promptDiagnostic } : {}),
+    },
+    handoff_preparation: {
+      status: handoffDiagnostic ? "incompatible" as const : "compatible" as const,
+      ...(handoffByteLength !== undefined ? { byte_length: handoffByteLength } : {}),
+      ...(handoffDiagnostic ? { diagnostic_code: handoffDiagnostic } : {}),
+    },
+  };
+  return {
+    version: "automatic_build_engine_doctor.v1" as const,
+    status: Object.values(checks).every(check => check.status === "compatible")
+      ? "compatible" as const : "incompatible" as const,
+    checks,
+    target_ref: target.target_ref,
+  };
+}
+
+export function automaticBuildProtocolContract(
+  targetInput: string,
+  rootDir: string,
+  options: AutomaticBuildPlanOptions = {},
+) {
+  const engine = automaticBuildEngineContract(targetInput, rootDir, options);
+  const releaseContract = engine.checks.release_contract;
+  const promptSource = engine.checks.prompt_provider.source;
   let executorAgentTemplate = "";
   let executorAgentTemplatePresent = false;
   try {
@@ -3037,18 +2762,7 @@ export function automaticBuildProtocolContract(
   const pluginShapeCompatible = (promptSource === "packaged_sidecar" || !thinPlugin)
     && executorAgentTemplatePresent;
   const checks = {
-    release_contract: releaseContract,
-    prompt_provider: {
-      status: promptDiagnostic ? "incompatible" as const : "compatible" as const,
-      source: promptSource,
-      checked_extractors: checkedExtractors,
-      ...(promptDiagnostic ? { diagnostic_code: promptDiagnostic } : {}),
-    },
-    handoff_preparation: {
-      status: handoffDiagnostic ? "incompatible" as const : "compatible" as const,
-      ...(handoffByteLength !== undefined ? { byte_length: handoffByteLength } : {}),
-      ...(handoffDiagnostic ? { diagnostic_code: handoffDiagnostic } : {}),
-    },
+    ...engine.checks,
     plugin_shape: {
       status: pluginShapeCompatible ? "compatible" as const : "incompatible" as const,
       thin_plugin: thinPlugin,
@@ -3093,7 +2807,7 @@ export function automaticBuildProtocolContract(
         resume: "explicit_legacy_migration_only" as const,
       },
     ],
-    target_ref: target.target_ref,
+    target_ref: engine.target_ref,
 
   };
 }
@@ -3140,6 +2854,7 @@ export function automaticBuildDispatchNext(
   const stageState = snapshot.stages.find((candidate) => candidate.stage === stage);
   if (!stageState?.work_units) throw new Error(`dispatch stage descriptor plan is unavailable: ${stage}/${dispatchId}`);
   const advanced = advanceAutomaticBuildDispatch(target, stage, dispatchId, {
+    execution_profile: CODEX_BUILD_EXECUTION_PROFILE_V1,
     descriptors: stageState.work_units,
     task_bindings: stageState.task_bindings ?? {},
     dispatch_run_id: persisted.dispatch_run_id,

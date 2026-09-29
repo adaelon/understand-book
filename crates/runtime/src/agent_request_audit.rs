@@ -208,6 +208,7 @@ mod tests {
 
     fn tool_message(id: &str, body: &str) -> Message {
         Message {
+            provider_continuation: None,
             role: Role::Tool,
             content: Some(body.into()),
             tool_calls: vec![],
@@ -217,6 +218,7 @@ mod tests {
 
     fn assistant_call(id: &str, name: &str, arguments: &str) -> Message {
         Message {
+            provider_continuation: None,
             role: Role::Assistant,
             content: None,
             tool_calls: vec![ToolCall {

@@ -90,3 +90,24 @@ test('recorder can drain an already issued request before closing', async () => 
     assert.equal(measuredUsage(recorder.records).total_tokens, 9);
   } finally { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
 });
+
+test('diagnostic interception records scripted calls separately from forwarded provider calls', async () => {
+  let forwarded = 0;
+  const upstream = http.createServer((_req, res) => {
+    forwarded++;
+    res.setHeader('content-type', 'application/json');
+    res.end('{"choices":[{"message":{"content":"answer"}}],"usage":{"total_tokens":9}}');
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const recorder = await startProviderRecorder(`http://127.0.0.1:${upstream.address().port}`, {
+    intercept: (_request, records) => records.length === 1 ? { choices: [], usage: { total_tokens: 0 } } : null,
+  });
+  try {
+    const send = () => fetch(recorder.url + '/chat/completions', { method: 'POST', body: '{}' });
+    assert.equal((await send()).status, 200);
+    assert.equal((await send()).status, 200);
+    assert.equal(forwarded, 1);
+    assert.equal(recorder.records[0].scripted, true);
+    assert.equal(measuredUsage(recorder.records.filter(r => !r.scripted)).total_tokens, 9);
+  } finally { await recorder.stop(); upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
+});

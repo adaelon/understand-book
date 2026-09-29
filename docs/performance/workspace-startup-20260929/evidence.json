@@ -1,0 +1,215 @@
+{
+  "date": "2026-09-29",
+  "book": "ai-agent-engineering",
+  "productCodeModified": false,
+  "debug": {
+    "hostReadyMs": 1284.7547,
+    "readerReadyMs": 9371.0523,
+    "history": {
+      "url": "/api/agent/history",
+      "method": "GET",
+      "startMs": 1766.5719999999997,
+      "endMs": 8908.484499999999,
+      "durationMs": 7141.9124999999985,
+      "timing": {
+        "startTime": 1790646181536.6863,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.407,
+        "responseStart": 7137.466,
+        "responseEnd": 7140.247
+      },
+      "status": 200,
+      "bytes": 0
+    },
+    "comparison": [
+      {
+        "variant": "original",
+        "book": "ai-agent-engineering",
+        "sessions": 33,
+        "samples": [
+          {
+            "historyRequest": {
+              "ms": 7597.5869999999995,
+              "status": 200,
+              "bytes": 201045
+            },
+            "concurrentStatus": {
+              "ms": 7468.3985,
+              "status": 200
+            }
+          },
+          {
+            "historyRequest": {
+              "ms": 7029.158799999999,
+              "status": 200,
+              "bytes": 201045
+            },
+            "concurrentStatus": {
+              "ms": 6928.745199999999,
+              "status": 200
+            }
+          }
+        ]
+      },
+      {
+        "variant": "current-session-only",
+        "book": "ai-agent-engineering",
+        "sessions": 1,
+        "samples": [
+          {
+            "historyRequest": {
+              "ms": 191.54249999999956,
+              "status": 200,
+              "bytes": 162408
+            },
+            "concurrentStatus": {
+              "ms": 89.69709999999759,
+              "status": 200
+            }
+          }
+        ]
+      },
+      {
+        "variant": "without-question-label-inputs",
+        "book": "ai-agent-engineering",
+        "sessions": 33,
+        "samples": [
+          {
+            "historyRequest": {
+              "ms": 24.229599999998754,
+              "status": 200,
+              "bytes": 184920
+            },
+            "concurrentStatus": {
+              "ms": 1.910200000002078,
+              "status": 200
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "installed": {
+    "historyRequest": {
+      "ms": 801.8982000000001,
+      "status": 200,
+      "bytes": 199183
+    },
+    "resources": [
+      {
+        "name": "/api/desktop/status",
+        "startMs": 203.79999999981374,
+        "durationMs": 2.7000000001862645,
+        "responseStart": 205.89999999990687,
+        "bytes": 314
+      },
+      {
+        "name": "/api/book/build_workbench",
+        "startMs": 242.39999999990687,
+        "durationMs": 67.6999999997206,
+        "responseStart": 309.5,
+        "bytes": 1573
+      },
+      {
+        "name": "/api/book/manifest",
+        "startMs": 312.29999999981374,
+        "durationMs": 49.39999999990687,
+        "responseStart": 344.29999999981374,
+        "bytes": 487711
+      },
+      {
+        "name": "/api/book/asset_manifest",
+        "startMs": 374.5,
+        "durationMs": 6.899999999906868,
+        "responseStart": 379.59999999962747,
+        "bytes": 42999
+      },
+      {
+        "name": "/api/book/source_fingerprint",
+        "startMs": 384.29999999981374,
+        "durationMs": 13.600000000093132,
+        "responseStart": 397.39999999990687,
+        "bytes": 122
+      },
+      {
+        "name": "/api/book/source_manifest",
+        "startMs": 399.39999999990687,
+        "durationMs": 2.6999999997206032,
+        "responseStart": 401.59999999962747,
+        "bytes": 237
+      },
+      {
+        "name": "/api/reader/state",
+        "startMs": 907.3999999999069,
+        "durationMs": 2.1999999997206032,
+        "responseStart": 909.1999999997206,
+        "bytes": 1246
+      },
+      {
+        "name": "/api/profile/manifest?profile_id=technical_learning",
+        "startMs": 911.5,
+        "durationMs": 2.099999999627471,
+        "responseStart": 913.0999999996275,
+        "bytes": 2299
+      },
+      {
+        "name": "/api/memory/recall",
+        "startMs": 948.5999999996275,
+        "durationMs": 2.7000000001862645,
+        "responseStart": 950.7999999998137,
+        "bytes": 139953
+      },
+      {
+        "name": "/api/agent/history",
+        "startMs": 980.7999999998137,
+        "durationMs": 808.6000000000931,
+        "responseStart": 1787.5999999996275,
+        "bytes": 199183
+      },
+      {
+        "name": "/api/profile/memory",
+        "startMs": 1792.7999999998137,
+        "durationMs": 14.100000000093132,
+        "responseStart": 1805.7999999998137,
+        "bytes": 62966
+      },
+      {
+        "name": "/api/profile/backfill",
+        "startMs": 1793,
+        "durationMs": 14.099999999627471,
+        "responseStart": 1805.8999999999069,
+        "bytes": 6525
+      },
+      {
+        "name": "/api/build_intent/usage.event",
+        "startMs": 1811.7999999998137,
+        "durationMs": 1344.7999999998137,
+        "responseStart": 3156.0999999996275,
+        "bytes": 136
+      },
+      {
+        "name": "/api/build_intent/artifacts",
+        "startMs": 1812.2999999998137,
+        "durationMs": 58.39999999990687,
+        "responseStart": 1870.0999999996275,
+        "bytes": 120
+      },
+      {
+        "name": "/api/agent/presentation.read",
+        "startMs": 1883.5,
+        "durationMs": 2.2999999998137355,
+        "responseStart": 1885.3999999999069,
+        "bytes": 119
+      }
+    ]
+  },
+  "outline": {
+    "requests": 292,
+    "requestedTextBytes": 3810281,
+    "sourceBytes": 1024134
+  }
+}

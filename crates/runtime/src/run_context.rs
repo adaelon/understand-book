@@ -68,14 +68,45 @@ impl CancellableAdapter<'_> {
 }
 
 impl crate::ModelAdapter for CancellableAdapter<'_> {
-    fn stream_text_is_structured(&self) -> bool { self.inner.stream_text_is_structured() }
-    fn complete_observed(&self, request: crate::CompletionRequest, observer: &mut dyn crate::provider_stream::ModelObserver) -> Result<crate::ParsedResponse, crate::AdapterError> { self.check()?; let result = self.inner.complete_observed(request, observer); self.check()?; result }
+    fn stream_text_is_structured(&self) -> bool {
+        self.inner.stream_text_is_structured()
+    }
+    fn complete_observed(
+        &self,
+        request: crate::CompletionRequest,
+        observer: &mut dyn crate::provider_stream::ModelObserver,
+    ) -> Result<crate::ParsedResponse, crate::AdapterError> {
+        self.check()?;
+        let result = self.inner.complete_observed(request, observer);
+        self.check()?;
+        result
+    }
 
-    fn complete_structured_observed(&self, request: crate::CompletionRequest, observer: &mut dyn crate::provider_stream::ModelObserver) -> Result<serde_json::Value, crate::AdapterError> { self.check()?; let result = self.inner.complete_structured_observed(request, observer); self.check()?; result }
+    fn complete_structured_observed(
+        &self,
+        request: crate::CompletionRequest,
+        observer: &mut dyn crate::provider_stream::ModelObserver,
+    ) -> Result<serde_json::Value, crate::AdapterError> {
+        self.check()?;
+        let result = self.inner.complete_structured_observed(request, observer);
+        self.check()?;
+        result
+    }
 
-    fn chat_observed(&self, request: &crate::AgentRequestPlan, observer: &mut dyn crate::provider_stream::ModelObserver) -> Result<crate::AssistantTurn, crate::AdapterError> { self.check()?; let result = self.inner.chat_observed(request, observer); self.check()?; result }
+    fn chat_observed(
+        &self,
+        request: &crate::AgentRequestPlan,
+        observer: &mut dyn crate::provider_stream::ModelObserver,
+    ) -> Result<crate::AssistantTurn, crate::AdapterError> {
+        self.check()?;
+        let result = self.inner.chat_observed(request, observer);
+        self.check()?;
+        result
+    }
 
-    fn run_events(&self) -> Option<crate::run_events::RunEvents> { self.inner.run_events() }
+    fn run_events(&self) -> Option<crate::run_events::RunEvents> {
+        self.inner.run_events()
+    }
     fn set_run_cancellation(&self, cancellation: CancellationToken) {
         self.inner.set_run_cancellation(cancellation);
     }
@@ -162,6 +193,8 @@ mod tests {
             adapter.set_run_cancellation(cancellation);
             let error = adapter
                 .complete(CompletionRequest {
+                    output_token_limit: None,
+                    reasoning_effort: None,
                     system: "test".into(),
                     user: "test".into(),
                 })
@@ -180,9 +213,16 @@ mod tests {
 
 /// An operation must be deterministic: model calls run after this borrow ends.
 pub trait ResidentStatePort {
-    fn author_presentation(&mut self, _request: crate::presentation_author::AuthorRequest,
-        _bindings: &[crate::orchestrator::SourceBinding], _messages: &[Message],
-        _cancellation: &CancellationToken) -> Result<crate::presentation_author::AuthorResult, read_tools::ToolError> {
+    fn persist_goal(&mut self, _goal: &crate::goal::ResidentGoal) -> Result<(), read_tools::ToolError> {
+        Ok(())
+    }
+    fn author_presentation(
+        &mut self,
+        _request: crate::presentation_author::AuthorRequest,
+        _bindings: &[crate::orchestrator::SourceBinding],
+        _messages: &[Message],
+        _cancellation: &CancellationToken,
+    ) -> Result<crate::presentation_author::AuthorResult, read_tools::ToolError> {
         Err(crate::presentation_author::unavailable())
     }
 
@@ -201,8 +241,13 @@ impl ResidentStatePort for BorrowedResidentState<'_> {
 }
 
 pub struct RunContext {
+    pub goal: Option<crate::goal::ResidentGoal>,
+    pub current_user_message: Option<String>,
+    pub(crate) presentation_candidates: std::collections::BTreeSet<String>,
     pub(crate) presentation_images: Vec<crate::presentation_author::PreviewImage>,
-    pub(crate) pending_preview: Option<String>,
+    pub(crate) pending_previews: std::collections::BTreeSet<String>,
+    pub(crate) unobserved_preview_environments: std::collections::HashSet<(String, String)>,
+    pub(crate) pending_plot_refs: std::collections::HashSet<String>,
     pub(crate) inspected_presentations: std::collections::HashSet<String>,
     pub(crate) delivered_presentations: Vec<crate::presentation::PresentationRef>,
     pub messages: Vec<Message>,
@@ -241,6 +286,7 @@ impl RunContext {
         }
         for id in pending {
             self.messages.push(Message {
+                provider_continuation: None,
                 role: crate::Role::Tool,
                 tool_call_id: Some(id),
                 tool_calls: Vec::new(),
@@ -259,8 +305,13 @@ impl RunContext {
         runtime_profile: ModelRuntimeProfile,
     ) -> Self {
         Self {
+            goal: None,
+            current_user_message: None,
+            presentation_candidates: Default::default(),
             presentation_images: Vec::new(),
-            pending_preview: None,
+            pending_previews: Default::default(),
+            unobserved_preview_environments: Default::default(),
+            pending_plot_refs: Default::default(),
             inspected_presentations: Default::default(),
             delivered_presentations: Vec::new(),
             messages,

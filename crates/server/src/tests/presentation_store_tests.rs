@@ -3,7 +3,8 @@ use runtime::presentation::*;
 
 fn fixture() -> (tempfile::TempDir, AppState, AgentTurnRef) {
     let root = tempfile::tempdir().unwrap();
-    let mut state = state_named("rp2-presentation");
+    let name = format!("rp2-presentation-{}", root.path().file_name().unwrap().to_string_lossy());
+    let mut state = state_named(&name);
     state.history_path = Some(root.path().join("agent-history.json"));
     let turn = next_turn(&mut state);
     (root, state, turn)
@@ -32,6 +33,7 @@ fn content(state: &AppState, title: &str) -> PresentationContent {
         .resolve_source(&evidence_range, "zh-CN", None)
         .unwrap();
     PresentationContent {
+        animation_assets: Default::default(),
         title: title.into(),
         content_files: BTreeMap::from([(
             "index.html".into(),
@@ -475,8 +477,12 @@ fn presentation_public_read_observation_and_source_use_delivered_revision() {
     let (_root, mut state, turn) = fixture();
     let candidate = create(&mut state, &turn, None, "Recall");
     let reference = persist(&mut state, &turn, &candidate);
-    let request = json!({"session_id": turn.session_id, "turn_id": turn.turn_id, "reference": reference});
-    assert_ne!(post(&mut state, "/agent/presentation.read", &request.to_string()).status, 200);
+    let request =
+        json!({"session_id": turn.session_id, "turn_id": turn.turn_id, "reference": reference});
+    assert_ne!(
+        post(&mut state, "/agent/presentation.read", &request.to_string()).status,
+        200
+    );
     finish(&mut state, &turn, &reference).unwrap();
     let response = post(&mut state, "/agent/presentation.read", &request.to_string());
     assert_eq!(response.status, 200);
@@ -489,20 +495,68 @@ fn presentation_public_read_observation_and_source_use_delivered_revision() {
     let mut observed = request.clone();
     observed["text"] = json!("Recall is 2/3; an unrelated document changes nothing.");
     observed["source_ref_ids"] = json!(["source-rp2"]);
-    assert_eq!(post(&mut state, "/agent/presentation.observe", &observed.to_string()).status, 200);
-    for text in ["See LID 1.1", "Internal position 1.1", "Claim [[source:invented]]"] {
+    assert_eq!(
+        post(
+            &mut state,
+            "/agent/presentation.observe",
+            &observed.to_string()
+        )
+        .status,
+        200
+    );
+    observed["text"] = json!("Probability ratio = 1.1; the chart updates with the slider.");
+    assert_eq!(
+        post(
+            &mut state,
+            "/agent/presentation.observe",
+            &observed.to_string()
+        )
+        .status,
+        200
+    );
+    for text in [
+        "See LID 1.1",
+        "Internal position 1.1",
+        "Claim [[source:invented]]",
+    ] {
         observed["text"] = json!(text);
-        assert_ne!(post(&mut state, "/agent/presentation.observe", &observed.to_string()).status, 200, "{text}");
+        assert_ne!(
+            post(
+                &mut state,
+                "/agent/presentation.observe",
+                &observed.to_string()
+            )
+            .status,
+            200,
+            "{text}"
+        );
     }
     observed["text"] = json!("Recall is 1");
     observed["source_ref_ids"] = json!(["invented"]);
-    assert_ne!(post(&mut state, "/agent/presentation.observe", &observed.to_string()).status, 200);
+    assert_ne!(
+        post(
+            &mut state,
+            "/agent/presentation.observe",
+            &observed.to_string()
+        )
+        .status,
+        200
+    );
     let source = json!({"turn_id": turn.turn_id, "source_ref_id": "source-rp2"});
-    assert_eq!(post(&mut state, "/agent/source.resolve", &source.to_string()).status, 200);
-    assert_eq!(post(&mut state, "/agent/source.open", &source.to_string()).status, 200);
+    assert_eq!(
+        post(&mut state, "/agent/source.resolve", &source.to_string()).status,
+        200
+    );
+    assert_eq!(
+        post(&mut state, "/agent/source.open", &source.to_string()).status,
+        200
+    );
     let mut wrong = request.clone();
     wrong["turn_id"] = json!("not-this-turn");
-    assert_ne!(post(&mut state, "/agent/presentation.read", &wrong.to_string()).status, 200);
+    assert_ne!(
+        post(&mut state, "/agent/presentation.read", &wrong.to_string()).status,
+        200
+    );
 }
 
 #[test]
@@ -510,7 +564,12 @@ fn presentation_semantic_failure_cannot_commit_and_source_id_cannot_change_meani
     let (_root, mut state, turn) = fixture();
     let candidate = create(&mut state, &turn, None, "See LID 1.1");
     let reference = persist(&mut state, &turn, &candidate);
-    assert_eq!(finish(&mut state, &turn, &reference).unwrap_err().error_code, "PRESENTATION_PUBLIC_CONTENT_INVALID");
+    assert_eq!(
+        finish(&mut state, &turn, &reference)
+            .unwrap_err()
+            .error_code,
+        "PRESENTATION_PUBLIC_CONTENT_INVALID"
+    );
     let candidate = create(&mut state, &turn, None, "Good content");
     let reference = persist(&mut state, &turn, &candidate);
     let mut answer = outcome(&reference);
@@ -518,34 +577,99 @@ fn presentation_semantic_failure_cannot_commit_and_source_id_cannot_change_meani
     conflicting.preview_snapshot = "Different evidence".into();
     answer.source_bindings.push(conflicting);
     let messages = state.messages.clone();
-    assert!(finalize_agent_turn_completed(&mut state, &turn, &answer, &messages, "2026-09-17T01:00:00Z").is_err());
-    assert_eq!(state.agent_history.sessions[0].turns[0].status, AgentAssistantStatus::PendingAssistant);
+    assert!(finalize_agent_turn_completed(
+        &mut state,
+        &turn,
+        &answer,
+        &messages,
+        "2026-09-17T01:00:00Z"
+    )
+    .is_err());
+    assert_eq!(
+        state.agent_history.sessions[0].turns[0].status,
+        AgentAssistantStatus::PendingAssistant
+    );
 }
 
 /// Browser acceptance host: real private files, answer compiler and Reader routes.
 #[test]
 #[ignore = "starts a bounded HTTP fixture for playwright/agent-presentation.spec.ts"]
 fn presentation_browser_host() {
+    run_presentation_browser_host(false, None);
+}
+
+#[test]
+#[ignore = "starts a bounded HTTP fixture for playwright/agent-presentation-ex1.spec.ts"]
+fn presentation_ex1_browser_host() {
+    run_presentation_browser_host(true, None);
+}
+
+#[test]
+#[ignore = "EX10 saved candidate through real Reader state and follow-up routes"]
+fn presentation_ex10_browser_host() {
+    run_presentation_browser_host(false, Some(std::env::var("EX10_CONTENT").expect("EX10_CONTENT")));
+}
+
+fn run_presentation_browser_host(ex1_gold: bool, ex10_view: Option<String>) {
     let (_root, mut state, turn) = fixture();
-    let mut draft = content(&state, "证据召回率");
-    draft.readable_content = "需要三处证据，找到两处时召回率为 2/3；加入无关材料不改变召回率，补齐第三处后为 1。 [[source:source-rp2]]".into();
-    draft.content_files.insert("index.html".into(), std::fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/presentation-answer.html")
-    ).unwrap());
-    let candidate = state.create_presentation_candidate(&turn.session_id, &turn.turn_id, None, draft).unwrap();
+    let mut draft = content(&state, if ex1_gold { "同样的损失，不同的路" } else { "证据召回率" });
+    if ex1_gold {
+        draft.readable_content = "一维模型 L(w)=(w−2)²，w₀=0，真实迭代满足 eₖ₊₁=(1−2η)eₖ。η=0.2 同侧接近；η=0.8 跨越 2 交替接近；η=1.1 交替远离。η=0.2/0.8 的距离和损失序列相同，位置与带符号误差显示方向差别。过渡实心点是视觉插值，不是新的算法迭代。可播放、暂停、回退、定位、改 η 和先预测后揭示；当前具体数值以保存的现场为准。".into();
+        draft.source_bindings.clear();
+        draft.assumptions = vec!["仅适用这一维二次模型、固定学习率、无动量和噪声".into()];
+        draft.state_contract = json!({
+            "eta": "fixed learning rate 0.1..1.1, step 0.05",
+            "semantic_state": "completed gradient descent iteration 0..5",
+            "transition_progress": "visual interpolation after completed iteration in [0,1)",
+            "reveal_state": "whether the current next-step prediction was revealed",
+            "prediction": "same, cross or null for current next-step prediction"
+        });
+        draft.initial_state = json!({"eta":0.8,"semantic_state":0,"transition_progress":0,"reveal_state":false,"prediction":null});
+    } else {
+        draft.readable_content = "需要三处证据，找到两处时召回率为 2/3；加入无关材料不改变召回率，补齐第三处后为 1。 [[source:source-rp2]]".into();
+    }
+    draft.content_files.insert(
+        "index.html".into(),
+        std::fs::read_to_string(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join(if ex1_gold { "../../docs/performance/ex1-learning-rate.html" } else { "tests/fixtures/presentation-answer.html" }),
+        )
+        .unwrap(),
+    );
+    if let Some(path) = ex10_view {
+        let view: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        draft.title = view["title"].as_str().unwrap().into();
+        draft.content_files = serde_json::from_value(view["content_files"].clone()).unwrap();
+        draft.animation_assets = serde_json::from_value(view.get("animation_assets").cloned().unwrap_or_else(||json!({}))).unwrap();
+        draft.entrypoint = view["entrypoint"].as_str().unwrap().into();
+        draft.readable_content = view["readable_content"].as_str().unwrap().into();
+        draft.state_contract = view["state_contract"].clone();
+        draft.initial_state = view["initial_state"].clone();
+        draft.source_bindings.clear();
+        draft.assumptions = vec![];
+    }
+    let candidate = state
+        .create_presentation_candidate(&turn.session_id, &turn.turn_id, None, draft)
+        .unwrap();
     let reference = persist(&mut state, &turn, &candidate);
     finish(&mut state, &turn, &reference).unwrap();
     let server = tiny_http::Server::http("127.0.0.1:4175").unwrap();
     let seen = Arc::new(Mutex::new(Vec::new()));
-    state.adapter = Box::new(ChatRecordingAdapter { seen_messages: seen.clone() });
+    state.adapter = Box::new(ChatRecordingAdapter {
+        seen_messages: seen.clone(),
+    });
     let mut fail_state = false;
     let deadline = std::time::Instant::now() + Duration::from_secs(300);
     println!("RP3_BROWSER_READY");
     while std::time::Instant::now() < deadline {
-        let Some(mut request) = server.recv_timeout(Duration::from_secs(1)).unwrap() else { continue; };
+        let Some(mut request) = server.recv_timeout(Duration::from_secs(1)).unwrap() else {
+            continue;
+        };
         let path = request.url().to_string();
         let reply = if path == "/fixture" {
-            ok_json(&json!({"session_id": turn.session_id, "turn_id": turn.turn_id, "reference": reference, "outcome": outcome(&reference)}))
+            ok_json(
+                &json!({"session_id": turn.session_id, "turn_id": turn.turn_id, "reference": reference, "outcome": outcome(&reference)}),
+            )
         } else if path == "/requests" {
             ok_json(&*seen.lock().unwrap())
         } else if path == "/reopen" {
@@ -553,29 +677,54 @@ fn presentation_browser_host() {
             state = state_named("rp6-reopened-browser");
             state.history_path = history_path;
             state.agent_history = load_agent_history(&state.history_path).unwrap();
-            state.adapter = Box::new(ChatRecordingAdapter { seen_messages: seen.clone() });
+            state.adapter = Box::new(ChatRecordingAdapter {
+                seen_messages: seen.clone(),
+            });
             ok_json(&json!({"ok":true}))
         } else if path == "/reset-scene" {
             let directory = _root.path().join("agent-history.presentations/states");
-            if directory.exists() { std::fs::remove_dir_all(directory).unwrap(); }
+            if directory.exists() {
+                std::fs::remove_dir_all(directory).unwrap();
+            }
             ok_json(&json!({"ok":true}))
         } else if path == "/fail-next-state" {
-            fail_state = true; ok_json(&json!({"ok":true}))
+            fail_state = true;
+            ok_json(&json!({"ok":true}))
         } else if path == "/agent/presentation.state.save" && fail_state {
             fail_state = false;
-            err_reply(&ToolError { error_code:"PRESENTATION_STORAGE_FAILED".into(),category:"internal".into(),message:"验收：现场写入失败".into() })
+            err_reply(&ToolError {
+                error_code: "PRESENTATION_STORAGE_FAILED".into(),
+                category: "internal".into(),
+                message: "验收：现场写入失败".into(),
+            })
         } else if path == "/stop" {
-            request.respond(tiny_http::Response::from_string("stopped")).unwrap(); break;
+            request
+                .respond(tiny_http::Response::from_string("stopped"))
+                .unwrap();
+            break;
         } else {
-            let mut body = String::new(); request.as_reader().read_to_string(&mut body).unwrap();
+            let mut body = String::new();
+            request.as_reader().read_to_string(&mut body).unwrap();
             post(&mut state, &path, &body)
         };
-        request.respond(tiny_http::Response::from_string(reply.body).with_status_code(reply.status)
-            .with_header(tiny_http::Header::from_bytes("Content-Type", "application/json").unwrap())).unwrap();
+        request
+            .respond(
+                tiny_http::Response::from_string(reply.body)
+                    .with_status_code(reply.status)
+                    .with_header(
+                        tiny_http::Header::from_bytes("Content-Type", "application/json").unwrap(),
+                    ),
+            )
+            .unwrap();
     }
 }
 
-fn save_scene(state: &mut AppState, turn: &AgentTurnRef, reference: &PresentationRef, count: u32) -> PresentationFollowUp {
+fn save_scene(
+    state: &mut AppState,
+    turn: &AgentTurnRef,
+    reference: &PresentationRef,
+    count: u32,
+) -> PresentationFollowUp {
     let response = post(state, "/agent/presentation.state.save", &json!({
         "session_id":turn.session_id,"turn_id":turn.turn_id,"reference":reference,
         "state":{"values":{"count":count},"visible_step":"compare","observed_result":format!("Found {count} of 3 required pieces"),"source_ref_ids":["source-rp2"]}
@@ -600,7 +749,8 @@ fn presentation_rp6_reopens_exact_version_and_requested_snapshot() {
     let mut reopened = state_named("rp6-reopened");
     reopened.history_path = state.history_path.clone();
     reopened.agent_history = load_agent_history(&reopened.history_path).unwrap();
-    let mut request = json!({"session_id":turn.session_id,"turn_id":turn.turn_id,"reference":original});
+    let mut request =
+        json!({"session_id":turn.session_id,"turn_id":turn.turn_id,"reference":original});
     let read = |state: &mut AppState, request: &Value| -> Value {
         let reply = post(state, "/agent/presentation.read", &request.to_string());
         assert_eq!(reply.status, 200, "{}", reply.body);
@@ -615,109 +765,270 @@ fn presentation_rp6_reopens_exact_version_and_requested_snapshot() {
     assert_eq!(exact["restored_state_revision"], saved.state_revision);
     request["reference"] = json!(new);
     request["turn_id"] = json!(next.turn_id);
-    assert_ne!(post(&mut reopened, "/agent/presentation.read", &request.to_string()).status, 200);
+    assert_ne!(
+        post(
+            &mut reopened,
+            "/agent/presentation.read",
+            &request.to_string()
+        )
+        .status,
+        200
+    );
 }
 
 #[test]
 #[ignore = "requires installed Chromium/Edge"]
 fn presentation_rp6_edit_rehearses_inherited_state_and_delivers_new_revision() {
     use crate::agent_run::{BorrowedAppPort, RuntimeStatePort};
-    use runtime::{presentation_author::AuthorRequest, run_context::{CancellationToken, ResidentStatePort}};
+    use runtime::{
+        presentation_author::AuthorRequest,
+        run_context::{CancellationToken, ResidentStatePort},
+    };
     let (_root, mut state, first) = fixture();
     let mut draft = content(&state, "Original");
     draft.state_contract = json!({"count":"integer evidence count 0..3"});
-    let candidate = state.create_presentation_candidate(&first.session_id, &first.turn_id, None, draft.clone()).unwrap();
+    let candidate = state
+        .create_presentation_candidate(&first.session_id, &first.turn_id, None, draft.clone())
+        .unwrap();
     let reference = persist(&mut state, &first, &candidate);
     finish(&mut state, &first, &reference).unwrap();
-    state.save_presentation_state(&first.session_id, &first.turn_id, &reference, PresentationState {
-        values:json!({"page":{"count":1},"controls":[]}), visible_step:None, observed_result:"Found one piece".into(), source_ref_ids:vec![],
-    }).unwrap();
+    state
+        .save_presentation_state(
+            &first.session_id,
+            &first.turn_id,
+            &reference,
+            PresentationState {
+                values: json!({"page":{"count":1},"controls":[]}),
+                visible_step: None,
+                observed_result: "Found one piece".into(),
+                source_ref_ids: vec![],
+            },
+        )
+        .unwrap();
     let turn = next_turn(&mut state);
     let updated;
     {
         let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-        let mut port = RuntimeStatePort { port:&app, turn_ref:&turn, previewed:Default::default() };
+        let mut port = RuntimeStatePort {
+            port: &app,
+            turn_ref: &turn,
+            previewed: Default::default(),
+            animations: Default::default(), plots: Default::default(),
+        };
         let cancel = CancellationToken::default();
-        let read = port.author_presentation(AuthorRequest::Read { reference:reference.clone(), file:None, offset:0 }, &[], &[], &cancel).unwrap();
+        let read = port
+            .author_presentation(
+                AuthorRequest::Read {
+                    reference: reference.clone(),
+                    file: None,
+                    offset: 0,
+                },
+                &[],
+                &[],
+                &cancel,
+            )
+            .unwrap();
         assert_eq!(read.body["title"], "Original");
         let write = port.author_presentation(AuthorRequest::Write {
+            libraries: vec![],
             based_on:Some(reference.clone()), state_contract:draft.state_contract.clone(), initial_state:json!({"count":2}),
             title:"Added example".into(), readable_content:"Updated example with inherited count".into(), source_ref_ids:vec![], assumptions:vec![],
+            asset_refs:vec![],
             html:"<h1>Added example</h1><output id='result'></output><script>document.querySelector('#result').textContent='Found '+window.presentation.initialState.count;window.presentation.registerStateRestorer(()=>{});</script>".into(),
         }, &[], &[], &cancel).unwrap();
         let candidate_id = write.body["candidate_id"].as_str().unwrap().to_string();
-        let preview = port.author_presentation(AuthorRequest::Preview { width: None, viewport: None, candidate_id:candidate_id.clone(), actions:vec![] }, &[], &[], &cancel).unwrap();
-        assert_eq!(preview.body["status"], "preview_ready_for_inspection", "{}", preview.body);
-        assert!(preview.body["observations"][0]["dom"]["text"].as_str().unwrap().contains("Found 1"));
-        updated = port.author_presentation(AuthorRequest::Deliver { candidate_id }, &[], &[], &cancel).unwrap().delivered.unwrap();
+        let preview = port
+            .author_presentation(
+                AuthorRequest::Preview {
+                read_selector: None,
+                    width: None,
+                    viewport: None,
+                    candidate_id: candidate_id.clone(),
+                    actions: vec![],
+                },
+                &[],
+                &[],
+                &cancel,
+            )
+            .unwrap();
+        assert_eq!(
+            preview.body["status"], "preview_ready_for_inspection",
+            "{}",
+            preview.body
+        );
+        assert!(preview.body["observations"][0]["dom"]["text"]
+            .as_str()
+            .unwrap()
+            .contains("Found 1"));
+        updated = port
+            .author_presentation(AuthorRequest::Deliver { candidate_id }, &[], &[], &cancel)
+            .unwrap()
+            .delivered
+            .unwrap();
     }
     finish(&mut state, &turn, &updated).unwrap();
     assert_eq!(updated.presentation_id, reference.presentation_id);
     assert_eq!(updated.revision, 2);
-    assert_eq!(state.read_presentation(&first.session_id, &reference).unwrap().content, draft);
-    assert_eq!(state.read_presentation(&turn.session_id, &updated).unwrap().based_on, Some(reference));
+    assert_eq!(
+        state
+            .read_presentation(&first.session_id, &reference)
+            .unwrap()
+            .content,
+        draft
+    );
+    assert_eq!(
+        state
+            .read_presentation(&turn.session_id, &updated)
+            .unwrap()
+            .based_on,
+        Some(reference)
+    );
 }
 
 #[test]
 fn presentation_rp6_author_reads_old_code_and_inherits_only_compatible_frozen_parameters() {
     use crate::agent_run::{BorrowedAppPort, RuntimeStatePort};
-    use runtime::{presentation_author::AuthorRequest, run_context::{CancellationToken, ResidentStatePort}};
+    use runtime::{
+        presentation_author::AuthorRequest,
+        run_context::{CancellationToken, ResidentStatePort},
+    };
     let (root, mut state, first) = fixture();
     let mut draft = content(&state, "Original");
     draft.state_contract = json!({"count":"integer evidence count 0..3", "unit":"seconds", "mode":"display mode", "shape":"shape"});
-    draft.content_files.insert("details.txt".into(), "参数说明".repeat(1200));
-    let original = state.create_presentation_candidate(&first.session_id, &first.turn_id, None, draft.clone()).unwrap();
+    draft
+        .content_files
+        .insert("details.txt".into(), "参数说明".repeat(1200));
+    let original = state
+        .create_presentation_candidate(&first.session_id, &first.turn_id, None, draft.clone())
+        .unwrap();
     let reference = persist(&mut state, &first, &original);
     finish(&mut state, &first, &reference).unwrap();
-    let scene = |count| PresentationState { values:json!({"page":{"count":count,"unit":9,"mode":7,"shape":{"old":true}},"controls":[]}), visible_step:Some("explain".into()), observed_result:"Recall experiment".into(), source_ref_ids:vec![] };
-    let receipt = state.save_presentation_state(&first.session_id, &first.turn_id, &reference, scene(1)).unwrap();
-    let prepared = prepare_agent_chat(&mut state, &json!({"message":"Add an example", "presentation_follow_up":receipt}).to_string(), "now").unwrap_or_else(|r| panic!("{}", r.body));
+    let scene = |count| PresentationState {
+        values: json!({"page":{"count":count,"unit":9,"mode":7,"shape":{"old":true}},"controls":[]}),
+        visible_step: Some("explain".into()),
+        observed_result: "Recall experiment".into(),
+        source_ref_ids: vec![],
+    };
+    let receipt = state
+        .save_presentation_state(&first.session_id, &first.turn_id, &reference, scene(1))
+        .unwrap();
+    let prepared = prepare_agent_chat(
+        &mut state,
+        &json!({"message":"Add an example", "presentation_follow_up":receipt}).to_string(),
+        "now",
+    )
+    .unwrap_or_else(|r| panic!("{}", r.body));
     assert!(prepared.agent_message.contains(&reference.presentation_id));
-    state.save_presentation_state(&first.session_id, &first.turn_id, &reference, scene(3)).unwrap();
+    state
+        .save_presentation_state(&first.session_id, &first.turn_id, &reference, scene(3))
+        .unwrap();
     let turn = prepared.turn_ref;
     let id;
     {
         let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-        let mut port = RuntimeStatePort { port:&app, turn_ref:&turn, previewed:Default::default() };
-        let read = port.author_presentation(AuthorRequest::Read { reference:reference.clone(), file:None, offset:0 }, &[], &[], &CancellationToken::default()).unwrap();
+        let mut port = RuntimeStatePort {
+            port: &app,
+            turn_ref: &turn,
+            previewed: Default::default(),
+            animations: Default::default(), plots: Default::default(),
+        };
+        let read = port
+            .author_presentation(
+                AuthorRequest::Read {
+                    reference: reference.clone(),
+                    file: None,
+                    offset: 0,
+                },
+                &[],
+                &[],
+                &CancellationToken::default(),
+            )
+            .unwrap();
         assert_eq!(read.body["text"], draft.content_files["index.html"]);
-        assert_eq!(read.body["total_characters"], draft.content_files["index.html"].chars().count());
+        assert_eq!(
+            read.body["total_characters"],
+            draft.content_files["index.html"].chars().count()
+        );
         assert_eq!(read.body["chunk_characters"], 4000);
         assert_eq!(read.body["source_ref_ids"], json!(["source-rp2"]));
         assert!(read.body.get("source_bindings").is_none());
         let mut offset = 0;
         let mut restored = String::new();
         loop {
-            let chunk = port.author_presentation(AuthorRequest::Read { reference:reference.clone(), file:Some("details.txt".into()), offset }, &[], &[], &CancellationToken::default()).unwrap();
+            let chunk = port
+                .author_presentation(
+                    AuthorRequest::Read {
+                        reference: reference.clone(),
+                        file: Some("details.txt".into()),
+                        offset,
+                    },
+                    &[],
+                    &[],
+                    &CancellationToken::default(),
+                )
+                .unwrap();
             restored.push_str(chunk.body["text"].as_str().unwrap());
-            let Some(next) = chunk.body["next_offset"].as_u64() else { break; };
+            let Some(next) = chunk.body["next_offset"].as_u64() else {
+                break;
+            };
             offset = next as usize;
         }
         assert_eq!(restored, draft.content_files["details.txt"]);
         let written = port.author_presentation(AuthorRequest::Write {
+            libraries: vec![],
             based_on:Some(reference.clone()), title:"Added example".into(), html:"<p>New example</p>".into(), readable_content:"New example".into(),
             source_ref_ids:vec!["source-rp2".into()], assumptions:vec![],
+            asset_refs:vec![],
             state_contract:json!({"count":"integer evidence count 0..3", "unit":"milliseconds", "mode":"display mode", "shape":"shape"}),
             initial_state:json!({"count":2,"unit":100,"mode":"text","shape":{},"new":5}),
         }, &[], &[], &CancellationToken::default()).unwrap();
-        assert_eq!(written.body["initial_state"], json!({"count":1,"unit":100,"mode":"text","shape":{},"new":5}));
+        assert_eq!(
+            written.body["initial_state"],
+            json!({"count":1,"unit":100,"mode":"text","shape":{},"new":5})
+        );
         id = written.body["candidate_id"].as_str().unwrap().to_string();
     }
-    let candidate = state.read_presentation_candidate(&turn.session_id, &id).unwrap();
+    let candidate = state
+        .read_presentation_candidate(&turn.session_id, &id)
+        .unwrap();
     assert_eq!(candidate.based_on, Some(reference.clone()));
     assert_eq!(candidate.content.source_bindings, draft.source_bindings);
     let updated = persist(&mut state, &turn, &candidate);
     finish(&mut state, &turn, &updated).unwrap();
     assert_eq!(updated.revision, 2);
-    assert_eq!(state.read_presentation(&first.session_id, &reference).unwrap().content, draft);
+    assert_eq!(
+        state
+            .read_presentation(&first.session_id, &reference)
+            .unwrap()
+            .content,
+        draft
+    );
     let pending = next_turn(&mut state);
     let failed = create(&mut state, &pending, Some(reference.clone()), "Failed edit");
     // Actual version-write failure leaves both committed answers intact.
-    let directory = root.path().join("agent-history.presentations/versions").join(&reference.presentation_id).join("3.json");
+    let directory = root
+        .path()
+        .join("agent-history.presentations/versions")
+        .join(&reference.presentation_id)
+        .join("3.json");
     std::fs::create_dir(&directory).unwrap();
-    assert!(state.persist_presentation_candidate(&pending.session_id, &pending.turn_id, &failed.candidate_id).is_err());
-    assert_eq!(state.read_presentation(&first.session_id, &reference).unwrap().content, draft);
-    assert_eq!(state.read_presentation(&turn.session_id, &updated).unwrap().reference, updated);
+    assert!(state
+        .persist_presentation_candidate(&pending.session_id, &pending.turn_id, &failed.candidate_id)
+        .is_err());
+    assert_eq!(
+        state
+            .read_presentation(&first.session_id, &reference)
+            .unwrap()
+            .content,
+        draft
+    );
+    assert_eq!(
+        state
+            .read_presentation(&turn.session_id, &updated)
+            .unwrap()
+            .reference,
+        updated
+    );
 }
 
 #[test]
@@ -736,22 +1047,53 @@ fn presentation_follow_up_freezes_old_version_and_exact_state_in_model_and_histo
     let updated_scene = save_scene(&mut state, &second, &updated, 1);
     assert_eq!(updated_scene.state_revision, 1);
     let seen = Arc::new(Mutex::new(Vec::new()));
-    state.adapter = Box::new(ChatRecordingAdapter { seen_messages: seen.clone() });
-    let response = post(&mut state, "/agent/chat", &json!({"message":"Explain this result", "presentation_follow_up":saved}).to_string());
+    state.adapter = Box::new(ChatRecordingAdapter {
+        seen_messages: seen.clone(),
+    });
+    let response = post(
+        &mut state,
+        "/agent/chat",
+        &json!({"message":"Explain this result", "presentation_follow_up":saved}).to_string(),
+    );
     assert_eq!(response.status, 200, "{}", response.body);
     let requests = seen.lock().unwrap();
-    let user = requests[0].iter().rev().find(|message| message.role == runtime::Role::User).unwrap().content.as_ref().unwrap();
+    let user = requests[0]
+        .iter()
+        .rev()
+        .find(|message| message.role == runtime::Role::User)
+        .unwrap()
+        .content
+        .as_ref()
+        .unwrap();
     assert!(user.contains("Found 2 of 3 required pieces"), "{user}");
     assert!(user.contains(&saved.saved_state_ref));
     assert!(!user.contains(&newer_state.saved_state_ref));
     assert!(!user.contains("<script>"));
     let disk = load_agent_history(&state.history_path).unwrap();
-    assert_eq!(disk.sessions[0].turns.last().unwrap().presentation_follow_up.as_ref(), Some(&saved));
-    assert!(disk.sessions[0].messages.iter().any(|message| message.content.as_ref().is_some_and(|s| s.contains(&saved.saved_state_ref))));
+    assert_eq!(
+        disk.sessions[0]
+            .turns
+            .last()
+            .unwrap()
+            .presentation_follow_up
+            .as_ref(),
+        Some(&saved)
+    );
+    assert!(disk.sessions[0].messages.iter().any(|message| message
+        .content
+        .as_ref()
+        .is_some_and(|s| s.contains(&saved.saved_state_ref))));
     let mut reopened = state_named("rp5-reopened");
     reopened.history_path = state.history_path.clone();
     reopened.agent_history = disk;
-    assert_eq!(reopened.read_presentation_state(&saved).unwrap().state.values, json!({"count":2}));
+    assert_eq!(
+        reopened
+            .read_presentation_state(&saved)
+            .unwrap()
+            .state
+            .values,
+        json!({"count":2})
+    );
 }
 
 #[test]
@@ -769,17 +1111,31 @@ fn presentation_follow_up_rejects_receipt_mixup_before_precommit() {
     for kind in 0..5 {
         let mut wrong = saved.clone();
         match kind {
-            0 => { wrong.reference = updated.clone(); wrong.turn_id = second.turn_id.clone(); },
+            0 => {
+                wrong.reference = updated.clone();
+                wrong.turn_id = second.turn_id.clone();
+            }
             1 => wrong.state_revision += 1,
             2 => wrong.saved_state_ref = "absent".into(),
             3 => wrong.turn_id = second.turn_id.clone(),
             _ => wrong.session_id = "other-session".into(),
         }
-        assert!(prepare_agent_chat(&mut state, &json!({"message":"Explain", "presentation_follow_up":wrong}).to_string(), "now").is_err());
-        assert_eq!(std::fs::read(state.history_path.as_ref().unwrap()).unwrap(), before);
+        assert!(prepare_agent_chat(
+            &mut state,
+            &json!({"message":"Explain", "presentation_follow_up":wrong}).to_string(),
+            "now"
+        )
+        .is_err());
+        assert_eq!(
+            std::fs::read(state.history_path.as_ref().unwrap()).unwrap(),
+            before
+        );
     }
     let other = new_agent_session(&state.book.base.book_id, "later", 5);
-    state.agent_history.active_by_book.insert(state.book.base.book_id.clone(), other.id.clone());
+    state
+        .agent_history
+        .active_by_book
+        .insert(state.book.base.book_id.clone(), other.id.clone());
     state.agent_history.sessions.push(other);
     assert!(presentation_api::follow_up_context(&state, &saved).is_err());
 }
@@ -791,13 +1147,37 @@ fn presentation_state_save_failure_and_invalid_semantics_return_no_receipt() {
     let reference = persist(&mut state, &turn, &candidate);
     let mut request = json!({"session_id":turn.session_id,"turn_id":turn.turn_id,"reference":reference,
         "state":{"values":{"count":2},"visible_step":null,"observed_result":"Found two pieces","source_ref_ids":[]}});
-    assert_ne!(post(&mut state, "/agent/presentation.state.save", &request.to_string()).status, 200);
+    assert_ne!(
+        post(
+            &mut state,
+            "/agent/presentation.state.save",
+            &request.to_string()
+        )
+        .status,
+        200
+    );
     finish(&mut state, &turn, &reference).unwrap();
     request["state"]["observed_result"] = json!("Internal position 1.1");
-    assert_ne!(post(&mut state, "/agent/presentation.state.save", &request.to_string()).status, 200);
+    assert_ne!(
+        post(
+            &mut state,
+            "/agent/presentation.state.save",
+            &request.to_string()
+        )
+        .status,
+        200
+    );
     request["state"]["observed_result"] = json!("Found two pieces");
-    std::fs::write(root.path().join("agent-history.presentations/states"), b"blocked directory").unwrap();
-    let failed = post(&mut state, "/agent/presentation.state.save", &request.to_string());
+    std::fs::write(
+        root.path().join("agent-history.presentations/states"),
+        b"blocked directory",
+    )
+    .unwrap();
+    let failed = post(
+        &mut state,
+        "/agent/presentation.state.save",
+        &request.to_string(),
+    );
     assert_ne!(failed.status, 200);
     let error: Value = serde_json::from_str(&failed.body).unwrap();
     assert_eq!(error["error_code"], "PRESENTATION_STORAGE_FAILED");

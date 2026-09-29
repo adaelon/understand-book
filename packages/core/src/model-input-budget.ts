@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import {
   validateExecutorTransportPack,
-  validateExecutorTransportProfile,
+  validateExecutorTransportCapabilities,
   type ExecutorTransportPackResultV2,
-  type ExecutorTransportProfileV2,
+  type ExecutorTransportProfile,
 } from "./executor-transport";
 import {
   inspectModelExecutionInput,
@@ -95,7 +95,7 @@ export interface ModelExecutionBudgetRequestV2 {
   output_reserve_tokens: number;
   safety_margin_tokens: number;
   max_candidate_tokens: number;
-  transport_profile: ExecutorTransportProfileV2;
+  transport_profile: ExecutorTransportProfile;
   input_transport_packs: readonly [ExecutorTransportPackResultV2, ExecutorTransportPackResultV2];
   estimator_version?: string;
   render_contract_version?: string;
@@ -395,7 +395,7 @@ export function verifyModelInputBudgetProof(
 
 export function validateModelExecutionBudgetProof(
   proof: ModelExecutionBudgetEvidenceV3,
-  transportProfile?: ExecutorTransportProfileV2,
+  transportProfile?: ExecutorTransportProfile,
 ): ModelExecutionBudgetEvidenceV3 {
   if (!proof || typeof proof !== "object" || Array.isArray(proof)) {
     throw new Error("model execution budget proof must be an object");
@@ -442,7 +442,7 @@ export function validateModelExecutionBudgetProof(
     throw new Error("model execution candidate exceeds its output reserve");
   }
   if (transportProfile) {
-    validateExecutorTransportProfile(transportProfile);
+    validateExecutorTransportCapabilities(transportProfile);
     if (inputChunkCount > transportProfile.max_input_chunks) {
       throw new Error("model execution budget evidence exceeds the transport chunk limit");
     }
@@ -459,7 +459,7 @@ export function validateModelExecutionBudgetProof(
 /** One-shot forward migration used by synthetic fixtures and the guarded R8 migration. */
 export function migrateModelExecutionBudgetProofV2(
   value: unknown,
-  transportProfile?: ExecutorTransportProfileV2,
+  transportProfile?: ExecutorTransportProfile,
 ): ModelExecutionBudgetEvidenceV3 {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("legacy model execution budget proof must be an object");
@@ -522,7 +522,7 @@ export function evaluateModelExecutionBudget(
     input.max_candidate_tokens,
     "max_candidate_tokens",
   );
-  const transportProfile = validateExecutorTransportProfile(input.transport_profile);
+  const transportProfile = validateExecutorTransportCapabilities(input.transport_profile);
   if (!Array.isArray(input.input_transport_packs) || input.input_transport_packs.length !== 2) {
     throw new Error("model execution budget requires prompt and rendered-input transport packs");
   }

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { AutomaticBuildStage, BuildTargetRefV2 } from "./build-orchestrator";
-import { CODEX_EXECUTOR_TRANSPORT_PROFILE_V2 } from "./executor-transport";
+import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "./build-execution-profile";
 import {
   isAutomaticBuildTaskPolicyBindingV2,
   type AutomaticBuildTaskPolicyBinding,
@@ -160,6 +160,7 @@ function dispatchFor(
 }
 
 export function planAutomaticBuildExecutorDispatches(input: {
+  execution_profile?: BuildExecutionProfileV1;
   target_ref: BuildTargetRefV2;
   stage: AutomaticBuildStage;
   work_units: WorkUnitDescriptor[];
@@ -168,6 +169,7 @@ export function planAutomaticBuildExecutorDispatches(input: {
   predicted_service_ms?: Readonly<Record<string, number>>;
   available_agent_slots?: number;
 }): AutomaticBuildExecutorDispatchPlanV1 {
+  const executionProfile = input.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1;
   const availableAgentSlots = nonNegativeInteger(input.available_agent_slots ?? 0, "available_agent_slots");
   const descriptorIds = new Set<string>();
   for (const unit of input.work_units) {
@@ -178,7 +180,7 @@ export function planAutomaticBuildExecutorDispatches(input: {
     if (isWorkUnitDescriptorV3(unit)) {
       validateWorkUnitDescriptorV3(unit);
     } else if (isWorkUnitDescriptorV4(unit)) {
-      validateWorkUnitDescriptorV4(unit, CODEX_EXECUTOR_TRANSPORT_PROFILE_V2);
+      validateWorkUnitDescriptorV4(unit, executionProfile.transport_profile);
     }
     if (isProofBoundWorkUnitDescriptor(unit)) {
       const binding = input.task_bindings?.[unit.work_unit_id];

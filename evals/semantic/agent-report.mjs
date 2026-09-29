@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CHUNK, AGENT, aggregateNatural, scoreNatural, scoringVersion, toolMessages, navigationOK } from './agent-core.mjs';
-import { qaTasks, sourceTasks } from './agent-dataset.mjs';
+import { qaTasks, sourceTasks, version as legacyVersion } from './agent-dataset.mjs';
 import { loadCorpus } from './core.mjs';
 import { measuredUsage, usageByPurpose } from './provider-recorder.mjs';
 
@@ -28,6 +28,7 @@ function toolErrors(rows) {
   return counts;
 }
 export function recomputeScores(run, corpus) {
+  if (run.version !== legacyVersion) throw new Error('Use task-v1 quality report for a task-spec run');
   // Keep raw run.json immutable, including its original provisional scores.
   return { ...run, scoring_version: scoringVersion, ...Object.fromEntries(['qa', 'navigation'].map(key => [key, run[key].map(row => {
     const task = [...qaTasks, ...sourceTasks].find(t => t.id === row.id);

@@ -1,0 +1,4 @@
+请实际修订并交付这个确切版本。先读该版本入口与 libraries/konva-10.7.0.min.js 的托管元数据。本次重写为更小的局部演示，不必保留原稿的辅助抛物线、长讲解和重复读数。材料仍是 L(w)=(w−2)^2，w0=0，w(k+1)=w(k)−2η(w(k)−2)。
+核心只需要一张共用坐标的 w–步数图：三条参考曲线表现同侧接近、交替接近、发散，当前 η 的点沿真实相邻端点连续移动；附近显示 η、已完成数学步数 k、视觉进度 p、一句解释及 e(k+1)=(1−2η)e(k)。合并重复标签与绘图逻辑，交付紧凑完整 HTML，避免再次输出冗长的多个独立绘图面板。
+必须有 η 滑块、播放/暂停、上一步、局部时间滑块。改 η 时暂停，从 w0 重算并归零 k/p；按住拖动期间实时更新，完成才 commitState。Canvas 的可拖控件需要至少44px实际命中区。state reader 保存 eta、semantic_state、transition_progress；restorer 读取 saved.values.page、恢复同一中间画面并暂停。seek({semantic_state:2,transition_progress:0.5}) 要显示真实端点间插值，不得忽略0.5；回退不残留未来轨迹。零状态位移时隐藏相应更新箭头。所有边界 η=0、0.5、1 的静态与动态解释须一致。
+使用 based_on 指向确切旧版本，并显式 libraries:["konva"]。请实际 write → preview（三视口，包含中间seek和回退）→ deliver。最后只用简短文字告知已交付。

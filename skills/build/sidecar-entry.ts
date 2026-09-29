@@ -195,9 +195,9 @@ if (command === "executor.agent-template") {
   await runScript(script, forwardedArgs(2));
 } else if (command === "workbench-stage") {
   await runScript("workbench-stage-runner.ts", forwardedArgs(1));
-} else if (command === "build.step") {
+} else if (command === "build.step" || command === "build.refill") {
   if (argv.length !== 1) {
-    console.error("usage: understand-book-build build.step < request.json");
+    console.error(`usage: understand-book-build ${command} < request.json`);
     process.exit(2);
   }
   prepare("automatic-build-driver.ts", []);
@@ -236,6 +236,6 @@ if (command === "executor.agent-template") {
   prepare("intent-blueprint.ts", forwardedArgs(1));
   await import("./intent-blueprint");
 } else {
-  console.error("usage: understand-book-build <legacy-plan|protocol-doctor|plan|next|dispatch.next|dispatch.inspect|dispatch.finish|audit-legacy|migration-mode|quality|metrics|record-attempt|heartbeat|candidate|submit|legacy-submit|fail|inspect|input|write|close|run-script|prompt|workbench-stage|build.step|executor.agent-template|executor.mcp-config|executor.mcp-launcher|executor.mcp|executor.open|executor.session|executor.input.next|executor.generation.start|executor.submit_candidate|intent.plan|intent.artifact|intent.metrics|intent.blueprint> [...args]");
+  console.error("usage: understand-book-build <legacy-plan|protocol-doctor|plan|next|dispatch.next|dispatch.inspect|dispatch.finish|audit-legacy|migration-mode|quality|metrics|record-attempt|heartbeat|candidate|submit|legacy-submit|fail|inspect|input|write|close|run-script|prompt|workbench-stage|build.step|build.refill|executor.agent-template|executor.mcp-config|executor.mcp-launcher|executor.mcp|executor.open|executor.session|executor.input.next|executor.generation.start|executor.submit_candidate|intent.plan|intent.artifact|intent.metrics|intent.blueprint> [...args]");
   process.exit(2);
 }

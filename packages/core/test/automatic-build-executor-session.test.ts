@@ -3,6 +3,7 @@ import { prepareAutomaticBuildSnapshot } from "../src/build-orchestrator";
 import { freezePass1ShadowTask } from "../src/pass1-reduction";
 import { automaticBuildGenerationArtifactPath } from "../src/semantic-artifact";
 import { createHash } from "node:crypto";
+import { setImmediate as yieldToRunner } from "node:timers/promises";
 import {
   existsSync,
   mkdirSync,
@@ -421,6 +422,9 @@ function forgeOuterConsistentHandoff(
   ), `${canonicalAutomaticBuildJson(record)}\n`, "utf8");
   return opaqueHandoffRef;
 }
+
+// Let IPC acknowledgements run between synchronous disk-heavy test cases.
+afterEach(async () => { await yieldToRunner(); });
 
 describe("automatic build executor.open", () => {
   it("documents that the V1 GENERATE envelope would inline and overflow a 317,247-byte input", () => {

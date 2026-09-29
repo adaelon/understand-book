@@ -4,6 +4,8 @@
 
 Rust · TypeScript · Vue 3 · Tauri 2 · MCP
 
+开发者可通过[代码与文档只读 MCP](docs/代码只读MCP.md)让 ChatGPT 查看当前获准源码、设计文档与未提交差异，辅助架构分析。
+
 [Quick Start](#quick-start) · [30 秒摘要](#30-秒技术摘要) · [双时序架构](#双时序架构) · [实测结果](#实测而不是预设胜出) · [当前限制](#当前限制)
 
 先看证据：[32 题 / 8 类完整 Agent 评测](evals/semantic/AGENT_EVAL.md) · [单书 2,757 个原文定位单元](evals/semantic/results/2026-09-08-agent-v1/summary.json) · [1,745 条图关系](evals/semantic/results/2026-09-08-agent-v1/summary.json)

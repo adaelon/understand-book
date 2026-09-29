@@ -270,14 +270,29 @@ export function automaticBuildTaskAttemptDirectory(
 export function listAutomaticBuildStoredAttempts(
   target: AutomaticBuildTarget,
   stage: AutomaticBuildStage,
+  workUnitId?: string,
 ): AutomaticBuildStoredAttemptV1[] {
+  return listAutomaticBuildAttemptDirectories(target, stage, workUnitId).map(attempt => {
+    const executionIdentity = readAutomaticBuildExecutionIdentity(target, stage, attempt.work_unit_id, attempt.physical_attempt);
+    return { ...attempt, ...(executionIdentity ? { execution_identity: executionIdentity } : {}) };
+  });
+}
+
+/** Enumerate persisted attempts without reconstructing their lease/retry history. */
+export function listAutomaticBuildAttemptDirectories(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  workUnitId?: string,
+): Omit<AutomaticBuildStoredAttemptV1, "execution_identity">[] {
   const stageRoot = path.join(automaticBuildTaskStoreRoot(target), stage);
   if (!existsSync(stageRoot)) return [];
   const attempts: AutomaticBuildStoredAttemptV1[] = [];
-  for (const taskEntry of readdirSync(stageRoot, { withFileTypes: true })) {
-    if (!taskEntry.isDirectory()) continue;
-    const workUnitId = decodeURIComponent(taskEntry.name);
-    const attemptsRoot = path.join(stageRoot, taskEntry.name, "attempts");
+  const taskNames = workUnitId === undefined
+    ? readdirSync(stageRoot, { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => entry.name)
+    : [encodeURIComponent(workUnitId)];
+  for (const taskName of taskNames) {
+    const workUnitId = decodeURIComponent(taskName);
+    const attemptsRoot = path.join(stageRoot, taskName, "attempts");
     if (!existsSync(attemptsRoot)) continue;
     for (const attemptEntry of readdirSync(attemptsRoot, { withFileTypes: true })) {
       if (!attemptEntry.isDirectory() || !/^\d+$/.test(attemptEntry.name)) continue;
@@ -287,18 +302,11 @@ export function listAutomaticBuildStoredAttempts(
           || entry.isDirectory() && entry.name === "submit-revisions");
       if (!hasStoredState) continue;
       const physicalAttempt = Number(attemptEntry.name);
-      const executionIdentity = readAutomaticBuildExecutionIdentity(
-        target,
-        stage,
-        workUnitId,
-        physicalAttempt,
-      );
       attempts.push({
         stage,
         work_unit_id: workUnitId,
         physical_attempt: physicalAttempt,
         attempt_dir: attemptDir,
-        ...(executionIdentity ? { execution_identity: executionIdentity } : {}),
       });
     }
   }

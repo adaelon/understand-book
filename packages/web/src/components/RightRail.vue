@@ -18,6 +18,7 @@ import type {
   ProfileMemoryState,
   ProfileMemoryUpdate,
   ProfileUsageTrace,
+  ResidentGoal,
   SourcePopupView,
   TraceStep,
 } from "../api";
@@ -67,9 +68,14 @@ interface ChatSessionTurnSummary {
 const props = defineProps<{
   chat: ChatTurn[];
   chatSessions: ChatSessionSummary[];
+  chatGoals?: ResidentGoal[];
+  targetGoalId?: string | null;
   activeChatSessionId: string;
+  fullscreen?: boolean;
   agentInput: string;
   sending: boolean;
+  historyLoading?: boolean;
+  historyError?: string | null;
   runConnection?: string;
   canStop?: boolean;
   unquotedNotePlacementAvailable?: boolean;
@@ -113,7 +119,13 @@ const emit = defineEmits<{
   (e: "presentation-follow-up", message: string, receipt: import("../generated/PresentationFollowUp").PresentationFollowUp): void;
   (e: "update:agentInput", value: string): void;
   (e: "send-agent"): void;
+  (e: "retry-history"): void;
   (e: "stop-agent"): void;
+  (e: "toggle-fullscreen"): void;
+  (e: "continue-goal", goalId: string): void;
+  (e: "cancel-goal", goalId: string): void;
+  (e: "target-goal", goalId: string): void;
+  (e: "clear-goal-target"): void;
   (e: "new-chat"): void;
   (e: "select-chat", sessionId: string): void;
   (e: "delete-chat", sessionId: string): void;
@@ -140,6 +152,7 @@ const emit = defineEmits<{
 
 const activeTab = ref<ContextTab>("agent");
 const historyOpen = ref(false);
+const fullscreenButton = ref<HTMLButtonElement | null>(null);
 const notesExpanded = ref(false);
 const transcriptRef = ref<HTMLElement | null>(null);
 const followTranscript = ref(true);
@@ -156,6 +169,15 @@ async function scrollToTurn(turnId: string): Promise<boolean> {
   return true;
 }
 const latestActivities = computed(() => props.chat.at(-1)?.activities ?? []);
+const openGoals = computed(() => (props.chatGoals ?? []).filter(goal => goal.status === "open"));
+const targetGoal = computed(() => openGoals.value.find(goal => goal.id === props.targetGoalId) ?? null);
+function goalStopLabel(reason: string | null | undefined): string {
+  if (!reason) return "等待继续";
+  if (reason === "TURN_LIMIT_EXCEEDED") return "本次达到运行上限";
+  if (reason === "AGENT_RUN_CANCELLED") return "本次生成已停止";
+  if (reason === "AGENT_NO_PROGRESS") return "本次未能继续推进";
+  return "本次运行未完成";
+}
 const activityToolCount = computed(() => latestActivities.value.filter(a => a.kind === "tool").length);
 const agentInputRef = ref<HTMLTextAreaElement | null>(null);
 const tabs: { id: ContextTab; label: string }[] = [
@@ -362,7 +384,20 @@ function onAgentSourceViewportResize() {
 }
 
 window.addEventListener("resize", onAgentSourceViewportResize);
-onBeforeUnmount(() => window.removeEventListener("resize", onAgentSourceViewportResize));
+function onFullscreenKeydown(event: KeyboardEvent) {
+  if (event.key !== "Escape" || !props.fullscreen) return;
+  if (document.querySelector(".agent-presentation.expanded")) return;
+  event.preventDefault();
+  if (agentSourcePopup.value) { closeAgentSourcePopup(); return; }
+  if (historyOpen.value) { historyOpen.value = false; return; }
+  emit("toggle-fullscreen");
+  void nextTick(() => fullscreenButton.value?.focus({ preventScroll: true }));
+}
+window.addEventListener("keydown", onFullscreenKeydown);
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", onAgentSourceViewportResize);
+  window.removeEventListener("keydown", onFullscreenKeydown);
+});
 
 async function openAgentSources(turn: ChatTurn, sourceRefIds: string[], event: { currentTarget: EventTarget | null }) {
   if (!turn.turnId || sourceRefIds.length === 0) return;
@@ -607,8 +642,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 </script>
 
 <template>
-  <aside class="right-rail">
-    <div class="context-tabs" role="tablist" aria-label="辅助阅读功能">
+  <aside class="right-rail" :class="{ fullscreen: props.fullscreen }">
+    <div v-if="!props.fullscreen" class="context-tabs" role="tablist" aria-label="辅助阅读功能">
       <button
         v-for="tab in tabs"
         :key="tab.id"
@@ -638,15 +673,28 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           <h3>问这本书</h3>
         </div>
         <div class="chat-actions">
-          <button class="history-button" title="打开对话历史" @click="historyOpen = true">
+          <button
+            ref="fullscreenButton"
+            type="button"
+            class="fullscreen-button"
+            :aria-label="props.fullscreen ? '退出问答全屏' : '问答全屏'"
+            :aria-pressed="!!props.fullscreen"
+            @click="emit('toggle-fullscreen')"
+          >{{ props.fullscreen ? '退出全屏' : '全屏' }}</button>
+          <button class="history-button" title="打开对话历史" :disabled="props.historyLoading || !!props.historyError" @click="historyOpen = true">
             历史
             <span>{{ props.chatSessions.length }}</span>
           </button>
-          <button class="new-chat" title="新对话" @click="emit('new-chat')">新建</button>
+          <button class="new-chat" title="新对话" :disabled="props.historyLoading || !!props.historyError" @click="emit('new-chat')">新建</button>
         </div>
       </div>
 
       <div ref="transcriptRef" class="transcript" @scroll="trackTranscriptScroll">
+        <p v-if="props.historyLoading" role="status">正在恢复对话，可以先阅读正文。</p>
+        <div v-else-if="props.historyError" role="alert">
+          <p>对话暂时无法加载：{{ props.historyError }}</p>
+          <button @click="emit('retry-history')">重试</button>
+        </div>
         <div v-for="(turn, ti) in props.chat" :key="turn.turnId ?? ti" class="turn" :data-turn-id="turn.turnId || undefined">
           <div v-if="turn.questionQuote" class="turn-quote">
             <div class="turn-quote-head">
@@ -778,11 +826,26 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 
           </div>
         </div>
-        <p v-if="props.chat.length === 0" class="empty">可以在这里提问、查看工具轨迹，并把有用内容保存成笔记。</p>
+        <p v-if="props.chat.length === 0 && !props.historyLoading && !props.historyError" class="empty">可以在这里提问、查看工具轨迹，并把有用内容保存成笔记。</p>
       </div>
 
       <div class="agent-input">
+        <div v-if="openGoals.length" class="goal-list" aria-label="当前任务">
+          <div v-for="goal in openGoals" :key="goal.id" class="goal-card">
+            <strong>当前任务 · {{ goal.interpretation }}</strong>
+            <p>{{ goalStopLabel(goal.last_stop_reason) }}<span v-if="goal.requirements.some(item => item.verification === 'presentation_delivery')"> · 页面交付待确认</span><span v-if="goal.result_refs.length"> · 已有部分结果</span></p>
+            <div class="goal-actions">
+              <button :disabled="props.sending || props.canStop" @click="emit('continue-goal', goal.id)">继续任务</button>
+              <button :disabled="props.sending || props.canStop" @click="emit('target-goal', goal.id); agentInputRef?.focus()">补充要求</button>
+              <button :disabled="props.sending || props.canStop" @click="emit('cancel-goal', goal.id)">取消任务</button>
+            </div>
+          </div>
+        </div>
         <p v-if="props.runConnection === 'reconnecting'" role="status">连接中断，正在重新连接；运行仍可继续。</p>
+        <div v-if="targetGoal" class="goal-target">
+          <span>补充任务：{{ targetGoal.interpretation }}</span>
+          <button aria-label="取消补充任务" @click="emit('clear-goal-target')">×</button>
+        </div>
         <div v-if="props.askDraft" class="ask-draft">
           <div class="ask-draft-head">
             <span>{{ askQuoteLabel(props.askDraft) }}</span>
@@ -802,7 +865,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           @keydown="onAgentInputKeydown"
         />
         <button v-if="props.canStop" class="stop-agent" @click="emit('stop-agent')">停止</button>
-        <button :disabled="props.sending || !props.agentInput.trim()" @click="emit('send-agent')">
+        <button :disabled="props.sending || props.historyLoading || !!props.historyError || !props.agentInput.trim()" @click="emit('send-agent')">
           {{ props.sending ? "..." : "发送" }}
         </button>
       </div>
@@ -1110,6 +1173,52 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+.right-rail.fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  width: 100%;
+  height: 100dvh;
+  max-height: none;
+  border: 0;
+  background: var(--canvas);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.right-rail.fullscreen .agent-panel {
+  width: 100%;
+}
+.right-rail.fullscreen .agent-head,
+.right-rail.fullscreen .agent-input {
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+}
+.right-rail.fullscreen .transcript > * {
+  max-width: 72rem;
+  margin-inline: auto;
+}
+.right-rail.fullscreen .transcript {
+  min-height: 0;
+}
+.fullscreen-button {
+  min-height: 40px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--ink);
+  padding: 0.5rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.right-rail.fullscreen .agent-input {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+@media (max-width: 480px) {
+  .right-rail.fullscreen .agent-head { flex-wrap: wrap; }
+  .right-rail.fullscreen .chat-actions { margin-left: auto; }
+}
 .context-tabs {
   flex: 0 0 auto;
   display: grid;
@@ -1188,6 +1297,10 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .history-card-actions button,
 .history-goto {
   white-space: nowrap;
+}
+.chat-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 .history-button,
 .new-chat,
@@ -1835,6 +1948,14 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   flex-direction: column;
   gap: 0.5rem;
 }
+.goal-list { display: grid; gap: 0.5rem; max-height: 12rem; overflow-y: auto; }
+.goal-card { border: 1px solid var(--hairline); border-radius: 0.6rem; padding: 0.6rem; background: var(--canvas-parchment); }
+.goal-card strong { display: block; font-size: 0.83rem; overflow-wrap: anywhere; }
+.goal-card p { margin: 0.35rem 0; color: var(--steel); font-size: 0.76rem; }
+.goal-actions { display: flex; gap: 0.5rem; }
+.goal-actions button { font-size: 0.75rem; }
+.goal-target { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.76rem; color: var(--steel); }
+.goal-target span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agent-input textarea {
   width: 100%;
   resize: vertical;

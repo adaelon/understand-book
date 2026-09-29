@@ -7,7 +7,7 @@ import {
   packExecutorTransportPayload,
   type ExecutorTransportChunkFrameV2,
   type ExecutorTransportPackResultV2,
-  type ExecutorTransportProfileV2,
+  type ExecutorTransportProfile,
 } from "../src/executor-transport";
 import {
   evaluateModelExecutionBudget,
@@ -59,7 +59,7 @@ function executionEnvelope(segment: "semantic_prompt" | "semantic_input") {
 function packExecutionSegment(
   payload: string,
   segment: "semantic_prompt" | "semantic_input",
-  transportProfile: ExecutorTransportProfileV2,
+  transportProfile: ExecutorTransportProfile,
 ): ExecutorTransportPackResultV2 {
   return packExecutorTransportPayload({
     profile: transportProfile,

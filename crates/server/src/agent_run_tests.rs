@@ -129,6 +129,176 @@ fn chat(running: &RunningServer, message: &str) -> JoinHandle<(u16, Value)> {
     thread::spawn(move || http(&url, "POST", "/agent/chat", json!({"message":message})))
 }
 
+fn finish_missing_page(provider: &Provider, first: ProviderStep) {
+    first.answer("页面尚未交付。");
+    for _ in 1..12 {
+        provider.next().answer("页面尚未交付。");
+    }
+}
+
+#[test]
+fn goal_completion_requires_a_mounted_delivery_owned_by_the_goal() {
+    use crate::goal_turn_delivered;
+    use runtime::goal::{GoalRequirement, GoalVerification, ResidentGoal};
+    use runtime::orchestrator::{AgentAnswerPart, AgentAnswerView, OuterOutcome};
+    use runtime::presentation::PresentationRef;
+    let mut goal = ResidentGoal::new("g".into(), "t1".into(), "做一张页面".into());
+    goal.requirements = vec![GoalRequirement { id: "page".into(), description: "交付页面".into(), basis_turn_id: "t1".into(), verification: GoalVerification::PresentationDelivery }];
+    let reference = PresentationRef { presentation_id: "p1".into(), revision: 1 };
+    let other = PresentationRef { presentation_id: "p2".into(), revision: 1 };
+    let mut outcome: OuterOutcome = serde_json::from_value(json!({
+        "answer":"已完成", "answer_view":{"parts":[{"kind":"markdown","text":"已完成"}],"sources":[]},
+        "incomplete":false,"warning":null,"turns":1,"tokens_spent":1,"effects":[],"trace":[]
+    })).unwrap();
+    assert!(!goal_turn_delivered(&goal, &outcome), "text only");
+    goal.result_refs.push("candidate:p1".into());
+    assert!(!goal_turn_delivered(&goal, &outcome), "candidate only");
+    goal.result_refs.push("preview:p1".into());
+    assert!(!goal_turn_delivered(&goal, &outcome), "preview only");
+    goal.result_refs.push(serde_json::to_string(&reference).unwrap());
+    assert!(!goal_turn_delivered(&goal, &outcome), "delivered but not mounted");
+    outcome.answer_view = Some(AgentAnswerView { parts: vec![AgentAnswerPart::Presentation { presentation_id: other.presentation_id, revision: other.revision }], sources: vec![] });
+    assert!(!goal_turn_delivered(&goal, &outcome), "other goal's page");
+    outcome.answer_view = Some(AgentAnswerView { parts: vec![AgentAnswerPart::Presentation { presentation_id: reference.presentation_id, revision: reference.revision }], sources: vec![] });
+    assert!(goal_turn_delivered(&goal, &outcome), "current goal's delivered page");
+    outcome.incomplete = true;
+    assert!(!goal_turn_delivered(&goal, &outcome), "limit or partial stop");
+    outcome.incomplete = false;
+    outcome.warning = Some("TURN_LIMIT_EXCEEDED".into());
+    assert!(!goal_turn_delivered(&goal, &outcome), "stopped run");
+}
+
+#[test]
+fn resident_goals_persist_continue_select_and_cancel_without_resurrection() {
+    let provider = Provider::new();
+    let (running, _) = fixture("goal-lifecycle");
+    running.set_provider_config(provider.config.clone());
+
+    let first = chat(&running, "把这一章做成富文本演示");
+    let request = provider.next();
+    assert!(request.request.to_string().contains("agent.resident_goal"));
+    finish_missing_page(&provider, request);
+    assert_eq!(first.join().unwrap().0, 200);
+    let path = running.state.lock().unwrap().history_path.clone();
+    let history = load_agent_history(&path).unwrap();
+    let goal_id = history.sessions[0].goals[0].id.clone();
+    assert_eq!(history.sessions[0].goals[0].status, runtime::goal::GoalStatus::Open);
+    assert_eq!(history.sessions[0].turns[0].goal_ref.as_ref().unwrap().id, goal_id);
+    let visible = http(&running.url, "GET", "/agent/history", Value::Null).1;
+    assert_eq!(visible["current"]["goals"][0]["id"], goal_id);
+    assert_eq!(visible["current"]["goals"][0]["status"], "open");
+    assert_eq!(visible["current"]["turns"][0]["goal_ref"]["id"], goal_id);
+
+    let second = chat(&running, "继续");
+    finish_missing_page(&provider, provider.next());
+    assert_eq!(second.join().unwrap().0, 200);
+    let history = load_agent_history(&path).unwrap();
+    assert_eq!(history.sessions[0].goals.len(), 1);
+    assert_eq!(history.sessions[0].turns[1].goal_ref.as_ref().unwrap().id, goal_id);
+
+    let short = chat(&running, "做一个交互网页");
+    finish_missing_page(&provider, provider.next());
+    assert_eq!(short.join().unwrap().0, 200);
+    let short_history = load_agent_history(&path).unwrap();
+    assert!(short_history.sessions[0].turns[2].run_summary.as_ref().unwrap().trace.is_empty());
+    let (status, ambiguous) = http(&running.url, "POST", "/agent/chat", json!({"message":"继续"}));
+    assert_eq!(status, 400);
+    assert_eq!(ambiguous["error_code"], "GOAL_AMBIGUOUS");
+
+    let url = running.url.clone();
+    let cancel = thread::spawn(move || http(&url, "POST", "/agent/goals/cancel", json!({"goal_id":goal_id})));
+    assert_eq!(cancel.join().unwrap().0, 200);
+    let history = load_agent_history(&path).unwrap();
+    assert_eq!(history.sessions[0].goals[0].status, runtime::goal::GoalStatus::Cancelled);
+    assert_eq!(history.sessions[0].goals[1].status, runtime::goal::GoalStatus::Open);
+    assert_eq!(history.sessions[0].turns.len(), 3, "cancel must not add a chat turn");
+    let second_id = history.sessions[0].goals[1].id.clone();
+    let url = running.url.clone();
+    let cancel_second = thread::spawn(move || http(&url, "POST", "/agent/goals/cancel", json!({"goal_id":second_id})));
+    assert_eq!(cancel_second.join().unwrap().0, 200);
+    assert_eq!(load_agent_history(&path).unwrap().sessions[0].turns.len(), 3);
+    let (status, missing) = http(&running.url, "POST", "/agent/chat", json!({"message":"继续"}));
+    assert_eq!(status, 400);
+    assert_eq!(missing["error_code"], "GOAL_NOT_FOUND");
+    running.shutdown();
+}
+
+#[test]
+fn resident_goal_cannot_be_cancelled_while_its_run_is_pending() {
+    let provider = Provider::new();
+    let (running, _) = fixture("goal-cancel-pending");
+    running.set_provider_config(provider.config.clone());
+    let worker = chat(&running, "解释一个术语");
+    let pending = provider.next();
+    let path = running.state.lock().unwrap().history_path.clone();
+    let goal_id = load_agent_history(&path).unwrap().sessions[0].goals[0].id.clone();
+    let (status, response) = http(&running.url, "POST", "/agent/goals/cancel", json!({"goal_id":goal_id}));
+    assert_eq!(status, 409);
+    assert_eq!(response["error_code"], "AGENT_RUN_BUSY");
+    pending.answer("这里是解释。");
+    assert_eq!(worker.join().unwrap().0, 200);
+    let history = load_agent_history(&path).unwrap();
+    assert_eq!(history.sessions[0].goals[0].status, runtime::goal::GoalStatus::Completed);
+    assert_eq!(history.sessions[0].turns.len(), 1);
+    running.shutdown();
+}
+
+#[test]
+fn resident_goal_update_is_saved_while_run_is_pending() {
+    let provider = Provider::new();
+    let (running, _) = fixture("goal-pending-update");
+    running.set_provider_config(provider.config.clone());
+    let worker = chat(&running, "把这一章做成富文本演示");
+    let first = provider.next();
+    let turn_id = running.state.lock().unwrap().agent_history.sessions[0].turns[0].turn_id.clone();
+    assert!(first.request.to_string().contains("goal.update"));
+    first.tool("goal.update", json!({
+        "operation":"refine", "interpretation":"Show the chapter as a rich page",
+        "requirements":[{"id":"page","description":"Deliver the chapter overview page","basis_turn_id":turn_id,"verification":"presentation_delivery"}]
+    }));
+    let second = provider.next();
+    let path = running.state.lock().unwrap().history_path.clone();
+    let saved = load_agent_history(&path).unwrap();
+    assert_eq!(saved.sessions[0].turns[0].status, AgentAssistantStatus::PendingAssistant);
+    assert_eq!(saved.sessions[0].goals[0].requirements[0].verification, runtime::goal::GoalVerification::PresentationDelivery);
+    assert!(second.request.to_string().contains("presentation delivery still required"));
+    second.answer("页面尚未交付。");
+    for _ in 2..12 { provider.next().answer("页面尚未交付。"); }
+    assert_eq!(worker.join().unwrap().0, 200);
+    running.shutdown();
+}
+
+#[test]
+fn resident_completed_goal_edit_creates_related_goal_and_replace_supersedes_open_goal() {
+    let provider = Provider::new();
+    let (running, _) = fixture("goal-edit-replace");
+    running.set_provider_config(provider.config.clone());
+    let first = chat(&running, "解释一个术语");
+    provider.next().answer("第一版已完成。");
+    assert_eq!(first.join().unwrap().0, 200);
+    let original = running.state.lock().unwrap().agent_history.sessions[0].goals[0].id.clone();
+    assert_eq!(running.state.lock().unwrap().agent_history.sessions[0].goals[0].status, runtime::goal::GoalStatus::Completed);
+    let url = running.url.clone();
+    let selected = original.clone();
+    let edit = thread::spawn(move || http(&url, "POST", "/agent/chat", json!({"message":"修改这个回答，做成网页","goal_id":selected})));
+    for _ in 0..12 { provider.next().answer("页面尚未交付。"); }
+    assert_eq!(edit.join().unwrap().0, 200);
+    let goals = running.state.lock().unwrap().agent_history.sessions[0].goals.clone();
+    assert_eq!(goals.len(), 2);
+    assert_eq!(goals[1].related_goal_id.as_deref(), Some(original.as_str()));
+    assert_eq!(goals[1].status, runtime::goal::GoalStatus::Open, "{:?}", goals[1]);
+    let edit_id = goals[1].id.clone();
+
+    let url = running.url.clone();
+    let replace = thread::spawn(move || http(&url, "POST", "/agent/chat", json!({"message":"换成解释术语","goal_id":edit_id,"goal_action":"replace"})));
+    provider.next().answer("改为解释术语。");
+    assert_eq!(replace.join().unwrap().0, 200);
+    let goals = running.state.lock().unwrap().agent_history.sessions[0].goals.clone();
+    assert_eq!(goals[1].status, runtime::goal::GoalStatus::Superseded);
+    assert_eq!(goals[2].status, runtime::goal::GoalStatus::Completed);
+    running.shutdown();
+}
+
 #[test]
 fn observability_status_endpoint_exposes_only_safe_runtime_state() {
     let (running, _) = fixture("observability-status");
@@ -416,6 +586,9 @@ fn resident_commit_failure_keeps_pending_and_startup_recovers_interrupted() {
         AgentAssistantStatus::PendingAssistant
     );
     assert!(history.sessions[0].turns[0].outcome.is_none());
+    assert_eq!(history.sessions[0].goals.len(), 1);
+    assert_eq!(history.sessions[0].goals[0].status, runtime::goal::GoalStatus::Open);
+    assert!(history.sessions[0].goals[0].result_refs.is_empty());
     running.state.lock().unwrap().history_path = path.clone();
     running.shutdown();
     let mut config = ServerHostConfig::desktop(root.join("library"), root.join("dist"));
@@ -438,6 +611,15 @@ fn resident_commit_failure_keeps_pending_and_startup_recovers_interrupted() {
             .error_code,
         "INTERRUPTED"
     );
+    assert_eq!(history.sessions[0].goals[0].status, runtime::goal::GoalStatus::Open);
+    let original_goal_id = history.sessions[0].goals[0].id.clone();
+    restarted.set_provider_config(provider.config.clone());
+    let resumed = chat(&restarted, "继续");
+    provider.next().answer("继续后的答案。");
+    assert_eq!(resumed.join().unwrap().0, 200);
+    let history = load_agent_history(&path).unwrap();
+    assert_eq!(history.sessions[0].turns[1].goal_ref.as_ref().unwrap().id, original_goal_id);
+    assert_eq!(history.sessions[0].goals[0].status, runtime::goal::GoalStatus::Completed);
     restarted.shutdown();
 }
 
@@ -460,7 +642,7 @@ fn resident_precommit_failure_releases_slot_without_calling_provider() {
 }
 
 #[test]
-fn resident_nested_synthesis_and_source_repair_release_state() {
+fn resident_nested_synthesis_and_local_source_repair_release_state() {
     let provider = Provider::new();
     let (running, _) = fixture("nested");
     running.set_provider_config(provider.config.clone());
@@ -480,15 +662,10 @@ fn resident_nested_synthesis_and_source_repair_release_state() {
     );
     synthesis.answer(r#"{"sufficient":true,"answer":"概括","citations":[]}"#);
     provider.next().answer("这位于 LID 1.1。");
-    let repair = provider.next();
-    assert!(repair.request.to_string().contains("source_answer_repair"));
-    assert_eq!(
-        http(&running.url, "POST", "/reader/goto", json!({"lid":"1.30"})).0,
-        200
-    );
-    repair.answer("这里给出了相关概括。");
     let reply = worker.join().unwrap();
     assert_eq!(reply.0, 200, "{reply:?}");
+    assert!(!reply.1["answer"].as_str().unwrap().contains("LID 1.1"));
+    assert_eq!(http(&running.url, "POST", "/reader/goto", json!({"lid":"1.30"})).0, 200);
     assert_eq!(reply.1["trace"][1]["tool"], "book.synthesize");
     {
         let state = running.state.lock().unwrap();
@@ -511,7 +688,7 @@ fn resident_nested_synthesis_and_source_repair_release_state() {
             Some(1),
             "inner completion records its actual request usage once"
         );
-        assert!(activities.iter().any(|a| a.name == "repair"));
+        assert!(!activities.iter().any(|a| a.name == "repair"));
         assert!(activities
             .iter()
             .all(|a| a.status != runtime::run_events::ActivityStatus::Running));
@@ -678,7 +855,10 @@ fn resident_failure_keeps_question_but_drops_run_local_tool_transcript_before_re
     assert!(!projected.contains("tool_search_result.v2"));
     assert!(!projected.contains("call-test"));
     request.answer("已重新开始。");
-    assert_eq!(retry.join().unwrap().0, 200);
+    for _ in 1..12 { provider.next().answer("页面尚未交付。"); }
+    let reply = retry.join().unwrap();
+    assert_eq!(reply.0, 200);
+    assert_eq!(reply.1["warning"], "TURN_LIMIT_EXCEEDED");
     running.shutdown();
 }
 
@@ -1077,7 +1257,7 @@ fn resident_rejected_source_has_no_started_event_and_no_execution_time() {
     provider.next().tool("book.text", json!({"lid":"1.1"}));
     provider
         .next()
-        .tool("source.present", json!({"start_lid":"1.20"}));
+        .tool("source.present", json!({"quote":"unobserved source text"}));
     let next = provider.next();
     let stream = running.run_coordinator.stream(id).unwrap();
     let activity = stream

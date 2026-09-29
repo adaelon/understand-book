@@ -1089,7 +1089,7 @@ mod tests {
     };
 
     const NAVIGATION_ASSET_ID: &str = "resident-agent.policy.navigation";
-    const NAVIGATION_REVISION: &str = "v4";
+    const NAVIGATION_REVISION: &str = "v5";
 
     fn release_book() -> Book {
         let base = ReadOnlyBase {
@@ -1251,6 +1251,7 @@ mod tests {
 
     fn assistant_call(id: &str, name: &str, arguments: &str) -> Message {
         Message {
+            provider_continuation: None,
             role: Role::Assistant,
             content: None,
             tool_calls: vec![ToolCall {
@@ -1264,6 +1265,7 @@ mod tests {
 
     fn tool_result(id: &str, model_body: serde_json::Value) -> Message {
         Message {
+            provider_continuation: None,
             role: Role::Tool,
             content: Some(
                 serde_json::json!({

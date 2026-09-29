@@ -1779,7 +1779,11 @@ fn resolve_named_core_command(
         program: PathBuf::from(
             std::env::var_os("UNDERSTAND_BOOK_NODE").unwrap_or_else(|| OsString::from("node")),
         ),
-        prefix_args: vec![OsString::from("--import"), OsString::from("tsx"), script.into_os_string()],
+        prefix_args: vec![
+            OsString::from("--import"),
+            OsString::from("tsx"),
+            script.into_os_string(),
+        ],
         current_dir: root,
         timeout: None,
     })
@@ -1884,29 +1888,53 @@ fn run_core_command(command: CoreIntentCommand, request: &Value) -> Result<Value
     })
 }
 
-fn wait_for_core(mut child: std::process::Child, timeout: Option<std::time::Duration>) -> std::io::Result<std::process::Output> {
+fn wait_for_core(
+    mut child: std::process::Child,
+    timeout: Option<std::time::Duration>,
+) -> std::io::Result<std::process::Output> {
     use std::io::Read;
-    let Some(timeout) = timeout else { return child.wait_with_output(); };
+    let Some(timeout) = timeout else {
+        return child.wait_with_output();
+    };
     let stdout = child.stdout.take().expect("piped stdout");
     let stderr = child.stderr.take().expect("piped stderr");
-    fn collect(mut pipe: impl Read + Send + 'static) -> std::thread::JoinHandle<std::io::Result<Vec<u8>>> {
-        std::thread::spawn(move || { let mut bytes = Vec::new(); pipe.read_to_end(&mut bytes)?; Ok(bytes) })
+    fn collect(
+        mut pipe: impl Read + Send + 'static,
+    ) -> std::thread::JoinHandle<std::io::Result<Vec<u8>>> {
+        std::thread::spawn(move || {
+            let mut bytes = Vec::new();
+            pipe.read_to_end(&mut bytes)?;
+            Ok(bytes)
+        })
     }
     let stdout = collect(stdout);
     let stderr = collect(stderr);
     let started = std::time::Instant::now();
     let status = loop {
-        if let Some(status) = child.try_wait()? { break Ok(status); }
+        if let Some(status) = child.try_wait()? {
+            break Ok(status);
+        }
         if started.elapsed() >= timeout {
             let _ = child.kill();
             let _ = child.wait();
-            break Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "intent.metrics exceeded its 30 second deadline"));
+            break Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "intent.metrics exceeded its 30 second deadline",
+            ));
         }
         std::thread::sleep(std::time::Duration::from_millis(10));
     };
-    let stdout = stdout.join().map_err(|_| std::io::Error::other("stdout reader failed"))??;
-    let stderr = stderr.join().map_err(|_| std::io::Error::other("stderr reader failed"))??;
-    Ok(std::process::Output { status: status?, stdout, stderr })
+    let stdout = stdout
+        .join()
+        .map_err(|_| std::io::Error::other("stdout reader failed"))??;
+    let stderr = stderr
+        .join()
+        .map_err(|_| std::io::Error::other("stderr reader failed"))??;
+    Ok(std::process::Output {
+        status: status?,
+        stdout,
+        stderr,
+    })
 }
 
 fn parse_body(body: &str) -> Result<Value, ToolError> {
@@ -2005,12 +2033,20 @@ mod lifecycle_tests {
     use super::*;
     #[test]
     fn metrics_timeout_reaps_a_live_node_and_drains_output() {
-        let child = Command::new("node").args(["-e", "setInterval(() => {}, 1000)"])
-            .stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().unwrap();
+        let child = Command::new("node")
+            .args(["-e", "setInterval(() => {}, 1000)"])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
         let error = wait_for_core(child, Some(std::time::Duration::from_millis(100))).unwrap_err();
         assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
-        let child = Command::new("node").args(["-e", "process.stdout.write('x'.repeat(1000000))"])
-            .stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().unwrap();
+        let child = Command::new("node")
+            .args(["-e", "process.stdout.write('x'.repeat(1000000))"])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
         let output = wait_for_core(child, Some(std::time::Duration::from_secs(5))).unwrap();
         assert!(output.status.success());
         assert_eq!(output.stdout.len(), 1000000);

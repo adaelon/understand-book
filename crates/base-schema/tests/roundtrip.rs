@@ -24,10 +24,14 @@ fn ts_fixture_deserializes_zero_mismatch() {
         return;
     }
     let json = std::fs::read_to_string(&p).expect("read fixture");
-    let base: ReadOnlyBase = serde_json::from_str(&json)
-        .expect("TS 产出的基座必须能被 Rust schema 零失配反序列化");
+    let base: ReadOnlyBase =
+        serde_json::from_str(&json).expect("TS 产出的基座必须能被 Rust schema 零失配反序列化");
     assert_eq!(base.book_id, "sample-book");
-    assert_eq!(base, sample_base(), "TS fixture 必须与 Rust sample_base 逐字段一致");
+    assert_eq!(
+        base,
+        sample_base(),
+        "TS fixture 必须与 Rust sample_base 逐字段一致"
+    );
 }
 
 #[test]

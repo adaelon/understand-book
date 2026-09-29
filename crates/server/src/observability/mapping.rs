@@ -275,6 +275,9 @@ fn usage_metadata(usage: &TokenUsage) -> Option<Value> {
     if let Some(tokens) = usage.output_tokens {
         value.insert("output_tokens".into(), json!(tokens));
     }
+    if let Some(tokens) = usage.reasoning_output_tokens {
+        value.insert("output_token_details".into(), json!({"reasoning": tokens}));
+    }
     if let Some(tokens) = usage.total_tokens {
         value.insert("total_tokens".into(), json!(tokens));
     }
@@ -293,6 +296,20 @@ fn usage_metadata(usage: &TokenUsage) -> Option<Value> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn deepseek_reasoning_usage_is_exported_as_an_output_subset() {
+        let parsed = runtime::provider_stream::model_usage(&serde_json::json!({"usage": {
+            "prompt_tokens":100, "prompt_cache_hit_tokens":80, "completion_tokens":30,
+            "completion_tokens_details":{"reasoning_tokens":13}, "total_tokens":130
+        }})).unwrap();
+        let usage = runtime::observation::TokenUsage::provider_reported(parsed, true);
+        let wire = super::usage_metadata(&usage).unwrap();
+        assert_eq!(wire["output_tokens"], 30);
+        assert_eq!(wire["total_tokens"], 130);
+        assert_eq!(wire["output_token_details"]["reasoning"], 13);
+        assert_eq!(wire["input_token_details"]["cache_read"], 80);
+    }
+
     use super::*;
     use crate::observability::lifecycle::root_started;
     use runtime::run_events::{RunActivity, RuntimeEvent};

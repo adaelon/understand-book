@@ -2,28 +2,71 @@
 use crate::*;
 use runtime::presentation::{AgentPresentation, PresentationRef, PresentationView};
 
-pub(crate) fn delivered_version(state: &AppState, session_id: &str, turn_id: &str, reference: &PresentationRef) -> Result<AgentPresentation, ToolError> {
-    delivered(state, &Request { session_id: session_id.into(), turn_id: turn_id.into(), reference: reference.clone(), saved_state: None, text: String::new(), source_ref_ids: vec![] }).map(|(version, _)| version)
+pub(crate) fn delivered_version(
+    state: &AppState,
+    session_id: &str,
+    turn_id: &str,
+    reference: &PresentationRef,
+) -> Result<AgentPresentation, ToolError> {
+    delivered(
+        state,
+        &Request {
+            session_id: session_id.into(),
+            turn_id: turn_id.into(),
+            reference: reference.clone(),
+            saved_state: None,
+            text: String::new(),
+            source_ref_ids: vec![],
+        },
+    )
+    .map(|(version, _)| version)
 }
 
 pub(crate) fn save_state(state: &AppState, body: &str) -> Reply {
     #[derive(Deserialize)]
-    struct SaveRequest { session_id: String, turn_id: String, reference: PresentationRef, state: runtime::presentation::PresentationState }
+    struct SaveRequest {
+        session_id: String,
+        turn_id: String,
+        reference: PresentationRef,
+        state: runtime::presentation::PresentationState,
+    }
     let result = (|| -> Result<_, ToolError> {
         let request: SaveRequest = serde_json::from_str(body).map_err(|_| invalid())?;
         let observation = json!({"session_id":request.session_id,"turn_id":request.turn_id,"reference":request.reference,
             "text":request.state.observed_result,"source_ref_ids":request.state.source_ref_ids});
         let checked = route(state, &observation.to_string(), true);
-        if checked.status != 200 { return Err(invalid()); }
-        state.save_presentation_state(&request.session_id, &request.turn_id, &request.reference, request.state)
+        if checked.status != 200 {
+            return Err(invalid());
+        }
+        state.save_presentation_state(
+            &request.session_id,
+            &request.turn_id,
+            &request.reference,
+            request.state,
+        )
     })();
-    match result { Ok(receipt) => ok_json(&receipt), Err(error) => err_reply(&error) }
+    match result {
+        Ok(receipt) => ok_json(&receipt),
+        Err(error) => err_reply(&error),
+    }
 }
 
 /// Resolve the submitted receipt before precommit; never substitute the latest snapshot.
-pub(crate) fn follow_up_context(state: &AppState, receipt: &runtime::presentation::PresentationFollowUp) -> Result<String, ToolError> {
-    if state.agent_history.active_by_book.get(&state.book.base.book_id) != Some(&receipt.session_id) {
-        return Err(ToolError { error_code: "PRESENTATION_SESSION_MISMATCH".into(), category: "conflict".into(), message: "请在此内容所属对话中追问。".into() });
+pub(crate) fn follow_up_context(
+    state: &AppState,
+    receipt: &runtime::presentation::PresentationFollowUp,
+) -> Result<String, ToolError> {
+    if state
+        .agent_history
+        .active_by_book
+        .get(&state.book.base.book_id)
+        != Some(&receipt.session_id)
+    {
+        return Err(ToolError {
+            error_code: "PRESENTATION_SESSION_MISMATCH".into(),
+            category: "conflict".into(),
+            message: "请在此内容所属对话中追问。".into(),
+        });
     }
     let saved = state.read_presentation_state(receipt)?;
     let version = state.read_presentation(&receipt.session_id, &receipt.reference)?;
@@ -151,7 +194,12 @@ pub(crate) fn route(state: &AppState, body: &str, observe: bool) -> Reply {
         )?;
         let saved = match &request.saved_state {
             Some(receipt) => {
-                if receipt.session_id != request.session_id || receipt.turn_id != request.turn_id || receipt.reference != request.reference { return Err(invalid()); }
+                if receipt.session_id != request.session_id
+                    || receipt.turn_id != request.turn_id
+                    || receipt.reference != request.reference
+                {
+                    return Err(invalid());
+                }
                 Some(state.read_presentation_state(receipt)?)
             }
             None => state.latest_presentation_state(&request.session_id, &request.reference)?,
@@ -166,6 +214,7 @@ pub(crate) fn route(state: &AppState, body: &str, observe: bool) -> Reply {
             })
             .collect();
         Ok(serde_json::to_value(PresentationView {
+            animation_assets: version.content.animation_assets,
             restored_state_revision: saved.as_ref().map(|s| s.receipt.state_revision),
             restored_state: saved.map(|s| s.state),
             reference: version.reference,

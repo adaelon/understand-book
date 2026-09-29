@@ -38,9 +38,20 @@ pub struct Book {
     experimental_read_access: Option<ExperimentalReadAccess>,
 }
 
+struct SourcePassage<'a> {
+    leaves: Vec<&'a LidNode>,
+    start_index: usize,
+    end_index: usize,
+    text: String,
+}
+
 /// Explicit, in-memory evaluation view. Never changes the stored book.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ExperimentalReadAccess { Text, Tree, Graph }
+pub enum ExperimentalReadAccess {
+    Text,
+    Tree,
+    Graph,
+}
 
 #[derive(Debug, Clone, Default)]
 struct PaperMinimapArtifacts {
@@ -1654,6 +1665,10 @@ pub struct ManifestNode {
     pub children: Vec<String>,
     pub span: Span,
     pub kind: NodeKind,
+    /// First non-empty source line for outline display, retaining Markdown heading syntax.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub title: Option<String>,
 }
 
 /// 每 LID 的确定性统计。
@@ -3328,9 +3343,17 @@ impl Book {
     pub fn canonical_tree(&self, at: Option<&str>) -> Result<serde_json::Value, ToolError> {
         let nodes = if let Some(lid) = at {
             let node = self.node(lid)?;
-            self.base.lid_nodes.iter().filter(|n| n.lid == lid || node.children.contains(&n.lid)).collect::<Vec<_>>()
+            self.base
+                .lid_nodes
+                .iter()
+                .filter(|n| n.lid == lid || node.children.contains(&n.lid))
+                .collect::<Vec<_>>()
         } else {
-            self.base.lid_nodes.iter().filter(|n| n.path.len() <= 2).collect::<Vec<_>>()
+            self.base
+                .lid_nodes
+                .iter()
+                .filter(|n| n.path.len() <= 2)
+                .collect::<Vec<_>>()
         };
         Ok(serde_json::json!({"available": true, "at": at, "nodes": nodes}))
     }
@@ -5667,12 +5690,10 @@ impl Book {
         Ok(String::from_utf16_lossy(&self.source_u16[start..end]))
     }
 
-    pub fn resolve_source(
+    fn source_passage(
         &self,
         evidence: &EvidenceRange,
-        locale: &str,
-        expected_digest: Option<&str>,
-    ) -> Result<ResolvedSource, ToolError> {
+    ) -> Result<SourcePassage<'_>, ToolError> {
         let leaves = self.source_leaves();
         let leaf_positions: HashMap<&str, usize> = leaves
             .iter()
@@ -5708,13 +5729,64 @@ impl Book {
                     "explicit ranges require leaf start_lid and end_lid",
                 ));
             }
-            self.validate_and_read_source_ranges(evidence, selected)?
+            self.validate_and_read_source_ranges(evidence, selected, true)?
         };
         if evidence_text.trim().is_empty() {
             return Err(invalid_source_range("source evidence must contain text"));
         }
 
-        let digest = source_evidence_digest(&self.base.book_id, evidence, &evidence_text);
+        Ok(SourcePassage {
+            leaves,
+            start_index,
+            end_index,
+            text: evidence_text,
+        })
+    }
+
+    /// Validate the same evidence passage as source preview, but only project its label.
+    pub fn source_label(
+        &self,
+        evidence: &EvidenceRange,
+        locale: &str,
+    ) -> Result<String, ToolError> {
+        self.source_passage(evidence)?;
+        let node = self.node(&evidence.start_lid)?;
+        let heading_path = self.source_heading_path(node)?;
+        let kind = localized_source_kind(&node.kind, locale);
+        Ok(heading_path
+            .last()
+            .map(|heading| format!("{kind} · {heading}"))
+            .unwrap_or_else(|| kind.to_string()))
+    }
+
+    pub fn resolve_source(
+        &self,
+        evidence: &EvidenceRange,
+        locale: &str,
+        expected_digest: Option<&str>,
+    ) -> Result<ResolvedSource, ToolError> {
+        let SourcePassage {
+            leaves,
+            start_index,
+            end_index,
+            text: mut evidence_text,
+        } = self.source_passage(evidence)?;
+        let start_node = self.node(&evidence.start_lid)?;
+        let selected = &leaves[start_index..=end_index];
+
+        let mut digest = source_evidence_digest(&self.base.book_id, evidence, &evidence_text);
+        // Persisted explicit ranges originally joined leaf text without inter-leaf
+        // whitespace. Keep those immutable references readable by their stored digest.
+        if expected_digest.is_some_and(|expected| expected != digest)
+            && evidence.ranges.len() > 1
+        {
+            let previous_text = self.validate_and_read_source_ranges(evidence, selected, false)?;
+            let previous_digest = source_evidence_digest(&self.base.book_id, evidence, &previous_text);
+            if expected_digest == Some(previous_digest.as_str()) {
+                evidence_text = previous_text;
+                digest = previous_digest;
+            }
+        }
         if expected_digest.is_some_and(|expected| expected != digest) {
             return Err(ToolError {
                 error_code: "SOURCE_STALE".into(),
@@ -5747,6 +5819,115 @@ impl Book {
             context_before,
             context_after,
         })
+    }
+
+    /// Locate source only inside the caller's merged observed intervals.
+    /// Prefer exact text; otherwise tolerate whitespace just inside math delimiters.
+    /// Returns exact bindings and bounded, observed-only context for disambiguation.
+    pub fn match_source_quote(
+        &self,
+        quote: &str,
+        observed: &[(usize, usize)],
+    ) -> Result<Vec<(EvidenceRange, String)>, ToolError> {
+        let exact = self.match_source_quote_pass(quote, observed, false)?;
+        if !exact.is_empty() || !quote.contains('$') {
+            return Ok(exact);
+        }
+        self.match_source_quote_pass(quote, observed, true)
+    }
+
+    fn match_source_quote_pass(
+        &self,
+        quote: &str,
+        observed: &[(usize, usize)],
+        formula_boundary_whitespace: bool,
+    ) -> Result<Vec<(EvidenceRange, String)>, ToolError> {
+        let (needle, _) = source_quote_normalized(
+            &quote.encode_utf16().collect::<Vec<_>>(), formula_boundary_whitespace);
+        if needle.is_empty() {
+            return Err(invalid_source_range("quote must contain source text"));
+        }
+        let leaves = self.source_leaves();
+        let mut matches = Vec::new();
+        for &(scope_start, scope_end) in observed {
+            let source = self
+                .source_u16
+                .get(scope_start..scope_end)
+                .ok_or_else(|| invalid_source_range("observed interval is outside source"))?;
+            let (normalized, offsets) = source_quote_normalized(source, formula_boundary_whitespace);
+            for (offset, window) in normalized.windows(needle.len()).enumerate() {
+                if window != needle {
+                    continue;
+                }
+                let start = scope_start + offsets[offset];
+                let end = scope_start + offsets[offset + needle.len()];
+                let selected: Vec<_> = leaves
+                    .iter()
+                    .filter(|leaf| leaf.span.start < end && leaf.span.end > start)
+                    .collect();
+                let (Some(first), Some(last)) = (selected.first(), selected.last()) else {
+                    continue;
+                };
+                // Structural headings can lie outside leaf spans. A complete structural
+                // passage can use its node; partial headings require a readable leaf.
+                let evidence = if let Some(node) = self
+                    .base
+                    .lid_nodes
+                    .iter()
+                    .filter(|node| node.span.start == start && node.span.end == end)
+                    .min_by_key(|node| !node.children.is_empty())
+                {
+                    EvidenceRange {
+                        start_lid: node.lid.clone(),
+                        end_lid: node.lid.clone(),
+                        ranges: vec![],
+                    }
+                } else {
+                    if first.span.start > start || last.span.end < end {
+                        continue;
+                    }
+                    EvidenceRange {
+                        start_lid: first.lid.clone(),
+                        end_lid: last.lid.clone(),
+                        ranges: selected
+                            .iter()
+                            .map(|leaf| SourceSelectedRange {
+                                lid: leaf.lid.clone(),
+                                range: SourceTextRange {
+                                    start: (start.max(leaf.span.start) - leaf.span.start) as u32,
+                                    end: (end.min(leaf.span.end) - leaf.span.start) as u32,
+                                },
+                            })
+                            .collect(),
+                    }
+                };
+                let resolved = self.resolve_source(&evidence, "zh-CN", None)?;
+                if source_quote_normalized(
+                    &resolved
+                        .highlighted_quote
+                        .encode_utf16()
+                        .collect::<Vec<_>>(),
+                    formula_boundary_whitespace,
+                )
+                .0 != needle
+                {
+                    continue;
+                }
+                let mut context_start = start.saturating_sub(48).max(scope_start);
+                let mut context_end = (end + 48).min(scope_end);
+                while !is_utf16_boundary(&self.source_u16, context_start) {
+                    context_start += 1;
+                }
+                while !is_utf16_boundary(&self.source_u16, context_end) {
+                    context_end -= 1;
+                }
+                matches.push((
+                    evidence,
+                    String::from_utf16_lossy(&self.source_u16[context_start..context_end]),
+                ));
+            }
+        }
+        Ok(matches)
     }
 
     fn source_leaves(&self) -> Vec<&LidNode> {
@@ -6247,7 +6428,11 @@ impl Book {
         ancestors.sort_by_key(|ancestor| ancestor.path.len());
         let mut headings = Vec::new();
         for ancestor in ancestors {
-            if let Some(title) = markdown_heading(&self.source_node_text(ancestor)?) {
+            if let Some(title) = self
+                .source_node_first_line(ancestor)?
+                .as_deref()
+                .and_then(markdown_heading)
+            {
                 headings.push(HeadingPathItem {
                     lid: ancestor.lid.clone(),
                     title,
@@ -6323,10 +6508,21 @@ impl Book {
         Ok(String::from_utf16_lossy(self.source_node_u16(node)?))
     }
 
+    fn source_node_first_line(&self, node: &LidNode) -> Result<Option<String>, ToolError> {
+        for line in self.source_node_u16(node)?.split(|unit| *unit == b'\n' as u16) {
+            let line = String::from_utf16_lossy(line);
+            if !line.trim().is_empty() {
+                return Ok(Some(line.trim().to_string()));
+            }
+        }
+        Ok(None)
+    }
+
     fn validate_and_read_source_ranges(
         &self,
         evidence: &EvidenceRange,
         selected: &[&LidNode],
+        preserve_gaps: bool,
     ) -> Result<String, ToolError> {
         if evidence.ranges.len() != selected.len() {
             return Err(invalid_source_range(
@@ -6366,6 +6562,12 @@ impl Book {
                     ));
                 }
             }
+            if preserve_gaps && index > 0 {
+                let previous = selected[index - 1];
+                text.push_str(&String::from_utf16_lossy(
+                    &self.source_u16[previous.span.end..node.span.start],
+                ));
+            }
             text.push_str(&String::from_utf16_lossy(&node_u16[start..end]));
         }
         Ok(text)
@@ -6385,8 +6587,8 @@ impl Book {
         ancestors
             .into_iter()
             .map(|ancestor| {
-                self.source_node_text(ancestor)
-                    .map(|text| markdown_heading(&text))
+                self.source_node_first_line(ancestor)
+                    .map(|text| text.as_deref().and_then(markdown_heading))
             })
             .collect::<Result<Vec<_>, _>>()
             .map(|headings| headings.into_iter().flatten().collect())
@@ -6516,6 +6718,13 @@ impl Book {
                 children: n.children.clone(),
                 span: n.span.clone(),
                 kind: n.kind.clone(),
+                title: if !n.children.is_empty()
+                    || matches!(n.kind, NodeKind::Chapter | NodeKind::Section)
+                {
+                    self.source_node_first_line(n).ok().flatten()
+                } else {
+                    None
+                },
             })
             .collect();
         let stats_by_lid = self
@@ -7042,6 +7251,88 @@ impl Book {
 /// 物化路径父 LID:"11.18.4" → Some("11.18");"1" → None。
 fn parent_lid(lid: &str) -> Option<String> {
     lid.rfind('.').map(|i| lid[..i].to_string())
+}
+
+// Normalize only line endings while retaining a canonical UTF-16 boundary map.
+// Book sources can contain CRLF while model JSON quotes use LF.
+fn source_quote_line_endings(source: &[u16]) -> (Vec<u16>, Vec<usize>) {
+    let mut normalized = Vec::with_capacity(source.len());
+    let mut offsets = Vec::with_capacity(source.len() + 1);
+    let mut offset = 0;
+    while offset < source.len() {
+        offsets.push(offset);
+        let unit = source[offset];
+        if unit == 13 {
+            normalized.push(10);
+            offset += if source.get(offset + 1) == Some(&10) {
+                2
+            } else {
+                1
+            };
+        } else {
+            normalized.push(unit);
+            offset += 1;
+        }
+    }
+    offsets.push(offset);
+    (normalized, offsets)
+}
+
+// Only remove boundary whitespace inside paired $ / $$ delimiters. Keep the
+// original UTF-16 offsets, formula contents, escaped dollars and prose unchanged.
+fn source_quote_normalized(source: &[u16], formula_boundary_whitespace: bool) -> (Vec<u16>, Vec<usize>) {
+    let (text, offsets) = source_quote_line_endings(source);
+    if !formula_boundary_whitespace {
+        return (text, offsets);
+    }
+    let dollar_width = |at: usize| {
+        if text[at] != b'$' as u16
+            || text[..at].iter().rev().take_while(|&&c| c == b'\\' as u16).count() % 2 != 0 {
+            return 0;
+        }
+        text[at..].iter().take_while(|&&c| c == b'$' as u16).count()
+    };
+    let is_space = |c: u16| matches!(c, 9 | 10 | 32);
+    let mut omit = vec![false; text.len()];
+    let mut at = 0;
+    while at < text.len() {
+        let width = dollar_width(at);
+        if width != 1 && width != 2 {
+            at += width.max(1);
+            continue;
+        }
+        let body_start = at + width;
+        let mut close = body_start;
+        while close < text.len() {
+            let next_width = dollar_width(close);
+            if next_width == width {
+                break;
+            }
+            close += next_width.max(1);
+        }
+        if close == text.len() {
+            break;
+        }
+        let mut first = body_start;
+        let mut last = close;
+        while first < last && is_space(text[first]) { first += 1; }
+        while last > first && is_space(text[last - 1]) { last -= 1; }
+        if first < last {
+            omit[body_start..first].fill(true);
+            omit[last..close].fill(true);
+        }
+        at = close + width;
+    }
+    let mut normalized = Vec::with_capacity(text.len());
+    let mut mapped = Vec::with_capacity(offsets.len());
+    for (i, unit) in text.into_iter().enumerate() {
+        if !omit[i] {
+            normalized.push(unit);
+            mapped.push(offsets[i]);
+        }
+    }
+    mapped.push(source.len());
+    (normalized, mapped)
 }
 
 fn invalid_source_range(message: impl Into<String>) -> ToolError {
@@ -8633,6 +8924,19 @@ mod tests {
         assert_eq!(s1.anchored_nodes, 0); // 锚定都落在 1.1,不在容器 1
         let s11 = &m.stats_by_lid["1.1"];
         assert_eq!(s11.anchored_nodes, 2); // entity:command(occ 含 1.1)+ claim(source 1.1)
+    }
+
+    #[test]
+    fn manifest_includes_outline_first_lines_without_chapter_bodies() {
+        let b = source_presentation_book();
+        let value = serde_json::to_value(b.manifest()).unwrap();
+        let nodes = value["tree"].as_array().unwrap();
+        let chapter = nodes.iter().find(|n| n["lid"] == "1").unwrap();
+        let section = nodes.iter().find(|n| n["lid"] == "1.2").unwrap();
+        let paragraph = nodes.iter().find(|n| n["lid"] == "1.2.1").unwrap();
+        assert_eq!(chapter["title"], "# Chapter One");
+        assert_eq!(section["title"], "## Methods");
+        assert!(paragraph.get("title").is_none());
     }
 
     #[test]
@@ -10250,6 +10554,39 @@ mod tests {
     }
 
     #[test]
+    fn source_presentation_preserves_newline_gaps_and_saved_legacy_references() {
+        let mut base = sample_base();
+        base.lid_nodes[0].span.end = 10;
+        base.lid_nodes[0].children = vec!["1.1".into(), "1.2".into()];
+        base.lid_nodes[1].span = Span { start: 0, end: 4 };
+        let mut last = base.lid_nodes[1].clone();
+        last.lid = "1.2".into();
+        last.path = vec![1, 2];
+        last.span = Span { start: 6, end: 10 };
+        base.lid_nodes.push(last);
+        let book = Book::new(base, "abcd\r\nefgh");
+        let evidence = EvidenceRange {
+            start_lid: "1.1".into(),
+            end_lid: "1.2".into(),
+            ranges: vec![
+                selected_source_range("1.1", 1, 4),
+                selected_source_range("1.2", 0, 3),
+            ],
+        };
+        let fresh = book.resolve_source(&evidence, "zh-CN", None).unwrap();
+        assert_eq!(fresh.highlighted_quote, "bcd\r\nefg");
+        let old_digest = source_evidence_digest(&book.base.book_id, &evidence, "bcdefg");
+        let saved = book
+            .resolve_source(&evidence, "zh-CN", Some(&old_digest))
+            .unwrap();
+        assert_eq!(saved.highlighted_quote, "bcdefg");
+        assert_eq!(saved.evidence_text_digest, old_digest);
+        assert!(book
+            .resolve_source(&evidence, "zh-CN", Some("unrelated-stale-digest"))
+            .is_err());
+    }
+
+    #[test]
     fn source_presentation_resolves_original_heading_localized_kind_and_stable_digest() {
         let book = source_presentation_book();
         let evidence = EvidenceRange {
@@ -10271,6 +10608,37 @@ mod tests {
         assert!(!first.context_before.contains("Chapter intro"));
         assert!(first.evidence_text_digest.starts_with("source-fnv1a64-"));
         assert_eq!(first.evidence_text_digest, second.evidence_text_digest);
+    }
+
+    #[test]
+    fn source_label_preserves_preview_labels_and_range_validation() {
+        let book = source_presentation_book();
+        for (start, end, ranges) in [
+            ("1", "1", vec![]),
+            ("1.2.1", "1.2.1", vec![selected_source_range("1.2.1", 0, 14)]),
+            ("1.2.1", "1.2.2", vec![selected_source_range("1.2.1", 0, 27), selected_source_range("1.2.2", 0, 29)]),
+            ("1.2.1", "1.3.1", vec![selected_source_range("1.2.1", 0, 27), selected_source_range("1.3.1", 0, 21)]),
+            ("1.2.1", "1.2.1", vec![selected_source_range("1.2.1", 5, 5)]),
+            ("1.2.1", "1.2.1", vec![selected_source_range("1.2.1", 0, 999)]),
+            ("1.3.1", "1.2.1", vec![]),
+            ("missing", "missing", vec![]),
+        ] {
+            let evidence = EvidenceRange { start_lid: start.into(), end_lid: end.into(), ranges };
+            for locale in ["zh-CN", "en"] {
+                let label = book.source_label(&evidence, locale).map_err(|e| e.error_code);
+                let full = book.resolve_source(&evidence, locale, None).map(|s| s.label).map_err(|e| e.error_code);
+                assert_eq!(label, full, "{start}..{end} ({locale})");
+            }
+        }
+    }
+
+    #[test]
+    fn outline_first_line_skips_blank_lines_and_preserves_unicode() {
+        let source = " \r\n\t\n## 中文 🦀 标题\r\n正文不应进入标题";
+        let b = Book::new(ReadOnlyBase { book_id: "outline".into(), lid_nodes: vec![], graph_nodes: vec![], graph_edges: vec![] }, source);
+        let node = LidNode { lid: "1".into(), path: vec![1], kind: NodeKind::Chapter,
+            span: Span { start: 0, end: source.encode_utf16().count() }, children: vec![] };
+        assert_eq!(b.source_node_first_line(&node).unwrap().as_deref(), Some("## 中文 🦀 标题"));
     }
 
     #[test]

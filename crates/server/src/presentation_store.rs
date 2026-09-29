@@ -240,10 +240,18 @@ fn validate_content(
 
 impl AppState {
     /// Latest saved scene of this exact version; never search a newer content revision.
-    pub(crate) fn latest_presentation_state(&self, session_id: &str, reference: &PresentationRef) -> Result<Option<SavedPresentationState>, ToolError> {
+    pub(crate) fn latest_presentation_state(
+        &self,
+        session_id: &str,
+        reference: &PresentationRef,
+    ) -> Result<Option<SavedPresentationState>, ToolError> {
         self.read_presentation(session_id, reference)?;
         let store = PresentationStore::for_state(self)?;
-        let directory = store.root.join("states").join(&reference.presentation_id).join(reference.revision.to_string());
+        let directory = store
+            .root
+            .join("states")
+            .join(&reference.presentation_id)
+            .join(reference.revision.to_string());
         let entries = match fs::read_dir(directory) {
             Ok(entries) => entries,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
@@ -252,54 +260,103 @@ impl AppState {
         let mut latest = None;
         for entry in entries {
             let path = entry.map_err(storage)?.path();
-            if path.extension().and_then(|s| s.to_str()) != Some("json") { continue; }
-            let revision = path.file_stem().and_then(|s| s.to_str()).and_then(|s| s.parse::<u32>().ok())
+            if path.extension().and_then(|s| s.to_str()) != Some("json") {
+                continue;
+            }
+            let revision = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .and_then(|s| s.parse::<u32>().ok())
                 .ok_or_else(|| invalid("Invalid stored state revision filename"))?;
-            if latest.as_ref().is_none_or(|(old, _)| revision > *old) { latest = Some((revision, path)); }
+            if latest.as_ref().is_none_or(|(old, _)| revision > *old) {
+                latest = Some((revision, path));
+            }
         }
-        latest.map(|(_, path)| {
-            let saved: SavedPresentationState = PresentationStore::read(&path)?;
-            if saved.receipt.session_id != session_id || saved.receipt.reference != *reference { return Err(owner_error()); }
-            self.read_presentation_state(&saved.receipt)
-        }).transpose()
+        latest
+            .map(|(_, path)| {
+                let saved: SavedPresentationState = PresentationStore::read(&path)?;
+                if saved.receipt.session_id != session_id || saved.receipt.reference != *reference {
+                    return Err(owner_error());
+                }
+                self.read_presentation_state(&saved.receipt)
+            })
+            .transpose()
     }
 
     pub(crate) fn save_presentation_state(
-        &self, session_id: &str, turn_id: &str, reference: &PresentationRef,
+        &self,
+        session_id: &str,
+        turn_id: &str,
+        reference: &PresentationRef,
         state: PresentationState,
     ) -> Result<PresentationFollowUp, ToolError> {
-        let version = crate::presentation_api::delivered_version(self, session_id, turn_id, reference)?;
+        let version =
+            crate::presentation_api::delivered_version(self, session_id, turn_id, reference)?;
         let store = PresentationStore::for_state(self)?;
-        let directory = store.root.join("states").join(&reference.presentation_id).join(reference.revision.to_string());
+        let directory = store
+            .root
+            .join("states")
+            .join(&reference.presentation_id)
+            .join(reference.revision.to_string());
         let mut revision = 0;
         if directory.exists() {
             for entry in fs::read_dir(&directory).map_err(storage)? {
                 let path = entry.map_err(storage)?.path();
                 if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                    let number = path.file_stem().and_then(|s| s.to_str()).and_then(|s| s.parse::<u32>().ok())
+                    let number = path
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .and_then(|s| s.parse::<u32>().ok())
                         .ok_or_else(|| invalid("Invalid stored state revision filename"))?;
                     revision = revision.max(number);
                 }
             }
         }
         let receipt = PresentationFollowUp {
-            session_id: session_id.into(), turn_id: turn_id.into(), reference: reference.clone(),
-            state_revision: revision.checked_add(1).ok_or_else(|| invalid("State revision overflow"))?,
+            session_id: session_id.into(),
+            turn_id: turn_id.into(),
+            reference: reference.clone(),
+            state_revision: revision
+                .checked_add(1)
+                .ok_or_else(|| invalid("State revision overflow"))?,
             saved_state_ref: new_id("state"),
         };
-        let saved = SavedPresentationState { receipt: receipt.clone(), owner: version.owner, state };
-        PresentationStore::write(&directory.join(format!("{}.json", receipt.state_revision)), &saved)?;
+        let saved = SavedPresentationState {
+            receipt: receipt.clone(),
+            owner: version.owner,
+            state,
+        };
+        PresentationStore::write(
+            &directory.join(format!("{}.json", receipt.state_revision)),
+            &saved,
+        )?;
         Ok(receipt)
     }
 
-    pub(crate) fn read_presentation_state(&self, receipt: &PresentationFollowUp) -> Result<SavedPresentationState, ToolError> {
-        let version = crate::presentation_api::delivered_version(self, &receipt.session_id, &receipt.turn_id, &receipt.reference)?;
+    pub(crate) fn read_presentation_state(
+        &self,
+        receipt: &PresentationFollowUp,
+    ) -> Result<SavedPresentationState, ToolError> {
+        let version = crate::presentation_api::delivered_version(
+            self,
+            &receipt.session_id,
+            &receipt.turn_id,
+            &receipt.reference,
+        )?;
         check_id(&receipt.saved_state_ref)?;
         let store = PresentationStore::for_state(self)?;
-        let path = store.root.join("states").join(&receipt.reference.presentation_id)
-            .join(receipt.reference.revision.to_string()).join(format!("{}.json", receipt.state_revision));
+        let path = store
+            .root
+            .join("states")
+            .join(&receipt.reference.presentation_id)
+            .join(receipt.reference.revision.to_string())
+            .join(format!("{}.json", receipt.state_revision));
         let saved: SavedPresentationState = PresentationStore::read(&path)?;
-        if saved.receipt != *receipt || saved.owner != version.owner { return Err(invalid("State receipt does not match this version and turn")); }
+        if saved.receipt != *receipt || saved.owner != version.owner {
+            return Err(invalid(
+                "State receipt does not match this version and turn",
+            ));
+        }
         Ok(saved)
     }
 
@@ -431,8 +488,13 @@ pub(crate) fn validate_answer_references(
                 )?;
                 crate::presentation_api::validate_semantics(&version, messages)?;
                 for binding in version.content.source_bindings {
-                    if bindings.iter().any(|old| old.source_ref_id == binding.source_ref_id && old != &binding) {
-                        return Err(invalid("Source ref identifies different evidence in this answer"));
+                    if bindings
+                        .iter()
+                        .any(|old| old.source_ref_id == binding.source_ref_id && old != &binding)
+                    {
+                        return Err(invalid(
+                            "Source ref identifies different evidence in this answer",
+                        ));
                     }
                     bindings.push(binding);
                 }

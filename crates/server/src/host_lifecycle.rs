@@ -1,8 +1,15 @@
 //! Linux reader service model calls stop at the next request boundary.
-use runtime::memory_review::{ProviderReviewExecutorFactory, ReviewExecutor, ReviewExecutorFactory};
-use runtime::{AdapterError, AgentRequestPlan, AssistantTurn, CompletionRequest, ModelAdapter,
-    ModelRuntimeProfile, ParsedResponse, ProviderConfig, ProviderRegistry};
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use runtime::memory_review::{
+    ProviderReviewExecutorFactory, ReviewExecutor, ReviewExecutorFactory,
+};
+use runtime::{
+    AdapterError, AgentRequestPlan, AssistantTurn, CompletionRequest, ModelAdapter,
+    ModelRuntimeProfile, ParsedResponse, ProviderConfig, ProviderRegistry,
+};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::time::Duration;
 
 pub(crate) const SERVICE_PROVIDER_TIMEOUT: Duration = Duration::from_secs(60);
@@ -16,23 +23,62 @@ pub(crate) struct ServiceAdapter {
 }
 
 impl ServiceAdapter {
-    pub(crate) fn from_config(config: ProviderConfig, stop: Arc<AtomicBool>) -> Box<dyn ModelAdapter + Send> {
-        Box::new(Self { inner: ProviderRegistry::adapter_from_config_with_timeout(config, SERVICE_PROVIDER_TIMEOUT), stop })
+    pub(crate) fn from_config(
+        config: ProviderConfig,
+        stop: Arc<AtomicBool>,
+    ) -> Box<dyn ModelAdapter + Send> {
+        Box::new(Self {
+            inner: ProviderRegistry::adapter_from_config_with_timeout(
+                config,
+                SERVICE_PROVIDER_TIMEOUT,
+            ),
+            stop,
+        })
     }
     fn check_running(&self) -> Result<(), AdapterError> {
         if self.stop.load(Ordering::Acquire) {
-            Err(AdapterError { message: "Reader service is stopping".into() })
-        } else { Ok(()) }
+            Err(AdapterError {
+                message: "Reader service is stopping".into(),
+            })
+        } else {
+            Ok(())
+        }
     }
 }
 
 impl ModelAdapter for ServiceAdapter {
-    fn stream_text_is_structured(&self) -> bool { self.inner.stream_text_is_structured() }
-    fn complete_observed(&self, request: runtime::CompletionRequest, observer: &mut dyn runtime::provider_stream::ModelObserver) -> Result<runtime::ParsedResponse, runtime::AdapterError> { self.check_running()?; let result = self.inner.complete_observed(request, observer); result }
+    fn stream_text_is_structured(&self) -> bool {
+        self.inner.stream_text_is_structured()
+    }
+    fn complete_observed(
+        &self,
+        request: runtime::CompletionRequest,
+        observer: &mut dyn runtime::provider_stream::ModelObserver,
+    ) -> Result<runtime::ParsedResponse, runtime::AdapterError> {
+        self.check_running()?;
+        let result = self.inner.complete_observed(request, observer);
+        result
+    }
 
-    fn complete_structured_observed(&self, request: runtime::CompletionRequest, observer: &mut dyn runtime::provider_stream::ModelObserver) -> Result<serde_json::Value, runtime::AdapterError> { self.check_running()?; let result = self.inner.complete_structured_observed(request, observer); result }
+    fn complete_structured_observed(
+        &self,
+        request: runtime::CompletionRequest,
+        observer: &mut dyn runtime::provider_stream::ModelObserver,
+    ) -> Result<serde_json::Value, runtime::AdapterError> {
+        self.check_running()?;
+        let result = self.inner.complete_structured_observed(request, observer);
+        result
+    }
 
-    fn chat_observed(&self, request: &runtime::AgentRequestPlan, observer: &mut dyn runtime::provider_stream::ModelObserver) -> Result<runtime::AssistantTurn, runtime::AdapterError> { self.check_running()?; let result = self.inner.chat_observed(request, observer); result }
+    fn chat_observed(
+        &self,
+        request: &runtime::AgentRequestPlan,
+        observer: &mut dyn runtime::provider_stream::ModelObserver,
+    ) -> Result<runtime::AssistantTurn, runtime::AdapterError> {
+        self.check_running()?;
+        let result = self.inner.chat_observed(request, observer);
+        result
+    }
 
     fn set_run_cancellation(&self, cancellation: runtime::run_context::CancellationToken) {
         self.inner.set_run_cancellation(cancellation);
@@ -41,7 +87,10 @@ impl ModelAdapter for ServiceAdapter {
         self.check_running()?;
         self.inner.complete(request)
     }
-    fn complete_structured(&self, request: CompletionRequest) -> Result<serde_json::Value, AdapterError> {
+    fn complete_structured(
+        &self,
+        request: CompletionRequest,
+    ) -> Result<serde_json::Value, AdapterError> {
         self.check_running()?;
         self.inner.complete_structured(request)
     }
@@ -49,13 +98,18 @@ impl ModelAdapter for ServiceAdapter {
         self.check_running()?;
         self.inner.chat(request)
     }
-    fn model_runtime_profile(&self) -> ModelRuntimeProfile { self.inner.model_runtime_profile() }
+    fn model_runtime_profile(&self) -> ModelRuntimeProfile {
+        self.inner.model_runtime_profile()
+    }
 }
 
 pub(crate) struct ServiceReviewFactory(pub Arc<AtomicBool>);
 impl ReviewExecutorFactory for ServiceReviewFactory {
     fn create(&self, config: &ProviderConfig) -> Box<dyn ReviewExecutor> {
-        ProviderReviewExecutorFactory::with_adapter(ServiceAdapter::from_config(config.clone(), self.0.clone()))
+        ProviderReviewExecutorFactory::with_adapter(ServiceAdapter::from_config(
+            config.clone(),
+            self.0.clone(),
+        ))
     }
 }
 
@@ -65,8 +119,18 @@ mod tests {
     #[test]
     fn stop_prevents_further_provider_requests() {
         let stop = Arc::new(AtomicBool::new(true));
-        let adapter = ServiceAdapter { inner: Box::new(crate::UnconfiguredAdapter), stop };
-        let error = adapter.complete_structured(CompletionRequest { system: String::new(), user: String::new() }).unwrap_err();
+        let adapter = ServiceAdapter {
+            inner: Box::new(crate::UnconfiguredAdapter),
+            stop,
+        };
+        let error = adapter
+            .complete_structured(CompletionRequest {
+                output_token_limit: None,
+                reasoning_effort: None,
+                system: String::new(),
+                user: String::new(),
+            })
+            .unwrap_err();
         assert_eq!(error.message, "Reader service is stopping");
     }
 
@@ -79,12 +143,24 @@ mod tests {
         let (release, wait) = std::sync::mpsc::channel();
         let provider = std::thread::spawn(move || {
             let (mut socket, _) = listener.accept().unwrap();
-            socket.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+            socket
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
             let mut request = Vec::new();
             let mut byte = [0];
-            while !request.ends_with(b"\r\n\r\n") { socket.read_exact(&mut byte).unwrap(); request.push(byte[0]); }
+            while !request.ends_with(b"\r\n\r\n") {
+                socket.read_exact(&mut byte).unwrap();
+                request.push(byte[0]);
+            }
             let headers = String::from_utf8_lossy(&request);
-            let length: usize = headers.lines().find_map(|line| line.to_lowercase().strip_prefix("content-length:").map(|v| v.trim().parse().unwrap())).unwrap();
+            let length: usize = headers
+                .lines()
+                .find_map(|line| {
+                    line.to_lowercase()
+                        .strip_prefix("content-length:")
+                        .map(|v| v.trim().parse().unwrap())
+                })
+                .unwrap();
             socket.read_exact(&mut vec![0; length]).unwrap();
             entered.send(()).unwrap();
             wait.recv_timeout(Duration::from_secs(5)).unwrap();
@@ -92,12 +168,29 @@ mod tests {
             write!(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", body.len(), body).unwrap();
         });
         let stop = Arc::new(AtomicBool::new(false));
-        let config = ProviderConfig::from_values("native", "test-key", format!("http://{address}"), "test-model").unwrap();
+        let config = ProviderConfig::from_values(
+            "native",
+            "test-key",
+            format!("http://{address}"),
+            "test-model",
+        )
+        .unwrap();
         let adapter = ServiceAdapter::from_config(config, stop.clone());
-        let request = CompletionRequest { system: "test".into(), user: "test".into() };
+        let request = CompletionRequest {
+            output_token_limit: None,
+            reasoning_effort: None,
+            system: "test".into(),
+            user: "test".into(),
+        };
         let worker = std::thread::spawn(move || {
-            assert_eq!(adapter.complete_structured(request.clone()).unwrap()["ok"], true);
-            assert_eq!(adapter.complete_structured(request).unwrap_err().message, "Reader service is stopping");
+            assert_eq!(
+                adapter.complete_structured(request.clone()).unwrap()["ok"],
+                true
+            );
+            assert_eq!(
+                adapter.complete_structured(request).unwrap_err().message,
+                "Reader service is stopping"
+            );
         });
         received.recv_timeout(Duration::from_secs(5)).unwrap();
         stop.store(true, Ordering::Release);

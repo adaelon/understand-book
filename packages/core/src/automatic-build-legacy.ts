@@ -187,13 +187,13 @@ function legacyShapeValid(stage: AutomaticBuildStage, value: unknown): boolean {
 export function auditAutomaticBuildLegacy(
   target: AutomaticBuildTarget,
   stage?: AutomaticBuildStage,
-  options: { inspect_current_descriptors?: boolean } = {},
+  options: { inspect_current_descriptors?: boolean; snapshot?: ReturnType<typeof buildAutomaticBuildSnapshot> } = {},
 ): AutomaticBuildLegacyAuditV1 {
   const artifacts: AutomaticBuildLegacyArtifactAuditV1[] = [];
   const descriptorHashes = descriptorInputHashesFromMigrationReceipts(target);
   if (options.inspect_current_descriptors !== false) {
     try {
-      const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: "full" });
+      const snapshot = options.snapshot ?? buildAutomaticBuildSnapshot(target, { quality_profile: "full" });
       for (const stageState of snapshot.stages) {
         for (const unit of stageState.work_units ?? []) {
           const key = `${stageState.stage}:${unit.work_unit_id}`;

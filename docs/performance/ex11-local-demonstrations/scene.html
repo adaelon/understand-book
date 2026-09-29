@@ -1,0 +1,16 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>*{box-sizing:border-box}body{margin:0;padding:12px;font:16px/1.5 system-ui;color:#22344a}h1{font-size:20px;margin:0}#scene{width:100%;touch-action:none}p{margin:8px 0}button{min-width:44px;min-height:44px}</style></head><body>
+<h1>拖动点与线段</h1><p>拖动蓝点，观察线段与位置。</p><div id="scene"></div><p id="readout"></p>
+
+<script>
+(()=>{const P=window.presentation||{};let x=Number(P.initialState?.x??80);
+const stage=new Konva.Stage({container:'scene',width:280,height:100}),layer=new Konva.Layer();stage.add(layer);
+const line=new Konva.Line({points:[30,50,x,50],stroke:'#55718d',strokeWidth:3});
+const point=new Konva.Circle({x,y:50,radius:24,fill:'#2563aa',draggable:true,dragBoundFunc:p=>({x:Math.max(30*stage.scaleX(),Math.min(250*stage.scaleX(),p.x)),y:50*stage.scaleY()})});layer.add(line,point);
+function render(){point.position({x,y:50});line.points([30,50,x,50]);document.getElementById('readout').textContent='位置 x='+x.toFixed(2);layer.draw()}
+function resize(){const w=document.getElementById('scene').clientWidth;const scale=Math.min(1,w/280);stage.width(w);stage.height(100*scale);stage.scale({x:scale,y:scale});render()}
+point.on('dragmove',()=>{x=point.x();render()});point.on('dragend',()=>P.commitState?.());
+P.registerStateReader?.(()=>({values:{x},visible_step:'point'}));P.registerStateRestorer?.(scene=>{if(scene?.values?.page){x=Number(scene.values.page.x);render()}});
+window.addEventListener('resize',resize);resize();
+})();
+</script></body></html>

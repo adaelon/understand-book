@@ -864,6 +864,25 @@ body {
   margin: 0;
   vertical-align: middle;
 }
+.formula-display {
+  margin: 0.35rem 0 1.05rem;
+  overflow-x: auto;
+  cursor: pointer;
+}
+.formula-display.hl {
+  background: rgba(247, 228, 165, 0.58);
+}
+.formula-display .formula-open,
+.formula-display-source {
+  display: block;
+  width: 100%;
+}
+.formula-display .katex-display {
+  display: block;
+  margin: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
 
 .hl-mark {
   background: rgba(247, 228, 165, 0.82);

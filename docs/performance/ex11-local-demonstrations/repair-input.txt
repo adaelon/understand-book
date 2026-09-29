@@ -1,0 +1,5 @@
+请先完整读取已交付页面，并读取 libraries/konva-10.7.0.min.js 的托管元数据，然后以 based_on 修订并实际交付。保留三条参考轨迹和当前参数的同图比较。这次针对原稿已发现的三个问题修复：
+1. 目前每 850ms 直接跳到下一步，seek 忽略 transition_progress。请改为同一个点从真实第 k 步连续移动到第 k+1 步，参数/数学步数与视觉插值分开；提供靠近主图的可操作时间滑块，可停在 k=2、progress=0.5，也能回退与重播。
+2. 所有改学习率的入口（Konva 圆钮、原生滑块、预设按钮）都应暂停、从 w0 重算，并回到 k=0、progress=0。拖动按住期间实时重画，松开才 commitState；不要每帧提交。
+3. state reader/restorer 必须完整保存并恢复 eta、semantic_state、transition_progress，恢复读取 saved.values.page 并保持暂停。state_contract 和 initial_state 使用一致的定义；图形、文字和 native controls 同步。零更新的状态位移箭头包括头部必须隐藏。
+修订后请用真实工具完成三视口预览：桌面显式 seek 到第2步、progress=0.5，随后回退到第1步；窄屏与短屏也检查中间画面和控件。保持图优先，避免重复状态卡把主关系挤出首屏。不要只描述修复，实际 write → preview → deliver。

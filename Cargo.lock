@@ -2931,10 +2931,12 @@ version = "0.0.0"
 dependencies = [
  "artifact-tools",
  "base-schema",
+ "base64 0.22.1",
  "book-tool-contracts",
  "httpdate",
  "libc",
  "memory",
+ "png 0.17.16",
  "read-tools",
  "reader",
  "runtime",

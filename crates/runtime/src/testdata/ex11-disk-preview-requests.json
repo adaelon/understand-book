@@ -1,0 +1,129 @@
+[
+  [
+    {
+      "operation": "preview",
+      "candidate_id": "candidate-1790610932645640800-1",
+      "viewport": {
+        "width": 960,
+        "height": 720,
+        "input": "mouse"
+      },
+      "actions": [
+        {
+          "kind": "seek",
+          "semantic_state": 5,
+          "transition_progress": 0.5
+        }
+      ],
+      "read_selector": "#result"
+    },
+    {
+      "operation": "preview",
+      "candidate_id": "candidate-1790610932645640800-1",
+      "viewport": {
+        "width": 320,
+        "height": 420,
+        "input": "touch"
+      },
+      "actions": [
+        {
+          "kind": "seek",
+          "semantic_state": 8,
+          "transition_progress": 0
+        }
+      ],
+      "read_selector": "#result"
+    },
+    {
+      "operation": "preview",
+      "candidate_id": "candidate-1790610932645640800-1",
+      "viewport": {
+        "width": 640,
+        "height": 240,
+        "input": "touch"
+      },
+      "actions": [
+        {
+          "kind": "seek",
+          "semantic_state": 3,
+          "transition_progress": 0.5
+        },
+        {
+          "kind": "click",
+          "selector": "#saveBtn"
+        }
+      ],
+      "read_selector": "#controls"
+    }
+  ],
+  [
+    {
+      "actions": [
+        {
+          "kind": "seek",
+          "semantic_state": 2,
+          "transition_progress": 0.75
+        },
+        {
+          "kind": "click",
+          "selector": "#delta"
+        }
+      ],
+      "candidate_id": "candidate-1790610932645640800-1",
+      "operation": "preview",
+      "read_selector": "#figure",
+      "viewport": {
+        "height": 720,
+        "input": "mouse",
+        "width": 960
+      }
+    }
+  ],
+  [
+    {
+      "actions": [
+        {
+          "kind": "key",
+          "key": "End",
+          "selector": "#thetaRange"
+        }
+      ],
+      "candidate_id": "candidate-1790610932645640800-1",
+      "operation": "preview",
+      "read_selector": "#result",
+      "viewport": {
+        "height": 720,
+        "input": "mouse",
+        "width": 960
+      }
+    },
+    {
+      "actions": [
+        {
+          "kind": "click",
+          "selector": "#playBtn"
+        },
+        {
+          "kind": "click",
+          "selector": "#playBtn"
+        },
+        {
+          "kind": "click",
+          "selector": "#backBtn"
+        },
+        {
+          "kind": "click",
+          "selector": "#resetBtn"
+        }
+      ],
+      "candidate_id": "candidate-1790610932645640800-1",
+      "operation": "preview",
+      "read_selector": "#figure",
+      "viewport": {
+        "height": 720,
+        "input": "mouse",
+        "width": 960
+      }
+    }
+  ]
+]

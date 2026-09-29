@@ -15,6 +15,7 @@ import {
   automaticBuildUsageReceiptPath,
   buildAutomaticBuildStageMetricsSummary,
   readAutomaticBuildLifecycleEvents,
+  readAutomaticBuildStageUsage,
   readAutomaticBuildUsageReceipt,
   recordAutomaticBuildInputObservation,
   writeAutomaticBuildStageMetricsSummary,
@@ -299,6 +300,7 @@ describe("automatic build task metrics", () => {
     const summary = buildAutomaticBuildStageMetricsSummary(target, "pass1", {
       now: "2026-07-19T00:01:00.000Z",
     });
+    expect(readAutomaticBuildStageUsage(target, "pass1")).toEqual(summary.usage);
     expect(summary).toMatchObject({
       attempt_count: 11,
       work_unit_count: 11,
@@ -407,6 +409,7 @@ describe("automatic build task metrics", () => {
     const summary = buildAutomaticBuildStageMetricsSummary(target, "pass1", {
       now: "2026-07-19T00:00:03.000Z",
     });
+    expect(readAutomaticBuildStageUsage(target, "pass1")).toEqual(summary.usage);
     expect(summary.lifecycle_counts.heartbeat).toBe(2);
     expect(readAutomaticBuildLifecycleEvents(target, "pass1", {
       now: "2026-07-19T00:00:03.000Z",
@@ -448,6 +451,7 @@ describe("automatic build task metrics", () => {
       now: "2026-07-19T00:00:04.000Z",
       work_units: [descriptor],
     });
+    expect(readAutomaticBuildStageUsage(target, "pass1")).toEqual(summary.usage);
     expect(summary.performance_history).toMatchObject({
       version: "automatic_build_performance_history.v1",
       lease_count: 1,

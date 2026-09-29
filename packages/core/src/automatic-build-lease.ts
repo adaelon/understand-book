@@ -10,7 +10,7 @@ import {
 } from "node:fs";
 import path from "node:path";
 import type { AutomaticBuildStage, AutomaticBuildTarget, BuildTargetRefV2 } from "./build-orchestrator";
-import { CODEX_EXECUTOR_TRANSPORT_PROFILE_V2 } from "./executor-transport";
+import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "./build-execution-profile";
 import type { AutomaticBuildFailureDiagnosticV2 } from "./extractor-contract";
 import {
   automaticBuildTaskAttemptDirectory,
@@ -118,6 +118,7 @@ export interface AutomaticBuildTaskHeartbeatV1 {
 }
 
 export interface AutomaticBuildLeaseOptions {
+  execution_profile?: BuildExecutionProfileV1;
   owner: string;
   now?: string;
   ttl_ms?: number;
@@ -130,6 +131,7 @@ export interface AutomaticBuildLeaseOptions {
 }
 
 export interface AutomaticBuildClaimInspectionOptions {
+  execution_profile?: BuildExecutionProfileV1;
   now?: string;
   binding?: AutomaticBuildTaskPolicyBinding;
   descriptor?: WorkUnitDescriptor;
@@ -291,7 +293,7 @@ function resolveRequestedAttemptScope(
       if (isWorkUnitDescriptorV3(options.descriptor)) {
         validateWorkUnitDescriptorV3(options.descriptor);
       } else {
-        validateWorkUnitDescriptorV4(options.descriptor, CODEX_EXECUTOR_TRANSPORT_PROFILE_V2);
+        validateWorkUnitDescriptorV4(options.descriptor, (options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1).transport_profile);
       }
     }
     validateWorkUnitTaskPolicyBinding(options.descriptor, options.binding);
@@ -522,6 +524,33 @@ export function inspectAutomaticBuildTaskClaim(
     max_lease_epochs: options.max_lease_epochs ?? 3,
     ...(requestedScope ? { attempt_scope: requestedScope } : {}),
   });
+}
+
+/** Migration needs live ownership, not the next attempt identity of every historical task. */
+export function listActiveAutomaticBuildTaskLeases(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  now = new Date().toISOString(),
+): Array<{ lease_ref: string; lease: AutomaticBuildTaskLease }> {
+  timeMs(now, "now");
+  const stageRoot = path.join(automaticBuildTaskStoreRoot(target), stage);
+  if (!existsSync(stageRoot)) return [];
+  const active: Array<{ lease_ref: string; lease: AutomaticBuildTaskLease }> = [];
+  for (const task of readdirSync(stageRoot, { withFileTypes: true })) {
+    if (!task.isDirectory()) continue;
+    const workUnitId = decodeURIComponent(task.name);
+    for (const entry of attemptDirectories(target, stage, workUnitId)) {
+      if (!entry.lease_ref) continue;
+      const lease = activeLeaseAt(target, entry.lease_ref, now);
+      if (!lease) continue;
+      if (!readAutomaticBuildExecutionIdentity(target, stage, workUnitId, lease.attempt)) {
+        throw new Error(`active lease is missing execution identity: ${entry.lease_ref}`);
+      }
+      active.push({ lease_ref: entry.lease_ref, lease });
+      break;
+    }
+  }
+  return active.sort((a, b) => a.lease.work_unit_id.localeCompare(b.lease.work_unit_id));
 }
 
 export type AutomaticBuildTaskActivityState = "pending" | "reserved" | "running";

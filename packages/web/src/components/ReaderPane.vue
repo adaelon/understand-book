@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 import type { FormulaSemantics, ImageAssetManifestEntry, MemoryRecord } from "../api";
 import type { Manifest } from "../api";
 import NoteCard from "./NoteCard.vue";
+import { isDisplayFormulaSource } from "../md";
 import { resolveMarkdownNotePlacementTarget } from "../markdown-note-placement";
 import { useReaderSelection, type ReaderSelectionSnapshot } from "../useReaderSelection";
 
@@ -80,7 +81,7 @@ function isMarkdownHeading(seg: Segment): boolean {
 }
 function isFlowSegment(seg: Segment): boolean {
   if (seg.kind === "paragraph" && isMarkdownHeading(seg)) return false;
-  return seg.kind === "paragraph" || seg.kind === "formula";
+  return seg.kind === "paragraph" || (seg.kind === "formula" && !isDisplayFormulaSource(seg.text));
 }
 function shouldJoinFlow(prev: Segment, next: Segment): boolean {
   return prev.kind === "formula" || next.kind === "formula";
@@ -450,6 +451,27 @@ watch(
             />
           </template>
         </template>
+
+        <div
+          v-else-if="item.segment.kind === 'formula' && isDisplayFormulaSource(item.segment.text)"
+          :data-lid="item.segment.lid"
+          class="formula-display"
+          :class="{
+            anchor: item.segment.lid === props.viewportAnchor,
+            selected: item.segment.lid === props.selectedLid,
+            hl: props.isHighlighted(item.segment.lid),
+            'note-placement-candidate': item.segment.lid === placementCandidateLid,
+          }"
+          @click="!item.segment.formula && emit('select', item.segment.lid)"
+        >
+          <button
+            v-if="item.segment.formula"
+            class="formula-open formula-display-open"
+            title="查看公式语义剖面"
+            @click.stop="emit('open-formula', item.segment)"
+          ><span class="formula-open-source" v-html="props.renderSeg(item.segment)"></span></button>
+          <span v-else class="formula-display-source" v-html="props.renderSeg(item.segment)"></span>
+        </div>
 
         <template v-else-if="!props.isAsset(item.segment)">
           <p

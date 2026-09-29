@@ -21,6 +21,7 @@ pub mod context_fragment;
 pub mod experiment;
 pub mod goldset;
 pub mod guided_read_replay;
+pub mod goal;
 pub mod memory_intent;
 pub mod memory_policy;
 pub mod memory_review;
@@ -83,6 +84,8 @@ pub struct Supplement {
 /// 喂给后端的请求(provider 无关)。
 #[derive(Debug, Clone)]
 pub struct CompletionRequest {
+    pub output_token_limit: Option<u32>,
+    pub reasoning_effort: Option<String>,
     pub system: String,
     pub user: String,
 }
@@ -233,9 +236,18 @@ pub enum Role {
     Tool,
 }
 
+/// Private provider protocol state, carried with its assistant message across reloads.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProviderContinuation {
+    pub model: String,
+    pub reasoning_content: String,
+}
+
 /// 外层 loop 的一条会话消息 `[ADR-0026]`。
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Message {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_continuation: Option<ProviderContinuation>,
     pub role: Role,
     pub content: Option<String>,
     /// assistant 回合请求的工具调用(其余角色为空)。
@@ -247,6 +259,7 @@ pub struct Message {
 impl Message {
     pub fn system(content: impl Into<String>) -> Message {
         Message {
+            provider_continuation: None,
             role: Role::System,
             content: Some(content.into()),
             tool_calls: vec![],
@@ -255,6 +268,7 @@ impl Message {
     }
     pub fn user(content: impl Into<String>) -> Message {
         Message {
+            provider_continuation: None,
             role: Role::User,
             content: Some(content.into()),
             tool_calls: vec![],
@@ -264,7 +278,7 @@ impl Message {
 }
 
 /// 模型请求的一次工具调用(arguments = OpenAI 风格的 JSON 字符串)`[ADR-0026]`。
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ToolCall {
     pub id: String,
     pub name: String,
@@ -282,6 +296,7 @@ pub struct ToolSpec {
 /// 外层 chat 回合的归一化产出 `[ADR-0026]`:文本(终答)或工具调用,二选一/可并存;usage 供停机口径。
 #[derive(Debug, Clone)]
 pub struct AssistantTurn {
+    pub provider_continuation: Option<ProviderContinuation>,
     pub text: Option<String>,
     pub tool_calls: Vec<ToolCall>,
     pub usage_total_tokens: Option<u32>,
@@ -864,6 +879,8 @@ fn resolver_prompt(
         })
         .collect();
     CompletionRequest {
+        output_token_limit: None,
+        reasoning_effort: None,
         system: "You are the bounded PlanGate and referent resolver. Return one JSON object. Check that query, targets, and obligations preserve the same request. Classify every candidate as direct_match, semantic_match, plausible, or reject. Do not infer from anchor-neighbor text. If lexical recall failed, emit at most three short lexical probes total. Reasons must be short verdict summaries, never hidden chain-of-thought.".into(),
         user: serde_json::json!({
             "request": request,
@@ -1442,6 +1459,8 @@ fn support_prompt(
         .map(|(lid, text)| serde_json::json!({"lid": lid, "text": text}))
         .collect();
     CompletionRequest {
+        output_token_limit: None,
+        reasoning_effort: None,
         system: "Answer only from the full source LIDs supplied for frozen referent bindings. Assess every obligation exactly once as supported, uncertain, or unsupported. Each supported assessment must list citation_lids and citations must quote an exact nonempty substring of that source LID. Open semantic support is your judgment; do not expose hidden chain-of-thought. Put outside knowledge only in model_supplement.".into(),
         user: serde_json::json!({
             "request": request,
@@ -2020,6 +2039,8 @@ fn build_synthesize_prompt(
         user.push_str(&format!("[{lid}] {text}\n"));
     }
     CompletionRequest {
+        output_token_limit: None,
+        reasoning_effort: None,
         system: "You are an in-book synthesizer. Synthesize only from the LID scope supplied by the caller and never expand retrieval. Citations may reference only input LIDs. Put outside knowledge not covered by source text in model_supplement without a LID."
             .into(),
         user,
@@ -2446,6 +2467,8 @@ fn build_book_guide_prompt(
         user.push_str(&format!("[{lid}] {text}\n"));
     }
     CompletionRequest {
+        output_token_limit: None,
+        reasoning_effort: None,
         system: "You are an in-book route guide. Give the visitor only independently verifiable reading routes, without using private reader memory, the Reader viewport, or memory tools. In a neutral voice, explain the entry and next step. Citations may reference only evidence LIDs."
             .into(),
         user,
@@ -2567,6 +2590,7 @@ pub struct NativeAdapter {
     runtime_profile: ModelRuntimeProfile,
     request_timeout: Option<std::time::Duration>,
     cancellation: std::cell::RefCell<Option<crate::run_context::CancellationToken>>,
+
 }
 
 impl NativeAdapter {
@@ -2973,6 +2997,7 @@ pub fn parse_react_assistant_turn(content: &str) -> Result<AssistantTurn, Adapte
         });
     }
     Ok(AssistantTurn {
+        provider_continuation: None,
         text: out.final_text,
         tool_calls: calls,
         usage_total_tokens: out.usage_total_tokens,
@@ -3170,7 +3195,7 @@ impl ModelAdapter for NativeAdapter {
         observer: &mut dyn provider_stream::ModelObserver,
     ) -> Result<ParsedResponse, AdapterError> {
         let system = format!("{}\n\n{}", req.system, OUTPUT_CONTRACT);
-        let body = serde_json::json!({
+        let mut body = serde_json::json!({
             "model": self.model,
             "messages": [
                 {"role": "system", "content": system},
@@ -3179,6 +3204,7 @@ impl ModelAdapter for NativeAdapter {
             "response_format": {"type": "json_object"},
             "temperature": 0,
         });
+        apply_completion_limits(&mut body, &req);
         let v = self.post_chat_completions(body, observer)?;
         parsed_response_from_content(response_message_content(&v)?)
     }
@@ -3194,7 +3220,7 @@ impl ModelAdapter for NativeAdapter {
         req: CompletionRequest,
         observer: &mut dyn provider_stream::ModelObserver,
     ) -> Result<serde_json::Value, AdapterError> {
-        let body = serde_json::json!({
+        let mut body = serde_json::json!({
             "model": self.model,
             "messages": [
                 {"role": "system", "content": req.system},
@@ -3203,6 +3229,7 @@ impl ModelAdapter for NativeAdapter {
             "response_format": {"type": "json_object"},
             "temperature": 0,
         });
+        apply_completion_limits(&mut body, &req);
         let response = self.post_chat_completions(body, observer)?;
         structured_json_from_content(response_message_content(&response)?)
     }
@@ -3241,12 +3268,26 @@ impl ModelAdapter for NativeAdapter {
                 });
             }
         }
+        let provider_continuation = msg["reasoning_content"].as_str().map(|reasoning| ProviderContinuation {
+            model: self.model.clone(),
+            reasoning_content: reasoning.to_string(),
+        });
         let usage_total_tokens = v["usage"]["total_tokens"].as_u64().map(|u| u as u32);
         Ok(AssistantTurn {
+            provider_continuation,
             text,
             tool_calls,
             usage_total_tokens,
         })
+    }
+}
+
+fn apply_completion_limits(body: &mut serde_json::Value, request: &CompletionRequest) {
+    if let Some(limit) = request.output_token_limit {
+        body["max_tokens"] = serde_json::json!(limit);
+    }
+    if let Some(effort) = &request.reasoning_effort {
+        body["reasoning_effort"] = serde_json::json!(effort);
     }
 }
 
@@ -3290,7 +3331,15 @@ fn native_chat_request_projection(
     let mut msgs: Vec<serde_json::Value> = request
         .ordered_messages()
         .iter()
-        .map(|m| native_message_to_json(m, &internal_to_provider))
+        .map(|m| {
+            let mut value = native_message_to_json(m, &internal_to_provider);
+            if m.role == Role::Assistant {
+                if let Some(state) = m.provider_continuation.as_ref().filter(|state| state.model == model) {
+                    value["reasoning_content"] = serde_json::json!(state.reasoning_content);
+                }
+            }
+            value
+        })
         .collect();
     append_preview_images(&mut msgs, request);
     let mut body = serde_json::json!({
@@ -3327,7 +3376,7 @@ impl ModelAdapter for ReActAdapter {
         observer: &mut dyn provider_stream::ModelObserver,
     ) -> Result<ParsedResponse, AdapterError> {
         let system = format!("{}\n\n{}", req.system, OUTPUT_CONTRACT);
-        let body = serde_json::json!({
+        let mut body = serde_json::json!({
             "model": self.native.model,
             "messages": [
                 {"role": "system", "content": system},
@@ -3335,6 +3384,7 @@ impl ModelAdapter for ReActAdapter {
             ],
             "temperature": 0,
         });
+        apply_completion_limits(&mut body, &req);
         let v = self.native.post_chat_completions(body, observer)?;
         parsed_response_from_content(response_message_content(&v)?)
     }
@@ -4961,6 +5011,97 @@ mod tests {
     }
 
     #[test]
+    fn deepseek_final_answer_continuation_survives_history_reload() {
+        let saved = serde_json::json!({
+            "role":"Assistant", "content":"A public explanation", "tool_calls":[], "tool_call_id":null,
+            "provider_continuation":{"model":"deepseek-v4-flash", "reasoning_content":"provider-private-state"}
+        });
+        let message: Message = serde_json::from_value(saved).unwrap();
+        let history: Vec<Message> = serde_json::from_str(&serde_json::to_string(&vec![
+            Message::system("instructions"), Message::user("first question"), message, Message::user("follow up")
+        ]).unwrap()).unwrap();
+        let profile = ModelRuntimeCatalog::default().resolve("deepseek-v4-flash", ProviderToolProtocol::Native, None);
+        let plan = AgentRequestPlan::for_agent_turn(profile, &history, &[ToolSpec {
+            name:"book.text".into(), description:"read".into(), parameters:serde_json::json!({"type":"object"})
+        }]);
+        let (body, _) = native_chat_request_projection("deepseek-v4-flash", &plan);
+        assert_eq!(body["messages"][2]["reasoning_content"], "provider-private-state");
+        let (other, _) = native_chat_request_projection("another-model", &plan);
+        assert!(other["messages"][2].get("reasoning_content").is_none());
+    }
+
+    #[test]
+    fn deepseek_model_switch_preserves_legacy_tool_records_and_new_tool_pairing() {
+        let old_assistant: Message = serde_json::from_value(serde_json::json!({
+            "role":"Assistant", "content":null, "tool_calls":[{"id":"old", "name":"book.text", "arguments":"{}"}], "tool_call_id":null,
+            "provider_continuation":{"model":"previous-model", "reasoning_content":"old-private-state"}
+        })).unwrap();
+        let current_assistant: Message = serde_json::from_value(serde_json::json!({
+            "role":"Assistant", "content":null, "tool_calls":[{"id":"new", "name":"book.text", "arguments":"{}"}], "tool_call_id":null,
+            "provider_continuation":{"model":"deepseek-flash", "reasoning_content":"new-private-state"}
+        })).unwrap();
+        let tool = |id: &str| Message { provider_continuation: None, role: Role::Tool, content: Some(format!("result-{id}")), tool_calls: vec![], tool_call_id: Some(id.into()) };
+        let history = vec![Message::user("old"), old_assistant, tool("old"), Message::user("new"), current_assistant, tool("new")];
+        let profile = ModelRuntimeCatalog::default().resolve("deepseek-flash", ProviderToolProtocol::Native, None);
+        let plan = AgentRequestPlan::for_agent_turn(profile, &history, &[]);
+        let (body, _) = native_chat_request_projection("deepseek-flash", &plan);
+        assert_eq!(body["messages"][1]["role"], "user");
+        assert!(body["messages"][2]["content"].as_str().unwrap().contains("result-old"));
+        assert!(!body.to_string().contains("old-private-state"));
+        assert_eq!(body["messages"][4]["reasoning_content"], "new-private-state");
+        assert_eq!(body["messages"][4]["tool_calls"][0]["id"], "new");
+        assert_eq!(body["messages"][5]["role"], "tool");
+        assert_eq!(body["messages"][5]["tool_call_id"], "new");
+    }
+
+    #[test]
+    fn deepseek_legacy_history_uses_transcript_boundary_without_fabricated_reasoning() {
+        let legacy: Message = serde_json::from_value(serde_json::json!({
+            "role":"Assistant", "content":"old answer", "tool_calls":[], "tool_call_id":null
+        })).unwrap();
+        let profile = ModelRuntimeCatalog::default().resolve("deepseek-flash", ProviderToolProtocol::Native, None);
+        let plan = AgentRequestPlan::for_agent_turn(profile, &[
+            Message::system("rules"), Message::user("old question"), legacy, Message::user("continue")
+        ], &[]);
+        let (body, _) = native_chat_request_projection("deepseek-flash", &plan);
+        assert_eq!(body["messages"][2]["role"], "user");
+        assert!(body["messages"][2]["content"].as_str().unwrap().contains("old answer"));
+        assert!(body["messages"].as_array().unwrap().iter().all(|m| m.get("reasoning_content").is_none()));
+        assert_eq!(body["messages"][3]["content"], "continue");
+    }
+
+    #[test]
+    fn flash_authoring_reserves_explicit_output_without_lowering_input_budget() {
+        use crate::auto_compaction::ActiveContextBudget;
+        let catalog = ModelRuntimeCatalog::default();
+        let tools = [crate::presentation_author::spec()];
+        let messages = [Message::user("create an interactive explanation")];
+        for model in ["deepseek-flash", "deepseek-v4-flash", "deepseek-v4-flash-vision-exp"] {
+            let profile = catalog.resolve(model, ProviderToolProtocol::Native, None);
+            let ordinary = AgentRequestPlan::for_agent_turn(profile.clone(), &messages, &[]);
+            let author = AgentRequestPlan::for_agent_turn(profile.clone(), &messages, &tools);
+            assert_eq!(author.output_token_limit, Some(131_072));
+            assert_eq!(author.active_context.output_reserve_tokens, 131_072);
+            assert_eq!(native_chat_request_projection(model, &author).0["max_tokens"], 131_072);
+            assert_eq!(react_chat_request_projection(model, &author)["max_tokens"], 131_072);
+            let budget = ActiveContextBudget::from_plan(&author);
+            let old = ActiveContextBudget::from_plan(&ordinary);
+            assert!(budget.target_input_tokens.abs_diff(old.target_input_tokens) <= 1);
+            assert!(!budget.over_high_watermark);
+            assert!(budget.fits);
+            assert_eq!(author.active_context.remaining_tokens, ordinary.active_context.remaining_tokens
+                - i64::from(131_072 - 8_000)
+                - i64::from(author.active_context.estimated_input_tokens - ordinary.active_context.estimated_input_tokens));
+            assert_eq!(ordinary.output_token_limit, None);
+            assert_eq!(AgentRequestPlan::for_ad_hoc(profile.clone(), &messages, &tools).output_token_limit, None);
+            let explicit = catalog.resolve(model, ProviderToolProtocol::Native, Some(profile));
+            assert_eq!(AgentRequestPlan::for_agent_turn(explicit, &messages, &tools).output_token_limit, None);
+        }
+        let other = catalog.resolve("glm-5.1", ProviderToolProtocol::Native, None);
+        assert_eq!(AgentRequestPlan::for_agent_turn(other, &messages, &tools).output_token_limit, None);
+    }
+
+    #[test]
     fn experiment_output_limit_is_explicit_for_both_adapters_and_absent_by_default() {
         let profile =
             ModelRuntimeCatalog::default().resolve("test", ProviderToolProtocol::Native, None);
@@ -5100,7 +5241,7 @@ mod tests {
                 .iter()
                 .find(|asset| asset.asset_id == "resident-agent.policy.navigation")
                 .map(|asset| asset.revision.as_str()),
-            Some("v4")
+            Some("v5")
         );
         assert!(plan
             .instructions
@@ -5174,6 +5315,7 @@ mod tests {
             Message::system("base"),
             Message::user(format!("old task {}", "u".repeat(8_000))),
             Message {
+                provider_continuation: None,
                 role: Role::Assistant,
                 content: Some(format!("old progress {}", "a".repeat(8_000))),
                 tool_calls: Vec::new(),
@@ -5365,6 +5507,51 @@ mod tests {
         });
         let output = adapter
             .complete_structured(CompletionRequest {
+                output_token_limit: None,
+                reasoning_effort: None,
+                system: "structured system".into(),
+                user: "compare evidence".into(),
+            })
+            .unwrap();
+
+        handle.join().unwrap();
+        assert_eq!(output["summary"], "different");
+        assert_eq!(output["confidence"], 0.8);
+    }
+
+    #[test]
+    fn deepseek_compaction_limits_reach_the_wire() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let handle = std::thread::spawn(move || {
+            let mut stream = accept_with_timeout(&listener);
+            let request = read_http_request(&mut stream);
+            assert!(request.contains(r#""response_format":{"type":"json_object"}"#));
+            assert!(request.contains("compare evidence"));
+            assert!(request.contains(r#""max_tokens":16384"#));
+            assert!(request.contains(r#""reasoning_effort":"low""#));
+            assert!(!request.contains(r#""tools":"#));
+            let content = r#"{"choices":[{"message":{"content":"```json\n{\"summary\":\"different\",\"confidence\":0.8}\n```"}}]}"#;
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                content.len(),
+                content
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+        });
+
+        let adapter = NativeAdapter::from_config(ProviderConfig {
+            mode: ProviderMode::Native,
+            api_key: "test-key".into(),
+            base_url: format!("http://{addr}"),
+            model: "deepseek-flash".into(),
+        });
+        let output = adapter
+            .complete_structured(CompletionRequest {
+                output_token_limit: Some(16_384),
+                reasoning_effort: Some("low".into()),
                 system: "structured system".into(),
                 user: "compare evidence".into(),
             })
@@ -5399,6 +5586,8 @@ mod tests {
         let started = Instant::now();
         let error = adapter
             .complete_structured(CompletionRequest {
+                output_token_limit: None,
+                reasoning_effort: None,
                 system: "structured system".into(),
                 user: "timeout request".into(),
             })
@@ -5444,6 +5633,8 @@ mod tests {
         });
         let out = adapter
             .complete(CompletionRequest {
+                output_token_limit: None,
+                reasoning_effort: None,
                 system: "system".into(),
                 user: "user".into(),
             })
@@ -5484,6 +5675,8 @@ mod tests {
         });
         let err = adapter
             .complete(CompletionRequest {
+                output_token_limit: None,
+                reasoning_effort: None,
                 system: "system".into(),
                 user: "user".into(),
             })
@@ -5525,6 +5718,7 @@ mod tests {
         let messages = [
             Message::user("show text"),
             Message {
+                provider_continuation: None,
                 role: Role::Assistant,
                 content: None,
                 tool_calls: vec![ToolCall {
@@ -5535,6 +5729,7 @@ mod tests {
                 tool_call_id: None,
             },
             Message {
+                provider_continuation: None,
                 role: Role::Tool,
                 content: Some("previous result".into()),
                 tool_calls: vec![],

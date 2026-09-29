@@ -11,6 +11,7 @@ import {
 } from "../src/book-structure";
 import { resolveContentProfile } from "../src/content-profile";
 import { CODEX_EXECUTOR_TRANSPORT_PROFILE_V2 } from "../src/executor-transport";
+import { CODEX_BUILD_EXECUTION_PROFILE_V1 } from "../src/build-execution-profile";
 import { automaticBuildExtractionPolicy } from "../src/semantic-artifact";
 import {
   buildWorkUnitCost,
@@ -244,6 +245,29 @@ describe("automatic build executor dispatch planner", () => {
       work_units: [oversized],
       pending_ids: [oversized.work_unit_id],
     })).toThrow("dispatch limits");
+  });
+
+  it("uses the supplied execution capacity in dispatch and preflight while preserving the Codex result", () => {
+    const descriptor = proofBoundBookStructureUnit();
+    const input = {
+      target_ref: target,
+      stage: "book_structure" as const,
+      work_units: [descriptor],
+      pending_ids: [descriptor.work_unit_id],
+      task_bindings: { [descriptor.work_unit_id]: taskPolicyBindingForWorkUnit(descriptor, "c".repeat(64)) },
+      quality_profile: "full" as const,
+      requested_workers: 1,
+      budget,
+    };
+    const explicit = { ...input, execution_profile: CODEX_BUILD_EXECUTION_PROFILE_V1 };
+    expect(planAutomaticBuildExecutorDispatches(explicit)).toEqual(planAutomaticBuildExecutorDispatches(input));
+    expect(buildAutomaticBuildPreflight(explicit)).toEqual(buildAutomaticBuildPreflight(input));
+    const reduced = { ...input, execution_profile: {
+      ...CODEX_BUILD_EXECUTION_PROFILE_V1,
+      transport_profile: { ...CODEX_EXECUTOR_TRANSPORT_PROFILE_V2, max_candidate_request_tokens: 1 },
+    } };
+    expect(() => planAutomaticBuildExecutorDispatches(reduced)).toThrow("candidate exceeds the transport request limit");
+    expect(() => buildAutomaticBuildPreflight(reduced)).toThrow("candidate exceeds the transport request limit");
   });
 
   it("carries V4 execution-proof bindings into BookStructure dispatch identity", () => {

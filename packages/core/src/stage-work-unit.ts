@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { BuildTargetRefV2 } from "./build-orchestrator";
 import { TECHNICAL_LEARNING_PROFILE, type ContentProfileDefinition } from "./content-profile";
 import type { LidNode } from "./generated/LidNode";
-import type { ExecutorTransportProfileV2 } from "./executor-transport";
+import type { ExecutorTransportProfile } from "./executor-transport";
 import {
   MODEL_INPUT_ESTIMATOR_VERSION,
   validateModelExecutionBudgetProof,
@@ -335,7 +335,7 @@ export function buildWorkUnitCostFromBudgetProof(input: {
 export function buildWorkUnitCostFromExecutionProof(input: {
   rendered_input: string;
   proof: ModelExecutionBudgetEvidenceV3;
-  transport_profile: ExecutorTransportProfileV2;
+  transport_profile: ExecutorTransportProfile;
   visible_lids?: number;
   formula_lids?: number;
   table_fragments?: number;
@@ -518,7 +518,7 @@ export function createWorkUnitDescriptorV3(
 
 export function validateWorkUnitDescriptorV4(
   descriptor: WorkUnitDescriptorV4,
-  transportProfile: ExecutorTransportProfileV2,
+  transportProfile: ExecutorTransportProfile,
 ): WorkUnitDescriptorV4 {
   if (descriptor.version !== "automatic_build_work_unit.v4") {
     throw new Error("unsupported v4 work-unit descriptor version");
@@ -599,7 +599,7 @@ export function createWorkUnitDescriptorV4(
   input: Omit<WorkUnitDescriptorV4, "version" | "dependencies"> & {
     dependencies?: WorkUnitDescriptorV4["dependencies"];
   },
-  transportProfile: ExecutorTransportProfileV2,
+  transportProfile: ExecutorTransportProfile,
 ): WorkUnitDescriptorV4 {
   const descriptor: WorkUnitDescriptorV4 = {
     version: "automatic_build_work_unit.v4",

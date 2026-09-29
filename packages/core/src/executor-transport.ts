@@ -13,6 +13,16 @@ export interface ExecutorTransportProfileV2 {
   max_candidate_request_bytes: number;
 }
 
+/** Explicit new carrier; the legacy V2 decoder deliberately does not accept it. */
+export interface ExecutorTransportProfileV3 extends Omit<ExecutorTransportProfileV2,
+  "version" | "carrier" | "session_protocol"> {
+  version: "executor_transport_profile.v3";
+  carrier: "dsh_native_mcp";
+  session_protocol: "automatic_build_executor_session.v4";
+}
+
+export type ExecutorTransportProfile = ExecutorTransportProfileV2 | ExecutorTransportProfileV3;
+
 export interface CandidateTransportContractV1 {
   version: "candidate_transport_contract.v1";
   candidate_value_max_bytes: number;
@@ -103,7 +113,7 @@ export type ExecutorTransportPackResultV2 =
   | ExecutorTransportPackBlockedV2;
 
 export interface PackExecutorTransportPayloadRequestV2 {
-  profile: ExecutorTransportProfileV2;
+  profile: ExecutorTransportProfile;
   payload_utf8: string;
   envelope_for_chunk: (frame: ExecutorTransportChunkFrameV2) => unknown;
 }
@@ -188,8 +198,9 @@ export function createExecutorTransportProfile(
 }
 
 export function validateExecutorTransportProfile(
-  profile: ExecutorTransportProfileV2,
+  value: unknown,
 ): ExecutorTransportProfileV2 {
+  const profile = value as ExecutorTransportProfileV2;
   if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
     throw new Error("executor transport profile must be an object");
   }
@@ -203,6 +214,11 @@ export function validateExecutorTransportProfile(
     || profile.session_protocol !== "automatic_build_executor_session.v3") {
     throw new Error("executor transport profile identity is unsupported");
   }
+  validateTransportLimits(profile);
+  return profile;
+}
+
+function validateTransportLimits(profile: ExecutorTransportProfile): void {
   const maxToolResultTokens = positiveSafeInteger(
     profile.max_tool_result_tokens,
     "max_tool_result_tokens",
@@ -218,7 +234,29 @@ export function validateExecutorTransportProfile(
   positiveSafeInteger(profile.max_input_chunks, "max_input_chunks");
   positiveSafeInteger(profile.max_candidate_request_tokens, "max_candidate_request_tokens");
   positiveSafeInteger(profile.max_candidate_request_bytes, "max_candidate_request_bytes");
+}
+
+export function validateExecutorTransportProfileV3(value: unknown): ExecutorTransportProfileV3 {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("executor transport profile must be an object");
+  }
+  const profile = value as ExecutorTransportProfileV3;
+  const keys = Object.keys(profile).sort();
+  if (keys.length !== PROFILE_KEYS.length || keys.some((key, index) => key !== PROFILE_KEYS[index])) {
+    throw new Error("executor transport profile contains unsupported or missing fields");
+  }
+  if (profile.version !== "executor_transport_profile.v3" || profile.carrier !== "dsh_native_mcp"
+    || profile.session_protocol !== "automatic_build_executor_session.v4") {
+    throw new Error("executor transport profile identity is unsupported");
+  }
+  validateTransportLimits(profile);
   return profile;
+}
+
+/** Internal arithmetic entry point. Wire readers must choose their explicit version decoder. */
+export function validateExecutorTransportCapabilities(profile: ExecutorTransportProfile): ExecutorTransportProfile {
+  return profile?.version === "executor_transport_profile.v3"
+    ? validateExecutorTransportProfileV3(profile) : validateExecutorTransportProfile(profile as ExecutorTransportProfileV2);
 }
 
 export const CODEX_EXECUTOR_TRANSPORT_PROFILE_V2 = createExecutorTransportProfile({
@@ -230,6 +268,15 @@ export const CODEX_EXECUTOR_TRANSPORT_PROFILE_V2 = createExecutorTransportProfil
   max_input_chunks: 64,
   max_candidate_request_tokens: 2_048,
   max_candidate_request_bytes: 32_768,
+});
+
+// Preserve the proven per-result/candidate limits. DSH's published execution profile
+// separately limits each Native input batch to one chunk to stay below host spill.
+export const DSH_EXECUTOR_TRANSPORT_PROFILE_V3: Readonly<ExecutorTransportProfileV3> = Object.freeze({
+  ...CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+  version: "executor_transport_profile.v3",
+  carrier: "dsh_native_mcp",
+  session_protocol: "automatic_build_executor_session.v4",
 });
 
 const CANDIDATE_SUBMIT_ENVELOPE_V3 = Object.freeze({
@@ -254,10 +301,10 @@ function candidateSubmitEnvelopeReserve(): { bytes: number; tokens: number } {
 }
 
 export function createCandidateTransportContract(
-  profile: ExecutorTransportProfileV2,
+  profile: ExecutorTransportProfile,
   candidateValueByteCap = profile.max_candidate_request_bytes,
 ): CandidateTransportContractV1 {
-  validateExecutorTransportProfile(profile);
+  validateExecutorTransportCapabilities(profile);
   positiveSafeInteger(candidateValueByteCap, "candidateValueByteCap");
   const reserve = candidateSubmitEnvelopeReserve();
   const candidateValueMaxBytes = Math.min(
@@ -279,9 +326,9 @@ export function createCandidateTransportContract(
 
 export function measureExecutorCandidateRequest(
   request: unknown,
-  profile: ExecutorTransportProfileV2,
+  profile: ExecutorTransportProfile,
 ): ExecutorCandidateRequestMeasurementV1 {
-  validateExecutorTransportProfile(profile);
+  validateExecutorTransportCapabilities(profile);
   const serializedRequest = canonicalAutomaticBuildJson(request);
   const serializedRequestBytes = Buffer.byteLength(serializedRequest, "utf8");
   const serializedRequestTokens = estimateTokens(serializedRequest);
@@ -384,9 +431,9 @@ export function packExecutorTransportBatches<
 export function measureExecutorTransportResponse(
   response: unknown,
   payloadUtf8: string,
-  profile: ExecutorTransportProfileV2,
+  profile: ExecutorTransportProfile,
 ): ExecutorTransportResponseMeasurementV2 {
-  validateExecutorTransportProfile(profile);
+  validateExecutorTransportCapabilities(profile);
   if (typeof payloadUtf8 !== "string") throw new Error("executor transport payload must be a string");
   const serializedResponse = canonicalAutomaticBuildJson(response);
   const payloadEstimatedTokens = estimateTokens(payloadUtf8);
@@ -459,7 +506,7 @@ function blockedPack(
 export function packExecutorTransportPayload(
   input: PackExecutorTransportPayloadRequestV2,
 ): ExecutorTransportPackResultV2 {
-  const profile = validateExecutorTransportProfile(input.profile);
+  const profile = validateExecutorTransportCapabilities(input.profile);
   if (typeof input.payload_utf8 !== "string") {
     throw new Error("executor transport payload must be a string");
   }
@@ -568,10 +615,10 @@ export function packExecutorTransportPayload(
 
 export function validateExecutorTransportPack(
   pack: ExecutorTransportPackWithinLimitV2,
-  profile: ExecutorTransportProfileV2,
+  profile: ExecutorTransportProfile,
   expectedPayloadUtf8: string,
 ): ExecutorTransportPackWithinLimitV2 {
-  validateExecutorTransportProfile(profile);
+  validateExecutorTransportCapabilities(profile);
   if (typeof expectedPayloadUtf8 !== "string") {
     throw new Error("executor transport expected payload must be a string");
   }

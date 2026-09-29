@@ -5,7 +5,9 @@ import { fileURLToPath } from "node:url";
 
 const desktopRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(desktopRoot, "..", "..");
-const outputDir = path.join(desktopRoot, "src-tauri", "binaries");
+const outputDir = process.env.UNDERSTAND_BOOK_SIDECAR_OUTPUT_DIR
+  ? path.resolve(process.env.UNDERSTAND_BOOK_SIDECAR_OUTPUT_DIR)
+  : path.join(desktopRoot, "src-tauri", "binaries");
 const output = path.join(outputDir, "understand-book-build-x86_64-pc-windows-msvc.exe");
 mkdirSync(outputDir, { recursive: true });
 

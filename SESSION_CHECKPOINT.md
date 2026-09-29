@@ -1,48 +1,42 @@
-# SESSION_CHECKPOINT — 2026-09-18 21:45（Asia/Hong_Kong）
+# SESSION_CHECKPOINT — 2026-09-29 集成基线
 
 ## 新鲜度自检
-
-- 本页写入前 HEAD：`814e9a1 feat(agent): deliver rich presentation authoring`；本页将随 MW 提交进入其下一笔 commit。
-- 本轮已形成：`499363f feat(build): land executor recovery and structure append`、`814e9a1 feat(agent): deliver rich presentation authoring`，以及包含本页的 MW 提交。
-- 读入时先对比 `git log -4 --oneline`；若不一致，以 Git 为准。
+- 写入前最新 commit：`c2ff3e1 feat: ship reader, agent, viewport, and observability updates`。
+- 本页随 `feat: integrate agent goals, presentation, build harness and reader updates` 提交；实际提交身份以 `git log -1` 为准。
 
 ## 当前在做什么
-
-A/R、RP、MW 已按边界整理为三笔提交。MW0–MW7、MW9 本地定向验证完成；MW8 已完成 Linux 隔离直连、生产切换后的服务器直连复验和手机顶栏补丁发布，但完整外部验收仍为“部分完成”。
-
-## 已验证状态
-
-- A/R：Core 类型检查通过；146 条定向断言通过。Vitest 长文件仍会报告既有 `onTaskUpdate` worker 通信超时，单独复跑 Executor Session 的 44 条断言亦全部通过但 runner 保持同一非零错误。
-- RP：Runtime 呈现定向 32/32；Server 呈现定向 19/19，7 项需真实 Chromium/Edge 的测试按合同忽略；既有 Windows/Linux 真实体验证据已归档。
-- MW：Web 全量 53 文件/273 项、类型检查、生产构建及移动 Chromium/WebKit/横竖屏/桌面矩阵通过；Linux release 构建、隔离 SSE/重启恢复和生产直连复验通过。
-- 生产 release 仍为 `/opt/understand-book/releases/working-tree-8dea7b0-mobile-topbar-20260918-2110`；源码提交后尚未按 commit release 重新发布。
+现有源码、测试、固定资源及实施文档整合为一个可继续工作的基线。主要在途工作是 EX11.7 跨题真实生成与验收；EX11.1–6 工程完成，制作方法为 ex11.v9。各条工作线的验收状态保持原结论。
 
 ## 下一步（可直接接手）
-
-1. 获取 8080 `reader` Basic Auth 密码，以认证入口复验页面、API、PDF、SSE、同 turn 断网恢复和创建响应丢失；密码不得写入命令历史或证据。
-2. 在具有 Playwright Chromium v1228 的环境连接 Linux 实例，执行 390×844 页面、Markdown/PDF 切换和 PDF canvas 检查。
-3. 用真实 iPhone Safari 执行方案 §6.2 A–D、旋转/后台/锁屏/中文 IME/原生手柄并记录 viewport。
-4. 在维护窗口真实回滚到保留 release，再前滚到基于新提交构建的 release；确认聊天、笔记、高亮、画像与 RP 现场连续。
-5. 若需要清理工作树，先逐项识别剩余代码只读 MCP、质量评估、学习设计、临时证据与本地配置；不得整体 reset、checkout 或盲目 stash。
+1. 阅读 EX11.6–7 报告和 EX11 方案 §8–10；检查本地 batch8 的 summary/outcome，先确认已有运行终态，再决定是否启动后续样本。
+2. 对已交付原稿运行独立数学/图元或真实解码帧核对，按实际页面适配 reader-selectors.json；不要人工改模型页补算成功。
+3. 使用 `EX10_CONTENT=<run>/content.json` 启动 `presentation_ex10_browser_host --ignored --nocapture`，通过 `playwright.ex10.config.ts` 执行 Reader 使用链，完成后 POST /stop。
+4. 按冻结合同完成剩余重复题和短答；工程或方法修复另开批次，完整合同实际通过后才标记 EX11.7 完成。
+5. 下一项实现按独立切片提交；DH6 和调用成本后续分别从专用 checkpoint 接手。
 
 ## 未提交 / 未完成
+- 本次集成提交纳入当前实现、测试、依赖、固定资源、切片方案及报告；本机配置、临时文件、书籍、handoff 和大批原始运行产物保留本地。
+- EX11.7 尚未完成完整六例与短答使用链；batch1–7 的原始失败及归因保留。batch8 的最新终态以本地运行目录为准。
+- G6 整体自然请求/发布验收、CQ 范围表达稳定性、DH0 人工作答以及 DH6 真实模型质量/业务恢复/回滚仍有未完成项；DH7 属于后续扩展。
+- DeepSeek 续接、状态追加和压缩预算工程已完成；真实缓存命中和费用收益尚待实际任务观测。
+- ED3、EX2、EX10 保留其未通过的实验结论；EV7 候选已撤回。TutorSession 等教学领域 ADR 仍为设计决策。
 
-- 未完成：8080 认证后入口、匹配 Chromium 的 Linux 页面检查、真实 iPhone、双栏 PDF ≤2 CSS px 人工量测、30 页资源观察及真实回滚复验。
-- 工作树仍保留不属于 A/R、RP、MW 的既有修改和大量本地产物；本轮不替用户提交或删除。
-- 远端 `/opt/understand-book/repository` 的脏检出未处理；现行独立 release 不受影响，后续不得直接复用该目录发布。
+## 当前代码与验证
+- EX11.6：页内交互归 content，宿主 Reader 动作归 ReaderAction；原 Goal 误分类复现已修复，不提高回合上限。
+- Flash Author 输出预留为 131072，输入压缩水位保持原范围；普通请求和显式配置保持原合同。
+- 压缩补全既有 v1 结构；最终历史改写/截断已保存前缀时失效派生 checkpoint；严格加载校验保持。
+- 成功预览按实际请求区分新进展；重复输入/失败不增进展。AnimationCue 覆盖实际 Provider JSON 小数解析路径。
+- ex11.v9 增加最小 160px Reader 内容区的媒体控件布局指导；实际解码帧、播放、恢复与追问仍需逐题验收。
+- 集成前重新执行本地 Rust 回归、Core/Web 定向回归、前端构建、评测脚本、观测层/只读 MCP 测试和 DSH 类型检查/打包；最终结果见本次提交说明。
 
 ## 冷启动读序
-
-1. 本页；`git log -4 --oneline`；相关路径 `git status --short`。
-2. `docs/切片方案-移动端阅读工作区与横竖屏适配.md` 的 MW7–MW9、§5–§8。
-3. `docs/performance/mobile-workspace-mw7-20260918.md`、MW8、MW9；必要时回读 MW4–MW6。
-4. `packages/web/src/useAgentRun.ts`、`agent-run-state.ts`、`agent-submission-recovery.ts` 及对应测试。
-5. `packages/web/src/reader-surface.ts`、`components/ReaderWorkspace.vue`、`App.vue` 的表面选择与恢复路径。
-6. `docs/Linux阅读器部署.md` 的“移动阅读发布核对”；`docs/架构.md` 与 `docs/代码链路.md` 的 MW 尾部记录。
+1. `docs/performance/explorable-explanation-ex11-6-7-20260928.md` — 真实失败、修复和批次结论。
+2. `docs/切片方案-EX11-Konva通用能力与局部动态演示.md` §8–10 — 当前状态、验收合同。
+3. `docs/performance/ARTIFACTS.md`，然后本地 `docs/performance/ex11-local-demonstrations/ex11.7/batch8/` — 证据保存边界及已有结果。
+4. `docs/代码链路.md` 自 2026-09-20 选区采样修复起的新增记录 — 集成改动归属。
+5. 按接手任务读取 `SESSION_CHECKPOINT_DSH.md` 或 `SESSION_CHECKPOINT_KV_CACHE.md`；EX11 环境见 `docs/Manim-部署.md` 和 EX11.3–5 报告。
 
 ## 本会话决策摘要
-
-- 提交边界：A 与 R 同一提交；RP、MW 各自独立；共享 Web 文件用 MW0 基线拆分，其他本地工作不纳入。
-- 移动布局：设备侧投影不新增后端布局真相；手机全局顶栏为按需覆盖层，关闭态零布局占用。
-- 运行恢复：已知 turn 只按权威快照/SSE 接回；创建响应未知时先核对历史，不自动重提。
-- 阅读表面：Markdown/PDF 偏好按设备与 `book_id + source_fingerprint` 保存，无可靠映射时明确降级而不猜位置。
+- 用户确认将交织的现有改动筛选后整体提交；保持未完成验收和失败实验的真实状态。
+- 原始模型记录、截图、视频、trace 和逐批源码副本保留在原位置；报告、复现脚本与必要夹具进入仓库。
+- 提交后以这份基线继续，后续按独立切片落 commit。

@@ -75,6 +75,7 @@ impl ContextFragment {
 
     pub fn projected_message(&self) -> Message {
         Message {
+            provider_continuation: None,
             role: self.role,
             content: Some(format!(
                 "{CONTEXT_FRAGMENT_VERSION}\nkey={}\nrevision={}\nscope={}\nsensitivity={}\ncontent:\n{}",
@@ -106,6 +107,8 @@ pub struct ContextFragmentError {
 pub struct ContextFragmentLedger {
     active: BTreeMap<String, ContextFragment>,
     projection_order: Vec<String>,
+    // Run-local snapshots anchored after a complete raw message/tool-result group.
+    sampling_snapshots: Vec<(usize, Vec<Message>)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -167,15 +170,10 @@ impl ContextFragmentLedger {
             .iter()
             .position(|message| message.role != Role::System)
             .unwrap_or(messages.len());
-        let snapshot = self.snapshot();
-        let mut projected = Vec::with_capacity(messages.len() + snapshot.fragments.len());
+        let fragments = self.projected_messages();
+        let mut projected = Vec::with_capacity(messages.len() + fragments.len());
         projected.extend_from_slice(&messages[..insert_at]);
-        projected.extend(
-            snapshot
-                .fragments
-                .iter()
-                .map(ContextFragment::projected_message),
-        );
+        projected.extend(fragments);
         projected.extend_from_slice(&messages[insert_at..]);
         projected
     }
@@ -184,8 +182,44 @@ impl ContextFragmentLedger {
         self.snapshot()
             .fragments
             .iter()
+            .filter(|fragment| fragment.scope != FragmentScope::Dynamic)
             .map(ContextFragment::projected_message)
             .collect()
+    }
+
+    /// Capture each decision's complete dynamic state, including unchanged fields.
+    /// `previous` carries only the run-local snapshot history into the next decision.
+    pub fn record_sampling(&mut self, raw_message_count: usize, previous: &mut Self) {
+        self.sampling_snapshots = previous.sampling_snapshots.clone();
+        let mut content = format!(
+            "runtime_state_snapshot.v1\nsampling={}\nThe last runtime state snapshot is authoritative. Earlier snapshots describe earlier decisions; rules applying only to those decisions have expired.\n",
+            self.sampling_snapshots.len() + 1,
+        );
+        for fragment in self
+            .snapshot()
+            .fragments
+            .iter()
+            .filter(|f| f.scope == FragmentScope::Dynamic)
+        {
+            content.push_str(&format!("\nkey={}\n{}\n", fragment.key, fragment.content));
+        }
+        self.sampling_snapshots
+            .push((raw_message_count, vec![Message::system(content)]));
+        previous.sampling_snapshots = self.sampling_snapshots.clone();
+    }
+
+    pub fn project_sampling_snapshots(
+        &self,
+        messages: &mut Vec<Message>,
+        raw_message_count: usize,
+    ) {
+        // Mid-turn compaction preserves the complete current turn. Anchors are in
+        // that suffix, so counting back from its end also works after compaction.
+        let projected_count = messages.len();
+        for (anchor, snapshot) in self.sampling_snapshots.iter().rev() {
+            let insert_at = projected_count - (raw_message_count - anchor);
+            messages.splice(insert_at..insert_at, snapshot.clone());
+        }
     }
 }
 
@@ -248,6 +282,51 @@ mod tests {
         assert_eq!(snapshot.fragments[0].content, "profile v2");
         assert_ne!(snapshot.fragments[0].revision, profile_v1_revision);
         assert_eq!(snapshot.fragments[1].key, "memory.operation_result");
+    }
+
+    #[test]
+    fn sampling_snapshots_survive_compacted_prefix_and_do_not_enter_frozen_context() {
+        let mut history = ContextFragmentLedger::default();
+        let mut first = history.clone();
+        first
+            .upsert(ContextFragment::new(
+                "budget",
+                FragmentScope::Dynamic,
+                Role::System,
+                "remaining=2",
+                FragmentSensitivity::Private,
+            ))
+            .unwrap();
+        first.record_sampling(10, &mut history);
+        let mut second = history.clone();
+        second
+            .upsert(ContextFragment::new(
+                "budget",
+                FragmentScope::Dynamic,
+                Role::System,
+                "remaining=1",
+                FragmentSensitivity::Private,
+            ))
+            .unwrap();
+        second.record_sampling(12, &mut history);
+        let mut compacted = vec![
+            Message::system("compacted older history"),
+            Message::user("current task"),
+            Message::user("assistant/tool placeholder"),
+            Message::user("complete tool group"),
+        ];
+        second.project_sampling_snapshots(&mut compacted, 12);
+        assert!(compacted[2]
+            .content
+            .as_deref()
+            .unwrap()
+            .contains("remaining=2"));
+        assert!(compacted[5]
+            .content
+            .as_deref()
+            .unwrap()
+            .contains("remaining=1"));
+        assert!(second.projected_messages().is_empty());
     }
 
     #[test]

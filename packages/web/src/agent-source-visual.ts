@@ -71,6 +71,7 @@ const VisualHarness = defineComponent({
   setup() {
     const readerStatus = ref("保持当前阅读位置");
     const agentInput = ref("");
+    const fullscreen = ref(false);
     const effect = outcome.effects[0] as AgentEffect;
     return () => h("main", { class: "agent-source-visual" }, [
       h("article", { class: "agent-source-reader", "data-testid": "reader-surface" }, [
@@ -96,6 +97,7 @@ const VisualHarness = defineComponent({
         }],
         chatSessions: [],
         activeChatSessionId: "chat-source-visual",
+        fullscreen: fullscreen.value,
         agentInput: agentInput.value,
         sending: false,
         showTrace: {},
@@ -115,6 +117,7 @@ const VisualHarness = defineComponent({
         gotoBack: () => "",
         askDraft: null,
         "onUpdate:agentInput": (value: string) => { agentInput.value = value; },
+        onToggleFullscreen: () => { fullscreen.value = !fullscreen.value; },
         onAgentSourceOpened: () => { readerStatus.value = "已在正文中打开来源"; },
         onUndoEffect: () => { void effect; },
       }),

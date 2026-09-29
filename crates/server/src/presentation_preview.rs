@@ -187,18 +187,48 @@ impl Cdp<'_> {
         Ok(result["result"]["value"].clone())
     }
 
+    fn scene_snapshot(&mut self) -> Result<PreviewSceneSnapshot, String> {
+        let value = self.evaluate("window.presentationScene.snapshot()")?;
+        serde_json::from_value(value).map_err(|error| format!("scene snapshot: {error}"))
+    }
+
     fn observe(
         &mut self,
         step: usize,
         environment: PreviewViewport,
+        scene_target: Option<PreviewScenePosition>,
+        read_selector: Option<&str>,
     ) -> Result<PreviewObservation, String> {
         // Wait for real rendering work rather than accepting a page-reported ready flag.
         self.evaluate("new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))")?;
+        let actual = scene_target.map(|_| self.scene_snapshot()).transpose()?;
+        let reading = read_selector.map(|selector| {
+            let selector = serde_json::to_string(selector).map_err(|e| e.to_string())?;
+            self.evaluate(&format!(r#"(() => {{
+              const selector={selector}, matches=document.querySelectorAll(selector);
+              if(matches.length!==1) throw new Error('read_selector must match exactly one result region; matched '+matches.length);
+              const e=matches[0], rect=e.getBoundingClientRect(), style=getComputedStyle(e);
+              if(!rect.width||!rect.height||style.visibility==='hidden'||style.display==='none') throw new Error('read_selector result region is hidden');
+              const text=e.innerText;
+              if(typeof text!=='string'||!text.trim()) throw new Error('read_selector requires rendered result text');
+              const page_state=window.__presentationPreviewState?window.__presentationPreviewState():null;
+              const controls=[...document.querySelectorAll('input,select,textarea')].map(e=>({{id:e.id,name:e.name,type:e.type,value:e.value,checked:e.checked}}));
+              const scene=window.presentationScene?.snapshot?window.presentationScene.snapshot():null;
+              if(scene?.playing) throw new Error('Pause or seek the scene before reading its result');
+              return {{action_step:{step},selector,text,page_state,controls,scene}};
+            }})()"#)).and_then(|reading| {
+                if serde_json::to_vec(&reading).map_err(|e| e.to_string())?.len() > 8 * 1024 {
+                    Err("Complete selected reading exceeds 8192 bytes; narrow read_selector or reduce page-state context".into())
+                } else {
+                    Ok(reading)
+                }
+            })
+        }).transpose()?;
         let dom = self.evaluate(r#"(() => ({
           text: document.body.innerText.slice(0, 16000),
           semantic_text: (()=>{const copy=document.body.cloneNode(true);copy.querySelectorAll('script,style,[data-source-ref]').forEach(e=>e.remove());return [copy.textContent,...[...document.querySelectorAll('[alt],[title],[aria-label],input,textarea,select')].map(e=>[e.getAttribute('alt'),e.getAttribute('title'),e.getAttribute('aria-label'),e.value].filter(Boolean).join(' '))].join('\n');})(),
           source_ref_ids: [...document.querySelectorAll('[data-source-ref]')].map(e=>e.getAttribute('data-source-ref')),
-          unsupported_assets: [...document.querySelectorAll('script[src],script[type=module],link[rel=stylesheet],img:not([src^="data:"]),iframe,object,embed')].map(e=>e.outerHTML.slice(0,200)),
+          unsupported_assets: [...document.querySelectorAll('script[src],script[type=module],link[rel=stylesheet],img:not([src^="data:"]),video[src]:not([src^="data:"]),video source[src]:not([src^="data:"]),video[poster]:not([poster^="data:"]),iframe,object,embed')].map(e=>e.outerHTML.slice(0,200)),
           controls: [...document.querySelectorAll('input,select,textarea,button,output')].slice(0,128).map(e => ({
             id:e.id,tag:e.tagName,value:e.value,checked:e.checked,text:e.textContent.slice(0,256)})),
           elements: [...document.querySelectorAll('body > *,svg,canvas')].slice(0,128).map(e => {
@@ -243,6 +273,36 @@ impl Cdp<'_> {
             "Page.captureScreenshot",
             json!({"format":"png","captureBeyondViewport":false}),
         )?;
+        let after_capture = scene_target.map(|_| self.scene_snapshot()).transpose()?;
+        let scene = scene_target.map(|target| PreviewSceneObservation {
+            target,
+            actual: actual.unwrap(),
+            after_capture: after_capture.unwrap(),
+        });
+        if let Some(scene) = &scene {
+            let at_target = |snapshot: &PreviewSceneSnapshot| {
+                snapshot.semantic_state == scene.target.semantic_state
+                    && (snapshot.transition_progress - scene.target.transition_progress).abs() <= 0.000001
+            };
+            if !at_target(&scene.actual) || !at_target(&scene.after_capture) {
+                issues.push(PreviewIssue {
+                    kind: "scene_position_mismatch".into(),
+                    message: format!("target {:?}, before {:?}, after {:?}", scene.target, scene.actual.position(), scene.after_capture.position()),
+                });
+            }
+            if scene.actual.playing || scene.after_capture.playing {
+                issues.push(PreviewIssue {
+                    kind: "scene_not_paused".into(),
+                    message: "seek must stop automatic playback before observation".into(),
+                });
+            }
+            if scene.actual != scene.after_capture {
+                issues.push(PreviewIssue {
+                    kind: "scene_changed_during_capture".into(),
+                    message: "scene moved while DOM, layout and screenshot were captured".into(),
+                });
+            }
+        }
         Ok(PreviewObservation {
             step,
             dom,
@@ -252,6 +312,8 @@ impl Cdp<'_> {
                 .ok_or("missing screenshot")?
                 .into(),
             issues,
+            scene,
+            reading,
         })
     }
 
@@ -269,7 +331,10 @@ impl Cdp<'_> {
                 }})()"#))?;
                 if matches!(input, PreviewInput::Touch) {
                     self.call("Input.dispatchTouchEvent", json!({"type":"touchStart","touchPoints":[{"x":point["x"],"y":point["y"],"radiusX":1,"radiusY":1,"force":1}]}))?;
-                    self.call("Input.dispatchTouchEvent", json!({"type":"touchEnd","touchPoints":[]}))?;
+                    self.call(
+                        "Input.dispatchTouchEvent",
+                        json!({"type":"touchEnd","touchPoints":[]}),
+                    )?;
                 } else {
                     for kind in ["mousePressed", "mouseReleased"] {
                         self.call("Input.dispatchMouseEvent", json!({"type":kind,"x":point["x"],"y":point["y"],"button":"left","clickCount":1}))?;
@@ -305,6 +370,11 @@ impl Cdp<'_> {
                     )?;
                 }
             }
+            PreviewAction::Seek { .. } => {
+                let target = action.scene_position()?.unwrap();
+                let position = serde_json::to_string(&target).map_err(|error| error.to_string())?;
+                self.evaluate(&format!("Promise.resolve((() => {{ const scene=window.presentationScene; if(!scene || typeof scene.seek!=='function' || typeof scene.snapshot!=='function') throw new Error('page must expose window.presentationScene.seek/snapshot'); return scene.seek({position}); }})())"))?;
+            }
         }
         Ok(())
     }
@@ -322,11 +392,11 @@ impl PresentationPreviewPort for BrowserPreview {
             check(cancellation, deadline)?;
             let environment = request.environment()?;
             if request.candidate_id.is_empty()
-                || request.html.len() > 2 * 1024 * 1024
+                || request.html.len() > 96 * 1024 * 1024
                 || request.actions.len() > 16
             {
                 return Err(
-                    "preview requires candidate_id, at most 2 MiB HTML and 16 actions".into(),
+                    "preview requires candidate_id, at most 96 MiB assembled document and 16 actions".into(),
                 );
             }
             let profile = tempfile::Builder::new()
@@ -352,9 +422,10 @@ impl PresentationPreviewPort for BrowserPreview {
             #[cfg(windows)]
             {
                 use std::os::windows::process::CommandExt;
-                // Edge otherwise may relaunch through its compatibility layer and
-                // exit this owned PID, leaving the real browser/profile orphaned.
+                // Edge's compatibility layer and automatic de-elevation can relaunch
+                // an elevated preview, leaving the owned PID before DevTools is ready.
                 command.arg("--edge-skip-compat-layer-relaunch");
+                command.arg("--do-not-de-elevate");
                 command.creation_flags(0x08000000);
             }
             #[cfg(unix)]
@@ -461,12 +532,12 @@ impl PresentationPreviewPort for BrowserPreview {
                     json!({"frameId":frame["frameTree"]["frame"]["id"],"html":request.html}),
                 )?;
                 phase = "inspect:0".into();
-                let mut observations = vec![cdp.observe(0, environment)?];
+                let mut observations = vec![cdp.observe(0, environment, None, request.read_selector.as_deref().filter(|_| request.actions.is_empty()))?];
                 for (index, action) in request.actions.iter().enumerate() {
                     phase = format!("interact:{}", index + 1);
                     cdp.interact(action, environment.input)?;
                     phase = format!("inspect:{}", index + 1);
-                    observations.push(cdp.observe(index + 1, environment)?);
+                    observations.push(cdp.observe(index + 1, environment, action.scene_position()?, request.read_selector.as_deref().filter(|_| index + 1 == request.actions.len()))?);
                 }
                 Ok(PreviewReport {
                     candidate_id: request.candidate_id.clone(),

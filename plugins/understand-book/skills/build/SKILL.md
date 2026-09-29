@@ -10,6 +10,10 @@ deterministic Build Engine drive execution until it returns `DONE` or a real use
 root Codex owns semantic planning, user conversation, live agent-slot observation, and harness
 lifecycle only. It does not interpret the internal build state machine.
 
+After plan confirmation, the root owns progress to completion within the confirmed scope. Repair
+its own malformed control requests and continue the same invocation; do not turn a correctable
+caller error into a user decision or a separate maintenance task.
+
 ## Authority and privacy boundary
 
 - Reader/Core owns the current source, content profile, Blueprint validation, plan identity, and
@@ -149,7 +153,8 @@ invocation. Consume only `automatic_build_invocation_ref.v1` and retain its `inv
 task checkpoint. Recreating the exact same request is idempotent; changing target, plan, quality,
 budget, or requested parallelism starts a different invocation and may require new confirmation.
 
-Before every step, count currently available dedicated subagent slots and send:
+For an initial step or a user decision without terminal observations, count currently available
+dedicated subagent slots and send:
 
 ```json
 {
@@ -195,7 +200,11 @@ owned child's open call before choosing installation recovery, using the bounded
 On an open error, especially protocol_incompatible or an error inconsistent with successful sibling
 children, read the failed child's actual control call before retrying. Successful children do not
 need history reads. Use the resolved Build Engine:
-`build.diagnose-child <this-root-task-id> <owned-child-id> <original-issued-handoff-ref>`.
+`build.diagnose-child <this-root-task-id> <owned-child-id-or-name> <original-issued-handoff-ref>`.
+Pass the UUID, canonical agent path, or short name returned by the collaboration tool. The reader
+resolves a name using this parent's recorded child-start events and returns the resolved `child_id`.
+Keep that identity with the launch; never guess a UUID, scan recent children, or diagnose siblings
+to locate a failed child. If a reused name is ambiguous, use its recorded UUID.
 This reader checks parent/child ownership and streams the local Codex rollout, returning only the
 last failed open request version/ref, the original structured tool diagnostic, connection state,
 and the last 16 operation names. It excludes conversation, hidden reasoning, semantic input,
@@ -231,17 +240,58 @@ Keep feedback keyed by dispatch_slot_ref until its replacement launches, includi
 Do not send the obsolete attempted ref as a second actionable handoff. Only the next build.step
 can establish durable completion; sibling slots and accepted artifacts keep their ownership.
 
+## Repair a rejected step request
+
+`automatic_build_request_error.v1` with `code=invalid_step_request` means the request was
+rejected before build state was read or changed. Compare the last submitted control object with
+`automatic_build_step_request.v1`, correct the field name or value type, and immediately resubmit
+using the same `invocation_ref`. Preserve the pending observation, live slot ownership, plan,
+budget, and parallelism. In particular, keep the versioned `open_call_correction` returned by
+`build.diagnose-child` as a nested object under that exact field; serialize the complete step
+request once for stdin. Do not stringify that object separately or put it under
+`executor_open_failure`.
+
+This response is a caller error, not a Build Engine action or a request for user input. Do not
+resubmit an unchanged rejected request. If the corrected request still fails and there is no
+supported correction from the request contract, report the concrete blocker without inventing a
+decision. For an older engine that returns `NEEDS_USER(build_engine_failed)`, first inspect only
+your own last control request for an evident field or type mistake and repair that mistake with the
+same invocation. Otherwise honor the engine boundary.
+
+## Build progress
+
+When `build.step` returns `build_progress`, show its full ordered stage route before launching
+the first executors. Report the current stage's committed/eligible work, remaining work and
+planned dispatch groups. Update this summary on stage changes, meaningful count changes and
+user boundaries; combine it with normal progress updates so reporting does not delay refill.
+
+`work.scope=discovered` counts only work already materialized by Engine. `pending` includes
+running work that has not committed. Missing `work` means the count is not yet available;
+`awaiting_dependencies` is not zero tasks. Later reducers can increase the discovered total.
+Planned dispatch groups are not native subagent launch counts. Report live executors separately
+from the owned `live_by_slot`; do not infer running task counts or retry counts from these totals.
+
+`current_stage_forecast.service_time` covers current-stage service only, excluding Root's
+dispatch gaps, retries, later stages and publication. If confidence is `low`, report timing as
+uncalibrated. Even a `matched` range is not a whole-book ETA. Public stages all being complete
+does not finish declared private artifacts: only Engine `DONE` proves the entire plan complete.
+Use only these bounded projections; never open plans, task files or semantic inputs to fill gaps.
+
 ## Four-action loop
 
-Consume only `automatic_build_step.v1`. Handle its action exactly and call `build.step` again after
-the external boundary is resolved:
+Consume `automatic_build_step.v1` (the nested `step` when using `build.refill`). Handle its action
+exactly; use the single refill operation below when a child finishes:
 
 - `SPAWN_EXECUTORS`: treat each returned public launch as
   `opaque_handoff_ref + dispatch_slot_ref`; reader-private launches have no dispatch slot and use
   their ref as the local slot key. Exclude a launch when its slot key is already present in
   `live_by_slot` or its ref is in `completed_refs`. Launch at most one dedicated subagent per pending
   slot, filling only the currently available live slots. Store
-  `live_by_slot[slot_key] = {child, opaque_handoff_ref}`. Choose each ref's bootstrap provider in this
+  `live_by_slot[slot_key] = {child, opaque_handoff_ref}`. Retain the structured Driver response and
+  copy the complete `opaque_handoff_ref` from that launch into the spawn message. Do not regenerate,
+  shorten, or replace it with a descriptive placeholder. Consume a completed step result once;
+  do not repeat build.step merely to recover an output already returned by the tool.
+  Choose each ref's bootstrap provider in this
   strict order:
   1. If the spawn tool advertises `agent_type=understand_book_executor`, select that custom agent
      explicitly and give it only this payload, with the returned ref substituted exactly:
@@ -267,10 +317,11 @@ the external boundary is resolved:
   If no provider is available, retain that ref in completed_refs and queue its bootstrap failure.
   While `live_by_slot` is non-empty, wait only
   until the first owned child becomes terminal; consume all other terminal observations already
-  delivered without waiting for unfinished children. For each observed terminal, match the owned
-  child identity, move only its owned ref to `completed_refs`, release only its own slot, and queue
-  any reportable failure. Duplicate or late observations cannot release a replacement child's slot.
-  Recompute current available capacity and immediately call `build.step` with one pending failure.
+  delivered without waiting for unfinished children. Pass the owned records and terminal child
+  identities to `build.refill` in the next control tool call, with one pending failure if any.
+  Code matches each owned child identity, moves only its owned ref to `completed_refs`, releases
+  only its own slot, computes current capacity, and calls `build.step` once.
+  Duplicate or late observations cannot release a replacement child's slot.
   After a step returns, consume terminal observations delivered during that call before launching
   or waiting; the next step must use the latest capacity, not the count sent before the call.
   Keep the old ref in `completed_refs`; only the Driver-issued replacement ref can launch.
@@ -287,8 +338,9 @@ the external boundary is resolved:
   `projection.work_unit_count` counts the units in this boundary, not all remaining build work.
   `confirm_candidate_retry` authorizes another bounded correction window under the current schema;
   it does not require accepting the rejected output or changing policy.
-  `build_engine_failed` is an engine maintenance boundary with no recovery choices. Report its
-  request ID and diagnostic availability; raw local diagnostics belong to a separate debugging task.
+  `build_engine_failed` has no recovery choices. After the caller-error check above, report its
+  request ID and diagnostic availability when the failure remains; raw local diagnostics belong
+  to a separate debugging task.
   Do not describe ordinary state reads as stage close unless the engine establishes that phase.
   Never invent or broaden choices. If choices are present, wait for the user and return the selected
   `request_id + choice_id` in the next step. If choices are empty, report the external blocker and
@@ -302,6 +354,46 @@ the external boundary is resolved:
 Continue across ordinary executor completions, stage boundaries, retries, and internal recovery.
 Stop only at `NEEDS_USER`, `DONE`, explicit user interruption, or a packaged-engine failure for
 which no structured action exists. Never emulate a dedicated executor in the root.
+
+## Single completion-and-refill operation
+
+On a normal child final, the next control call sends one JSON object on stdin to
+`<build-exe> build.refill`. Do not split completion bookkeeping, capacity calculation and
+`build.step` across tool calls. Do not insert `list_agents`; use it only to recover missing or
+uncertain ownership after restoring a chat. Keep the pre-release ownership map in this request:
+
+```json
+{
+  "version": "automatic_build_refill_request.v1",
+  "invocation_ref": "<saved invocation ref>",
+  "capacity_limit": 3,
+  "live_by_slot": {
+    "<slot A>": {"child": "<child A>", "opaque_handoff_ref": "<ref A>"},
+    "<slot B>": {"child": "<child B>", "opaque_handoff_ref": "<ref B>"},
+    "<slot C>": {"child": "<child C>", "opaque_handoff_ref": "<ref C>"}
+  },
+  "completed_refs": [],
+  "terminal_children": ["<child C>"]
+}
+```
+
+Use saved values rather than placeholders; `completed_refs` retains earlier terminal refs.
+`capacity_limit` is the current total capacity reserved for this build, including its live
+children, capped at three; the code also honors the invocation's `max_parallel`.
+An optional `decision` or one queued failure observation uses the same fields as `build.step`.
+
+Consume `automatic_build_refill.v1`: replace the local `live_by_slot` and `completed_refs` with
+the returned records, then handle its nested `step` using the four-action loop. For a spawn action,
+start fresh native subagents only for `ready_executors` and record their child identities in
+the returned ownership map. These entries already exclude live slots and completed refs.
+With A, B and C live and only C terminal, the internal step receives `available_agent_slots: 1`;
+A and B remain owned and the next reference D is returned for launch.
+
+If B's terminal notification arrives during that call, submit one new `build.refill` for B using
+the returned records before launching. Use the latest response's `ready_executors`; the Engine
+reprojects unstarted references. Never wait for A to finish. A malformed refill returns
+`automatic_build_request_error.v1` with `invalid_refill_request`; correct the request and resubmit.
+This operation requests work; the host's native spawn tool starts each returned subagent.
 
 ## Dedicated executor contract
 

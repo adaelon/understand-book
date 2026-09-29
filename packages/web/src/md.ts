@@ -7,14 +7,15 @@
 // 插件当场跳过不渲染。renderMarkdown 前做一道 normalizeDisplayMath:把内联 $$ 前后补换行规整成独占行,
 // 不动已独占行的 $$、不动 $...$ 行内公式。
 import MarkdownIt from "markdown-it";
-import katex from "@traptitech/markdown-it-katex";
+import katexPlugin from "@traptitech/markdown-it-katex";
+import katex from "katex";
 
 const md = new MarkdownIt({
   html: false, // 不放行原始 HTML(XSS 防线)
   linkify: true, // 裸 URL 自动成链
   breaks: true, // 单换行 → <br>,贴合聊天气泡
 });
-md.use(katex, { throwOnError: false });
+md.use(katexPlugin, { throwOnError: false });
 
 const SUP_TOKEN_PREFIX = "@@UB_INLINE_SUP_";
 const SUP_TOKEN_SUFFIX = "@@";
@@ -108,4 +109,22 @@ export function renderMarkdown(src: string | null | undefined): string {
 export function renderInlineMarkdown(src: string | null | undefined): string {
   const extracted = extractInlineSuperscripts(src ?? "");
   return restoreInlineSuperscripts(md.renderInline(normalizeInlineMath(extracted.src)), extracted.superscripts);
+}
+
+/** Formula LID 可来自段内 $...$，也可来自独占块的 $$...$$ 或多行 $...$。 */
+export function isDisplayFormulaSource(src: string): boolean {
+  const text = src.trim();
+  return (text.startsWith("$$") && text.endsWith("$$"))
+    || /^\$\r?\n[\s\S]+\r?\n\$$/.test(text);
+}
+
+export function renderFormulaSource(src: string): string {
+  if (!isDisplayFormulaSource(src)) return renderInlineMarkdown(src);
+  const text = src.trim();
+  const delimiter = text.startsWith("$$") ? "$$" : "$";
+  const rendered = katex.renderToString(text.slice(delimiter.length, -delimiter.length), {
+    displayMode: true,
+    throwOnError: false,
+  });
+  return delimiter === "$" ? `<span data-formula-delimiter="single">${rendered}</span>` : rendered;
 }

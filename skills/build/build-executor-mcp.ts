@@ -1,3 +1,6 @@
+import { DSH_BUILD_EXECUTOR_CONTRACT_V1 } from "../../packages/core/src/dsh-build-executor-contract";
+import { CODEX_BUILD_EXECUTION_PROFILE_V1, DSH_BUILD_EXECUTION_PROFILE_V1 } from "../../packages/core/src/build-execution-profile";
+import { createBuildExecutorConnectionStateV4 } from "../../packages/core/src/build-executor-connection-state";
 import {
   BUILD_EXECUTOR_MCP_CONTRACT_V3,
   BUILD_EXECUTOR_TOOL_NAMES_V1,
@@ -18,7 +21,7 @@ import {
   type AutomaticBuildExecutorServerPhaseBoundaryV1,
   type AutomaticBuildExecutorServerTimingObserverV1,
   type AutomaticBuildExecutorMcpErrorPhaseV2,
-  type AutomaticBuildExecutorSessionResponseV3,
+  type AutomaticBuildExecutorSessionResponse,
 } from "../../packages/core/src/automatic-build-executor-session";
 import { canonicalAutomaticBuildJson } from "../../packages/core/src/automatic-build-protocol";
 import {
@@ -86,7 +89,7 @@ interface BuildExecutorMcpSessionOptions {
   execute_request?: (
     request: unknown,
     timing: AutomaticBuildExecutorServerTimingObserverV1,
-  ) => AutomaticBuildExecutorSessionResponseV3;
+  ) => AutomaticBuildExecutorSessionResponse;
   now_ms?: () => number;
   timing_sample_sink?: (sample: ExecutorMcpServerTimingV2) => void;
 }
@@ -136,7 +139,10 @@ class BuildExecutorSessionCommandError extends Error {
 export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOptions): {
   handle_message: (value: unknown) => unknown | undefined;
 } {
-  const connection = createBuildExecutorStdioConnectionCapability({
+  const dsh = options.bootstrap_version === DSH_BUILD_EXECUTOR_CONTRACT_V1.bootstrap_version
+    && options.protocol_generation === DSH_BUILD_EXECUTOR_CONTRACT_V1.session_protocol;
+  const profile = dsh ? DSH_BUILD_EXECUTION_PROFILE_V1 : CODEX_BUILD_EXECUTION_PROFILE_V1;
+  const connection = dsh ? createBuildExecutorConnectionStateV4({ session_private_root: options.session_private_root }) : createBuildExecutorStdioConnectionCapability({
     bootstrap_version: options.bootstrap_version,
     protocol_generation: options.protocol_generation,
     session_private_root: options.session_private_root,
@@ -144,18 +150,19 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
   const nowMs = options.now_ms ?? (() => performance.now());
   let activeTiming: AutomaticBuildExecutorServerTimingObserverV1 | undefined;
   const adapter = createBuildExecutorToolAdapter({
+    session_protocol: profile.session_protocol,
     authorize_connection: connection.authorize_connection,
     execute_request: (request) => {
       if (!activeTiming) throw new Error("Build Executor MCP timing boundary is unavailable");
-      let response: AutomaticBuildExecutorSessionResponseV3;
+      let response: AutomaticBuildExecutorSessionResponse;
       try {
         response = options.execute_request
           ? options.execute_request(request, activeTiming)
-          : runAutomaticBuildExecutorSessionCommand(request, { timing: activeTiming }) as AutomaticBuildExecutorSessionResponseV3;
+          : runAutomaticBuildExecutorSessionCommand(request, { timing: activeTiming, execution_profile: profile }) as AutomaticBuildExecutorSessionResponse;
       } catch (error) {
         throw new BuildExecutorSessionCommandError(error);
       }
-      if (response.version !== "automatic_build_executor_session.v3") {
+      if (response.version !== profile.session_protocol) {
         throw new BuildExecutorSessionCommandError(
           new Error("Build Executor MCP received a legacy session response"),
         );
@@ -164,6 +171,7 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
     },
   });
   let connectionCallOrdinal = 0;
+  let initialized = !dsh;
 
   const handleMessage = (value: unknown): unknown | undefined => {
     if (!isRecord(value) || value.jsonrpc !== "2.0" || typeof value.method !== "string") {
@@ -172,19 +180,30 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
     const request = value as unknown as JsonRpcRequest;
     if (request.method.startsWith("notifications/")) return undefined;
     if (request.method === "initialize") {
+      if (dsh) {
+        const params = isRecord(request.params) ? request.params : {};
+        const capabilities = isRecord(params.capabilities) ? params.capabilities : {};
+        const experimental = isRecord(capabilities.experimental) ? capabilities.experimental : {};
+        if (params.protocolVersion !== MCP_PROTOCOL_VERSION
+          || canonicalAutomaticBuildJson(experimental.understand_book_executor ?? null) !== canonicalAutomaticBuildJson(DSH_BUILD_EXECUTOR_CONTRACT_V1)) {
+          return rpcError(request.id, -32602, "Executor capability negotiation failed");
+        }
+        initialized = true;
+      }
       const requestedVersion = isRecord(request.params) && typeof request.params.protocolVersion === "string"
         ? request.params.protocolVersion
         : MCP_PROTOCOL_VERSION;
       return rpcResult(request.id, {
         protocolVersion: requestedVersion,
-        capabilities: { tools: { listChanged: false } },
+        capabilities: { tools: { listChanged: false }, ...(dsh ? { experimental: { understand_book_executor: DSH_BUILD_EXECUTOR_CONTRACT_V1 } } : {}) },
         serverInfo: {
           name: BUILD_EXECUTOR_MCP_CONTRACT_V3.server_name,
-          version: BUILD_EXECUTOR_MCP_CONTRACT_V3.version,
+          version: dsh ? DSH_BUILD_EXECUTOR_CONTRACT_V1.version : BUILD_EXECUTOR_MCP_CONTRACT_V3.version,
         },
       });
     }
     if (request.method === "ping") return rpcResult(request.id, {});
+    if (!initialized) return rpcError(request.id, -32002, "Executor initialization is required");
     if (request.method === "tools/list") {
       return rpcResult(request.id, {
         tools: adapter.list_tools().map((tool) => ({
@@ -247,13 +266,13 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
       sessionCommandCompleted = true;
       if (response.action.kind === "INPUT_BATCH") {
         if (Buffer.byteLength(serializeExecutorMcpToolResult(response), "utf8")
-          > CODEX_EXECUTOR_DELIVERY_BATCH_LIMIT_V1.max_serialized_batch_bytes) {
+          > profile.delivery_batch_limit.max_serialized_batch_bytes) {
           throw new Error("Build Executor MCP input batch exceeds its tested carrier tier");
         }
       } else if (measureExecutorTransportResponse(
         response,
         "",
-        CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+        profile.transport_profile,
       ).status !== "within_limit") {
         throw new Error("Build Executor MCP tool result exceeds its transport profile");
       }

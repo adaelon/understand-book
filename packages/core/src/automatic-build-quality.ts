@@ -25,7 +25,7 @@ import {
   type WorkUnitDescriptorV3,
   type WorkUnitDescriptorV4,
 } from "./stage-work-unit";
-import { CODEX_EXECUTOR_TRANSPORT_PROFILE_V2 } from "./executor-transport";
+import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "./build-execution-profile";
 import {
   resolveAutomaticBuildStagePolicyMember,
   validateAutomaticBuildStagePolicySet,
@@ -432,6 +432,7 @@ function validCoverageCount(value: number): boolean {
  * reducer cardinality change the public semantic quality denominator.
  */
 export function evaluateAutomaticBuildStageQualityV2(input: {
+  execution_profile?: BuildExecutionProfileV1;
   target_ref: BuildTargetRefV2;
   stage: QualityStage;
   quality_profile: ExtractionQualityProfile;
@@ -468,7 +469,7 @@ export function evaluateAutomaticBuildStageQualityV2(input: {
     descriptorsById.set(descriptor.work_unit_id, descriptor);
     try {
       if (isWorkUnitDescriptorV4(descriptor)) {
-        validateWorkUnitDescriptorV4(descriptor, CODEX_EXECUTOR_TRANSPORT_PROFILE_V2);
+        validateWorkUnitDescriptorV4(descriptor, (input.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1).transport_profile);
       } else {
         validateWorkUnitDescriptorV3(descriptor);
       }
@@ -861,6 +862,7 @@ export function collectAutomaticBuildStageQuality(
   target: AutomaticBuildTarget,
   stageState: AutomaticBuildStageState,
   qualityProfile: ExtractionQualityProfile,
+  executionProfile: BuildExecutionProfileV1 = CODEX_BUILD_EXECUTION_PROFILE_V1,
 ): AutomaticBuildStageQualityReportV1 | AutomaticBuildStageQualityReportV2 {
   if (stageState.stage === "paper_reading_guide") throw new Error("paper_reading_guide has no semantic quality report");
   if (stageState.policy_set || stageState.quality_routing) {
@@ -887,6 +889,7 @@ export function collectAutomaticBuildStageQuality(
       if (existsSync(file)) artifacts[descriptor.work_unit_id] = JSON.parse(readFileSync(file, "utf8"));
     }
     return evaluateAutomaticBuildStageQualityV2({
+      execution_profile: executionProfile,
       target_ref: target.target_ref,
       stage: stageState.stage,
       quality_profile: qualityProfile,

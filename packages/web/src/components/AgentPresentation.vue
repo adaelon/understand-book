@@ -26,22 +26,15 @@ const saving = ref(false);
 const saveNotice = ref("");
 const frameLoadCount = ref(0);
 const frameEditing = ref(false);
-const hostWidth = ref(0);
-const hostHeight = ref(0);
 let saveQueue: Promise<unknown> = Promise.resolve();
 let requestId = 0;
 let pendingSnapshot: { id: number; resolve: (state: PresentationState) => void; reject: (error: Error) => void } | undefined;
 let generation = 0;
 let observedRevision = 0;
 let themeObserver: MutationObserver | undefined;
-let hostObserver: ResizeObserver | undefined;
+let visibilityObserver: IntersectionObserver | undefined;
+let hostVisible = true;
 const readableText = computed(() => view.value?.readable_view.parts.map(part => part.kind === "markdown" ? part.text : "").join("") ?? "");
-const compactHost = computed(() => hostHeight.value > 0 && hostHeight.value < 520);
-const frameStyle = computed(() => {
-  if (expanded.value || hostHeight.value <= 0) return {};
-  const reserved = hostWidth.value > 0 && hostWidth.value < 420 ? 178 : 152;
-  return { height: `${Math.max(180, Math.min(420, hostHeight.value - reserved))}px` };
-});
 
 watch([() => props.sessionId, () => props.turnId, () => props.reference.presentation_id, () => props.reference.revision], async () => {
   setFrameEditing(false);
@@ -80,6 +73,14 @@ function onFrameLoad() {
   frameLoadCount.value += 1;
   setFrameEditing(false);
   theme();
+  frame.value?.contentWindow?.postMessage({ channel: "agent-presentation", kind: "visibility", visible: hostVisible }, "*");
+}
+async function retry() {
+  if (!view.value) return;
+  generation++; observedRevision = 0; ready.value = false; error.value = "";
+  documentText.value = "";
+  await nextTick();
+  documentText.value = presentationDocument(view.value);
 }
 async function receive(event: MessageEvent) {
   if (event.source !== frame.value?.contentWindow || event.data?.channel !== "agent-presentation" || error.value) return;
@@ -115,7 +116,6 @@ async function receive(event: MessageEvent) {
       || typeof message.text !== "string" || !Array.isArray(message.source_ref_ids)) return;
   const current = generation;
   observedRevision = message.revision;
-  ready.value = false;
   try {
     const result = await api.presentationObserve(props.sessionId, props.turnId, props.reference, message.text, message.source_ref_ids);
     if (current !== generation || observedRevision !== message.revision || error.value) return;
@@ -163,13 +163,6 @@ async function followUp() {
     if (current === generation) saveNotice.value = `追问未发送：${failure instanceof Error ? failure.message : String(failure)}`;
   } finally { clearTimeout(timer); saving.value = false; }
 }
-function measureHost() {
-  const host = root.value?.parentElement ?? root.value;
-  if (!host) return;
-  const rect = host.getBoundingClientRect();
-  hostWidth.value = host.clientWidth || rect.width;
-  hostHeight.value = host.clientHeight || rect.height;
-}
 function toggleExpanded() {
   expanded.value = !expanded.value;
   if (!expanded.value) void nextTick(() => expandButton.value?.focus({ preventScroll: true }));
@@ -184,16 +177,16 @@ onMounted(() => {
   window.addEventListener("keydown", keydown);
   themeObserver = new MutationObserver(theme);
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class", "data-theme"] });
-  if (typeof ResizeObserver !== "undefined") {
-    hostObserver = new ResizeObserver(measureHost);
-    hostObserver.observe(root.value?.parentElement ?? root.value!);
-  }
-  measureHost();
+  visibilityObserver = new IntersectionObserver(entries => {
+    hostVisible = entries[0]?.isIntersecting ?? false;
+    frame.value?.contentWindow?.postMessage({ channel: "agent-presentation", kind: "visibility", visible: hostVisible }, "*");
+  });
+  if (root.value) visibilityObserver.observe(root.value);
 });
 onBeforeUnmount(() => {
   setFrameEditing(false);
   pendingSnapshot?.reject(new Error("内容已关闭。")); pendingSnapshot = undefined;
-  generation++; themeObserver?.disconnect(); hostObserver?.disconnect();
+  generation++; themeObserver?.disconnect(); visibilityObserver?.disconnect();
   window.removeEventListener("message", receive); window.removeEventListener("keydown", keydown);
 });
 </script>
@@ -202,7 +195,7 @@ onBeforeUnmount(() => {
   <section
     ref="root"
     class="agent-presentation"
-    :class="{ expanded, 'compact-host': compactHost }"
+    :class="{ expanded }"
     :aria-label="view?.title || '富回答'"
     :aria-modal="expanded || undefined"
     :role="expanded ? 'dialog' : undefined"
@@ -214,15 +207,14 @@ onBeforeUnmount(() => {
       <small v-if="view">版本 {{ view.reference.revision }}</small>
       <button v-if="view" ref="expandButton" type="button" @click="toggleExpanded" :aria-expanded="expanded">{{ expanded ? '收起' : '展开' }}</button>
     </header>
-    <p v-if="error" class="presentation-error" role="alert">{{ error }}</p>
+    <p v-if="error" class="presentation-error" role="alert">{{ error }} <button v-if="view" type="button" @click="retry">重试</button></p>
     <template v-else>
-      <p v-if="!ready" role="status">正在准备内容…</p>
+      <p v-if="!ready" class="presentation-status" role="status">正在准备内容…</p>
       <iframe
         v-if="documentText"
         ref="frame"
         :srcdoc="documentText"
         :title="view?.title"
-        :style="frameStyle"
         :data-load-count="frameLoadCount"
         sandbox="allow-scripts"
         referrerpolicy="no-referrer"
@@ -244,24 +236,24 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.agent-presentation { container-type: inline-size; border: 1px solid var(--line, #e6dfd8); border-radius: 12px; background: var(--canvas, #faf9f5); color: var(--ink, #252523); overflow: hidden; margin: 12px 0; min-width: 0; }
+.agent-presentation { position: relative; container-type: inline-size; border: 1px solid var(--line, #e6dfd8); border-radius: 12px; background: var(--canvas, #faf9f5); color: var(--ink, #252523); overflow: hidden; margin: 12px 0; min-width: 0; }
 header { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 12px 16px; }
 header strong { overflow-wrap: anywhere; }
 button { min-height: 44px; font: inherit; color: var(--accent, #a9583e); border: 1px solid var(--line, #e6dfd8); border-radius: 8px; background: var(--surface, #efe9de); padding: 5px 10px; cursor: pointer; }
-iframe { display: block; width: 100%; height: 420px; min-height: 180px; border: 0; background: var(--canvas, #faf9f5); }
-.presentation-follow-up { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px max(12px, env(safe-area-inset-bottom)); }
+iframe { display: block; width: 100%; height: clamp(180px, calc(100dvh - 220px), 420px); min-height: 180px; border: 0; background: var(--canvas, #faf9f5); }
+.presentation-follow-up { position: relative; flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px max(12px, env(safe-area-inset-bottom)); }
 .presentation-follow-up input { flex: 1; min-width: 120px; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
-.presentation-follow-up small { flex-basis: 100%; }
+.presentation-follow-up small { flex: 1 0 100%; overflow-wrap: anywhere; }
 button:disabled { opacity: .55; cursor: default; }
 .expanded { position: fixed; inset: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); z-index: 90; margin: 0; display: flex; flex-direction: column; max-height: calc(100dvh - max(40px, env(safe-area-inset-top) + env(safe-area-inset-bottom))); box-shadow: 0 16px 80px #0005; }
-.expanded iframe { flex: 1 1 auto; height: auto !important; min-height: 0; }
+.expanded { overflow-y: auto; }
+.expanded iframe { flex: 1 0 160px; height: auto !important; min-height: 160px; }
 .expanded .presentation-readable { max-height: 30vh; overflow: auto; }
 .presentation-readable { flex: 0 1 auto; max-height: min(240px, 32dvh); overflow: auto; padding: 12px 16px; border-top: 1px solid var(--line, #e6dfd8); }
 .presentation-readable button { margin: 4px; }
 .readable-text { white-space: pre-wrap; }
-.presentation-error, [role=status] { padding: 0 16px; }
-.compact-host header { padding-block: 8px; }
-.compact-host .presentation-follow-up { padding-block: 8px; }
+.presentation-error { padding: 0 16px; }
+.presentation-status { position: absolute; z-index: 1; top: 52px; left: 16px; margin: 0; padding: 3px 8px; border-radius: 6px; background: var(--surface, #efe9de); }
 @container (max-width: 420px) {
   header strong { flex: 1 1 100%; }
   .presentation-follow-up input,

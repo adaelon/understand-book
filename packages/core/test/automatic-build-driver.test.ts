@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { setImmediate as yieldToRunner } from "node:timers/promises";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { canonicalAutomaticBuildJson } from "../src/automatic-build-protocol";
 import {
   automaticBuildDispatchFinish,
@@ -118,6 +119,7 @@ type AutomaticBuildStepActionV1 =
 interface AutomaticBuildStepResponseV1 {
   version: "automatic_build_step.v1";
   action: AutomaticBuildStepActionV1;
+  build_progress?: import("../src/automatic-build-progress").AutomaticBuildProgressV1;
 }
 
 interface AutomaticBuildStepRequestV1 {
@@ -192,7 +194,8 @@ interface AutomaticBuildInvocationCreateV1 {
 }
 
 interface AutomaticBuildDriverModule {
-  createAutomaticBuildInvocation(input: AutomaticBuildInvocationCreateV1): MaybePromise<{
+  runAutomaticBuildDriverCommand(value: unknown): unknown;
+  createAutomaticBuildInvocation(input: AutomaticBuildInvocationCreateV1 | import("../../../skills/build/automatic-build-driver").AutomaticBuildInvocationCreateV2): MaybePromise<{
     version: "automatic_build_invocation_ref.v1";
     invocation_ref: string;
   }>;
@@ -468,7 +471,11 @@ function collectStrings(value: unknown, found: string[] = []): string[] {
 
 function expectRootSafeStep(response: AutomaticBuildStepResponseV1, secrets: string[] = []): void {
   expect(response.version).toBe("automatic_build_step.v1");
-  expect(Object.keys(response).sort()).toEqual(["action", "version"]);
+  expect(Object.keys(response).sort()).toEqual([
+    "action", ...("book_structure_progress" in response ? ["book_structure_progress"] : []), "build_progress", "version",
+  ]);
+  expect(response.build_progress?.status).toBe(response.action.kind === "DONE" ? "complete"
+    : response.action.kind === "NEEDS_USER" ? "needs_user" : "running");
   expect(ROOT_ACTION_KINDS).toContain(response.action.kind);
   expect(collectForbiddenFields(response)).toEqual([]);
   const strings = collectStrings(response);
@@ -852,7 +859,49 @@ async function exhaustedRetryBoundary(
   };
 }
 
+// Disk-heavy cases otherwise keep scheduling Promise microtasks across test boundaries,
+// starving the runner's IPC acknowledgements despite each assertion completing.
+afterEach(async () => { await yieldToRunner(); });
+
 describe("S0 deterministic automatic-build driver protocol", () => {
+  it("persists explicit V2 Codex selection and rejects mixed record versions and incomplete DSH configuration", async () => {
+    const driver = expectedDriver();
+    const value = fixture("execution-profile-v2");
+    const prior = process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
+    const registry = path.join(value.root, "profile-registry");
+    process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = registry;
+    try {
+      const input = {
+        version: "automatic_build_invocation_create.v2" as const,
+        target_input: value.source, root_dir: value.root, build_plan_path: value.buildPlanPath,
+        quality_profile: "full" as const, max_parallel: 1 as const, created_at: "2026-09-26T00:00:00.000Z",
+        execution_profile: { profile_id: "codex_mcp_v3" as const, profile_revision: 1 as const },
+      };
+      const invocation = await driver.createAutomaticBuildInvocation(input);
+      const file = path.join(registry, "invocations", `${invocation.invocation_ref}.json`);
+      const record = JSON.parse(readFileSync(file, "utf8"));
+      expect(record.version).toBe("automatic_build_invocation_record.v2");
+      expect(record.input.execution_profile).toEqual(input.execution_profile);
+      const response = await driver.automaticBuildStep({ version: "automatic_build_step_request.v1",
+        invocation_ref: invocation.invocation_ref, available_agent_slots: 1 });
+      expect(response.action.kind).toBe("SPAWN_EXECUTORS");
+      writeFileSync(file, JSON.stringify({ ...record, version: "automatic_build_invocation_record.v1" }));
+      await expect(Promise.resolve().then(() => driver.automaticBuildStep({ version: "automatic_build_step_request.v1",
+        invocation_ref: invocation.invocation_ref, available_agent_slots: 1 }))).rejects.toThrow(/versions do not match/);
+      await expect(Promise.resolve().then(() => driver.createAutomaticBuildInvocation({ ...input,
+        execution_profile: { profile_id: "dsh_native_v4", profile_revision: 1 } }))).rejects.toThrow(/runtime/);
+      await expect(Promise.resolve().then(() => driver.createAutomaticBuildInvocation({ ...input,
+        version: "automatic_build_invocation_create.v1" } as never))).rejects.toThrow(/fields/);
+      const legacy = await createInvocation(driver, value);
+      const legacyRecord = JSON.parse(readFileSync(path.join(registry, "invocations", `${legacy.invocation_ref}.json`), "utf8"));
+      expect(legacyRecord.version).toBe("automatic_build_invocation_record.v1");
+      expect(legacyRecord.input).not.toHaveProperty("execution_profile");
+    } finally {
+      if (prior === undefined) delete process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
+      else process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = prior;
+    }
+  });
+
   it("uses the confirmed BuildPlan book id for a non-ASCII source throughout the driver", async () => {
     const driver = expectedDriver();
     const value = fixture("confirmed-book-id");
@@ -882,6 +931,18 @@ describe("S0 deterministic automatic-build driver protocol", () => {
 
     expect(response.action.kind).toBe("SPAWN_EXECUTORS");
     expectRootSafeStep(response, [value.root, value.source, value.buildPlanPath, "PRIVATE_DRIVER_INPUT"]);
+    expect(response).toMatchObject({ build_progress: {
+      version: "automatic_build_progress.v1",
+      status: "running",
+      private_artifact_count: 0,
+      current_stage: "pass1",
+      stages: value.buildPlan.public_stage_closure.map(stage => stage === "pass1"
+        ? { stage, status: "pending", work: { scope: "discovered", total: 1, eligible: 1,
+          committed: 0, pending: 1, skipped: 0 } }
+        : { stage, status: "awaiting_dependencies" }),
+      current_stage_forecast: { stage: "pass1", remaining_dispatches: 1,
+        service_time: { scope: "current_stage_service_only", confidence: "low", sample_count: 0 } },
+    } });
     const snapshotRead = vi.spyOn(buildOrchestrator, "routeAutomaticBuildSnapshot");
     const replayed = await driver.automaticBuildStep({
       version: "automatic_build_step_request.v1",
@@ -1131,16 +1192,31 @@ describe("S0 deterministic automatic-build driver protocol", () => {
     const invocation = await createInvocation(driver, value, { max_parallel: 3 });
     const target = resolveAutomaticBuildTarget(value.source, value.root);
     type Generation = Extract<AutomaticBuildExecutorSessionResponseV3["action"], { kind: "GENERATE" }>;
-    const live = new Map<string, { ref: string; generated: Generation;
+    const live = new Map<string, { ref: string; child: string; generated: Generation;
       call: (name: string, args: unknown) => AutomaticBuildExecutorSessionResponseV3 }>();
     const completed = new Set<string>();
     const children = new Set<ReturnType<typeof createBuildExecutorMcpSession>>();
     const units = new Set<string>();
-    const refill = async () => {
-      const step = await driver.automaticBuildStep({ version: "automatic_build_step_request.v1",
-        invocation_ref: invocation.invocation_ref, available_agent_slots: (3 - live.size) as 1 | 2 | 3 });
+    const refill = async (terminal?: string) => {
+      const response = driver.runAutomaticBuildDriverCommand({ version: "automatic_build_refill_request.v1",
+        invocation_ref: invocation.invocation_ref, capacity_limit: 3,
+        live_by_slot: Object.fromEntries([...live].map(([slot, value]) => [slot,
+          { child: value.child, opaque_handoff_ref: value.ref }])),
+        completed_refs: [...completed], terminal_children: terminal ? [terminal] : [],
+      }) as import("../../../skills/build/automatic-build-refill").AutomaticBuildRefillResponseV1;
+      expect(response.version).toBe("automatic_build_refill.v1");
+      expect(response.available_agent_slots).toBe(terminal ? 1 : 3);
+      for (const [slot, value] of live) if (value.child === terminal) live.delete(slot);
+      expect(Object.keys(response.live_by_slot)).toEqual([...live.keys()]);
+      for (const ref of response.completed_refs) completed.add(ref);
+      const step = response.step;
       if (step.action.kind !== "SPAWN_EXECUTORS") throw new Error(JSON.stringify(step.action));
-      for (const launch of [...step.action.executors, ...step.action.executors]) {
+      const work = step.build_progress?.stages.find(stage => stage.stage === "pass1")?.work;
+      expect(work?.committed).toBe(completed.size);
+      expect(work?.pending).toBe(work!.eligible - completed.size);
+      expect(step.build_progress?.status).toBe("running");
+      expect(response.ready_executors).toHaveLength(terminal ? 1 : 3);
+      for (const launch of response.ready_executors) {
         const slot = launch.dispatch_slot_ref!;
         if (live.has(slot) || completed.has(launch.opaque_handoff_ref) || live.size === 3) continue;
         const child = createBuildExecutorMcpSession({
@@ -1170,14 +1246,14 @@ describe("S0 deterministic automatic-build driver protocol", () => {
         });
         if (generated.action.kind !== "GENERATE") throw new Error("expected generation");
         expect(id).toBe(3);
-        live.set(slot, { ref: launch.opaque_handoff_ref, call, generated: generated.action });
+        live.set(slot, { ref: launch.opaque_handoff_ref, child: `child-${children.size}`, call, generated: generated.action });
         await new Promise<void>(resolve => setImmediate(resolve));
       }
       expect(live.size).toBe(3);
     };
     await refill();
     for (let count = 0; count < 6; count++) {
-      const [slot, { ref, call, generated }] = [...live][count % live.size]!;
+      const [slot, { ref, child, call, generated }] = [...live][count === 0 ? 2 : count % live.size]!;
       const others = [...live].filter(([key]) => key !== slot);
       if (!("work_unit_id" in generated.output_contract)) throw new Error("expected public contract");
       expect(generated.semantic_attempt).toBe(1);
@@ -1192,12 +1268,13 @@ describe("S0 deterministic automatic-build driver protocol", () => {
       if (state.state === "finished") throw new Error("expected active dispatch");
       expect(state.task_receipts.some(receipt => receipt.state === "committed"
         && receipt.work_unit_id === facts.recovery_identity.current_work_unit_id)).toBe(true);
-      live.delete(slot);
-      completed.add(ref);
       await new Promise<void>(resolve => setImmediate(resolve));
       if (count < 3) {
-        await refill();
+        await refill(child);
         for (const [key, owned] of others) expect(live.get(key)).toBe(owned);
+      } else {
+        live.delete(slot);
+        completed.add(ref);
       }
     }
     expect(units.size).toBe(6);

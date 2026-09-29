@@ -10,6 +10,10 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+});
+
 test("rich answer uses bound static/dynamic sources, one frame, responsive layout and theme", async ({ page }, info) => {
   await page.setViewportSize({ width: 1100, height: 850 });
   await page.goto("/agent-presentation-visual.html");
@@ -63,6 +67,39 @@ test("rich answer uses bound static/dynamic sources, one frame, responsive layou
   await page.screenshot({ path: info.outputPath("narrow-theme.png") });
   await page.getByText("文字说明与来源", { exact: true }).click();
   await expect(page.locator(".readable-text")).toContainText("需要三处证据");
+});
+
+test("validation and save notices keep the same frame position and load", async ({ page }) => {
+  await page.setViewportSize({ width: 640, height: 680 });
+  await page.goto("/agent-presentation-visual.html");
+  const frame = page.frameLocator(".agent-presentation iframe");
+  await expect(frame.locator("#result")).toBeVisible();
+  const iframe = page.locator(".agent-presentation iframe");
+  const before = await iframe.boundingBox();
+  const loads = await iframe.getAttribute("data-load-count");
+  let release!: () => void;
+  let entered!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const pending = new Promise<void>(resolve => { entered = resolve; });
+  await page.route("**/api/agent/presentation.observe", async route => {
+    entered(); await gate;
+    const response = await route.fetch({ url: "http://127.0.0.1:4175/agent/presentation.observe" });
+    await route.fulfill({ response });
+  }, { times: 1 });
+  await frame.locator("#complete").click();
+  await pending;
+  await expect(iframe).toBeVisible();
+  expect(await iframe.boundingBox()).toEqual(before);
+  expect(await iframe.getAttribute("data-load-count")).toBe(loads);
+  await expect(page.getByText("正在准备内容…")).toHaveCount(0);
+  release();
+  await expect(frame.locator("#result")).toHaveText("1");
+  await frame.locator("#evidence-count").evaluate((node: HTMLInputElement) => {
+    node.value = "1"; node.dispatchEvent(new Event("input", { bubbles: true })); node.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await expect(page.getByText("现场已保存", { exact: true })).toBeVisible();
+  expect(await iframe.boundingBox()).toEqual(before);
+  expect(await iframe.getAttribute("data-load-count")).toBe(loads);
 });
 
 for (const [button, notice] of [["invalid", "文字或来源无法显示"], ["locator", "文字或来源无法显示"], ["crash", "运行出错"]]) {

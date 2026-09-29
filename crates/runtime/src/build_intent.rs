@@ -387,6 +387,8 @@ pub fn plan_build_intent_candidate(
     let planner_blueprints = bounded_blueprint_registry(request.available_blueprints);
     let value = adapter
         .complete_structured(CompletionRequest {
+            output_token_limit: None,
+            reasoning_effort: None,
             system: PLANNER_SYSTEM.into(),
             user: serde_json::json!({
                 "user_goal": request.user_goal,

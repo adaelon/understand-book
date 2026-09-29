@@ -94,6 +94,9 @@ pub enum ObservationCoverage {
 pub struct TokenUsage {
     pub input_tokens: Option<u32>,
     pub output_tokens: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub reasoning_output_tokens: Option<u32>,
     pub cached_input_tokens: Option<u32>,
     pub cache_creation_input_tokens: Option<u32>,
     pub total_tokens: Option<u32>,
@@ -106,6 +109,7 @@ impl TokenUsage {
         Self {
             input_tokens: None,
             output_tokens: None,
+            reasoning_output_tokens: None,
             cached_input_tokens: None,
             cache_creation_input_tokens: None,
             total_tokens: None,
@@ -122,6 +126,7 @@ impl TokenUsage {
         Self {
             input_tokens: usage.input_tokens,
             output_tokens: usage.output_tokens,
+            reasoning_output_tokens: usage.reasoning_output_tokens,
             cached_input_tokens: usage.cached_input_tokens,
             cache_creation_input_tokens: usage.cache_creation_input_tokens,
             total_tokens: usage.total_tokens,
@@ -235,6 +240,7 @@ impl ObservationEnvelope {
         let usage_values = [
             self.usage.input_tokens,
             self.usage.output_tokens,
+            self.usage.reasoning_output_tokens,
             self.usage.cached_input_tokens,
             self.usage.cache_creation_input_tokens,
             self.usage.total_tokens,

@@ -1,0 +1,336 @@
+{
+  "samples": [
+    {
+      "name": "before",
+      "elapsed_ms": 27765.328999999998,
+      "next": "extract",
+      "stages": [
+        {
+          "stage": "pass1",
+          "pending": 0,
+          "units": 198
+        },
+        {
+          "stage": "profile_sidecar",
+          "pending": 422,
+          "units": 1323
+        }
+      ],
+      "counts": {
+        "existsSync:other": {
+          "calls": 2476,
+          "ms": 161.02380000005132
+        },
+        "statSync:other": {
+          "calls": 6,
+          "ms": 3.163000000000011
+        },
+        "readFileSync:other": {
+          "calls": 11,
+          "ms": 51.99250000000029
+        },
+        "readdirSync:other": {
+          "calls": 2,
+          "ms": 1.754999999998745
+        },
+        "existsSync:pass1": {
+          "calls": 4759,
+          "ms": 1680.959499999939
+        },
+        "readdirSync:pass1": {
+          "calls": 1392,
+          "ms": 622.2500000000014
+        },
+        "readFileSync:pass1": {
+          "calls": 1804,
+          "ms": 1002.0193999999933
+        },
+        "existsSync:sidecar": {
+          "calls": 24445,
+          "ms": 9556.721899999917
+        },
+        "readdirSync:sidecar": {
+          "calls": 6559,
+          "ms": 3067.8707999999733
+        },
+        "readFileSync:sidecar": {
+          "calls": 10663,
+          "ms": 6053.747600000066
+        }
+      }
+    },
+    {
+      "name": "after-active-leases",
+      "elapsed_ms": 12148.0833,
+      "next": "extract",
+      "stages": [
+        {
+          "stage": "pass1",
+          "pending": 0,
+          "units": 198
+        },
+        {
+          "stage": "profile_sidecar",
+          "pending": 422,
+          "units": 1323
+        }
+      ],
+      "counts": {
+        "existsSync:other": {
+          "calls": 1341,
+          "ms": 91.77789999997958
+        },
+        "statSync:other": {
+          "calls": 6,
+          "ms": 2.6796999999996842
+        },
+        "readFileSync:other": {
+          "calls": 11,
+          "ms": 54.45489999999836
+        },
+        "readdirSync:other": {
+          "calls": 2,
+          "ms": 1.696100000000115
+        },
+        "existsSync:pass1": {
+          "calls": 1364,
+          "ms": 559.6033999999877
+        },
+        "readdirSync:pass1": {
+          "calls": 198,
+          "ms": 84.77860000000146
+        },
+        "readFileSync:pass1": {
+          "calls": 598,
+          "ms": 282.39800000000514
+        },
+        "existsSync:sidecar": {
+          "calls": 8516,
+          "ms": 3567.5778999999693
+        },
+        "readdirSync:sidecar": {
+          "calls": 937,
+          "ms": 384.1173000000026
+        },
+        "readFileSync:sidecar": {
+          "calls": 4897,
+          "ms": 2326.5396000000464
+        }
+      }
+    },
+    {
+      "name": "step-after-active-leases",
+      "elapsed_ms": 105476.9396,
+      "next": "SPAWN_EXECUTORS",
+      "counts": {
+        "mkdirSync:other": {
+          "calls": 17,
+          "ms": 19.52950000000783
+        },
+        "lstatSync:other": {
+          "calls": 99,
+          "ms": 43.915600000041195
+        },
+        "readFileSync:other": {
+          "calls": 110,
+          "ms": 231.68909999999596
+        },
+        "existsSync:other": {
+          "calls": 4337,
+          "ms": 277.24629999969375
+        },
+        "statSync:other": {
+          "calls": 30,
+          "ms": 13.658199999998942
+        },
+        "readdirSync:other": {
+          "calls": 23,
+          "ms": 16.446199999991222
+        },
+        "existsSync:pass1": {
+          "calls": 15090,
+          "ms": 4802.873400000247
+        },
+        "readdirSync:pass1": {
+          "calls": 3580,
+          "ms": 1413.0615000001235
+        },
+        "readFileSync:pass1": {
+          "calls": 7388,
+          "ms": 3359.6434999997928
+        },
+        "existsSync:sidecar": {
+          "calls": 120060,
+          "ms": 39335.11799999974
+        },
+        "readdirSync:sidecar": {
+          "calls": 35896,
+          "ms": 15268.579600001314
+        },
+        "readFileSync:sidecar": {
+          "calls": 56334,
+          "ms": 26187.876200000315
+        },
+        "writeFileSync:other": {
+          "calls": 4,
+          "ms": 4.4746999999915715
+        },
+        "writeFileSync:sidecar": {
+          "calls": 9,
+          "ms": 10.194800000012037
+        },
+        "lstatSync:sidecar": {
+          "calls": 56,
+          "ms": 27.59220000001369
+        },
+        "mkdirSync:sidecar": {
+          "calls": 8,
+          "ms": 9.72290000000794
+        }
+      }
+    },
+    {
+      "name": "step-after-scoped-reads",
+      "elapsed_ms": 41685.2089,
+      "next": "SPAWN_EXECUTORS",
+      "counts": {
+        "mkdirSync:other": {
+          "calls": 17,
+          "ms": 19.529299999965588
+        },
+        "lstatSync:other": {
+          "calls": 99,
+          "ms": 42.39140000000771
+        },
+        "readFileSync:other": {
+          "calls": 106,
+          "ms": 212.8167999998841
+        },
+        "existsSync:other": {
+          "calls": 1866,
+          "ms": 163.1620999998413
+        },
+        "statSync:other": {
+          "calls": 30,
+          "ms": 12.917900000029476
+        },
+        "readdirSync:other": {
+          "calls": 8,
+          "ms": 5.468799999987823
+        },
+        "existsSync:pass1": {
+          "calls": 5359,
+          "ms": 2146.1659000000363
+        },
+        "readdirSync:pass1": {
+          "calls": 1196,
+          "ms": 586.8319999999221
+        },
+        "readFileSync:pass1": {
+          "calls": 2995,
+          "ms": 1727.3324000001885
+        },
+        "existsSync:sidecar": {
+          "calls": 30030,
+          "ms": 12556.307900001106
+        },
+        "readdirSync:sidecar": {
+          "calls": 5912,
+          "ms": 2910.0744000007253
+        },
+        "readFileSync:sidecar": {
+          "calls": 19003,
+          "ms": 11386.361600000411
+        },
+        "writeFileSync:other": {
+          "calls": 4,
+          "ms": 46.138300000020536
+        },
+        "writeFileSync:sidecar": {
+          "calls": 9,
+          "ms": 8.607399999993504
+        },
+        "lstatSync:sidecar": {
+          "calls": 56,
+          "ms": 28.09109999994689
+        },
+        "mkdirSync:sidecar": {
+          "calls": 8,
+          "ms": 10.306499999991502
+        }
+      }
+    },
+    {
+      "name": "step-final",
+      "elapsed_ms": 22288.7963,
+      "next": "SPAWN_EXECUTORS",
+      "counts": {
+        "mkdirSync:other": {
+          "calls": 17,
+          "ms": 19.181600000010803
+        },
+        "lstatSync:other": {
+          "calls": 99,
+          "ms": 43.56470000004629
+        },
+        "readFileSync:other": {
+          "calls": 106,
+          "ms": 215.04239999994752
+        },
+        "existsSync:other": {
+          "calls": 1866,
+          "ms": 137.7122000000527
+        },
+        "statSync:other": {
+          "calls": 30,
+          "ms": 13.151599999968312
+        },
+        "readdirSync:other": {
+          "calls": 8,
+          "ms": 5.384299999997893
+        },
+        "existsSync:pass1": {
+          "calls": 1763,
+          "ms": 816.1367000000027
+        },
+        "readdirSync:pass1": {
+          "calls": 597,
+          "ms": 290.55749999990076
+        },
+        "readFileSync:pass1": {
+          "calls": 995,
+          "ms": 507.64620000000286
+        },
+        "existsSync:sidecar": {
+          "calls": 13164,
+          "ms": 5572.3944000003685
+        },
+        "readdirSync:sidecar": {
+          "calls": 3101,
+          "ms": 1472.9657999998308
+        },
+        "readFileSync:sidecar": {
+          "calls": 9561,
+          "ms": 4733.905899999794
+        },
+        "writeFileSync:other": {
+          "calls": 4,
+          "ms": 4.375700000018696
+        },
+        "writeFileSync:sidecar": {
+          "calls": 9,
+          "ms": 7.30979999997362
+        },
+        "lstatSync:sidecar": {
+          "calls": 56,
+          "ms": 25.869100000039907
+        },
+        "mkdirSync:sidecar": {
+          "calls": 8,
+          "ms": 8.110999999989872
+        }
+      }
+    }
+  ],
+  "semantic_model_calls": 0
+}

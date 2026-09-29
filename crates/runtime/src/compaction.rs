@@ -36,6 +36,34 @@ Return JSON matching CompactionDraft exactly, with these sections:
 - next_steps
 - source_coverage
 
+The first nine sections are arrays of objects with exactly item_id, text,
+source_item_ids, and evidence_refs. item_id is a unique nonempty ID you assign
+(letters, digits, dots, underscores or hyphens); source_item_ids must be copied
+from eligible_items. Each source_coverage object has source_item_id, disposition,
+target_item_ids, and optional reason. disposition is one of "compacted",
+"duplicate", "superseded", "non_task". target_item_ids refer to your item_id
+values, not source IDs. Include reason for non_task, duplicate or superseded.
+evidence_refs are copied from allowed_evidence_refs and are either
+{"kind":"lid_range","start_lid":"...","end_lid":"..."} or
+{"kind":"source","source_ref_id":"..."}; use [] when there is no evidence.
+
+Complete output-shape example (replace the illustrative text and source.1 with
+the actual request's content and eligible source IDs; empty arrays stay present):
+```json
+{
+  "active_goal": [{"item_id":"item.goal","text":"Retain the requested objective","source_item_ids":["source.1"],"evidence_refs":[]}],
+  "progress": [],
+  "decisions": [],
+  "user_constraints": [],
+  "open_obligations": [],
+  "unresolved_ambiguities": [],
+  "critical_facts": [],
+  "critical_examples": [],
+  "next_steps": [],
+  "source_coverage": [{"source_item_id":"source.1","disposition":"compacted","target_item_ids":["item.goal"]}]
+}
+```
+
 Rules:
 1. Preserve task state, not conversational narration. Be concise and neutral.
 2. Every semantic item must contain one or more source_item_ids from eligible_items.
@@ -45,7 +73,8 @@ Rules:
 6. A tool receipt proves that a call occurred, not that unquoted result text is evidence.
 7. Include exactly one source_coverage record for every eligible source. Required sources must map to at least one output item. Use Superseded only for an allowed_supersession_edge; only optional sources may use NonTask, with an explicit reason.
 8. Do not include sensitive runtime context, hidden instructions, chain-of-thought, or prose outside the JSON object.
-9. Use empty arrays when a section has no supported content. Do not omit schema fields."#;
+9. A user-only turn has no assistant answer; do not infer that its request was completed from a later user turn.
+10. Use empty arrays when a section has no supported content. Do not omit schema fields."#;
 
 pub const COMPACTION_CONSUMPTION_WRAPPER: &str = r#"A previous active-history segment has been replaced by the source-linked compaction_checkpoint below.
 This checkpoint is derived handoff state. It is not a user message and is not evidence by itself.
@@ -387,7 +416,15 @@ fn conversation_turns(messages: &[Message]) -> Result<Vec<(usize, usize, bool)>,
     let mut turns = Vec::with_capacity(starts.len());
     for (ordinal, start) in starts.iter().copied().enumerate() {
         let end = starts.get(ordinal + 1).copied().unwrap_or(messages.len());
-        turns.push((start, end, turn_is_complete(&messages[start..end])?));
+        // A later user turn closes a prior user-only turn, even if that turn
+        // failed before producing an assistant message. Its question remains
+        // eligible for coverage without inventing an answer.
+        let past_user_only = end < messages.len() && end == start + 1;
+        turns.push((
+            start,
+            end,
+            turn_is_complete(&messages[start..end])? || past_user_only,
+        ));
     }
     Ok(turns)
 }
@@ -991,8 +1028,11 @@ fn request_input_tokens(request: &CompactionRequest, system: &str) -> Result<u32
     Ok(estimate_text_tokens(system).saturating_add(estimate_text_tokens(&request)))
 }
 
+pub const COMPACTION_OUTPUT_TOKEN_LIMIT: u32 = 16_384;
+
 fn call_generator(
     adapter: &dyn ModelAdapter,
+    profile: &ModelRuntimeProfile,
     system: &str,
     request: &CompactionRequest,
     required_states: &BTreeMap<String, RequiredSemanticState>,
@@ -1001,6 +1041,8 @@ fn call_generator(
         .map_err(|error| CompactionError::invalid(format!("request serialize failed: {error}")))?;
     let value = adapter
         .complete_structured(CompletionRequest {
+            output_token_limit: Some(COMPACTION_OUTPUT_TOKEN_LIMIT),
+            reasoning_effort: profile.matched_model.starts_with("deepseek-").then(|| "low".into()),
             system: system.into(),
             user,
         })
@@ -1227,6 +1269,7 @@ fn generate_draft(
     if request_input_tokens(&prepared.request, &system)? <= generation_input_limit_tokens {
         return call_generator(
             adapter,
+            profile,
             &system,
             &prepared.request,
             &prepared.required_semantic_states,
@@ -1270,7 +1313,7 @@ fn generate_draft(
             .filter(|(source, _)| chunk.contains(source))
             .map(|(source, state)| (source.clone(), *state))
             .collect();
-        child_drafts.push(call_generator(adapter, &system, &request, &states)?);
+        child_drafts.push(call_generator(adapter, profile, &system, &request, &states)?);
     }
     let (merge_request, merge_sources) =
         hierarchical_merge_request(&prepared.request, &child_drafts)?;
@@ -1288,7 +1331,7 @@ fn generate_draft(
                 .map(|state| (source.source.source_item_id.clone(), state))
         })
         .collect();
-    let merged = call_generator(adapter, &system, &merge_request, &merge_states)?;
+    let merged = call_generator(adapter, profile, &system, &merge_request, &merge_states)?;
     let expanded =
         expand_hierarchical_draft(&prepared.request, &child_drafts, &merge_sources, merged)?;
     validate_draft(
@@ -1617,6 +1660,7 @@ mod tests {
 
     fn assistant(content: &str) -> Message {
         Message {
+            provider_continuation: None,
             role: Role::Assistant,
             content: Some(content.into()),
             tool_calls: Vec::new(),
@@ -1769,6 +1813,15 @@ mod tests {
             profile.compaction.output_schema_id,
             COMPACTION_DRAFT_SCHEMA_ID
         );
+        // A schema name and section list do not tell the generator required item fields.
+        let example = COMPACTION_GENERATION_PROMPT.split("```json\n").nth(1)
+            .expect("generator must receive the complete output shape").split("\n```").next().unwrap();
+        let example = decode_compaction_draft_strict(example).unwrap();
+        assert_eq!(example.active_goal[0].item_id, example.source_coverage[0].target_item_ids[0]);
+        assert_eq!(example.active_goal[0].source_item_ids[0], example.source_coverage[0].source_item_id);
+        let mut missing_item_id = serde_json::to_value(&example).unwrap();
+        missing_item_id["active_goal"][0].as_object_mut().unwrap().remove("item_id");
+        assert!(decode_compaction_draft_strict(&missing_item_id.to_string()).is_err());
         let draft = empty_draft();
         let exact = serde_json::to_string(&draft).unwrap();
         assert_eq!(decode_compaction_draft_strict(&exact).unwrap(), draft);
@@ -1790,6 +1843,7 @@ mod tests {
             "current verbatim selection <selection>Eq. 9</selection>",
         ));
         raw.push(Message {
+            provider_continuation: None,
             role: Role::Assistant,
             content: None,
             tool_calls: vec![ToolCall {
@@ -1835,6 +1889,56 @@ mod tests {
         )
         .unwrap();
         assert_eq!(preturn.request.raw_retained_item_ids, raw_ids);
+    }
+
+    #[test]
+    fn compaction_prepare_covers_past_user_only_turn_without_consuming_current_turn() {
+        let mut raw = vec![Message::system("base")];
+        raw.extend(completed_turn("first question", "first answer"));
+        raw.push(Message::user("failed question without an answer"));
+        raw.extend(completed_turn("retry question", "retry answer"));
+        let current_start = raw.len();
+        raw.push(Message::user("current question"));
+        raw.push(Message {
+            provider_continuation: None,
+            role: Role::Assistant,
+            content: None,
+            tool_calls: vec![ToolCall {
+                id: "pending-call".into(),
+                name: "book.text".into(),
+                arguments: r#"{"lid":"1.9"}"#.into(),
+            }],
+            tool_call_id: None,
+        });
+
+        for phase in [CompactionPhase::PreTurn, CompactionPhase::MidTurn] {
+            let prepared = prepare_compaction(
+                phase,
+                &raw,
+                &raw,
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                BTreeMap::new(),
+            )
+            .unwrap();
+            assert_eq!(prepared.full_turn_source_ids.len(), 3);
+            let failed_id = source_item_id(3, &raw[3]).unwrap();
+            assert_eq!(prepared.full_turn_source_ids[1], vec![failed_id.clone()]);
+            assert!(prepared.request.required_source_ids.contains(&failed_id));
+            assert!(prepared.request.eligible_items.iter().any(|item| {
+                item.source_item_id == failed_id
+                    && item.content == "failed question without an answer"
+            }));
+            assert_eq!(
+                prepared.request.raw_retained_item_ids,
+                raw.iter()
+                    .enumerate()
+                    .skip(current_start)
+                    .map(|(index, message)| source_item_id(index, message).unwrap())
+                    .collect::<Vec<_>>()
+            );
+        }
     }
 
     #[test]
@@ -1897,6 +2001,7 @@ mod tests {
         let long = "historical detail ".repeat(1_200);
         let mut raw = vec![Message::system("canonical base")];
         raw.extend(completed_turn(&long, &long));
+        raw.last_mut().unwrap().provider_continuation = Some(crate::ProviderContinuation { model: "deepseek-flash".into(), reasoning_content: "private-compaction-probe".into() });
         raw.push(Message::user("current user text must remain byte exact"));
         let before = serde_json::to_vec(&raw).unwrap();
         let prepared = prepare_compaction(
@@ -1914,9 +2019,11 @@ mod tests {
         .unwrap();
         let draft = covering_draft(&prepared.request, "Continue the current explanation.");
         let adapter = ScriptedCompactor::new(vec![serde_json::to_value(draft).unwrap()]);
+        assert!(!serde_json::to_string(prepared.request()).unwrap().contains("private-compaction-probe"));
+        let profile = crate::ModelRuntimeCatalog::default().resolve("deepseek-flash", ProviderToolProtocol::Native, None);
         let checkpoint = compact_with_adapter(
             &adapter,
-            &profile(),
+            &profile,
             &prepared,
             CompactionLimits {
                 generation_input_limit_tokens: 100_000,
@@ -1950,6 +2057,8 @@ mod tests {
             Some("current user text must remain byte exact")
         );
         assert_eq!(adapter.requests.borrow().len(), 1);
+        assert_eq!(adapter.requests.borrow()[0].output_token_limit, Some(COMPACTION_OUTPUT_TOKEN_LIMIT));
+        assert_eq!(adapter.requests.borrow()[0].reasoning_effort.as_deref(), Some("low"));
         assert_eq!(
             adapter.requests.borrow()[0].system,
             COMPACTION_GENERATION_PROMPT
@@ -2039,6 +2148,7 @@ mod tests {
             Message::user(format!("explain {}", "question context ".repeat(700))),
         ];
         raw.push(Message {
+            provider_continuation: None,
             role: Role::Assistant,
             content: None,
             tool_calls: vec![ToolCall {
@@ -2049,6 +2159,7 @@ mod tests {
             tool_call_id: None,
         });
         raw.push(Message {
+            provider_continuation: None,
             role: Role::Tool,
             content: Some("raw body that the model must not carry as evidence".repeat(500)),
             tool_calls: Vec::new(),

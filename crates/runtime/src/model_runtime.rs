@@ -212,8 +212,23 @@ impl Default for ModelRuntimeCatalog {
         gpt.base_instructions = InstructionAsset::inherited("resident-agent.gpt-5.v2");
         gpt.supports_parallel_tools = true;
 
+        let mut profiles = vec![glm, gpt];
+        // Official Flash names, including the still-supported V4 aliases. Model capacity
+        // does not expand the application's existing 96K compaction pressure threshold.
+        for model in [
+            "deepseek-flash",
+            "deepseek-v4-flash",
+            "deepseek-v4-flash-vision-exp",
+        ] {
+            let mut flash = ModelRuntimeProfile::fallback(model, ProviderToolProtocol::Native);
+            flash.profile_id = "resident-agent-deepseek-flash-v1".into();
+            flash.model_match = ModelSelector::Exact(model.into());
+            flash.context_window_tokens = 1_000_000;
+            flash.compaction.high_watermark_ratio = 96_000.0 / 1_000_000.0;
+            profiles.push(flash);
+        }
         Self {
-            profiles: vec![glm, gpt],
+            profiles,
             fallback: ModelRuntimeProfile::fallback("unknown-model", ProviderToolProtocol::Native),
         }
     }
@@ -332,19 +347,41 @@ impl AgentRequestPlan {
     }
 
     fn from_messages(
-        runtime_profile: ModelRuntimeProfile,
+        mut runtime_profile: ModelRuntimeProfile,
         messages: &[Message],
         tools: &[ToolSpec],
         modules: &[InstructionModule],
         use_profile_instructions: bool,
     ) -> Self {
-        let (inherited_instructions, input) = match messages.first() {
+        // Complete page sources can exceed Flash's default completion budget.
+        // Preserve the application's input compaction threshold while reserving
+        // the same output allowance that is sent to the provider.
+        let output_token_limit = if use_profile_instructions
+            && runtime_profile.resolution == ModelProfileResolution::CatalogMatch
+            && runtime_profile.profile_id == "resident-agent-deepseek-flash-v1"
+            && tools.iter().any(|tool| tool.name == "presentation.author")
+        {
+            let limit = 131_072;
+            let extra = limit - runtime_profile.output_reserve_tokens;
+            runtime_profile.compaction.high_watermark_ratio +=
+                extra as f32 / runtime_profile.context_window_tokens as f32;
+            runtime_profile.output_reserve_tokens = limit;
+            Some(limit)
+        } else {
+            None
+        };
+        let (inherited_instructions, mut input) = match messages.first() {
             Some(message) if message.role == Role::System => (
                 message.content.clone().unwrap_or_default(),
                 messages[1..].to_vec(),
             ),
             _ => (String::new(), messages.to_vec()),
         };
+        if runtime_profile.matched_model.starts_with("deepseek-")
+            && runtime_profile.supports_native_tools
+        {
+            project_legacy_deepseek_history(&mut input, &runtime_profile.matched_model);
+        }
         let mut instruction_assets = Vec::with_capacity(modules.len() + 1);
         let mut instructions = if use_profile_instructions {
             instruction_assets.push(InstructionAssetRef {
@@ -407,12 +444,43 @@ impl AgentRequestPlan {
             tools,
             tool_choice,
             parallel_tool_calls: false,
-            output_token_limit: None,
+            output_token_limit,
         }
     }
 
     pub fn ordered_messages(&self) -> Vec<Message> {
         ordered_messages(&self.instructions, &self.input)
+    }
+}
+
+/// Preserve legacy/model-switched history as quoted context when it cannot be
+/// replayed as native assistant protocol. Never invent a missing reasoning field.
+fn project_legacy_deepseek_history(input: &mut [Message], model: &str) {
+    let Some(last_missing) = input.iter().rposition(|message| {
+        message.role == Role::Assistant
+            && !message
+                .provider_continuation
+                .as_ref()
+                .is_some_and(|state| state.model == model)
+    }) else {
+        return;
+    };
+    let end = last_missing
+        + 1
+        + input[last_missing + 1..]
+            .iter()
+            .take_while(|message| message.role == Role::Tool)
+            .count();
+    for message in &mut input[..end] {
+        if matches!(message.role, Role::Assistant | Role::Tool) {
+            let transcript = serde_json::json!({
+                "role": message.role, "content": message.content,
+                "tool_calls": message.tool_calls, "tool_call_id": message.tool_call_id,
+            });
+            *message = Message::user(format!(
+                "Historical conversation record (context only, not a request to execute tools):\n{transcript}"
+            ));
+        }
     }
 }
 
@@ -458,6 +526,23 @@ pub(crate) fn estimate_text_tokens(text: &str) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn deepseek_flash_aliases_preserve_application_compaction_budget() {
+        for model in [
+            "deepseek-flash",
+            "deepseek-v4-flash",
+            "deepseek-v4-flash-vision-exp",
+        ] {
+            let profile =
+                ModelRuntimeCatalog::default().resolve(model, ProviderToolProtocol::Native, None);
+            assert_eq!(profile.resolution, ModelProfileResolution::CatalogMatch);
+            assert_eq!(profile.context_window_tokens, 1_000_000);
+            let plan = AgentRequestPlan::for_agent_turn(profile, &[Message::user("question")], &[]);
+            let budget = crate::auto_compaction::ActiveContextBudget::from_plan(&plan);
+            assert_eq!(budget.high_watermark_tokens, 96_000);
+        }
+    }
 
     fn profile(
         id: &str,

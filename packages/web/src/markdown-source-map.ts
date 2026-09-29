@@ -171,7 +171,8 @@ function katexMarkdown(element: Element): string {
   const annotation = element.querySelector('annotation[encoding="application/x-tex"]');
   const latex = annotation?.textContent ?? "";
   if (!latex) return "";
-  return element.closest(".katex-display") ? `$$${latex}$$` : `$${latex}$`;
+  const delimiter = element.closest(".katex-display") && !element.closest('[data-formula-delimiter="single"]') ? "$$" : "$";
+  return `${delimiter}${latex}${delimiter}`;
 }
 
 function projectDom(root: Node): DomProjection {

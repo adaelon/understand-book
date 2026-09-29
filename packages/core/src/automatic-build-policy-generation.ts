@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { CODEX_EXECUTOR_TRANSPORT_PROFILE_V2 } from "./executor-transport";
+import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "./build-execution-profile";
 import { inspectAutomaticBuildTaskClaim } from "./automatic-build-lease";
 import { automaticBuildLegacyStageArtifactPath } from "./automatic-build-legacy";
 import {
@@ -492,7 +492,7 @@ export function inspectAutomaticBuildStagePolicySet(target: AutomaticBuildTarget
 }
 
 export function readAutomaticBuildCurrentMigration(input: Parameters<typeof recordAutomaticBuildPolicyMigration>[0]) {
-  const identity = { ...currentIdentity(input.target, input.stage, input.current, input.policy_set),
+  const identity = { ...currentIdentity(input.target, input.stage, input.current, input.policy_set, input.execution_profile),
     from_policy_generation_id: input.from_policy_generation_id };
   const receipt = readMigrationReceipt(input.target, input.stage, input.from_policy_generation_id,
     identity.to_policy_generation_id, identity.work_unit_id);
@@ -551,6 +551,7 @@ function currentIdentity(
   stage: SemanticBuildStage,
   current: AutomaticBuildPolicyMigrationCurrent,
   policySet: AutomaticBuildStagePolicySetV3,
+  executionProfile: BuildExecutionProfileV1 = CODEX_BUILD_EXECUTION_PROFILE_V1,
 ): Omit<AutomaticBuildPolicyMigrationIdentityV2, "from_policy_generation_id"> {
   if (current.route === "model") {
     let descriptor: WorkUnitDescriptorV3 | WorkUnitDescriptorV4;
@@ -558,7 +559,7 @@ function currentIdentity(
       descriptor = isWorkUnitDescriptorV4(current.descriptor)
         ? validateWorkUnitDescriptorV4(
             current.descriptor,
-            CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+            executionProfile.transport_profile,
           )
         : validateWorkUnitDescriptorV3(current.descriptor);
     } catch {
@@ -835,6 +836,7 @@ function digestBoundGenerationArtifactForReceipt(
  * continue to accept only explicit policy_generation_id + semantic_contract artifacts.
  */
 export function recordAutomaticBuildPriorGenerationAdoption(input: {
+  execution_profile?: BuildExecutionProfileV1;
   target: AutomaticBuildTarget;
   stage: SemanticBuildStage;
   policy_set: AutomaticBuildStagePolicySetV3;
@@ -845,6 +847,7 @@ export function recordAutomaticBuildPriorGenerationAdoption(input: {
 }
 
 function recordAutomaticBuildPriorGenerationAdoptionPrepared(input: {
+  execution_profile?: BuildExecutionProfileV1;
   target: AutomaticBuildTarget;
   stage: SemanticBuildStage;
   policy_set: AutomaticBuildStagePolicySetV3;
@@ -853,7 +856,7 @@ function recordAutomaticBuildPriorGenerationAdoptionPrepared(input: {
 }): AutomaticBuildPolicyMigrationResult | undefined {
   const policySet = input.policy_set;
   if (policySet.stage !== input.stage) throw new Error("prior-generation policy set stage mismatch");
-  const current = currentIdentity(input.target, input.stage, input.current, policySet);
+  const current = currentIdentity(input.target, input.stage, input.current, policySet, input.execution_profile);
   const candidates = digestBoundGenerationArtifactCandidates(
     input.target,
     input.stage,
@@ -919,6 +922,7 @@ function recordAutomaticBuildPriorGenerationAdoptionPrepared(input: {
 }
 
 export function recordAutomaticBuildPolicyMigration(input: {
+  execution_profile?: BuildExecutionProfileV1;
   target: AutomaticBuildTarget;
   stage: SemanticBuildStage;
   from_policy_generation_id: string;
@@ -932,6 +936,7 @@ export function recordAutomaticBuildPolicyMigration(input: {
 }
 
 function recordAutomaticBuildPolicyMigrationPrepared(input: {
+  execution_profile?: BuildExecutionProfileV1;
   target: AutomaticBuildTarget;
   stage: SemanticBuildStage;
   from_policy_generation_id: string;
@@ -950,7 +955,7 @@ function recordAutomaticBuildPolicyMigrationPrepared(input: {
   let identity: AutomaticBuildPolicyMigrationIdentityV2;
   try {
     identity = {
-      ...currentIdentity(input.target, input.stage, input.current, policySet),
+      ...currentIdentity(input.target, input.stage, input.current, policySet, input.execution_profile),
       from_policy_generation_id: input.from_policy_generation_id,
     };
   } catch (error) {
@@ -1145,6 +1150,7 @@ function adoptedArtifactFresh(
  * original payload/provenance while binding the current proof and policy set.
  */
 export function materializeAdoptedAutomaticBuildGenerationArtifact(input: {
+  execution_profile?: BuildExecutionProfileV1;
   target: AutomaticBuildTarget;
   stage: SemanticBuildStage;
   policy_set: AutomaticBuildStagePolicySetV3;
@@ -1155,7 +1161,7 @@ export function materializeAdoptedAutomaticBuildGenerationArtifact(input: {
   const policySet = validateAutomaticBuildStagePolicySet(input.policy_set);
   const receipt = validateAutomaticBuildPolicyMigrationReceipt(input.target, input.stage, input.receipt);
   const identity = {
-    ...currentIdentity(input.target, input.stage, input.current, policySet),
+    ...currentIdentity(input.target, input.stage, input.current, policySet, input.execution_profile),
     from_policy_generation_id: receipt.from_policy_generation_id,
   };
   if (receipt.decision !== "adopt_exact"
@@ -1228,9 +1234,10 @@ function rebuiltArtifactFresh(
   stage: SemanticBuildStage,
   policySet: AutomaticBuildStagePolicySetV3,
   current: Extract<AutomaticBuildPolicyMigrationCurrent, { route: "model" }>,
+  executionProfile: BuildExecutionProfileV1 = CODEX_BUILD_EXECUTION_PROFILE_V1,
 ): "fresh" | "missing" | "stale" {
   const descriptor = current.descriptor;
-  const identity = currentIdentity(target, stage, current, policySet);
+  const identity = currentIdentity(target, stage, current, policySet, executionProfile);
   const file = automaticBuildGenerationArtifactPath(
     target,
     stage,
@@ -1254,6 +1261,7 @@ function rebuiltArtifactFresh(
 }
 
 export function resolveAutomaticBuildPolicyGeneration(input: {
+  execution_profile?: BuildExecutionProfileV1;
   target: AutomaticBuildTarget;
   stage: SemanticBuildStage;
   from_policy_generation_id: string;
@@ -1272,7 +1280,7 @@ export function resolveAutomaticBuildPolicyGeneration(input: {
   const seen = new Set<string>();
   for (const current of input.current_units) {
     const identity = {
-      ...currentIdentity(input.target, input.stage, current, policySet),
+      ...currentIdentity(input.target, input.stage, current, policySet, input.execution_profile),
       from_policy_generation_id: input.from_policy_generation_id,
     };
     if (seen.has(identity.work_unit_id)) throw new Error("policy generation current work_unit_ids must be unique");
@@ -1322,7 +1330,7 @@ export function resolveAutomaticBuildPolicyGeneration(input: {
       staleUnits.push(identity.work_unit_id);
       continue;
     }
-    const artifact = rebuiltArtifactFresh(input.target, input.stage, policySet, current);
+    const artifact = rebuiltArtifactFresh(input.target, input.stage, policySet, current, input.execution_profile);
     if (artifact === "fresh") rebuiltUnits.push(identity.work_unit_id);
     else if (artifact === "missing") pendingRebuildUnits.push(identity.work_unit_id);
     else staleUnits.push(identity.work_unit_id);

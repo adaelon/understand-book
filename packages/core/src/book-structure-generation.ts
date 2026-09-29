@@ -22,7 +22,7 @@ import {
   type BookStructureUnitExtractionOutput,
   type BookStructureUnitSource,
 } from "./book-structure";
-import { CODEX_EXECUTOR_TRANSPORT_PROFILE_V2 } from "./executor-transport";
+import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "./build-execution-profile";
 import { ExtractorContractError } from "./extractor-contract";
 import {
   automaticBuildGenerationArtifactPath,
@@ -178,6 +178,7 @@ export function renderBookStructureGenerationTaskInput(
 }
 
 export function createBookStructureGenerationTask(input: {
+  execution_profile?: BuildExecutionProfileV1;
   target_ref: BuildTargetRefV2;
   policy_generation_id: string;
   descriptor: WorkUnitDescriptorV4;
@@ -194,7 +195,7 @@ export function createBookStructureGenerationTask(input: {
   }
   const descriptor = validateWorkUnitDescriptorV4(
     input.descriptor,
-    CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+    (input.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1).transport_profile,
   );
   if (!sameTarget(descriptor.target, input.target_ref)
     || descriptor.stage !== "book_structure") {
@@ -257,6 +258,7 @@ function validateBookStructureGenerationTask(
   value: BookStructureGenerationTaskV1,
 ): BookStructureGenerationTaskV1 {
   const canonical = createBookStructureGenerationTask({
+    execution_profile: CODEX_BUILD_EXECUTION_PROFILE_V1,
     target_ref: value.target_ref,
     policy_generation_id: value.policy_generation_id,
     descriptor: value.descriptor,

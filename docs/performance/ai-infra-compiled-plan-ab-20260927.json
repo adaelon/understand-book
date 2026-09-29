@@ -1,0 +1,41 @@
+{
+  "samples": [
+    {
+      "label": "installed_before",
+      "elapsed_ms": 18945.7717,
+      "next": "extract",
+      "summary": [
+        {
+          "stage": "pass1",
+          "pending": 0,
+          "units": 198
+        },
+        {
+          "stage": "profile_sidecar",
+          "pending": 422,
+          "units": 1323
+        }
+      ]
+    },
+    {
+      "label": "compiled_after",
+      "elapsed_ms": 12360.112000000001,
+      "next": "extract",
+      "summary": [
+        {
+          "stage": "pass1",
+          "pending": 0,
+          "units": 198
+        },
+        {
+          "stage": "profile_sidecar",
+          "pending": 422,
+          "units": 1323
+        }
+      ]
+    }
+  ],
+  "pending_ids_equal": true,
+  "semantic_model_calls": 0,
+  "operation": "read-only plan"
+}

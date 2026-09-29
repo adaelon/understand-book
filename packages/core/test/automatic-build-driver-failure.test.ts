@@ -1,13 +1,58 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AutomaticBuildDispatchSettledError } from "../src/automatic-build-dispatch-runtime";
-import { automaticBuildDriverFailureResponse } from "../../../skills/build/automatic-build-driver";
+import { automaticBuildDriverFailureResponse, runAutomaticBuildDriverCommand } from "../../../skills/build/automatic-build-driver";
 
 afterEach(() => vi.unstubAllEnvs());
 
 describe("build driver failure boundary", () => {
+  it.each([{ capacity_limit: "3" }, { open_call_correction: "double-serialized" }])(
+    "rejects malformed refill control before reading invocation state: %j", (invalid) => {
+      const directory = mkdtempSync(path.join(tmpdir(), "build-refill-request-"));
+      const registry = path.join(directory, "untouched-registry");
+      vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", registry);
+      let response: unknown;
+      try {
+        runAutomaticBuildDriverCommand({ version: "automatic_build_refill_request.v1",
+          invocation_ref: `abinv1_${"b".repeat(64)}`, capacity_limit: 3,
+          live_by_slot: {}, completed_refs: [], terminal_children: [], ...invalid });
+      } catch (error) { response = automaticBuildDriverFailureResponse(error); }
+      expect(response).toMatchObject({ version: "automatic_build_request_error.v1", code: "invalid_refill_request" });
+      expect(existsSync(registry)).toBe(false);
+    });
+  const correction = {
+    version: "automatic_build_open_call_correction.v1",
+    issued_handoff_ref: `abhandoff1_${"a".repeat(64)}`,
+    attempted_handoff_ref: "PRIVATE_REJECTED_CALL",
+    request_version: "automatic_build_executor_open_request.v3",
+    field: "opaque_handoff_ref", phase: "open", cause: "invalid_ref",
+    reported_diagnostic: { version: "automatic_build_executor_mcp_error.v2", status: "interrupted",
+      category: "session", diagnostic_code: "invalid_arguments", phase: "open", field: "opaque_handoff_ref" },
+  };
+
+  it.each([
+    ["double-serialized correction", { open_call_correction: JSON.stringify(correction) }],
+    ["correction in the wrong field", { executor_open_failure: correction }],
+  ])("returns a caller-correctable rejection for %s before touching build state", (_label, observation) => {
+    const directory = mkdtempSync(path.join(tmpdir(), "build-driver-request-"));
+    const registry = path.join(directory, "untouched-registry");
+    vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", registry);
+    let response: unknown;
+    try {
+      runAutomaticBuildDriverCommand({ version: "automatic_build_step_request.v1",
+        invocation_ref: `abinv1_${"b".repeat(64)}`, available_agent_slots: 3, ...observation });
+    } catch (error) {
+      response = automaticBuildDriverFailureResponse(error);
+    }
+    expect(response).toMatchObject({ version: "automatic_build_request_error.v1",
+      code: "invalid_step_request", request_version: "automatic_build_step_request.v1" });
+    expect(response).not.toHaveProperty("action");
+    expect(JSON.stringify(response)).not.toContain("PRIVATE_REJECTED_CALL");
+    expect(existsSync(registry)).toBe(false);
+  });
+
   it("rereads state when a dispatch finishes during publication instead of reporting an engine failure", () => {
     expect(automaticBuildDriverFailureResponse(new AutomaticBuildDispatchSettledError("dispatch has no current work unit")))
       .toEqual({ version: "automatic_build_step.v1", action: { kind: "WAIT", reason: "backoff", retry_after_ms: 50 } });
@@ -17,6 +62,7 @@ describe("build driver failure boundary", () => {
     vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", root);
     const error = new Error(`PRIVATE_CANDIDATE_TEXT ${"x".repeat(20_000)}`);
     const response = automaticBuildDriverFailureResponse(error);
+    if (response.version !== "automatic_build_step.v1") throw new Error("expected engine boundary");
     expect(response.action).toMatchObject({ kind: "NEEDS_USER", reason: "build_engine_failed",
       choices: [], projection: { category: "internal", code: "build_step_failed" } });
     expect(JSON.stringify(response)).not.toContain("PRIVATE_CANDIDATE_TEXT");
@@ -33,6 +79,7 @@ describe("build driver failure boundary", () => {
     writeFileSync(file, "occupied");
     vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", file);
     const response = automaticBuildDriverFailureResponse(new Error("PRIVATE_INPUT"));
+    if (response.version !== "automatic_build_step.v1") throw new Error("expected engine boundary");
     expect(response.action).toMatchObject({ kind: "NEEDS_USER", choices: [],
       projection: { code: "build_step_failed_diagnostic_unavailable" } });
     expect(JSON.stringify(response)).not.toContain("PRIVATE_INPUT");

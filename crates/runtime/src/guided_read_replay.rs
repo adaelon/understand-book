@@ -18,7 +18,7 @@ pub const GUIDED_READ_ROUTE_REPLAY_VERSION: &str = "guided_read_route_replay.v1"
 pub const GUIDED_READ_REPLAY_MAX_BYTES: usize = 64 * 1024;
 
 const NAVIGATION_ASSET_ID: &str = "resident-agent.policy.navigation";
-const NAVIGATION_REVISION: &str = "v4";
+const NAVIGATION_REVISION: &str = "v5";
 const MAX_TRACE_STEPS: usize = 64;
 const MAX_ROUTE_LIDS: usize = 512;
 const MAX_TOOL_NAMES: usize = 128;
@@ -1086,6 +1086,7 @@ mod tests {
 
     fn assistant_call(id: &str, name: &str, arguments: &str) -> Message {
         Message {
+            provider_continuation: None,
             role: Role::Assistant,
             content: None,
             tool_calls: vec![ToolCall {
@@ -1099,6 +1100,7 @@ mod tests {
 
     fn tool_result(id: &str, model_body: serde_json::Value) -> Message {
         Message {
+            provider_continuation: None,
             role: Role::Tool,
             content: Some(
                 serde_json::json!({

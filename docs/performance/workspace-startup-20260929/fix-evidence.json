@@ -1,0 +1,61 @@
+{
+  "date": "2026-09-29",
+  "book": "ai-agent-engineering",
+  "environment": "Windows debug server with built web frontend; complete original history in isolated copies",
+  "before": {
+    "readerReadyMs": 9371.0523,
+    "requests": 351,
+    "textRequests": 333
+  },
+  "after": {
+    "readerReadyMs": 1007.9157,
+    "historyReadyMs": 1331.3644999999997,
+    "requests": 59,
+    "textRequests": 40,
+    "history": [
+      {
+        "historyRequest": {
+          "ms": 262.4991,
+          "status": 200,
+          "bytes": 201045
+        },
+        "concurrentStatus": {
+          "ms": 137.88710000000015,
+          "status": 200
+        }
+      },
+      {
+        "historyRequest": {
+          "ms": 220.5684000000001,
+          "status": 200,
+          "bytes": 201045
+        },
+        "concurrentStatus": {
+          "ms": 120.0779,
+          "status": 200
+        }
+      }
+    ],
+    "errors": []
+  },
+  "heldHistory": {
+    "readerVisible": true,
+    "loadingVisible": true,
+    "sendDisabled": true,
+    "newChatDisabled": true
+  },
+  "desktopSmoke": {
+    "executable": "E:\\allwork\\download\\agent\\understand-book\\target\\debug\\UnderstandBook.exe",
+    "readerVisible": true,
+    "historyStatus": 200,
+    "historyBytes": 201045
+  },
+  "validation": {
+    "webTests": 41,
+    "serverSourceTests": 5,
+    "serverHistoryTests": 6,
+    "webBuild": "passed",
+    "desktopBuild": "passed"
+  },
+  "deployment": "Installed release and remote server not replaced"
+}

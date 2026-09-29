@@ -112,3 +112,44 @@ export async function findExecutorChildRollout(sessionsRoot: string, childId: st
   }
   return undefined;
 }
+
+/** Resolve the name returned by collaboration through the owning parent's control events. */
+export async function findOwnedExecutorChildRollout(
+  sessionsRoot: string, parentId: string, child: string,
+): Promise<{ file: string; child_id: string } | undefined> {
+  if (!UUID.test(parentId)) throw new Error("invalid child diagnostic parent identity");
+  let childId = child;
+  if (!UUID.test(child)) {
+    const parentFile = await findExecutorChildRollout(sessionsRoot, parentId);
+    if (!parentFile) return undefined;
+    const stream = createReadStream(parentFile, { encoding: "utf8" });
+    const lines = createInterface({ input: stream, crlfDelay: Infinity });
+    const matches = new Set<string>();
+    let owned = false;
+    try {
+      for await (const line of lines) {
+        let row: any;
+        try { row = JSON.parse(line); } catch { continue; }
+        if (row.type === "session_meta") {
+          if (row.payload?.id !== parentId) throw new Error("child diagnostic parent ownership mismatch");
+          owned = true;
+          continue;
+        }
+        if (!owned || row.type !== "event_msg" || row.payload?.type !== "item_completed"
+          || row.payload.thread_id !== parentId) continue;
+        const item = row.payload.item;
+        if (item?.type !== "SubAgentActivity" || item.kind !== "started"
+          || !UUID.test(item.agent_thread_id ?? "") || typeof item.agent_path !== "string") continue;
+        if (item.agent_path === child || (!child.includes("/") && item.agent_path.split("/").at(-1) === child)) {
+          matches.add(item.agent_thread_id);
+        }
+      }
+    } finally { lines.close(); stream.destroy(); }
+    if (!owned) throw new Error("child diagnostic parent ownership evidence is missing");
+    if (matches.size > 1) throw new Error("child diagnostic name is ambiguous; use the child UUID");
+    if (!matches.size) return undefined;
+    childId = [...matches][0]!;
+  }
+  const file = await findExecutorChildRollout(sessionsRoot, childId);
+  return file ? { file, child_id: childId } : undefined;
+}

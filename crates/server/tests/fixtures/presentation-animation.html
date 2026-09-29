@@ -1,0 +1,59 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{padding:12px;font-size:15px}h1{font-size:19px}.demos{display:flex;gap:12px;flex-wrap:wrap}.demo{flex:1 1 280px;min-width:0}video{display:block;width:100%;max-height:clamp(60px,calc(100vh - 86px),260px);background:#000}button{min-width:44px;min-height:44px}.controls{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.spacer{height:500px}#result{font-variant-numeric:tabular-nums}
+</style></head><body>
+<h1>A fixed motion, observed one stage at a time</h1><p>The blue point travels from left to right in two seconds. Both demonstrations show the same fixed process.</p>
+<div class="demos">
+<section class="demo"><video id="a" playsinline preload="auto" src="assets/@ASSET@.mp4" poster="assets/@ASSET@.png"></video><div class="controls"><button id="play-a">Play A</button><button id="replay-a">Replay A</button><button id="middle-a">Middle A</button></div></section>
+<section class="demo"><video id="b" playsinline preload="auto" src="assets/@ASSET@.mp4" poster="assets/@ASSET@.png"></video><div class="controls"><button id="play-b">Play B</button><button id="replay-b">Replay B</button><button id="middle-b">Middle B</button></div></section>
+</div><p id="result"></p><button id="save">Save scene</button><div class="spacer"></div><button id="last">Last control</button>
+<script>
+const videos={a:document.getElementById('a'),b:document.getElementById('b')};
+const state={active_demo:'a',a_time:0,a_step:0,a_progress:0,b_time:0,b_step:0,b_progress:0};
+const seeking={a:false,b:false};
+function output(){document.querySelector('#result').textContent=`Demo ${state.active_demo.toUpperCase()}: A frame ${state.a_time.toFixed(3)}s, B frame ${state.b_time.toFixed(3)}s.`;}
+function commit(){presentation.commitState();}
+function event(video,name){return new Promise((resolve,reject)=>{
+  const timeout=setTimeout(()=>finish(new Error(`Media ${name} timed out`)),8000);
+  function finish(error){clearTimeout(timeout);video.removeEventListener(name,ok);video.removeEventListener('error',bad);error?reject(error):resolve();}
+  const ok=()=>finish(),bad=()=>finish(new Error('Media decode failed'));
+  video.addEventListener(name,ok,{once:true});video.addEventListener('error',bad,{once:true});
+});}
+async function seek(id,step,progress){
+  const video=videos[id];seeking[id]=true;video.pause();
+  try{
+    if(video.readyState<2)await event(video,'loadeddata');
+    const logical=Math.min(2.2,Math.max(0,step+progress));
+    const time=Math.min(logical,video.duration-1/30);
+    if(Math.abs(video.currentTime-time)>1e-8 || video.seeking){
+      const complete=event(video,'seeked');video.currentTime=time;
+      await complete;
+    }
+    // Restoration is hidden until text acceptance. A compositor callback need not
+    // run there; HAVE_CURRENT_DATA + drawImage observes the decoded seek result.
+    if(video.readyState<2)await event(video,'loadeddata');
+    const decoded=document.createElement('canvas');decoded.width=video.videoWidth;decoded.height=video.videoHeight;
+    decoded.getContext('2d').drawImage(video,0,0);
+    state[id+'_time']=Math.floor((video.currentTime+1e-7)*30)/30;
+    if(logical>=2.2){step=3;progress=0;}
+    state[id+'_step']=step;state[id+'_progress']=progress;state.active_demo=id;output();
+  }finally{seeking[id]=false;}
+  return snapshot();
+}
+function snapshot(){const id=state.active_demo;return {semantic_state:state[id+'_step'],transition_progress:state[id+'_progress'],playing:!videos[id].paused,media_time:state[id+'_time'],active_demo:id};}
+for(const [id,video] of Object.entries(videos)){
+  function presented(_,frame){
+    if(!seeking[id]&&!video.paused){state[id+'_time']=frame.mediaTime;state[id+'_step']=Math.floor(frame.mediaTime);state[id+'_progress']=frame.mediaTime%1;output();}
+    video.requestVideoFrameCallback(presented);
+  }
+  video.requestVideoFrameCallback(presented);
+  video.addEventListener('play',()=>{state.active_demo=id;document.querySelector('#play-'+id).textContent='Pause '+id.toUpperCase();output();});
+  video.addEventListener('pause',()=>{document.querySelector('#play-'+id).textContent='Play '+id.toUpperCase();if(!seeking[id]){output();commit();}});
+  document.querySelector('#play-'+id).onclick=async()=>{state.active_demo=id;video.paused?await video.play():video.pause();};
+  document.querySelector('#replay-'+id).onclick=async()=>{await seek(id,0,0);await video.play();};
+  document.querySelector('#middle-'+id).onclick=async()=>{await seek(id,1,0);commit();};
+}
+presentation.registerStateReader(()=>({values:{...state},visible_step:String(state[state.active_demo+'_step'])}));
+presentation.registerStateRestorer(async saved=>{const values=saved.values.page;for(const id of ['a','b'])await seek(id,values[id+'_step'],values[id+'_progress']);state.active_demo=values.active_demo;output();});
+window.presentationScene={seek:args=>seek(state.active_demo,args.semantic_state,args.transition_progress),snapshot};
+document.querySelector('#save').onclick=commit;document.querySelector('#last').onclick=()=>{document.querySelector('#last').textContent='Last control used';commit();};output();
+</script></body></html>

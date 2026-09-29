@@ -8,6 +8,7 @@ use std::{
 fn request(html: &str, actions: Vec<PreviewAction>) -> PreviewRequest {
     PreviewRequest {
         candidate_id: "rp1-recall-1".into(),
+        read_selector: None,
         html: html.into(),
         actions,
         width: None,
@@ -25,15 +26,53 @@ fn host() -> BrowserPreview {
 
 #[test]
 #[ignore = "requires a real installed Chromium/Edge browser"]
+fn selected_result_rejects_unreadable_regions_and_running_scene() {
+    for (html, selector, message) in [
+        ("<p>test</p>", "#missing", "matched 0"),
+        ("<p>a</p><p>b</p>", "p", "matched 2"),
+        ("<p style='display:none'>hidden</p>", "p", "hidden"),
+        ("<p>value</p><script>window.presentationScene={snapshot:()=>({playing:true})}</script>", "p", "Pause or seek"),
+    ] {
+        let mut input = request(html, vec![]);
+        input.read_selector = Some(selector.into());
+        let error = host().preview(&input, &CancellationToken::default()).unwrap_err();
+        assert!(error.message.contains(message), "{}", error.message);
+    }
+    let mut input = request(&format!("<p>{}</p>", "a".repeat(9000)), vec![]);
+    input.read_selector = Some("p".into());
+    let error = host().preview(&input, &CancellationToken::default()).unwrap_err();
+    assert!(error.message.contains("8192 bytes"), "{}", error.message);
+}
+
+#[test]
+#[ignore = "requires a real installed Chromium/Edge browser"]
+fn selected_result_reads_beyond_general_dom_excerpt() {
+    let mut input = request(&format!("<p>{}</p><p id='result'>k=5; w=12.756480</p>", "intro ".repeat(3000)), vec![]);
+    input.read_selector = Some("#result".into());
+    let report = host().preview(&input, &CancellationToken::default()).unwrap();
+    assert!(!report.observations[0].dom["text"].as_str().unwrap().contains("12.756480"));
+    assert_eq!(report.observations[0].reading.as_ref().unwrap()["text"], "k=5; w=12.756480");
+}
+
+#[test]
+#[ignore = "requires a real installed Chromium/Edge browser"]
 fn presentation_preview_repeated_launches_release_profiles() {
     let browser = host();
     for _ in 0..3 {
         // preview returns success only after its owned process and profile are removed.
-        let report = browser.preview(
-            &request("<button id='change' onclick=\"this.textContent='changed'\">change</button>", vec![click("#change")]),
-            &CancellationToken::default(),
-        ).unwrap();
-        assert!(report.observations.last().unwrap().dom["text"].as_str().unwrap().contains("changed"));
+        let report = browser
+            .preview(
+                &request(
+                    "<button id='change' onclick=\"this.textContent='changed'\">change</button>",
+                    vec![click("#change")],
+                ),
+                &CancellationToken::default(),
+            )
+            .unwrap();
+        assert!(report.observations.last().unwrap().dom["text"]
+            .as_str()
+            .unwrap()
+            .contains("changed"));
     }
 }
 
@@ -44,10 +83,22 @@ fn presentation_preview_key_targets_the_requested_control() {
         {"kind":"click","selector":"#complete"},
         {"kind":"key","selector":"#count","key":"Home"},
         {"kind":"key","key":"ArrowRight"}
-    ])).unwrap();
-    let report = host().preview(&request(include_str!("fixtures/presentation-recall.html"), actions), &CancellationToken::default()).unwrap();
-    assert!(report.observations[2].dom["text"].as_str().unwrap().contains("0/3 = 0.000"));
-    assert!(report.observations[3].dom["text"].as_str().unwrap().contains("1/3 = 0.333"));
+    ]))
+    .unwrap();
+    let report = host()
+        .preview(
+            &request(include_str!("fixtures/presentation-recall.html"), actions),
+            &CancellationToken::default(),
+        )
+        .unwrap();
+    assert!(report.observations[2].dom["text"]
+        .as_str()
+        .unwrap()
+        .contains("0/3 = 0.000"));
+    assert!(report.observations[3].dom["text"]
+        .as_str()
+        .unwrap()
+        .contains("1/3 = 0.333"));
 }
 
 #[test]
@@ -55,12 +106,31 @@ fn presentation_preview_key_targets_the_requested_control() {
 fn presentation_preview_uses_requested_narrow_viewport() {
     let mut input = request("<style>body{margin:0}.wide{display:block}@media(max-width:400px){.wide{display:none}}</style><p class=wide>Wide layout</p><p>Narrow ready</p>", vec![]);
     input.width = Some(340);
-    let report = host().preview(&input, &CancellationToken::default()).unwrap();
-    assert_eq!(report.observations[0].layout["cssLayoutViewport"]["clientWidth"], 340);
-    assert_eq!(report.environment, PreviewViewport { width: 340, height: 720, input: PreviewInput::Mouse });
-    assert!(!report.observations[0].dom["text"].as_str().unwrap().contains("Wide layout"));
+    let report = host()
+        .preview(&input, &CancellationToken::default())
+        .unwrap();
+    assert_eq!(
+        report.observations[0].layout["cssLayoutViewport"]["clientWidth"],
+        340
+    );
+    assert_eq!(
+        report.environment,
+        PreviewViewport {
+            width: 340,
+            height: 720,
+            input: PreviewInput::Mouse
+        }
+    );
+    assert!(!report.observations[0].dom["text"]
+        .as_str()
+        .unwrap()
+        .contains("Wide layout"));
     input.width = Some(0);
-    assert!(host().preview(&input, &CancellationToken::default()).unwrap_err().message.contains("width"));
+    assert!(host()
+        .preview(&input, &CancellationToken::default())
+        .unwrap_err()
+        .message
+        .contains("width"));
 }
 
 #[test]
@@ -70,28 +140,71 @@ fn presentation_preview_uses_touch_input_and_reports_environment_layout_issues()
       <button id='tap'>tap</button><input id='tiny-input' style='width:20px;height:20px'><output id='kind'>none</output>
       <script>tap.addEventListener('touchstart',()=>kind.textContent='touch');tap.addEventListener('mousedown',()=>{if(kind.textContent==='none')kind.textContent='mouse'});</script>"#;
     let mut touch = request(html, vec![click("#tap")]);
-    touch.viewport = Some(PreviewViewport { width: 320, height: 420, input: PreviewInput::Touch });
-    let report = host().preview(&touch, &CancellationToken::default()).unwrap();
+    touch.viewport = Some(PreviewViewport {
+        width: 320,
+        height: 420,
+        input: PreviewInput::Touch,
+    });
+    let report = host()
+        .preview(&touch, &CancellationToken::default())
+        .unwrap();
     assert_eq!(report.environment_name, "narrow-content");
-    assert!(report.observations.last().unwrap().dom["text"].as_str().unwrap().contains("touch"));
-    assert!(report.observations[0].issues.iter().any(|issue| issue.kind == "geometry_overflow"));
-    assert!(report.observations[0].issues.iter().any(|issue| issue.kind == "touch_target_small"));
-    assert!(report.observations[0].issues.iter().any(|issue| issue.kind == "touch_target_small" && issue.message.contains("tiny-input")));
+    assert!(report.observations.last().unwrap().dom["text"]
+        .as_str()
+        .unwrap()
+        .contains("touch"));
+    assert!(report.observations[0]
+        .issues
+        .iter()
+        .any(|issue| issue.kind == "geometry_overflow"));
+    assert!(report.observations[0]
+        .issues
+        .iter()
+        .any(|issue| issue.kind == "touch_target_small"));
+    assert!(report.observations[0]
+        .issues
+        .iter()
+        .any(|issue| issue.kind == "touch_target_small" && issue.message.contains("tiny-input")));
 
     let mut mouse = request(html, vec![click("#tap")]);
-    mouse.viewport = Some(PreviewViewport { width: 960, height: 720, input: PreviewInput::Mouse });
-    let report = host().preview(&mouse, &CancellationToken::default()).unwrap();
-    assert!(report.observations.last().unwrap().dom["text"].as_str().unwrap().contains("mouse"));
+    mouse.viewport = Some(PreviewViewport {
+        width: 960,
+        height: 720,
+        input: PreviewInput::Mouse,
+    });
+    let report = host()
+        .preview(&mouse, &CancellationToken::default())
+        .unwrap();
+    assert!(report.observations.last().unwrap().dom["text"]
+        .as_str()
+        .unwrap()
+        .contains("mouse"));
 
     let mut combined_boundary = request(
         "<style>body{margin:0}button{min-width:44px;min-height:44px;max-width:100%}</style><button>ready</button>",
         vec![],
     );
-    combined_boundary.viewport = Some(PreviewViewport { width: 320, height: 240, input: PreviewInput::Touch });
-    let report = host().preview(&combined_boundary, &CancellationToken::default()).unwrap();
-    assert_eq!(report.observations[0].layout["cssLayoutViewport"]["clientWidth"], 320);
-    assert_eq!(report.observations[0].layout["cssLayoutViewport"]["clientHeight"], 240);
-    assert!(report.observations[0].issues.is_empty(), "{:?}", report.observations[0].issues);
+    combined_boundary.viewport = Some(PreviewViewport {
+        width: 320,
+        height: 240,
+        input: PreviewInput::Touch,
+    });
+    let report = host()
+        .preview(&combined_boundary, &CancellationToken::default())
+        .unwrap();
+    assert_eq!(
+        report.observations[0].layout["cssLayoutViewport"]["clientWidth"],
+        320
+    );
+    assert_eq!(
+        report.observations[0].layout["cssLayoutViewport"]["clientHeight"],
+        240
+    );
+    assert!(
+        report.observations[0].issues.is_empty(),
+        "{:?}",
+        report.observations[0].issues
+    );
 }
 
 #[test]
@@ -105,7 +218,10 @@ fn presentation_preview_executes_graphics_and_real_input() {
                     click("#irrelevant"),
                     click("#complete"),
                     click("#count"),
-                    PreviewAction::Key { key: "End".into(), selector: None },
+                    PreviewAction::Key {
+                        key: "End".into(),
+                        selector: None,
+                    },
                     PreviewAction::Key {
                         key: "ArrowLeft".into(),
                         selector: None,

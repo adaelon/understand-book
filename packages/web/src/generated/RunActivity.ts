@@ -2,15 +2,15 @@
 import type { ActivityStatus } from "./ActivityStatus";
 import type { ModelUsage } from "./ModelUsage";
 
-export type RunActivity = { step_id: number, parent_step_id: number | null, kind: string, name: string, label: string, status: ActivityStatus, started_ms: number | null, duration_ms: number | null, result_count: number | null, error_code: string | null,
+export type RunActivity = { step_id: number, parent_step_id: number | null, kind: string, name: string, label: string, status: ActivityStatus, started_ms: number | null, duration_ms: number | null, result_count: number | null, error_code: string | null, 
 /**
  * Backward-compatible aggregate used by existing budgets and UI projections.
  */
-usage_total_tokens: number | null,
+usage_total_tokens: number | null, 
 /**
  * Provider-reported cumulative snapshot. It is never added to usage_total_tokens.
  */
-usage: ModelUsage | null,
+usage: ModelUsage | null, 
 /**
  * Milliseconds from this model activity's start to its first non-empty text delta.
  */

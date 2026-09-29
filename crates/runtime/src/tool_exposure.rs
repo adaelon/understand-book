@@ -18,7 +18,7 @@ pub const TOOL_SEARCH_RESULT_VERSION: &str = "tool_search_result.v2";
 pub const TURN_INTENT_CLASSIFIER_VERSION: &str = "turn_intent_classifier.v1";
 pub const CAPABILITY_REQUEST_AUDIT_VERSION: &str = "capability_request_audit.v1";
 pub const CAPABILITY_BLOCK_REASON_MAX_CHARS: usize = 48;
-pub const DEFAULT_DIRECT_TOOL_LIMIT: usize = 8;
+pub const DEFAULT_DIRECT_TOOL_LIMIT: usize = 9;
 pub const MAX_DISCOVERY_ACTIVATIONS: usize = TOOL_SEARCH_MAX_RESULTS;
 
 /// Keep prior discovery useful as conversation context without making a
@@ -179,12 +179,12 @@ fn action_request_text(question: &str) -> String {
     question
         .chars()
         .filter(|&ch| {
-        if let Some(end) = closing {
+            if let Some(end) = closing {
                 if ch == end {
                     closing = None;
                 }
-            return false;
-        }
+                return false;
+            }
             closing = match ch {
                 '“' => Some('”'),
                 '‘' => Some('’'),
@@ -192,7 +192,7 @@ fn action_request_text(question: &str) -> String {
                 '`' => Some('`'),
                 _ => None,
             };
-        closing.is_none()
+            closing.is_none()
         })
         .collect::<String>()
         .to_lowercase()
@@ -362,6 +362,7 @@ pub enum ToolExposureReason {
     RuntimeOwned,
     AwaitingDiscovery,
     Activated,
+    SamplingExcluded,
     DirectLimit,
     SchemaBudget,
     ArtifactOverlayUnavailable,
@@ -490,6 +491,11 @@ impl ToolExposurePlan {
         context: &ToolExposureContext,
         state: &ToolExposureState,
     ) -> Self {
+        let direct_limit = if registry.registration("goal.update").is_some() {
+            DEFAULT_DIRECT_TOOL_LIMIT
+        } else {
+            DEFAULT_DIRECT_TOOL_LIMIT - 1
+        };
         let mut entries: Vec<_> = registry
             .registrations()
             .iter()
@@ -519,7 +525,7 @@ impl ToolExposurePlan {
         direct.sort_by_key(|(priority, index)| (*priority, *index));
 
         for (ordinal, (_, index)) in direct.into_iter().enumerate() {
-            if ordinal >= DEFAULT_DIRECT_TOOL_LIMIT {
+            if ordinal >= direct_limit {
                 entries[index].reason = ToolExposureReason::DirectLimit;
                 continue;
             }
@@ -569,7 +575,7 @@ impl ToolExposurePlan {
             visible_tools,
             schema_bytes,
             schema_budget_bytes: model.tool_schema_budget_bytes,
-            direct_limit: DEFAULT_DIRECT_TOOL_LIMIT,
+            direct_limit,
         }
     }
 
@@ -577,6 +583,28 @@ impl ToolExposurePlan {
         self.entries
             .iter()
             .any(|entry| entry.name == name && entry.exposed)
+    }
+
+    pub(crate) fn exclude_for_sampling(&mut self, excluded_tools: &[&str]) {
+        if excluded_tools.is_empty() {
+            return;
+        }
+        let excluded_tools = excluded_tools.iter().copied().collect::<HashSet<_>>();
+        for entry in &mut self.entries {
+            if entry.exposed && excluded_tools.contains(entry.name.as_str()) {
+                entry.exposed = false;
+                entry.reason = ToolExposureReason::SamplingExcluded;
+            }
+        }
+        self.visible_tools
+            .retain(|tool| !excluded_tools.contains(tool.name.as_str()));
+        self.schema_bytes =
+            self.visible_tools
+                .iter()
+                .enumerate()
+                .fold(0, |current, (selected_count, tool)| {
+                    projected_schema_bytes(current, selected_count, tool_schema_bytes(tool))
+                });
     }
 
     pub fn entry(&self, name: &str) -> Option<&ToolExposureEntry> {
@@ -1229,6 +1257,7 @@ fn classify(
     match handler {
         Handler::PresentationAuthor => (Disposition::Deferred, Reason::CapabilityDeferred),
         Handler::ToolSearch => (Disposition::Direct, Reason::Discovery),
+        Handler::GoalUpdate => (Disposition::Direct, Reason::RuntimeOwned),
         Handler::Artifact(_) if !context.artifact.has_overlay() => {
             (Disposition::Hidden, Reason::ArtifactOverlayUnavailable)
         }
@@ -1320,6 +1349,7 @@ fn classify(
 fn direct_priority(handler: ToolHandlerId) -> usize {
     match handler {
         ToolHandlerId::ToolSearch => 0,
+        ToolHandlerId::GoalUpdate => 1,
         ToolHandlerId::Book(BookToolId::Text) => 1,
         ToolHandlerId::Book(BookToolId::Context) => 2,
         ToolHandlerId::Book(BookToolId::SearchText) => 3,
@@ -1438,6 +1468,7 @@ mod tests {
     #[test]
     fn historical_discovery_keeps_match_but_expires_run_local_activation() {
         let mut message = crate::Message {
+            provider_continuation: None,
             role: crate::Role::Tool,
             content: Some(
                 serde_json::json!({
@@ -1637,6 +1668,7 @@ mod tests {
             "book.search_text",
             "book.text",
             "tool.search",
+            "goal.update",
             "book.context",
             "book.concept",
             "book.structure",
@@ -1676,6 +1708,7 @@ mod tests {
                 "book.search_text",
                 "book.text",
                 "tool.search",
+                "goal.update",
                 "book.context",
                 "book.concept",
                 "book.structure",

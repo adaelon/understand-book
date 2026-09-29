@@ -34,6 +34,7 @@ tmp-smoke-*.json
 
 # Semantic eval raw evidence contains excerpts from the user's local book.
 evals/semantic/results/**/run.json
+evals/semantic/quality-results/
 
 # OS / editor cruft
 .DS_Store

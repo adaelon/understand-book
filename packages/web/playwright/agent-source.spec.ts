@@ -114,3 +114,22 @@ test("mobile source popup is a viewport-bound bottom sheet", async ({ page }, te
   expect(textOverflow).toBe(false);
   await page.screenshot({ path: testInfo.outputPath("agent-source-mobile.png"), fullPage: true });
 });
+
+test("answer fullscreen fills the viewport without losing the draft or answer", async ({ page }) => {
+  for (const size of [{ width: 1440, height: 800 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(size);
+    await page.goto("/agent-source-visual.html");
+    await page.locator(".agent-input textarea").fill("未发送的问题");
+    await page.getByRole("button", { name: "问答全屏" }).click();
+    const rail = page.locator(".right-rail.fullscreen");
+    await expect(rail).toBeVisible();
+    await expectInsideViewport(page, ".right-rail.fullscreen", size.width, size.height);
+    const box = await rail.boundingBox();
+    expect(box).toMatchObject({ x: 0, y: 0, width: size.width, height: size.height });
+    await expect(page.locator(".agent-input textarea")).toHaveValue("未发送的问题");
+    await expect(page.locator(".transcript")).toContainText("剪接调控会改变心肌细胞");
+    await page.keyboard.press("Escape");
+    await expect(rail).toHaveCount(0);
+    await expect(page.locator(".agent-input textarea")).toHaveValue("未发送的问题");
+  }
+});

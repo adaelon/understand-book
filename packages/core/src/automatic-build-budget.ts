@@ -7,7 +7,7 @@ import type {
   ExtractionQualityProfile,
   SemanticContractV1,
 } from "./semantic-artifact";
-import { CODEX_EXECUTOR_TRANSPORT_PROFILE_V2 } from "./executor-transport";
+import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "./build-execution-profile";
 import {
   isProofBoundWorkUnitDescriptor,
   isWorkUnitDescriptorV3,
@@ -603,6 +603,7 @@ function costScope(
 }
 
 export function buildAutomaticBuildPreflight(input: {
+  execution_profile?: BuildExecutionProfileV1;
   target_ref: BuildTargetRefV2;
   stage: AutomaticBuildStage;
   work_units: WorkUnitDescriptor[];
@@ -618,6 +619,7 @@ export function buildAutomaticBuildPreflight(input: {
   historical_performance?: AutomaticBuildPerformanceHistoryV1;
   build_plan?: BuildPlanV1;
 }): AutomaticBuildPreflightV2 {
+  const executionProfile = input.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1;
   const budget = validateBudget(input.budget);
   const buildPlan = input.build_plan ? validateBuildPlanV1(input.build_plan) : undefined;
   const buildPlanBinding = buildPlan ? {
@@ -643,7 +645,7 @@ export function buildAutomaticBuildPreflight(input: {
     if (isWorkUnitDescriptorV3(unit)) {
       validateWorkUnitDescriptorV3(unit);
     } else if (isWorkUnitDescriptorV4(unit)) {
-      validateWorkUnitDescriptorV4(unit, CODEX_EXECUTOR_TRANSPORT_PROFILE_V2);
+      validateWorkUnitDescriptorV4(unit, executionProfile.transport_profile);
     }
     if (isProofBoundWorkUnitDescriptor(unit)) {
       const binding = input.task_bindings?.[unit.work_unit_id];
@@ -716,6 +718,7 @@ export function buildAutomaticBuildPreflight(input: {
     kindPredictions.get(unit.kind)!.p95,
   ]));
   const dispatchPlan = planAutomaticBuildExecutorDispatches({
+    execution_profile: executionProfile,
     target_ref: input.target_ref,
     stage: input.stage,
     work_units: input.work_units,
@@ -725,6 +728,7 @@ export function buildAutomaticBuildPreflight(input: {
     ...(input.task_bindings ? { task_bindings: input.task_bindings } : {}),
   });
   const lifetimeDispatchPlan = planAutomaticBuildExecutorDispatches({
+    execution_profile: executionProfile,
     target_ref: input.target_ref,
     stage: input.stage,
     work_units: input.work_units,

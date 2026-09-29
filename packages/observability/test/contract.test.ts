@@ -22,3 +22,14 @@ describe("ub_observation.v1", () => {
     }
   });
 });
+
+it("preserves optional reasoning output without adding it to billed totals", () => {
+  const observation = structuredClone(parseObservation(fixtures.valid[0]));
+  observation.usage = { input_tokens: 100, output_tokens: 30, reasoning_output_tokens: 13,
+    cached_input_tokens: 80, cache_creation_input_tokens: null, total_tokens: 130,
+    source: "provider_reported", completeness: "complete" };
+  const parsed = parseObservation(observation);
+  expect(parsed.usage.reasoning_output_tokens).toBe(13);
+  expect(parsed.usage.total_tokens).toBe(130);
+  expect(() => parseObservation({ ...observation, usage: { ...observation.usage, reasoning_output_tokens: -1 } })).toThrow();
+});

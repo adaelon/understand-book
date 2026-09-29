@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { readOwnedExecutorOpenDiagnostic } from "../src/build-executor-call-diagnostics";
+import { findOwnedExecutorChildRollout, readOwnedExecutorOpenDiagnostic } from "../src/build-executor-call-diagnostics";
 import { validateAutomaticBuildOpenCallCorrection } from "../src/automatic-build-executor-session";
 
 const parent = "01a09996-7874-7582-b6ce-a7cd03d2cf9a";
@@ -24,6 +24,45 @@ function rollout(events: unknown[]) {
 const meta = { type: "session_meta", payload: { id: child, parent_thread_id: parent, base_instructions: "PRIVATE_INSTRUCTIONS" } };
 
 describe("bounded executor call diagnostics", () => {
+  it("resolves the collaboration child name through the owning parent's activity without exposing its history", async () => {
+    const root = mkdtempSync(path.join(tmpdir(), "ub-child-name-"));
+    const childFile = path.join(root, `rollout-${child}.jsonl`);
+    writeFileSync(childFile, [meta, event("executor.open", {
+      version: "automatic_build_executor_open_request.v3", opaque_handoff_ref: issued.slice(0, -2),
+    }, error)].map(x => JSON.stringify(x)).join("\n"));
+    const parentFile = path.join(root, `rollout-${parent}.jsonl`);
+    writeFileSync(parentFile, [
+      { type: "session_meta", payload: { id: parent } },
+      { type: "response_item", payload: { content: "PRIVATE_PARENT_HISTORY" } },
+      { type: "event_msg", payload: { type: "item_completed", thread_id: parent,
+        item: { type: "SubAgentActivity", kind: "started", agent_thread_id: child, agent_path: "/root/book_exec_9" } } },
+    ].map(x => JSON.stringify(x)).join("\n"));
+    for (const name of [child, "/root/book_exec_9", "book_exec_9"]) {
+      const found = await findOwnedExecutorChildRollout(root, parent, name);
+      expect(found).toEqual({ file: childFile, child_id: child });
+      const result = await readOwnedExecutorOpenDiagnostic(found!.file, parent, found!.child_id, issued);
+      expect(result).toMatchObject({ status: "observed", child_id: child,
+        open_call_correction: { cause: "invalid_ref" } });
+      expect(JSON.stringify(result)).not.toContain("PRIVATE_");
+    }
+    expect(await findOwnedExecutorChildRollout(root, parent, "book_exec_99")).toBeUndefined();
+  });
+
+  it("does not select an arbitrary child when a name was reused, or accept another parent's activity", async () => {
+    const root = mkdtempSync(path.join(tmpdir(), "ub-child-ambiguous-"));
+    const file = path.join(root, `rollout-${parent}.jsonl`);
+    const activity = (id: string) => ({ type: "event_msg", payload: {
+      type: "item_completed", thread_id: parent, item: { type: "SubAgentActivity", kind: "started",
+        agent_thread_id: id, agent_path: "/root/book_exec_9" },
+    } });
+    writeFileSync(file, [{ type: "session_meta", payload: { id: parent } }, activity(child), activity(parent)]
+      .map(x => JSON.stringify(x)).join("\n"));
+    await expect(findOwnedExecutorChildRollout(root, parent, "book_exec_9")).rejects.toThrow(/ambiguous/);
+    writeFileSync(file, [{ type: "session_meta", payload: { id: child } }, activity(child)]
+      .map(x => JSON.stringify(x)).join("\n"));
+    await expect(findOwnedExecutorChildRollout(root, parent, "book_exec_9")).rejects.toThrow(/ownership/);
+  });
+
   it("extracts actual nested MCP control facts, preserves the real error and excludes semantic bodies", async () => {
     const file = rollout([meta,
       { type: "response_item", payload: { type: "reasoning", content: "PRIVATE_REASONING" } },

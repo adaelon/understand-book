@@ -338,20 +338,22 @@ fn json_string(value: &str) -> String {
 }
 
 fn compare_fact_priority(left: &ProfileFact, right: &ProfileFact) -> Ordering {
-    compare_priority(
-        left.source,
-        left.status,
-        &left.applicability,
-        &left.updated_at,
-        &left.fact_id,
-        !left.supersedes.is_empty(),
-        right.source,
-        right.status,
-        &right.applicability,
-        &right.updated_at,
-        &right.fact_id,
-        !right.supersedes.is_empty(),
-    )
+    let explicit_preference = |fact: &ProfileFact| {
+        fact.source == FactSource::UserStated
+            && matches!(fact.payload, ProfilePayload::ExplanationPreference(_))
+    };
+    explicit_preference(right)
+        .cmp(&explicit_preference(left))
+        .then_with(|| {
+            authority_rank(right.source, !right.supersedes.is_empty())
+                .cmp(&authority_rank(left.source, !left.supersedes.is_empty()))
+        })
+        .then_with(|| status_rank(right.status).cmp(&status_rank(left.status)))
+        .then_with(|| right.updated_at.cmp(&left.updated_at))
+        .then_with(|| {
+            applicability_rank(&right.applicability).cmp(&applicability_rank(&left.applicability))
+        })
+        .then_with(|| left.fact_id.cmp(&right.fact_id))
 }
 
 fn compare_candidate_priority(left: &SnapshotCandidate, right: &SnapshotCandidate) -> Ordering {
@@ -613,7 +615,7 @@ mod tests {
     }
 
     #[test]
-    fn resolver_and_sorting_apply_authority_applicability_and_recency() {
+    fn resolver_and_sorting_put_explicit_preferences_before_inferences() {
         let (_path, mut store) = store("priority");
         for (index, (applicability, key, value, source)) in [
             (Applicability::Any, "z", "agent", FactSource::AgentInferred),
@@ -655,8 +657,8 @@ mod tests {
             .map(|item| item.text.as_str())
             .collect();
         assert_eq!(texts.len(), 3);
-        assert!(texts[0].contains("specific"));
-        assert!(texts[1].contains("user-new"));
+        assert!(texts[0].contains("user-new"));
+        assert!(texts[1].contains("specific"));
         assert!(texts[2].contains("agent"));
     }
 
@@ -799,6 +801,59 @@ mod tests {
         assert_eq!(snapshot.global_core.len(), 2);
         assert!(snapshot.global_core[0].text.contains("detailed"));
         assert!(snapshot.global_core[1].text.contains("direct"));
+    }
+
+    #[test]
+    fn explicit_explanation_preference_survives_book_snapshot_pressure() {
+        let (_path, mut store) = store("explicit-preference-priority");
+        let book_scope = ProfileScope::Book {
+            book_id: "book-a".into(),
+        };
+        let mental_model = store
+            .create_profile_fact(
+                preference(
+                    book_scope.clone(),
+                    Applicability::Any,
+                    "complete_mental_model_first",
+                    "explain the complete causal chain",
+                    FactSource::UserStated,
+                    "u1",
+                ),
+                "2026-01-01T00:00:00Z",
+            )
+            .unwrap();
+        store
+            .create_profile_fact(
+                preference(
+                    book_scope,
+                    Applicability::ContentProfile {
+                        profile_id: "technical_learning".into(),
+                    },
+                    "extra_style",
+                    "a newer inferred style",
+                    FactSource::AgentInferred,
+                    "u2",
+                ),
+                "2026-01-02T00:00:00Z",
+            )
+            .unwrap();
+
+        let full = store.project_reader_profile_snapshot(&SnapshotRequest::current(context()));
+        let wanted = full
+            .book_state_core
+            .iter()
+            .find(|item| item.fact_id == mental_model.fact_id)
+            .unwrap();
+        let budget = estimate_snapshot_tokens(&snapshot_item_line(wanted));
+        let snapshot = store.project_reader_profile_snapshot(&SnapshotRequest {
+            budgets: SnapshotBudgets {
+                book_state_core: budget,
+                ..SnapshotBudgets::default()
+            },
+            ..SnapshotRequest::current(context())
+        });
+        assert_eq!(snapshot.book_state_core.len(), 1);
+        assert_eq!(snapshot.book_state_core[0].fact_id, mental_model.fact_id);
     }
 
     #[test]

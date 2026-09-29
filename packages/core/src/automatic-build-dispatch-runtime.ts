@@ -1,3 +1,4 @@
+import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "./build-execution-profile";
 import { createHash } from "node:crypto";
 import {
   existsSync,
@@ -33,7 +34,6 @@ import {
   type AutomaticBuildTaskPolicyBinding,
 } from "./semantic-artifact";
 import {
-  CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
 } from "./executor-transport";
 import {
   isProofBoundWorkUnitDescriptor,
@@ -898,8 +898,7 @@ function terminalReceiptAfterDispatch(
     task_binding: binding,
       })
     : undefined;
-  const attempts = listAutomaticBuildStoredAttempts(target, persisted.manifest.stage)
-    .filter((attempt) => attempt.work_unit_id === workUnitId)
+  const attempts = listAutomaticBuildStoredAttempts(target, persisted.manifest.stage, workUnitId)
     .filter((attempt) => !expectedScope
       || (attempt.execution_identity?.version === "automatic_build_execution_identity.v2"
         && attempt.execution_identity.attempt_scope_digest === expectedScope.attempt_scope_digest))
@@ -1137,6 +1136,7 @@ export function inspectAutomaticBuildDispatchRecoveryGeneration(
 }
 
 function validateDescriptors(
+  executionProfile: BuildExecutionProfileV1,
   persisted: AutomaticBuildPersistedDispatchV1,
   descriptors: WorkUnitDescriptor[],
   taskBindings: Record<string, AutomaticBuildTaskPolicyBinding>,
@@ -1162,7 +1162,7 @@ function validateDescriptors(
       if (isWorkUnitDescriptorV3(descriptor)) {
         validateWorkUnitDescriptorV3(descriptor);
       } else {
-        validateWorkUnitDescriptorV4(descriptor, CODEX_EXECUTOR_TRANSPORT_PROFILE_V2);
+        validateWorkUnitDescriptorV4(descriptor, executionProfile.transport_profile);
       }
       const persistedBinding = persisted.manifest.task_bindings?.[workUnitId];
       if (!persistedBinding || stableJson(persistedBinding) !== stableJson(binding)) {
@@ -1184,6 +1184,7 @@ export function advanceAutomaticBuildDispatch(
   stage: AutomaticBuildStage,
   dispatchId: string,
   input: {
+    execution_profile?: BuildExecutionProfileV1;
     descriptors: WorkUnitDescriptor[];
     task_bindings: Record<string, AutomaticBuildTaskPolicyBinding>;
     // Resolve only a prior failed task needed by this advancement, when not already supplied.
@@ -1197,6 +1198,7 @@ export function advanceAutomaticBuildDispatch(
     max_lease_epochs?: number;
   },
 ): AutomaticBuildDispatchAdvanceResult {
+  const executionProfile = input.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1;
   const persisted = readAutomaticBuildDispatch(target, stage, dispatchId, input.dispatch_run_id);
   const finishedPath = dispatchReceiptPath(target, stage, dispatchId, persisted.dispatch_run_id);
   if (existsSync(finishedPath)) {
@@ -1222,6 +1224,7 @@ export function advanceAutomaticBuildDispatch(
     taskBindings[lastProgress.work_unit_id] = failedTask.task_binding;
   }
   const descriptors = validateDescriptors(
+    executionProfile,
     persisted,
     scopedDescriptors,
     taskBindings,
@@ -1240,6 +1243,7 @@ export function advanceAutomaticBuildDispatch(
       lastProgress.work_unit_id,
       {
         now,
+        execution_profile: executionProfile,
         descriptor: failedDescriptor,
         binding: failedBinding,
         ...(isProofBoundWorkUnitDescriptor(failedDescriptor)
@@ -1274,6 +1278,7 @@ export function advanceAutomaticBuildDispatch(
   if (!binding) throw new Error(`dispatch task is missing policy binding: ${stage}/${workUnitId}`);
   const inspection = inspectAutomaticBuildTaskClaim(target, stage, workUnitId, {
     now,
+    execution_profile: executionProfile,
     descriptor,
     binding,
     ...(isProofBoundWorkUnitDescriptor(descriptor) ? { policy_generation: "v3_only" as const } : {}),
@@ -1296,6 +1301,7 @@ export function advanceAutomaticBuildDispatch(
     now,
     reserve_ttl_ms: persisted.reserve_ttl_ms,
     binding,
+    execution_profile: executionProfile,
     descriptor,
     ...(isProofBoundWorkUnitDescriptor(descriptor) ? { policy_generation: "v3_only" as const } : {}),
     max_semantic_attempts: input.max_semantic_attempts,
@@ -1318,8 +1324,7 @@ function taskWasClaimed(
   persisted: AutomaticBuildPreparedDispatchV1,
   workUnitId: string,
 ): boolean {
-  return listAutomaticBuildStoredAttempts(target, persisted.manifest.stage)
-    .filter((attempt) => attempt.work_unit_id === workUnitId)
+  return listAutomaticBuildStoredAttempts(target, persisted.manifest.stage, workUnitId)
     .some((attempt) => {
       const leaseFile = path.join(attempt.attempt_dir, "lease.json");
       return existsSync(leaseFile) && readJson<{ owner?: string }>(leaseFile).owner === persisted.owner;
@@ -1354,8 +1359,7 @@ function latestDispatchOwnedAttempt(
   persisted: AutomaticBuildPreparedDispatchV1,
   workUnitId: string,
 ) {
-  return listAutomaticBuildStoredAttempts(target, persisted.manifest.stage)
-    .filter((attempt) => attempt.work_unit_id === workUnitId)
+  return listAutomaticBuildStoredAttempts(target, persisted.manifest.stage, workUnitId)
     .filter((attempt) => {
       const leaseFile = path.join(attempt.attempt_dir, "lease.json");
       return existsSync(leaseFile)

@@ -1117,6 +1117,7 @@ export interface AgentQuestionQuoteView {
   status?: SelectionResolution;
 }
 export interface AgentChatTurn {
+  goal_ref?: { id: string; revision: number } | null;
   turn_id: string;
   user_turn_ordinal: number;
   user: string;
@@ -1127,6 +1128,15 @@ export interface AgentChatTurn {
   question_source_label: string | null;
   question_quote: AgentQuestionQuoteView | null;
   effect_labels: string[];
+}
+export interface ResidentGoal {
+  id: string;
+  revision: number;
+  interpretation: string;
+  requirements: { id: string; description: string; basis_turn_id: string; verification: "content" | "presentation_delivery" | "reader_action" }[];
+  result_refs: string[];
+  status: "open" | "completed" | "cancelled" | "superseded";
+  last_stop_reason?: string | null;
 }
 export interface AgentChatTurnSummary {
   user: string;
@@ -1148,6 +1158,7 @@ export interface AgentChatSession {
   created_at: string;
   updated_at: string;
   turns: AgentChatTurn[];
+  goals: ResidentGoal[];
 }
 export interface AgentHistoryResponse {
   active_session_id: string;
@@ -1155,6 +1166,8 @@ export interface AgentHistoryResponse {
   current: AgentChatSession;
 }
 export interface AgentChatMeta {
+  goal_id?: string;
+  goal_action?: "cancel" | "replace";
   presentation_follow_up?: import("./generated/PresentationFollowUp").PresentationFollowUp;
   display_user?: string;
   question_anchor_lid?: string | null;
@@ -1401,6 +1414,8 @@ export const api = {
     http<OuterOutcome>("POST", "/agent/chat", { message, ...meta }),
   agentNew: () => http<{ ok: boolean; history: AgentHistoryResponse }>("POST", "/agent/new", {}),
   agentHistory: () => http<AgentHistoryResponse>("GET", "/agent/history"),
+  agentGoalCancel: (goal_id: string) =>
+    http<AgentHistoryResponse>("POST", "/agent/goals/cancel", { goal_id }),
   agentHistorySelect: (session_id: string) =>
     http<AgentHistoryResponse>("POST", "/agent/history/select", { session_id }),
   agentHistoryDelete: (session_id: string) =>

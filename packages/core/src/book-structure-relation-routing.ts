@@ -5,7 +5,7 @@ import { BOOK_STRUCTURE_EXECUTION_BUDGET_V2, evaluateBookStructureExecution, pro
 import type { BookStructureReferenceScope } from "./book-structure-evidence";
 import type { BookStructureRelationEntry, BookStructureRelationInput } from "./book-structure-relations";
 import type { BuildTargetRefV2 } from "./build-orchestrator";
-import { CODEX_EXECUTOR_TRANSPORT_PROFILE_V2 } from "./executor-transport";
+import { CODEX_EXECUTOR_TRANSPORT_PROFILE_V2, type ExecutorTransportProfile } from "./executor-transport";
 import type { WorkUnitDescriptorV4 } from "./stage-work-unit";
 import { ExtractorContractError } from "./extractor-contract";
 
@@ -82,24 +82,26 @@ export function renderBookStructureRelationInput(input: BookStructureRelationSel
 }
 
 function route(input: {
+  transport_profile?: ExecutorTransportProfile;
   target: BuildTargetRefV2; packet: BookStructureRelationSelectionInput | BookStructureRelationInput;
   contract: BookStructureRelationContract; dependencies: WorkUnitDescriptorV4["dependencies"];
 }): BookStructureRelationRoutedWorkUnit | undefined {
   const rendered = renderBookStructureRelationInput(input.packet);
   const evaluated = evaluateBookStructureExecution({ contract: input.contract, rendered_input: rendered,
-    transport_profile: CODEX_EXECUTOR_TRANSPORT_PROFILE_V2, budget: BOOK_STRUCTURE_EXECUTION_BUDGET_V2 });
+    transport_profile: input.transport_profile ?? CODEX_EXECUTOR_TRANSPORT_PROFILE_V2, budget: BOOK_STRUCTURE_EXECUTION_BUDGET_V2 });
   if (evaluated.status !== "within_limit") return undefined;
   const descriptor = proofBoundBookStructureDescriptor({ target: input.target, work_unit_id: input.packet.work_unit_id,
     kind: input.packet.version === "book_structure_relation_selection_input.v1" ? "structure_relation_select" : "structure_relation_delta",
     rendered_input: rendered, proof: evaluated.proof, policy_fingerprint: input.contract.policy_fingerprint,
     input_basis: { kind: "artifact_reduction", dependency_artifacts: input.dependencies.map(item => ({ work_unit_id: item.artifact, artifact_hash: item.sha256 })), parent_lids: ["stitch"] },
     dependencies: input.dependencies, evidence_lids: ["stitch"], candidate_count: input.packet.entries.length,
-    transport_profile: CODEX_EXECUTOR_TRANSPORT_PROFILE_V2 });
+    transport_profile: input.transport_profile ?? CODEX_EXECUTOR_TRANSPORT_PROFILE_V2 });
   return { descriptor, rendered_input: rendered, input: input.packet };
 }
 
 /** Each fixed tile pair is examined once, providing cross-batch recall without name-based filtering. */
 export function routeBookStructureRelationSelections(input: {
+  transport_profile?: ExecutorTransportProfile;
   target: BuildTargetRefV2; candidate: BookStructureCandidate; contract: BookStructureRelationContract;
   dependencies: WorkUnitDescriptorV4["dependencies"];
 }): BookStructureRelationRoutedWorkUnit[] {
@@ -155,6 +157,7 @@ export function bookStructureSelectedPairs(selections: BookStructureRelationSele
 }
 
 export function routeBookStructureRelationDelta(input: {
+  transport_profile?: ExecutorTransportProfile;
   target: BuildTargetRefV2; candidate: BookStructureCandidate; member_ids: string[];
   members: Record<string, string>; ordinal: number; contract: BookStructureRelationContract;
   dependencies: WorkUnitDescriptorV4["dependencies"];

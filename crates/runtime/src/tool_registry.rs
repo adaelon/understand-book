@@ -20,6 +20,7 @@ pub enum ToolHandlerId {
     Book(BookToolId),
     Artifact(ArtifactToolId),
     ToolSearch,
+    GoalUpdate,
     SourcePresent,
     PresentationAuthor,
     ProfileManifest,
@@ -40,12 +41,13 @@ pub enum ToolHandlerId {
 }
 
 impl ToolHandlerId {
-    pub const ALL: [ToolHandlerId; 32] = [
+    pub const ALL: [ToolHandlerId; 33] = [
         ToolHandlerId::Book(BookToolId::Query),
         ToolHandlerId::Book(BookToolId::Synthesize),
         ToolHandlerId::Book(BookToolId::SearchText),
         ToolHandlerId::Book(BookToolId::Text),
         ToolHandlerId::ToolSearch,
+        ToolHandlerId::GoalUpdate,
         ToolHandlerId::Artifact(ArtifactToolId::List),
         ToolHandlerId::Artifact(ArtifactToolId::Search),
         ToolHandlerId::Artifact(ArtifactToolId::Read),
@@ -83,6 +85,7 @@ impl ToolHandlerId {
                 .expect("registered Book handler must have a Resident alias"),
             ToolHandlerId::Artifact(id) => artifact_aliases(id).resident,
             ToolHandlerId::ToolSearch => "tool.search",
+            ToolHandlerId::GoalUpdate => "goal.update",
             ToolHandlerId::PresentationAuthor => "presentation.author",
             ToolHandlerId::SourcePresent => "source.present",
             ToolHandlerId::ProfileManifest => "profile.manifest",
@@ -196,10 +199,11 @@ pub enum ToolCapability {
     MemoryWrite,
     ReaderRead,
     ReaderWrite,
+    GoalManagement,
 }
 
 impl ToolCapability {
-    pub const ALL: [ToolCapability; 16] = [
+    pub const ALL: [ToolCapability; 17] = [
         Self::Discovery,
         Self::SourceRead,
         Self::LexicalLocate,
@@ -216,6 +220,7 @@ impl ToolCapability {
         Self::MemoryWrite,
         Self::ReaderRead,
         Self::ReaderWrite,
+        Self::GoalManagement,
     ];
 
     pub fn as_str(self) -> &'static str {
@@ -236,6 +241,7 @@ impl ToolCapability {
             Self::MemoryWrite => "memory_write",
             Self::ReaderRead => "reader_read",
             Self::ReaderWrite => "reader_write",
+            Self::GoalManagement => "goal_management",
         }
     }
 }
@@ -324,6 +330,7 @@ pub enum ToolEffect {
     MemoryWrite,
     ReaderWrite,
     PresentationWrite,
+    GoalWrite,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -452,14 +459,23 @@ pub struct ToolRegistration {
 impl ToolRegistration {
     pub fn activity_label(&self) -> &'static str {
         match self.spec.name.as_str() {
-            "book.query" => "检索书内证据", "book.synthesize" => "综合原文", "book.text" => "读取原文",
-            "book.search_text" => "搜索原文", "book.structure" => "查看书籍结构", "source.present" => "整理来源",
+            "book.query" => "检索书内证据",
+            "book.synthesize" => "综合原文",
+            "book.text" => "读取原文",
+            "book.search_text" => "搜索原文",
+            "book.structure" => "查看书籍结构",
+            "source.present" => "整理来源",
             "presentation.author" => "制作与预览内容",
-            "tool.search" => "查找可用工具", "reader.note" => "保存笔记", "reader.highlight" => "添加高亮",
-            "reader.gotoLid" | "reader.scroll" => "调整阅读位置", "reader.state" => "查看阅读状态",
+            "tool.search" => "查找可用工具",
+            "goal.update" => "更新当前任务",
+            "reader.note" => "保存笔记",
+            "reader.highlight" => "添加高亮",
+            "reader.gotoLid" | "reader.scroll" => "调整阅读位置",
+            "reader.state" => "查看阅读状态",
             name if name.starts_with("artifact.") => "读取学习成果",
             name if name.starts_with("memory.") || name.starts_with("profile.") => "处理阅读记忆",
-            name if name.starts_with("reader.") => "更新阅读器", _ => "查阅书籍",
+            name if name.starts_with("reader.") => "更新阅读器",
+            _ => "查阅书籍",
         }
     }
 
@@ -500,6 +516,11 @@ pub struct ToolRegistry {
 }
 
 impl ToolRegistry {
+    pub(crate) fn without_goal_update(mut self) -> Self {
+        self.registrations.retain(|registration| registration.handler != ToolHandlerId::GoalUpdate);
+        self.by_name = self.registrations.iter().enumerate().map(|(index, registration)| (registration.spec.name.clone(), index)).collect();
+        self
+    }
     pub(crate) fn experimental_subset(mut self, keep: impl Fn(&ToolSpec) -> bool) -> Self {
         self.registrations.retain(|r| keep(&r.spec));
         for r in &mut self.registrations {
@@ -507,7 +528,12 @@ impl ToolRegistry {
                 r.spec.description = "Return canonical LID chapter topology only. With at, return that node and its immediate children; otherwise return the top two levels. Read source separately with book.text.".into();
             }
         }
-        self.by_name = self.registrations.iter().enumerate().map(|(i, r)| (r.spec.name.clone(), i)).collect();
+        self.by_name = self
+            .registrations
+            .iter()
+            .enumerate()
+            .map(|(i, r)| (r.spec.name.clone(), i))
+            .collect();
         self
     }
 
@@ -700,7 +726,16 @@ fn registration_for(spec: ToolSpec, handler: ToolHandlerId) -> ToolRegistration 
             ResultPolicy::ToolDiscovery,
             Parallelism::SequentialOnly,
         ),
-        Handler::PresentationAuthor => (ToolValidatorId::JsonSchema, ResultPolicy::EvidenceProjection, Parallelism::SequentialOnly),
+        Handler::GoalUpdate => (
+            ToolValidatorId::JsonSchema,
+            ResultPolicy::MemoryReceipt,
+            Parallelism::SequentialOnly,
+        ),
+        Handler::PresentationAuthor => (
+            ToolValidatorId::JsonSchema,
+            ResultPolicy::EvidenceProjection,
+            Parallelism::SequentialOnly,
+        ),
         Handler::SourcePresent => (
             ToolValidatorId::SourcePresentation,
             ResultPolicy::SourceReference,
@@ -830,7 +865,11 @@ fn capability_migration(handler: ToolHandlerId) -> CapabilityMigration {
             migration(vec![Legacy::ArtifactRead], vec![Capability::ArtifactRead])
         }
         Handler::ToolSearch => migration(vec![Legacy::Discovery], vec![Capability::Discovery]),
-        Handler::PresentationAuthor => migration(vec![Legacy::SourcePresentation], vec![Capability::PresentationAuthoring]),
+        Handler::GoalUpdate => migration(vec![], vec![Capability::GoalManagement]),
+        Handler::PresentationAuthor => migration(
+            vec![Legacy::SourcePresentation],
+            vec![Capability::PresentationAuthoring],
+        ),
         Handler::SourcePresent => migration(
             vec![Legacy::SourcePresentation],
             vec![Capability::SourcePresentation],
@@ -1064,6 +1103,14 @@ fn routing_shape(handler: ToolHandlerId) -> RoutingShape {
             all_profiles(),
             Cost::Low,
         ),
+        Handler::GoalUpdate => shape(
+            vec![Scope::Document],
+            vec![Operation::Explain],
+            Effect::GoalWrite,
+            vec![Precondition::BookAvailable],
+            all_profiles(),
+            Cost::Low,
+        ),
         Handler::Artifact(ArtifactToolId::List) => shape(
             vec![Scope::Document, Scope::Corpus],
             vec![Operation::Summarize],
@@ -1101,7 +1148,19 @@ fn routing_shape(handler: ToolHandlerId) -> RoutingShape {
             all_profiles(),
             Cost::Low,
         ),
-        Handler::PresentationAuthor => shape(vec![Scope::Selection, Scope::Passage, Scope::Section, Scope::Document], vec![Operation::Explain, Operation::Compare, Operation::Summarize], Effect::PresentationWrite, vec![Precondition::BookAvailable], all_profiles(), Cost::High),
+        Handler::PresentationAuthor => shape(
+            vec![
+                Scope::Selection,
+                Scope::Passage,
+                Scope::Section,
+                Scope::Document,
+            ],
+            vec![Operation::Explain, Operation::Compare, Operation::Summarize],
+            Effect::PresentationWrite,
+            vec![Precondition::BookAvailable],
+            all_profiles(),
+            Cost::High,
+        ),
         Handler::SourcePresent => shape(
             vec![
                 Scope::Selection,
@@ -1298,6 +1357,10 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
             "Discover a deferred Resident capability that is absent from the current sampled tool surface.",
             "Do not use when visible tools can complete the task or to execute a matched tool in the same sampling.",
         ),
+        Handler::GoalUpdate => (
+            "Revise the current task interpretation or working focus when it actually changes.",
+            "Do not claim a page was delivered or replace a user requirement with a method choice.",
+        ),
         Handler::Artifact(ArtifactToolId::List) => (
             "Inspect bounded routing metadata for the active accepted artifact overlay.",
             "Do not treat Routing Cards as book evidence or call without an active overlay.",
@@ -1310,10 +1373,10 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
             "Read bounded artifact records returned by artifact.search or its continuation.",
             "Do not invent opaque refs or treat artifact records as canonical book evidence.",
         ),
-        Handler::PresentationAuthor => ("Create and rehearse rich HTML answers and interactive explanations.", "Do not use for a short plain answer or persist an untested candidate."),
+        Handler::PresentationAuthor => ("Create and rehearse rich HTML answers, static Python/Matplotlib charts and interactive explanations.", "Do not use for a short plain answer or persist an untested candidate."),
         Handler::SourcePresent => (
             "Present an opaque user-visible source reference for evidence already observed in this turn.",
-            "Do not present an unobserved LID or use source presentation as evidence retrieval.",
+            "Pass verbatim observed quote; the tool resolves its location. Do not use source presentation as evidence retrieval.",
         ),
         Handler::ProfileManifest => (
             "Read profile slots, presets, projections, or tool policy needed for the current task.",
@@ -1747,7 +1810,11 @@ mod tests {
             ("artifact.list", &["artifact_read"], &["artifact_read"]),
             ("artifact.search", &["artifact_read"], &["artifact_read"]),
             ("artifact.read", &["artifact_read"], &["artifact_read"]),
-            ("presentation.author", &["source_presentation"], &["presentation_authoring"]),
+            (
+                "presentation.author",
+                &["source_presentation"],
+                &["presentation_authoring"],
+            ),
             (
                 "source.present",
                 &["source_presentation"],
@@ -1817,7 +1884,10 @@ mod tests {
             ("reader.state", &["reader_read"], &["reader_read"]),
         ];
 
-        assert_eq!(cases.len(), ToolHandlerId::ALL.len());
+        assert_eq!(cases.len() + 1, ToolHandlerId::ALL.len());
+        let goal_update = registry.registration("goal.update").unwrap();
+        assert!(goal_update.capabilities.is_empty());
+        assert_eq!(goal_update.routing_card.provides, vec![ToolCapability::GoalManagement]);
         for (name, legacy, precise) in cases {
             let registration = registry.registration(name).unwrap();
             assert_eq!(

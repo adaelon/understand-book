@@ -352,13 +352,15 @@ pub fn build_profile_memory_state(
                     occurred_at: error.occurred_at.clone(),
                 })
                 .or_else(|| {
-                    store.review_state().last_error.as_ref().map(|error| {
-                        ProfileReviewErrorView {
+                    store
+                        .review_state()
+                        .last_error
+                        .as_ref()
+                        .map(|error| ProfileReviewErrorView {
                             error_code: error.error_code.clone(),
                             message: error.message.clone(),
                             occurred_at: error.occurred_at.clone(),
-                        }
-                    })
+                        })
                 }),
         },
         snapshot: snapshot_view(snapshot),

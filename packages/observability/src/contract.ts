@@ -8,6 +8,7 @@ export type ObservationCoverage = "complete" | "partial" | "unknown";
 export interface TokenUsage {
   input_tokens: number | null;
   output_tokens: number | null;
+  reasoning_output_tokens?: number;
   cached_input_tokens: number | null;
   cache_creation_input_tokens: number | null;
   total_tokens: number | null;
@@ -79,7 +80,7 @@ const topLevelKeys = new Set([
   "delivery_state", "persistence_state", "usage", "completeness", "metadata",
 ]);
 const usageKeys = new Set([
-  "input_tokens", "output_tokens", "cached_input_tokens", "cache_creation_input_tokens",
+  "input_tokens", "output_tokens", "reasoning_output_tokens", "cached_input_tokens", "cache_creation_input_tokens",
   "total_tokens", "source", "completeness",
 ]);
 const completenessKeys = new Set(["sampled", "dropped_count", "coverage", "reconstructed"]);
@@ -102,14 +103,14 @@ const usageSources = new Set(["provider_reported", "executor_reported", "estimat
 const usageCompleteness = new Set(["complete", "partial", "unavailable"]);
 const coverageValues = new Set(["complete", "partial", "unknown"]);
 
-function exactKeys(value: unknown, allowed: Set<string>): value is Record<string, unknown> {
+function exactKeys(value: unknown, allowed: Set<string>, optional: readonly string[] = []): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     && Object.keys(value).every((key) => allowed.has(key))
-    && [...allowed].every((key) => key in value);
+    && [...allowed].every((key) => key in value || optional.includes(key));
 }
 
 export function parseObservation(value: unknown): ObservationEnvelope {
-  if (!exactKeys(value, topLevelKeys) || !exactKeys(value.usage, usageKeys)
+  if (!exactKeys(value, topLevelKeys) || !exactKeys(value.usage, usageKeys, ["reasoning_output_tokens"])
       || !exactKeys(value.completeness, completenessKeys)
       || !exactKeys(value.metadata, metadataKeys)) {
     throw new Error("observation contains missing or unknown fields");
@@ -132,12 +133,12 @@ export function parseObservation(value: unknown): ObservationEnvelope {
   }
   const usage = value.usage;
   const tokenKeys = [
-    "input_tokens", "output_tokens", "cached_input_tokens", "cache_creation_input_tokens", "total_tokens",
+    "input_tokens", "output_tokens", "reasoning_output_tokens", "cached_input_tokens", "cache_creation_input_tokens", "total_tokens",
   ];
   const hasTokenValue = tokenKeys.some((key) => typeof usage[key] === "number");
   if (!usageSources.has(usage.source as string)
       || !usageCompleteness.has(usage.completeness as string)
-      || !tokenKeys.every((key) => usage[key] === null
+      || !tokenKeys.every((key) => (key === "reasoning_output_tokens" && usage[key] === undefined) || usage[key] === null
         || (typeof usage[key] === "number" && Number.isSafeInteger(usage[key]) && (usage[key] as number) >= 0))
       || (usage.source === "unavailable" ? hasTokenValue || usage.completeness !== "unavailable"
         : !hasTokenValue || usage.completeness === "unavailable")) {

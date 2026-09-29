@@ -2,6 +2,7 @@
 import { ListChecks, Settings } from "@lucide/vue";
 
 defineProps<{
+  chatUnavailable?: boolean;
   chapterTitle: string;
   progressPct: number;
   anchorLid: string | null;
@@ -51,7 +52,7 @@ function closeMobileAfterAction(event: MouseEvent) {
     <div class="topbar-actions">
       <span class="progress">{{ progressPct }}%</span>
       <button class="ghost-pill" :class="{ active: leftRailOpen }" @click="emit('toggle-left-rail')">目录</button>
-      <button class="ghost-pill" @click="emit('new-chat')">新对话</button>
+      <button class="ghost-pill" :disabled="chatUnavailable" @click="emit('new-chat')">新对话</button>
       <button
         v-if="buildIntentAvailable"
         class="topbar-icon-button"

@@ -2,4 +2,4 @@
 import type { UsageCompleteness } from "./UsageCompleteness";
 import type { UsageSource } from "./UsageSource";
 
-export type TokenUsage = { input_tokens: number | null, output_tokens: number | null, cached_input_tokens: number | null, cache_creation_input_tokens: number | null, total_tokens: number | null, source: UsageSource, completeness: UsageCompleteness, };
+export type TokenUsage = { input_tokens: number | null, output_tokens: number | null, reasoning_output_tokens?: number, cached_input_tokens: number | null, cache_creation_input_tokens: number | null, total_tokens: number | null, source: UsageSource, completeness: UsageCompleteness, };

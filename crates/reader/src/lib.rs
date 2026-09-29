@@ -1668,7 +1668,9 @@ impl Reader {
     }
 
     /// 当前视口 = 叶序滑动窗口(anchor ± radius,边界 saturating)。
-    pub fn revision(&self) -> u64 { self.revision }
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
 
     pub fn viewport(&self) -> Viewport {
         if self.leaf_lids.is_empty() {

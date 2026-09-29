@@ -24,7 +24,7 @@ export function usageByPurpose(records) {
 
 // Local test instrumentation only. Forward request/response bytes unchanged;
 // retain no HTTP credentials and omit provider reasoning text from local records.
-export async function startProviderRecorder(providerBase, { tokenLimit = null } = {}) {
+export async function startProviderRecorder(providerBase, { tokenLimit = null, intercept = null } = {}) {
   const records = [];
   const budgetRejections = [];
   const pending = new Set();
@@ -46,6 +46,16 @@ export async function startProviderRecorder(providerBase, { tokenLimit = null } 
       const body = Buffer.concat(buffers);
       record.request = JSON.parse(body.toString('utf8'));
       record.purpose = requestPurpose(record.request);
+      const scripted = intercept ? await intercept(record.request, records) : null;
+      if (scripted) {
+        record.scripted = true;
+        record.status = 200;
+        record.usage = { total_tokens: 0 };
+        record.response = scripted;
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify(scripted));
+        return;
+      }
       const upstream = await fetch(providerBase.replace(/\/$/, '') + req.url, {
         method: req.method, body, signal: controller.signal,
         headers: { 'content-type': req.headers['content-type'] ?? 'application/json',
@@ -57,6 +67,7 @@ export async function startProviderRecorder(providerBase, { tokenLimit = null } 
       try {
         const response = JSON.parse(bytes.toString('utf8'));
         record.usage = response.usage ?? null;
+        if (!upstream.ok) record.provider_error = response.error?.message ?? response.error ?? null;
         record.response = { id: response.id, model: response.model,
           choices: response.choices?.map(c => ({ finish_reason: c.finish_reason,
             message: { role: c.message?.role, content: c.message?.content, tool_calls: c.message?.tool_calls } })) };

@@ -481,6 +481,78 @@ fn project_error(arguments: &str, raw: &Value, limit: usize) -> ToolResultDraft 
     }
 }
 
+fn project_selected_result(arguments: &str, raw: &Value, limit: usize) -> ToolResultDraft {
+    // This observation is atomic: trimming its state or text can change a number's meaning.
+    let mut body = serde_json::Map::new();
+    for key in ["candidate_id", "status", "error_code", "category", "errors", "environment", "environment_name", "recorded_environments", "missing_environments", "reading"] {
+        if let Some(value) = raw.get(key) {
+            body.insert(key.into(), value.clone());
+        }
+    }
+    body.insert("projection".into(), json!("selected_result"));
+    let body = Value::Object(body);
+    if json_len(&body) <= limit {
+        return ToolResultDraft {
+            status: if raw.get("error_code").is_some() { ToolResultStatus::Error } else { ToolResultStatus::Ok },
+            model_body: body,
+            truncated: false,
+            continuation: None,
+            evidence_arguments: arguments.into(),
+        };
+    }
+    let guidance = "Complete reading and its context exceed the budget. Narrow read_selector or split the requested result; no partial reading was returned.";
+    ToolResultDraft {
+        status: ToolResultStatus::Partial,
+        model_body: bounded_value(json!({"error_code":"PRESENTATION_READING_BUDGET","message":guidance}), limit, &[]),
+        truncated: true,
+        continuation: Some(refine_continuation("presentation.author", arguments, guidance)),
+        evidence_arguments: arguments.into(),
+    }
+}
+
+// Editable source must remain a contiguous prefix; generic string truncation would
+// leave next_offset pointing past omitted code.
+fn project_presentation_source(arguments: &str, raw: &Value, limit: usize) -> ToolResultDraft {
+    let source: Vec<char> = raw["text"].as_str().unwrap_or_default().chars().collect();
+    let offset = raw["offset"].as_u64().unwrap_or_default() as usize;
+    let total = raw["total_characters"].as_u64().unwrap_or_default() as usize;
+    let mut body = raw.clone();
+    let mut low = 0;
+    let mut high = source.len();
+    while low < high {
+        let count = (low + high + 1) / 2;
+        body["text"] = json!(source[..count].iter().collect::<String>());
+        body["next_offset"] = json!((offset + count < total).then_some(offset + count));
+        body["chunk_characters"] = json!(count);
+        if json_len(&body) <= limit { low = count; } else { high = count - 1; }
+    }
+    if low == 0 {
+        let guidance = "Page metadata and source exceed the remaining output budget; retry this read in a separate call. No source was returned.";
+        return ToolResultDraft {
+            status: ToolResultStatus::Partial,
+            model_body: bounded_value(json!({"error_code":"PRESENTATION_SOURCE_BUDGET","message":guidance}), limit, &[]),
+            truncated: true,
+            continuation: Some(refine_continuation("presentation.author", arguments, guidance)),
+            evidence_arguments: arguments.into(),
+        };
+    }
+    body["text"] = json!(source[..low].iter().collect::<String>());
+    body["next_offset"] = json!((offset + low < total).then_some(offset + low));
+    body["chunk_characters"] = json!(low);
+    let continuation = (offset + low < total).then(|| {
+        let mut next: Value = serde_json::from_str(arguments).unwrap_or_else(|_| json!({}));
+        next["offset"] = json!(offset + low);
+        ToolContinuation::NextCall {
+            tool: "presentation.author".into(), arguments: next,
+            reason: "continue editable source at the first omitted character".into(),
+        }
+    });
+    ToolResultDraft {
+        status: ToolResultStatus::Partial, model_body: body, truncated: true,
+        continuation, evidence_arguments: arguments.into(),
+    }
+}
+
 pub(crate) fn project_tool_result(
     tool: &str,
     arguments: &str,
@@ -499,6 +571,9 @@ pub(crate) fn project_tool_result(
             "message": error.to_string(),
         })
     });
+    if tool == "presentation.author" && raw.get("reading").is_some_and(|value| !value.is_null()) {
+        return project_selected_result(arguments, &raw, limit);
+    }
     if raw.get("error_code").and_then(Value::as_str).is_some() {
         return project_error(arguments, &raw, limit);
     }
@@ -514,6 +589,7 @@ pub(crate) fn project_tool_result(
         };
     }
     match tool {
+        "presentation.author" if raw["status"] == "version_read" => project_presentation_source(arguments, &raw, limit),
         "book.text" => project_text(arguments, &raw, limit, book),
         "book.search_text" => project_search(arguments, &raw, limit),
         _ => project_structured(tool, arguments, &raw, limit, output_policy.result_policy),
@@ -611,6 +687,61 @@ impl ActiveToolResultLedger {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ex11_source_projection_continues_without_skipping_chinese_code() {
+        let source = "const 标签 = \"学习率\";\n".repeat(500);
+        let chars: Vec<char> = source.chars().collect();
+        let mut offset = 0;
+        let mut reconstructed = String::new();
+        let mut shortened = false;
+        while offset < chars.len() {
+            let end = (offset + 4000).min(chars.len());
+            let raw = json!({"status":"version_read", "reference":{"presentation_id":"p","version_id":"v"},
+                "file":"index.html","offset":offset,"text":chars[offset..end].iter().collect::<String>(),
+                "next_offset":(end < chars.len()).then_some(end),"total_characters":chars.len(),"chunk_characters":4000,
+                "readable_content":"可编辑页面说明".repeat(600),"libraries":[{"name":"konva","version":"10.7.0"}]});
+            let args = json!({"operation":"read","reference":raw["reference"],"file":"index.html","offset":offset}).to_string();
+            let draft = project_tool_result("presentation.author", &args, &raw.to_string(), policy(ToolResultPolicy::EvidenceProjection,16384),16384,&two_leaf_book());
+            assert!(json_len(&draft.model_body) <= 16384);
+            let text = draft.model_body["text"].as_str().unwrap();
+            assert!(!text.is_empty());
+            assert!(!text.contains("[truncated]"));
+            reconstructed.push_str(text);
+            let next = offset + text.chars().count();
+            assert_eq!(draft.model_body["next_offset"],json!((next < chars.len()).then_some(next)));
+            assert_eq!(draft.model_body["libraries"],raw["libraries"]);
+            if let Some(ToolContinuation::NextCall {arguments,..}) = draft.continuation { assert_eq!(arguments["offset"],next); }
+            shortened |= next < end;
+            offset = next;
+        }
+        assert!(shortened);
+        assert_eq!(reconstructed,source);
+    }
+
+    #[test]
+    fn selected_result_projection_preserves_context_or_omits_whole_reading() {
+        let reading = json!({"action_step":2,"selector":"#result","text":"eta=1.2; k=5; w=12.75648; next k=6, w=-13.059072".repeat(8),"page_state":{"eta":1.2,"k":5},"controls":[{"id":"eta","value":"1.2"}]});
+        let raw = json!({"candidate_id":"c","environment_name":"desktop-content","status":"preview_environment_recorded","reading":reading,"observations":[{"dom":{"text":"intro".repeat(10000)}}]});
+        let project = |limit| project_tool_result("presentation.author",r##"{"operation":"preview","read_selector":"#result"}"##,&raw.to_string(),policy(ToolResultPolicy::EvidenceProjection,limit),limit,&two_leaf_book());
+        let full = project(1200);
+        assert_eq!(full.model_body["reading"], reading);
+        assert!(!full.truncated);
+        let small = project(160);
+        assert!(small.model_body.get("reading").is_none());
+        assert!(small.truncated);
+        assert!(small.continuation.is_some());
+    }
+
+    #[test]
+    fn selected_result_projection_preserves_preview_failures() {
+        let raw = json!({"candidate_id":"c","status":"preview_failed","error_code":"PRESENTATION_PREVIEW_FAILED","errors":[{"kind":"candidate_execution","message":"render failed"}],"reading":{"text":"w=12.756480","page_state":{"eta":1.2,"k":5}},"observations":[{"dom":{"text":"intro".repeat(10000)}}]});
+        let draft = project_tool_result("presentation.author", "{}", &raw.to_string(), policy(ToolResultPolicy::EvidenceProjection, 1024), 1024, &two_leaf_book());
+        assert_eq!(draft.status, ToolResultStatus::Error);
+        assert_eq!(draft.model_body["reading"], raw["reading"]);
+        assert_eq!(draft.model_body["errors"], raw["errors"]);
+        assert_eq!(draft.model_body["error_code"], raw["error_code"]);
+    }
     use base_schema::{LidNode, NodeKind, ReadOnlyBase, Span};
     use book_tool_contracts::{SearchMatchMode, SearchOrder, SearchTextInput};
 
@@ -872,6 +1003,7 @@ mod tests {
             continuation: None,
         };
         let durable = Message {
+            provider_continuation: None,
             role: Role::Tool,
             content: Some("RAW_DURABLE_BODY".into()),
             tool_calls: Vec::new(),

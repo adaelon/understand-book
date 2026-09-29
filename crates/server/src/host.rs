@@ -2087,6 +2087,7 @@ mod tests {
                 updated_at: "0".into(),
                 turns: (1..=turns_per_session)
                     .map(|ordinal| AgentChatTurn {
+                        goal_ref: None,
                         presentation_follow_up: None,
                         turn_id: format!("turn-review-{index}-{ordinal}"),
                         user_turn_ordinal: ordinal,
@@ -2106,6 +2107,7 @@ mod tests {
                     })
                     .collect(),
                 messages: new_session(),
+                goals: vec![],
                 compaction_checkpoint: None,
             })
             .collect();

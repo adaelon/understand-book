@@ -217,10 +217,9 @@ impl MemoryStore {
         let mut baselined = Vec::new();
         if state.review_jobs.is_empty() && state.reviewed_through.is_empty() {
             for cursor in sessions.values() {
-                state.reviewed_through.insert(
-                    cursor.session_id.clone(),
-                    cursor.latest_user_turn_ordinal,
-                );
+                state
+                    .reviewed_through
+                    .insert(cursor.session_id.clone(), cursor.latest_user_turn_ordinal);
                 baselined.push(cursor.session_id.clone());
             }
         }

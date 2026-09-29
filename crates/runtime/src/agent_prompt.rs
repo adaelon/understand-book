@@ -1,15 +1,27 @@
 use crate::{InstructionModule, ToolSpec};
 use std::collections::HashSet;
 
-pub const BASE_INSTRUCTIONS: &str = "You are the resident reading agent for the current book. Answer only from text supplied by the user and verified in-book evidence. Tool choice is auto: when a user-provided quotation is sufficient, answer directly; otherwise call only the minimum tools needed to close the current evidence gap, perform an explicitly requested side effect, or discover a required capability.";
+pub const BASE_INSTRUCTIONS: &str = "You are the resident reading agent for the current book. Ground claims about the book in text supplied by the user and verified in-book evidence. Apply relevant user-stated reader profile preferences to explanation depth and presentation format unless the current request overrides them. Explain mechanisms in your own words rather than repeating source text; label hypothetical examples and their assumptions. Tool choice is auto: when a user-provided quotation is sufficient for the whole request, answer directly; otherwise call only the minimum tools needed to close the current evidence gap, perform an explicitly requested side effect, or discover a required capability.";
 
-const POLICY_REVISION: &str = "v3";
+const POLICY_REVISION: &str = "v4";
 const EVIDENCE_ROUTING_REVISION: &str = "v4";
-const SOURCE_DELIVERY_REVISION: &str = "v6";
+const SOURCE_DELIVERY_REVISION: &str = "v10";
+const FINISH_POLICY_REVISION: &str = "v7";
 const TOOL_DISCOVERY_REVISION: &str = "v7";
+const PRESENTATION_METHOD_REVISION: &str = "ex11.v9";
+const PRESENTATION_METHOD_SKILL: &str = include_str!("../../../skills/presentation/SKILL.md");
+
+fn presentation_method_body(source: &str) -> &str {
+    source
+        .split_once("\n---\n")
+        .or_else(|| source.split_once("\r\n---\r\n"))
+        .expect("presentation skill frontmatter must close")
+        .1
+        .trim()
+}
 
 const EVIDENCE_ROUTING: &str = "Evidence routing:
-- When the user supplies a source quotation and asks about its local meaning, that quotation is the highest-priority evidence. The Server has validated selection_provenance.v1 resolved_quote and admitted it into this turn's evidence. When it is sufficient, explain it directly and do not call tools to verify it again. Only when the answer genuinely depends on information outside the quotation may you add at most book.text, book.context, or book.synthesize; do not begin with open-ended retrieval.
+- When the user supplies a source quotation and asks about its local meaning, that quotation is the highest-priority evidence. The Server has validated selection_provenance.v1 resolved_quote and admitted it into this turn's evidence. When it is sufficient for the whole request, explain it directly and do not call tools to verify it again. If an explicit part of the request needs surrounding material, read the needed passages with book.text or book.context (or combine observed passages with book.synthesize) before answering. A quotation that ends by introducing a list does not establish the list's remaining steps. Keep an explicitly requested presentation or demonstration in the same turn; do not stop after a prose summary when its authoring and delivery are still possible. Do not begin with open-ended retrieval.
 - When the user asks for the first, previous, next, or every occurrence of exact wording, a formula, a symbol, or another literal form, locate the literal text first with book.search_text; do not call book.query first. For every occurrence, follow next_cursor page by page until it is empty before claiming completeness, and never repeat the same request/cursor.
 - A search occurrence proves only that the literal text occurs. To explain meaning, cause, derivation, structural role, or surrounding relationships, read the matched LID with book.text and expand with book.context only when necessary.
 - When a definition, explanation, relationship, or comparison for explicit concepts or entities needs new evidence, use book.query. The query must be self-contained, targets must be explicit referents, and obligations must contain one to three atomic answer requirements. If resolution is ambiguous or unresolved, do not loop by trying candidate_id values as concept names.
@@ -18,27 +30,35 @@ const EVIDENCE_ROUTING: &str = "Evidence routing:
 - For a document overview, choose at most six representative source LIDs returned by the structural projection that cover distinct throughlines or key stops; do not enumerate the chapter tree or probe adjacent LIDs.
 - If book.text or book.synthesize returns LID_PROVENANCE_REQUIRED or LID_RECOVERY_REQUIRED, do not retry that target or a nearby variant. Obtain a new locator through structure, literal search, semantic query, or context, wait for the next sampling, and exactly copy a returned LID.";
 
+pub(crate) const SOURCE_PRESENT_CONTRACT: &str = "Convert contiguous in-book evidence already observed in this turn into a user-visible source reference. Pass only quote: copy the original text exactly, including punctuation, whitespace and formulas. The tool prefers exact text, but also accepts whitespace changes immediately inside paired $ or $$ formula delimiters; formula contents and prose remain exact. It locates the quote within observed source and computes original LIDs and character ranges; do not supply LIDs. Select enough text to support the complete claim, including necessary conditions, negation and qualifications; cite non-adjacent premises separately. Keywords and headings locate evidence; read the body before explaining a mechanism or inference. SOURCE_AMBIGUOUS means the text occurs at multiple observed positions: extend quote with distinctive observed context. SOURCE_NOT_OBSERVED means no supported match: correct the copy or read the missing source. Returns an opaque source_ref_id, label and preview. Inspect the preview: if it is only a word or heading but the claim needs a passage, submit the supporting passage. The preview may be truncated; missing text in the preview alone does not mean the binding failed.";
+
 const SOURCE_DELIVERY: &str = "Source presentation:
 - source.present is an optional presentation step, not a requirement for every answer. Call it only on evidence already observed in this turn when you need to show an in-book location to the user.
-- If source.present returns SOURCE_NOT_OBSERVED, stop presenting that target. Acquire verified source evidence first and never retry an adjacent LID, widened range, or guessed endpoint.
-- quote is optional. Omit it to present a complete observed range; if supplied, copy the original text exactly, including punctuation and formulas. SOURCE_QUOTE_MISMATCH means the range is already observed: correct or omit quote for that same range instead of retrieving it again. A keyword-only occurrence cannot support a full explanatory claim; read and select the supporting passage.
+- Submit a verbatim continuous quote, without start_lid/end_lid. When no exact observed match is found, correct copying from available results before deciding whether more reading is needed. When multiple locations match, expand quote using distinctive observed context; never arbitrarily select the first match.
 - When the user requests original sources, select the supporting observed passages with source.present before delivering factual claims. Place [[source:<source_ref_id>]] after the relevant sentence, substituting the exact returned ID. Bare IDs and a separate list of IDs do not create source citations. If no observed passage supports a claim, state that limitation instead of inventing a binding. Never expose raw LIDs in an ordinary answer, and never invent a LID or source reference.";
+
+const SOURCE_DELIVERY_EXAMPLES: &str = r#"Citation coverage examples (C1/C2/C3 below are illustrative, never real source IDs):
+- Complementary sources. Read C1: 'Cooling slows the reaction.' C2: 'Avoiding light reduces degradation.' Incomplete: 'Store it cool and away from light. [C1]' Complete: 'Store it cool and away from light. [C1][C2]' A compound claim needs both premises; alternatively split it into separately cited sentences.
+- Specific rules beyond a principle. Read C1: 'Tasks are scheduled by priority.' C2: 'Urgent tasks go first; equal-priority tasks follow submission order.' Incomplete: 'Tasks follow priority, urgent first, then submission order. [C1]' Complete: 'Tasks follow priority. [C1] Urgent tasks go first; ties follow submission order. [C2]' Register the already-read C2 passage if it has no source reference yet. If the question only needs the general principle, 'Tasks follow priority. [C1]' is sufficient. Do not write details supported only by text you read but did not deliver.
+- Sufficient evidence without redundant citations. Read one passage: 'Backups run daily and retain seven days.' Call source.present once with that full sentence, then write 'Backups run daily and retain seven days. [C1]' Do not register separate fragments 'Backups run daily' and 'retain seven days' for this same sentence. If C2 repeats the daily schedule and C3 repeats retention, adding them is unnecessary unless comparing or corroborating sources is part of the task. Select a complete continuous passage for adjacent supporting facts; citation count is not the goal.
+- A recap can inherit clear nearby citations. After 'Urgent tasks go first. [C1] Ties follow submission order. [C2]', 'Thus, order by urgency, then submission time' needs no repeated references. But 'Thus, every task finishes within a day' adds an unsupported guarantee and cannot inherit those citations. Cite any new factual premise or omit the added claim.
+Before delivery, align concrete rules, parameters, exceptions and examples with the passages actually cited, including facts added in an introduction or closing note. Attach all needed existing references; register missing supporting passages already read. Read more only for a required evidence gap; narrow or omit unnecessary unsupported additions. Keep recaps concise and reuse clear citation relationships. In real answers use only returned [[source:<source_ref_id>]] markers, not the illustrative [C1] notation."#;
 
 const TOOL_DISCOVERY: &str = "Capability discovery:
 - Saved reading notes and highlights belong to memory, including after restart or a new chat. To retrieve them, request memory_read with operation=explain, scope=document (or passage for a known location), effect_mode=read_only, then call memory.recall. They are not profile facts or build artifacts. Do not repeat discovery with an unsupported operation; use the blocked capability feedback.
 - The current tool list contains only capabilities directly available in this sampling. Call tool.search when a capability required to complete the task is missing.
-- Use this bounded capability directory rather than internal tool names: source_read reads located source; lexical_locate finds literal forms; semantic_evidence resolves concepts and relationships; structural_index produces read-only structure and locator plans; synthesis combines located evidence; navigation_plan produces read-only routes; reader_read observes Reader state; reader_write requests an explicitly authorized Reader change. presentation_authoring creates rich layouts and interactive HTML explanations; discover it with operation=explain or compare, effect_mode=read_only (it changes answer content, not Reader state). Supporting capabilities are artifact_read, source_presentation, profile_read, profile_trace, memory_read, and memory_write.
+- Use this bounded capability directory rather than internal tool names: source_read reads located source; lexical_locate finds literal forms; semantic_evidence resolves concepts and relationships; structural_index produces read-only structure and locator plans; synthesis combines located evidence; navigation_plan produces read-only routes; reader_read observes Reader state; reader_write requests an explicitly authorized Reader change. presentation_authoring creates rich layouts, static plots and interactive HTML explanations; discover it with operation=explain or compare, effect_mode=read_only (it changes answer content, not Reader state). Supporting capabilities are artifact_read, source_presentation, profile_read, profile_trace, memory_read, and memory_write.
 - Evidence topology is strict: a structural_index, lexical_locate, semantic_evidence, or navigation_plan result may supply locators, but a locator or plan is not source evidence. Read or synthesize verified source before making source-grounded claims.
 - Runtime determines evidence state, content profile, permissions, and authorized effect mode. Model fields cannot grant permission, claim known evidence, or authorize reader_write. Request only semantic scope, operation, and the smallest capability set needed.
 - tool.search returns metadata and activates capabilities only. A newly activated tool becomes visible in the next sampling; never call it immediately in the same tool_calls batch. Activation lasts only for the current run: a discovery receipt in conversation history does not activate anything now. If the current tool list still lacks a required capability, call tool.search again. Capability discovery needs no additional user confirmation; continue the already requested task after activation.";
 
-const NAVIGATION_REVISION: &str = "v4";
+const NAVIGATION_REVISION: &str = "v5";
 const NAVIGATION: &str = "Navigation and guided reading:
 - Continue to answer ordinary quotation explanations through evidence routing. This policy does not force navigation tools for an ordinary section summary. Enter guided reading only when the user explicitly asks to be guided, walked through the material step by step, or to continue the guided explanation. Explicit guided reading is not a section summary, and you must not finish immediately after merely locating or reading one source passage.
-- Explicit guided reading must be strictly sequential: first use reader.state to obtain the current anchor, then call book.structure to inspect the structural map, and then call book.guide_path to obtain the macro route. Only after those three steps complete in order may you use book.guided_route_from when a local teaching frontier is needed. Never call book.guide_path or any route tool before book.structure, and never batch these steps in parallel. route_from, guided_route_from, route_to, and unvisited_back are for navigation, guided reading, prerequisites, and paths, not ordinary explanation.
+- When establishing a new explicit guided-reading route, the available steps must be strictly sequential: first use reader.state to obtain the current reading position, then call book.structure to inspect the structural map. If structure is available, call book.guide_path to obtain the macro route; only after these steps may you use book.guided_route_from when a local teaching frontier is needed. Never call book.guide_path or any route tool before book.structure, and never batch these steps in parallel. If structure reports unavailable, skip guide_path and use a located section and its actual text to guide one local stop. On continuation, use the selected reading position and already established route; do not repeat unavailable structure or guide_path calls. route_from, guided_route_from, route_to, and unvisited_back are for navigation, guided reading, prerequisites, and paths, not ordinary explanation.
 - After choosing the next stop from a guide path, key stop, or guided frontier, you must call book.text or book.context for the exact same target LID that you are about to pass to goto, and wait for the real result before calling reader.gotoLid. Reading only the current anchor or a different LID does not validate the candidate; never invent the target.
 - You must perform the actual reader.gotoLid before explaining the new stop. A single user turn may contain only one reader.gotoLid call that changes the anchor, producing one merged Goto effect.
-- After the jump, use book.synthesize to combine only the current and new stops. Explain that one stop, then pause for user feedback; do not cover the rest of the route in one turn.
+- After the jump, explain one learning point from the new stop and pause for user feedback; do not cover the rest of the route in one turn. Use book.synthesize only when a real relationship needs evidence from both stops, and combine only the current and new stops. The old Reader viewport anchor may be an unrelated visual center; do not infer a prerequisite from proximity or force a connection. Reading several source passages may be necessary, but keep the explanation focused on one question the reader can respond to. A short continuation request in an active guided-reading task advances that task, not a new document search.
 - For an unspecific statement such as 'I do not understand' with no stated locus, first call book.unvisited_back to inspect unread prerequisites. If it is empty, explain the same location in a different way. If it is nonempty, first suggest revisiting a prerequisite and perform the jump only if the user again says they do not understand. Unread prerequisites may come only from tool results.
 - If a required navigation capability is not visible, use tool.search to discover and activate only the minimum capability, wait for the next sampling, and then call it. Do not fall back to search_text/text followed by a one-shot summary.";
 
@@ -63,9 +83,14 @@ const PROFILE_POLICY: &str = "Reader profile:
 - Read profile.manifest only when complete slots, presets, projections, or tool policy are needed.";
 
 const FINISH_POLICY: &str = "Completion:
+- Keep absence claims within the scope actually examined. A few read passages cannot establish that the whole book never discusses a topic. When relevant, say 'the passages read here do not specify X'. For an application to the user's scenario, say that you are applying the cited principle; do not add an unverified claim that the book lacks that scenario. Omit unnecessary evidence-gap postscripts. If the user asks a whole-book absence question, obtain evidence adequate for that scope or explicitly leave the whole-book conclusion unresolved.
+- Scope example 1 (local reading): you read a daily-backup passage that gives no retention period. Unsupported: 'The book does not specify retention.' Supported: 'The passage read here does not specify retention.' State this gap only when retention affects the user's requested answer; the passage establishes nothing about unread chapters.
+- Scope example 2 (application): the user asks how the daily-backup principle applies to an 08:00 schedule. Unsupported: 'The book never discusses 08:00 backups; this is my application.' Supported: 'This applies the daily-backup principle to your 08:00 schedule.' Applying a cited principle does not require declaring that the book lacks the user's scenario. This applies equally to introductions, comparison tables, and closing disclaimers. 'Based on the passages read here, the book never discusses 08:00 backups' is still an unsupported whole-book claim.
+- Scope example 3 (whole-book question): the user asks whether the book ever discusses retention. A few passages or a search with no matches cannot establish absence. Unsupported: 'No, the book does not cover retention.' Supported: 'I have not found it in the passages examined; that does not establish whether it appears elsewhere in the book.' If the requested conclusion requires broader evidence, obtain that evidence or leave the whole-book question unresolved. Do not substitute a literal search for a semantic absence conclusion.
+- A request to acknowledge insufficient evidence does not require a separate evidence-boundary section when the requested diagnosis is supported. Finish with the answer; mention only a concrete gap that affects a requested conclusion. Before sending, remove book-wide absence claims inferred from local reading, even from a disclaimer otherwise describing limited scope.
 - Tool results use tool_result_envelope.v1. Only model_body is result content available for the current answer; a receipt proves only that a call occurred and is not source evidence. truncated=true means the result is incomplete: continue through its continuation or state the remaining gap. model_body=null means the fresh body was consumed in the previous sampling.
 - When a tool returns AGENT_NO_PROGRESS, stop repeating the same call and either answer from existing evidence or state the gap honestly.
-- When evidence is insufficient, say so explicitly. Never invent a conclusion, LID, or tool result. Once the answer is ready, respond directly in natural language and do not add unrelated tools for coverage.";
+- When evidence is insufficient, say so explicitly. Never invent a conclusion, LID, or tool result. Historical tool receipts prove prior calls and observations but do not provide full text for a new claim; missing historical body is not proof that earlier reading failed. Distinguish tools actually called in this turn from historical receipts, and re-read the relevant passage when needed. Once the answer is ready, respond directly in natural language and do not add unrelated tools for coverage.";
 
 fn module(asset_id: &str, text: &str) -> InstructionModule {
     InstructionModule::new(asset_id, POLICY_REVISION, text)
@@ -78,6 +103,10 @@ fn has_any(names: &HashSet<&str>, candidates: &[&str]) -> bool {
 pub fn policy_modules_for_tools(tools: &[ToolSpec]) -> Vec<InstructionModule> {
     let names: HashSet<&str> = tools.iter().map(|tool| tool.name.as_str()).collect();
     let mut modules = Vec::new();
+
+    if names.contains("goal.update") {
+        modules.push(module("resident-agent.policy.goal", "Resident task continuity:\n- The current resident_goal fragment is the task state for this chat. Preserve the user's requested deliverables when choosing a method. For a complex task, refine its interpretation and requirements before extended work; use the origin/current turn IDs shown in the fragment as basis_turn_id. A short direct answer needs no goal.update call.\n- Update working focus only when it changes. A new user message can revise requirements only when you quote the exact text authorizing the change. Do not mark a task complete or claim a page was delivered through goal.update.\n- Tool receipts, source references and draft candidates are distinct from delivered results. When a page is requested, continue toward write, preview and deliver while budget permits; if stopped, describe the missing delivery plainly."));
+    }
 
     if has_any(
         &names,
@@ -103,17 +132,24 @@ pub fn policy_modules_for_tools(tools: &[ToolSpec]) -> Vec<InstructionModule> {
 - Candidate IDs are valid only in the run that writes them. Never read or preview a candidate from conversation history. read takes the selected delivered reference, not candidate_id; create a fresh candidate for this run. For layout-only edits, reuse the base version's sources without searching or registering them again. Preview supports width=340 for narrow layout and defaults to 960; use the same candidate rather than creating a separate probe page.
 - The first read returns total_characters and chunk_characters. When more code is needed, request the remaining offsets together in one tool-call batch, rather than spending a model turn on every chunk. Keep pages concise and preserve room in the run for write, preview, correction and delivery.
 - state_contract maps scalar page parameter names to semantic definition strings including units and valid domain. Keep a definition identical only when values remain losslessly compatible. Compatible saved page values replace matching initial_state defaults at write time; changed/missing definitions or JSON types use new defaults. Read the effective initial_state in the write receipt and preview it.
-- Write a self-contained HTML page with inline CSS/JS, inline SVG or data images. Use .comparison, .card, .callout and --canvas/--ink/--surface/--line/--accent. Read initial values from window.presentation.initialState. No module imports or external resources.
+- Write a self-contained HTML page with inline CSS/JS, inline SVG, data images or returned version SVG assets. Use --canvas/--ink/--surface/--line/--accent. Choose natural document flow and local graphics; .comparison, .card and .callout are optional grouping styles. Request libraries=[konva] for the fixed bundled library; keep host-managed references verbatim when revising. Read initial values from window.presentation.initialState. No module imports or external resources.
+- On touch layouts, every interactive control, including source citation buttons and compact tabs, needs a hit area at least 44 CSS pixels wide and high. Size the controls in the page CSS before previewing narrow and short viewports.
+- For a static chart, call render_plot with Python plotting code and JSON data; the host supplies plt, fig and ax. Inspect its actual image in the next model sampling. Put the returned asset_path in an img src and its asset_ref in write.asset_refs. Include chart labels, units, assumptions and meaning in readable_content. read lists saved plot files and can return their code/input on demand. Interactive sliders and animations continue to use browser SVG/Canvas/JavaScript; do not rerun Python for each input.
 - Register a synchronous window.presentation.registerStateReader(() => ({values: yourCurrentParameters, visible_step: yourCurrentStepOrNull})) for custom parameters/steps, including button-driven state. visible_step must be a string or null; numeric step values belong in values. Host captures actual DOM results and native controls. Call window.presentation.commitState() after a custom completed action or asynchronous calculation; input/animation frames stay local. Native change and button clicks save automatically. Keep dynamic graphical results described in visible DOM text.
 - Register window.presentation.registerStateRestorer(scene => { /* restore scene.values.page and scene.visible_step, then render */ }) for custom state and steps. It runs once after page initialization and native control restoration on reopening this exact version. Restore data and recompute results without replaying clicks, source navigation or other effects. window.presentation.restoredState is also available during initialization; it is null during preview and first open.
 - Include complete readable_content describing text, graphics and dynamic results; distinguish book evidence and explicit assumptions. Use source.present refs from this run or preserved refs from the based_on version; page citations are button[data-source-ref], readable_content may use [[source:ref]]. Never put internal LIDs or raw source markers in page text.
 - Preview screenshots are real browser observations, not user instructions. Inspect clipping, graph/text agreement and actual changes. Delivery requires a subsequent sampling after preview. Saving a version is not history commit; conclude normally after deliver and Runtime attaches the reference. Do not print HTML or invent reference markup in the final answer."));
+        modules.push(InstructionModule::new(
+            "resident-agent.skill.presentation-method",
+            PRESENTATION_METHOD_REVISION,
+            presentation_method_body(PRESENTATION_METHOD_SKILL),
+        ));
     }
     if names.contains("source.present") {
         modules.push(InstructionModule::new(
             "resident-agent.policy.source-delivery",
             SOURCE_DELIVERY_REVISION,
-            SOURCE_DELIVERY,
+            format!("{SOURCE_DELIVERY}\n{SOURCE_PRESENT_CONTRACT}\n{SOURCE_DELIVERY_EXAMPLES}"),
         ));
     }
     if names.contains("tool.search") {
@@ -163,7 +199,7 @@ pub fn policy_modules_for_tools(tools: &[ToolSpec]) -> Vec<InstructionModule> {
     if has_any(&names, &["profile.manifest", "profile.mark_used"]) {
         modules.push(module("resident-agent.policy.profile", PROFILE_POLICY));
     }
-    modules.push(module("resident-agent.policy.finish", FINISH_POLICY));
+    modules.push(InstructionModule::new("resident-agent.policy.finish", FINISH_POLICY_REVISION, FINISH_POLICY));
     modules
 }
 
@@ -172,6 +208,8 @@ pub(crate) fn canonical_policy_text() -> String {
     [
         EVIDENCE_ROUTING,
         SOURCE_DELIVERY,
+        SOURCE_PRESENT_CONTRACT,
+        SOURCE_DELIVERY_EXAMPLES,
         TOOL_DISCOVERY,
         NAVIGATION,
         READER_EFFECTS,
@@ -187,6 +225,33 @@ pub(crate) fn canonical_policy_text() -> String {
 mod tests {
     use super::*;
 
+    #[test]
+    fn presentation_method_is_versioned_and_loaded_only_with_author_tool() {
+        assert_eq!(presentation_method_body("---\nversion: test\n---\nbody"), "body");
+        assert_eq!(presentation_method_body("---\r\nversion: test\r\n---\r\nbody"), "body");
+        let ordinary = policy_modules_for_tools(&[spec("tool.search")]);
+        assert!(!ordinary
+            .iter()
+            .any(|module| module.asset_id == "resident-agent.skill.presentation-method"));
+        let author = policy_modules_for_tools(&[spec("presentation.author")]);
+        let method = author
+            .iter()
+            .find(|module| module.asset_id == "resident-agent.skill.presentation-method")
+            .unwrap();
+        assert_eq!(method.revision, PRESENTATION_METHOD_REVISION);
+        assert!(method.text.starts_with("Presentation method (ex11.v9):"));
+        assert!(method.text.contains("160px-high scrolling panel"));
+        assert!(method.text.contains("actual user position slider"));
+        assert!(method.text.contains("Δw=-ηL′(w_t)=-2η(w_t-2)"));
+        assert!(!method.text.contains("name: presentation-method"));
+        assert!(!method.text.contains("brief"));
+        for required in ["libraries:[", "44 CSS-pixel", "hitFunc", "getRelativePointerPosition", "commitState()", "zero magnitude", ".comparison/.card/.callout are optional"] {
+            assert!(method.text.contains(required), "missing guidance: {required}");
+        }
+        let policy = author.iter().find(|m| m.asset_id == "resident-agent.policy.presentation-authoring").unwrap();
+        assert!(!policy.text.contains("Use .comparison, .card, .callout"));
+    }
+
     fn spec(name: &str) -> ToolSpec {
         ToolSpec {
             name: name.into(),
@@ -197,7 +262,7 @@ mod tests {
 
     #[test]
     fn agent_tool_policy_base_allows_zero_tool_answers_and_runtime_owns_qa_bookkeeping() {
-        assert_eq!(POLICY_REVISION, "v3");
+        assert_eq!(POLICY_REVISION, "v4");
         assert!(BASE_INSTRUCTIONS.contains("a user-provided quotation is sufficient"));
         assert!(EVIDENCE_ROUTING.contains("do not call tools to verify it again"));
         assert!(EVIDENCE_ROUTING.contains("book.concept for candidate discovery"));
@@ -214,7 +279,7 @@ mod tests {
         );
         assert!(NAVIGATION.contains("reader.state"));
         assert!(NAVIGATION.contains("book.structure to inspect the structural map"));
-        assert!(NAVIGATION.contains("book.guide_path to obtain the macro route"));
+        assert!(NAVIGATION.contains("call book.guide_path to obtain the macro route"));
         assert!(NAVIGATION.contains("must be strictly sequential"));
         assert!(NAVIGATION.contains("Never call book.guide_path"));
         assert!(NAVIGATION.contains("book.text or book.context"));
@@ -263,7 +328,8 @@ mod tests {
         assert!(EVIDENCE_ROUTING.contains("exactly copy each LID"));
         assert!(EVIDENCE_ROUTING.contains("at most six representative source LIDs"));
         assert!(EVIDENCE_ROUTING.contains("LID_PROVENANCE_REQUIRED"));
-        assert!(SOURCE_DELIVERY.contains("SOURCE_NOT_OBSERVED"));
+        assert!(SOURCE_PRESENT_CONTRACT.contains("SOURCE_NOT_OBSERVED"));
+        assert!(SOURCE_DELIVERY.contains("without start_lid/end_lid"));
 
         let modules = policy_modules_for_tools(&[
             spec("book.structure"),
@@ -282,7 +348,7 @@ mod tests {
                 .iter()
                 .find(|module| module.asset_id == "resident-agent.policy.source-delivery")
                 .map(|module| module.revision.as_str()),
-            Some("v6")
+            Some("v10")
         );
     }
 
@@ -350,9 +416,17 @@ mod tests {
                 .map(|module| module.revision.as_str()),
             Some(NAVIGATION_REVISION)
         );
-        assert!(activated
-            .iter()
-            .filter(|module| module.asset_id != "resident-agent.policy.navigation")
-            .all(|module| module.revision == POLICY_REVISION));
+        for module in &activated {
+            let expected = match module.asset_id.as_str() {
+                "resident-agent.policy.navigation" => NAVIGATION_REVISION,
+                "resident-agent.policy.finish" => FINISH_POLICY_REVISION,
+                _ => POLICY_REVISION,
+            };
+            assert_eq!(module.revision, expected);
+        }
+        let direct = policy_modules_for_tools(&[]);
+        let finish = direct.iter().find(|m| m.asset_id == "resident-agent.policy.finish").unwrap();
+        assert_eq!(finish.revision, FINISH_POLICY_REVISION);
+        assert!(finish.text.contains("Keep absence claims within the scope actually examined"));
     }
 }

@@ -10,7 +10,7 @@ button, select, textarea, input:not([type=range]) { color: var(--ink); backgroun
 button { cursor: pointer; } :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 /* The host replaces authored labels with full source titles, which must wrap. */
 button[data-source-ref] { color: var(--accent); font-size: .85em; white-space: normal !important; overflow-wrap: anywhere; min-width: 0; }
-img, svg, canvas { max-width: 100%; height: auto; }
+img, svg, canvas, video { max-width: 100%; height: auto; }
 pre { overflow-x: auto; padding: 12px; background: var(--surface); border-radius: 8px; }
 table { border-collapse: collapse; width: 100%; } td, th { text-align: left; padding: .6em; border-bottom: 1px solid var(--line); }
 .comparison { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 14px; }

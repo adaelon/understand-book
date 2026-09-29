@@ -1,0 +1,9 @@
+- insert:
+    - id: understand-book-build
+      name: '@understand-book/dsh-plugin'
+      config:
+        executable: !!js process.env.UNDERSTAND_BOOK_DSH_ENGINE
+        driverRoot: !!js process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT
+        maxOutputTokens: 4096
+        safetyMarginTokens: 4096
+        handoffsPerCall: 8

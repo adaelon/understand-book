@@ -595,6 +595,8 @@ mod tests {
         let observed_inner = RecordingAdapter(std::sync::Mutex::new(Vec::new()));
         let baseline = direct
             .complete(CompletionRequest {
+                output_token_limit: None,
+                reasoning_effort: None,
                 system: "fixed system".into(),
                 user: "fixed user".into(),
             })
@@ -607,6 +609,8 @@ mod tests {
             runtime_profile: observed_inner.model_runtime_profile(),
         }
         .complete(CompletionRequest {
+            output_token_limit: None,
+            reasoning_effort: None,
             system: "fixed system".into(),
             user: "fixed user".into(),
         })
@@ -662,6 +666,8 @@ mod tests {
         };
         assert!(observed
             .complete(CompletionRequest {
+                output_token_limit: None,
+                reasoning_effort: None,
                 system: "system".into(),
                 user: "user".into(),
             })

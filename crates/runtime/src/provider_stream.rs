@@ -12,6 +12,10 @@ use ts_rs::TS;
 pub struct ModelUsage {
     pub input_tokens: Option<u32>,
     pub output_tokens: Option<u32>,
+    /// Included in output_tokens; never add this subset to the billed total.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub reasoning_output_tokens: Option<u32>,
     pub cached_input_tokens: Option<u32>,
     pub cache_creation_input_tokens: Option<u32>,
     pub total_tokens: Option<u32>,
@@ -21,6 +25,7 @@ impl ModelUsage {
     pub fn has_any_value(&self) -> bool {
         self.input_tokens.is_some()
             || self.output_tokens.is_some()
+            || self.reasoning_output_tokens.is_some()
             || self.cached_input_tokens.is_some()
             || self.cache_creation_input_tokens.is_some()
             || self.total_tokens.is_some()
@@ -65,21 +70,28 @@ pub fn model_usage(value: &Value) -> Option<ModelUsage> {
     if !usage.is_object() {
         return None;
     }
-    let input_tokens = usage_u32(&usage["prompt_tokens"])
-        .or_else(|| usage_u32(&usage["input_tokens"]));
-    let output_tokens = usage_u32(&usage["completion_tokens"])
-        .or_else(|| usage_u32(&usage["output_tokens"]));
+    let input_tokens =
+        usage_u32(&usage["prompt_tokens"]).or_else(|| usage_u32(&usage["input_tokens"]));
+    let output_tokens =
+        usage_u32(&usage["completion_tokens"]).or_else(|| usage_u32(&usage["output_tokens"]));
     let cached_input_tokens = usage_u32(&usage["prompt_tokens_details"]["cached_tokens"])
         .or_else(|| usage_u32(&usage["input_tokens_details"]["cached_tokens"]))
-        .or_else(|| usage_u32(&usage["input_token_details"]["cache_read"]));
+        .or_else(|| usage_u32(&usage["input_token_details"]["cache_read"]))
+        .or_else(|| usage_u32(&usage["prompt_cache_hit_tokens"]));
+    let reasoning_output_tokens = usage_u32(&usage["completion_tokens_details"]["reasoning_tokens"])
+        .or_else(|| usage_u32(&usage["output_tokens_details"]["reasoning_tokens"]));
     let cache_creation_input_tokens =
         usage_u32(&usage["input_tokens_details"]["cache_creation_tokens"])
             .or_else(|| usage_u32(&usage["input_token_details"]["cache_creation"]));
-    let total_tokens = usage_u32(&usage["total_tokens"])
-        .or_else(|| input_tokens.zip(output_tokens).map(|(input, output)| input + output));
+    let total_tokens = usage_u32(&usage["total_tokens"]).or_else(|| {
+        input_tokens
+            .zip(output_tokens)
+            .map(|(input, output)| input + output)
+    });
     let snapshot = ModelUsage {
         input_tokens,
         output_tokens,
+        reasoning_output_tokens,
         cached_input_tokens,
         cache_creation_input_tokens,
         total_tokens,
@@ -120,6 +132,7 @@ pub fn read_sse(
     let mut reader = BufReader::new(reader);
     let mut data = String::new();
     let mut text = String::new();
+    let mut reasoning_content: Option<String> = None;
     let mut calls: BTreeMap<usize, (String, String, String)> = BTreeMap::new();
     let mut usage = Value::Null;
     let mut finish: Option<String> = None;
@@ -174,6 +187,9 @@ pub fn read_sse(
                 continue;
             }
             let delta = &choice["delta"];
+            if let Some(fragment) = delta["reasoning_content"].as_str() {
+                reasoning_content.get_or_insert_with(String::new).push_str(fragment);
+            }
             if finish.is_some()
                 && (delta["content"].as_str().is_some_and(|s| !s.is_empty())
                     || delta["tool_calls"]
@@ -223,10 +239,6 @@ pub fn read_sse(
         if id.is_empty() || name.is_empty() {
             return Err(error("Incomplete tool identity"));
         }
-        let args: Value = serde_json::from_str(&arguments).map_err(error)?;
-        if !args.is_object() {
-            return Err(error("Tool arguments must be an object"));
-        }
         tool_calls.push(
             json!({"id":id,"type":"function","function":{"name":name,"arguments":arguments}}),
         );
@@ -236,7 +248,7 @@ pub fn read_sse(
     }
     observer.observe(ModelDelta::Finish(finish.clone().unwrap()));
     Ok(
-        json!({"choices":[{"message":{"role":"assistant","content": if text.is_empty() { Value::Null } else {json!(text)},"tool_calls":tool_calls},"finish_reason":finish}],"usage":usage}),
+        json!({"choices":[{"message":{"role":"assistant","content": if text.is_empty() { Value::Null } else {json!(text)},"reasoning_content": json!(reasoning_content),"tool_calls":tool_calls},"finish_reason":finish}],"usage":usage}),
     )
 }
 
@@ -313,6 +325,8 @@ mod tests {
                 let mut deltas = Vec::new();
                 let mut observe = |d| deltas.push(d);
                 let req = || CompletionRequest {
+                    output_token_limit: None,
+                    reasoning_effort: None,
                     system: "test".into(),
                     user: "test".into(),
                 };
@@ -369,6 +383,30 @@ mod tests {
         }
     }
     #[test]
+    fn streamed_empty_reasoning_is_distinct_from_a_missing_field() {
+        for reasoning in [json!(""), Value::Null] {
+            let wire = frame(json!({"reasoning_content":reasoning, "content":"answer"}), json!("stop"));
+            let result = read_sse(wire.as_bytes(), &Default::default(), &mut ignore).unwrap();
+            assert_eq!(result["choices"][0]["message"]["reasoning_content"], reasoning);
+        }
+    }
+
+    #[test]
+    fn streamed_reasoning_is_preserved_for_tool_followup() {
+        let wire = frame(json!({"reasoning_content":"think "}), Value::Null)
+            + &frame(
+                json!({"reasoning_content":"more", "tool_calls":[{"index":0,"id":"call_1","function":{"name":"reader.state","arguments":"{}"}}]}),
+                Value::Null,
+            )
+            + &frame(json!({}), json!("tool_calls"));
+        let result = read_sse(wire.as_bytes(), &Default::default(), &mut ignore).unwrap();
+        assert_eq!(
+            result["choices"][0]["message"]["reasoning_content"],
+            "think more"
+        );
+    }
+
+    #[test]
     fn tools_are_merged_by_index_and_incomplete_streams_fail() {
         let wire = frame(
             json!({"tool_calls":[{"index":1,"id":"b","function":{"name":"book.text","arguments":"{"}},{"index":0,"id":"a","function":{"name":"reader.state","arguments":"{}"}}]}),
@@ -398,6 +436,20 @@ mod tests {
     }
 
     #[test]
+    fn malformed_tool_arguments_reach_the_tool_validation_layer() {
+        let arguments = r#"{"lid":"1.1""#;
+        let wire = frame(
+            json!({"tool_calls":[{"index":0,"id":"call_1","function":{"name":"book.text","arguments":arguments}}]}),
+            Value::Null,
+        ) + &frame(json!({}), json!("tool_calls"));
+        let response = read_sse(wire.as_bytes(), &Default::default(), &mut ignore).unwrap();
+        assert_eq!(
+            response["choices"][0]["message"]["tool_calls"][0]["function"]["arguments"],
+            arguments
+        );
+    }
+
+    #[test]
     fn usage_preserves_provider_breakdown_and_total_only_snapshots() {
         assert_eq!(
             model_usage(&json!({"usage": {
@@ -409,6 +461,7 @@ mod tests {
             Some(ModelUsage {
                 input_tokens: Some(21),
                 output_tokens: Some(8),
+                reasoning_output_tokens: None,
                 cached_input_tokens: Some(3),
                 cache_creation_input_tokens: None,
                 total_tokens: Some(29),
@@ -424,10 +477,28 @@ mod tests {
     }
 
     #[test]
+    fn deepseek_usage_reads_native_cache_and_reasoning_without_double_counting() {
+        let usage = model_usage(&json!({"usage": {
+            "prompt_tokens": 100, "prompt_cache_hit_tokens": 80,
+            "prompt_cache_miss_tokens": 20, "completion_tokens": 30,
+            "completion_tokens_details": {"reasoning_tokens": 13}, "total_tokens": 130
+        }})).unwrap();
+        assert_eq!(usage.cached_input_tokens, Some(80));
+        assert_eq!(usage.input_tokens, Some(100));
+        assert_eq!(usage.output_tokens, Some(30));
+        assert_eq!(usage.total_tokens, Some(130));
+        assert_eq!(serde_json::to_value(usage).unwrap()["reasoning_output_tokens"], 13);
+    }
+
+    #[test]
     fn usage_only_frame_is_observed_before_a_truncated_stream_fails() {
         let wire = "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":2,\"total_tokens\":7}}\n\n";
         let mut deltas = Vec::new();
-        assert!(read_sse(wire.as_bytes(), &Default::default(), &mut |delta| deltas.push(delta)).is_err());
+        assert!(
+            read_sse(wire.as_bytes(), &Default::default(), &mut |delta| deltas
+                .push(delta))
+            .is_err()
+        );
         assert_eq!(
             deltas,
             vec![ModelDelta::Usage(ModelUsage {

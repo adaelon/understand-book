@@ -411,6 +411,8 @@ AP3 与 AP4 可在 AP2 后分别开发,但 AP5 必须等 AP4,AP8 必须等 AP3 �
 
 **真实选区收敛**:对 Transformer 真书选区 `1.19.86.58.18` 和原始 normalization 问题,Runtime 识别 server-validated `selection_provenance.v1`,最多进行两次顺序证据获取:首轮只允许 `book.context`,次轮只允许 `book.text`;随后退出工具协议,以 provider-neutral `selection_answer_synthesis.v1` 严格 JSON 契约生成同语言直接答案。Native 在 3 个 sampling 中只调用 `book.context`、`book.text` 各一次并正常终答;ReAct 在首个 sampling 直接使用已验证选区终答,零工具调用。两条路径均无 profile、memory、navigation 调用,无“上下文不足”。
 
+**后续修订（2026-09-24）**:上述两次取证后独立合成的行为已由 [ADR-0135](adr/0135-selection-answer-continuity-and-reader-preference-priority.md) 取代；该段保留原验收记录，不再作为当前选区问答合同。
+
 **发布验证**:`cargo test --workspace`、Rust fmt、Web 26 files / 151 tests 与 typecheck/build 全绿;真实全文检索 5 页 exhaustive、32 条命中,真实来源交付跨重启稳定且不改 history/book;Node/Bun v2 自动构建一致性、plugin parity、workbench sidecar、打包 Book MCP、Rust release 与 NSIS 全绿。最终 `dist/UnderstandBookSetup.exe` 为 37,599,143 bytes,SHA-256 `AD0119C3FECB4B6C93CE3937AE8835B24CF2934A0F4B2A9EF9E0A1DE213AF0C0`。
 
 ## 16. 发布硬门禁

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { renderInlineMarkdown } from "./md";
+import { renderFormulaSource, renderInlineMarkdown } from "./md";
 import {
   createMarkdownDomSourceMap,
   markMarkdownDomSourceRanges,
@@ -122,6 +122,33 @@ describe("Markdown DOM/source mapping", () => {
     const ranges = map.sourceRangesForRange(selection);
 
     expect(sourceTextForRanges(source, ranges)).toBe("$x^2$");
+  });
+
+  it("maps a multiline single-dollar display formula back to its source marker", () => {
+    const source = "$\nI(X;Y) \\le H(Y)\n$";
+    const root = document.createElement("div");
+    root.innerHTML = renderFormulaSource(source);
+    const map = createMarkdownDomSourceMap(source, root);
+    const range = document.createRange();
+    range.selectNode(root.querySelector(".katex")!);
+
+    expect(map.semanticText).toBe(source);
+    expect(sourceTextForRanges(source, map.sourceRangesForRange(range))).toBe(source);
+  });
+
+  it("keeps the original display formula selectable as one source leaf", () => {
+    const source = "$$\n\\mathrm{Speedup}=\\frac{1}{(1-f)+f/s}.\n$$";
+    const root = document.createElement("div");
+    root.innerHTML = renderFormulaSource(source);
+    const katex = root.querySelector(".katex")!;
+    const range = document.createRange();
+    range.selectNode(katex);
+    const map = createMarkdownDomSourceMap(source, root);
+
+    expect(map.semanticText).toBe(source);
+    expect(sourceTextForRanges(source, map.sourceRangesForRange(range))).toBe(source);
+    markMarkdownDomSourceRanges(source, root, [{ start: 0, end: source.length, className: "hl-mark" }]);
+    expect(katex.closest("mark")?.className).toBe("hl-mark");
   });
 
   it("marks source ranges after one complete Markdown render", () => {

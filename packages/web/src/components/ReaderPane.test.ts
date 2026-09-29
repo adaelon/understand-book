@@ -3,6 +3,7 @@ import { mount } from "@vue/test-utils";
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import type { MemoryRecord } from "../api";
+import { renderFormulaSource } from "../md";
 import ReaderPane, { type Segment } from "./ReaderPane.vue";
 
 function segment(lid: string, kind: Segment["kind"]): Segment {
@@ -21,6 +22,46 @@ function note(memId: string, lid: string, content: string): MemoryRecord {
 }
 
 describe("ReaderPane Note rendering", () => {
+  it("keeps a display formula between separate prose paragraphs", async () => {
+    const formula: Segment = {
+      ...segment("1.2", "formula"),
+      text: "$$\n\\mathrm{Speedup}=\\frac{1}{(1-f)+f/s}.\n$$",
+    };
+    const wrapper = mount(ReaderPane, {
+      props: {
+        segments: [segment("1.1", "paragraph"), formula, segment("1.3", "paragraph")],
+        viewportAnchor: null,
+        selectedLid: null,
+        renderSeg: (value) => value.kind === "formula" ? renderFormulaSource(value.text) : value.text,
+        renderMarkdown: (source) => source,
+        markdownHeadingLevel: () => null,
+        isAsset: () => false,
+        isHighlighted: () => false,
+        highlightsOf: () => [],
+        highlightCardsOf: () => [],
+        visibleNotes: [],
+        hlExcerpt: () => "",
+        imageMeta: () => null,
+        imageAsset: () => null,
+      },
+    });
+
+    expect(wrapper.findAll(".flow-paragraph")).toHaveLength(2);
+    expect(wrapper.get('[data-lid="1.2"]').element.closest("p")).toBeNull();
+    expect(wrapper.find('[data-lid="1.2"] .katex-display').exists()).toBe(true);
+    expect(wrapper.findAll(".seg")).toHaveLength(3);
+    await wrapper.get('[data-lid="1.2"]').trigger("click");
+    expect(wrapper.emitted("select")?.at(-1)).toEqual(["1.2"]);
+
+    await wrapper.setProps({ segments: [segment("1.1", "paragraph"), {
+      ...formula,
+      formula: {} as NonNullable<Segment["formula"]>,
+    }, segment("1.3", "paragraph")] });
+    await wrapper.get('[data-lid="1.2"] button').trigger("click");
+    expect(wrapper.emitted("open-formula")?.at(-1)?.[0]).toMatchObject({ lid: "1.2" });
+    wrapper.unmount();
+  });
+
   it("keeps passive anchor and selected states visually neutral", () => {
     const styles = readFileSync("src/style.css", "utf8");
 

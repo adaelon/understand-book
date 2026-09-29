@@ -948,7 +948,7 @@ mod tests {
                 .map(VisitorSessions::with_timeout_ms)
                 .unwrap_or_default(),
             workbench_loaded_revision: None,
-        active_agent_stream: None,
+            active_agent_stream: None,
         }
     }
 

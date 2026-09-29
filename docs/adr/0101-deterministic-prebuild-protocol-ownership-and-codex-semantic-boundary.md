@@ -21,14 +21,14 @@ Change type: 边界重构。
 
 ## §2 Codex 外部动作面
 
-**决策**:构建 driver 只返回 `SPAWN_EXECUTORS / WAIT / NEEDS_USER / DONE`；语义规划留在构建执行面之外。
+**决策**:有效的构建步骤只返回 `SPAWN_EXECUTORS / WAIT / NEEDS_USER / DONE`；请求格式错误在执行前退回主编排修正。
 
 **否决**:
 - 向 root 暴露 `protocol-doctor/plan/next/close` 原始分支和命令数组：继续把内部状态机伪装成 agent 工作。
 - 由 Sidecar 启动 Codex subagent：本地进程没有 harness 调度权限，也不能证明可用 agent 槽位。
 - 依赖对话记忆保存 accepted digest、attempt 或完成状态：磁盘权威和跨会话恢复会失真。
 
-**命门**:Codex 只提供自然语言语义、显式用户选择、实时可用槽位和 harness 生命周期观察；计划确认由代码把选择回执绑定当前 digest，driver 每次从权威磁盘状态重算。
+**命门**:Codex 只提供自然语言语义、显式用户选择、实时可用槽位和 harness 生命周期观察；计划确认由代码把选择回执绑定当前 digest，driver 每次从权威磁盘状态重算。请求格式错误不得伪装成用户决策或引擎故障。
 **何时回头**:Codex 提供稳定、可验证的进程级 agent API 时，可把 spawn/wait 生命周期进一步下沉，但语义和用户授权仍不下沉。
 
 ## §3 Handoff 与 Mailbox 边界

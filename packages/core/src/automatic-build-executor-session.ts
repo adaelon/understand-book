@@ -1,5 +1,8 @@
+import type { AutomaticBuildExecutorInputManifestV4 } from "./build-executor-input-manifest";
 import { createHash, randomUUID } from "node:crypto";
 import { BuildExecutorInvalidArgumentsError } from "./build-executor-tool-contract";
+import { CODEX_BUILD_EXECUTION_PROFILE_V1, resolveBuildExecutionProfile, executionProfileSelection,
+  type BuildExecutionProfileSelectionV1, type BuildExecutionProfileV1 } from "./build-execution-profile";
 import {
   existsSync,
   lstatSync,
@@ -71,7 +74,6 @@ import {
 } from "./automatic-build-task-store";
 import { canonicalAutomaticBuildJson } from "./automatic-build-protocol";
 import {
-  CODEX_EXECUTOR_DELIVERY_BATCH_LIMIT_V1,
   CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
   createCandidateTransportContract,
   measureExecutorCandidateRequest,
@@ -81,11 +83,14 @@ import {
   serializeExecutorMcpToolResult,
   validateExecutorTransportPack,
   validateExecutorTransportProfile,
+  validateExecutorTransportProfileV3,
   type ExecutorTransportChunkFrameV2,
   type CandidateTransportContractV1,
   type PackedExecutorTransportBatchV1,
   type ExecutorTransportPackWithinLimitV2,
   type ExecutorTransportProfileV2,
+  type ExecutorTransportProfile,
+  type ExecutorTransportProfileV3,
 } from "./executor-transport";
 import {
   validateBuildIntentV3,
@@ -500,10 +505,17 @@ export interface AutomaticBuildOpaqueHandoffRecordV4 {
   issued_at: string;
 }
 
+export interface AutomaticBuildOpaqueHandoffRecordV5 extends Omit<AutomaticBuildOpaqueHandoffRecordV4, "version" | "session_protocol"> {
+  version: "automatic_build_opaque_handoff_record.v5";
+  session_protocol: "automatic_build_executor_session.v4";
+  execution_profile: BuildExecutionProfileSelectionV1;
+}
+
 type AutomaticBuildOpaqueHandoffRecord =
   | AutomaticBuildOpaqueHandoffRecordV1
   | AutomaticBuildOpaqueHandoffRecordV3
-  | AutomaticBuildOpaqueHandoffRecordV4;
+  | AutomaticBuildOpaqueHandoffRecordV4
+  | AutomaticBuildOpaqueHandoffRecordV5;
 
 interface AutomaticBuildExecutorOpenRecordV1 {
   version: "automatic_build_executor_open_record.v1";
@@ -583,6 +595,35 @@ type AutomaticBuildExecutorAnyDeliverySessionRecordV3 =
   | AutomaticBuildExecutorDeliverySessionRecordV3
   | AutomaticBuildExecutorPrivateDeliverySessionRecordV3;
 
+export type AutomaticBuildExecutorDeliverySessionRecordV4 = Omit<AutomaticBuildExecutorDeliverySessionRecordV3,
+  "version" | "transport_profile"> & {
+  version: "automatic_build_executor_delivery_session_record.v4";
+  execution_profile: BuildExecutionProfileSelectionV1;
+  transport_profile: ExecutorTransportProfileV3;
+};
+
+export type AutomaticBuildExecutorPrivateDeliverySessionRecordV4 = Omit<AutomaticBuildExecutorPrivateDeliverySessionRecordV3,
+  "version" | "transport_profile"> & {
+  version: "automatic_build_executor_private_delivery_session_record.v4";
+  execution_profile: BuildExecutionProfileSelectionV1;
+  transport_profile: ExecutorTransportProfileV3;
+};
+
+export type AutomaticBuildExecutorAnyDeliverySessionRecordV4 =
+  | AutomaticBuildExecutorDeliverySessionRecordV4 | AutomaticBuildExecutorPrivateDeliverySessionRecordV4;
+
+type PublicDeliveryRecord = AutomaticBuildExecutorDeliverySessionRecordV3 | AutomaticBuildExecutorDeliverySessionRecordV4;
+type DeliveryRecord = PublicDeliveryRecord | AutomaticBuildExecutorPrivateDeliverySessionRecordV3;
+
+function deliveryExecutionProfile(record: DeliveryRecord): Readonly<BuildExecutionProfileV1> {
+  return "execution_profile" in record ? resolveBuildExecutionProfile(record.execution_profile) : CODEX_BUILD_EXECUTION_PROFILE_V1;
+}
+
+function handoffExecutionProfile(record: AutomaticBuildOpaqueHandoffRecord): Readonly<BuildExecutionProfileV1> {
+  return record.version === "automatic_build_opaque_handoff_record.v5"
+    ? resolveBuildExecutionProfile(record.execution_profile) : CODEX_BUILD_EXECUTION_PROFILE_V1;
+}
+
 interface AutomaticBuildExecutorGenerationInputRecordV1 {
   version: "automatic_build_executor_generation_input_record.v1";
   opaque_session_ref: string;
@@ -630,13 +671,13 @@ interface AutomaticBuildExecutorGenerationStartAcceptanceV1 {
 }
 
 interface AutomaticBuildExecutorGenerationStartRecordV2 {
-  version: "automatic_build_executor_generation_start_record.v2";
+  version: "automatic_build_executor_generation_start_record.v2" | "automatic_build_executor_generation_start_record.v3";
   opaque_session_ref: string;
   generation_input_ref: string;
   generation_grant_ref: string;
   task_session_ref: string;
   semantic_attempt: number;
-  response: AutomaticBuildExecutorSessionResponseV3;
+  response: AutomaticBuildExecutorSessionResponse;
   started_at: string;
 }
 
@@ -809,7 +850,7 @@ export interface AutomaticBuildExecutorGenerationStartRequestV3 {
 export type AutomaticBuildExecutorSessionActionV3 =
   | {
       kind: "DELIVER_INPUT";
-      input_manifest: AutomaticBuildExecutorInputManifestV3;
+      input_manifest: AutomaticBuildExecutorInputManifestV3 | AutomaticBuildExecutorInputManifestV4;
       next_request: AutomaticBuildExecutorInputNextRequestV4;
     }
   | { kind: "INPUT_BATCH"; batch: AutomaticBuildExecutorInputBatchV1 }
@@ -829,6 +870,13 @@ export interface AutomaticBuildExecutorSessionResponseV3 {
   action: AutomaticBuildExecutorSessionActionV3;
 }
 
+export interface AutomaticBuildExecutorSessionResponseV4 {
+  version: "automatic_build_executor_session.v4";
+  action: Exclude<AutomaticBuildExecutorSessionActionV3, { kind: "DELIVER_INPUT" }>
+    | { kind: "DELIVER_INPUT"; input_manifest: AutomaticBuildExecutorInputManifestV4; next_request: AutomaticBuildExecutorInputNextRequestV4 };
+}
+export type AutomaticBuildExecutorSessionResponse = AutomaticBuildExecutorSessionResponseV3 | AutomaticBuildExecutorSessionResponseV4;
+
 export type AutomaticBuildExecutorSessionActionV1 =
   | {
       kind: "GENERATE";
@@ -846,6 +894,7 @@ export interface AutomaticBuildExecutorSessionResponseV1 {
 }
 
 export interface AutomaticBuildPublicOpaqueHandoffIssueV1 {
+  execution_profile?: Readonly<BuildExecutionProfileV1>;
   target: AutomaticBuildTarget;
   kind: "public_dispatch";
   owner_identity: unknown;
@@ -1308,6 +1357,10 @@ function opaqueHandoffRefForV4(input: Parameters<typeof opaqueHandoffIdentityV4>
   return `abhandoff1_${sha256(opaqueHandoffIdentityV4(input))}`;
 }
 
+function opaqueHandoffRefForV5(input: Parameters<typeof opaqueHandoffIdentityV4>[0] & { execution_profile: BuildExecutionProfileSelectionV1 }): string {
+  return `abhandoff1_${sha256({ ...input, version: "automatic_build_opaque_handoff_identity.v5", session_protocol: "automatic_build_executor_session.v4" })}`;
+}
+
 function validateOpaqueHandoffRef(value: unknown): string {
   if (typeof value !== "string" || Buffer.byteLength(value, "utf8") > MAX_REF_BYTES
     || !OPAQUE_HANDOFF_REF.test(value)) {
@@ -1433,7 +1486,8 @@ function validateV3OpaqueHandoffRecord(
 function validateV4OpaqueHandoffRecord(
   value: unknown,
   expectedRef: string,
-): AutomaticBuildOpaqueHandoffRecordV4 {
+  generation: 4 | 5 = 4,
+): AutomaticBuildOpaqueHandoffRecordV4 | AutomaticBuildOpaqueHandoffRecordV5 {
   if (!isRecord(value)) throw new Error("opaque handoff record is invalid");
   exactKeys(value, [
     "version",
@@ -1448,9 +1502,10 @@ function validateV4OpaqueHandoffRecord(
     "handoff_sha256",
     "handoff_byte_length",
     "issued_at",
+    ...(generation === 5 ? ["execution_profile"] : []),
   ]);
-  if (value.version !== "automatic_build_opaque_handoff_record.v4"
-    || value.session_protocol !== "automatic_build_executor_session.v3"
+  if (value.version !== `automatic_build_opaque_handoff_record.v${generation}`
+    || value.session_protocol !== (generation === 5 ? "automatic_build_executor_session.v4" : "automatic_build_executor_session.v3")
     || value.opaque_handoff_ref !== expectedRef
     || value.kind !== "public_dispatch"
     || typeof value.handoff_sha256 !== "string" || !SHA256.test(value.handoff_sha256)
@@ -1467,8 +1522,11 @@ function validateV4OpaqueHandoffRecord(
     || recoveryIdentity.dispatch_run_id !== owner.dispatch_run_id) {
     throw new Error("V4 opaque handoff recovery identity does not match its owner");
   }
-  const record: AutomaticBuildOpaqueHandoffRecordV4 = {
+  const profile = generation === 5 ? resolveBuildExecutionProfile(value.execution_profile) : CODEX_BUILD_EXECUTION_PROFILE_V1;
+  if (profile.session_protocol !== value.session_protocol) throw new Error("handoff execution profile mismatch");
+  const record = {
     version: value.version,
+    ...(generation === 5 ? { execution_profile: executionProfileSelection(profile) } : {}),
     session_protocol: value.session_protocol,
     opaque_handoff_ref: expectedRef,
     kind: value.kind,
@@ -1480,7 +1538,7 @@ function validateV4OpaqueHandoffRecord(
     handoff_sha256: value.handoff_sha256,
     handoff_byte_length: value.handoff_byte_length as number,
     issued_at: isoTimestamp(value.issued_at, "issued_at"),
-  };
+  } as AutomaticBuildOpaqueHandoffRecordV4 | AutomaticBuildOpaqueHandoffRecordV5;
   const identity = {
     kind: record.kind,
     target_ref: record.target_ref,
@@ -1491,7 +1549,7 @@ function validateV4OpaqueHandoffRecord(
     handoff_sha256: record.handoff_sha256,
     handoff_byte_length: record.handoff_byte_length,
   };
-  if (opaqueHandoffRefForV4(identity) !== expectedRef) {
+  if ((generation === 5 ? opaqueHandoffRefForV5({ ...identity, execution_profile: executionProfileSelection(profile) }) : opaqueHandoffRefForV4(identity)) !== expectedRef) {
     throw new Error("V4 opaque handoff record locator is invalid");
   }
   return record;
@@ -1501,6 +1559,9 @@ function validateOpaqueHandoffRecord(
   value: unknown,
   expectedRef: string,
 ): AutomaticBuildOpaqueHandoffRecord {
+  if (isRecord(value) && value.version === "automatic_build_opaque_handoff_record.v5") {
+    return validateV4OpaqueHandoffRecord(value, expectedRef, 5);
+  }
   if (isRecord(value) && value.version === "automatic_build_opaque_handoff_record.v4") {
     return validateV4OpaqueHandoffRecord(value, expectedRef);
   }
@@ -1677,33 +1738,22 @@ export function issueAutomaticBuildOpaqueHandoff(input: AutomaticBuildOpaqueHand
       handoff_sha256: handoff.sha256,
       handoff_byte_length: handoff.byte_length,
     };
-    const opaqueHandoffRef = opaqueHandoffRefForV4(identity);
-    const record: AutomaticBuildOpaqueHandoffRecordV4 = {
-      version: "automatic_build_opaque_handoff_record.v4",
-      session_protocol: "automatic_build_executor_session.v3",
-      opaque_handoff_ref: opaqueHandoffRef,
-      ...identity,
-      issued_at: issuedAt,
+    const profile = input.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1;
+    const dsh = profile.harness_kind === "deepseek_harness";
+    const boundIdentity = { ...identity, execution_profile: executionProfileSelection(profile) };
+    const opaqueHandoffRef = dsh ? opaqueHandoffRefForV5(boundIdentity) : opaqueHandoffRefForV4(identity);
+    const record: AutomaticBuildOpaqueHandoffRecordV4 | AutomaticBuildOpaqueHandoffRecordV5 = dsh ? {
+      version: "automatic_build_opaque_handoff_record.v5", session_protocol: "automatic_build_executor_session.v4",
+      opaque_handoff_ref: opaqueHandoffRef, ...boundIdentity, issued_at: issuedAt,
+    } : {
+      version: "automatic_build_opaque_handoff_record.v4", session_protocol: "automatic_build_executor_session.v3",
+      opaque_handoff_ref: opaqueHandoffRef, ...identity, issued_at: issuedAt,
     };
     const file = registryFile("opaque-handoffs", opaqueHandoffRef);
     if (!writeCreateOnly(file, record)) {
-      const existing = readOpaqueHandoffRecord(opaqueHandoffRef);
-      if (existing.version !== "automatic_build_opaque_handoff_record.v4") {
-        throw new Error("opaque handoff ref conflicts with its current session protocol");
-      }
-      const existingIdentity = opaqueHandoffIdentityV4({
-        kind: existing.kind,
-        target_ref: existing.target_ref,
-        target_locator: existing.target_locator,
-        owner_identity: existing.owner_identity,
-        recovery_identity: existing.recovery_identity,
-        handoff_path: existing.handoff_path,
-        handoff_sha256: existing.handoff_sha256,
-        handoff_byte_length: existing.handoff_byte_length,
-      });
-      if (canonicalAutomaticBuildJson(existingIdentity) !== canonicalAutomaticBuildJson(
-        opaqueHandoffIdentityV4(identity),
-      )) {
+      const { issued_at: _old, ...existing } = readOpaqueHandoffRecord(opaqueHandoffRef);
+      const { issued_at: _new, ...proposed } = record;
+      if (canonicalAutomaticBuildJson(existing) !== canonicalAutomaticBuildJson(proposed)) {
         throw new Error("opaque handoff ref conflicts with its create-only record");
       }
     }
@@ -2342,16 +2392,17 @@ interface AutomaticBuildExecutorDeliveryMaterialV3 {
   semantic_prompt: string;
   semantic_input: string;
   output_contract: AutomaticBuildExecutorOutputContractV3;
-  manifest: AutomaticBuildExecutorInputManifestV3;
+  manifest: AutomaticBuildExecutorInputManifestV3 | AutomaticBuildExecutorInputManifestV4;
   chunks: AutomaticBuildExecutorInputChunkV3[];
   batches: PackedExecutorTransportBatchV1<AutomaticBuildExecutorInputChunkV3>[];
 }
 
 function semanticCandidateContractV3(
   descriptor: WorkUnitDescriptor,
+  transportProfile: ExecutorTransportProfile,
 ): AutomaticBuildSemanticCandidateContractV3 {
   const transport = createCandidateTransportContract(
-    CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+    transportProfile,
     MAX_CANDIDATE_BYTES,
   );
   return {
@@ -2434,7 +2485,7 @@ function generationInputRefFor(input: {
   descriptor_input_hash: string;
   semantic_prompt_sha256: string;
   semantic_input_sha256: string;
-  transport_profile: ExecutorTransportProfileV2;
+  transport_profile: ExecutorTransportProfile;
   output_schema_version: string;
 }): string {
   return `abinput1_${sha256({
@@ -2450,7 +2501,7 @@ function privateGenerationInputRefFor(input: {
   task_id: string;
   semantic_prompt_sha256: string;
   semantic_input_sha256: string;
-  transport_profile: ExecutorTransportProfileV2;
+  transport_profile: ExecutorTransportProfile;
   output_schema_version: string;
 }): string {
   return `abinput1_${sha256({
@@ -2466,7 +2517,7 @@ function deliverySessionRefFor(input: {
   stage: AutomaticBuildStage;
   work_unit_id: string;
   descriptor_input_hash: string;
-  transport_profile: ExecutorTransportProfileV2;
+  transport_profile: ExecutorTransportProfile;
 }): string {
   return `absession1_${sha256({
     version: "automatic_build_executor_delivery_session_identity.v2",
@@ -2479,7 +2530,7 @@ function privateDeliverySessionRefFor(input: {
   opaque_handoff_ref: string;
   owner_identity: AutomaticBuildPrivateArtifactOwnerIdentityV2;
   task_id: string;
-  transport_profile: ExecutorTransportProfileV2;
+  transport_profile: ExecutorTransportProfile;
 }): string {
   return `absession1_${sha256({
     version: "automatic_build_executor_private_delivery_session_identity.v3",
@@ -2488,6 +2539,7 @@ function privateDeliverySessionRefFor(input: {
 }
 
 function packDeliverySegment(input: {
+  transport_profile: ExecutorTransportProfile;
   opaque_session_ref: string;
   generation_input_ref: string;
   segment: "semantic_prompt" | "semantic_input";
@@ -2495,7 +2547,7 @@ function packDeliverySegment(input: {
   ordinal_offset: number;
 }): ExecutorTransportPackWithinLimitV2 {
   const packed = packExecutorTransportPayload({
-    profile: CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+    profile: input.transport_profile,
     payload_utf8: input.payload_utf8,
     envelope_for_chunk: (frame: ExecutorTransportChunkFrameV2): AutomaticBuildExecutorInputChunkV3 => {
       const ordinal = input.ordinal_offset + frame.ordinal;
@@ -2519,12 +2571,13 @@ function packDeliverySegment(input: {
   }
   return validateExecutorTransportPack(
     packed,
-    CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+    input.transport_profile,
     input.payload_utf8,
   );
 }
 
 function packedDeliveryMaterial(input: {
+  execution_profile: BuildExecutionProfileV1;
   opaque_session_ref: string;
   generation_input_ref: string;
   semantic_prompt: string;
@@ -2534,6 +2587,7 @@ function packedDeliveryMaterial(input: {
   const semanticPromptSha256 = sha256(input.semantic_prompt);
   const semanticInputSha256 = sha256(input.semantic_input);
   const promptPack = packDeliverySegment({
+    transport_profile: input.execution_profile.transport_profile,
     opaque_session_ref: input.opaque_session_ref,
     generation_input_ref: input.generation_input_ref,
     segment: "semantic_prompt",
@@ -2541,6 +2595,7 @@ function packedDeliveryMaterial(input: {
     ordinal_offset: 0,
   });
   const inputPack = packDeliverySegment({
+    transport_profile: input.execution_profile.transport_profile,
     opaque_session_ref: input.opaque_session_ref,
     generation_input_ref: input.generation_input_ref,
     segment: "semantic_input",
@@ -2548,7 +2603,7 @@ function packedDeliveryMaterial(input: {
     ordinal_offset: promptPack.chunk_count,
   });
   const totalChunkCount = promptPack.chunk_count + inputPack.chunk_count;
-  if (totalChunkCount > CODEX_EXECUTOR_TRANSPORT_PROFILE_V2.max_input_chunks) {
+  if (totalChunkCount > input.execution_profile.transport_profile.max_input_chunks) {
     throw new AutomaticBuildExecutorTransportError();
   }
   const chunks = [...promptPack.chunks, ...inputPack.chunks].map((chunk) => {
@@ -2565,9 +2620,9 @@ function packedDeliveryMaterial(input: {
   }
   const batchPack = packExecutorTransportBatches({
     chunks,
-    limit: CODEX_EXECUTOR_DELIVERY_BATCH_LIMIT_V1,
-    envelope_for_chunks: (batchChunks): AutomaticBuildExecutorSessionResponseV3 => ({
-      version: "automatic_build_executor_session.v3",
+    limit: input.execution_profile.delivery_batch_limit,
+    envelope_for_chunks: (batchChunks): AutomaticBuildExecutorSessionResponse => ({
+      version: input.execution_profile.session_protocol,
       action: {
         kind: "INPUT_BATCH",
         batch: {
@@ -2590,10 +2645,11 @@ function packedDeliveryMaterial(input: {
     semantic_input: input.semantic_input,
     output_contract: input.output_contract,
     manifest: {
-      version: "automatic_build_executor_input_manifest.v3",
+      version: input.execution_profile.input_manifest_version,
+      ...(input.execution_profile.harness_kind === "deepseek_harness" ? { execution_profile: executionProfileSelection(input.execution_profile) } : {}),
       opaque_session_ref: input.opaque_session_ref,
       generation_input_ref: input.generation_input_ref,
-      transport_profile: CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+      transport_profile: input.execution_profile.transport_profile,
       segments: [
         {
           kind: "semantic_prompt",
@@ -2609,13 +2665,14 @@ function packedDeliveryMaterial(input: {
         },
       ],
       total_chunk_count: totalChunkCount,
-    },
+    } as AutomaticBuildExecutorInputManifestV3 | AutomaticBuildExecutorInputManifestV4,
     chunks,
     batches: batchPack.batches,
   };
 }
 
 function renderDeliveryMaterial(input: {
+  execution_profile: BuildExecutionProfileV1;
   target: AutomaticBuildTarget;
   persisted: AutomaticBuildPersistedDispatchV1;
   semantic_prompt: string;
@@ -2639,7 +2696,7 @@ function renderDeliveryMaterial(input: {
       ? { policy_generation_id: binding.policy_generation_id }
       : {},
   ).stdout;
-  const outputContract = semanticCandidateContractV3(descriptor);
+  const outputContract = semanticCandidateContractV3(descriptor, input.execution_profile.transport_profile);
   const semanticPromptSha256 = sha256(input.semantic_prompt);
   const semanticInputSha256 = sha256(semanticInput);
   const generationInputRef = generationInputRefFor({
@@ -2651,10 +2708,11 @@ function renderDeliveryMaterial(input: {
     descriptor_input_hash: descriptor.input_hash,
     semantic_prompt_sha256: semanticPromptSha256,
     semantic_input_sha256: semanticInputSha256,
-    transport_profile: CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+    transport_profile: input.execution_profile.transport_profile,
     output_schema_version: outputContract.version,
   });
   return packedDeliveryMaterial({
+    execution_profile: input.execution_profile,
     opaque_session_ref: input.opaque_session_ref,
     generation_input_ref: generationInputRef,
     semantic_prompt: input.semantic_prompt,
@@ -2672,10 +2730,12 @@ function deliveryRecordFromMaterial(input: {
   work_unit_id: string;
   material: AutomaticBuildExecutorDeliveryMaterialV3;
   created_at: string;
-}): AutomaticBuildExecutorDeliverySessionRecordV3 {
+}): PublicDeliveryRecord {
   const [prompt, semanticInput] = input.material.manifest.segments;
   return {
-    version: "automatic_build_executor_delivery_session_record.v3",
+    version: input.material.manifest.version === "automatic_build_executor_input_manifest.v4"
+      ? "automatic_build_executor_delivery_session_record.v4" : "automatic_build_executor_delivery_session_record.v3",
+    ...("execution_profile" in input.material.manifest ? { execution_profile: input.material.manifest.execution_profile } : {}),
     opaque_session_ref: input.delivery_session_ref,
     opaque_handoff_ref: input.opaque_handoff_ref,
     open_session_ref: input.open_record.opaque_session_ref,
@@ -2693,14 +2753,15 @@ function deliveryRecordFromMaterial(input: {
     total_chunk_count: input.material.manifest.total_chunk_count,
     output_schema_version: input.material.output_contract.version,
     created_at: input.created_at,
-  };
+  } as PublicDeliveryRecord;
 }
 
 function privateArtifactCandidateContractV3(
   task: IntentArtifactTaskEnvelopeV3,
+  transportProfile: ExecutorTransportProfile,
 ): AutomaticBuildPrivateArtifactCandidateContractV3 {
   const transport = createCandidateTransportContract(
-    CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+    transportProfile,
     MAX_CANDIDATE_BYTES,
   );
   return {
@@ -2719,6 +2780,7 @@ function privateArtifactCandidateContractV3(
 }
 
 function renderPrivateDeliveryMaterial(input: {
+  execution_profile: BuildExecutionProfileV1;
   context: AutomaticBuildPrivateArtifactContextV1;
   opaque_session_ref: string;
   opaque_handoff_ref: string;
@@ -2731,7 +2793,7 @@ function renderPrivateDeliveryMaterial(input: {
   ].join("\n");
   const semanticInput = input.semantic_input
     ?? canonicalAutomaticBuildJson(input.context.attempt.task);
-  const outputContract = privateArtifactCandidateContractV3(input.context.attempt.task);
+  const outputContract = privateArtifactCandidateContractV3(input.context.attempt.task, input.execution_profile.transport_profile);
   const generationInputRef = privateGenerationInputRefFor({
     opaque_session_ref: input.opaque_session_ref,
     opaque_handoff_ref: input.opaque_handoff_ref,
@@ -2739,10 +2801,11 @@ function renderPrivateDeliveryMaterial(input: {
     task_id: input.context.attempt.task.task_id,
     semantic_prompt_sha256: sha256(semanticPrompt),
     semantic_input_sha256: sha256(semanticInput),
-    transport_profile: CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+    transport_profile: input.execution_profile.transport_profile,
     output_schema_version: outputContract.version,
   });
   return packedDeliveryMaterial({
+    execution_profile: input.execution_profile,
     opaque_session_ref: input.opaque_session_ref,
     generation_input_ref: generationInputRef,
     semantic_prompt: semanticPrompt,
@@ -2768,7 +2831,7 @@ function privateDeliveryRecordFromMaterial(input: {
     owner_identity: input.context.owner,
     task_id: input.context.attempt.task.task_id,
     generation_input_ref: input.material.manifest.generation_input_ref,
-    transport_profile: input.material.manifest.transport_profile,
+    transport_profile: validateExecutorTransportProfile(input.material.manifest.transport_profile as ExecutorTransportProfileV2),
     semantic_prompt_sha256: prompt.sha256,
     semantic_prompt_byte_length: prompt.byte_length,
     semantic_input_sha256: semanticInput.sha256,
@@ -2781,186 +2844,99 @@ function privateDeliveryRecordFromMaterial(input: {
   };
 }
 
-function validatePrivateDeliverySessionRecord(
-  value: Record<string, unknown>,
-  expectedSessionRef: string,
-): AutomaticBuildExecutorPrivateDeliverySessionRecordV3 {
-  exactKeys(value, [
-    "version",
-    "opaque_session_ref",
-    "opaque_handoff_ref",
-    "open_session_ref",
-    "owner_identity",
-    "task_id",
-    "generation_input_ref",
-    "transport_profile",
-    "semantic_prompt_sha256",
-    "semantic_prompt_byte_length",
-    "semantic_input_sha256",
-    "semantic_input_byte_length",
-    "semantic_prompt_chunk_count",
-    "semantic_input_chunk_count",
-    "total_chunk_count",
-    "output_schema_version",
-    "created_at",
-  ]);
-  if (value.version !== "automatic_build_executor_private_delivery_session_record.v3"
-    || value.opaque_session_ref !== expectedSessionRef
-    || typeof value.semantic_prompt_sha256 !== "string" || !SHA256.test(value.semantic_prompt_sha256)
-    || typeof value.semantic_input_sha256 !== "string" || !SHA256.test(value.semantic_input_sha256)
-    || typeof value.output_schema_version !== "string") {
-    throw new Error("executor private delivery session record identity is invalid");
-  }
-  const transportProfile = validateExecutorTransportProfile(
-    value.transport_profile as ExecutorTransportProfileV2,
-  );
-  if (canonicalAutomaticBuildJson(transportProfile)
-    !== canonicalAutomaticBuildJson(CODEX_EXECUTOR_TRANSPORT_PROFILE_V2)) {
-    throw new Error("executor private delivery session transport profile changed");
-  }
-  const owner = validatePrivateOwnerIdentity(value.owner_identity);
-  const record: AutomaticBuildExecutorPrivateDeliverySessionRecordV3 = {
-    version: value.version,
-    opaque_session_ref: expectedSessionRef,
-    opaque_handoff_ref: validateOpaqueHandoffRef(value.opaque_handoff_ref),
-    open_session_ref: validateOpaqueSessionRef(value.open_session_ref),
-    owner_identity: owner,
-    task_id: boundedString(value.task_id, "task_id", 512),
-    generation_input_ref: validateGenerationInputRef(value.generation_input_ref),
-    transport_profile: transportProfile,
-    semantic_prompt_sha256: value.semantic_prompt_sha256,
-    semantic_prompt_byte_length: positiveSafeInteger(
-      value.semantic_prompt_byte_length,
-      "semantic_prompt_byte_length",
-    ),
-    semantic_input_sha256: value.semantic_input_sha256,
-    semantic_input_byte_length: positiveSafeInteger(
-      value.semantic_input_byte_length,
-      "semantic_input_byte_length",
-    ),
-    semantic_prompt_chunk_count: positiveSafeInteger(
-      value.semantic_prompt_chunk_count,
-      "semantic_prompt_chunk_count",
-    ),
-    semantic_input_chunk_count: positiveSafeInteger(
-      value.semantic_input_chunk_count,
-      "semantic_input_chunk_count",
-    ),
-    total_chunk_count: positiveSafeInteger(value.total_chunk_count, "total_chunk_count"),
-    output_schema_version: boundedString(
-      value.output_schema_version,
-      "output_schema_version",
-      256,
-    ),
-    created_at: isoTimestamp(value.created_at, "created_at"),
-  };
-  if (record.owner_identity.task_id !== record.task_id
-    || record.semantic_prompt_chunk_count + record.semantic_input_chunk_count
-      !== record.total_chunk_count
-    || record.total_chunk_count > CODEX_EXECUTOR_TRANSPORT_PROFILE_V2.max_input_chunks) {
-    throw new Error("executor private delivery session record counts are invalid");
-  }
-  return record;
-}
-
-function validateDeliverySessionRecord(
+/** Select the record generation before reading any nested transport identity. */
+function decodeDeliverySessionRecord(
   value: unknown,
   expectedSessionRef: string,
-): AutomaticBuildExecutorAnyDeliverySessionRecordV3 {
+  generation: 3 | 4,
+): DeliveryRecord | AutomaticBuildExecutorAnyDeliverySessionRecordV4 {
   if (!isRecord(value)) throw new Error("executor delivery session record is invalid");
-  if (value.version === "automatic_build_executor_private_delivery_session_record.v3") {
-    return validatePrivateDeliverySessionRecord(value, expectedSessionRef);
-  }
+  const privateRecord = value.version === `automatic_build_executor_private_delivery_session_record.v${generation}`;
+  const expectedVersion = privateRecord
+    ? `automatic_build_executor_private_delivery_session_record.v${generation}`
+    : `automatic_build_executor_delivery_session_record.v${generation}`;
+  if (value.version !== expectedVersion) throw new Error("executor delivery session record version is unsupported");
   exactKeys(value, [
-    "version",
-    "opaque_session_ref",
-    "opaque_handoff_ref",
-    "open_session_ref",
-    "owner_identity",
-    "stage",
-    "work_unit_id",
-    "generation_input_ref",
-    "transport_profile",
-    "semantic_prompt_sha256",
-    "semantic_prompt_byte_length",
-    "semantic_input_sha256",
-    "semantic_input_byte_length",
-    "semantic_prompt_chunk_count",
-    "semantic_input_chunk_count",
-    "total_chunk_count",
-    "output_schema_version",
-    "created_at",
+    "version", "opaque_session_ref", "opaque_handoff_ref", "open_session_ref", "owner_identity",
+    ...(privateRecord ? ["task_id"] : ["stage", "work_unit_id"]),
+    "generation_input_ref", "transport_profile",
+    ...(generation === 4 ? ["execution_profile"] : []),
+    "semantic_prompt_sha256", "semantic_prompt_byte_length", "semantic_input_sha256", "semantic_input_byte_length",
+    "semantic_prompt_chunk_count", "semantic_input_chunk_count", "total_chunk_count", "output_schema_version", "created_at",
   ]);
-  if (value.version !== "automatic_build_executor_delivery_session_record.v3"
-    || value.opaque_session_ref !== expectedSessionRef
-    || typeof value.stage !== "string" || !STAGES.has(value.stage as AutomaticBuildStage)
+  if (value.opaque_session_ref !== expectedSessionRef
     || typeof value.semantic_prompt_sha256 !== "string" || !SHA256.test(value.semantic_prompt_sha256)
-    || typeof value.semantic_input_sha256 !== "string" || !SHA256.test(value.semantic_input_sha256)
-    || typeof value.output_schema_version !== "string") {
+    || typeof value.semantic_input_sha256 !== "string" || !SHA256.test(value.semantic_input_sha256)) {
     throw new Error("executor delivery session record identity is invalid");
   }
-  const transportProfile = validateExecutorTransportProfile(
-    value.transport_profile as ExecutorTransportProfileV2,
-  );
-  if (canonicalAutomaticBuildJson(transportProfile)
-    !== canonicalAutomaticBuildJson(CODEX_EXECUTOR_TRANSPORT_PROFILE_V2)) {
+  const profile = generation === 3 ? CODEX_BUILD_EXECUTION_PROFILE_V1 : resolveBuildExecutionProfile(value.execution_profile);
+  if (profile.delivery_record_version !== generation) throw new Error("executor delivery profile and record versions do not match");
+  const transport = generation === 3
+    ? validateExecutorTransportProfile(value.transport_profile as ExecutorTransportProfileV2)
+    : validateExecutorTransportProfileV3(value.transport_profile);
+  if (canonicalAutomaticBuildJson(transport) !== canonicalAutomaticBuildJson(profile.transport_profile)) {
     throw new Error("executor delivery session transport profile changed");
   }
-  const record: AutomaticBuildExecutorDeliverySessionRecordV3 = {
-    version: value.version,
-    opaque_session_ref: expectedSessionRef,
+  const common = {
+    opaque_session_ref: validateOpaqueSessionRef(expectedSessionRef),
     opaque_handoff_ref: validateOpaqueHandoffRef(value.opaque_handoff_ref),
     open_session_ref: validateOpaqueSessionRef(value.open_session_ref),
-    owner_identity: validateOwnerIdentity(value.owner_identity),
-    stage: value.stage as AutomaticBuildStage,
-    work_unit_id: boundedString(value.work_unit_id, "work_unit_id", 512),
     generation_input_ref: validateGenerationInputRef(value.generation_input_ref),
-    transport_profile: transportProfile,
+    transport_profile: transport,
     semantic_prompt_sha256: value.semantic_prompt_sha256,
-    semantic_prompt_byte_length: positiveSafeInteger(
-      value.semantic_prompt_byte_length,
-      "semantic_prompt_byte_length",
-    ),
+    semantic_prompt_byte_length: positiveSafeInteger(value.semantic_prompt_byte_length, "semantic_prompt_byte_length"),
     semantic_input_sha256: value.semantic_input_sha256,
-    semantic_input_byte_length: positiveSafeInteger(
-      value.semantic_input_byte_length,
-      "semantic_input_byte_length",
-    ),
-    semantic_prompt_chunk_count: positiveSafeInteger(
-      value.semantic_prompt_chunk_count,
-      "semantic_prompt_chunk_count",
-    ),
-    semantic_input_chunk_count: positiveSafeInteger(
-      value.semantic_input_chunk_count,
-      "semantic_input_chunk_count",
-    ),
+    semantic_input_byte_length: positiveSafeInteger(value.semantic_input_byte_length, "semantic_input_byte_length"),
+    semantic_prompt_chunk_count: positiveSafeInteger(value.semantic_prompt_chunk_count, "semantic_prompt_chunk_count"),
+    semantic_input_chunk_count: positiveSafeInteger(value.semantic_input_chunk_count, "semantic_input_chunk_count"),
     total_chunk_count: positiveSafeInteger(value.total_chunk_count, "total_chunk_count"),
-    output_schema_version: boundedString(
-      value.output_schema_version,
-      "output_schema_version",
-      256,
-    ),
+    output_schema_version: boundedString(value.output_schema_version, "output_schema_version", 256),
     created_at: isoTimestamp(value.created_at, "created_at"),
+    ...(generation === 4 ? { execution_profile: executionProfileSelection(profile) } : {}),
   };
-  if (record.owner_identity.stage !== record.stage
-    || record.semantic_prompt_chunk_count + record.semantic_input_chunk_count
-      !== record.total_chunk_count
-    || record.total_chunk_count > CODEX_EXECUTOR_TRANSPORT_PROFILE_V2.max_input_chunks) {
+  if (common.semantic_prompt_chunk_count + common.semantic_input_chunk_count !== common.total_chunk_count
+    || common.total_chunk_count > transport.max_input_chunks) {
     throw new Error("executor delivery session record counts are invalid");
   }
-  return record;
+  if (privateRecord) {
+    const owner = validatePrivateOwnerIdentity(value.owner_identity);
+    const taskId = boundedString(value.task_id, "task_id", 512);
+    if (owner.task_id !== taskId) throw new Error("executor private delivery session record counts are invalid");
+    return { version: expectedVersion, ...common, owner_identity: owner, task_id: taskId } as
+      AutomaticBuildExecutorPrivateDeliverySessionRecordV3 | AutomaticBuildExecutorPrivateDeliverySessionRecordV4;
+  }
+  if (typeof value.stage !== "string" || !STAGES.has(value.stage as AutomaticBuildStage)) {
+    throw new Error("executor delivery session record stage is invalid");
+  }
+  const owner = validateOwnerIdentity(value.owner_identity);
+  if (owner.stage !== value.stage) throw new Error("executor delivery session record counts are invalid");
+  return { version: expectedVersion, ...common, owner_identity: owner, stage: value.stage,
+    work_unit_id: boundedString(value.work_unit_id, "work_unit_id", 512) } as
+    PublicDeliveryRecord | AutomaticBuildExecutorDeliverySessionRecordV4;
+}
+
+export function validateDeliverySessionRecord(value: unknown, expectedSessionRef: string): AutomaticBuildExecutorAnyDeliverySessionRecordV3 {
+  return decodeDeliverySessionRecord(value, expectedSessionRef, 3) as AutomaticBuildExecutorAnyDeliverySessionRecordV3;
+}
+
+export function validateDeliverySessionRecordV4(value: unknown, expectedSessionRef: string): AutomaticBuildExecutorAnyDeliverySessionRecordV4 {
+  return decodeDeliverySessionRecord(value, expectedSessionRef, 4) as AutomaticBuildExecutorAnyDeliverySessionRecordV4;
 }
 
 function readDeliverySessionRecord(
   opaqueSessionRef: string,
-): AutomaticBuildExecutorAnyDeliverySessionRecordV3 {
+): DeliveryRecord {
   const file = deliverySessionFile(opaqueSessionRef);
   if (!existsSync(file)) throw new Error("executor delivery session does not exist");
-  return validateDeliverySessionRecord(decodeJsonRecord(file), opaqueSessionRef);
+  const value = decodeJsonRecord(file);
+  if (isRecord(value) && value.version === "automatic_build_executor_delivery_session_record.v4") {
+    return validateDeliverySessionRecordV4(value, opaqueSessionRef) as AutomaticBuildExecutorDeliverySessionRecordV4;
+  }
+  return validateDeliverySessionRecord(value, opaqueSessionRef);
 }
 
 function assertDeliveryMaterialMatches(
-  record: AutomaticBuildExecutorAnyDeliverySessionRecordV3,
+  record: DeliveryRecord,
   material: AutomaticBuildExecutorDeliveryMaterialV3,
 ): void {
   const [prompt, semanticInput] = material.manifest.segments;
@@ -2981,11 +2957,11 @@ function assertDeliveryMaterialMatches(
 }
 
 function persistDeliverySessionRecord(
-  record: AutomaticBuildExecutorAnyDeliverySessionRecordV3,
-): AutomaticBuildExecutorAnyDeliverySessionRecordV3 {
+  record: DeliveryRecord,
+): DeliveryRecord {
   const file = deliverySessionFile(record.opaque_session_ref);
   if (writeCreateOnly(file, record)) return record;
-  const existing = validateDeliverySessionRecord(decodeJsonRecord(file), record.opaque_session_ref);
+  const existing = readDeliverySessionRecord(record.opaque_session_ref);
   const { created_at: _existingCreatedAt, ...existingIdentity } = existing;
   const { created_at: _recordCreatedAt, ...recordIdentity } = record;
   if (canonicalAutomaticBuildJson(existingIdentity) !== canonicalAutomaticBuildJson(recordIdentity)) {
@@ -3061,7 +3037,7 @@ function persistGenerationInputRecord(
 }
 
 function readGenerationInputRecord(
-  delivery: AutomaticBuildExecutorAnyDeliverySessionRecordV3,
+  delivery: DeliveryRecord,
 ): AutomaticBuildExecutorGenerationInputRecordV1 {
   const file = generationInputFile(delivery.generation_input_ref);
   if (!existsSync(file)) throw new Error("executor generation input record is missing");
@@ -3080,7 +3056,7 @@ function readGenerationInputRecord(
 }
 
 function materialFromFrozenGenerationInput(input: {
-  delivery: AutomaticBuildExecutorAnyDeliverySessionRecordV3;
+  delivery: DeliveryRecord;
   expected_semantic_prompt?: string;
   expected_semantic_input?: string;
   build_material: (
@@ -3103,7 +3079,7 @@ function materialFromFrozenGenerationInput(input: {
 
 function validateDeliveryReceiptRecord(
   value: unknown,
-  delivery: AutomaticBuildExecutorAnyDeliverySessionRecordV3,
+  delivery: DeliveryRecord,
   chunk: AutomaticBuildExecutorInputChunkV3,
 ): AutomaticBuildExecutorDeliveryReceiptRecordV2 {
   if (!isRecord(value)) throw new Error("executor delivery receipt record is invalid");
@@ -3130,7 +3106,7 @@ function validateDeliveryReceiptRecord(
 }
 
 function confirmedDeliveryReceipts(
-  delivery: AutomaticBuildExecutorAnyDeliverySessionRecordV3,
+  delivery: DeliveryRecord,
   material: AutomaticBuildExecutorDeliveryMaterialV3,
 ): AutomaticBuildExecutorDeliveryReceiptRecordV2[] {
   const receipts: AutomaticBuildExecutorDeliveryReceiptRecordV2[] = [];
@@ -3148,7 +3124,7 @@ function confirmedDeliveryReceipts(
 }
 
 function confirmDeliveryChunk(
-  delivery: AutomaticBuildExecutorAnyDeliverySessionRecordV3,
+  delivery: DeliveryRecord,
   chunk: AutomaticBuildExecutorInputChunkV3,
   confirmedAt: string,
 ): AutomaticBuildExecutorDeliveryReceiptRecordV2 {
@@ -3186,7 +3162,7 @@ function inputBatchFromPacked(
 }
 
 function offerDeliveryBatch(
-  delivery: AutomaticBuildExecutorAnyDeliverySessionRecordV3,
+  delivery: DeliveryRecord,
   batch: PackedExecutorTransportBatchV1<AutomaticBuildExecutorInputChunkV3>,
   offeredAt: string,
 ): AutomaticBuildExecutorBatchOfferRecordV1 {
@@ -3233,7 +3209,7 @@ function offerDeliveryBatch(
 }
 
 function requireDeliveryBatchOffer(
-  delivery: AutomaticBuildExecutorAnyDeliverySessionRecordV3,
+  delivery: DeliveryRecord,
   batch: PackedExecutorTransportBatchV1<AutomaticBuildExecutorInputChunkV3>,
 ): void {
   const file = batchOfferFile(delivery.opaque_session_ref, batch.first_ordinal, batch.last_ordinal);
@@ -3242,7 +3218,7 @@ function requireDeliveryBatchOffer(
 }
 
 function confirmDeliveryBatch(
-  delivery: AutomaticBuildExecutorAnyDeliverySessionRecordV3,
+  delivery: DeliveryRecord,
   batch: PackedExecutorTransportBatchV1<AutomaticBuildExecutorInputChunkV3>,
   confirmedAt: string,
 ): void {
@@ -3250,12 +3226,12 @@ function confirmDeliveryBatch(
 }
 
 function inputBatchResponse(
-  delivery: AutomaticBuildExecutorAnyDeliverySessionRecordV3,
+  delivery: DeliveryRecord,
   batch: PackedExecutorTransportBatchV1<AutomaticBuildExecutorInputChunkV3>,
   offeredAt: string,
-): AutomaticBuildExecutorSessionResponseV3 {
+): AutomaticBuildExecutorSessionResponse {
   offerDeliveryBatch(delivery, batch, offeredAt);
-  return boundedV3Response({
+  return boundedV3Response(deliveryExecutionProfile(delivery), {
     version: "automatic_build_executor_session.v3",
     action: { kind: "INPUT_BATCH", batch: inputBatchFromPacked(batch) },
   });
@@ -3263,7 +3239,7 @@ function inputBatchResponse(
 
 function validateGenerationGrantRecord(
   value: unknown,
-  delivery: AutomaticBuildExecutorAnyDeliverySessionRecordV3,
+  delivery: DeliveryRecord,
   material: AutomaticBuildExecutorDeliveryMaterialV3,
 ): AutomaticBuildExecutorGenerationGrantRecordV2 {
   const finalChunk = material.chunks.at(-1);
@@ -3315,7 +3291,7 @@ function validateGenerationGrantRecord(
 }
 
 function issueGenerationGrant(
-  delivery: AutomaticBuildExecutorAnyDeliverySessionRecordV3,
+  delivery: DeliveryRecord,
   material: AutomaticBuildExecutorDeliveryMaterialV3,
   issuedAt: string,
 ): AutomaticBuildExecutorGenerationGrantRecordV2 {
@@ -3350,12 +3326,14 @@ function issueGenerationGrant(
 }
 
 function boundedV3Response(
-  response: AutomaticBuildExecutorSessionResponseV3,
+  executionProfile: BuildExecutionProfileV1,
+  response: AutomaticBuildExecutorSessionResponse,
   payloadUtf8 = "",
-): AutomaticBuildExecutorSessionResponseV3 {
+): AutomaticBuildExecutorSessionResponse {
+  response = { ...response, version: executionProfile.session_protocol } as AutomaticBuildExecutorSessionResponse;
   if (response.action.kind === "INPUT_BATCH") {
     const serializedBytes = Buffer.byteLength(serializeExecutorMcpToolResult(response), "utf8");
-    if (serializedBytes > CODEX_EXECUTOR_DELIVERY_BATCH_LIMIT_V1.max_serialized_batch_bytes) {
+    if (serializedBytes > executionProfile.delivery_batch_limit.max_serialized_batch_bytes) {
       throw new Error("executor V3 input batch exceeds its delivery batch limit");
     }
     return response;
@@ -3363,7 +3341,7 @@ function boundedV3Response(
   const measured = measureExecutorTransportResponse(
     response,
     payloadUtf8,
-    CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+    executionProfile.transport_profile,
   );
   if (measured.status !== "within_limit") {
     throw new Error(`executor V3 response exceeds its transport profile: ${measured.blocking_reasons.join(",")}`);
@@ -3373,8 +3351,9 @@ function boundedV3Response(
 
 function v3DoneResponse(
   status: Extract<AutomaticBuildExecutorSessionActionV3, { kind: "DONE" }>["status"],
-): AutomaticBuildExecutorSessionResponseV3 {
-  return boundedV3Response({
+  profile: Readonly<BuildExecutionProfileV1> = CODEX_BUILD_EXECUTION_PROFILE_V1,
+): AutomaticBuildExecutorSessionResponse {
+  return boundedV3Response(profile, {
     version: "automatic_build_executor_session.v3",
     action: { kind: "DONE", status },
   });
@@ -3394,7 +3373,7 @@ function validateCandidateSinkRecord(
   value: unknown,
   expected?: {
     task_session: AutomaticBuildExecutorTaskSessionRecordV1;
-    delivery: AutomaticBuildExecutorDeliverySessionRecordV3;
+    delivery: PublicDeliveryRecord;
     grant: AutomaticBuildExecutorGenerationGrantRecordV2;
     output_contract: AutomaticBuildSemanticCandidateContractV3;
   },
@@ -3478,7 +3457,7 @@ function validateCandidateSinkRecord(
 
 function issueCandidateSink(input: {
   task_session: AutomaticBuildExecutorTaskSessionRecordV1;
-  delivery: AutomaticBuildExecutorDeliverySessionRecordV3;
+  delivery: PublicDeliveryRecord;
   grant: AutomaticBuildExecutorGenerationGrantRecordV2;
   output_contract: AutomaticBuildSemanticCandidateContractV3;
   created_at: string;
@@ -3646,15 +3625,16 @@ function validateGenerationStartRecord(
     "response",
     "started_at",
   ]);
-  if (value.version !== "automatic_build_executor_generation_start_record.v2"
+  const profile = deliveryExecutionProfile(readDeliverySessionRecord(grant.opaque_session_ref));
+  if (value.version !== (profile.harness_kind === "deepseek_harness" ? "automatic_build_executor_generation_start_record.v3" : "automatic_build_executor_generation_start_record.v2")
     || value.opaque_session_ref !== grant.opaque_session_ref
     || value.generation_input_ref !== grant.generation_input_ref
     || value.generation_grant_ref !== grant.generation_grant_ref
     || !isRecord(value.response)
-    || value.response.version !== "automatic_build_executor_session.v3") {
+    || value.response.version !== profile.session_protocol) {
     throw new Error("executor generation start record identity is invalid");
   }
-  const response = value.response as unknown as AutomaticBuildExecutorSessionResponseV3;
+  const response = value.response as unknown as AutomaticBuildExecutorSessionResponse;
   if (response.action.kind !== "GENERATE"
     || response.action.opaque_session_ref !== value.task_session_ref
     || response.action.semantic_attempt !== value.semantic_attempt
@@ -3666,7 +3646,7 @@ function validateGenerationStartRecord(
     throw new Error("executor generation start candidate sink is missing or changed");
   }
   const record: AutomaticBuildExecutorGenerationStartRecordV2 = {
-    version: value.version,
+    version: value.version as AutomaticBuildExecutorGenerationStartRecordV2["version"],
     opaque_session_ref: grant.opaque_session_ref,
     generation_input_ref: grant.generation_input_ref,
     generation_grant_ref: grant.generation_grant_ref,
@@ -3675,7 +3655,7 @@ function validateGenerationStartRecord(
     response,
     started_at: isoTimestamp(value.started_at, "started_at"),
   };
-  boundedV3Response(record.response);
+  boundedV3Response(profile, record.response);
   return record;
 }
 
@@ -3688,14 +3668,14 @@ function readGenerationStartRecord(
 }
 
 function deliveryProgressResponse(input: {
-  delivery: AutomaticBuildExecutorAnyDeliverySessionRecordV3;
+  delivery: DeliveryRecord;
   material: AutomaticBuildExecutorDeliveryMaterialV3;
-}): AutomaticBuildExecutorSessionResponseV3 {
+}): AutomaticBuildExecutorSessionResponse {
   const receipts = confirmedDeliveryReceipts(input.delivery, input.material);
   const acknowledgedThroughOrdinal = receipts.length === input.material.chunks.length
     ? undefined
     : receipts.at(-1)?.ordinal;
-  return boundedV3Response({
+  return boundedV3Response(deliveryExecutionProfile(input.delivery), {
     version: "automatic_build_executor_session.v3",
     action: {
       kind: "DELIVER_INPUT",
@@ -3709,7 +3689,7 @@ function deliveryProgressResponse(input: {
           : { ack_through_ordinal: acknowledgedThroughOrdinal }),
       },
     },
-  });
+  } as AutomaticBuildExecutorSessionResponse);
 }
 
 function generateAction(input: {
@@ -3823,6 +3803,7 @@ function drivePublicExecutorSession(input: {
     input.owner.stage,
     input.owner.dispatch_id,
     {
+      execution_profile: CODEX_BUILD_EXECUTION_PROFILE_V1,
       descriptors: stage.descriptors,
       task_bindings: stage.task_bindings,
       read_task: workUnitId => {
@@ -4062,9 +4043,10 @@ function terminalStatus(
 function currentPublicDispatchResponse(
   inspection: ReturnType<typeof inspectAutomaticBuildDispatch>,
   workUnitId: string,
-): AutomaticBuildExecutorSessionResponseV3 | undefined {
+  profile: Readonly<BuildExecutionProfileV1>,
+): AutomaticBuildExecutorSessionResponse | undefined {
   if (inspection.state === "finished") {
-    return v3DoneResponse(terminalStatus(inspection.receipt.terminal_reason));
+    return v3DoneResponse(terminalStatus(inspection.receipt.terminal_reason), profile);
   }
   if (inspection.state === "active" && inspection.next_work_unit_id === workUnitId) {
     return undefined;
@@ -4075,7 +4057,7 @@ function currentPublicDispatchResponse(
   if (!receipt) {
     throw new Error("executor generation task advanced without a terminal task receipt");
   }
-  return v3DoneResponse(receipt.state);
+  return v3DoneResponse(receipt.state, profile);
 }
 
 function inspectCurrentPublicRecovery(input: {
@@ -4085,7 +4067,7 @@ function inspectCurrentPublicRecovery(input: {
   work_unit_id: string;
   now: string;
 }): {
-  terminal_response?: AutomaticBuildExecutorSessionResponseV3;
+  terminal_response?: AutomaticBuildExecutorSessionResponse;
   recovery_identity?: AutomaticBuildRecoveryGenerationIdentity;
 } {
   const inspection = inspectAutomaticBuildDispatch(
@@ -4095,7 +4077,7 @@ function inspectCurrentPublicRecovery(input: {
     input.now,
     input.owner.dispatch_run_id,
   );
-  const terminalResponse = currentPublicDispatchResponse(inspection, input.work_unit_id);
+  const terminalResponse = currentPublicDispatchResponse(inspection, input.work_unit_id, handoffExecutionProfile(input.handoff_record));
   if (terminalResponse) return { terminal_response: terminalResponse };
   const recoveryIdentity = inspectAutomaticBuildDispatchRecoveryGeneration(
     input.target,
@@ -4103,7 +4085,7 @@ function inspectCurrentPublicRecovery(input: {
     input.owner.dispatch_id,
     { now: input.now, dispatch_run_id: input.owner.dispatch_run_id },
   ).recovery_identity;
-  if (input.handoff_record.version === "automatic_build_opaque_handoff_record.v4"
+  if ((input.handoff_record.version === "automatic_build_opaque_handoff_record.v4" || input.handoff_record.version === "automatic_build_opaque_handoff_record.v5")
     && canonicalAutomaticBuildJson(input.handoff_record.recovery_identity)
       !== canonicalAutomaticBuildJson(recoveryIdentity)) {
     throw new AutomaticBuildExecutorStaleGenerationSessionError();
@@ -4192,7 +4174,7 @@ export function openAutomaticBuildExecutorSession(
 type AutomaticBuildExecutorDeliveryContextV3 =
   | {
       kind: "public_dispatch";
-      delivery: AutomaticBuildExecutorDeliverySessionRecordV3;
+      delivery: PublicDeliveryRecord;
       handoff_record: AutomaticBuildOpaqueHandoffRecord;
       target: AutomaticBuildTarget;
       owner: AutomaticBuildDispatchOwnerIdentityV1;
@@ -4211,9 +4193,12 @@ type AutomaticBuildExecutorDeliveryContextV3 =
 
 function resolveDeliverySessionContext(
   opaqueSessionRefValue: string,
+  profile: Readonly<BuildExecutionProfileV1> = CODEX_BUILD_EXECUTION_PROFILE_V1,
 ): AutomaticBuildExecutorDeliveryContextV3 {
   const delivery = readDeliverySessionRecord(validateOpaqueSessionRef(opaqueSessionRefValue));
   const handoffRecord = readOpaqueHandoffRecord(delivery.opaque_handoff_ref);
+  if (deliveryExecutionProfile(delivery).profile_id !== profile.profile_id
+    || handoffExecutionProfile(handoffRecord).profile_id !== profile.profile_id) throw new Error("executor execution profile mismatch");
   if (delivery.version === "automatic_build_executor_private_delivery_session_record.v3") {
     const context = resolvePrivateArtifactContext(handoffRecord);
     if (canonicalAutomaticBuildJson(context.owner)
@@ -4235,6 +4220,7 @@ function resolveDeliverySessionContext(
       delivery,
       expected_semantic_input: canonicalAutomaticBuildJson(context.attempt.task),
       build_material: (generationInput) => renderPrivateDeliveryMaterial({
+        execution_profile: profile,
         context,
         opaque_session_ref: delivery.opaque_session_ref,
         opaque_handoff_ref: delivery.opaque_handoff_ref,
@@ -4273,6 +4259,7 @@ function resolveDeliverySessionContext(
     delivery,
     expected_semantic_prompt: published.semantic_prompt,
     build_material: (generationInput) => renderDeliveryMaterial({
+      execution_profile: profile,
       target: published.target,
       persisted: published.persisted,
       semantic_prompt: generationInput.semantic_prompt,
@@ -4307,8 +4294,8 @@ export function recordAutomaticBuildExecutorBootstrapFailure(
   const ref = validateOpaqueHandoffRef(opaqueHandoffRefValue);
   const record = readOpaqueHandoffRecord(ref);
   if (!sameTargetRef(record.target_ref, expectedTarget)) throw new Error("bootstrap target mismatch");
-  if (record.version !== "automatic_build_opaque_handoff_record.v4") {
-    throw new Error("bootstrap recovery requires a public V4 handoff");
+  if (record.version !== "automatic_build_opaque_handoff_record.v4" && record.version !== "automatic_build_opaque_handoff_record.v5") {
+    throw new Error("bootstrap recovery requires a public V4/V5 handoff");
   }
   if (existsSync(registryFile("executor-opens", ref))) return;
   const target = resolveRecordTarget(record.target_locator, record.target_ref);
@@ -4338,13 +4325,17 @@ export function recordAutomaticBuildExecutorOpenCallCorrection(
   recordAutomaticBuildExecutorBootstrapFailure(observation.issued_handoff_ref, expectedTarget, now);
 }
 
+export function openAutomaticBuildExecutorSessionV3(opaqueHandoffRefValue: string, options?: { now?: string; timing?: AutomaticBuildExecutorServerTimingObserverV1; execution_profile?: undefined }): AutomaticBuildExecutorSessionResponseV3;
+export function openAutomaticBuildExecutorSessionV3(opaqueHandoffRefValue: string, options: { now?: string; timing?: AutomaticBuildExecutorServerTimingObserverV1; execution_profile?: Readonly<BuildExecutionProfileV1> }): AutomaticBuildExecutorSessionResponse;
 export function openAutomaticBuildExecutorSessionV3(
   opaqueHandoffRefValue: string,
-  options: { now?: string } = {},
-): AutomaticBuildExecutorSessionResponseV3 {
+  options: { now?: string; execution_profile?: Readonly<BuildExecutionProfileV1> } = {},
+): AutomaticBuildExecutorSessionResponse {
   const opaqueHandoffRef = validateOpaqueHandoffRef(opaqueHandoffRefValue);
   const now = options.now === undefined ? new Date().toISOString() : isoTimestamp(options.now, "now");
   const record = readOpaqueHandoffRecord(opaqueHandoffRef);
+  const profile = options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1;
+  if (handoffExecutionProfile(record).profile_id !== profile.profile_id) throw new Error("executor execution profile mismatch");
   if (record.version === "automatic_build_opaque_handoff_record.v1"
     && record.kind === "private_artifact") {
     const context = resolvePrivateArtifactContext(record);
@@ -4373,9 +4364,10 @@ export function openAutomaticBuildExecutorSessionV3(
       opaque_handoff_ref: opaqueHandoffRef,
       owner_identity: context.owner,
       task_id: context.attempt.task.task_id,
-      transport_profile: CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+      transport_profile: profile.transport_profile,
     });
     const material = renderPrivateDeliveryMaterial({
+      execution_profile: profile,
       context,
       opaque_session_ref: deliverySessionRef,
       opaque_handoff_ref: opaqueHandoffRef,
@@ -4392,8 +4384,9 @@ export function openAutomaticBuildExecutorSessionV3(
     return deliveryProgressResponse({ delivery, material });
   }
   if ((record.version !== "automatic_build_opaque_handoff_record.v3"
-      && record.version !== "automatic_build_opaque_handoff_record.v4")
-    || record.session_protocol !== "automatic_build_executor_session.v3"
+      && record.version !== "automatic_build_opaque_handoff_record.v4"
+      && record.version !== "automatic_build_opaque_handoff_record.v5")
+    || record.session_protocol !== profile.session_protocol
     || record.kind !== "public_dispatch") {
     throw new Error("automatic build executor session V3 currently requires a public dispatch");
   }
@@ -4406,7 +4399,7 @@ export function openAutomaticBuildExecutorSessionV3(
     published.owner.dispatch_run_id,
   );
   if (inspection.state === "finished") {
-    return v3DoneResponse(terminalStatus(inspection.receipt.terminal_reason));
+    return v3DoneResponse(terminalStatus(inspection.receipt.terminal_reason), profile);
   }
   const workUnitId = inspection.next_work_unit_id;
   if (!workUnitId) {
@@ -4416,7 +4409,7 @@ export function openAutomaticBuildExecutorSessionV3(
       published.owner.dispatch_id,
       { now, dispatch_run_id: published.owner.dispatch_run_id },
     );
-    return v3DoneResponse(terminalStatus(receipt.terminal_reason));
+    return v3DoneResponse(terminalStatus(receipt.terminal_reason), profile);
   }
   const currentness = inspectCurrentPublicRecovery({
     target: published.target,
@@ -4450,9 +4443,10 @@ export function openAutomaticBuildExecutorSessionV3(
     stage: stage.descriptor.stage,
     work_unit_id: stage.descriptor.work_unit_id,
     descriptor_input_hash: stage.descriptor.input_hash,
-    transport_profile: CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+    transport_profile: profile.transport_profile,
   });
   const material = renderDeliveryMaterial({
+    execution_profile: profile,
     target: published.target,
     persisted: published.persisted,
     semantic_prompt: published.semantic_prompt,
@@ -4504,14 +4498,16 @@ function validateInputNextRequest(
   };
 }
 
+export function nextAutomaticBuildExecutorInput(requestValue: AutomaticBuildExecutorInputNextRequestV4, options?: { now?: string; timing?: AutomaticBuildExecutorServerTimingObserverV1; execution_profile?: undefined }): AutomaticBuildExecutorSessionResponseV3;
+export function nextAutomaticBuildExecutorInput(requestValue: AutomaticBuildExecutorInputNextRequestV4, options: { now?: string; timing?: AutomaticBuildExecutorServerTimingObserverV1; execution_profile?: Readonly<BuildExecutionProfileV1> }): AutomaticBuildExecutorSessionResponse;
 export function nextAutomaticBuildExecutorInput(
   requestValue: AutomaticBuildExecutorInputNextRequestV4,
-  options: { now?: string } = {},
-): AutomaticBuildExecutorSessionResponseV3 {
+  options: { now?: string; execution_profile?: Readonly<BuildExecutionProfileV1> } = {},
+): AutomaticBuildExecutorSessionResponse {
   const request = validateInputNextRequest(requestValue);
   const nowValue = options.now ?? request.now;
   const now = nowValue === undefined ? new Date().toISOString() : isoTimestamp(nowValue, "now");
-  const context = resolveDeliverySessionContext(request.opaque_session_ref);
+  const context = resolveDeliverySessionContext(request.opaque_session_ref, options.execution_profile);
   if (request.generation_input_ref !== context.delivery.generation_input_ref) {
     throw new Error("executor input.next generation input ref does not match its session");
   }
@@ -4582,7 +4578,7 @@ function validateGenerationStartRequest(
 
 function generationStartAcceptance(
   request: AutomaticBuildExecutorGenerationStartRequestV3,
-  delivery: AutomaticBuildExecutorAnyDeliverySessionRecordV3,
+  delivery: DeliveryRecord,
   grant: AutomaticBuildExecutorGenerationGrantRecordV2,
   acceptedAt: string,
 ): AutomaticBuildExecutorGenerationStartAcceptanceV1 {
@@ -4616,17 +4612,20 @@ function generationStartAcceptance(
   };
 }
 
+export function startAutomaticBuildExecutorGeneration(requestValue: AutomaticBuildExecutorGenerationStartRequestV3, options?: { now?: string; timing?: AutomaticBuildExecutorServerTimingObserverV1; execution_profile?: undefined }): AutomaticBuildExecutorSessionResponseV3;
+export function startAutomaticBuildExecutorGeneration(requestValue: AutomaticBuildExecutorGenerationStartRequestV3, options: { now?: string; timing?: AutomaticBuildExecutorServerTimingObserverV1; execution_profile?: Readonly<BuildExecutionProfileV1> }): AutomaticBuildExecutorSessionResponse;
 export function startAutomaticBuildExecutorGeneration(
   requestValue: AutomaticBuildExecutorGenerationStartRequestV3,
   options: {
     now?: string;
     timing?: AutomaticBuildExecutorServerTimingObserverV1;
+    execution_profile?: Readonly<BuildExecutionProfileV1>;
   } = {},
-): AutomaticBuildExecutorSessionResponseV3 {
+): AutomaticBuildExecutorSessionResponse {
   const request = validateGenerationStartRequest(requestValue);
   const nowValue = options.now ?? request.now;
   const now = nowValue === undefined ? new Date().toISOString() : isoTimestamp(nowValue, "now");
-  const context = resolveDeliverySessionContext(request.opaque_session_ref);
+  const context = resolveDeliverySessionContext(request.opaque_session_ref, options.execution_profile);
   if (request.generation_input_ref !== context.delivery.generation_input_ref) {
     throw new Error("executor generation.start generation input ref does not match its session");
   }
@@ -4670,6 +4669,7 @@ export function startAutomaticBuildExecutorGeneration(
     });
     const outputContract = privateArtifactCandidateContractV3(
       context.context.attempt.task,
+      context.delivery.transport_profile,
     );
     if (outputContract.version !== grant.output_schema_version
       || canonicalAutomaticBuildJson(outputContract)
@@ -4684,7 +4684,7 @@ export function startAutomaticBuildExecutorGeneration(
       output_contract: outputContract,
       created_at: acceptance.accepted_at,
     });
-    const response = boundedV3Response({
+    const response = boundedV3Response(deliveryExecutionProfile(context.delivery), {
       version: "automatic_build_executor_session.v3",
       action: {
         kind: "GENERATE",
@@ -4776,6 +4776,7 @@ export function startAutomaticBuildExecutorGeneration(
     context.owner.stage,
     context.owner.dispatch_id,
     {
+      execution_profile: deliveryExecutionProfile(context.delivery),
       descriptors: stage.descriptors,
       task_bindings: stage.task_bindings,
       read_task: workUnitId => {
@@ -4835,7 +4836,7 @@ export function startAutomaticBuildExecutorGeneration(
     context.material.semantic_input,
     { now: acceptance.accepted_at, run_ttl_ms: context.persisted.run_ttl_ms },
   );
-  const outputContract = semanticCandidateContractV3(stage.descriptor);
+  const outputContract = semanticCandidateContractV3(stage.descriptor, context.delivery.transport_profile);
   if (outputContract.version !== grant.output_schema_version) {
     throw new Error("executor generation.start output contract changed after grant");
   }
@@ -4850,7 +4851,7 @@ export function startAutomaticBuildExecutorGeneration(
   const retryFeedback = readAutomaticBuildCandidateRetryFeedback(
     context.target, taskSession.stage, taskSession.work_unit_id, taskSession.physical_attempt,
   );
-  const response = boundedV3Response({
+  const response = boundedV3Response(deliveryExecutionProfile(context.delivery), {
     version: "automatic_build_executor_session.v3",
     action: {
       kind: "GENERATE",
@@ -4862,7 +4863,8 @@ export function startAutomaticBuildExecutorGeneration(
     },
   });
   const record: AutomaticBuildExecutorGenerationStartRecordV2 = {
-    version: "automatic_build_executor_generation_start_record.v2",
+    version: context.delivery.version === "automatic_build_executor_delivery_session_record.v4"
+      ? "automatic_build_executor_generation_start_record.v3" : "automatic_build_executor_generation_start_record.v2",
     opaque_session_ref: context.delivery.opaque_session_ref,
     generation_input_ref: context.delivery.generation_input_ref,
     generation_grant_ref: grant.generation_grant_ref,
@@ -4911,13 +4913,16 @@ function stagePrivateArtifactCandidateValue(
   }
 }
 
+export function submitAutomaticBuildExecutorCandidateV3(requestValue: AutomaticBuildExecutorCandidateSubmitV3, options?: { now?: string; timing?: AutomaticBuildExecutorServerTimingObserverV1; execution_profile?: undefined }): AutomaticBuildExecutorSessionResponseV3;
+export function submitAutomaticBuildExecutorCandidateV3(requestValue: AutomaticBuildExecutorCandidateSubmitV3, options: { now?: string; timing?: AutomaticBuildExecutorServerTimingObserverV1; execution_profile?: Readonly<BuildExecutionProfileV1> }): AutomaticBuildExecutorSessionResponse;
 export function submitAutomaticBuildExecutorCandidateV3(
   requestValue: AutomaticBuildExecutorCandidateSubmitV3,
   options: {
     now?: string;
     timing?: AutomaticBuildExecutorServerTimingObserverV1;
+    execution_profile?: Readonly<BuildExecutionProfileV1>;
   } = {},
-): AutomaticBuildExecutorSessionResponseV3 {
+): AutomaticBuildExecutorSessionResponse {
   const routedRequest = validateCandidateSubmitRoutingV3(requestValue);
   const request = routedRequest as AutomaticBuildExecutorCandidateSubmitV3;
   const nowValue = options.now ?? request.now;
@@ -4929,7 +4934,7 @@ export function submitAutomaticBuildExecutorCandidateV3(
     }
     const privateResolved = resolvePrivateExecutorSession(request.opaque_session_ref);
     if (!privateResolved) throw new Error("executor private V3 session does not exist");
-    const deliveryContext = resolveDeliverySessionContext(directSink.delivery_session_ref);
+    const deliveryContext = resolveDeliverySessionContext(directSink.delivery_session_ref, options.execution_profile);
     if (deliveryContext.kind !== "private_artifact") {
       throw new Error("executor private candidate sink points to a public delivery");
     }
@@ -4940,6 +4945,7 @@ export function submitAutomaticBuildExecutorCandidateV3(
     );
     const outputContract = privateArtifactCandidateContractV3(
       privateResolved.context.attempt.task,
+      deliveryContext.delivery.transport_profile,
     );
     const sink = validatePrivateCandidateSinkRecord(
       decodeJsonRecord(candidateSinkRecordFile(request.opaque_session_ref)),
@@ -4953,7 +4959,7 @@ export function submitAutomaticBuildExecutorCandidateV3(
     if (sink.candidate_sink_ref !== request.candidate_sink_ref) {
       throw new Error("executor private candidate sink ref changed before submit");
     }
-    const validation = validateCandidateSubmitRequestV3(requestValue, routedRequest);
+    const validation = validateCandidateSubmitRequestV3(requestValue, deliveryContext.delivery.transport_profile, routedRequest);
     if (validation.status === "blocked") {
       failIntentArtifactTaskAttempt({
         private_root: privateResolved.context.attempt.private_root,
@@ -4969,13 +4975,13 @@ export function submitAutomaticBuildExecutorCandidateV3(
       validation.request.candidate,
       Math.min(
         outputContract.max_bytes,
-        CODEX_EXECUTOR_TRANSPORT_PROFILE_V2.max_candidate_request_bytes,
+        deliveryContext.delivery.transport_profile.max_candidate_request_bytes,
       ),
     );
     options.timing?.complete_phase("candidate-gate");
     submitPrivateArtifactContext(privateResolved.context, now);
     options.timing?.complete_phase("writer/commit");
-    return openAutomaticBuildExecutorSessionV3(sink.opaque_handoff_ref, { now });
+    return openAutomaticBuildExecutorSessionV3(sink.opaque_handoff_ref, { now, execution_profile: options.execution_profile });
   }
   const taskSession = resolveTaskSession(request.opaque_session_ref);
   const storedSink = directSink
@@ -4985,7 +4991,7 @@ export function submitAutomaticBuildExecutorCandidateV3(
     || storedSink.candidate_sink_ref !== request.candidate_sink_ref) {
     throw new Error("executor candidate sink does not match its V3 session");
   }
-  const deliveryContext = resolveDeliverySessionContext(storedSink.delivery_session_ref);
+  const deliveryContext = resolveDeliverySessionContext(storedSink.delivery_session_ref, options.execution_profile);
   if (deliveryContext.kind !== "public_dispatch") {
     throw new Error("executor public candidate sink points to a private delivery");
   }
@@ -4999,7 +5005,7 @@ export function submitAutomaticBuildExecutorCandidateV3(
     taskSession.persisted,
     taskSession.task_session.work_unit_id,
   );
-  const outputContract = semanticCandidateContractV3(stage.descriptor);
+  const outputContract = semanticCandidateContractV3(stage.descriptor, deliveryContext.delivery.transport_profile);
   const sink = validateCandidateSinkRecord(
     decodeJsonRecord(candidateSinkRecordFile(taskSession.task_session.opaque_session_ref)),
     {
@@ -5012,7 +5018,7 @@ export function submitAutomaticBuildExecutorCandidateV3(
   if (sink.candidate_sink_ref !== request.candidate_sink_ref) {
     throw new Error("executor candidate sink ref changed before submit");
   }
-  const validation = validateCandidateSubmitRequestV3(requestValue, routedRequest);
+  const validation = validateCandidateSubmitRequestV3(requestValue, deliveryContext.delivery.transport_profile, routedRequest);
   if (validation.status === "blocked") {
     failAutomaticBuildTask(
       taskSession.target,
@@ -5028,7 +5034,7 @@ export function submitAutomaticBuildExecutorCandidateV3(
       },
     );
     options.timing?.complete_phase("candidate-gate");
-    return openAutomaticBuildExecutorSessionV3(sink.opaque_handoff_ref, { now });
+    return openAutomaticBuildExecutorSessionV3(sink.opaque_handoff_ref, { now, execution_profile: options.execution_profile });
   }
   stageAutomaticBuildCandidateValue(
     taskSession.target,
@@ -5038,9 +5044,9 @@ export function submitAutomaticBuildExecutorCandidateV3(
     {
       max_bytes: Math.min(
         outputContract.max_bytes,
-        CODEX_EXECUTOR_TRANSPORT_PROFILE_V2.max_candidate_request_bytes,
+        deliveryContext.delivery.transport_profile.max_candidate_request_bytes,
       ),
-      max_tokens: CODEX_EXECUTOR_TRANSPORT_PROFILE_V2.max_candidate_request_tokens,
+      max_tokens: deliveryContext.delivery.transport_profile.max_candidate_request_tokens,
       now,
     },
   );
@@ -5054,10 +5060,10 @@ export function submitAutomaticBuildExecutorCandidateV3(
     { now },
   );
   options.timing?.complete_phase("writer/commit");
-  if (deliveryContext.handoff_record.version === "automatic_build_opaque_handoff_record.v4") {
-    return v3DoneResponse(receipt.state);
+  if (deliveryContext.handoff_record.version === "automatic_build_opaque_handoff_record.v4" || deliveryContext.handoff_record.version === "automatic_build_opaque_handoff_record.v5") {
+    return v3DoneResponse(receipt.state, deliveryExecutionProfile(deliveryContext.delivery));
   }
-  return openAutomaticBuildExecutorSessionV3(sink.opaque_handoff_ref, { now });
+  return openAutomaticBuildExecutorSessionV3(sink.opaque_handoff_ref, { now, execution_profile: options.execution_profile });
 }
 
 export function submitAutomaticBuildExecutorCandidate(
@@ -5121,7 +5127,7 @@ export function submitAutomaticBuildExecutorCandidate(
 export function failAutomaticBuildExecutorSession(
   opaqueSessionRefValue: string,
   input: { diagnostic_code: string; message?: string; now?: string },
-): AutomaticBuildExecutorSessionResponseV1 | AutomaticBuildExecutorSessionResponseV3 {
+): AutomaticBuildExecutorSessionResponseV1 | AutomaticBuildExecutorSessionResponse {
   const now = input.now === undefined ? new Date().toISOString() : isoTimestamp(input.now, "now");
   const diagnosticCode = boundedString(input.diagnostic_code, "diagnostic_code", 256);
   const failureDiagnostic = automaticBuildFailureDiagnosticFromExecutorReport(
@@ -5304,13 +5310,14 @@ function validateCandidateSubmitRoutingV3(
 
 function validateCandidateSubmitRequestV3(
   value: unknown,
+  transportProfile: ExecutorTransportProfile,
   routed = validateCandidateSubmitRoutingV3(value),
 ):
   | { status: "within_limit"; request: AutomaticBuildExecutorCandidateSubmitV3 }
   | { status: "blocked" } {
   const measurement = measureExecutorCandidateRequest(
     value,
-    CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+    transportProfile,
   );
   if (measurement.blocking_reasons.length > 0) return { status: "blocked" };
   return {
@@ -5376,8 +5383,8 @@ function validateInterruptRequest(value: unknown): AutomaticBuildExecutorInterru
 
 export function runAutomaticBuildExecutorSessionCommand(
   value: unknown,
-  options: { timing?: AutomaticBuildExecutorServerTimingObserverV1 } = {},
-): AutomaticBuildExecutorSessionResponseV1 | AutomaticBuildExecutorSessionResponseV3 {
+  options: { timing?: AutomaticBuildExecutorServerTimingObserverV1; execution_profile?: Readonly<BuildExecutionProfileV1> } = {},
+): AutomaticBuildExecutorSessionResponseV1 | AutomaticBuildExecutorSessionResponse {
   if (!isRecord(value) || typeof value.version !== "string") {
     throw new Error("executor session request must be a versioned object");
   }
@@ -5387,17 +5394,18 @@ export function runAutomaticBuildExecutorSessionCommand(
   }
   if (value.version === "automatic_build_executor_open_request.v3") {
     const request = validateOpenRequestV3(value);
-    return openAutomaticBuildExecutorSessionV3(request.opaque_handoff_ref, { now: request.now });
+    return openAutomaticBuildExecutorSessionV3(request.opaque_handoff_ref, { now: request.now, execution_profile: options.execution_profile });
   }
   if (value.version === "automatic_build_executor_input_next_request.v4") {
     const request = validateInputNextRequest(value);
-    return nextAutomaticBuildExecutorInput(request, { now: request.now });
+    return nextAutomaticBuildExecutorInput(request, { now: request.now, execution_profile: options.execution_profile });
   }
   if (value.version === "automatic_build_executor_generation_start_request.v3") {
     const request = validateGenerationStartRequest(value);
     return startAutomaticBuildExecutorGeneration(request, {
       now: request.now,
       timing: options.timing,
+      execution_profile: options.execution_profile,
     });
   }
   if (value.version === "automatic_build_executor_candidate_submit.v3") {
@@ -5407,6 +5415,7 @@ export function runAutomaticBuildExecutorSessionCommand(
       {
       now: request.now,
       timing: options.timing,
+      execution_profile: options.execution_profile,
       },
     );
   }

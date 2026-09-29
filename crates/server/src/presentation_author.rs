@@ -44,18 +44,67 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
             delivered: None,
         };
         match request {
-            AuthorRequest::Read { reference, file, offset } => {
-                let version = self.port.with_app(|state| state.read_presentation(&self.turn_ref.session_id, &reference))?;
+            AuthorRequest::RenderAnimation { code, data, size, cues } => {
+                let rendered = crate::presentation_animation::render(code, data, size, cues, cancellation)?;
+                let id = format!("animation-{}", uuid::Uuid::now_v7());
+                result.body = crate::presentation_animation::metadata(&id, &rendered.asset);
+                result.body["status"] = json!("animation_rendered");
+                result.body["preview_images"] = json!(rendered.frames.iter().map(|(time,_)| json!({"at_seconds":time})).collect::<Vec<_>>());
+                for (time, png) in &rendered.frames {
+                    result.images.push(PreviewImage { caption:format!("Animation {id}: decoded frame at {time:.3}s. Inspect before embedding and previewing the page."), png_base64:png.clone(), candidate_id:None, environment_name:None });
+                }
+                self.animations.insert(id, rendered);
+            }
+            AuthorRequest::RenderPlot { code, data, size } => {
+                let plot = crate::presentation_plot::render(code, data, size, cancellation)?;
+                let asset_ref = format!("plot-{}", uuid::Uuid::now_v7());
+                let asset_path = format!("assets/{asset_ref}.svg");
+                result.images.push(PreviewImage {
+                    caption: format!("Matplotlib plot {asset_ref}, {}x{}; inspect the actual labels, axes, values and legend before using it.", plot.width, plot.height),
+                    png_base64: plot.png_base64.clone(),
+                    candidate_id: None,
+                    environment_name: None,
+                });
+                result.body = json!({"status":"plot_rendered","asset_ref":asset_ref,"asset_path":asset_path,
+                    "mime":"image/svg+xml","width":plot.width,"height":plot.height,"font":plot.font,
+                    "next":"Inspect the returned image, then use asset_path in an img src and include asset_ref in write.asset_refs"});
+                self.plots.insert(asset_ref, plot);
+            }
+            AuthorRequest::Read {
+                reference,
+                file,
+                offset,
+            } => {
+                let version = self.port.with_app(|state| {
+                    state.read_presentation(&self.turn_ref.session_id, &reference)
+                })?;
                 let content = version.content;
+                let library_metadata = crate::presentation_libraries::metadata(&content.content_files);
+                let animations: Vec<_> = content.animation_assets.iter().map(|(id,a)| crate::presentation_animation::metadata(id,a)).collect();
                 let file = file.unwrap_or_else(|| content.entrypoint.clone());
-                let source = content.content_files.get(&file).ok_or_else(|| invalid("Content file not found"))?;
+                if let Some(asset) = animations.iter().find(|a| a["asset_path"] == file || a["poster_path"] == file) {
+                    result.body = json!({"status":"animation_metadata","reference":reference,"animation":asset});
+                    return Ok(result);
+                }
+                let source = content
+                    .content_files
+                    .get(&file)
+                    .ok_or_else(|| invalid("Content file not found"))?;
+                if file.starts_with("libraries/") {
+                    result.body = json!({"status":"managed_library", "reference":reference, "file":file,
+                        "libraries":library_metadata, "next":"Use write.libraries to select dependencies; managed source is not authoring text."});
+                    return Ok(result);
+                }
                 let length = source.chars().count();
-                if offset > length { return Err(invalid("Offset exceeds file length")); }
+                if offset > length {
+                    return Err(invalid("Offset exceeds file length"));
+                }
                 let text: String = source.chars().skip(offset).take(4000).collect();
                 let end = offset + text.chars().count();
                 let next_offset = (end < length).then_some(end);
                 result.body = json!({"status":"version_read","reference":reference,"based_on":version.based_on,
-                    "title":content.title,"files":content.content_files.keys().collect::<Vec<_>>(),"entrypoint":content.entrypoint,
+                    "title":content.title,"libraries":library_metadata,"animations":animations,"files":content.content_files.keys().collect::<Vec<_>>(),"entrypoint":content.entrypoint,
+                    "asset_refs":content.content_files.keys().filter_map(|path| path.strip_prefix("assets/").and_then(|name| name.strip_suffix(".svg"))).chain(content.animation_assets.keys().map(String::as_str)).collect::<Vec<_>>(),
                     "file":file,"offset":offset,"text":text,"next_offset":next_offset,"total_characters":length,"chunk_characters":4000,
                     "readable_content":content.readable_content,"assumptions":content.assumptions,
                     "source_ref_ids":content.source_bindings.iter().map(|b| &b.source_ref_id).collect::<Vec<_>>(),
@@ -67,14 +116,21 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
                 title,
                 html,
                 readable_content,
+                asset_refs,
+                libraries,
                 source_ref_ids,
                 assumptions,
                 mut initial_state,
             } => {
+                #[cfg(test)]
+                let html = crate::tests::presentation_author_tests::ex10::assemble_write(&html);
                 if html.len() > 1024 * 1024 {
                     return Err(invalid("HTML exceeds 1 MiB"));
                 }
                 let mut available_bindings = bindings.to_vec();
+                let mut animation_assets = std::collections::BTreeMap::new();
+                let mut content_files =
+                    std::collections::BTreeMap::from([("index.html".to_string(), html.clone())]);
                 if let Some(reference) = &based_on {
                     let (base, saved) = self.port.with_app(|state| {
                         let base = state.read_presentation(&self.turn_ref.session_id, reference)?;
@@ -88,14 +144,90 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
                         };
                         Ok::<_, ToolError>((base, saved))
                     })?;
-                    if let Some(saved) = saved { inherit_parameters(&mut initial_state, &state_contract, &base.content.state_contract, &saved.state); }
+                    if let Some(saved) = saved {
+                        inherit_parameters(
+                            &mut initial_state,
+                            &state_contract,
+                            &base.content.state_contract,
+                            &saved.state,
+                        );
+                    }
+                    animation_assets.extend(base.content.animation_assets.into_iter().filter(|(id,_)| asset_refs.contains(id)));
+                    content_files.extend(base.content.content_files.into_iter().filter(
+                        |(path, _)| {
+                            if path == "index.html" {
+                                return false;
+                            }
+                            if path.starts_with("assets/") || path.starts_with("plots/") || path.starts_with("animations/") {
+                                return asset_refs.iter().any(|id| {
+                                    path == &format!("assets/{id}.svg")
+                                        || path == &format!("plots/{id}.py")
+                                        || path == &format!("plots/{id}.json")
+                                        || path == &format!("animations/{id}.py")
+                                        || path == &format!("animations/{id}.json")
+                                });
+                            }
+                            true
+                        },
+                    ));
                     for binding in base.content.source_bindings {
-                        if !available_bindings.iter().any(|b| b.source_ref_id == binding.source_ref_id) { available_bindings.push(binding); }
+                        if !available_bindings
+                            .iter()
+                            .any(|b| b.source_ref_id == binding.source_ref_id)
+                        {
+                            available_bindings.push(binding);
+                        }
                     }
                 }
+                for asset_ref in &asset_refs {
+                    if let Some(rendered) = self.animations.get(asset_ref) {
+                        animation_assets.insert(asset_ref.clone(), rendered.asset.clone());
+                        content_files.insert(format!("animations/{asset_ref}.py"), rendered.code.clone());
+                        content_files.insert(format!("animations/{asset_ref}.json"), rendered.data.to_string());
+                    }
+                    if animation_assets.contains_key(asset_ref) {
+                        let path = format!("assets/{asset_ref}.mp4");
+                        if !html.contains(&format!("src=\"{path}\"")) && !html.contains(&format!("src='{path}'")) {
+                            return Err(invalid(format!("Use {path} as a video src")));
+                        }
+                        continue;
+                    }
+                    let path = format!("assets/{asset_ref}.svg");
+                    if !html.contains(&format!("src=\"{path}\""))
+                        && !html.contains(&format!("src='{path}'"))
+                    {
+                        return Err(invalid(format!("Use {path} as an img src")));
+                    }
+                    if let Some(plot) = self.plots.get(asset_ref) {
+                        content_files.insert(path, plot.svg.clone());
+                        content_files.insert(format!("plots/{asset_ref}.py"), plot.code.clone());
+                        content_files
+                            .insert(format!("plots/{asset_ref}.json"), plot.data.to_string());
+                    } else if !content_files.contains_key(&path) {
+                        return Err(invalid(format!("Unknown asset_ref: {asset_ref}")));
+                    }
+                }
+                crate::presentation_animation::validate_assets(&animation_assets)?;
+                // Detect omitted animation refs at write time, before saving an unusable candidate.
+                for extension in ["mp4", "png"] {
+                    for part in html.split("assets/animation-").skip(1) {
+                        let name = part.split(['\"', '\'', '<', '>', ' ']).next().unwrap_or("");
+                        if let Some(id) = name.strip_suffix(&format!(".{extension}")) {
+                            if !animation_assets.contains_key(&format!("animation-{id}")) {
+                                return Err(invalid("Include each referenced animation in asset_refs"));
+                            }
+                        }
+                    }
+                }
+                let html = crate::presentation_libraries::assemble(&html, &libraries, &mut content_files);
+                content_files.insert("index.html".into(), html);
+                if content_files.values().map(String::len).sum::<usize>() > 1024 * 1024 {
+                    return Err(invalid("Candidate and version assets exceed 1 MiB"));
+                }
                 let content = PresentationContent {
+                    animation_assets,
                     title,
-                    content_files: [("index.html".into(), html)].into(),
+                    content_files,
                     entrypoint: "index.html".into(),
                     readable_content,
                     source_bindings: bindings_for(&source_ref_ids, &available_bindings)?,
@@ -112,16 +244,20 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
                         content,
                     )
                 })?;
-                result.body = json!({"candidate_id":candidate.candidate_id,"based_on":candidate.based_on,"initial_state":candidate.content.initial_state,"status":"candidate_saved","next":"preview with real actions; inspect returned screenshots before deliver"});
+                result.body = json!({"candidate_id":candidate.candidate_id,"based_on":candidate.based_on,"initial_state":candidate.content.initial_state,"status":"candidate_saved","libraries":crate::presentation_libraries::metadata(&candidate.content.content_files),"next":"Preview with real actions and inspect screenshots. To revise this undelivered candidate, write a new candidate with full revised HTML and omit based_on; based_on is only for a delivered presentation reference. Deliver the final candidate after its required previews."});
             }
             AuthorRequest::Preview {
                 candidate_id,
+                read_selector,
                 width,
                 viewport,
                 actions,
             } => {
                 if actions.len() > 4 {
                     return Err(invalid("At most four actions per rehearsal; preview further paths in a new rehearsal"));
+                }
+                for action in &actions {
+                    action.scene_position().map_err(invalid)?;
                 }
                 let candidate = self.port.with_app(|state| {
                     state.read_presentation_candidate(&self.turn_ref.session_id, &candidate_id)
@@ -132,6 +268,7 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
                 let html = preview_document(&candidate.content);
                 let request = PreviewRequest {
                     candidate_id: candidate_id.clone(),
+                    read_selector,
                     html,
                     actions,
                     width,
@@ -164,31 +301,58 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
                     }
                 }
                 let clean = problems.is_empty() && !report.observations.is_empty();
-                let receipt = if legacy_request { "legacy".to_string() } else { environment_name.clone() };
+                let receipt = if legacy_request {
+                    "legacy".to_string()
+                } else {
+                    environment_name.clone()
+                };
                 if clean {
-                    self.previewed.entry(candidate_id.clone()).or_default().insert(receipt.clone());
+                    self.previewed
+                        .entry(candidate_id.clone())
+                        .or_default()
+                        .insert(receipt.clone());
                 } else if let Some(receipts) = self.previewed.get_mut(&candidate_id) {
                     receipts.remove(&receipt);
                 }
-                let receipts = self.previewed.get(&candidate_id).cloned().unwrap_or_default();
+                let receipts = self
+                    .previewed
+                    .get(&candidate_id)
+                    .cloned()
+                    .unwrap_or_default();
                 let missing_environments = missing_preview_environments(&receipts);
                 let complete = clean && preview_contract_complete(&receipts);
+                let status = if !clean {
+                    "preview_failed"
+                } else if complete {
+                    "preview_ready_for_inspection"
+                } else {
+                    "preview_environment_recorded"
+                };
                 let mut recorded_environments = receipts.into_iter().collect::<Vec<_>>();
                 recorded_environments.sort();
                 for observation in &report.observations {
-                    result.images.push(PreviewImage { caption: format!("Browser observation of candidate {candidate_id} in {} ({}x{} {:?}), step {}. Inspect layout, graphics and agreement with readable content before delivery.", report.environment_name, report.environment.width, report.environment.height, report.environment.input, observation.step), png_base64: observation.screenshot_png_base64.clone() });
+                    let scene = observation.scene.as_ref().map(|scene| format!(" Target scene: semantic step {}, transition {:.3}; actual: semantic step {}, transition {:.3}, paused {}.", scene.target.semantic_state, scene.target.transition_progress, scene.actual.semantic_state, scene.actual.transition_progress, !scene.actual.playing)).unwrap_or_default();
+                    result.images.push(PreviewImage { caption: format!("Browser observation: candidate {candidate_id}, environment {} ({}x{} {:?}), step {}, status {status}.{scene} Inspect layout, graphics and agreement with readable content before delivery.", report.environment_name, report.environment.width, report.environment.height, report.environment.input, observation.step), png_base64: observation.screenshot_png_base64.clone(), candidate_id: Some(candidate_id.clone()), environment_name: Some(report.environment_name.clone()) });
                 }
-                if complete { result.previewed_candidate = Some(candidate_id.clone()); }
-                result.body = json!({"candidate_id":candidate_id,"status":if !clean {"preview_failed"} else if complete {"preview_ready_for_inspection"} else {"preview_environment_recorded"},"errors":problems,
+                if complete {
+                    result.previewed_candidate = Some(candidate_id.clone());
+                }
+                result.body = json!({"candidate_id":candidate_id,"status":status,"errors":problems,
                     "environment_name":report.environment_name,"environment":report.environment,"recorded_environments":recorded_environments,"missing_environments":missing_environments,
-                    "observations":report.observations.iter().map(|o| json!({"step":o.step,"dom":o.dom,"layout":o.layout,"issues":o.issues})).collect::<Vec<_>>()});
+                    "observations":report.observations.iter().map(|o| json!({"step":o.step,"dom":o.dom,"layout":o.layout,"issues":o.issues,"scene":o.scene})).collect::<Vec<_>>()});
+                if let Some(reading) = report.observations.last().and_then(|o| o.reading.as_ref()) {
+                    result.body["reading"] = reading.clone();
+                }
                 if !clean {
                     result.body["error_code"] = json!("PRESENTATION_PREVIEW_FAILED");
                     result.body["category"] = json!("execution");
                 }
             }
             AuthorRequest::Deliver { candidate_id } => {
-                let ready = self.previewed.get(&candidate_id).is_some_and(preview_contract_complete);
+                let ready = self
+                    .previewed
+                    .get(&candidate_id)
+                    .is_some_and(preview_contract_complete);
                 if !ready {
                     return Err(invalid(
                         "Preview this exact candidate successfully before delivery",
@@ -222,7 +386,10 @@ mod preview_contract_tests {
         let mut receipts = std::collections::HashSet::new();
         receipts.insert("narrow-content".to_string());
         receipts.insert("short-content".to_string());
-        assert_eq!(missing_preview_environments(&receipts), vec!["desktop-content"]);
+        assert_eq!(
+            missing_preview_environments(&receipts),
+            vec!["desktop-content"]
+        );
         assert!(!preview_contract_complete(&receipts));
         receipts.insert("desktop-content".to_string());
         assert!(preview_contract_complete(&receipts));
@@ -234,14 +401,39 @@ mod preview_contract_tests {
     }
 }
 
-fn inherit_parameters(initial: &mut Value, contract: &Value, old_contract: &Value, saved: &PresentationState) {
-    let (Some(defaults), Some(parameters)) = (initial.as_object_mut(), saved.values.get("page").and_then(Value::as_object)) else { return; };
+fn inherit_parameters(
+    initial: &mut Value,
+    contract: &Value,
+    old_contract: &Value,
+    saved: &PresentationState,
+) {
+    let (Some(defaults), Some(parameters)) = (
+        initial.as_object_mut(),
+        saved.values.get("page").and_then(Value::as_object),
+    ) else {
+        return;
+    };
     for (key, default) in defaults {
-        let Some(definition) = contract.get(key).and_then(Value::as_str).filter(|s| !s.trim().is_empty()) else { continue; };
-        if old_contract.get(key).and_then(Value::as_str) != Some(definition) { continue; }
+        let Some(definition) = contract
+            .get(key)
+            .and_then(Value::as_str)
+            .filter(|s| !s.trim().is_empty())
+        else {
+            continue;
+        };
+        if old_contract.get(key).and_then(Value::as_str) != Some(definition) {
+            continue;
+        }
         if let Some(value) = parameters.get(key) {
-            let same_type = matches!((&*default, value), (Value::Bool(_), Value::Bool(_)) | (Value::Number(_), Value::Number(_)) | (Value::String(_), Value::String(_)));
-            if same_type { *default = value.clone(); }
+            let same_type = matches!(
+                (&*default, value),
+                (Value::Bool(_), Value::Bool(_))
+                    | (Value::Number(_), Value::Number(_))
+                    | (Value::String(_), Value::String(_))
+            );
+            if same_type {
+                *default = value.clone();
+            }
         }
     }
 }
@@ -286,7 +478,7 @@ fn validate_observation(
         .as_array()
         .is_some_and(|a| !a.is_empty())
     {
-        return Err(invalid("Use inline CSS/JS, inline SVG or data images; external/local asset dependencies are unsupported by authoring"));
+        return Err(invalid("Use inline CSS/JS, SVG/data images or version animation assets; unresolved external/local asset dependencies are unsupported by authoring"));
     }
     for id in dom["source_ref_ids"].as_array().into_iter().flatten() {
         if !content
@@ -316,11 +508,43 @@ fn preview_document(content: &PresentationContent) -> String {
     let config = json!({"initialState":content.initial_state,"sources":sources})
         .to_string()
         .replace('<', "\\u003c");
+    let mut html = crate::presentation_libraries::inline(&content.content_files[&content.entrypoint], &content.content_files);
+    for (id, asset) in &content.animation_assets {
+        for (path, data) in [
+            (format!("assets/{id}.mp4"), format!("data:video/mp4;base64,{}",asset.video_base64)),
+            (format!("assets/{id}.png"), format!("data:image/png;base64,{}",asset.poster_png_base64)),
+        ] {
+            for quote in ['\"', '\''] {
+                for attr in ["src", "poster"] {
+                    html = html.replace(&format!("{attr}={quote}{path}{quote}"), &format!("{attr}={quote}{data}{quote}"));
+                }
+            }
+        }
+    }
+    for (path, svg) in content
+        .content_files
+        .iter()
+        .filter(|(path, _)| path.ends_with(".svg"))
+    {
+        let encoded = svg
+            .bytes()
+            .map(|byte| {
+                if byte.is_ascii_alphanumeric() || b"-_.~".contains(&byte) {
+                    (byte as char).to_string()
+                } else {
+                    format!("%{byte:02X}")
+                }
+            })
+            .collect::<String>();
+        let data_url = format!("data:image/svg+xml;charset=utf-8,{encoded}");
+        html = html.replace(&format!("src=\"{path}\""), &format!("src=\"{data_url}\""));
+        html = html.replace(&format!("src='{path}'"), &format!("src='{data_url}'"));
+    }
     // Same common CSS, initial-state and source-label contract as the Reader iframe.
     format!(
-        r#"<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
-<style>{}</style><script>
-(()=>{{const config={config};window.presentation=Object.freeze({{initialState:config.initialState,restoredState:null,registerStateReader:()=>{{}},registerStateRestorer:()=>{{}},commitState:()=>{{}}}});
+        r#"<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; media-src data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<style>{}</style><script>{}</script><script>
+(()=>{{const config={config};let stateReader=null;window.__presentationPreviewState=()=>stateReader?stateReader():null;window.presentation=Object.freeze({{initialState:config.initialState,restoredState:null,registerStateReader:reader=>{{stateReader=reader}},registerStateRestorer:()=>{{}},commitState:()=>{{}}}});
 document.addEventListener('DOMContentLoaded',()=>{{
  const label=()=>document.querySelectorAll('[data-source-ref]').forEach(e=>{{const s=config.sources.find(s=>s.source_ref_id===e.getAttribute('data-source-ref'));const t=s?s.label:'来源不可用';if(e.textContent!==t)e.textContent=t;}});
  label();new MutationObserver(label).observe(document.body,{{subtree:true,childList:true,attributes:true}});
@@ -328,6 +552,7 @@ document.addEventListener('DOMContentLoaded',()=>{{
  document.addEventListener('submit',e=>e.preventDefault(),true);
 }});}})();</script>{}"#,
         include_str!("../../../packages/web/src/presentation.css"),
-        content.content_files[&content.entrypoint]
+        include_str!("../../../packages/web/src/presentation-media.js"),
+        html
     )
 }

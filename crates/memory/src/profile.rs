@@ -675,10 +675,9 @@ pub(crate) fn build_profile_fact_with_capture(
     };
     let canonical = match capture {
         ProfileFactCapture::CurrentInteraction => serde_json::to_string(&identity),
-        ProfileFactCapture::HistoricalBackfill => serde_json::to_string(&(
-            ProfileFactCapture::HistoricalBackfill,
-            identity,
-        )),
+        ProfileFactCapture::HistoricalBackfill => {
+            serde_json::to_string(&(ProfileFactCapture::HistoricalBackfill, identity))
+        }
     }
     .map_err(|error| invalid_profile_fact(format!("profile identity 序列化失败: {error}")))?;
     let fact = ProfileFact {
@@ -795,8 +794,7 @@ fn validate_source_contract(
         ));
     }
     if evidence_is_empty
-        && (source != FactSource::UserStated
-            || capture == ProfileFactCapture::HistoricalBackfill)
+        && (source != FactSource::UserStated || capture == ProfileFactCapture::HistoricalBackfill)
     {
         return Err(invalid_profile_fact(
             "非 user_stated fact 不得失去全部 evidence".into(),
@@ -811,19 +809,18 @@ fn validate_source_contract(
                 FactSource::DeterministicBehavior,
                 ProfileScope::Book { .. },
                 FactStatus::Confirmed
-            )
-            | (FactSource::UserStated, _, FactStatus::Confirmed)
-            | (
-                FactSource::AgentInferred,
-                ProfileScope::Book { .. },
-                FactStatus::Provisional
-            )
-            | (
-                FactSource::AgentInferred,
-                ProfileScope::Global,
-                FactStatus::Pending
-            )
-            | (FactSource::AgentInferred, _, FactStatus::Confirmed)
+            ) | (FactSource::UserStated, _, FactStatus::Confirmed)
+                | (
+                    FactSource::AgentInferred,
+                    ProfileScope::Book { .. },
+                    FactStatus::Provisional
+                )
+                | (
+                    FactSource::AgentInferred,
+                    ProfileScope::Global,
+                    FactStatus::Pending
+                )
+                | (FactSource::AgentInferred, _, FactStatus::Confirmed)
         );
     if !valid_status {
         return Err(invalid_profile_fact(format!(
@@ -1587,9 +1584,6 @@ mod tests {
         persisted.as_object_mut().unwrap().remove("capture");
 
         let reopened: ProfileFact = serde_json::from_value(persisted).unwrap();
-        assert_eq!(
-            reopened.capture,
-            ProfileFactCapture::CurrentInteraction
-        );
+        assert_eq!(reopened.capture, ProfileFactCapture::CurrentInteraction);
     }
 }

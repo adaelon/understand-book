@@ -1,5 +1,11 @@
 # CONTEXT —— 术语表
 
+## 项目代码只读访问
+供架构分析者查阅本项目当前获准代码与文档的访问能力，包含未提交修改和未跟踪的新文件；不授予文件修改、构建执行或 Reader 操作权限。它不同于面向书籍内容的 Book MCP。状态：NEW（2026-09-18，用户已确认范围与内容传输边界；见 `docs/代码只读MCP.md`）。
+
+## 获准项目文件
+项目维护者明确开放给代码分析者的源码、测试、设计文档和必要配置。未纳入 Git 不影响其资格；临时运行资料、私有配置、书稿和构建产物不因位于项目目录内而获得资格。状态：NEW（2026-09-18，见 `docs/代码只读MCP.md`）。
+
 ## Resident 运行 (Resident Run)
 一条读者消息触发的完整住户 Agent 工作过程，归属于提问时的书籍与会话，可以包含多次模型请求和工具调用。它以回答交付、失败或取消结束；运行结束与问题得到完整回答是两个判断。状态:EXISTING（见 [ADR-0127](docs/adr/0127-resident-agent-streaming-and-runtime-activity.md)）。
 
@@ -362,10 +368,13 @@ note 卡片的展示层 `[ADR-0043]`:note 内容仍来自 memory,overlay 只负�
 替代"页码"的位置参照:**章节定位**(从当前 anchor 上溯容器 LID)+ **进度%**(`anchor_idx` / 叶总数)。它只做导航与显示,**不做引用锚**。本项目无一等页码；印刷版 page-list 仅在源携带时作 LID 展示标签,citation 恒为 LID。状态:EXISTING(见 [ADR-0028](docs/adr/0028-前端切片架构-vue-localhost-server-crate-tinyhttp同步-rest命令面1对1投影-不引epub框架-连续正文lid隐形-无页码寻址.md))。
 
 ## MemoryDocument
-本地单用户、跨书的读者私人记忆真相源;统一容纳内容记录、画像事实及其审核状态,与只读书基座物理隔离。旧的裸记录数组是其待迁移前身,不是并列真相源。状态:BOUNDARY_CHANGE(详见 [docs/adr/0075])。
+本地单用户、跨书的读者私人内容记录与稳定画像事实账本,统一容纳其审核和治理状态,与只读书基座物理隔离。它是 `LearningMemory` 内稳定用户上下文的权威来源,不拥有绑定 `LearningObjectRef` 的学习证据或对象级知识状态。旧的裸记录数组是其待迁移前身,不是并列真相源。状态:BOUNDARY_CHANGE(详见 [docs/adr/0075]、`grill.md` Q81)。
 
 ## ProfileFact
-一条带来源、证据、信任状态和生命周期的结构化用户画像事实。`scope` 表示事实属于全局还是某本书,`applicability` 表示它适用于全部内容、某个 `content_profile`、论文 subtype 或领域;两者正交。状态:NEW(详见 [docs/adr/0075])。
+一条带来源、证据、信任状态和生命周期的结构化稳定用户上下文事实,描述背景、目标、讲解偏好、约束或用户明示的通用能力背景。`scope` 表示事实属于全局还是某本书,`applicability` 表示它适用于全部内容、某个 `content_profile`、论文 subtype 或领域;两者正交。它不得保存或推导绑定 `LearningObjectRef` 的对象级表现或掌握判断。状态:BOUNDARY_CHANGE(详见 [docs/adr/0075]、`grill.md` Q81)。
+
+## ExplanationPreference
+`ProfileFact` 中表达用户通常偏好怎样讲解的长期上下文，只在教学语境已成立、当前回合显式意图与有效 `TutorSessionMode` 都未给出更强指示时作为弱默认。只有已确认偏好可以参与解析；它不得建立教学语境、开启 `GuidedInquiryPolicy`，也不得覆盖当前请求或临时会话默认。状态:BOUNDARY_CHANGE(见 `grill.md` Q86)。
 
 ## ProfileFactCapture (画像事实采集方式)
 记录画像事实是在当前交互中采集,还是从用户选定的历史对话中回填;它与事实 `source` 正交。`HistoricalBackfill` 保留原始来源,但确认前始终为 `Pending`。状态:NEW(2026-07-14 M4 §0.5)。
@@ -386,13 +395,13 @@ note 卡片的展示层 `[ADR-0043]`:note 内容仍来自 memory,overlay 只负�
 保证本地明文读者记忆只对当前 OS 用户可读写的隐私边界。权限无法收紧或验证时必须停止私人 memory 读写并暴露可诊断状态,但不阻断不依赖私人记忆的普通阅读。状态:NEW(2026-07-14 M4 §0.5)。
 
 ## GlobalReaderProfile
-从有效 `ProfileFact` 投影出的跨书稳定读者画像,只包含相关背景、领域能力、长期目标、稳定讲解偏好和长期约束。它不吸收单本阅读反应、临时情绪或普通 context memory。状态:NEW(详见 [docs/adr/0075])。
+从有效 `ProfileFact` 投影出的跨书稳定读者画像,只包含相关背景、通用能力背景、长期目标、稳定讲解偏好和长期约束。它不吸收单本阅读反应、临时情绪、普通 context memory 或绑定 `LearningObjectRef` 的对象级知识状态。状态:BOUNDARY_CHANGE(详见 [docs/adr/0075]、`grill.md` Q81)。
 
 ## BookReadingState
 某一本书的读者私人阅读状态,由已读 LID、提问/笔记/高亮等原始行为信号、单本事实和当前 `MemoryPolicy` 投影组成。旧代码级 `ReaderProfile {read_lids, focus_lids, puzzle_heat}` 此后归入本术语;行为信号本身不证明困惑或掌握。状态:BOUNDARY_CHANGE(详见 [docs/adr/0075])。
 
 ## ReaderProfileSnapshot
-runtime 在读者回合开始前从 `GlobalReaderProfile`、当前 `BookReadingState` 和适用事实组装的有界上下文视图。它自动注入住户 agent、可按账本重建,不是第二真相源,也不写入对话历史。状态:NEW(详见 [docs/adr/0075])。
+runtime 在读者回合开始前从 `GlobalReaderProfile`、当前 `BookReadingState` 和适用事实组装的有界画像视图。它是 `LearnerContext` 的稳定用户上下文输入,不承载对象级 `LearnerKnowledgeState`;可按账本重建,不是第二真相源,也不写入对话历史。状态:BOUNDARY_CHANGE(详见 [docs/adr/0075]、`grill.md` Q81)。
 
 ## MemoryIntentGate
 住户用户消息进入主 agent 前的显式记忆意图入口:结构化 UI 动作直接生成记忆操作,明确的“记住/纠正/忘记”表达才触发前台结构化抽取。未命中的普通表达不增加当前回答延迟,由后台审核兜底。状态:NEW(详见 [docs/adr/0075])。
@@ -730,8 +739,111 @@ Build controller 为一次 server-side executor run 写出的未信任执行契�
 
 ## BuildDecisionRequest
 Build Workbench 中影响构建方向或阶段 readiness 的用户选择请求,区别于 Codex/opencode/Claude 等 executor 的工具权限请求。其答案必须写入 job event,若影响构建结果还要写入 stage decision artifact。状态:NEW(见 [docs/adr/0063])。
+
+## Agent 原生学习环境
+Agent 可理解、可观察、可行动并获得真实反馈的学习现场，由已有公共教学资产、私人学习状态、当前阅读与交互状态、对象关系和操作能力共同构成；每回合自动提供稳定环境说明和精简当前现场，相关细节按需读取，表现判断须取得对应的实际呈现、帮助条件和用户回应。系统维护真实状态、对象语义和动作结果，Agent 结合目标与环境作具体教学选择；环境保留事实与判断的区别，不新增独立的可编辑真相。状态:NEW(见 `grill.md` Q90/Q91、[ADR-0119](docs/adr/0119-agent-native-learning-environment-and-teaching-agency.md))。
+
+## 正式学习就绪
+正式学习所需的公共教学基座已完成并满足就绪要求的状态，是启动 TutorLoop 的前置条件；首版以整本书或整篇论文为就绪单位，必需产物与具体验收条件仍待确定。它与可信原文已可阅读分别表达，用户可先进入阅读器阅读，正式学习就绪后由 Agent 在读时选择或合成个性化路径、问题与提示。状态:NEW(见 `grill.md` Q94/Q95、[ADR-0120](docs/adr/0120-whole-source-prebuild-gate-for-formal-learning.md))。
+
+## TeachingMap
+公共、版本化的教学资产边界，以可信原文及其可复用公共语义产物为依据，描述“可以教什么”以及可复用的认知推进素材；正式对象与关系承接经过语义整理和来源确认的内容，教学前置依赖注明能力目标与成立条件。`KnowledgeSpace`、`ReasoningPath`、`ReasoningPattern` 与后续教学步骤结构均是其内部数据或投影；它不保存任何用户私人学习状态。状态:NEW(见 `grill.md` Q72/Q85/Q99/Q100)。
+
+## 教学前置依赖
+`TeachingMap` 内注明目标对象及能力、所需前置对象及能力、适用条件和依据的公共依赖关系，描述完成相应目标所需的内容条件。读时 Agent 结合当前目标、私人学习证据与可提供的帮助决定实际教学顺序；关系本身不表示某个用户已具备或欠缺前置能力，也不等同材料的出现顺序。状态:NEW(见 `grill.md` Q100)。
+
+## LearningMemory
+统一拥有读者私人稳定上下文、教学会话与动态学习证据的逻辑边界。稳定背景、目标、讲解偏好和约束由 `ProfileFact` 权威表达，临时教学目标/范围及教法由独立 `TutorSession` 表达；绑定 `LearningObjectRef` 的对象级表现与理解判断只由 `InteractionTrace → LearningEvidence → LearnerKnowledgeState` 证据链表达，`User Understanding Space` 综合呈现相关表现、个人解释与有依据的理解假设。短期路径进度和长期知识状态是可重建投影；它不拥有公共教学资产。状态:BOUNDARY_CHANGE(见 `grill.md` Q72/Q81/Q87/Q97)。
+
+## User Understanding Space（用户理解空间）
+`LearningMemory` 内以公共正式学习对象及可学习关键关系为共同参照的私人理解视图，结合实际表现、用户个人解释与有证据的可修正理解假设。它由既有 `InteractionTrace`、`LearningEvidence` 和 `LearnerKnowledgeState` 的相关内容投影，区分用户原话与系统推断，无证据保持未知，不独立拥有可编辑学习状态或改写公共 `TeachingMap`。状态:NEW(见 `grill.md` Q97)。
+
+## LearnerContext
+`TutorLoop` 在一个读者回合开始时冻结的有界私人上下文，由相关稳定画像、有效 TutorSession 的用户意图、当前学习焦点与默认教法、当前 `PathProgress`、相关 `User Understanding Space` 片段与必要的新鲜度状态合成，是 Agent 原生学习环境中的读者状态视图。它只服务本回合教学决策，不是完整环境或持久真相，不写入对话历史，也不得把画像事实、会话默认或交互意图改写成对象级掌握判断。状态:BOUNDARY_CHANGE(见 `grill.md` Q81/Q86/Q90/Q93/Q97)。
+
+## ResolvedInteractionIntent
+`TutorLoop` 对当前回合实际采用的有界交互意图，按“本回合显式需求 → 用户显式建立的 `TutorSessionMode` → 已确认 `ExplanationPreference` → 中性兜底”解析，并保留生效来源及有效教学会话的 revision 引用。它只支配本回合 `TeachingMove` 选择，可临时覆盖教法而不改写会话默认，不是 `TaskNeed`、长期偏好、会话合同或能力证据。状态:BOUNDARY_CHANGE(见 `grill.md` Q86/Q87)。
+
+## ResidentGoal（住户任务目标）
+用户在当前 Resident 聊天内要求完成的一项任务，保留用户意图、范围、明确交付要求以及可修订的工作焦点，并关联实际成果与尚未完成的义务；一次运行停止不等于任务完成。它与长期读者目标、构建目标及教学会话学习意图分别表达，完成交付不等于读者掌握。状态:NEW（G0–G3 已实现任务保存、调整与投影；完成检查待 G4；见 [ADR-0136](docs/adr/0136-resident-goal-lifecycle-and-delivery-completion.md)）。
+
+## TutorSession
+`LearningMemory` 独立持有的可回放私人教学会话，拥有会话学习意图、暂定学习目标和默认教法，材料范围单独表达，并引用当前 `PathInstance` / `PathProgress`；聊天、Reader 与 ProfileFact 只引用它，当前状态按 revision 重建。它可跨聊天和应用重启延续，开启、切换、暂停、恢复与结束由用户显式动作或已确认提议决定，idle、聊天压缩、一次表现或模型判断不能暗中改变生命周期与默认教法；入口允许从暂定学习目标开始，完整画像与细化目标不作前置条件，它不属于能力证据，具体范围形态与并发规则仍待 Grill。状态:NEW(见 `grill.md` Q87/Q92/Q93、[ADR-0118](docs/adr/0118-learning-memory-owned-replayable-tutor-session.md))。
+
+## 会话学习意图
+用户希望在 TutorSession 中完成的事及其明确约束，允许最初表达模糊，与 Agent 当前采用的暂定学习目标及参考材料范围分别表达。改变最终目标、要求达到的能力深度或新增持续学习任务，由用户表达或接受方向变更；局部教学焦点与参考材料调整不覆写它，也不等同于支配本回合交互方式的 `ResolvedInteractionIntent`。状态:NEW(见 `grill.md` Q93)。
+
+## 暂定学习目标
+Agent 基于当前材料、相关历史与会话学习意图采用的当前学习焦点，可随实际回应细化，用于组织起步及接下来的教学动作。它保留 Agent 解释的身份，不覆写用户已表达的会话学习意图，不是已确认的长期目标或能力证据，完整画像与细化目标不成为开始学习的前置条件。状态:NEW(见 `grill.md` Q92/Q93)。
+
+## TutorSessionMode
+由 `TutorSession` 持有、经用户显式动作建立或变更的临时默认教法，只在该会话有效且当前请求属于其范围、没有更强回合意图时约束 `ResolvedInteractionIntent`；一次回合覆盖不自动改写它。Agent 可以建议但不得因沉默、停留时间、一次表现或未确认画像推断擅自开启或切换；正式模式集合尚待后续 Grill。状态:BOUNDARY_CHANGE(见 `grill.md` Q86/Q87)。
+
+## TutorLoop
+Agent 在原生学习环境中感知、选择、行动并利用反馈的读时教学循环，以正式学习就绪为前提：从当前请求、有效 `TutorSessionMode` 与已确认长期偏好得到 `ResolvedInteractionIntent`，结合学习目标、相关 `LearningMemory` 与可用 `TeachingMap` 素材选择或现场合成一个有界 `TeachingMove`，通过可选 `PresentationFrame` 实际交付 `TutorPresentation`，从显式 Learner 行为形成学习观察并适配下一步。具体教学选择由 Agent 结合环境作出，系统维护状态、执行操作并返回实际反馈；共享控制骨架不规定全局教学步骤，认知动作选择不得被人物关系、参与度或未确认偏好替代，采用结果也不得直接改写公共 `TeachingMap` 或长期学习状态。`PathPlanner`、`ContextBuilder` 与 `Estimator` 均降为该循环内的函数职责。状态:BOUNDARY_CHANGE(见 `grill.md` Q72/Q80/Q85/Q86/Q90/Q94)。
+
+## TeachingMove
+`TutorLoop` 围绕当前交互意图、稳定 `LearningObjectRef`、学习对象、目标能力、Learner 状态与来源条件选择或合成的一个有界认知动作。它可以是问题、检索线索、例子/反例、对比、来源聚焦、关系支架、程序动作或局部解释，不以问句为本体、不默认要求判题，也不允许用完整答案或连续题目替代 Learner 本应执行的目标认知活动；来源推论未闭合时，可围绕证据缺口推进理解，补充解释须保留假设身份。状态:BOUNDARY_CHANGE(见 `grill.md` Q85/Q88)。
+
+## GuidedInquiryPolicy
+`TutorLoop` 在 `ResolvedInteractionIntent` 为引导学习且当前对象、能力目标与 Learner 前置状态适合主动生成、辨析、预测或重建时，优先让 Learner 先执行目标认知活动的 `TeachingMove` 选择策略。它不是全局“全程提问”流程、content profile 或评分模式；本回合明确要求直接答案、总结、翻译或完整解释时不得启用。状态:BOUNDARY_CHANGE(见 `grill.md` Q85/Q86)。
+
+## ReasoningEpisode
+`TeachingMap` 内围绕一个目标问题、claim 或公式形成的公共、源锚定作者论证片段，由有序推理步骤、步骤间关系、来源层、Evidence LID 与显式缺口组成。其范围是支撑目标所必需的最小完整论证链：缺失连接显式留洞并停止扩张，不按固定 LID 窗口或整章截取。它描述作者如何从前提走向目标，不决定针对某个读者如何教学，也不是整本书的唯一完整思考路径。状态:NEW(见 `grill.md` Q73/Q75)。
+
+## ReasoningPattern
+`TeachingMap` 内可跨段落、问题、案例或资源复用的关系与认知组织模式，例如定义边界、分类轴、因果机制、证据—主张连接、比较框架、程序依赖、数量关系或问题求解约束。它可以由一个或多个源锚定 `ReasoningEpisode` 或其他教学资产支撑，是可选的教学素材而非所有内容的统一解释模板；它不等于按题号记答案、按章节背摘要，也不保存某个 Learner 是否掌握。状态:BOUNDARY_CHANGE(见 `grill.md` Q69/Q85)。
+
+## ReasoningTarget
+构造一个 `ReasoningEpisode` 时要解释的明确入口。`BookStructure.key_stop` 是默认预构建目标；key_stop 之外的源锚定 claim、公式或当前问题可在被明确请求时成为按需目标。它只指定“从哪里开始解释”，不预先规定 Episode 的完整范围。状态:NEW(见 `grill.md` Q74)。
+
+## LearningObject（正式学习对象）
+`TeachingMap` 拥有的有来源依据、可独立讨论的内容单位，按需要分别追踪的不同理解内容确定粒度，允许复合对象与子对象并存。其公共身份独立于用户表现、教法、具体活动和帮助条件；同一内容的识别、解释、应用等由能力维度分别表达，组织或包含关系本身不推导掌握。承载独立理解内容的关键关系也可以成为正式学习对象。状态:NEW(见 `grill.md` Q79/Q97/Q98)。
+
+## LearningObjectRef
+`TeachingMap` 为经语义与来源门禁晋升的正式学习对象分配的稳定引用；学习计划、`LearningEvidence` 与长期知识状态只引用该身份。Pass1 `graph_node.id` 只能作为候选来源与 source binding，不能替代它；对象粒度原则按 Q98，跨书匹配、ID 生成、关系身份、拆分/合并处理和晋升细则仍待后续 Grill。状态:NEW(见 `grill.md` Q79/Q97/Q98)。
+
+## InteractionTrace
+`LearningMemory` 内独立于 Agent 对话历史和低层工具轨迹的用户私有、追加式语义事件流。它以实际发生的可观察动作或结果为原子记录，用因果引用连接 `TutorSession` 的显式生命周期、跨聊天回合的 `ResolvedInteractionIntent` 及其生效来源、有效 `TutorSessionMode`、`TutorPresentation`、Learner 行为、被采用的运行时路径/下一步决策及最终处置；它记录“用户接触了什么、双方做了什么”，不直接断言“学会了什么”，也不保存模型隐藏推理。状态:BOUNDARY_CHANGE(见 `grill.md` Q69/Q71/Q82/Q86/Q87)。
+
+## TutorPresentation
+`TutorLoop` 把已采用 `TeachingMove` 实际交付到用户界面后形成的教学内容与交互条件，包括 Agent 生成的问题、提示、解释、反馈，所选择的书内片段、图示或其他材料，用户当时可用的回答方式，以及回答前已获得的 assistance；采用 AgentPresentation 时关联其实际交付版本与交互现场。它记录 Learner 行为发生前真正看到了什么，不包含未采用候选；书源与 Agent 生成内容保持来源差异，内容已交付不证明用户看完、理解或掌握。状态:BOUNDARY_CHANGE(见 `grill.md` Q82/Q83/Q85/Q102、[ADR-0130](docs/adr/0130-agent-rich-presentation-and-read-time-authoring.md))。
+
+## PresentationFrame
+`TutorLoop` 将已采用 `TeachingMove` 渲染为 `TutorPresentation` 时使用的可选体验框架，可表达沟通风格、Tutor voice、人物设定、关系语境与交付模态。它只能改变呈现方式，不得改变目标认知活动、来源主张、assistance 暴露、`AssessmentContract` 或 `LearningEvidence`；人物关注、好感、失望及参与时长也不得成为对象级能力证据或学习奖惩。状态:NEW(见 `grill.md` Q85)。
+
+## TutorInteraction
+`TutorPresentation` 中确有必要使用专门用户界面时的结构化教学交互，承载自由回答、单选、多选、排序、匹配、证据选择或自评等有界、版本化行为；其视觉呈现可采用现场生成的 AgentPresentation，实际题面、材料、来源、回答条件、assistance 及提交、改答、跳过、请求提示仍与对应呈现保持类型化关联。它服务于稀疏诊断、回忆或明确需要结构化作答的场景，不是 `TutorLoop` 的默认教学外壳或 Reader 副作用；视觉自由不授予新的判题或学习状态语义，普通思考引导与解释继续自动记录实际呈现。状态:BOUNDARY_CHANGE(见 `grill.md` Q83/Q85/Q102、[ADR-0130](docs/adr/0130-agent-rich-presentation-and-read-time-authoring.md))。
+
+## Agent 呈现内容 (AgentPresentation)
+Agent 围绕当前阅读问题交付、与对话关联且可继续修改的内容对象，可承载富排版回答、交互讲解、可运行教具和持续更新的资料。它保留内容版本、来源与模型补充的区别；普通呈现不等同于正式教学活动或公共书源。状态:NEW（[ADR-0130](docs/adr/0130-agent-rich-presentation-and-read-time-authoring.md)，已接受设计，2026-09-16）。
+
+## 呈现现场 (PresentationState)
+某一 AgentPresentation 版本在实际使用中的可观察状态，包括当前参数、选项、步骤和显示结果，是继续解释或修改该内容的共同参照。它记录发生了什么，不直接判断读者是否理解；用于正式教学时关联相应实际呈现条件。状态:NEW（[ADR-0130](docs/adr/0130-agent-rich-presentation-and-read-time-authoring.md)，已接受设计，2026-09-16）。
+
+## 交互教具
+AgentPresentation 用于支持观察、比较、试验、推理或构造理解的教学用途，可由当前问题现场形成并继续调整。它具有可操作对象和可观察反馈，是否形成正式学习证据由相应教学活动与用户表现决定。状态:NEW（[ADR-0130](docs/adr/0130-agent-rich-presentation-and-read-time-authoring.md)，已接受设计，2026-09-16）。
+
+## 局部动态演示
+AgentPresentation 正文中围绕一个关系、动作或变化过程展开的动态插图，与附近文字共同构成解释。它可由实时图形或预渲染短片段承载，播放、暂停与定位服务于观察该过程；预渲染片段的时间定位不意味着能够实时改变模型参数。现场沿用 PresentationState，观看完成不直接形成学习效果结论。状态:NEW（[ADR-0139 §14](docs/adr/0139-explorable-explanation.md#14-通用制作与局部动态演示)，已接受设计，2026-09-28）。
+
+## AssessmentContract
+可判题 `TutorInteraction` 在 Learner 作答前冻结的版本化评分合同，与确切题面版本、目标 `LearningObjectRef`、能力轴、判定方式和版本、答案键或原子 rubric、允许来源/规则、部分正确与不确定策略及反馈/答案揭示策略绑定。Agent 可以在出题时提议该合同，但看见回答后不得修改；合同本身也不得在揭示条件满足前泄露答案。状态:NEW(见 `grill.md` Q84)。
+
+## ResponseAssessment
+某次 Learner 提交在对应冻结 `AssessmentContract` 下形成的题目级判定，区分 correct、partial、incorrect、uncertain，以及因判定未执行或技术失败产生的 unassessed，并保存逐项判断、来源与评估器版本。它只回答“这次回答是否满足这道题的既定标准”，不是长期掌握结论，也无权直接改写 `LearnerKnowledgeState`。状态:NEW(见 `grill.md` Q84)。
+
+## LearningEvidence
+由 `TutorLoop` 从 `InteractionTrace` 与可用的题目级 `ResponseAssessment` 中提取、带 `LearningObjectRef`、能力轴、assistance、attempts、context、来源、版本和精确 Trace 引用的持久解释性证据。它解释一次表现对学习状态提供什么方向、什么强度的依据；能力轴由学习对象和目标能力共同约束，可区分 recognition、recall、explanation、relation、application、evaluation、production 或 transfer 等不同表现，但不预设所有内容共享一套训练轴，也不能把局部能力差异压成统一对错。来源推论未闭合时，依赖该推论的正确性与掌握判断暂停；有独立评价依据的证据辨析等表现仍可形成 Evidence。人物关系、情绪反应、停留时长或参与度本身不得生成对象级能力证据；它是对象级学习状态的唯一判断输入，不是观察事实、具体答题判定或来源引用使用的“本轮证据账本”。状态:BOUNDARY_CHANGE(见 `grill.md` Q71/Q78/Q79/Q81/Q84/Q85/Q88)。
+
+## PathProgress
+当前私人 `PathInstance` 上“已经推进到哪里、在什么帮助下完成或停滞”的短期可重建投影。它消费相关 `LearningEvidence`,服务连续教学,但不得把一次路径内表现直接提升为跨问题、跨资源的长期掌握。状态:NEW(见 `grill.md` Q70/Q81)。
+
+## LearnerKnowledgeState
+按稳定 `LearningObjectRef` 与能力轴组织的长期动态状态投影,由带版本和 watermark 的 `LearningEvidence` 可回放重建。它回答当前证据支持怎样的对象级判断,但不拥有或删除原始 Trace/Evidence,也不得被学习计划或 `ProfileFact` 覆盖。状态:NEW(见 `grill.md` Q70/Q78/Q79/Q81)。
+
 ## TaskNeed（任务需求）
-开放自然语言在 Resident 工具发现边界中的有界结构化需求。模型只提出语义维度（scope、operation 与所需 capability）；Runtime 以本轮真实证据状态、content profile、权限和经确认的副作用意图补全并校验状态维度。它是单回合路由输入，不是持久用户意图、证据或权限授予。状态:NEW(见 [ADR-0113](docs/adr/0113-open-natural-language-capability-routing-and-runtime-evidence-topology.md))。
+开放自然语言在 Resident 工具发现边界中的有界结构化需求。模型只提出语义维度（scope、operation 与所需 capability）；Runtime 以本轮真实证据状态、content profile、权限和经确认的副作用意图补全并校验状态维度。它是单回合工具路由输入，不是 `ResolvedInteractionIntent`、`TutorSessionMode`、持久用户意图、证据或权限授予。状态:BOUNDARY_CHANGE(见 [ADR-0113](docs/adr/0113-open-natural-language-capability-routing-and-runtime-evidence-topology.md)、`grill.md` Q86)。
 
 ## Resident Tool Routing Card（住户工具能力卡）
 ToolRegistry 为每个 Resident 工具拥有的结构化发现合同，声明 provides、scopes、operations、use_when、avoid_when、effects、preconditions、content_profiles 与 relative_cost。它用于能力解析和发现排序，不是书内证据、工具执行结果或权限来源。状态:NEW(见 [ADR-0113](docs/adr/0113-open-natural-language-capability-routing-and-runtime-evidence-topology.md))。
@@ -763,24 +875,6 @@ Resident 模型—工具循环用尽最后一个合法工具批次后，由 Runt
 ## 结构关系增量
 基于已交付结构条目及证据形成的主题新建、扩展、合并或阅读依赖补充。它表达局部结构之间新判断的关系，不是三个完整清单的替换结果。状态：NEW（[ADR-0129](docs/adr/0129-append-book-structure-and-reconcile-relations.md)，已接受设计，2026-09-14）。
 
-## TutorPresentation
-`TutorLoop` 把已采用 `TeachingMove` 实际交付到用户界面后形成的教学内容与交互条件，包括 Agent 生成的问题、提示、解释、反馈，所选择的书内片段、图示或其他材料，用户当时可用的回答方式，以及回答前已获得的 assistance；采用 AgentPresentation 时关联其实际交付版本与交互现场。它记录 Learner 行为发生前真正看到了什么，不包含未采用候选；书源与 Agent 生成内容保持来源差异，内容已交付不证明用户看完、理解或掌握。状态:BOUNDARY_CHANGE(见 `grill.md` Q82/Q83/Q85/Q102、[ADR-0130](docs/adr/0130-agent-rich-presentation-and-read-time-authoring.md))。
-
-## PresentationFrame
-`TutorLoop` 将已采用 `TeachingMove` 渲染为 `TutorPresentation` 时使用的可选体验框架，可表达沟通风格、Tutor voice、人物设定、关系语境与交付模态。它只能改变呈现方式，不得改变目标认知活动、来源主张、assistance 暴露、`AssessmentContract` 或 `LearningEvidence`；人物关注、好感、失望及参与时长也不得成为对象级能力证据或学习奖惩。状态:NEW(见 `grill.md` Q85)。
-
-## TutorInteraction
-`TutorPresentation` 中确有必要使用专门用户界面时的结构化教学交互，承载自由回答、单选、多选、排序、匹配、证据选择或自评等有界、版本化行为；其视觉呈现可采用现场生成的 AgentPresentation，实际题面、材料、来源、回答条件、assistance 及提交、改答、跳过、请求提示仍与对应呈现保持类型化关联。它服务于稀疏诊断、回忆或明确需要结构化作答的场景，不是 `TutorLoop` 的默认教学外壳或 Reader 副作用；视觉自由不授予新的判题或学习状态语义，普通思考引导与解释继续自动记录实际呈现。状态:BOUNDARY_CHANGE(见 `grill.md` Q83/Q85/Q102、[ADR-0130](docs/adr/0130-agent-rich-presentation-and-read-time-authoring.md))。
-
-## Agent 呈现内容 (AgentPresentation)
-Agent 围绕当前阅读问题交付、与对话关联且可继续修改的内容对象，可承载富排版回答、交互讲解、可运行教具和持续更新的资料。它保留内容版本、来源与模型补充的区别；普通呈现不等同于正式教学活动或公共书源。状态:NEW（[ADR-0130](docs/adr/0130-agent-rich-presentation-and-read-time-authoring.md)，已接受设计，2026-09-16）。
-
-## 呈现现场 (PresentationState)
-某一 AgentPresentation 版本在实际使用中的可观察状态，包括当前参数、选项、步骤和显示结果，是继续解释或修改该内容的共同参照。它记录发生了什么，不直接判断读者是否理解；用于正式教学时关联相应实际呈现条件。状态:NEW（[ADR-0130](docs/adr/0130-agent-rich-presentation-and-read-time-authoring.md)，已接受设计，2026-09-16）。
-
-## 交互教具
-AgentPresentation 用于支持观察、比较、试验、推理或构造理解的教学用途，可由当前问题现场形成并继续调整。它具有可操作对象和可观察反馈，是否形成正式学习证据由相应教学活动与用户表现决定。状态:NEW（[ADR-0130](docs/adr/0130-agent-rich-presentation-and-read-time-authoring.md)，已接受设计，2026-09-16）。
-
 ## 设备侧呈现投影（device-local workspace projection）
 同一逻辑阅读工作区在当前设备可用空间中的呈现方式。它表达区域的摆放与可见方式，不改变书籍、证据、会话归属或后端逻辑布局的所有权。状态：NEW（见 [ADR-0131](docs/adr/0131-mobile-reading-workspace-and-viewport-projection.md)）。
 
@@ -789,3 +883,34 @@ AgentPresentation 用于支持观察、比较、试验、推理或构造理解�
 
 ## 冻结选区（frozen reading selection）
 读者对选中内容发起动作时固定的引用范围与文本上下文，不依赖之后浏览器原生选择是否仍然存在；证据有效性仍由既有范围和来源规则决定。状态：NEW（见 [ADR-0131](docs/adr/0131-mobile-reading-workspace-and-viewport-projection.md)）。
+
+## 阅读评测任务合同（EvalTaskSpec）
+评测侧在执行前冻结的一次阅读任务及其用户输入、初始条件、必要要求、核验材料和适用交付条件；它规定如何判断 Agent 的实际结果，不拥有生产任务状态，也不等同于判 Learner 作答的 AssessmentContract。状态：NEW，已接受设计（见 [ADR-0137](docs/adr/0137-stratified-reading-evals-and-diagnostic-improvement.md)）。
+
+## 阅读任务层级（ReadingTaskLevel）
+按完成任务所必需的理解操作划分的 L1 定位提取、L2 解释与局部推导、L3 多证据整合、L4 情境诊断与迁移评价；它描述任务结构，不表示工具数量、篇幅或某版本的实测难度。状态：NEW，已接受设计（见 [ADR-0137](docs/adr/0137-stratified-reading-evals-and-diagnostic-improvement.md)）。
+
+## 阅读交互条件（ReadingInteractionCondition）
+评测任务对单轮、多轮承接或跨会话状态恢复的要求，与阅读任务层级独立；跨会话须区分同聊天重启与新聊天恢复，不扩展生产 Goal 的既有归属。状态：NEW，已接受设计（见 [ADR-0137](docs/adr/0137-stratified-reading-evals-and-diagnostic-improvement.md)）。
+
+## 原文支持（阅读答案评测）
+答案具体论断能否由该答案实际交付的有效来源原文推出，包含必要条件、互补前提和推论边界。材料采用已保存的完整来源视图，并区分高亮与前后文；公共参考只用于内容核验，不能补作交付来源。评委须标出论断与支持片段；支持成立本身不证明定位准确、检索高效或理解能力提高。状态：NEW，task-v2 已实现、正式校准待人审（见 [ADR-0137 §6](docs/adr/0137-stratified-reading-evals-and-diagnostic-improvement.md#6-原文支持与引用定位)）。
+
+## 引用定位（阅读答案评测）
+答案所附引用是否清楚指出支持该具体论断的原文，使读者无需重新搜索依据。高亮过窄、错段、只指标题、宽泛范围掩埋依据属于交付问题；必要的完整段落或多段前提不因长度受罚。与原文支持分别判定，必要性由任务合同声明。状态：NEW，task-v2 已实现、正式校准待人审（见 [ADR-0137 §6](docs/adr/0137-stratified-reading-evals-and-diagnostic-improvement.md#6-原文支持与引用定位)）。
+
+## 已发现构建工作量
+当前依赖和有效成果已经允许展开、由构建引擎实际规划出的工作量。它区分需模型处理、已接纳、未接纳和确定性跳过；未接纳包含正在执行的工作。后续依赖就绪或归并展开可改变数量，因此它不代表整本书的固定任务总数，规划批组数也不等于子代理启动次数。状态：已确认，第一切片已实现（见 [ADR-0140](docs/adr/0140-codex-native-subagent-refill-boundary.md)）。
+
+## 构建宿主（Build Harness）
+为预构建提供模型调用、Agent 循环、子代理创建与取消的外部运行环境。Build Engine 保持计划、预算、候选接纳、发布与恢复的权威。Codex 与 DeepSeek Harness 属于不同宿主。状态：已对齐（[ADR-0138](docs/adr/0138-multi-harness-prebuild-and-deepseek-harness-adapter.md)）。
+
+## 构建执行配置（Build Execution Profile）
+一次构建运行在开始前确定、执行期间保持不变的宿主、模型路由、模型预算与传输能力组合。更换宿主后的运行重新评估该组合，历史记录保留原义。状态：已接入 Codex 旧分支与 DSH 公共标准构建源码路径；模型快照、确认记录与传输 profile 由 invocation 绑定（[ADR-0138 §6](docs/adr/0138-multi-harness-prebuild-and-deepseek-harness-adapter.md#6-执行配置显式绑定协议扩展不伪装成字节不变)）。
+
+## 页面结果读取（preview reading）
+`presentation.author.preview(read_selector)` 在最后一个动作后，同次读取一个可见区域的完整文字、实际页面参数、原生控件和可用场景位置；candidate、environment 与 action_step 标明观察来源。action_step 是预览动作序号，数学步号来自页面状态/读数。投影整体保留结果与上下文，预算不足时整条省略并要求缩小范围。状态：已确认并实现（[结果读取记录](docs/performance/explorable-explanation-ex2-result-read-20260927.md)）。
+
+## Provider 续接状态与采样状态快照
+
+Provider 续接状态是绑定 assistant 消息与原模型的私有协议字段 `provider_continuation`，覆盖工具回复和终答，随私有历史持久化；不作为答案、记忆或压缩语义素材。缺字段的旧记录通过保留全文的历史上下文投影进入新协议边界，不生成替代推理。采样状态快照是每次模型决策前提供的完整动态运行状态，最后一份权威，按完成的消息组追加，仅在当前运行内保留。均为既有模型请求与上下文片段机制的具体约束，见 [调用成本计划](docs/计划-调用成本与DeepSeek适配.md)。

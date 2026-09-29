@@ -18,6 +18,7 @@ import {
 } from "./automatic-build-lease";
 import {
   listAutomaticBuildStoredAttempts,
+  listAutomaticBuildAttemptDirectories,
   type AutomaticBuildExecutionIdentity,
   type AutomaticBuildStoredAttemptV1,
 } from "./automatic-build-task-store";
@@ -654,6 +655,45 @@ function usageFromMetrics(metrics: AutomaticBuildTaskMetricsV1): AutomaticBuildU
   };
 }
 
+function readAttemptMetrics(stored: Omit<AutomaticBuildStoredAttemptV1, "execution_identity">): AutomaticBuildTaskMetricsV1 | undefined {
+  const metrics = readOptionalJson<AutomaticBuildTaskMetricsV1>(stored.attempt_dir, "metrics.json");
+  if (metrics && (metrics.version !== "automatic_build_task_metrics.v1" || metrics.stage !== stored.stage
+    || metrics.work_unit_id !== stored.work_unit_id || metrics.attempt !== stored.physical_attempt)) {
+    throw new Error(`invalid automatic build task metrics: ${stored.attempt_dir}`);
+  }
+  return metrics;
+}
+
+/** Budget decisions consume exact token receipts, not lifecycle latency/lease reconstructions. */
+export function readAutomaticBuildStageUsage(
+  target: AutomaticBuildTarget, stage: AutomaticBuildStage,
+): AutomaticBuildStageMetricsSummaryV1["usage"] {
+  const usage = listAutomaticBuildAttemptDirectories(target, stage).map(stored => {
+    const metrics = readAttemptMetrics(stored);
+    return metrics ? usageFromMetrics(metrics) : readAutomaticBuildUsageReceipt(path.join(stored.attempt_dir, "lease.json"));
+  });
+  return summarizeUsage(usage);
+}
+
+function summarizeUsage(receipts: AutomaticBuildUsageReceiptV1[]): AutomaticBuildStageMetricsSummaryV1["usage"] {
+  let fullyKnown = 0, partiallyKnown = 0, inputTokens = 0, cachedInputTokens = 0, outputTokens = 0;
+  for (const usage of receipts) {
+    const hasInput = usage.input_tokens !== undefined;
+    const hasOutput = usage.output_tokens !== undefined;
+    if (hasInput && hasOutput) fullyKnown++;
+    else if (hasInput || hasOutput || usage.cached_input_tokens !== undefined) partiallyKnown++;
+    inputTokens += usage.input_tokens ?? 0;
+    cachedInputTokens += usage.cached_input_tokens ?? 0;
+    outputTokens += usage.output_tokens ?? 0;
+  }
+  return {
+    fully_known_attempts: fullyKnown, partially_known_attempts: partiallyKnown,
+    unavailable_attempts: receipts.length - fullyKnown - partiallyKnown,
+    known_usage_coverage: receipts.length ? (fullyKnown + partiallyKnown) / receipts.length : 0,
+    input_tokens: inputTokens, cached_input_tokens: cachedInputTokens, output_tokens: outputTokens,
+  };
+}
+
 function readAttemptFacts(target: AutomaticBuildTarget, stage: AutomaticBuildStage): AutomaticBuildAttemptFacts[] {
   return listAutomaticBuildStoredAttempts(target, stage).map((stored) => {
     const lease = readOptionalJson<AutomaticBuildTaskLease>(stored.attempt_dir, "lease.json");
@@ -663,11 +703,7 @@ function readAttemptFacts(target: AutomaticBuildTarget, stage: AutomaticBuildSta
       throw new Error(`invalid automatic build lease metrics source: ${stored.attempt_dir}`);
     }
     if (lease) automaticBuildTaskPolicyBindingFromLease(lease);
-    const metrics = readOptionalJson<AutomaticBuildTaskMetricsV1>(stored.attempt_dir, "metrics.json");
-    if (metrics && (metrics.version !== "automatic_build_task_metrics.v1" || metrics.stage !== stage
-      || metrics.work_unit_id !== stored.work_unit_id || metrics.attempt !== stored.physical_attempt)) {
-      throw new Error(`invalid automatic build task metrics: ${stored.attempt_dir}`);
-    }
+    const metrics = readAttemptMetrics(stored);
     const revisionsDir = path.join(stored.attempt_dir, "submit-revisions");
     const submitRevisions = existsSync(revisionsDir)
       ? readdirSync(revisionsDir, { withFileTypes: true })
@@ -761,8 +797,17 @@ export function readAutomaticBuildLifecycleEvents(
 ): AutomaticBuildLifecycleEventV1[] {
   const now = options.now ?? new Date().toISOString();
   timestampMs(now, "now");
+  return lifecycleEventsFromAttempts(target, stage, now, readAttemptFacts(target, stage));
+}
+
+function lifecycleEventsFromAttempts(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  now: string,
+  attempts: AutomaticBuildAttemptFacts[],
+): AutomaticBuildLifecycleEventV1[] {
   const events: AutomaticBuildLifecycleEventV1[] = [];
-  for (const facts of readAttemptFacts(target, stage)) {
+  for (const facts of attempts) {
     const common = {
       version: "automatic_build_lifecycle_event.v1" as const,
       task_ref: attemptTaskRef(target, facts),
@@ -897,12 +942,6 @@ export function buildAutomaticBuildStageMetricsSummary(
     needs_user: 0,
   };
   const diagnosticCounts: Record<string, number> = {};
-  let fullyKnown = 0;
-  let partiallyKnown = 0;
-  let unavailable = 0;
-  let inputTokens = 0;
-  let cachedInputTokens = 0;
-  let outputTokens = 0;
   let estimateInput = 0;
   let estimateOutput = 0;
   const estimateMethods = new Set<string>();
@@ -941,15 +980,6 @@ export function buildAutomaticBuildStageMetricsSummary(
         failurePhaseCounts.legacy_unclassified += 1;
       }
     }
-    const hasInput = attempt.usage.input_tokens !== undefined;
-    const hasOutput = attempt.usage.output_tokens !== undefined;
-    const hasAny = hasInput || hasOutput || attempt.usage.cached_input_tokens !== undefined;
-    if (hasInput && hasOutput) fullyKnown += 1;
-    else if (hasAny) partiallyKnown += 1;
-    else unavailable += 1;
-    inputTokens += attempt.usage.input_tokens ?? 0;
-    cachedInputTokens += attempt.usage.cached_input_tokens ?? 0;
-    outputTokens += attempt.usage.output_tokens ?? 0;
     if (attempt.usage.estimate) {
       estimateMethods.add(attempt.usage.estimate.method);
       estimateInput += attempt.usage.estimate.input_tokens;
@@ -960,7 +990,7 @@ export function buildAutomaticBuildStageMetricsSummary(
       if (attempt.metrics.output_items === 0) emptyAttempts += 1;
     }
   }
-  const events = readAutomaticBuildLifecycleEvents(target, stage, { now });
+  const events = lifecycleEventsFromAttempts(target, stage, now, attempts);
   const eventCount = (kind: AutomaticBuildLifecycleEventKind) => events.filter((event) => event.kind === kind).length;
   const reserveWait: number[] = [];
   const runningExecutor: number[] = [];
@@ -1010,15 +1040,7 @@ export function buildAutomaticBuildStageMetricsSummary(
         ? metrics.reduce((sum, item) => sum + item.output_bytes, 0) / attempts.length
         : 0,
     },
-    usage: {
-      fully_known_attempts: fullyKnown,
-      partially_known_attempts: partiallyKnown,
-      unavailable_attempts: unavailable,
-      known_usage_coverage: attempts.length ? (fullyKnown + partiallyKnown) / attempts.length : 0,
-      input_tokens: inputTokens,
-      cached_input_tokens: cachedInputTokens,
-      output_tokens: outputTokens,
-    },
+    usage: summarizeUsage(attempts.map(attempt => attempt.usage)),
     estimate: {
       methods: [...estimateMethods].sort(),
       input_tokens: estimateInput,

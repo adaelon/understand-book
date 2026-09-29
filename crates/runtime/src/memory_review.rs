@@ -155,6 +155,8 @@ impl ReviewExecutor for ProviderReviewExecutor {
     fn execute(&mut self, input: &ReviewInput) -> Result<ReviewExecutionOutput, AdapterError> {
         validate_input(input)?;
         let value = self.adapter.complete_structured(CompletionRequest {
+            output_token_limit: None,
+            reasoning_effort: None,
             system: REVIEW_EXTRACTOR_SYSTEM.into(),
             user: serde_json::to_string(&serde_json::json!({"review_input": input})).map_err(
                 |_| AdapterError {

@@ -97,6 +97,13 @@ Call `executor.open` first with exactly:
 }
 ```
 
+For this first request, copy the complete `opaque_handoff_ref` literal from the caller's launch
+message into the request object once. Pass that object to `executorCall`; it retains the original
+request for WAIT. A descriptive placeholder such as `abhand off`, an abbreviation, or an example
+ref is never a task locator. If the caller did not provide a ref, return the bounded bootstrap
+failure without making an open call. After an open error, stop under the failure rule below;
+only explicit Root-guided correction permits another open with a changed request.
+
 Consume only `automatic_build_executor_session.v3`. Handle each action exactly:
 
 - `action.kind=DELIVER_INPUT`: call `executor.input.next` with the exact

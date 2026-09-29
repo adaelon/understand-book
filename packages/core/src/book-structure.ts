@@ -14,7 +14,7 @@ import {
   packExecutorTransportPayload,
   type ExecutorTransportChunkFrameV2,
   type ExecutorTransportPackResultV2,
-  type ExecutorTransportProfileV2,
+  type ExecutorTransportProfile,
 } from "./executor-transport";
 import {
   evaluateModelExecutionBudget,
@@ -743,7 +743,7 @@ function bookStructureTransportEnvelope(
 function packBookStructureExecutionSegment(
   payload: string,
   segment: "semantic_prompt" | "semantic_input",
-  transportProfile: ExecutorTransportProfileV2,
+  transportProfile: ExecutorTransportProfile,
 ): ExecutorTransportPackResultV2 {
   return packExecutorTransportPayload({
     profile: transportProfile,
@@ -755,7 +755,7 @@ function packBookStructureExecutionSegment(
 export function evaluateBookStructureExecution(input: {
   contract: Pick<BookStructureExecutionContractV2, "semantic_prompt" | "policy_fingerprint">;
   rendered_input: string;
-  transport_profile: ExecutorTransportProfileV2;
+  transport_profile: ExecutorTransportProfile;
   budget: typeof BOOK_STRUCTURE_EXECUTION_BUDGET_V2;
 }) {
   const estimatedPromptTokens = estimateTokens(input.contract.semantic_prompt);
@@ -828,7 +828,7 @@ export function proofBoundBookStructureDescriptor(input: {
   formula_lids?: number;
   candidate_count?: number;
   expected_output_items?: number;
-  transport_profile: ExecutorTransportProfileV2;
+  transport_profile: ExecutorTransportProfile;
 }): WorkUnitDescriptorV4 {
   const scope = JSON.parse(input.rendered_input).reference_scope as BookStructureReferenceScope;
   const deliveredLids = [...new Set([
@@ -1081,7 +1081,7 @@ function createBookStructureFragmentWorkUnit(input: {
   source_fingerprint: string;
   packet: BookStructureFragmentInputV1;
   contract: BookStructureExecutionContractV2;
-  transport_profile: ExecutorTransportProfileV2;
+  transport_profile: ExecutorTransportProfile;
   budget: typeof BOOK_STRUCTURE_EXECUTION_BUDGET_V2;
   evidence_lids: string[];
 }): { status: "ready"; work_unit: BookStructureRoutedWorkUnitV2 } | {
@@ -1197,7 +1197,7 @@ export function routeBookStructureUnitWorkUnitsV2(input: {
   lid_nodes: LidNode[];
   source_fingerprint: string;
   contracts: BookStructureExecutionContractsV2;
-  transport_profile?: ExecutorTransportProfileV2;
+  transport_profile?: ExecutorTransportProfile;
   budget?: typeof BOOK_STRUCTURE_EXECUTION_BUDGET_V2;
 }): BookStructureUnitRouteResultV2 {
   const transportProfile = input.transport_profile ?? CODEX_EXECUTOR_TRANSPORT_PROFILE_V2;
@@ -1465,7 +1465,7 @@ function createBookStructureReductionWorkUnit(input: {
   group_ordinal: number;
   role: "reduce" | "final";
   contracts: BookStructureExecutionContractsV2;
-  transport_profile: ExecutorTransportProfileV2;
+  transport_profile: ExecutorTransportProfile;
   budget: typeof BOOK_STRUCTURE_EXECUTION_BUDGET_V2;
 }): { status: "ready"; work_unit: BookStructureReductionRoutedWorkUnitV2 } | {
   status: "blocked";
@@ -1557,7 +1557,7 @@ export function routeBookStructureReductionLevelV2(input: {
   source_leaf_count: number;
   children: BookStructureReductionChildV1[];
   contracts: BookStructureExecutionContractsV2;
-  transport_profile?: ExecutorTransportProfileV2;
+  transport_profile?: ExecutorTransportProfile;
   budget?: typeof BOOK_STRUCTURE_EXECUTION_BUDGET_V2;
   reducer_level?: number;
 }): BookStructureReductionRouteResultV2 {
@@ -1749,7 +1749,7 @@ export function createBookStructureStitchFragmentWorkUnit(input: {
   source_fingerprint: string;
   packet: BookStructureStitchFragmentInputV1;
   contract: BookStructureExecutionContractV2;
-  transport_profile: ExecutorTransportProfileV2;
+  transport_profile: ExecutorTransportProfile;
   budget: typeof BOOK_STRUCTURE_EXECUTION_BUDGET_V2;
 }): { status: "ready"; work_unit: BookStructureStitchRoutedWorkUnitV2 } | {
   status: "blocked";
@@ -1847,7 +1847,7 @@ export function routeBookStructureStitchWorkUnitsV2(input: {
   packet: BookStructureStitchPacket;
   source_fingerprint: string;
   contracts: BookStructureExecutionContractsV2;
-  transport_profile?: ExecutorTransportProfileV2;
+  transport_profile?: ExecutorTransportProfile;
   budget?: typeof BOOK_STRUCTURE_EXECUTION_BUDGET_V2;
 }): BookStructureStitchRouteResultV2 {
   if (!input.packet.unit_cards.length) {
@@ -1998,7 +1998,7 @@ function createBookStructureStitchReductionWorkUnit(input: {
   group_ordinal: number;
   role: "reduce" | "final";
   contracts: BookStructureExecutionContractsV2;
-  transport_profile: ExecutorTransportProfileV2;
+  transport_profile: ExecutorTransportProfile;
   budget: typeof BOOK_STRUCTURE_EXECUTION_BUDGET_V2;
 }): { status: "ready"; work_unit: BookStructureStitchReductionRoutedWorkUnitV2 } | {
   status: "blocked";
@@ -2087,7 +2087,7 @@ export function routeBookStructureStitchReductionLevelV2(input: {
   unit_card_count: number;
   children: BookStructureStitchReductionChildV1[];
   contracts: BookStructureExecutionContractsV2;
-  transport_profile?: ExecutorTransportProfileV2;
+  transport_profile?: ExecutorTransportProfile;
   budget?: typeof BOOK_STRUCTURE_EXECUTION_BUDGET_V2;
   reducer_level?: number;
 }): BookStructureStitchReductionRouteResultV2 {
