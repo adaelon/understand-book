@@ -1,5 +1,5 @@
 //! 外层 E 编排 loop `[ADR-0026/0016/0005]`:messages 会话态、LLM 自主多轮 tool-calling、
-//! max_turns 独立停机、活动上下文自动压缩、工具错误回喂不降级;累计 usage 只作成本遥测。
+//! 默认不限采样轮数、活动上下文自动压缩、无进展独立停机;累计 usage 只作成本遥测。
 //! 外层工具集 = book.query/text/context/concept + memory.save/recall + reader.gotoLid/scroll/highlight/note/state。
 //! book.manifest **不在外层暴露**(返回全树 token 炸弹,S7 真跑实测一次撑爆 budget;外层导航靠 concept/context 足够);
 //! dispatch 仍保留 manifest 防御分支。reader.* 是会话态阅读器(S7 接入):agent 经命令面驱动
@@ -7,7 +7,7 @@
 //! 内层 book.query 复用 `crate::query`(同一 adapter 触 `complete`)`[ADR-0025]`。
 use crate::run_context::{BorrowedResidentState, ResidentStatePort, RunContext};
 use crate::{
-    agent_prompt::{policy_modules_for_tools, BASE_INSTRUCTIONS},
+    agent_prompt::{policy_modules_for_tools_with_presentation, presentation::{PresentationGuidance, PresentationPhase}, BASE_INSTRUCTIONS},
     agent_request_audit::AgentRequestAudit,
     auto_compaction::{
         ActiveContextBudget, CompactionCheckpointSink, EphemeralCompactionCheckpointSink,
@@ -61,13 +61,14 @@ use crate::tool_registry::{
     tool_search_input_schema_v2, ToolHandlerId, ToolOperation, ToolRegistry, ToolScope,
 };
 use crate::tool_result::{
-    project_tool_result, ActiveToolResultLedger, HistoricalToolReceipt, HistoricalToolStatus,
+    ActiveToolResultLedger, HistoricalToolReceipt, HistoricalToolStatus,
 };
 
-/// 外层停机预算(切片0 占位,实测回填 `[ADR-0016]`)。
+/// 外层运行配置。默认按任务完成与实际进展执行 `[ADR-0150]`。
 #[derive(Debug, Clone, Copy)]
 pub struct OuterConfig {
-    pub max_turns: usize,
+    /// Explicit sampling limit for bounded callers; normal Resident runs have no limit.
+    pub max_turns: Option<usize>,
     /// Legacy configuration retained for callers. Cumulative provider usage is
     /// telemetry only and no longer controls active-context capacity.
     pub token_budget: u32,
@@ -76,9 +77,15 @@ pub struct OuterConfig {
 impl Default for OuterConfig {
     fn default() -> OuterConfig {
         OuterConfig {
-            max_turns: 12,
+            max_turns: None,
             token_budget: 120_000,
         }
+    }
+}
+
+impl OuterConfig {
+    fn turn_limit_reached(self, turns: usize) -> bool {
+        self.max_turns.is_some_and(|limit| turns >= limit)
     }
 }
 
@@ -509,6 +516,18 @@ pub enum AgentEffect {
     PaperMinimap { effect: PaperMinimapEffect },
     /// Paper minimap mode/saved change awaiting explicit user confirmation.
     PaperMinimapProposal { proposal: PaperMinimapProposal },
+}
+
+/// Stable object/operation identity shared by live display and saved delivery.
+pub fn effect_id(effect: &AgentEffect) -> String {
+    match effect {
+        AgentEffect::Goto { .. } => "navigation".into(),
+        AgentEffect::Note { mem_id, .. } | AgentEffect::Highlight { mem_id, .. } => format!("memory:{mem_id}"),
+        AgentEffect::Layout { effect } => format!("layout:{}", effect.after.rev),
+        AgentEffect::LayoutProposal { proposal } => format!("layout-proposal:{}", proposal.proposal_id),
+        AgentEffect::PaperMinimap { effect } => format!("minimap:{}", effect.effect_id),
+        AgentEffect::PaperMinimapProposal { proposal } => format!("minimap-proposal:{}", proposal.proposal_id),
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -3099,6 +3118,7 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
     };
     vec![
         crate::presentation_author::spec(),
+        crate::tutor::spec(),
         book_s(BookToolId::Query),
         book_s(BookToolId::Synthesize),
         book_s(BookToolId::SearchText),
@@ -3110,10 +3130,11 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
         ),
         s(
             "goal.update",
-            "Update the active Resident task only when interpretation, requirements or working focus changes. Refine the origin request before complex work; revise requirements only with an exact quote from the current user message. This tool cannot mark delivery or completion. Short direct answers need no update.",
+            "Update the active Resident task only when interpretation, requirements or working state changes. Refine the origin request before complex work; revise requirements only with an exact quote from the current user message. Working items record a revisable plan, not user requirements. Keep the plan consistent with actual results and remaining content gaps before finishing. This tool cannot mark delivery or Goal completion; completed items do not prove either. Short direct answers need no update or plan.",
             json!({"type":"object","properties":{
                 "operation":{"type":"string","enum":["working","refine","revise"]},
                 "focus":{"type":"string"},"open_questions":{"type":"array","items":{"type":"string"}},"next_move":{"type":"string"},
+                "items":{"type":"array","description":"For operation=working: replace the whole ordered work plan atomically. Omit to retain it; [] clears it. Use non-empty unique IDs and non-empty descriptions. Reorder, split, merge, remove abandoned steps or reopen completed items as observations require; this does not change requirements.","items":{"type":"object","properties":{"id":{"type":"string","minLength":1},"description":{"type":"string","minLength":1},"status":{"type":"string","enum":["pending","in_progress","completed"]}},"required":["id","description","status"]}},
                 "interpretation":{"type":"string"},"requirements":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"description":{"type":"string"},"basis_turn_id":{"type":"string"},"verification":{"type":"string","enum":["content","presentation_delivery","reader_action"],"description":"content: explanation correctness and features inside the authored page, including page controls, dragging, playback, pause, seeking and saved scene restoration. presentation_delivery: actually save and deliver the requested page. reader_action: an explicitly requested host Reader operation such as navigating the book or changing its panels; requires an actual Reader effect. Page interactions and preview actions are content requirements, not reader_action. Keep the user's required behavior in description; choose verification by what must actually be delivered."}},"required":["id","description","basis_turn_id","verification"]}},
                 "basis_turn_id":{"type":"string"},"basis_quote":{"type":"string"}
             },"required":["operation"]}),
@@ -3546,7 +3567,7 @@ pub fn paper_minimap_agent_context(
     })
 }
 
-fn paper_minimap_context_fragment(
+pub(crate) fn paper_minimap_context_fragment(
     book: &Book,
     reader: &Reader,
     question: &str,
@@ -3742,17 +3763,18 @@ fn dispatch_registered(
         };
         return dispatch_resident_book_tool(id, args, book, adapter);
     }
-    state.with_state(|store, reader| {
-        dispatch_state_tool(handler, arguments, book, store, reader, now)
-    })
+    dispatch_state_tool(handler, arguments, book, state, now)
+}
+
+fn reader_not_applied(error: ToolError) -> (String, Option<AgentEffect>) {
+    (serde_json::json!({"status":"not_applied","reason":error.error_code,"error_code":error.error_code,"category":error.category,"message":error.message}).to_string(), None)
 }
 
 fn dispatch_state_tool(
     handler: ToolHandlerId,
     arguments: &str,
     book: &Book,
-    store: &mut MemoryStore,
-    reader: &mut Reader,
+    state: &mut impl ResidentStatePort,
     now: &str,
 ) -> (String, Option<AgentEffect>) {
     let args: serde_json::Value = match serde_json::from_str(arguments) {
@@ -3771,14 +3793,14 @@ fn dispatch_state_tool(
     let sget = |k: &str| args.get(k).and_then(|v| v.as_str());
 
     match handler {
-        ToolHandlerId::ProfileManifest => {
+        ToolHandlerId::ProfileManifest => state.submit_private(|_store| {
             let body = match book.profile_manifest_by_id(sget("profile_id")) {
                 Ok(manifest) => to_json(&manifest),
                 Err(e) => to_json(&e),
             };
             (body, None)
-        }
-        ToolHandlerId::BookRouteFrom => {
+        }).unwrap_or_else(|error| (to_json(&error), None)),
+        ToolHandlerId::BookRouteFrom => state.submit_private(|_store| {
             let Some(at) = sget("at") else {
                 return (
                     err_json("INVALID_RANGE", "validation", "book.route_from 需 at"),
@@ -3791,8 +3813,8 @@ fn dispatch_state_tool(
                 Err(e) => to_json(&e),
             };
             (body, None)
-        }
-        ToolHandlerId::BookGuidedRouteFrom => {
+        }).unwrap_or_else(|error| (to_json(&error), None)),
+        ToolHandlerId::BookGuidedRouteFrom => state.submit_private(|store| {
             let Some(at) = sget("at") else {
                 return (
                     err_json(
@@ -3811,8 +3833,8 @@ fn dispatch_state_tool(
                 Err(e) => to_json(&e),
             };
             (body, None)
-        }
-        ToolHandlerId::BookUnvisitedBack => {
+        }).unwrap_or_else(|error| (to_json(&error), None)),
+        ToolHandlerId::BookUnvisitedBack => state.submit_private(|store| {
             let Some(at) = sget("at") else {
                 return (
                     err_json("INVALID_RANGE", "validation", "book.unvisited_back 需 at"),
@@ -3826,8 +3848,8 @@ fn dispatch_state_tool(
                 Err(e) => to_json(&e),
             };
             (body, None)
-        }
-        ToolHandlerId::BookRouteTo => {
+        }).unwrap_or_else(|error| (to_json(&error), None)),
+        ToolHandlerId::BookRouteTo => state.submit_private(|_store| {
             let (Some(from), Some(target)) = (sget("from"), sget("target")) else {
                 return (
                     err_json(
@@ -3844,8 +3866,8 @@ fn dispatch_state_tool(
                 Err(e) => to_json(&e),
             };
             (body, None)
-        }
-        ToolHandlerId::MemorySave => {
+        }).unwrap_or_else(|error| (to_json(&error), None)),
+        ToolHandlerId::MemorySave => state.submit_private(|store| {
             let (Some(ty), Some(anchor), Some(content)) =
                 (sget("type"), sget("anchor_lid"), sget("content"))
             else {
@@ -3909,8 +3931,8 @@ fn dispatch_state_tool(
                 Err(e) => to_json(&e),
             };
             (body, None)
-        }
-        ToolHandlerId::MemoryRecall => {
+        }).unwrap_or_else(|error| (to_json(&error), None)),
+        ToolHandlerId::MemoryRecall => state.submit_private(|store| {
             let q = RecallQuery {
                 book_id: Some(book.base.book_id.clone()),
                 lid: sget("lid").map(String::from),
@@ -3919,8 +3941,8 @@ fn dispatch_state_tool(
                 text: sget("text").map(String::from),
             };
             (to_json(&store.recall(&q)), None)
-        }
-        ToolHandlerId::ReaderGotoLid => {
+        }).unwrap_or_else(|error| (to_json(&error), None)),
+        ToolHandlerId::ReaderGotoLid => state.apply_reader(|store, reader| {
             let Some(lid) = sget("lid") else {
                 return (
                     err_json("INVALID_RANGE", "validation", "reader.gotoLid 需 lid"),
@@ -3932,8 +3954,8 @@ fn dispatch_state_tool(
                 Err(e) => to_json(&e),
             };
             (body, None)
-        }
-        ToolHandlerId::ReaderScroll => {
+        }).unwrap_or_else(reader_not_applied),
+        ToolHandlerId::ReaderScroll => state.apply_reader(|store, reader| {
             let Some(delta) = args.get("delta").and_then(|v| v.as_i64()) else {
                 return (
                     err_json(
@@ -3949,8 +3971,9 @@ fn dispatch_state_tool(
                 Err(e) => to_json(&e),
             };
             (body, None)
-        }
+        }).unwrap_or_else(reader_not_applied),
         ToolHandlerId::ReaderHighlight => {
+            let result = state.submit_private(|store| {
             let Some(lid) = sget("lid") else {
                 return (
                     err_json("INVALID_RANGE", "validation", "reader.highlight 需 lid"),
@@ -3969,7 +3992,7 @@ fn dispatch_state_tool(
             } else {
                 None
             };
-            match reader.highlight(book, store, lid, range, None, "session", now) {
+            match Reader::save_highlight(book, store, lid, range, None, "session", now) {
                 Ok(e) => {
                     let eff = AgentEffect::Highlight {
                         mem_id: e.highlight_id.clone(),
@@ -3979,15 +4002,25 @@ fn dispatch_state_tool(
                 }
                 Err(e) => (to_json(&e), None),
             }
-        }
+            }).unwrap_or_else(|error| (to_json(&error), None));
+            if tool_result_error_code(&result.0).is_none() {
+                if let Err(error) = state.apply_reader(|_, reader| reader.select_annotation(sget("lid").unwrap())) {
+                    let mut receipt: serde_json::Value = serde_json::from_str(&result.0).unwrap();
+                    receipt["reader_effect"] = serde_json::json!({"status":"not_applied","reason":error.error_code});
+                    return (to_json(&receipt), None);
+                }
+            }
+            result
+        },
         ToolHandlerId::ReaderNote => {
+            let result = state.submit_private(|store| {
             let (Some(lid), Some(text)) = (sget("lid"), sget("text")) else {
                 return (
                     err_json("INVALID_RANGE", "validation", "reader.note 需 lid + text"),
                     None,
                 );
             };
-            match reader.note(book, store, lid, text, "session", now) {
+            match Reader::save_note(book, store, lid, text, "session", now) {
                 Ok(e) => {
                     let effect = (e.status == NoteSaveStatus::Created).then(|| AgentEffect::Note {
                         mem_id: e.note_id.clone(),
@@ -3998,8 +4031,17 @@ fn dispatch_state_tool(
                 }
                 Err(e) => (to_json(&e), None),
             }
-        }
-        ToolHandlerId::ReaderLayoutApply => {
+            }).unwrap_or_else(|error| (to_json(&error), None));
+            if tool_result_error_code(&result.0).is_none() {
+                if let Err(error) = state.apply_reader(|_, reader| reader.select_annotation(sget("lid").unwrap())) {
+                    let mut receipt: serde_json::Value = serde_json::from_str(&result.0).unwrap();
+                    receipt["reader_effect"] = serde_json::json!({"status":"not_applied","reason":error.error_code});
+                    return (to_json(&receipt), None);
+                }
+            }
+            result
+        },
+        ToolHandlerId::ReaderLayoutApply => state.apply_reader(|_store, reader| {
             let Some(actions_value) = args.get("actions") else {
                 return (
                     err_json(
@@ -4039,8 +4081,8 @@ fn dispatch_state_tool(
                 }
                 Err(e) => (to_json(&e), None),
             }
-        }
-        ToolHandlerId::ReaderPaperMinimapApply => {
+        }).unwrap_or_else(reader_not_applied),
+        ToolHandlerId::ReaderPaperMinimapApply => state.apply_reader(|_store, reader| {
             let Some(base_state_rev) = args.get("base_state_rev").and_then(|value| value.as_u64())
             else {
                 return (
@@ -4119,11 +4161,12 @@ fn dispatch_state_tool(
                 }
                 Err(error) => (to_json(&error), None),
             }
-        }
-        ToolHandlerId::ReaderState => (to_json(&reader_state_value(book, reader)), None),
+        }).unwrap_or_else(reader_not_applied),
+        ToolHandlerId::ReaderState => state.read_live_reader(|reader| (to_json(&reader_state_value(book, reader)), None)).unwrap_or_else(|error| (to_json(&error), None)),
         ToolHandlerId::Book(_)
         | ToolHandlerId::Artifact(_)
         | ToolHandlerId::ToolSearch
+        | ToolHandlerId::TutorStep
         | ToolHandlerId::GoalUpdate
         | ToolHandlerId::SourcePresent
         | ToolHandlerId::PresentationAuthor
@@ -4201,6 +4244,13 @@ fn compact_tool_locator_arguments(tool: &str, arguments: &str) -> serde_json::Va
         return serde_json::json!({});
     };
     let mut compact = serde_json::Map::new();
+    if tool == "presentation.author" && object.get("operation").is_some_and(|v| v == "preview") {
+        for field in ["operation", "candidate_id", "viewport", "width", "actions", "read_selector"] {
+            if let Some(value) = object.get(field) {
+                compact.insert(field.into(), value.clone());
+            }
+        }
+    }
     for field in [
         "lid",
         "start_lid",
@@ -4293,6 +4343,7 @@ fn canonical_tool_arguments(arguments: &str) -> String {
 }
 
 fn trace_tool_arguments(tool: &str, arguments: &str) -> String {
+    if tool == "tutor.step" { return crate::tutor::public_arguments(arguments); }
     if tool == "presentation.author" {
         let v: serde_json::Value = serde_json::from_str(arguments).unwrap_or_default();
         return serde_json::json!({"operation":v["operation"],"candidate_id":v["candidate_id"]})
@@ -4331,10 +4382,12 @@ fn tool_progress_signature(
     completed_capabilities: &BTreeSet<String>,
     artifact_tools: &ArtifactToolSession<'_>,
     book: &Book,
-    store: &MemoryStore,
-    reader: &Reader,
+    port: &mut impl ResidentStatePort,
     effect_count: usize,
+    authoring: Option<&crate::presentation_author::PresentationAuthoringContext>,
 ) -> String {
+    let reader_view = port.read_live_reader(|reader| reader_state_value(book, reader)).unwrap_or_else(|error| serde_json::json!({"error_code":error.error_code}));
+    let projection_revision = port.submit_private(|store| store.projection_revision()).ok();
     let state = serde_json::json!({
         "phase": progress.phase,
         "evidence": evidence.evidence_ranges(),
@@ -4345,9 +4398,10 @@ fn tool_progress_signature(
         "activated_tools": exposure.activated_names().collect::<Vec<_>>(),
         "completed_capabilities": completed_capabilities,
         "artifact_tools": artifact_tools.progress_revision(),
-        "memory_projection_revision": store.projection_revision(),
-        "reader": reader_state_value(book, reader),
+        "memory_projection_revision": projection_revision,
+        "reader": reader_view,
         "effect_count": effect_count,
+        "presentation_authoring": authoring,
     });
     opaque_tool_result_digest(&serde_json::to_string(&state).unwrap_or_default())
 }
@@ -4534,6 +4588,10 @@ fn provider_history_projection(messages: &[Message], book: &Book) -> Vec<Message
         .iter()
         .rposition(|message| message.role == Role::User)
         .unwrap_or(0);
+    history_projection_through(messages, book, completed_end)
+}
+
+fn history_projection_through(messages: &[Message], book: &Book, completed_end: usize) -> Vec<Message> {
     let mut projected = messages.to_vec();
     let mut tool_calls: HashMap<String, (String, String)> = HashMap::new();
     for index in 0..completed_end {
@@ -4584,7 +4642,11 @@ pub fn prepare_history_compaction(
     pending_effects: Vec<PendingEffectRef>,
     context_revisions: BTreeMap<String, String>,
 ) -> Result<PreparedCompaction, CompactionError> {
-    let deterministic = provider_history_projection(messages, book);
+    // Compaction selects its own eligible complete turns. Before a new user is
+    // appended, the last turn may already be complete; ordinary provider history
+    // intentionally keeps that segment's fresh bodies and cannot serve as the
+    // compactor's all-receipt input. Raw-retained items still come from messages.
+    let deterministic = history_projection_through(messages, book, messages.len());
     prepare_compaction(
         phase,
         messages,
@@ -4683,7 +4745,7 @@ fn compaction_error(error: CompactionError) -> ToolError {
 
 fn build_sample_request(
     messages: &[Message],
-    context_fragments: &ContextFragmentLedger,
+    context_fragments: &mut ContextFragmentLedger,
     book: &Book,
     active_tool_results: &ActiveToolResultLedger,
     active_checkpoint: Option<&CompactionCheckpoint>,
@@ -4695,6 +4757,8 @@ fn build_sample_request(
     artifact_exposure: ArtifactExposureContext,
     evidence_state: EvidenceState,
     excluded_tools: &[&str],
+    authoring: Option<&crate::presentation_author::PresentationAuthoringContext>,
+    authoring_finished: bool,
 ) -> Result<(ToolExposurePlan, AgentRequestPlan), ToolError> {
     let mut tool_exposure_plan = ToolExposurePlan::build(
         tool_registry,
@@ -4708,6 +4772,38 @@ fn build_sample_request(
         tool_exposure_state,
     );
     tool_exposure_plan.exclude_for_sampling(excluded_tools);
+    let visible_tools = tool_exposure_plan.visible_tools.clone();
+    let author_visible = visible_tools.iter().any(|tool| tool.name == "presentation.author");
+    let guidance = (author_visible && !authoring_finished).then(|| {
+        authoring.map(|current| current.guidance()).unwrap_or(PresentationGuidance {
+            phase: PresentationPhase::Global,
+            needs: Vec::new(),
+        })
+    });
+    let instruction_modules = if book.experimental_read_access().is_some() {
+        crate::experiment::policy_modules(&visible_tools)
+    } else {
+        policy_modules_for_tools_with_presentation(&visible_tools, guidance.as_ref())
+    };
+    // Common policy stays at the front. Compiled phase/reference assets are
+    // recorded at this decision's anchor, separately from Agent design prose.
+    let (mut selected, instruction_modules): (Vec<_>, Vec<_>) = instruction_modules
+        .into_iter()
+        .partition(crate::agent_prompt::presentation::is_sampling_module);
+    if guidance.is_none() {
+        selected.clear();
+    }
+    let mut current_messages = Vec::new();
+    if author_visible || authoring.is_some() || authoring_finished {
+        current_messages.push(Message::system(format!(
+            "presentation_guidance_state.v1\n{}\nThe latest selection and design state are authoritative. Earlier design data is historical; phase/needs do not grant tools, sources, candidates or delivery eligibility.",
+            serde_json::json!({"active":guidance.is_some(), "phase":guidance.as_ref().map(|g| g.phase), "needs":guidance.as_ref().map(|g| &g.needs), "design_active":guidance.is_some() && authoring.is_some()})
+        )));
+        if let Some(current) = authoring.filter(|_| guidance.is_some()) {
+            current_messages.push(current.fragment().projected_message());
+        }
+    }
+    context_fragments.record_sampling(messages.len(), &selected, current_messages);
     let request_messages = messages_with_context_fragments(
         messages,
         context_fragments,
@@ -4717,18 +4813,16 @@ fn build_sample_request(
         consumption_wrapper,
     )
     .map_err(compaction_error)?;
-    let visible_tools = tool_exposure_plan.visible_tools.clone();
-    let instruction_modules = if book.experimental_read_access().is_some() {
-        crate::experiment::policy_modules(&visible_tools)
-    } else {
-        policy_modules_for_tools(&visible_tools)
-    };
     let mut request_plan = AgentRequestPlan::for_agent_turn_with_modules(
         runtime_profile.clone(),
         &request_messages,
         &visible_tools,
         &instruction_modules,
     );
+    request_plan.instruction_assets.extend(selected.iter().map(|m| crate::InstructionAssetRef {
+        asset_id: m.asset_id.clone(),
+        revision: m.revision.clone(),
+    }));
     if book.experimental_read_access().is_some() {
         request_plan.output_token_limit = Some(8_000);
     }
@@ -4803,7 +4897,7 @@ fn maybe_auto_compact(
     phase: CompactionPhase,
     budget: ActiveContextBudget,
     book: &Book,
-    messages: &[Message],
+    messages: &mut [Message],
     adapter: &dyn ModelAdapter,
     runtime_profile: &ModelRuntimeProfile,
     context_fragments: &ContextFragmentLedger,
@@ -4814,9 +4908,13 @@ fn maybe_auto_compact(
     if !budget.over_high_watermark {
         return Ok(false);
     }
+    // The persistence projection can redact tool arguments. A precheck that
+    // finds no eligible history (or fails) must not rewrite the active prefix.
+    let mut persisted_messages = messages.to_vec();
+    sink.prepare_persisted_messages(&mut persisted_messages);
     let prepared = match prepare_history_compaction(
         book,
-        messages,
+        &persisted_messages,
         phase,
         Vec::new(),
         Vec::new(),
@@ -4852,7 +4950,7 @@ fn maybe_auto_compact(
 
     let generation_input_limit_tokens = runtime_profile
         .context_window_tokens
-        .saturating_sub(crate::compaction::COMPACTION_OUTPUT_TOKEN_LIMIT)
+        .saturating_sub(crate::compaction::compaction_output_token_limit(runtime_profile))
         .saturating_sub(runtime_profile.safety_margin_tokens)
         .max(1);
     let _purpose = crate::run_events::purpose(adapter, "compaction");
@@ -4870,12 +4968,13 @@ fn maybe_auto_compact(
         category: "provider".into(),
         message: error.message,
     })?;
-    sink.install(&checkpoint, messages)
+    sink.install(&checkpoint, &persisted_messages)
         .map_err(|error| ToolError {
             error_code: COMPACTION_FAILED.into(),
             category: "internal".into(),
             message: error.message,
         })?;
+    messages.clone_from_slice(&persisted_messages);
     *active_checkpoint = Some(checkpoint);
     Ok(true)
 }
@@ -4998,27 +5097,38 @@ fn profile_usage_trace(
 const TOOL_LOOP_BUDGET_CONTEXT_FRAGMENT_KEY: &str = "agent.tool_loop_budget";
 const FINALIZATION_CONTEXT_FRAGMENT_KEY: &str = "agent.finalization_sampling";
 const FINALIZATION_INSTRUCTIONS: &str = "finalization_sampling.v1\n\
-The model-tool loop budget is exhausted. Produce the final answer now from the current conversation and already observed evidence. \
+This run is stopping. Produce the final answer now from the current conversation and already observed evidence. \
 Tools are disabled for this sampling. Do not request, describe, simulate, or emit tool calls or tool-call syntax. \
 Answer the user's request directly; if the available evidence is insufficient, state the remaining gap honestly.";
 const PRESENTATION_DELIVERY_GRACE_FRAGMENT_KEY: &str = "agent.presentation_delivery_grace";
 
-fn tool_loop_budget_instructions(turns_completed: usize, max_turns: usize, delivery_gap: Option<&str>) -> String {
-    let current_sampling = turns_completed.saturating_add(1);
-    let remaining_after = max_turns.saturating_sub(current_sampling);
-    let mut instructions = format!(
+fn tool_loop_budget_instructions(
+    turns_completed: usize,
+    max_turns: Option<usize>,
+    delivery_gap: Option<&str>,
+) -> String {
+    let mut instructions = if let Some(max_turns) = max_turns {
+        let current_sampling = turns_completed.saturating_add(1);
+        let remaining_after = max_turns.saturating_sub(current_sampling);
+        let mut instructions = format!(
         "tool_loop_budget.v1\n\
 Tool-loop sampling {current_sampling} of {max_turns}. This sampling counts toward the limit. \
 Remaining tool-loop samplings after this one: {remaining_after}.\n\
 The limit is a ceiling, not a target. If the current verified evidence answers the user's original request, answer now without tools."
-    );
-    if remaining_after <= 1 {
-        instructions.push_str(
-            "\nConvergence required: stay on the user's original request. Use tools only for a concrete blocking evidence or required source/action gap; do not broaden into adjacent topics. Prefer the final answer now when existing verified evidence is sufficient.",
         );
-    }
+        if remaining_after <= 1 {
+            instructions.push_str(
+            "\nConvergence required: stay on the user's original request. Use tools only for a concrete blocking evidence or required source/action gap; do not broaden into adjacent topics. Prefer the final answer now when existing verified evidence is sufficient.",
+            );
+        }
+        instructions
+    } else {
+        "tool_loop_execution.v1\nContinue the user's task while there is a concrete next step. \
+When verified evidence and required actions satisfy the original request, produce the final answer. \
+Do not broaden into adjacent topics or repeat actions without new evidence or a changed state.".to_string()
+    };
     if let Some(gap) = delivery_gap {
-        instructions.push_str(&format!("\nCurrent task delivery gap: {gap} A prose answer does not complete a requested page or Reader action. When the materials are sufficient, use the remaining tool samplings to deliver the required result."));
+        instructions.push_str(&format!("\nCurrent task delivery gap: {gap} A prose answer does not complete a requested page or Reader action. When the materials are sufficient, deliver the required result."));
     }
     instructions
 }
@@ -5364,6 +5474,27 @@ pub fn run_context(
     question: &str,
     now: &str,
 ) -> Result<OuterOutcome, ToolError> {
+    let result = run_context_inner(book, state, adapter, context, profile_snapshot, resources,
+        active_checkpoint, checkpoint_sink, question, now);
+    if context.cancellation.is_cancelled() {
+        context.presentation_authoring = None;
+        context.presentation_authoring_finished = true;
+    }
+    result
+}
+
+fn run_context_inner(
+    book: &Book,
+    state: &mut impl ResidentStatePort,
+    adapter: &dyn ModelAdapter,
+    context: &mut RunContext,
+    profile_snapshot: &ReaderProfileSnapshot,
+    resources: &dyn ResidentTurnResourcePort,
+    active_checkpoint: Option<&CompactionCheckpoint>,
+    checkpoint_sink: &mut dyn CompactionCheckpointSink,
+    question: &str,
+    now: &str,
+) -> Result<OuterOutcome, ToolError> {
     if adapter.run_events().is_none() {
         let observed = crate::run_events::ObservedAdapter {
             inner: adapter,
@@ -5371,7 +5502,7 @@ pub fn run_context(
             cancellation: context.cancellation.clone(),
             runtime_profile: context.runtime_profile.clone(),
         };
-        return run_context(
+        return run_context_inner(
             book,
             state,
             &observed,
@@ -5389,6 +5520,7 @@ pub fn run_context(
     let messages = &mut context.messages;
     context.cancellation.check()?;
     let mut tool_registry = crate::experiment::registry(book, resident_tool_registry());
+    if context.tutor.is_none() { tool_registry = tool_registry.without_tutor(); }
     if context.goal.is_none() {
         tool_registry = tool_registry.without_goal_update();
     }
@@ -5399,6 +5531,7 @@ pub fn run_context(
         .resolve(COMPACTION_CONSUMPTION_WRAPPER);
     let tool_permissions = ToolPermissions::default();
     context.tool_exposure_state = ToolExposureState::default();
+    if context.tutor.as_ref().is_some_and(|t| t["status"] == "active" || t["status"] == "reference") { context.tool_exposure_state.activate_tutor(); }
     let experimental = book.experimental_read_access().is_some();
     let mut artifact_tools = ArtifactToolSession::new(
         if experimental {
@@ -5436,10 +5569,11 @@ pub fn run_context(
             .upsert(fragment)
             .map_err(context_fragment_error)?;
     }
+    let reader_input = state.reader_input(book, question);
     if let Some(fragment) = if experimental {
         None
     } else {
-        state.with_state(|_, reader| paper_minimap_context_fragment(book, reader, question))
+        reader_input.minimap_context.clone()
     } {
         context_fragments
             .upsert(fragment)
@@ -5451,6 +5585,7 @@ pub fn run_context(
     let mut spent: u32 = 0;
     let mut request_audit = AgentRequestAudit::default();
     let mut turns: usize = 0;
+    let mut tutor_assessment_attempts = HashSet::new();
     let injected_fact_ids: HashSet<String> =
         profile_snapshot.injected_fact_ids().into_iter().collect();
     let mut claimed_used_fact_ids = BTreeSet::new();
@@ -5463,14 +5598,14 @@ pub fn run_context(
     let mut turn_intent_hints = classify_turn_intent(question);
     if let Some(origin) = &guided_origin {
         turn_intent_hints.insert(TurnIntentHint::ExplicitGuidedRead);
-        let selected_lid = state.with_state(|_, reader| reader.state().selection);
+        let selected_lid = reader_input.state.selection.clone();
         context_fragments
             .upsert(ContextFragment::new(
                 "reader.guided_read_continuation",
                 FragmentScope::TurnFrozen,
                 Role::System,
                 format!(
-                    "The user is continuing the guided reading request given earlier. Original request (user text): {}. Current selected reading location: {}. Continue one teaching stop from that topic. Historical tool receipts show prior observations but do not contain full source text; if the next explanation needs source details, read the relevant passage again. Do not retract prior claims solely because a historical receipt lacks a body. A Reader viewport anchor can be the visual center rather than the teaching target.",
+                    "The user is continuing the guided reading request given earlier. Original request (user text): {}. Selected reading location when this question was submitted: {}. Continue one teaching stop from that topic. Historical tool receipts show prior observations but do not contain full source text; if the next explanation needs source details, read the relevant passage again. Do not retract prior claims solely because a historical receipt lacks a body. A Reader viewport anchor can be the visual center rather than the teaching target.",
                     serde_json::to_string(origin).unwrap_or_default(),
                     selected_lid.as_deref().unwrap_or("none")
                 ),
@@ -5498,6 +5633,7 @@ pub fn run_context(
     let mut experimental_body_budget = crate::experiment::BodyBudget::default();
     let mut presentation_delivery_grace: Option<String> = None;
     let mut presentation_delivery_grace_used = false;
+    let mut tutor_selection_retry = false;
     let mut goal_completion_retry: Option<&'static str> = None;
 
     // Pre-turn pressure includes the new user message, but the compactable source
@@ -5505,9 +5641,10 @@ pub fn run_context(
     // successful checkpoint install or a verified no-compaction-needed decision.
     let mut planned_messages = messages.clone();
     planned_messages.push(Message::user(question));
+    let mut planned_context_fragments = context_fragments.clone();
     let (_, planned_request) = build_sample_request(
         &planned_messages,
-        &context_fragments,
+        &mut planned_context_fragments,
         book,
         &context.active_tool_results,
         active_checkpoint.as_ref(),
@@ -5519,6 +5656,8 @@ pub fn run_context(
         artifact_tools.exposure(),
         context.evidence_ledger.evidence_state(),
         &[],
+        context.presentation_authoring.as_ref(),
+        context.presentation_authoring_finished,
     )?;
     let planned_budget = ActiveContextBudget::from_plan(&planned_request);
     let compacted = maybe_auto_compact(
@@ -5536,7 +5675,7 @@ pub fn run_context(
     if compacted {
         let (_, compacted_request) = build_sample_request(
             &planned_messages,
-            &context_fragments,
+            &mut planned_context_fragments,
             book,
             &context.active_tool_results,
             active_checkpoint.as_ref(),
@@ -5548,6 +5687,8 @@ pub fn run_context(
             artifact_tools.exposure(),
             context.evidence_ledger.evidence_state(),
             &[],
+            context.presentation_authoring.as_ref(),
+            context.presentation_authoring_finished,
         )?;
         let compacted_budget = ActiveContextBudget::from_plan(&compacted_request);
         if !compacted_budget.fits {
@@ -5558,13 +5699,14 @@ pub fn run_context(
     }
 
     messages.push(Message::user(question)); // system/fragments 只投影;messages 跨回合保留
+    checkpoint_sink.persist_progress(messages, &context.events.activities())?;
     context.answer_provenance = AnswerProvenanceLedger::from_messages(messages);
     let explicit_user_text = context
         .answer_provenance
         .current_question()
         .unwrap_or(question)
         .to_string();
-    let reader_anchor = state.with_state(|_, reader| reader.state().viewport.anchor_lid);
+    let reader_anchor = reader_input.state.viewport.anchor_lid.clone();
     context.locator_ledger = TurnLocatorLedger::from_turn(
         book,
         &explicit_user_text,
@@ -5582,7 +5724,15 @@ pub fn run_context(
 
     loop {
         context.cancellation.check()?;
+        if context.tutor.as_ref().is_some_and(|t| t["status"] == "active") && !state.tutor_active()? {
+            context.tutor = Some(serde_json::json!({"status":"paused"}));
+            tool_registry = tool_registry.without_tutor();
+        }
         let mut sampling_context_fragments = context_fragments.clone();
+        if let Some(tutor) = &context.tutor {
+            sampling_context_fragments.upsert(ContextFragment::new("agent.tutor", FragmentScope::Dynamic,
+                Role::System, crate::tutor::instructions(tutor), FragmentSensitivity::Private)).map_err(context_fragment_error)?;
+        }
         if let Some(goal) = &context.goal {
             sampling_context_fragments.upsert(ContextFragment::new(
                 "agent.resident_goal", FragmentScope::Dynamic, Role::System,
@@ -5590,10 +5740,10 @@ pub fn run_context(
                 FragmentSensitivity::Private,
             )).map_err(context_fragment_error)?;
         }
-        if let Some(gap) = goal_completion_retry {
+        if let Some(gap) = goal_completion_retry.take() {
             sampling_context_fragments.upsert(ContextFragment::new(
                 "agent.goal_completion_gap", FragmentScope::Dynamic, Role::System,
-                format!("goal_completion_gap.v1\nYour previous final answer could not complete this task: {gap} Use the remaining tool-loop samplings to perform the missing delivery or action. Do not repeat a final answer until it is done."),
+                format!("goal_completion_gap.v1\nYour previous final answer could not complete this task: {gap} Perform the missing delivery or action. Do not repeat a final answer until it is done."),
                 FragmentSensitivity::Private,
             )).map_err(context_fragment_error)?;
         }
@@ -5627,11 +5777,10 @@ pub fn run_context(
         } else {
             Vec::new()
         };
-        sampling_context_fragments.record_sampling(messages.len(), &mut context_fragments);
         let sampled_excluded_tools: &[&str] = &delivery_grace_excluded_tools;
         let (mut tool_exposure_plan, mut request_plan) = build_sample_request(
             messages,
-            &sampling_context_fragments,
+            &mut sampling_context_fragments,
             book,
             &context.active_tool_results,
             active_checkpoint.as_ref(),
@@ -5643,6 +5792,8 @@ pub fn run_context(
             artifact_tools.exposure(),
             context.evidence_ledger.evidence_state(),
             sampled_excluded_tools,
+            context.presentation_authoring.as_ref(),
+            context.presentation_authoring_finished,
         )?;
         let request_budget = ActiveContextBudget::from_plan(&request_plan);
         if maybe_auto_compact(
@@ -5659,7 +5810,7 @@ pub fn run_context(
         )? {
             (tool_exposure_plan, request_plan) = build_sample_request(
                 messages,
-                &sampling_context_fragments,
+                &mut sampling_context_fragments,
                 book,
                 &context.active_tool_results,
                 active_checkpoint.as_ref(),
@@ -5671,8 +5822,11 @@ pub fn run_context(
                 artifact_tools.exposure(),
                 context.evidence_ledger.evidence_state(),
                 sampled_excluded_tools,
+                context.presentation_authoring.as_ref(),
+                context.presentation_authoring_finished,
             )?;
         }
+        context_fragments.retain_sampling_history(&sampling_context_fragments);
         if let Some(candidate_id) = presentation_delivery_grace.as_ref() {
             if let Some(tool) = request_plan
                 .tools
@@ -5820,11 +5974,41 @@ pub fn run_context(
 
         // 正常停:无工具请求 = LLM 给最终答。终答入 messages(跨回合保留,下一回合可见上轮回答)。
         if turn.tool_calls.is_empty() {
+            if context.tutor.as_ref().is_some_and(|t| t["status"] == "active") && !context.tutor_resolved {
+                if !tutor_selection_retry && !cfg.turn_limit_reached(turns) {
+                    tutor_selection_retry = true;
+                    goal_completion_retry = Some("Select a source-grounded move with tutor.step after reading material and original evidence, or resolve an outside-scope request with operation=outside.");
+                    continue;
+                }
+                return Err(memory::teaching::invalid("教学动作尚未完成来源绑定，请重试"));
+            }
             let objective_gap = context.goal.as_ref().and_then(|goal|
                 goal.objective_gap(context.delivered_presentations.len(), run_effects(effects.clone(), &context.navigation).len()));
-            if let Some(gap) = objective_gap.filter(|_| turns < cfg.max_turns) {
-                goal_completion_retry = Some(gap);
-                continue;
+            if let Some(gap) = objective_gap {
+                // A prose-only completion claim cannot advance an unmet delivery.
+                // Count it in the same streak as unchanged tool batches; real tool
+                // progress resets this guard below, so useful work may continue.
+                let progress = tool_progress_signature(
+                    &context.evidence_ledger,
+                    &context.evidence_plan_ledger,
+                    &context.locator_ledger,
+                    &context.progress_ledger,
+                    &context.tool_exposure_state,
+                    &completed_capabilities,
+                    &artifact_tools,
+                    book,
+                    state,
+                    effects.len(),
+                    context.presentation_authoring.as_ref(),
+                );
+                phase_progress_guard.observe_batch(&progress, &progress);
+                if !cfg.turn_limit_reached(turns)
+                    && !(experimental && spent >= 100_000)
+                    && !phase_progress_guard.blocks(&progress)
+                {
+                    goal_completion_retry = Some(gap);
+                    continue;
+                }
             }
             context
                 .progress_ledger
@@ -5866,13 +6050,20 @@ pub fn run_context(
                 tool_calls: vec![],
                 tool_call_id: None,
             });
+            checkpoint_sink.persist_progress(messages, &context.events.activities())?;
             return Ok(OuterOutcome {
                 answer,
                 answer_view,
                 incomplete: objective_gap.is_some() || delivery
                     .as_ref()
                     .is_some_and(|delivery| delivery.incomplete),
-                warning: objective_gap.map(|_| if turns >= cfg.max_turns { TURN_LIMIT_EXCEEDED } else { "GOAL_DELIVERY_INCOMPLETE" }.to_string()).or_else(|| delivery
+                warning: objective_gap.map(|_| if experimental && spent >= 100_000 {
+                    "EXPERIMENT_TOKEN_BUDGET"
+                } else if cfg.turn_limit_reached(turns) {
+                    TURN_LIMIT_EXCEEDED
+                } else {
+                    "AGENT_NO_PROGRESS"
+                }.to_string()).or_else(|| delivery
                     .as_ref()
                     .and_then(|delivery| delivery.warning.clone())),
                 turns,
@@ -5898,18 +6089,18 @@ pub fn run_context(
             provider_continuation: turn.provider_continuation.clone(),
             role: Role::Assistant,
             content: turn.text.clone(),
-            tool_calls: turn.tool_calls.clone(),
+            tool_calls: turn.tool_calls.iter().cloned().map(|mut call| { if call.name == "tutor.step" { call.arguments = crate::tutor::public_arguments(&call.arguments); } call }).collect(),
             tool_call_id: None,
         });
         let locator_batch_snapshot = context.locator_ledger.clone();
+        checkpoint_sink.persist_progress(messages, &context.events.activities())?;
         let evidence_plan_batch_snapshot = context.evidence_plan_ledger.clone();
         let mut locator_batch_observations = TurnLocatorLedger::default();
         let mut evidence_plan_batch_observations = TurnEvidencePlanLedger::default();
         let mut capability_batch_observations = BTreeSet::new();
         let locator_count_before = context.locator_ledger.entries.len();
         let evidence_count_before = context.evidence_ledger.evidence.len();
-        let batch_progress_before = state.with_state(|store, reader| {
-            tool_progress_signature(
+        let batch_progress_before = tool_progress_signature(
                 &context.evidence_ledger,
                 &context.evidence_plan_ledger,
                 &context.locator_ledger,
@@ -5918,11 +6109,10 @@ pub fn run_context(
                 &completed_capabilities,
                 &artifact_tools,
                 book,
-                store,
-                reader,
+                state,
                 effects.len(),
-            )
-        });
+                context.presentation_authoring.as_ref(),
+            );
         let phase_stalled = phase_progress_guard.blocks(&batch_progress_before);
         let recovery_batch = phase_stalled && phase_progress_guard.recovery_available();
         if recovery_batch {
@@ -5930,7 +6120,10 @@ pub fn run_context(
         }
         let mut batch_synthesis_observed = false;
         let mut batch_progress_calls = Vec::new();
-        for (call_index, tc) in turn.tool_calls.iter().enumerate() {
+        let prepare_batch = turn.tool_calls.iter().any(|call| call.name == "presentation.author"
+            && serde_json::from_str::<serde_json::Value>(&call.arguments)
+                .is_ok_and(|value| value["operation"] == "prepare"));
+        for tc in &turn.tool_calls {
             context.cancellation.check()?;
             context
                 .answer_provenance
@@ -5941,8 +6134,7 @@ pub fn run_context(
                     tool_exposure_plan.is_visible(&tc.name) && sampled_tool_names.contains(&tc.name)
                 })
                 .map(|registration| registration.handler);
-            let progress_before = state.with_state(|store, reader| {
-                tool_progress_signature(
+            let progress_before = tool_progress_signature(
                     &context.evidence_ledger,
                     &context.evidence_plan_ledger,
                     &context.locator_ledger,
@@ -5951,11 +6143,10 @@ pub fn run_context(
                     &completed_capabilities,
                     &artifact_tools,
                     book,
-                    store,
-                    reader,
+                    state,
                     effects.len(),
-                )
-            });
+                    context.presentation_authoring.as_ref(),
+                );
             let repeated_without_progress = handler.is_some()
                 && tool_call_progress.is_repeat(&tc.name, &tc.arguments, &progress_before);
             let text_authorization = matches!(handler, Some(ToolHandlerId::Book(BookToolId::Text)))
@@ -6009,6 +6200,7 @@ pub fn run_context(
                 executed,
             );
             let activity_scope = context.events.scope(Some(activity.step_id), "outer");
+            checkpoint_sink.persist_progress(messages, &context.events.activities())?;
             let (result, effect, query_audit) = match handler {
                 None if registered.is_some() => (
                     err_json(
@@ -6078,6 +6270,27 @@ pub fn run_context(
                     };
                     (result, None, None)
                 }
+                Some(ToolHandlerId::TutorStep) => {
+                    let request: Result<serde_json::Value, _> = serde_json::from_str(&tc.arguments);
+                    let resolving = request.as_ref().ok().is_some_and(|r| matches!(r["operation"].as_str(), Some("select" | "outside")));
+                    let result = request.map_err(|e| memory::teaching::invalid(format!("{e}"))).and_then(|request| {
+                        if request["operation"] != "assess" { return state.tutor_step(request, &context.evidence_ledger.bindings(), &context.evidence_ledger.evidence.iter().map(|e| e.range.clone()).collect::<Vec<_>>()); }
+                        let id = request["action_ref"].as_str().ok_or_else(|| memory::teaching::invalid("Missing action_ref"))?;
+                        let packet = state.tutor_assessment_input(id)?;
+                        if !packet["existing"].is_null() { return Ok(serde_json::json!({"assessment":packet["existing"]})); }
+                        if cfg.turn_limit_reached(turns) || !tutor_assessment_attempts.insert(id.to_string()) { return Err(memory::teaching::invalid("Assessment remains unassessed; this run has no further evaluator budget")); }
+                        context.cancellation.check()?;
+                        turns += 1;
+                        let (output,usage) = crate::tutor::evaluate(adapter,runtime_profile.clone(),packet).map_err(|_| memory::teaching::invalid("Assessment failed; response remains unassessed"))?;
+                        spent = spent.saturating_add(usage);
+                        context.cancellation.check()?;
+                        if output["tool_calls"] == true { return Err(memory::teaching::invalid("Evaluator returned tools; response remains unassessed")); }
+                        let parsed: serde_json::Value = serde_json::from_str(output["text"].as_str().unwrap_or_default()).map_err(|_| memory::teaching::invalid("Evaluator output incomplete; response remains unassessed"))?;
+                        state.tutor_assessment_accept(id,parsed["items"].clone())
+                    });
+                    if result.is_ok() && resolving { context.tutor_resolved = true; goal_completion_retry = None; }
+                    (result.map(|value| value.to_string()).unwrap_or_else(|error| to_json(&error)), None, None)
+                }
                 Some(ToolHandlerId::GoalUpdate) => {
                     let result = (|| -> Result<String, ToolError> {
                         let update: crate::goal::GoalUpdate = serde_json::from_str(&tc.arguments)
@@ -6097,6 +6310,19 @@ pub fn run_context(
                     let result = (|| -> Result<crate::presentation_author::AuthorResult, ToolError> {
                         let request: crate::presentation_author::AuthorRequest = serde_json::from_str(&tc.arguments)
                             .map_err(|e| ToolError { error_code: "PRESENTATION_ARGUMENTS_INVALID".into(), category: "validation".into(), message:e.to_string() })?;
+                        if prepare_batch && turn.tool_calls.len() != 1 {
+                            return Err(ToolError { error_code: "PRESENTATION_PREPARE_REQUIRES_NEXT_SAMPLING".into(), category: "validation".into(), message: "Call prepare alone, then use the selected guidance in the next sampling".into() });
+                        }
+                        if let crate::presentation_author::AuthorRequest::Prepare { phase, framework, focus, mut needs } = request {
+                            needs.sort();
+                            needs.dedup();
+                            let current = crate::presentation_author::PresentationAuthoringContext { phase, framework, focus, needs };
+                            let changed = context.presentation_authoring.as_ref() != Some(&current);
+                            let body = serde_json::json!({"status":"authoring_context_prepared", "phase":current.phase, "needs":current.needs, "changed":changed});
+                            context.presentation_authoring = Some(current);
+                            context.presentation_authoring_finished = false;
+                            return Ok(crate::presentation_author::AuthorResult { body, images: Vec::new(), previewed_candidate: None, delivered: None });
+                        }
                         if let crate::presentation_author::AuthorRequest::Write { asset_refs, .. } = &request {
                             if asset_refs.iter().any(|id| context.pending_plot_refs.contains(id)) {
                                 return Err(ToolError { error_code:"PRESENTATION_PLOT_INSPECTION_REQUIRED".into(), category:"validation".into(), message:"Inspect the rendered plot image in the next sampling before writing it into a candidate".into() });
@@ -6111,6 +6337,7 @@ pub fn run_context(
                     })();
                     let body = match result {
                         Ok(result) => {
+                            context.presentation_authoring_finished = result.delivered.is_some();
                             if let Some(id) = result.body.get("candidate_id").and_then(serde_json::Value::as_str) {
                                 context.presentation_candidates.insert(id.to_string());
                             }
@@ -6123,6 +6350,7 @@ pub fn run_context(
                             }
                             context.presentation_images.extend(result.images);
                             if let Some(reference) = result.delivered {
+                                context.presentation_authoring = None;
                                 if let Some(candidate_id) = serde_json::from_str::<crate::presentation_author::AuthorRequest>(&tc.arguments).ok().and_then(|request| match request { crate::presentation_author::AuthorRequest::Deliver { candidate_id } => Some(candidate_id), _ => None }) {
                                     context.presentation_candidates.remove(&candidate_id);
                                 }
@@ -6140,12 +6368,14 @@ pub fn run_context(
                             // Successful previews can inspect different viewports or actions
                             // on the same candidate. Count those observations separately, but
                             // keep identical rechecks and repeated failures non-progressing.
-                            let preview_input = if matches!(result.body["status"].as_str(), Some("preview_ready_for_inspection" | "preview_environment_recorded")) {
+                            let preview_input = if matches!(result.body["status"].as_str(), Some("preview_ready_for_inspection" | "preview_environment_recorded" | "source_matches" | "version_read")) {
                                 canonical_tool_arguments(&tc.arguments)
                             } else {
                                 String::new()
                             };
-                            capability_batch_observations.insert(format!("presentation:{}:{}:{}:{}:{}",result.body["status"],result.body.get("candidate_id").or_else(|| result.body.get("asset_ref")).unwrap_or(&result.body["reference"]),result.body["file"],result.body["offset"],preview_input));
+                            if result.body["status"] != "authoring_context_prepared" {
+                                capability_batch_observations.insert(format!("presentation:{}:{}:{}:{}:{}",result.body["status"],result.body.get("candidate_id").filter(|v| !v.is_null()).or_else(|| result.body.get("asset_ref")).unwrap_or(&result.body["reference"]),result.body["file"],result.body["offset"],preview_input));
+                            }
                             result.body.to_string()
                         }
                         Err(error) => to_json(&error),
@@ -6168,14 +6398,14 @@ pub fn run_context(
                 Some(ToolHandlerId::Book(BookToolId::Query)) => {
                     let (result, query_audit) = execute_book_query(&tc.arguments, book, adapter);
                     if query_audit.is_some() {
-                        let observation = state.with_state(|store, _| record_query_observation(
+                        let observation = state.submit_private(|store| record_query_observation(
                             &tc.arguments,
                             question,
                             book,
                             store,
                             now,
                             &mut recorded_query_observations,
-                        ));
+                        )).and_then(|result| result);
                         if trace_dbg {
                             if let Err(error) = observation {
                                 eprintln!("   runtime query observation failed: {}", error.message);
@@ -6242,17 +6472,17 @@ pub fn run_context(
                 Some(handler) => {
                     let mut live_navigation = None;
                     let (result, effect) = if matches!(handler, ToolHandlerId::ReaderGotoLid | ToolHandlerId::ReaderScroll) {
-                        state.with_state(|store, reader| {
-                            let before = reader.state().viewport.anchor_lid;
-                            let result = dispatch_state_tool(handler, &tc.arguments, book, store, reader, now);
-                            let after = reader.state().viewport.anchor_lid;
+                        let before = state.read_live_reader(|reader| reader.state().viewport.anchor_lid).ok();
+                        let result = dispatch_registered(handler, &tc.arguments, book, state, adapter, now);
+                        let after = state.read_live_reader(|reader| reader.state().viewport.anchor_lid).ok();
+                        if let (Some(before), Some(after)) = (before, after) {
                             if tool_result_error_code(&result.0).is_none() && before != after {
                                 let initial = context.navigation.as_ref().map(|(before, _)| before.clone()).unwrap_or_else(|| before.clone());
-                                live_navigation = Some(AgentEffect::Goto { before_anchor: before, after_anchor: after.clone() });
+                                live_navigation = Some(AgentEffect::Goto { before_anchor: initial.clone(), after_anchor: after.clone() });
                                 context.navigation = Some((initial, after));
                             }
-                            result
-                        })
+                        }
+                        result
                     } else { dispatch_registered(handler, &tc.arguments, book, state, adapter, now) };
                     if let Some(effect) = live_navigation { context.events.effect_created(activity.step_id, &effect); }
                     (result, effect, None)
@@ -6278,7 +6508,7 @@ pub fn run_context(
                 activity_error,
                 activity_count,
             );
-            if handler.is_some() && tool_result_error_code(&result).is_none() {
+            if handler.is_some() && tool_result_error_code(&result).is_none() && !(prepare_batch && tc.name == "presentation.author") {
                 if let Some(registration) = registered {
                     capability_batch_observations.extend(
                         registration
@@ -6297,19 +6527,8 @@ pub fn run_context(
             let output_policy = registered
                 .map(|registration| registration.output_policy)
                 .unwrap_or_else(crate::tool_registry::ToolOutputPolicy::bounded_error);
-            context
-                .active_tool_results
-                .make_room_for(output_policy.max_model_body_bytes);
-            let calls_remaining = turn.tool_calls.len().saturating_sub(call_index).max(1);
-            let fair_turn_budget =
-                context.active_tool_results.remaining_model_body_bytes() / calls_remaining;
-            let mut projection = project_tool_result(
-                &tc.name,
-                &tc.arguments,
-                &result,
-                output_policy,
-                fair_turn_budget,
-                book,
+            let mut projection = context.active_tool_results.project_result(
+                &tc.name, &tc.arguments, &result, output_policy, book,
             );
             if experimental {
                 let body = experimental_body_budget.admit(
@@ -6370,10 +6589,9 @@ pub fn run_context(
                 (is_artifact_call || tc.name == "presentation.author").then(|| to_json(&receipt));
             context
                 .active_tool_results
-                .insert(tc.id.clone(), projection.into_envelope(receipt));
+                .insert_call(tc, projection.into_envelope(receipt));
             if handler.is_some() && !blocked_without_progress {
-                let progress_after = state.with_state(|store, reader| {
-                    tool_progress_signature(
+                let progress_after = tool_progress_signature(
                         &context.evidence_ledger,
                         &context.evidence_plan_ledger,
                         &context.locator_ledger,
@@ -6382,11 +6600,10 @@ pub fn run_context(
                         &completed_capabilities,
                         &artifact_tools,
                         book,
-                        store,
-                        reader,
+                        state,
                         effects.len() + usize::from(effect.is_some()),
-                    )
-                });
+                        context.presentation_authoring.as_ref(),
+                    );
                 tool_call_progress.observe(
                     &tc.name,
                     &tc.arguments,
@@ -6422,12 +6639,12 @@ pub fn run_context(
                 tool_calls: vec![],
                 tool_call_id: Some(tc.id.clone()),
             });
+            checkpoint_sink.persist_effects(&run_effects(effects.clone(), &context.navigation))?;
+            checkpoint_sink.persist_progress(messages, &context.events.activities())?;
         }
-        locator_batch_observations.observe_lid(
-            &state.with_state(|_, reader| reader.state().viewport.anchor_lid),
-            LocatorOrigin::ReaderAnchor,
-            book,
-        );
+        if let Ok(anchor) = state.read_live_reader(|reader| reader.state().viewport.anchor_lid) {
+            locator_batch_observations.observe_lid(&anchor, LocatorOrigin::ReaderAnchor, book);
+        }
         context.locator_ledger.merge(locator_batch_observations);
         context
             .evidence_plan_ledger
@@ -6448,8 +6665,7 @@ pub fn run_context(
                 .observe(RuntimeProgressEvent::Synthesis);
         }
         completed_capabilities.extend(capability_batch_observations);
-        let batch_progress_after = state.with_state(|store, reader| {
-            tool_progress_signature(
+        let batch_progress_after = tool_progress_signature(
                 &context.evidence_ledger,
                 &context.evidence_plan_ledger,
                 &context.locator_ledger,
@@ -6458,11 +6674,10 @@ pub fn run_context(
                 &completed_capabilities,
                 &artifact_tools,
                 book,
-                store,
-                reader,
+                state,
                 effects.len(),
-            )
-        });
+                context.presentation_authoring.as_ref(),
+            );
         phase_progress_guard.observe_batch(&batch_progress_before, &batch_progress_after);
         for (tool, arguments) in batch_progress_calls {
             tool_call_progress.observe(
@@ -6478,15 +6693,25 @@ pub fn run_context(
         let stalled = phase_progress_guard.blocks(&batch_progress_after)
             && !phase_progress_guard.recovery_available();
         let experimental_budget_stop = experimental && spent >= 100_000;
-        if turns >= cfg.max_turns && !presentation_delivery_grace_used {
+        if cfg.turn_limit_reached(turns) && !presentation_delivery_grace_used {
             if let Some(candidate_id) = context.pending_previews.iter().next().cloned() {
                 presentation_delivery_grace = Some(candidate_id);
                 presentation_delivery_grace_used = true;
                 continue;
             }
         }
-        if turns >= cfg.max_turns || stalled || experimental_budget_stop {
+        if cfg.turn_limit_reached(turns) || stalled || experimental_budget_stop {
+            let stop_reason = if experimental_budget_stop {
+                "EXPERIMENT_TOKEN_BUDGET"
+            } else if cfg.turn_limit_reached(turns) {
+                TURN_LIMIT_EXCEEDED
+            } else {
+                "AGENT_NO_PROGRESS"
+            };
             let mut finalization_context_fragments = context_fragments.clone();
+            if let Some(tutor) = &context.tutor {
+                finalization_context_fragments.upsert(ContextFragment::new("agent.tutor", FragmentScope::Dynamic, Role::System, crate::tutor::instructions(tutor), FragmentSensitivity::Private)).map_err(context_fragment_error)?;
+            }
             if let Some(goal) = &context.goal {
                 finalization_context_fragments.upsert(ContextFragment::new(
                     "agent.resident_goal", FragmentScope::Dynamic, Role::System,
@@ -6499,11 +6724,10 @@ pub fn run_context(
                     FINALIZATION_CONTEXT_FRAGMENT_KEY,
                     FragmentScope::Dynamic,
                     Role::System,
-                    FINALIZATION_INSTRUCTIONS,
+                    format!("{FINALIZATION_INSTRUCTIONS}\nStop reason: {stop_reason}."),
                     FragmentSensitivity::Private,
                 ))
                 .map_err(context_fragment_error)?;
-            finalization_context_fragments.record_sampling(messages.len(), &mut context_fragments);
             let excluded_tools = tool_registry
                 .registrations()
                 .iter()
@@ -6511,7 +6735,7 @@ pub fn run_context(
                 .collect::<Vec<_>>();
             let (_, mut finalization_plan) = build_sample_request(
                 messages,
-                &finalization_context_fragments,
+                &mut finalization_context_fragments,
                 book,
                 &context.active_tool_results,
                 active_checkpoint.as_ref(),
@@ -6523,6 +6747,8 @@ pub fn run_context(
                 artifact_tools.exposure(),
                 context.evidence_ledger.evidence_state(),
                 &excluded_tools,
+                context.presentation_authoring.as_ref(),
+                context.presentation_authoring_finished,
             )?;
             let finalization_budget = ActiveContextBudget::from_plan(&finalization_plan);
             if maybe_auto_compact(
@@ -6539,7 +6765,7 @@ pub fn run_context(
             )? {
                 (_, finalization_plan) = build_sample_request(
                     messages,
-                    &finalization_context_fragments,
+                    &mut finalization_context_fragments,
                     book,
                     &context.active_tool_results,
                     active_checkpoint.as_ref(),
@@ -6551,6 +6777,8 @@ pub fn run_context(
                     artifact_tools.exposure(),
                     context.evidence_ledger.evidence_state(),
                     &excluded_tools,
+                    context.presentation_authoring.as_ref(),
+                    context.presentation_authoring_finished,
                 )?;
             }
             let finalization_budget = ActiveContextBudget::from_plan(&finalization_plan);
@@ -6643,8 +6871,9 @@ pub fn run_context(
                 trace,
             );
             let goal_completion_candidate = context.goal.as_ref().is_some_and(|goal| {
-                goal.requirements.iter().any(|requirement|
+                (goal.requirements.iter().any(|requirement|
                     requirement.verification != crate::goal::GoalVerification::Content)
+                    || !context.delivered_presentations.is_empty())
                     && objective_gap.is_none()
                     && !delivery.incomplete
                     && delivery.warning.is_none()
@@ -6663,19 +6892,12 @@ pub fn run_context(
                 tool_calls: vec![],
                 tool_call_id: None,
             });
+            checkpoint_sink.persist_progress(messages, &context.events.activities())?;
             return Ok(OuterOutcome {
                 answer: Some(answer),
                 answer_view: Some(answer_view),
                 incomplete: !goal_completion_candidate,
-                warning: (!goal_completion_candidate).then(||
-                    if experimental_budget_stop {
-                        "EXPERIMENT_TOKEN_BUDGET"
-                    } else if turns >= cfg.max_turns {
-                        TURN_LIMIT_EXCEEDED
-                    } else {
-                        "AGENT_NO_PROGRESS"
-                    }
-                    .into()),
+                warning: (!goal_completion_candidate).then(|| stop_reason.to_string()),
                 turns,
                 tokens_spent: spent,
                 effects: run_effects(std::mem::take(effects), &context.navigation),
@@ -6697,6 +6919,55 @@ pub fn run_context(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    mod presentation_authoring {
+        include!("presentation_authoring_tests.rs");
+    }
+
+    #[test]
+    fn ex11_pre_turn_compaction_projects_last_completed_tool_turn() {
+        let b=book();
+        let messages=vec![Message::user("制作页面"), Message {
+            provider_continuation:None,role:Role::Assistant,content:None,
+            tool_calls:vec![call("search","tool.search",r#"{"task":"修改页面"}"#)],tool_call_id:None,
+        },Message {
+            provider_continuation:None,role:Role::Tool,
+            content:Some(r#"{"version":"tool_search_history.v1","activation_status":"expired_after_prior_run","matched_tools":["presentation.author"]}"#.into()),
+            tool_calls:vec![],tool_call_id:Some("search".into()),
+        },Message {provider_continuation:None,role:Role::Assistant,content:Some("本轮未完成；可以继续。".into()),tool_calls:vec![],tool_call_id:None}];
+        // Provider sampling keeps the current tool body, but pre-turn compaction
+        // is allowed to compact this completed last turn before adding a user.
+        assert_eq!(provider_history_projection(&messages,&b)[2].content,messages[2].content);
+        let prepared=prepare_history_compaction(&b,&messages,CompactionPhase::PreTurn,vec![],vec![],vec![],BTreeMap::new()).unwrap();
+        assert!(!prepared.request().eligible_items.is_empty());
+        let receipt=prepared.request().eligible_items.iter().find(|item|item.role==Role::Tool).unwrap();
+        let value:serde_json::Value=serde_json::from_str(&receipt.content).unwrap();
+        assert_eq!(value["tool"],"tool.search");
+    }
+
+    #[test]
+    fn ex11_delivered_content_goal_completes_after_last_tool_batch() {
+        use crate::goal::{GoalStatus, GoalVerification, ResidentGoal};
+        let recorded: ResidentGoal = serde_json::from_str(include_str!("testdata/ex11-learning2-goal.json")).unwrap();
+        assert!(recorded.requirements.iter().all(|r| r.verification == GoalVerification::Content));
+        for (name, delivered, pending_reader_action) in [("delivered",true,false),("missing",false,false),("reader-gap",true,true)] {
+            let b=book();
+            let mut store=MemoryStore::open(tmp(&format!("ex11-final-content-{name}"))).unwrap();
+            let mut reader=Reader::new(&b,DEFAULT_RADIUS);
+            let snapshot=default_profile_snapshot(&b,&store,"t0");
+            let adapter=RequestPlanRecordingAdapter::new(vec![turn_calls(vec![call("manifest","book.manifest","{}")]),turn_final("页面已交付。")],vec![]);
+            let mut context=RunContext::new(new_session(),OuterConfig{max_turns: Some(1),..Default::default()},adapter.model_runtime_profile());
+            let mut goal=recorded.clone();goal.status=GoalStatus::Open;
+            if pending_reader_action {goal.requirements[0].verification=GoalVerification::ReaderAction;}
+            context.goal=Some(goal);
+            if delivered { context.delivered_presentations.push(crate::presentation::PresentationRef{presentation_id:"learning2-replay".into(),revision:1}); }
+            let out=run_context(&b,&mut BorrowedResidentState{store:&mut store,reader:&mut reader},&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,&mut EphemeralCompactionCheckpointSink::default(),"制作交互页面","t0").unwrap();
+            let complete=delivered&&!pending_reader_action;
+            assert_eq!(out.incomplete,!complete,"{name}");
+            assert_eq!(out.warning.is_none(),complete,"{name}");
+            assert!(adapter.seen_plans.borrow().last().unwrap().tools.is_empty());
+        }
+    }
 
     #[test]
     fn ex11_c1_goal_contract_and_completion_replay() {
@@ -6731,7 +7002,7 @@ mod tests {
                 vec![turn_calls(vec![call("manifest", "book.manifest", "{}")]), turn_final("页面已交付。")]
             } else { vec![turn_final("页面已交付。")] };
             let adapter = RequestPlanRecordingAdapter::new(responses, vec![]);
-            let mut context = RunContext::new(new_session(), OuterConfig { max_turns: 1, ..Default::default() }, adapter.model_runtime_profile());
+            let mut context = RunContext::new(new_session(), OuterConfig { max_turns: Some(1), ..Default::default() }, adapter.model_runtime_profile());
             context.goal = Some(goal);
             if delivered {
                 context.delivered_presentations.push(crate::presentation::PresentationRef { presentation_id: "c1-replay".into(), revision: 1 });
@@ -6758,7 +7029,7 @@ mod tests {
             SemanticReleaseLocale, SemanticReleaseReceipt, SemanticReleaseScenario,
             SEMANTIC_RELEASE_BUNDLE_VERSION,
         },
-        AdapterError, CompactionRequest, CompletionRequest, ParsedResponse, ProviderConfig,
+        AdapterError, CompletionRequest, ParsedResponse, ProviderConfig,
         ProviderRegistry, ProviderToolProtocol, RawCitation, ToolCall,
     };
     use artifact_tools::{
@@ -6789,9 +7060,10 @@ mod tests {
         use crate::presentation_author::{AuthorRequest, AuthorResult, PreviewImage};
         struct Port { store: MemoryStore, reader: Reader }
         impl ResidentStatePort for Port {
-            fn with_state<R>(&mut self, f: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> R {
-                f(&mut self.store, &mut self.reader)
-            }
+            fn submit_private<R>(&mut self, f: impl FnOnce(&mut MemoryStore) -> R) -> Result<R, ToolError> { Ok(f(&mut self.store)) }
+            fn read_live_reader<R>(&mut self, f: impl FnOnce(&Reader) -> R) -> Result<R, ToolError> { Ok(f(&self.reader)) }
+            fn apply_reader<R>(&mut self, f: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> Result<R, ToolError> { Ok(f(&mut self.store, &mut self.reader)) }
+            fn reader_input(&mut self, book: &Book, question: &str) -> crate::run_context::ReaderInputSnapshot { crate::run_context::ReaderInputSnapshot::capture(book, &self.reader, question) }
             fn author_presentation(&mut self, req: AuthorRequest, _: &[SourceBinding], _: &[Message], _: &crate::run_context::CancellationToken) -> Result<AuthorResult, ToolError> {
                 let mut result = AuthorResult { body: serde_json::Value::Null, images: vec![], previewed_candidate: None, delivered: None };
                 match req {
@@ -6839,9 +7111,10 @@ mod tests {
             reader: Reader,
         }
         impl ResidentStatePort for Port {
-            fn with_state<R>(&mut self, f: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> R {
-                f(&mut self.store, &mut self.reader)
-            }
+            fn submit_private<R>(&mut self, f: impl FnOnce(&mut MemoryStore) -> R) -> Result<R, ToolError> { Ok(f(&mut self.store)) }
+            fn read_live_reader<R>(&mut self, f: impl FnOnce(&Reader) -> R) -> Result<R, ToolError> { Ok(f(&self.reader)) }
+            fn apply_reader<R>(&mut self, f: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> Result<R, ToolError> { Ok(f(&mut self.store, &mut self.reader)) }
+            fn reader_input(&mut self, book: &Book, question: &str) -> crate::run_context::ReaderInputSnapshot { crate::run_context::ReaderInputSnapshot::capture(book, &self.reader, question) }
             fn author_presentation(
                 &mut self,
                 req: AuthorRequest,
@@ -6912,9 +7185,10 @@ mod tests {
             writes: usize,
         }
         impl ResidentStatePort for Port {
-            fn with_state<R>(&mut self, f: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> R {
-                f(&mut self.store, &mut self.reader)
-            }
+            fn submit_private<R>(&mut self, f: impl FnOnce(&mut MemoryStore) -> R) -> Result<R, ToolError> { Ok(f(&mut self.store)) }
+            fn read_live_reader<R>(&mut self, f: impl FnOnce(&Reader) -> R) -> Result<R, ToolError> { Ok(f(&self.reader)) }
+            fn apply_reader<R>(&mut self, f: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> Result<R, ToolError> { Ok(f(&mut self.store, &mut self.reader)) }
+            fn reader_input(&mut self, book: &Book, question: &str) -> crate::run_context::ReaderInputSnapshot { crate::run_context::ReaderInputSnapshot::capture(book, &self.reader, question) }
             fn author_presentation(
                 &mut self,
                 req: AuthorRequest,
@@ -6956,7 +7230,7 @@ mod tests {
                             serde_json::json!({"status":"version_saved","reference":reference});
                         result.delivered = Some(reference);
                     }
-                    AuthorRequest::Read { .. } | AuthorRequest::RenderPlot { .. } | AuthorRequest::RenderAnimation { .. } => unreachable!(),
+                    AuthorRequest::Prepare { .. } | AuthorRequest::Search { .. } | AuthorRequest::Patch { .. } | AuthorRequest::Read { .. } | AuthorRequest::RenderPlot { .. } | AuthorRequest::RenderAnimation { .. } => unreachable!(),
                 }
                 Ok(result)
             }
@@ -7078,9 +7352,10 @@ mod tests {
             previews: usize,
         }
         impl ResidentStatePort for Port {
-            fn with_state<R>(&mut self, f: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> R {
-                f(&mut self.store, &mut self.reader)
-            }
+            fn submit_private<R>(&mut self, f: impl FnOnce(&mut MemoryStore) -> R) -> Result<R, ToolError> { Ok(f(&mut self.store)) }
+            fn read_live_reader<R>(&mut self, f: impl FnOnce(&Reader) -> R) -> Result<R, ToolError> { Ok(f(&self.reader)) }
+            fn apply_reader<R>(&mut self, f: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> Result<R, ToolError> { Ok(f(&mut self.store, &mut self.reader)) }
+            fn reader_input(&mut self, book: &Book, question: &str) -> crate::run_context::ReaderInputSnapshot { crate::run_context::ReaderInputSnapshot::capture(book, &self.reader, question) }
             fn author_presentation(
                 &mut self,
                 req: AuthorRequest,
@@ -7095,7 +7370,10 @@ mod tests {
                     delivered: None,
                 };
                 match req {
+                    AuthorRequest::Prepare { .. } => unreachable!("prepare is run-local"),
                     AuthorRequest::Write { .. }
+                    | AuthorRequest::Search { .. }
+                    | AuthorRequest::Patch { .. }
                     | AuthorRequest::Read { .. }
                     | AuthorRequest::RenderAnimation { .. }
                     | AuthorRequest::RenderPlot { .. } => {}
@@ -7236,9 +7514,10 @@ mod tests {
             reader: Reader,
         }
         impl ResidentStatePort for Port {
-            fn with_state<R>(&mut self, f: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> R {
-                f(&mut self.store, &mut self.reader)
-            }
+            fn submit_private<R>(&mut self, f: impl FnOnce(&mut MemoryStore) -> R) -> Result<R, ToolError> { Ok(f(&mut self.store)) }
+            fn read_live_reader<R>(&mut self, f: impl FnOnce(&Reader) -> R) -> Result<R, ToolError> { Ok(f(&self.reader)) }
+            fn apply_reader<R>(&mut self, f: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> Result<R, ToolError> { Ok(f(&mut self.store, &mut self.reader)) }
+            fn reader_input(&mut self, book: &Book, question: &str) -> crate::run_context::ReaderInputSnapshot { crate::run_context::ReaderInputSnapshot::capture(book, &self.reader, question) }
             fn author_presentation(
                 &mut self,
                 req: AuthorRequest,
@@ -7285,7 +7564,7 @@ mod tests {
                             serde_json::json!({"status":"version_saved","reference":reference});
                         result.delivered = Some(reference);
                     }
-                    AuthorRequest::Read { .. } | AuthorRequest::RenderAnimation { .. } => unreachable!(),
+                    AuthorRequest::Prepare { .. } | AuthorRequest::Search { .. } | AuthorRequest::Patch { .. } | AuthorRequest::Read { .. } | AuthorRequest::RenderAnimation { .. } => unreachable!(),
                 }
                 Ok(result)
             }
@@ -7370,9 +7649,10 @@ mod tests {
             delivered: usize,
         }
         impl ResidentStatePort for Port {
-            fn with_state<R>(&mut self, f: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> R {
-                f(&mut self.store, &mut self.reader)
-            }
+            fn submit_private<R>(&mut self, f: impl FnOnce(&mut MemoryStore) -> R) -> Result<R, ToolError> { Ok(f(&mut self.store)) }
+            fn read_live_reader<R>(&mut self, f: impl FnOnce(&Reader) -> R) -> Result<R, ToolError> { Ok(f(&self.reader)) }
+            fn apply_reader<R>(&mut self, f: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> Result<R, ToolError> { Ok(f(&mut self.store, &mut self.reader)) }
+            fn reader_input(&mut self, book: &Book, question: &str) -> crate::run_context::ReaderInputSnapshot { crate::run_context::ReaderInputSnapshot::capture(book, &self.reader, question) }
             fn author_presentation(
                 &mut self,
                 req: AuthorRequest,
@@ -7406,7 +7686,7 @@ mod tests {
                             revision: 1,
                         });
                     }
-                    AuthorRequest::Read { .. } | AuthorRequest::RenderPlot { .. } | AuthorRequest::RenderAnimation { .. } => unreachable!(),
+                    AuthorRequest::Prepare { .. } | AuthorRequest::Search { .. } | AuthorRequest::Patch { .. } | AuthorRequest::Read { .. } | AuthorRequest::RenderPlot { .. } | AuthorRequest::RenderAnimation { .. } => unreachable!(),
                 }
                 Ok(r)
             }
@@ -7447,7 +7727,7 @@ mod tests {
         let mut context = RunContext::new(
             new_session(),
             OuterConfig {
-                max_turns: 3,
+                max_turns: Some(3),
                 ..Default::default()
             },
             adapter.model_runtime_profile(),
@@ -7571,7 +7851,7 @@ mod tests {
         profile: ModelRuntimeProfile,
         chats: RefCell<VecDeque<AssistantTurn>>,
         seen_messages: RefCell<Vec<Vec<Message>>>,
-        compaction_requests: RefCell<Vec<CompactionRequest>>,
+        compaction_requests: RefCell<Vec<crate::compaction::RecordedCompactionInput>>,
         invalid_compaction_draft: bool,
     }
     impl FakeAdapter {
@@ -7917,7 +8197,8 @@ mod tests {
             req: CompletionRequest,
         ) -> Result<serde_json::Value, AdapterError> {
             let request =
-                serde_json::from_str::<CompactionRequest>(&req.user).map_err(|error| {
+                serde_json::Deserializer::from_str(&req.user)
+                    .into_iter::<crate::compaction::RecordedCompactionInput>().next().unwrap().map_err(|error| {
                     AdapterError {
                         message: format!("invalid compaction request in fixture: {error}"),
                     }
@@ -8123,7 +8404,7 @@ mod tests {
         planned_messages.push(Message::user(question));
         let (_, plan) = build_sample_request(
             &planned_messages,
-            &context_fragments,
+            &mut context_fragments,
             book,
             &ActiveToolResultLedger::default(),
             None,
@@ -8135,6 +8416,8 @@ mod tests {
             ArtifactExposureContext::no_overlay(),
             EvidenceState::Unlocated,
             &[],
+            None,
+            false,
         )
         .unwrap();
         let pressure = ActiveContextBudget::from_plan(&plan).pressure_tokens;
@@ -10078,7 +10361,7 @@ user_question=\"explain normalization and create a rich presentation\"";
             Vec::new(),
         );
         let cfg = OuterConfig {
-            max_turns: 1,
+            max_turns: Some(1),
             token_budget: 1,
         };
         let native_out = run_once(&native_stop, "native-stop", cfg);
@@ -14227,7 +14510,7 @@ user_question={}",
             "解释当前段落。",
             "t0",
             OuterConfig {
-                max_turns: 1,
+                max_turns: Some(1),
                 token_budget: 1_000_000,
             },
         )
@@ -14279,7 +14562,7 @@ user_question={}",
             "解释这本书的结构。",
             "t0",
             OuterConfig {
-                max_turns: 2,
+                max_turns: Some(2),
                 token_budget: 1_000_000,
             },
         )
@@ -14316,7 +14599,7 @@ user_question={}",
         assert!(second_request.contains("Remaining tool-loop samplings after this one: 0"));
         assert!(second_request.contains("Convergence required"));
         assert!(plans[2].tools.is_empty());
-        assert!(final_request.contains("budget is exhausted"));
+        assert!(final_request.contains("Stop reason: TURN_LIMIT_EXCEEDED"));
     }
 
     #[test]
@@ -14347,7 +14630,7 @@ user_question={}",
             "解释当前段落。",
             "t0",
             OuterConfig {
-                max_turns: 1,
+                max_turns: Some(1),
                 token_budget: 1_000_000,
             },
         )
@@ -14398,7 +14681,7 @@ user_question={}",
                 "解释当前段落。",
                 "t0",
                 OuterConfig {
-                    max_turns: 1,
+                    max_turns: Some(1),
                     token_budget: 1_000_000,
                 },
             )
@@ -14410,6 +14693,252 @@ user_question={}",
             );
             assert_eq!(error.category, "protocol", "{case}");
         }
+    }
+
+    #[test]
+    fn unbounded_default_continues_past_twelve_samplings_to_completion() {
+        let b = book_leaves(14);
+        let mut store = MemoryStore::open(tmp("unbounded-long-run")).unwrap();
+        let mut reader = Reader::new(&b, DEFAULT_RADIUS);
+        let mut chats = vec![turn_calls(vec![call(
+            "locate",
+            "book.search_text",
+            r#"{"query":"XXXXXXXXXX","page_size":50}"#,
+        )])];
+        for i in 1..=14 {
+            chats.push(turn_calls(vec![call(
+                &format!("read-{i}"),
+                "book.text",
+                &serde_json::json!({"lid":format!("1.{i}")}).to_string(),
+            )]));
+        }
+        chats.push(turn_final("已读完请求的全部段落。"));
+        let adapter = RequestPlanRecordingAdapter::new(chats, vec![]);
+        let mut messages = new_session();
+        let out = run(
+            &b,
+            &mut store,
+            &mut reader,
+            &adapter,
+            &mut messages,
+            "逐段读取全部十四段。",
+            "t0",
+            OuterConfig::default(),
+        )
+        .unwrap();
+        assert_eq!(out.turns, 16);
+        assert_eq!(out.trace.len(), 15);
+        assert!(!out.incomplete, "{:?}", out.warning);
+        assert!(out.warning.is_none());
+        assert_eq!(out.answer.as_deref(), Some("已读完请求的全部段落。"));
+        let plans = adapter.seen_plans.borrow();
+        assert_eq!(plans.len(), 16);
+        for plan in plans.iter() {
+            assert!(
+                !plan.tools.is_empty(),
+                "a progressing run must keep its tools"
+            );
+            let prompt = plan
+                .input
+                .iter()
+                .filter_map(|m| m.content.as_deref())
+                .collect::<Vec<_>>()
+                .join("\n");
+            assert!(!prompt.contains("Remaining tool-loop samplings"));
+            assert!(!prompt.contains("Convergence required"));
+        }
+    }
+
+    #[test]
+    fn unbounded_missing_delivery_stops_repeated_text_without_claiming_completion() {
+        let b = book();
+        let mut store = MemoryStore::open(tmp("unbounded-text-stall")).unwrap();
+        let mut reader = Reader::new(&b, DEFAULT_RADIUS);
+        let snapshot = default_profile_snapshot(&b, &store, "t0");
+        let adapter = RequestPlanRecordingAdapter::new(
+            vec![turn_final("页面已完成。"), turn_final("页面已完成。")],
+            vec![],
+        );
+        let mut context = RunContext::new(
+            new_session(),
+            OuterConfig::default(),
+            adapter.model_runtime_profile(),
+        );
+        context.goal = Some(crate::goal::ResidentGoal::new(
+            "g".into(),
+            "t1".into(),
+            "把这一章富文本演示给我看".into(),
+        ));
+        let out = run_context(
+            &b,
+            &mut BorrowedResidentState {
+                store: &mut store,
+                reader: &mut reader,
+            },
+            &adapter,
+            &mut context,
+            &snapshot,
+            &ResidentTurnResources::default(),
+            None,
+            &mut EphemeralCompactionCheckpointSink::default(),
+            "把这一章富文本演示给我看",
+            "t0",
+        )
+        .unwrap();
+        assert_eq!(out.turns, 2);
+        assert_eq!(adapter.seen_plans.borrow().len(), 2);
+        assert!(out.incomplete);
+        assert_eq!(out.warning.as_deref(), Some("AGENT_NO_PROGRESS"));
+        assert!(out.answer.as_deref().unwrap().contains("尚未完成"));
+        assert!(context.goal.as_ref().unwrap().objective_gap(0, 0).is_some());
+    }
+
+    #[test]
+    fn unbounded_delivery_retry_allows_real_progress_and_reader_delivery() {
+        use crate::goal::{GoalRequirement, GoalVerification, ResidentGoal};
+        let b = book_leaves(2);
+        let mut store = MemoryStore::open(tmp("unbounded-delivery-recovery")).unwrap();
+        let mut reader = Reader::new(&b, 1);
+        let snapshot = default_profile_snapshot(&b, &store, "t0");
+        let adapter = RequestPlanRecordingAdapter::new(
+            vec![
+                turn_final("已经跳转。"),
+                turn_calls(vec![call(
+                    "locate",
+                    "book.search_text",
+                    r#"{"query":"XXXXXXXXXX","page_size":50}"#,
+                )]),
+                turn_final("已经跳转。"),
+                turn_calls(vec![call("read-2", "book.text", r#"{"lid":"1.2"}"#)]),
+                turn_calls(vec![call("goto", "reader.gotoLid", r#"{"lid":"1.2"}"#)]),
+                turn_final("已跳转到第二段。"),
+            ],
+            vec![],
+        );
+        let mut context = RunContext::new(
+            new_session(),
+            OuterConfig::default(),
+            adapter.model_runtime_profile(),
+        );
+        let mut goal = ResidentGoal::new(
+            "g".into(),
+            "t1".into(),
+            "阅读 1.1 和 1.2，再跳转到 1.2".into(),
+        );
+        goal.requirements = vec![GoalRequirement {
+            id: "goto".into(),
+            description: "Jump to 1.2".into(),
+            basis_turn_id: "t1".into(),
+            verification: GoalVerification::ReaderAction,
+        }];
+        context.goal = Some(goal);
+        let out = run_context(
+            &b,
+            &mut BorrowedResidentState {
+                store: &mut store,
+                reader: &mut reader,
+            },
+            &adapter,
+            &mut context,
+            &snapshot,
+            &ResidentTurnResources::default(),
+            None,
+            &mut EphemeralCompactionCheckpointSink::default(),
+            "阅读 1.1 和 1.2，再跳转到 1.2",
+            "t0",
+        )
+        .unwrap();
+        assert_eq!(out.turns, 6);
+        assert!(!out.incomplete, "{:?}", out.warning);
+        assert!(out.warning.is_none());
+        assert!(!out.effects.is_empty());
+        assert_eq!(reader.state().viewport.anchor_lid, "1.2");
+    }
+
+    #[test]
+    fn unbounded_tool_stall_finalization_names_the_actual_stop_reason() {
+        let b = book();
+        let mut store = MemoryStore::open(tmp("unbounded-tool-stall")).unwrap();
+        let mut reader = Reader::new(&b, DEFAULT_RADIUS);
+        let adapter = RequestPlanRecordingAdapter::new(
+            vec![
+                turn_calls(vec![call("first", "book.manifest", "{}")]),
+                turn_calls(vec![call("repeat", "book.manifest", "{}")]),
+                turn_final("无法继续获取所需资料。"),
+            ],
+            vec![],
+        );
+        let mut messages = new_session();
+        let out = run(
+            &b,
+            &mut store,
+            &mut reader,
+            &adapter,
+            &mut messages,
+            "查看资料",
+            "t0",
+            OuterConfig::default(),
+        )
+        .unwrap();
+        assert!(out.incomplete);
+        assert_eq!(out.warning.as_deref(), Some("AGENT_NO_PROGRESS"));
+        let plans = adapter.seen_plans.borrow();
+        let final_plan = plans.last().unwrap();
+        assert!(final_plan.tools.is_empty());
+        let prompt = final_plan
+            .input
+            .iter()
+            .filter_map(|m| m.content.as_deref())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(prompt.contains("Stop reason: AGENT_NO_PROGRESS"));
+        assert!(!prompt.contains("loop budget is exhausted"));
+    }
+
+    #[test]
+    fn unbounded_delivery_stall_counts_text_and_unchanged_tools_together() {
+        let b = book();
+        let mut store = MemoryStore::open(tmp("unbounded-mixed-stall")).unwrap();
+        let mut reader = Reader::new(&b, DEFAULT_RADIUS);
+        let snapshot = default_profile_snapshot(&b, &store, "t0");
+        let adapter = RequestPlanRecordingAdapter::new(
+            vec![
+                turn_calls(vec![call("read", "book.text", r#"{"lid":"1.1"}"#)]),
+                turn_calls(vec![call("repeat", "book.text", r#"{"lid":"1.1"}"#)]),
+                turn_final("页面已完成。"),
+            ],
+            vec![],
+        );
+        let mut context = RunContext::new(
+            new_session(),
+            OuterConfig::default(),
+            adapter.model_runtime_profile(),
+        );
+        context.goal = Some(crate::goal::ResidentGoal::new(
+            "g".into(),
+            "t1".into(),
+            "把这一章富文本演示给我看".into(),
+        ));
+        let out = run_context(
+            &b,
+            &mut BorrowedResidentState {
+                store: &mut store,
+                reader: &mut reader,
+            },
+            &adapter,
+            &mut context,
+            &snapshot,
+            &ResidentTurnResources::default(),
+            None,
+            &mut EphemeralCompactionCheckpointSink::default(),
+            "把这一章富文本演示给我看",
+            "t0",
+        )
+        .unwrap();
+        assert_eq!(out.turns, 3);
+        assert!(out.incomplete);
+        assert_eq!(out.warning.as_deref(), Some("AGENT_NO_PROGRESS"));
+        assert!(out.answer.as_deref().unwrap().contains("尚未完成"));
     }
 
     // max_turns 触顶与活动上下文容量是不同停机原因。
@@ -14425,7 +14954,7 @@ user_question={}",
         ];
         let fake = FakeAdapter::new(chats, vec![]);
         let cfg = OuterConfig {
-            max_turns: 2,
+            max_turns: Some(2),
             token_budget: 1_000_000,
         };
         let mut reader = Reader::new(&b, DEFAULT_RADIUS);
@@ -14472,7 +15001,7 @@ user_question={}",
             "short question",
             "t0",
             OuterConfig {
-                max_turns: 2,
+                max_turns: Some(2),
                 token_budget: 1,
             },
         )
@@ -14596,6 +15125,74 @@ user_question={}",
         assert!(messages.iter().any(|message| {
             message.role == Role::Tool && message.tool_call_id.as_deref() == Some("mid-read")
         }));
+    }
+
+    #[test]
+    fn auto_compaction_precheck_redaction_is_committed_only_after_install() {
+        struct CleaningSink {
+            installed: Option<Vec<Message>>,
+            fail_install: bool,
+        }
+        impl CompactionCheckpointSink for CleaningSink {
+            fn prepare_persisted_messages(&mut self, messages: &mut [Message]) {
+                crate::presentation_author::redact_history(messages);
+            }
+            fn install(&mut self, _: &CompactionCheckpoint, messages: &[Message]) -> Result<(), CompactionError> {
+                if self.fail_install {
+                    return Err(CompactionError { error_code: "CHECKPOINT_SAVE_FAILED".into(), message: "fixture".into() });
+                }
+                self.installed = Some(messages.to_vec());
+                Ok(())
+            }
+        }
+        let b = book();
+        for case in ["not_applicable", "generation_failed", "install_failed", "installed", "already_covered"] {
+            let profile = compaction_profile("precheck-redaction");
+            let adapter = if case == "generation_failed" { AutoCompactionAdapter::failing(profile.clone()) }
+                else { AutoCompactionAdapter::new(profile.clone(), Vec::new()) };
+            let mut messages = if case == "not_applicable" { new_session() }
+                else { completed_history("old", 12_000) };
+            messages.push(Message::user("current question"));
+            messages.push(Message {
+                role: Role::Assistant, content: None, provider_continuation: None, tool_call_id: None,
+                tool_calls: vec![call("prepare", "presentation.author", r#"{"operation":"prepare","phase":"local","framework":"ACTIVE_DESIGN_DATA","focus":"keep this current history intact","needs":[]}"#)],
+            });
+            messages.push(Message {
+                role: Role::Tool, content: Some(r#"{"status":"authoring_context_prepared"}"#.into()),
+                tool_calls: vec![], tool_call_id: Some("prepare".into()), provider_continuation: None,
+            });
+            let original = messages.clone();
+            let budget = ActiveContextBudget {
+                estimated_input_tokens: 90_000, reserved_tokens: 12_000, pressure_tokens: 102_000,
+                high_watermark_tokens: 96_000, target_input_tokens: 84_000, over_high_watermark: true, fits: true,
+            };
+            let mut sink = CleaningSink { installed: None, fail_install: case == "install_failed" };
+            let mut checkpoint = None;
+            let result = maybe_auto_compact(CompactionPhase::MidTurn, budget, &b, &mut messages, &adapter,
+                &profile, &ContextFragmentLedger::default(), &[], &mut checkpoint, &mut sink);
+            match case {
+                "installed" | "already_covered" => {
+                    assert!(result.unwrap());
+                    assert_eq!(messages, sink.installed.as_ref().unwrap().as_slice());
+                    assert_ne!(messages, original);
+                    assert!(checkpoint.is_some());
+                    if case == "already_covered" {
+                        messages = original.clone();
+                        let result = maybe_auto_compact(CompactionPhase::MidTurn, budget, &b, &mut messages, &adapter,
+                            &profile, &ContextFragmentLedger::default(), &[], &mut checkpoint, &mut sink);
+                        assert!(!result.unwrap());
+                        assert_eq!(messages, original, "covered precheck must not change active history");
+                    }
+                }
+                _ => {
+                    if case == "not_applicable" { assert!(!result.unwrap()); }
+                    else { assert!(result.is_err()); }
+                    assert_eq!(messages, original, "{case}: precheck must preserve exact active history");
+                    assert!(checkpoint.is_none());
+                    assert!(sink.installed.is_none());
+                }
+            }
+        }
     }
 
     #[test]
@@ -15006,7 +15603,7 @@ user_question={}",
         let registry = resident_tool_registry();
         let (_, legacy_unseeded_plan) = build_sample_request(
             &planned_messages,
-            &context_fragments,
+            &mut context_fragments,
             &b,
             &ActiveToolResultLedger::default(),
             None,
@@ -15018,6 +15615,8 @@ user_question={}",
             ArtifactExposureContext::no_overlay(),
             EvidenceState::Unlocated,
             &[],
+            None,
+            false,
         )
         .unwrap();
         profile.context_window_tokens = legacy_unseeded_plan
@@ -15026,7 +15625,7 @@ user_question={}",
             .saturating_add(1);
         let (_, legacy_unseeded_plan) = build_sample_request(
             &planned_messages,
-            &context_fragments,
+            &mut context_fragments,
             &b,
             &ActiveToolResultLedger::default(),
             None,
@@ -15038,6 +15637,8 @@ user_question={}",
             ArtifactExposureContext::no_overlay(),
             EvidenceState::Unlocated,
             &[],
+            None,
+            false,
         )
         .unwrap();
         assert!(legacy_unseeded_plan.active_context.fits);
@@ -15081,7 +15682,7 @@ user_question={}",
         let evidence_state = EvidenceState::UserProvided;
         let (exposure_plan, request_plan) = build_sample_request(
             &new_session(),
-            &ContextFragmentLedger::default(),
+            &mut ContextFragmentLedger::default(),
             &b,
             &ActiveToolResultLedger::default(),
             None,
@@ -15093,6 +15694,8 @@ user_question={}",
             artifact,
             evidence_state,
             &["book.text"],
+            None,
+            false,
         )
         .unwrap();
 
@@ -16495,7 +17098,7 @@ user_question={}",
             turn_final("这一章的整体关系如下。"),
         ], vec![]);
         let out = run(&book, &mut store, &mut reader, &adapter, &mut messages,
-            fixture["user"].as_str().unwrap(), "t0", OuterConfig { max_turns: 1, ..Default::default() }).unwrap();
+            fixture["user"].as_str().unwrap(), "t0", OuterConfig { max_turns: Some(1), ..Default::default() }).unwrap();
         assert!(out.incomplete);
         assert_eq!(out.warning.as_deref(), Some(TURN_LIMIT_EXCEEDED));
         assert_eq!(out.answer.as_deref(), Some("这一章的整体关系如下。"));
@@ -16504,24 +17107,30 @@ user_question={}",
 
     #[test]
     fn g2_goal_update_is_direct_in_native_and_react_and_g3_projection_keeps_gap() {
+        let working = serde_json::json!({
+            "operation":"working", "focus":"chapter page", "next_move":"deliver",
+            "items":[{"id":"page","description":"Make the chapter page","status":"completed"}]
+        });
         let args = serde_json::json!({
             "operation":"refine",
             "interpretation":"Present the whole chapter as a rich page",
             "requirements":[{"id":"page","description":"Deliver the chapter overview page","basis_turn_id":"t1","verification":"presentation_delivery"}]
         });
-        let native = FakeAdapter::new(vec![
+        let native = RequestPlanRecordingAdapter::new(vec![
+            turn_calls(vec![call("work", "goal.update", &working.to_string())]),
             turn_calls(vec![call("goal", "goal.update", &args.to_string())]),
             turn_final("材料已收集，页面尚未交付。"),
         ], vec![]);
+        let react_work = serde_json::json!({"tool_calls":[{"name":"goal.update","arguments":working}]}).to_string();
         let react_call = serde_json::json!({"tool_calls":[{"name":"goal.update","arguments":args}]}).to_string();
         let react_final = serde_json::json!({"final":"材料已收集，页面尚未交付。"}).to_string();
-        let react = ScriptedReActAdapter::new(vec![&react_call, &react_final], vec![]);
+        let react = ScriptedReActAdapter::new(vec![&react_work, &react_call, &react_final], vec![]);
         let run_once = |adapter: &dyn ModelAdapter, suffix: &str| {
             let book = book();
             let mut store = MemoryStore::open(tmp(&format!("goal-update-{suffix}"))).unwrap();
             let mut reader = Reader::new(&book, DEFAULT_RADIUS);
             let snapshot = default_profile_snapshot(&book, &store, "t0");
-            let mut context = RunContext::new(new_session(), OuterConfig { max_turns: 2, ..Default::default() }, adapter.model_runtime_profile());
+            let mut context = RunContext::new(new_session(), OuterConfig { max_turns: Some(3), ..Default::default() }, adapter.model_runtime_profile());
             context.goal = Some(crate::goal::ResidentGoal::new("g".into(), "t1".into(), "做网页".into()));
             let out = run_context(&book, &mut BorrowedResidentState { store: &mut store, reader: &mut reader },
                 adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,
@@ -16531,12 +17140,39 @@ user_question={}",
         let (native_out, native_context) = run_once(&native, "native");
         let (react_out, react_context) = run_once(&react, "react");
         assert_eq!(native_out.answer, react_out.answer);
+        assert!(native_out.incomplete && react_out.incomplete, "completed items cannot bypass the actual delivery gap");
         assert_eq!(native_out.trace[0].tool, "goal.update");
         assert_eq!(react_out.trace[0].tool, "goal.update");
         for context in [&native_context, &react_context] {
             let goal = context.goal.as_ref().unwrap();
             assert_eq!(goal.requirements[0].verification, crate::goal::GoalVerification::PresentationDelivery);
             assert!(goal.projection(1, 0, 0).contains("presentation delivery still required"));
+            assert_eq!(goal.working.items[0].status, crate::goal::GoalWorkItemStatus::Completed);
+            assert_eq!(goal.status, crate::goal::GoalStatus::Open);
+        }
+        let plans = native.seen_plans.borrow();
+        for plan in &plans[1..] {
+            let current = plan.input.iter().rev().filter_map(|m| m.content.as_deref())
+                .find(|s| s.contains("key=agent.resident_goal\n")).unwrap();
+            assert!(current.contains("\"id\":\"page\""));
+            assert!(current.contains("\"status\":\"completed\""));
+            assert!(current.contains("presentation delivery still required"));
+        }
+        let schema = &plans[0].tools.iter().find(|t| t.name == "goal.update").unwrap().parameters;
+        assert_eq!(schema["properties"]["items"]["items"]["properties"]["status"]["enum"], serde_json::json!(["pending","in_progress","completed"]));
+        let plan = plans.last().unwrap();
+        let (native, _) = crate::native_chat_request_projection("ex13-controlled", plan);
+        let react = crate::react_chat_request_projection("ex13-controlled", plan);
+        for wire in [&native, &react] {
+            let text = wire["messages"].as_array().unwrap().iter().filter_map(|m| m["content"].as_str()).collect::<Vec<_>>().join("\n");
+            assert!(text.contains("Work items (method/progress only): [{\"id\":\"page\""));
+        }
+        if let Some(directory) = std::env::var_os("EX13_GOAL_RECORDING_DIR") {
+            let directory = std::path::PathBuf::from(directory);
+            std::fs::create_dir_all(&directory).unwrap();
+            for (name, value) in [("native", native), ("react", react)] {
+                std::fs::write(directory.join(format!("{name}.json")), serde_json::to_vec_pretty(&serde_json::json!({"request":value,"usage":null})).unwrap()).unwrap();
+            }
         }
     }
 
@@ -16549,9 +17185,13 @@ user_question={}",
         let adapter = RequestPlanRecordingAdapter::new(vec![turn_final("继续处理。")], vec![]);
         let mut messages = new_session();
         messages.push(Message { provider_continuation: None, role: Role::System, content: Some("old compacted active_goal: only a text summary is needed".into()), tool_calls: vec![], tool_call_id: None });
-        let mut context = RunContext::new(messages, OuterConfig { max_turns: 1, ..Default::default() }, adapter.model_runtime_profile());
+        let mut context = RunContext::new(messages, OuterConfig { max_turns: Some(1), ..Default::default() }, adapter.model_runtime_profile());
         let mut goal = crate::goal::ResidentGoal::new("g".into(), "t1".into(), "做网页".into());
         goal.requirements = vec![crate::goal::GoalRequirement { id: "page".into(), description: "Deliver a chapter page".into(), basis_turn_id: "t1".into(), verification: crate::goal::GoalVerification::PresentationDelivery }];
+        goal.working.items = vec![
+            crate::goal::GoalWorkItem { id: "prototype".into(), description: "Key prototype ready".into(), status: crate::goal::GoalWorkItemStatus::Completed },
+            crate::goal::GoalWorkItem { id: "remaining".into(), description: "Expand the rest of the chapter".into(), status: crate::goal::GoalWorkItemStatus::Pending },
+        ];
         context.goal = Some(serde_json::from_str(&serde_json::to_string(&goal).unwrap()).unwrap());
         run_context(&book, &mut BorrowedResidentState { store: &mut store, reader: &mut reader },
             &adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,
@@ -16560,6 +17200,9 @@ user_question={}",
         let first = plans[0].input.iter().filter_map(|message| message.content.as_deref()).collect::<Vec<_>>().join("\n");
         assert!(first.contains("resident_goal.v1"));
         assert!(first.contains("Deliver a chapter page"));
+        assert!(first.contains("Expand the rest of the chapter"));
+        assert!(first.contains("\"status\":\"pending\""));
+        assert_eq!(context.goal.as_ref().unwrap().working, goal.working);
         assert!(first.contains("uncommitted presentation candidates=0"));
         assert!(first.contains("presentation delivery still required"));
         assert!(context.presentation_candidates.is_empty());
@@ -16575,7 +17218,7 @@ user_question={}",
             turn_calls(vec![call("read", "book.text", r#"{"lid":"1.1"}"#)]),
             turn_final("页面尚未交付。"),
         ], vec![]);
-        let mut context = RunContext::new(new_session(), OuterConfig { max_turns: 2, ..Default::default() }, adapter.model_runtime_profile());
+        let mut context = RunContext::new(new_session(), OuterConfig { max_turns: Some(2), ..Default::default() }, adapter.model_runtime_profile());
         let mut goal = crate::goal::ResidentGoal::new("g".into(), "t1".into(), "做网页".into());
         goal.requirements = vec![crate::goal::GoalRequirement { id: "page".into(), description: "Deliver a chapter page".into(), basis_turn_id: "t1".into(), verification: crate::goal::GoalVerification::PresentationDelivery }];
         context.goal = Some(goal);
@@ -16596,7 +17239,7 @@ user_question={}",
         let mut reader = Reader::new(&book, DEFAULT_RADIUS);
         let snapshot = default_profile_snapshot(&book, &store, "t0");
         let adapter = RequestPlanRecordingAdapter::new(vec![turn_final("页面已完成。"), turn_final("仍在处理。")], vec![]);
-        let mut context = RunContext::new(new_session(), OuterConfig { max_turns: 2, ..Default::default() }, adapter.model_runtime_profile());
+        let mut context = RunContext::new(new_session(), OuterConfig { max_turns: Some(2), ..Default::default() }, adapter.model_runtime_profile());
         context.goal = Some(crate::goal::ResidentGoal::new("g".into(), "t1".into(), "把这一章富文本演示给我看".into()));
         let out = run_context(&book, &mut BorrowedResidentState { store: &mut store, reader: &mut reader },
             &adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,
@@ -16619,7 +17262,7 @@ user_question={}",
             turn_calls(vec![call("read", "book.manifest", "{}")]),
             turn_final("页面已交付，下面是本章总览。"),
         ], vec![]);
-        let mut context = RunContext::new(new_session(), OuterConfig { max_turns: 1, ..Default::default() }, adapter.model_runtime_profile());
+        let mut context = RunContext::new(new_session(), OuterConfig { max_turns: Some(1), ..Default::default() }, adapter.model_runtime_profile());
         context.goal = Some(crate::goal::ResidentGoal::new("g".into(), "t1".into(), "把这一章富文本演示给我看".into()));
         context.delivered_presentations.push(crate::presentation::PresentationRef { presentation_id: "p1".into(), revision: 1 });
         let out = run_context(&book, &mut BorrowedResidentState { store: &mut store, reader: &mut reader },
@@ -16640,7 +17283,7 @@ user_question={}",
             turn_calls(vec![call("read", "book.manifest", "{}")]),
             turn_final("目前只能给出部分解释。"),
         ], vec![]);
-        let mut context = RunContext::new(new_session(), OuterConfig { max_turns: 1, ..Default::default() }, adapter.model_runtime_profile());
+        let mut context = RunContext::new(new_session(), OuterConfig { max_turns: Some(1), ..Default::default() }, adapter.model_runtime_profile());
         context.goal = Some(crate::goal::ResidentGoal::new("g".into(), "t1".into(), "解释这个术语".into()));
         let out = run_context(&book, &mut BorrowedResidentState { store: &mut store, reader: &mut reader },
             &adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,
@@ -16659,7 +17302,7 @@ user_question={}",
             turn_calls(vec![call("read", "book.manifest", "{}")]),
             turn_calls(vec![call("forbidden", "book.manifest", "{}")]),
         ], vec![]);
-        let mut context = RunContext::new(new_session(), OuterConfig { max_turns: 1, ..Default::default() }, adapter.model_runtime_profile());
+        let mut context = RunContext::new(new_session(), OuterConfig { max_turns: Some(1), ..Default::default() }, adapter.model_runtime_profile());
         context.goal = Some(crate::goal::ResidentGoal::new("g".into(), "t1".into(), "把这一章富文本演示给我看".into()));
         let out = run_context(&book, &mut BorrowedResidentState { store: &mut store, reader: &mut reader },
             &adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,

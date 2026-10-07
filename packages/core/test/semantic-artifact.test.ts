@@ -103,6 +103,12 @@ describe("H0 HERO semantic artifact hash utility contract", () => {
     };
 
     expect(semanticArtifactMatches(artifact, expected)).toBe(true);
+    expect(semanticArtifactMatches(artifact, { ...expected, target: { ...TARGET, workspace_dir: "D:/moved" } })).toBe(true);
+    for (const target of [
+      { ...TARGET, book_id: "another-book" },
+      { ...TARGET, input_fingerprint: "other-source" },
+      { ...TARGET, profile_id: "paper" as const },
+    ]) expect(semanticArtifactMatches(artifact, { ...expected, target })).toBe(false);
     expect(semanticArtifactMatches(artifact, {
       ...expected,
       input_hash: "e".repeat(64),

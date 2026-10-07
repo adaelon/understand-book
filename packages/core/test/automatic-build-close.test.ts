@@ -109,6 +109,7 @@ describe("BR9 publication-aware stage close", () => {
       value.target,
       "pass1",
       outcome.publication.transaction_id,
+      outcome.postcondition.freshness_digest,
     ), "utf8")).toContain(outcome.publication.receipt_digest);
   });
 
@@ -220,6 +221,7 @@ describe("BR9 publication-aware stage close", () => {
       value.target,
       "pass1",
       first.publication.transaction_id,
+      first.postcondition.freshness_digest,
     );
     const { policy_contracts: _policyContracts, ...commonPostcondition } = first.postcondition;
     const predecessor = {
@@ -252,6 +254,7 @@ describe("BR9 publication-aware stage close", () => {
       value.target,
       "pass1",
       first.publication.transaction_id,
+      first.postcondition.freshness_digest,
     );
     const conflicting: AutomaticBuildStageCloseResultV2 = {
       ...first,

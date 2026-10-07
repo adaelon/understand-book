@@ -202,7 +202,8 @@ impl ObservabilityConfig {
             workspace_id: get("LANGSMITH_WORKSPACE_ID")
                 .map(|value| value.trim().to_owned())
                 .filter(|value| !value.is_empty()),
-            request_timeout: Duration::from_secs(2),
+            // Cross-region export runs off the answer path; allow TLS/API latency.
+            request_timeout: Duration::from_secs(10),
             shutdown_timeout: Duration::from_secs(2),
             queue_items: 1_024,
             queue_bytes: 4 * 1024 * 1024,

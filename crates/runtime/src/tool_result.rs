@@ -1,10 +1,10 @@
 use crate::tool_registry::{ToolOutputPolicy, ToolResultPolicy};
-use crate::{Message, Role};
+use crate::{Message, Role, ToolCall};
 use book_tool_contracts::{validate_input, BookToolId, BookToolInput};
 use read_tools::{Book, EvidenceRange, SearchTextResult};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub const TOOL_RESULT_ENVELOPE_VERSION: &str = "tool_result_envelope.v1";
 pub const ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES: usize = 48 * 1024;
@@ -510,13 +510,49 @@ fn project_selected_result(arguments: &str, raw: &Value, limit: usize) -> ToolRe
     }
 }
 
+// Large whole-document DOM excerpts must not evict the observed reading positions.
+fn project_preview(arguments: &str, raw: &Value, limit: usize) -> ToolResultDraft {
+    let mut body = raw.clone();
+    if let Some(observations) = body["observations"].as_array_mut() {
+        for observation in observations {
+            let visible = observation["dom"]["visible_text"].clone();
+            observation.as_object_mut().unwrap().remove("dom");
+            observation.as_object_mut().unwrap().remove("layout");
+            observation["visible_text"] = visible;
+        }
+    }
+    // Only viewport text is expendable here; action/position/issue bindings stay intact.
+    while json_len(&body) > limit {
+        let changed = body["observations"].as_array_mut().is_some_and(|observations| {
+            observations.iter_mut().any(|o| truncate_one_string(&mut o["visible_text"], None))
+        });
+        if !changed { break; }
+    }
+    let fits = json_len(&body) <= limit;
+    ToolResultDraft {
+        status: if fits && raw.get("error_code").is_some() { ToolResultStatus::Error } else { ToolResultStatus::Partial },
+        model_body: if fits { body } else { bounded_value(json!({"error_code":"PRESENTATION_PREVIEW_BUDGET","message":"Preview positions and issues exceed the result budget; use fewer actions per preview."}), limit, &[]) },
+        truncated: true,
+        continuation: Some(refine_continuation("presentation.author", arguments, "Use fewer actions or read_selector for the relevant visible region; full DOM/layout was omitted.")),
+        evidence_arguments: arguments.into(),
+    }
+}
+
 // Editable source must remain a contiguous prefix; generic string truncation would
 // leave next_offset pointing past omitted code.
 fn project_presentation_source(arguments: &str, raw: &Value, limit: usize) -> ToolResultDraft {
     let source: Vec<char> = raw["text"].as_str().unwrap_or_default().chars().collect();
     let offset = raw["offset"].as_u64().unwrap_or_default() as usize;
-    let total = raw["total_characters"].as_u64().unwrap_or_default() as usize;
+    let total = raw.get("end_offset").unwrap_or(&raw["total_characters"]).as_u64().unwrap_or_default() as usize;
     let mut body = raw.clone();
+    // A file read asks for editable source. Repeating the page's full prose in
+    // each bounded chunk starved real EX11 revisions of code. The metadata read
+    // (no explicit file) still returns it; keep all asset and state metadata here.
+    if serde_json::from_str::<Value>(arguments).ok()
+        .is_some_and(|args| args.get("file").and_then(Value::as_str).is_some())
+    {
+        if let Some(object) = body.as_object_mut() { object.remove("readable_content"); }
+    }
     let mut low = 0;
     let mut high = source.len();
     while low < high {
@@ -542,6 +578,7 @@ fn project_presentation_source(arguments: &str, raw: &Value, limit: usize) -> To
     let continuation = (offset + low < total).then(|| {
         let mut next: Value = serde_json::from_str(arguments).unwrap_or_else(|_| json!({}));
         next["offset"] = json!(offset + low);
+        if raw.get("end_offset").is_some() { next["length"] = json!(total - offset - low); }
         ToolContinuation::NextCall {
             tool: "presentation.author".into(), arguments: next,
             reason: "continue editable source at the first omitted character".into(),
@@ -551,6 +588,27 @@ fn project_presentation_source(arguments: &str, raw: &Value, limit: usize) -> To
         status: ToolResultStatus::Partial, model_body: body, truncated: true,
         continuation, evidence_arguments: arguments.into(),
     }
+}
+
+fn project_presentation_search(arguments: &str, raw: &Value, limit: usize) -> ToolResultDraft {
+    let mut body = raw.clone();
+    while json_len(&body) > limit {
+        let Some(omitted) = body["matches"].as_array_mut().and_then(Vec::pop) else {
+            let guidance = "Search context exceeds the remaining output budget; retry separately or use a shorter query.";
+            return ToolResultDraft { status:ToolResultStatus::Partial,
+                model_body:bounded_value(json!({"error_code":"PRESENTATION_SOURCE_BUDGET","message":guidance}),limit,&[]),
+                truncated:true,continuation:Some(refine_continuation("presentation.author",arguments,guidance)),evidence_arguments:arguments.into() };
+        };
+        body["next_offset"] = omitted["offset"].clone();
+    }
+    let continuation = body["next_offset"].as_u64().map(|offset| {
+        let mut next: Value = serde_json::from_str(arguments).unwrap_or_else(|_| json!({}));
+        next["offset"] = json!(offset);
+        ToolContinuation::NextCall { tool:"presentation.author".into(), arguments:next, reason:"continue source search at the first omitted match".into() }
+    });
+    let truncated = body != *raw;
+    ToolResultDraft {status:if truncated {ToolResultStatus::Partial} else {ToolResultStatus::Ok}, model_body:body,
+        truncated,continuation,evidence_arguments:arguments.into()}
 }
 
 pub(crate) fn project_tool_result(
@@ -574,8 +632,14 @@ pub(crate) fn project_tool_result(
     if tool == "presentation.author" && raw.get("reading").is_some_and(|value| !value.is_null()) {
         return project_selected_result(arguments, &raw, limit);
     }
+    if tool == "presentation.author" && raw["observations"].is_array() && json_len(&raw) > limit {
+        return project_preview(arguments, &raw, limit);
+    }
     if raw.get("error_code").and_then(Value::as_str).is_some() {
         return project_error(arguments, &raw, limit);
+    }
+    if tool == "presentation.author" && raw["status"] == "source_matches" {
+        return project_presentation_search(arguments, &raw, limit);
     }
     if json_len(&raw) <= limit {
         return ToolResultDraft {
@@ -602,6 +666,53 @@ struct ActiveToolResult {
     sampled: bool,
     retain_model_body: bool,
     sequence: u64,
+    saved_author_call: Option<SavedAuthorCall>,
+}
+
+/// A current-run save receipt is the authority for this model-only projection.
+/// Keep the latest patch's exact edits until an observed child save supplies the
+/// next modification context. Independent writes never imply supersession.
+#[derive(Debug, Clone)]
+struct SavedAuthorCall {
+    candidate_id: String,
+    parent_candidate_id: Option<String>,
+    arguments: Value,
+}
+
+impl SavedAuthorCall {
+    fn from_result(call: &ToolCall, envelope: &ToolResultEnvelope) -> Option<Self> {
+        if call.name != "presentation.author"
+            || envelope.status != ToolResultStatus::Ok
+            || envelope.model_body["status"] != "candidate_saved"
+        {
+            return None;
+        }
+        let candidate_id = envelope.model_body["candidate_id"].as_str()
+            .filter(|id| !id.is_empty())?.to_owned();
+        let mut arguments: Value = serde_json::from_str(&call.arguments).ok()?;
+        if !matches!(arguments["operation"].as_str(), Some("write" | "patch")) {
+            return None;
+        }
+        let parent_candidate_id = arguments["candidate_id"].as_str().map(str::to_owned);
+        let object = arguments.as_object_mut()?;
+        let mut omitted = Vec::new();
+        for field in ["html", "readable_content"] {
+            if object.remove(field).is_some() { omitted.push(field); }
+        }
+        object.insert("saved_source".into(), json!({
+            "candidate_id":candidate_id, "file":"index.html", "omitted_fields":omitted,
+            "read":{"operation":"read","candidate_id":candidate_id},
+            "note":"Saved source omitted from model history after its successful receipt was sampled. Read this candidate in the current run for source and readable_content; this locator grants no preview or delivery eligibility."
+        }));
+        Some(Self { candidate_id, parent_candidate_id, arguments })
+    }
+
+    fn retire_edits(&mut self) {
+        if let Some(edits) = self.arguments.as_object_mut().unwrap().remove("edits") {
+            self.arguments["saved_source"]["applied_edits"] = json!(edits.as_array().map_or(0, Vec::len));
+            self.arguments["saved_source"]["omitted_fields"].as_array_mut().unwrap().push(json!("edits"));
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -611,6 +722,20 @@ pub(crate) struct ActiveToolResultLedger {
 }
 
 impl ActiveToolResultLedger {
+    pub fn project_result(&mut self, tool: &str, arguments: &str, raw: &str, mut policy: ToolOutputPolicy, book: &Book) -> ToolResultDraft {
+        // An editable file can use the existing active-result budget; a small
+        // result must not evict earlier source just to reserve its maximum size.
+        if tool == "presentation.author" && serde_json::from_str::<Value>(arguments).ok().is_some_and(|v| v["operation"] == "read") {
+            policy.max_model_body_bytes = ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES;
+        }
+        let projected = project_tool_result(tool, arguments, raw, policy, ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES, book);
+        let needed = json_len(&projected.model_body);
+        self.make_room_for(needed);
+        let available = self.remaining_model_body_bytes();
+        if needed <= available { projected }
+        else { project_tool_result(tool, arguments, raw, policy, available, book) }
+    }
+
     pub fn remaining_model_body_bytes(&self) -> usize {
         let fresh: usize = self
             .by_call_id
@@ -649,11 +774,32 @@ impl ActiveToolResultLedger {
                 sampled: false,
                 retain_model_body: true,
                 sequence,
+                saved_author_call: None,
             },
         );
     }
 
+    pub fn insert_call(&mut self, call: &ToolCall, envelope: ToolResultEnvelope) {
+        let saved_author_call = SavedAuthorCall::from_result(call, &envelope);
+        self.insert(call.id.clone(), envelope);
+        self.by_call_id.get_mut(&call.id).unwrap().saved_author_call = saved_author_call;
+    }
+
     pub fn project_messages(&self, messages: &mut [Message]) {
+        // Only project complete pairs still present in this history window.
+        // The ledger is run-local and is never reconstructed from old messages.
+        let paired: HashSet<_> = messages.iter().filter(|m| m.role == Role::Tool)
+            .filter_map(|m| m.tool_call_id.clone()).collect();
+        for call in messages.iter_mut().filter(|m| m.role == Role::Assistant)
+            .flat_map(|m| &mut m.tool_calls)
+        {
+            if let Some(saved) = self.by_call_id.get(&call.id)
+                .filter(|result| result.sampled && paired.contains(&call.id))
+                .and_then(|result| result.saved_author_call.as_ref())
+            {
+                call.arguments = saved.arguments.to_string();
+            }
+        }
         for message in messages
             .iter_mut()
             .filter(|message| message.role == Role::Tool)
@@ -681,12 +827,121 @@ impl ActiveToolResultLedger {
         for result in self.by_call_id.values_mut() {
             result.sampled = true;
         }
+        let parents: HashSet<_> = self.by_call_id.values()
+            .filter_map(|result| result.saved_author_call.as_ref())
+            .filter_map(|saved| saved.parent_candidate_id.clone()).collect();
+        for saved in self.by_call_id.values_mut().filter_map(|r| r.saved_author_call.as_mut()) {
+            if parents.contains(&saved.candidate_id) { saved.retire_edits(); }
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn author_save(ledger: &mut ActiveToolResultLedger, messages: &mut Vec<Message>, id: &str, args: Value, body: Value) {
+        let call = ToolCall { id:id.into(), name:"presentation.author".into(), arguments:args.to_string() };
+        let envelope = ToolResultEnvelope {
+            version:TOOL_RESULT_ENVELOPE_VERSION.into(),
+            status:if body.get("error_code").is_some() { ToolResultStatus::Error } else { ToolResultStatus::Ok },
+            model_body:body, receipt:receipt("presentation.author"), truncated:false, continuation:None,
+        };
+        ledger.insert_call(&call, envelope.clone());
+        messages.push(Message { role:Role::Assistant, content:None, tool_calls:vec![call], tool_call_id:None, provider_continuation:None });
+        messages.push(Message { role:Role::Tool, content:Some(serde_json::to_string(&envelope.receipt).unwrap()), tool_calls:vec![], tool_call_id:Some(id.into()), provider_continuation:None });
+    }
+
+    fn projected_author_args(ledger: &ActiveToolResultLedger, messages: &[Message], id: &str) -> Value {
+        let mut projected = messages.to_vec();
+        ledger.project_messages(&mut projected);
+        serde_json::from_str(&projected.iter().flat_map(|m| &m.tool_calls).find(|c| c.id == id).unwrap().arguments).unwrap()
+    }
+
+    #[test]
+    fn ex13_author_source_requires_observed_save_and_keeps_receipts_after_eviction() {
+        let mut ledger = ActiveToolResultLedger::default();
+        let mut messages = vec![Message::user("Keep both requested works")];
+        let args = json!({"operation":"write","html":"<p>source</p>","readable_content":"source", "title":"work",
+            "based_on":{"presentation_id":"p","revision":2},"new_object":false,"source_ref_ids":["source-a"],"asset_refs":["asset-a"],
+            "libraries":["konva"],"assumptions":["fixed input"],"state_contract":{"x":"number"},"initial_state":{"x":1}});
+        for (id, body) in [
+            ("failed", json!({"error_code":"PRESENTATION_AUTHORING_FAILED"})),
+            ("missing-landing", json!({"status":"candidate_saved"})),
+            ("wrong-status", json!({"status":"version_read","candidate_id":"c-old"})),
+            ("saved", json!({"status":"candidate_saved","candidate_id":"c1"})),
+        ] { author_save(&mut ledger, &mut messages, id, args.clone(), body); }
+        assert_eq!(projected_author_args(&ledger, &messages, "saved"), args, "first receipt sampling must keep source");
+        ledger.mark_projected_fresh_results_sampled();
+        for id in ["failed", "missing-landing", "wrong-status"] {
+            assert_eq!(projected_author_args(&ledger, &messages, id), args);
+        }
+        let compact = projected_author_args(&ledger, &messages, "saved");
+        assert!(compact.get("html").is_none() && compact.get("readable_content").is_none());
+        for field in ["operation","title","based_on","new_object","source_ref_ids","asset_refs","libraries","assumptions","state_contract","initial_state"] {
+            assert_eq!(compact[field], args[field]);
+        }
+        assert_eq!(compact["saved_source"]["read"], json!({"operation":"read","candidate_id":"c1"}));
+        // The immutable candidate remains a recovery target after result-body
+        // eviction. Neither receipt identity nor raw history is rewritten.
+        ledger.make_room_for(ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES);
+        let mut projected = messages.clone();
+        ledger.project_messages(&mut projected);
+        let envelope: ToolResultEnvelope = serde_json::from_str(projected.last().unwrap().content.as_deref().unwrap()).unwrap();
+        assert!(envelope.model_body.is_null());
+        assert_eq!(envelope.receipt, receipt("presentation.author"));
+        assert_eq!(projected_author_args(&ledger, &messages, "saved"), compact);
+        assert_eq!(projected_author_args(&ActiveToolResultLedger::default(), &messages, "saved"), args, "a new run cannot recover eligibility from history");
+        let incomplete = &messages[..messages.len() - 1];
+        assert_eq!(projected_author_args(&ledger, incomplete, "saved"), args, "unpaired call must stay intact");
+    }
+
+    #[test]
+    fn ex13_patch_chain_retires_edits_only_after_observed_child_save() {
+        let mut ledger = ActiveToolResultLedger::default();
+        let mut messages = vec![Message::user("Revise this exact version")];
+        let edits = json!([{"old_text":"original","new_text":"corrected"}]);
+        author_save(&mut ledger, &mut messages, "patch-1", json!({"operation":"patch","reference":{"presentation_id":"p","revision":2},"edits":edits,"readable_content":"corrected"}), json!({"status":"candidate_saved","candidate_id":"p1"}));
+        ledger.mark_projected_fresh_results_sampled();
+        let recent = projected_author_args(&ledger, &messages, "patch-1");
+        assert_eq!(recent["edits"], edits);
+        assert!(recent.get("readable_content").is_none());
+        author_save(&mut ledger, &mut messages, "independent", json!({"operation":"write","html":"different work","readable_content":"different"}), json!({"status":"candidate_saved","candidate_id":"other"}));
+        author_save(&mut ledger, &mut messages, "failed-child", json!({"operation":"patch","candidate_id":"p1","edits":edits}), json!({"error_code":"PRESENTATION_AUTHORING_FAILED"}));
+        ledger.mark_projected_fresh_results_sampled();
+        assert_eq!(projected_author_args(&ledger, &messages, "patch-1"), recent);
+        let child = json!({"operation":"patch","candidate_id":"p1","edits":[{"old_text":"corrected","new_text":"final"}]});
+        author_save(&mut ledger, &mut messages, "patch-2", child.clone(), json!({"status":"candidate_saved","candidate_id":"p2"}));
+        assert_eq!(projected_author_args(&ledger, &messages, "patch-1"), recent, "unobserved child must not retire recent edits");
+        ledger.mark_projected_fresh_results_sampled();
+        let retired = projected_author_args(&ledger, &messages, "patch-1");
+        assert!(retired.get("edits").is_none());
+        assert_eq!(retired["reference"], recent["reference"]);
+        assert_eq!(retired["saved_source"]["candidate_id"], "p1");
+        assert_eq!(retired["saved_source"]["applied_edits"], 1);
+        let latest = projected_author_args(&ledger, &messages, "patch-2");
+        assert_eq!(latest["candidate_id"], "p1");
+        assert_eq!(latest["saved_source"]["candidate_id"], "p2");
+        assert_eq!(latest["edits"], child["edits"]);
+        ledger.mark_projected_fresh_results_sampled();
+        assert_eq!(projected_author_args(&ledger, &messages, "patch-1"), retired, "projection must stay stable");
+    }
+
+    #[test]
+    fn ex11_explicit_source_read_does_not_repeat_prose_at_expense_of_code() {
+        let raw=json!({"status":"version_read","reference":{"presentation_id":"p","revision":1},
+            "file":"index.html","offset":4000,"total_characters":8000,"chunk_characters":4000,
+            "text":"x".repeat(4000),"next_offset":null,"readable_content":"解释".repeat(1000),
+            "asset_refs":["animation-1"],"libraries":[],"state_contract":{"step":"number"}});
+        let draft=project_tool_result("presentation.author",r#"{"operation":"read","file":"index.html","offset":4000}"#,&raw.to_string(),policy(ToolResultPolicy::EvidenceProjection,4096),4096,&two_leaf_book());
+        assert!(draft.model_body["text"].as_str().unwrap_or_default().len()>3000);
+        assert_eq!(draft.model_body["asset_refs"],raw["asset_refs"]);
+        assert_eq!(draft.model_body["state_contract"],raw["state_contract"]);
+        assert!(json_len(&draft.model_body)<=4096);
+        assert!(draft.model_body.get("readable_content").is_none());
+        let metadata=project_tool_result("presentation.author",r#"{"operation":"read"}"#,&raw.to_string(),policy(ToolResultPolicy::EvidenceProjection,16384),16384,&two_leaf_book());
+        assert_eq!(metadata.model_body["readable_content"],raw["readable_content"]);
+    }
 
     #[test]
     fn ex11_source_projection_continues_without_skipping_chinese_code() {
@@ -702,8 +957,8 @@ mod tests {
                 "next_offset":(end < chars.len()).then_some(end),"total_characters":chars.len(),"chunk_characters":4000,
                 "readable_content":"可编辑页面说明".repeat(600),"libraries":[{"name":"konva","version":"10.7.0"}]});
             let args = json!({"operation":"read","reference":raw["reference"],"file":"index.html","offset":offset}).to_string();
-            let draft = project_tool_result("presentation.author", &args, &raw.to_string(), policy(ToolResultPolicy::EvidenceProjection,16384),16384,&two_leaf_book());
-            assert!(json_len(&draft.model_body) <= 16384);
+            let draft = project_tool_result("presentation.author", &args, &raw.to_string(), policy(ToolResultPolicy::EvidenceProjection,4096),4096,&two_leaf_book());
+            assert!(json_len(&draft.model_body) <= 4096);
             let text = draft.model_body["text"].as_str().unwrap();
             assert!(!text.is_empty());
             assert!(!text.contains("[truncated]"));
@@ -717,6 +972,34 @@ mod tests {
         }
         assert!(shortened);
         assert_eq!(reconstructed,source);
+    }
+
+    #[test]
+    fn ex13_readable_content_ranges_recover_prose_larger_than_the_active_budget() {
+        let source = "Readable explanation with parameters and results. ".repeat(1500);
+        assert!(source.len() > ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES);
+        let mut args = json!({"operation":"read","reference":{"presentation_id":"p","revision":1},"file":"readable_content","offset":0});
+        let mut restored = String::new();
+        loop {
+            let offset = args["offset"].as_u64().unwrap() as usize;
+            let raw = json!({"status":"version_read","reference":args["reference"],"file":"readable_content",
+                "text":&source[offset..],"offset":offset,"end_offset":source.len(),"total_characters":source.len(),"chunk_characters":source.len()-offset,"next_offset":null});
+            let draft = project_tool_result("presentation.author", &args.to_string(), &raw.to_string(),
+                policy(ToolResultPolicy::EvidenceProjection, ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES), ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES, &two_leaf_book());
+            assert!(json_len(&draft.model_body) <= ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES);
+            assert_eq!(draft.model_body["reference"], args["reference"]);
+            restored.push_str(draft.model_body["text"].as_str().unwrap());
+            match draft.continuation {
+                Some(ToolContinuation::NextCall { arguments, .. }) => {
+                    assert_eq!(arguments["file"], "readable_content");
+                    assert_eq!(arguments["offset"], restored.len());
+                    args = arguments;
+                }
+                None => break,
+                other => panic!("expected a recoverable range, got {other:?}"),
+            }
+        }
+        assert_eq!(restored, source);
     }
 
     #[test]
@@ -741,6 +1024,25 @@ mod tests {
         assert_eq!(draft.model_body["reading"], raw["reading"]);
         assert_eq!(draft.model_body["errors"], raw["errors"]);
         assert_eq!(draft.model_body["error_code"], raw["error_code"]);
+    }
+
+    #[test]
+    fn ex12_large_preview_keeps_action_positions_and_errors() {
+        let scroll = json!({"x":0,"y":1980,"max_y":1980,"viewport_width":960,"viewport_height":720});
+        let action = json!({"kind":"scroll","y":99999});
+        let raw = json!({"candidate_id":"c","environment_name":"desktop-content","environment":{"width":960,"height":720,"input":"mouse"},"status":"preview_failed","error_code":"PRESENTATION_PREVIEW_FAILED","errors":[{"kind":"result_mismatch","message":"wrong text"}],"observations":[{"step":1,"action":action,"scroll":scroll,"issues":[],"dom":{"text":"intro".repeat(10000),"semantic_text":"intro".repeat(10000),"visible_text":"end ".repeat(3000)},"layout":{"cssLayoutViewport":{"pageY":1980}}}]});
+        let draft = project_tool_result("presentation.author", "{}", &raw.to_string(), policy(ToolResultPolicy::EvidenceProjection, 2048), 2048, &two_leaf_book());
+        assert_eq!(draft.status, ToolResultStatus::Error);
+        assert_eq!(draft.model_body["observations"][0]["scroll"], scroll);
+        assert_eq!(draft.model_body["observations"][0]["action"], action);
+        assert_eq!(draft.model_body["observations"][0]["step"], 1);
+        assert_eq!(draft.model_body["errors"], raw["errors"]);
+        assert_eq!(draft.model_body["candidate_id"], "c");
+        assert!(json_len(&draft.model_body) <= 2048);
+        let mut selected = raw;
+        selected["reading"] = json!({"action_step":1,"text":"END","scroll":scroll});
+        let draft = project_tool_result("presentation.author", "{}", &selected.to_string(), policy(ToolResultPolicy::EvidenceProjection, 2048), 2048, &two_leaf_book());
+        assert_eq!(draft.model_body["reading"]["scroll"], scroll);
     }
     use base_schema::{LidNode, NodeKind, ReadOnlyBase, Span};
     use book_tool_contracts::{SearchMatchMode, SearchOrder, SearchTextInput};
@@ -1033,17 +1335,68 @@ mod tests {
     }
 
     #[test]
+    fn presentation_edit_budget_keeps_old_source_when_actual_new_result_fits() {
+        let mut ledger = ActiveToolResultLedger::default();
+        ledger.insert("old-source", ToolResultEnvelope {
+            version: TOOL_RESULT_ENVELOPE_VERSION.into(), status: ToolResultStatus::Ok,
+            model_body: json!({"text":"x".repeat(40_000)}), receipt: receipt("presentation.author"),
+            truncated: false, continuation: None,
+        });
+        ledger.mark_projected_fresh_results_sampled();
+        let result = ledger.project_result("presentation.author", r#"{"operation":"search"}"#,
+            r#"{"status":"source_matches","matches":[],"next_offset":null}"#,
+            policy(ToolResultPolicy::EvidenceProjection,16384), &two_leaf_book());
+        assert!(!result.truncated);
+        assert!(ledger.by_call_id["old-source"].retain_model_body, "a tiny response must not evict 40KB of useful source");
+    }
+
+    #[test]
+    fn presentation_edit_budget_reads_medium_page_whole() {
+        let mut ledger = ActiveToolResultLedger::default();
+        let raw=json!({"status":"version_read","file":"index.html","offset":0,"end_offset":35000,
+            "total_characters":35000,"chunk_characters":35000,"text":"a".repeat(35000),"next_offset":null});
+        let result=ledger.project_result("presentation.author",r#"{"operation":"read","file":"index.html"}"#,
+            &raw.to_string(),policy(ToolResultPolicy::EvidenceProjection,16384),&two_leaf_book());
+        assert!(!result.truncated);
+        assert_eq!(result.model_body["text"].as_str().unwrap().len(),35000);
+    }
+
+    #[test]
+    fn presentation_edit_truncated_range_continues_only_to_requested_end() {
+        let raw=json!({"status":"version_read","file":"index.html","offset":3,"end_offset":1003,
+            "total_characters":5000,"chunk_characters":1000,"text":"中".repeat(1000),"next_offset":null});
+        let result=project_tool_result("presentation.author",r#"{"operation":"read","file":"index.html","offset":3,"length":1000}"#,
+            &raw.to_string(),policy(ToolResultPolicy::EvidenceProjection,700),700,&two_leaf_book());
+        let ToolContinuation::NextCall { arguments, .. }=result.continuation.unwrap() else {panic!("expected range continuation")};
+        let next=arguments["offset"].as_u64().unwrap();
+        assert!(next>3 && next<1003);
+        assert_eq!(next+arguments["length"].as_u64().unwrap(),1003);
+    }
+
+    #[test]
+    fn presentation_edit_search_projection_preserves_matches_and_continuation() {
+        let matches:Vec<_>=(0..12).map(|i| json!({"offset":i*400,"text":"中".repeat(100),"line":i+1})).collect();
+        let raw=json!({"status":"source_matches","file":"index.html","query":"中","offset":0,"matches":matches,"next_offset":null});
+        let draft=project_tool_result("presentation.author",r#"{"operation":"search","candidate_id":"c","query":"中"}"#,&raw.to_string(),policy(ToolResultPolicy::EvidenceProjection,1000),1000,&two_leaf_book());
+        let kept=draft.model_body["matches"].as_array().unwrap();
+        assert!(!kept.is_empty() && kept.len()<matches.len());
+        assert_eq!(kept,&matches[..kept.len()]);
+        assert_eq!(draft.model_body["next_offset"],matches[kept.len()]["offset"]);
+        let ToolContinuation::NextCall { arguments, .. }=draft.continuation.unwrap() else {panic!("search continuation missing")};
+        assert_eq!(arguments["offset"],matches[kept.len()]["offset"]);
+        assert_eq!(arguments["candidate_id"],"c");
+    }
+
+    #[test]
     fn tool_result_projection_active_fresh_bodies_share_one_turn_budget() {
         let book = two_leaf_book();
         let mut ledger = ActiveToolResultLedger::default();
         for index in 0..4 {
-            let remaining = ledger.remaining_model_body_bytes();
-            let draft = project_tool_result(
+            let draft = ledger.project_result(
                 "profile.manifest",
                 "{}",
                 &json!({"slots":["X".repeat(30_000)]}).to_string(),
                 policy(ToolResultPolicy::ProfileProjection, 20 * 1024),
-                remaining,
                 &book,
             );
             let receipt = receipt("profile.manifest");
@@ -1055,5 +1408,7 @@ mod tests {
             .map(|result| json_len(&result.envelope.model_body))
             .sum();
         assert!(used <= ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES);
+        assert!(ledger.by_call_id.values().all(|result| result.retain_model_body),
+            "a batch must not evict results before the model has seen them");
     }
 }

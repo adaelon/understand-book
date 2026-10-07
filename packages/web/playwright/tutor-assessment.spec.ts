@@ -1,0 +1,61 @@
+import { expect, test } from '@playwright/test';
+
+test('frozen grading, assistance and corrected understanding survive reopening', async ({ page }) => {
+  let failCorrection = true;
+  await page.route('**/api/**', async route => {
+    const request = route.request();
+    if (request.url().endsWith('/tutor/correct') && failCorrection) {
+      failCorrection = false;
+      await route.fulfill({ status:503, json:{ error_code:'TEST_UNAVAILABLE', category:'unavailable', message:'保存暂不可用' } }); return;
+    }
+    const response = await route.fetch({ url:request.url().replace(/^.*\/api/,'http://127.0.0.1:4175') });
+    await route.fulfill({ response });
+  });
+  await page.goto('/agent-presentation-visual.html?tutor');
+  const activity = page.locator('.agent-presentation .tutor-activities article').filter({ hasText:'Observe one:' });
+  await activity.scrollIntoViewIfNeeded();
+  const facts = async () => (await page.request.get('http://127.0.0.1:4175/facts').then(r => r.json())).map((row:any) => row[1]);
+  await expect.poll(async () => (await facts()).filter((f:any) => f.kind === 'displayed').length).toBeGreaterThan(0);
+  await activity.getByRole('textbox').fill('A');
+  await activity.getByRole('button',{ name:'提交回答',exact:true }).click();
+  await expect(activity.getByText('本次回答部分符合标准')).toBeVisible();
+  await activity.getByRole('button',{ name:'直接讲解',exact:true }).click();
+  await expect(activity.getByText('Use total distance divided by total time.')).toBeVisible();
+  await expect.poll(async () => (await facts()).filter((f:any) => f.kind === 'help_displayed').length).toBe(1);
+  await activity.getByRole('textbox').fill('["A","B"]');
+  await activity.getByRole('button',{ name:'改答',exact:true }).click();
+  await expect(activity.getByText('本次回答符合标准',{ exact:true })).toBeVisible();
+  await expect(activity.getByText('本次回答前已展示帮助。')).toBeVisible();
+  await page.getByRole('button',{ name:'管理教学会话' }).first().click();
+  const space = page.getByRole('region',{ name:'我的理解' });
+  await expect(space).toContainText('帮助后符合 1 次');
+  await space.getByRole('button',{ name:'查看依据 1',exact:true }).click();
+  await expect(space.getByRole('blockquote')).toHaveText('["A","B"]');
+  await space.getByLabel('纠正这条解释').fill('我照着刚才的讲解复述，还不能独立解释。');
+  await space.getByRole('button',{ name:'保存纠正' }).click();
+  await expect(space.getByRole('alert')).toContainText('保存暂不可用');
+  await space.getByRole('alert').getByRole('button',{ name:'重试' }).click();
+  await expect(space).toContainText('你的纠正：我照着刚才的讲解复述，还不能独立解释。');
+  await expect(space).toContainText('帮助后符合 0 次');
+  await page.request.post('http://127.0.0.1:4175/reopen');
+  await page.setViewportSize({ width:390,height:844 });
+  await page.reload();
+  await page.getByRole('button',{ name:'管理教学会话' }).first().click();
+  await expect(space).toContainText('帮助后符合 0 次');
+  await space.getByRole('button',{ name:'查看依据 1',exact:true }).click();
+  await expect(space).toContainText('你的纠正：我照着刚才的讲解复述，还不能独立解释。');
+  expect(await page.locator('[role="dialog"]').evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  await page.getByRole('dialog').getByRole('button',{ name:'关闭',exact:true }).click();
+  const openActivity = page.locator('.agent-presentation .tutor-activities article').filter({ hasText:'Observe two:' });
+  await openActivity.getByRole('textbox').fill('all distance over all time');
+  await openActivity.getByRole('button',{ name:'提交回答',exact:true }).click();
+  await expect(openActivity.getByText('回答已记录，尚未评分。')).toBeVisible();
+  const openSubmission = (await facts()).find((f:any) => f.kind === 'learner_action' && f.payload.delivery_ref.endsWith(':two'));
+  await page.request.post('http://127.0.0.1:4175/evaluate',{ data:{ action_ref:openSubmission.event_id } });
+  await page.evaluate(() => window.dispatchEvent(new Event('tutor-state-changed')));
+  await expect(openActivity.getByText('The response names the total distance.')).toBeVisible();
+  await expect.poll(async () => (await facts()).filter((f:any) => f.kind === 'help_displayed' && f.payload.action === 'feedback').length).toBe(1);
+  await openActivity.getByRole('button',{ name:'改答',exact:true }).click();
+  await expect(openActivity.getByText('本次回答前已展示帮助。')).toBeVisible();
+  await page.unrouteAll({ behavior:'wait' });
+});

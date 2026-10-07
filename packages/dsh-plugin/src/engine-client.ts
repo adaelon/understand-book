@@ -10,7 +10,7 @@ export interface EngineConfig {
 
 function start(config: EngineConfig, args: string[]) {
   const env: NodeJS.ProcessEnv = {};
-  for (const key of ["SystemRoot", "WINDIR", "TEMP", "TMP", "USERPROFILE", "HOME", "LOCALAPPDATA", "PATH", "PATHEXT"]) {
+  for (const key of ["SystemRoot", "WINDIR", "TEMP", "TMP", "USERPROFILE", "HOME", "LOCALAPPDATA", "PATH", "PATHEXT", "UNDERSTAND_BOOK_EMBEDDING_CONFIG"]) {
     if (process.env[key] !== undefined) env[key] = process.env[key];
   }
   env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = config.driverRoot;

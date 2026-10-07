@@ -1,5 +1,5 @@
 function (config) {
-  const send = message => parent.postMessage({ channel: "agent-presentation", ...message }, "*");
+  const send = message => parent.postMessage({ channel: config.channel, ...message }, "*");
   let revision = 0;
   let observer;
   let last = "";
@@ -14,6 +14,7 @@ function (config) {
   let masks = [];
   let hostGeneration;
   let editing = false;
+  let zoom = 1;
   const pendingCaptures = new Set();
   window.presentation = Object.freeze({
     initialState: config.initialState,
@@ -21,11 +22,23 @@ function (config) {
     registerStateReader: reader => { stateReader = reader; },
     registerStateRestorer: restorer => { stateRestorer = restorer; },
     commitState: () => scheduleCommit(),
+    // Opens the host action form; only an explicit host submission records a learner action.
+    requestTeachingAction: (moveId, response) => send({ kind: "teaching-action", move_id: moveId, response }),
   });
   window.addEventListener("error", () => send({ kind: "error" }));
   window.addEventListener("unhandledrejection", () => send({ kind: "error" }));
   window.addEventListener("message", event => {
-    if (event.source !== parent || event.data?.channel !== "agent-presentation") return;
+    if (event.source !== parent || event.data?.channel !== config.channel) return;
+    if (event.data.kind === "zoom" && Number.isFinite(event.data.scale) && event.data.scale >= .5 && event.data.scale <= 1.5) {
+      const next = event.data.scale;
+      if (next !== zoom) {
+        const x = window.scrollX / zoom, y = window.scrollY / zoom;
+        document.documentElement.style.zoom = String(next);
+        zoom = next;
+        window.scrollTo(x * zoom, y * zoom);
+      }
+      return;
+    }
     if (event.data.kind === "accepted" && event.data.revision === revision) {
       observer?.disconnect();
       clearMasks();
@@ -117,7 +130,9 @@ function (config) {
       const id = node.getAttribute("data-source-ref");
       refs.push(id);
       const source = config.sources.find(source => source.source_ref_id === id);
-      node.textContent = source ? source.label : "来源不可用";
+      node.textContent = sourceChipLabel(config.sources, id);
+      node.setAttribute("title", source ? source.label : "来源不可用");
+      node.setAttribute("aria-label", source ? `${node.textContent}：${source.label}` : "来源不可用");
       if (node instanceof HTMLButtonElement) node.disabled = !source;
     });
     const copy = document.body.cloneNode(true);

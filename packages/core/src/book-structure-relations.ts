@@ -116,9 +116,11 @@ export function applyBookStructureRelationDeltas(base: BookStructureCandidate, a
     if (!result) throw new Error(`unknown throughline member: ${id}`);
     return result;
   };
-  for (const [taskIndex, [, delta]] of [...tasks].sort(([a], [b]) => a < b ? -1 : 1).entries()) {
+  for (const [taskIndex, [workUnitId, delta]] of [...tasks].sort(([a], [b]) => a < b ? -1 : 1).entries()) {
+    const relationOrdinal = /^stitch:relation:(\d+)$/u.exec(workUnitId);
+    const identityOrdinal = relationOrdinal ? Number(relationOrdinal[1]) : taskIndex;
     for (const [index, item] of delta.new_throughlines.entries()) {
-      const id = `relation-${taskIndex}-${index}`;
+      const id = `relation-${identityOrdinal}-${index}`;
       if (lines.has(id)) throw new Error("relation identity collides with a local contribution");
       lines.set(id, { ...structuredClone(item), id }); members[id] = id;
     }

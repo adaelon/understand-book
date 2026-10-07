@@ -44,6 +44,11 @@ impl ActiveContextBudget {
 }
 
 pub trait CompactionCheckpointSink {
+    fn persist_effects(&mut self, _effects: &[crate::orchestrator::AgentEffect]) -> Result<(), read_tools::ToolError> { Ok(()) }
+    /// Complete messages and phase facts, never token patches. Failure stops
+    /// execution before the next model/tool side effect.
+    fn persist_progress(&mut self, _messages: &[Message], _activities: &[crate::run_events::RunActivity]) -> Result<(), read_tools::ToolError> { Ok(()) }
+    fn prepare_persisted_messages(&mut self, _messages: &mut [Message]) {}
     fn install(
         &mut self,
         checkpoint: &CompactionCheckpoint,

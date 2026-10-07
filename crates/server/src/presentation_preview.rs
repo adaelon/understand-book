@@ -196,11 +196,12 @@ impl Cdp<'_> {
         &mut self,
         step: usize,
         environment: PreviewViewport,
-        scene_target: Option<PreviewScenePosition>,
+        action: Option<&PreviewAction>,
         read_selector: Option<&str>,
     ) -> Result<PreviewObservation, String> {
         // Wait for real rendering work rather than accepting a page-reported ready flag.
         self.evaluate("new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))")?;
+        let scene_target = action.map(PreviewAction::scene_position).transpose()?.flatten();
         let actual = scene_target.map(|_| self.scene_snapshot()).transpose()?;
         let reading = read_selector.map(|selector| {
             let selector = serde_json::to_string(selector).map_err(|e| e.to_string())?;
@@ -225,8 +226,10 @@ impl Cdp<'_> {
             })
         }).transpose()?;
         let dom = self.evaluate(r#"(() => ({
+          scroll: {x:scrollX,y:scrollY,max_y:Math.max(0,document.scrollingElement.scrollHeight-innerHeight),viewport_width:innerWidth,viewport_height:innerHeight},
+          visible_text: (()=>{const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let node,text='';while((node=walker.nextNode())&&text.length<16000){const parent=node.parentElement;if(!node.textContent.trim()||parent.closest('script,style,noscript')||getComputedStyle(parent).visibility==='hidden')continue;const range=document.createRange();range.selectNodeContents(node);if([...range.getClientRects()].some(r=>r.width&&r.height&&r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth))text+=node.textContent.trim()+'\n';}return text.slice(0,16000);})(),
           text: document.body.innerText.slice(0, 16000),
-          semantic_text: (()=>{const copy=document.body.cloneNode(true);copy.querySelectorAll('script,style,[data-source-ref]').forEach(e=>e.remove());return [copy.textContent,...[...document.querySelectorAll('[alt],[title],[aria-label],input,textarea,select')].map(e=>[e.getAttribute('alt'),e.getAttribute('title'),e.getAttribute('aria-label'),e.value].filter(Boolean).join(' '))].join('\n');})(),
+          semantic_text: (()=>{const copy=document.body.cloneNode(true);copy.querySelectorAll('script,style,[data-source-ref]').forEach(e=>e.remove());return [copy.textContent,...[...document.querySelectorAll('[alt],[title],[aria-label],input,textarea,select')].filter(e=>!e.closest('[data-source-ref]')).map(e=>[e.getAttribute('alt'),e.getAttribute('title'),e.getAttribute('aria-label'),e.value].filter(Boolean).join(' '))].join('\n');})(),
           source_ref_ids: [...document.querySelectorAll('[data-source-ref]')].map(e=>e.getAttribute('data-source-ref')),
           unsupported_assets: [...document.querySelectorAll('script[src],script[type=module],link[rel=stylesheet],img:not([src^="data:"]),video[src]:not([src^="data:"]),video source[src]:not([src^="data:"]),video[poster]:not([poster^="data:"]),iframe,object,embed')].map(e=>e.outerHTML.slice(0,200)),
           controls: [...document.querySelectorAll('input,select,textarea,button,output')].slice(0,128).map(e => ({
@@ -236,6 +239,11 @@ impl Cdp<'_> {
           })
         }))()"#)?;
         let layout = self.call("Page.getLayoutMetrics", json!({}))?;
+        let scroll = serde_json::from_value(dom["scroll"].clone()).map_err(|e| format!("scroll position: {e}"))?;
+        let reading = reading.map(|mut reading| {
+            reading["scroll"] = dom["scroll"].clone();
+            reading
+        });
         let audit = self.evaluate(&format!(r#"(() => {{
           const width=document.documentElement.clientWidth;
           const controls=[...document.querySelectorAll('button,a[href],[role=button],input,select,textarea')].slice(0,128).map((e,index)=>{{
@@ -305,6 +313,8 @@ impl Cdp<'_> {
         }
         Ok(PreviewObservation {
             step,
+            action: action.cloned(),
+            scroll,
             dom,
             layout,
             screenshot_png_base64: screenshot["data"]
@@ -319,6 +329,9 @@ impl Cdp<'_> {
 
     fn interact(&mut self, action: &PreviewAction, input: PreviewInput) -> Result<(), String> {
         match action {
+            PreviewAction::Scroll { y } => {
+                self.evaluate(&format!("window.scrollTo({{left:scrollX,top:Math.min({y},Math.max(0,document.scrollingElement.scrollHeight-innerHeight)),behavior:'instant'}})"))?;
+            }
             PreviewAction::Click { selector } => {
                 let selector = serde_json::to_string(selector).map_err(|e| e.to_string())?;
                 let point = self.evaluate(&format!(r#"(() => {{
@@ -537,7 +550,7 @@ impl PresentationPreviewPort for BrowserPreview {
                     phase = format!("interact:{}", index + 1);
                     cdp.interact(action, environment.input)?;
                     phase = format!("inspect:{}", index + 1);
-                    observations.push(cdp.observe(index + 1, environment, action.scene_position()?, request.read_selector.as_deref().filter(|_| index + 1 == request.actions.len()))?);
+                    observations.push(cdp.observe(index + 1, environment, Some(action), request.read_selector.as_deref().filter(|_| index + 1 == request.actions.len()))?);
                 }
                 Ok(PreviewReport {
                     candidate_id: request.candidate_id.clone(),

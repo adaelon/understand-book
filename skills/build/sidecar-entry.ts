@@ -1,10 +1,18 @@
 import { createHash } from "node:crypto";
 import bookStructurePrompt from "../../agents/book-structure-extractor.md";
+import formalObjectsPrompt from "../../agents/formal-objects-extractor.md";
+import cognitiveMaterialsPrompt from "../../agents/cognitive-materials-extractor.md";
+import teachingReviewPrompt from "../../agents/teaching-source-reviewer.md";
 import bookStructureV2Prompt from "../../agents/book-structure-v2-extractor.md";
 import bookStructureFragmentPrompt from "../../agents/book-structure-fragment-extractor.md";
+import bookStructureDiscoveryPrompt from "../../agents/book-structure-discovery-extractor.md";
 import bookStructureReducerPrompt from "../../agents/book-structure-reducer.md";
 import bookStructureStitchFragmentPrompt from "../../agents/book-structure-stitch-fragment-extractor.md";
 import bookStructureStitchReducerPrompt from "../../agents/book-structure-stitch-reducer.md";
+import bookStructureOutlinePrompt from "../../agents/book-structure-outline.md";
+import bookStructureChapterPrompt from "../../agents/book-structure-chapter.md";
+import bookStructureChapterSelectionPrompt from "../../agents/book-structure-chapter-selection.md";
+import bookStructureThemesPrompt from "../../agents/book-structure-themes.md";
 import bookStructureRelationSelectorPrompt from "../../agents/book-structure-relation-selector.md";
 import bookStructureRelationExtractorPrompt from "../../agents/book-structure-relation-extractor.md";
 import dispatchExecutorPrompt from "../../agents/automatic-build-dispatch-executor.md";
@@ -37,10 +45,18 @@ const command = argv[0];
 const PROMPTS: Record<string, string> = {
   "book-structure-extractor.md": bookStructurePrompt,
   "book-structure-v2-extractor.md": bookStructureV2Prompt,
+  "formal-objects-extractor.md": formalObjectsPrompt,
+  "cognitive-materials-extractor.md": cognitiveMaterialsPrompt,
+  "teaching-source-reviewer.md": teachingReviewPrompt,
   "book-structure-fragment-extractor.md": bookStructureFragmentPrompt,
+  "book-structure-discovery-extractor.md": bookStructureDiscoveryPrompt,
   "book-structure-reducer.md": bookStructureReducerPrompt,
   "book-structure-stitch-fragment-extractor.md": bookStructureStitchFragmentPrompt,
   "book-structure-stitch-reducer.md": bookStructureStitchReducerPrompt,
+  "book-structure-outline.md": bookStructureOutlinePrompt,
+  "book-structure-chapter.md": bookStructureChapterPrompt,
+  "book-structure-chapter-selection.md": bookStructureChapterSelectionPrompt,
+  "book-structure-themes.md": bookStructureThemesPrompt,
   "book-structure-relation-selector.md": bookStructureRelationSelectorPrompt,
   "book-structure-relation-extractor.md": bookStructureRelationExtractorPrompt,
   "paper-lexicon-extractor.md": paperLexiconPrompt,
@@ -185,7 +201,8 @@ if (command === "executor.agent-template") {
   "close",
 ].includes(command ?? "")) {
   prepare("automatic-build.ts", argv);
-  await import("./automatic-build");
+  const { runAutomaticBuildCli } = await import("./automatic-build");
+  await runAutomaticBuildCli(argv);
 } else if (command === "run-script") {
   const script = argv[1];
   if (!script) {

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Context } from "@deepseek-ai/cordis";
 import type { Agent } from "@deepseek-ai/dsh-agent";
 import type { AutomaticBuildStepResponseV1 } from "../../../skills/build/automatic-build-driver.ts";
-import type { BuildPlanV1 } from "../../core/src/build-intent.ts";
+import type { BuildPlanV1, BuildRetrievalPlan } from "../../core/src/build-intent.ts";
 import type { DshExecutorObservationV1 } from "../../core/src/dsh-executor-observation.ts";
 import { readBuildExecutorModelRuntime } from "../../core/src/build-executor-model-runtime.ts";
 import { checkHarnessCapabilities } from "./capability-check.ts";
@@ -36,25 +36,30 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
   const command = (request: unknown, signal?: AbortSignal) => engineCommand(config, ["build.step"], request, signal);
 
   async function prepareAndConfirmOwned(agent: Agent, signal: AbortSignal,
-    input: { target_input: string; root_dir: string; pass2: "enabled" | "disabled"; budget?: BuildPlanV1["budget"]; max_parallel?: 1 | 2 | 3 }) {
+    input: { target_input: string; root_dir: string; pass2: "enabled" | "disabled"; budget?: BuildPlanV1["budget"]; max_parallel?: 1 | 2 | 3;
+      retrieval?: { retrieval_mode: "lexical_only" | "semantic_required"; budget: BuildRetrievalPlan["budget"] } }) {
     assertRoot(agent);
-    if (!input || Object.keys(input).some(k => !["target_input", "root_dir", "pass2", "budget", "max_parallel"].includes(k))
+    if (!input || Object.keys(input).some(k => !["target_input", "root_dir", "pass2", "budget", "max_parallel", "retrieval"].includes(k))
       || typeof input.target_input !== "string" || typeof input.root_dir !== "string"
       || !["enabled", "disabled"].includes(input.pass2)) throw new Error("build_prepare_arguments_invalid");
     if (checkHarnessCapabilities(ctx).status !== "available") throw new Error("build_harness_unsupported");
     const workers = input.max_parallel ?? 1;
     if (![1, 2, 3].includes(workers)) throw new Error("build_capacity_invalid");
     const runtime = await resolveExecutorRuntime(ctx, { ...agent.options, maxTokens: config.maxOutputTokens }, config.safetyMarginTokens, signal);
+    const { retrieval } = input;
     const prepared = await command({ version: "dsh_build_prepare.v2", ...input, max_parallel: workers }, signal) as {
       version: string; build_plan_path: string; plan: BuildPlanV1; review_markdown: string;
     };
     if (prepared.version !== "dsh_build_prepared.v2" || prepared.plan.private_artifacts.length) throw new Error("build_plan_unsupported");
+    if (retrieval && (!prepared.plan.retrieval || prepared.plan.status !== "draft")) throw new Error("build_retrieval_configuration_failed");
     const questionId = `ub-plan-${randomUUID()}`;
     const answer = await ctx.userQuestions.ask({ agent, signal, questions: [{ id: questionId,
       question: "确认本次 Understand Book 预构建计划", detail: `${prepared.review_markdown}\n\n模型：${runtime.provider} / ${runtime.model}\n\n推理设置：${runtime.reasoning_effort ?? "默认"}；单次输出上限：${runtime.max_output_tokens} token。`,
       options: [{ label: "批准" }, { label: "拒绝" }], intent: { kind: "plan-review", approve: "批准" } }] });
     if (!exactlySelected(answer, questionId, "批准") || signal.aborted) throw new Error("build_plan_not_approved");
     assertRoot(agent);
+    if (retrieval) await command({ version: "build_retrieval_confirm.v1", build_plan_path: prepared.build_plan_path,
+      plan_digest: prepared.plan.plan_digest, confirmation_source: "explicit_legacy_command" }, signal);
     // Engine rereads this exact plan and compares its identity before persisting the invocation.
     return command({ version: "automatic_build_invocation_create.v2", target_input: input.target_input, root_dir: input.root_dir,
       build_plan_path: prepared.build_plan_path, quality_profile: "full", max_parallel: workers, created_at: new Date().toISOString(),

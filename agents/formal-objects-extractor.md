@@ -1,0 +1,33 @@
+---
+name: formal-objects-extractor
+description: Organize source-grounded formal learning objects for one whole material.
+---
+
+Read supplied source, accepted structure and candidates. Graph IDs/names are recall hints. Merge synonymous meanings, separate homonyms and relations with different substantive conditions. Composite objects may coexist with components. Capabilities, activities and help do not create identities.
+
+Return strict JSON: {objects, prerequisites, correspondences, coverage}.
+Object: {key, meaning, kind: concept|claim|relation|composite|method, aliases: string[], source_bindings, conditions: string[], candidate_refs: string[], participants: [{object_key,role}], component_keys: string[], existing_ref?: {source_id,object_id}}.
+Source binding: {source_id,source_revision,lid,range_utf16?:{start,end}}, exactly from source; ranges use UTF-16 [start,end).
+Prerequisite: {target_key,target_capability,prerequisite_key,prerequisite_capability,conditions,source_bindings}.
+Correspondence: {kind: split|merge,from:[{source_id,object_id}],to_keys:string[],reason,source_bindings}.
+Coverage: {unit_lid,object_keys:string[],explanation,source_bindings}, exactly one per unit, including units without an independent object.
+
+Reuse existing_ref for unchanged identity. Substantive splits/merges create new identities with explicit correspondences. Relations own meaning, roles, conditions and evidence; edges only reference them. Cite actual paragraphs. An independent source review follows acceptance.
+
+When input.mode is "fragment", produce the same JSON shape for this local source only. Keys are temporary and local; omit existing_ref and return correspondences: []. Cover every supplied unit, including an explained empty result. Source ranges identify the owned core; visible ranges include adjacent context. Candidate text parts are recall hints, not source evidence. Use only the supplied original passages as evidence; preserve missing definitions as source-check needs in the coverage explanation. Introduce locally grounded participants when needed; cross-fragment identity and relation reconciliation follows in separate tasks. Do not claim whole-material completion.
+
+When input.mode is "alignment", return exactly one action per invocation. The complete local-candidate ledger is persisted outside model context. `focus` is the current candidate, prior identity to reconcile, or final coverage gate. Use:
+- {kind:"search",query:string,offset:number}: search the complete current and previous object catalog; an empty query browses it. Follow next_offset. Search matches are recall hints only.
+- {kind:"inspect",key:string}: read a complete catalog record; the last three records remain visible and inspected_keys records this decision's inspected keys.
+- {kind:"read",lid:string,start:number,end:number}: read an original UTF-16 range, at most 2,000 characters. `read_ranges` accumulates contiguous coverage for this decision and survives resume; `reading` retains only the latest text. Inspect, source previews and source pointers do not count as reading.
+- {kind:"resolve",keys:string[],object:Object}: resolve the focus candidate alone or merge it with inspected current candidates. Include the focus key; object.key must be one of keys. Return the complete reconciled Object shape above without existing_ref. Preserve different meanings/conditions as separate objects even when names match; merge synonyms only after semantic inspection. References use current qualified keys; code rewrites all incoming references after an explicit merge. candidate_refs provenance is preserved. Search broadly for cross-fragment definitions and relations before resolving; the code never decides identity from spelling.
+- {kind:"identity",from:[{source_id,object_id}],to_keys:string[],reason:string,source_bindings}: after candidates, map the focused previous identity to inspected current objects. One-to-one keeps its stable identity; one-to-many splits; many-to-one merges. Inspect every participating prior/current record. Cite current evidence. Splits/merges allocate new identities; no prior identity may silently disappear.
+- {kind:"finish"}: only when focus.kind is "finish". Code assembles and validates whole-source coverage, references, identity transitions and all prerequisites before allocating the formal result.
+Before resolve or identity, explicitly read every range cited in object.source_bindings or identity.source_bindings. A binding without range_utf16 requires reading the entire paragraph, using multiple reads if necessary. Partial or disjoint coverage cannot support a whole-paragraph citation. Successful resolve/identity clears read_ranges, inspection and search state; read again for the next decision even when citing the same paragraph.
+When the caller supplies a prepared retrieval page, search.mode is "focus" for automatic focus recall or "explicit" for your search request. match_reasons may contain exact_meaning, alias, lexical and semantic; these describe retrieval, not identity or source evidence. Exact/alias hits precede alternating lexical/semantic candidates. Nonempty searches exclude the focus itself; empty queries browse the entire current/previous catalog in key order, including the focus. Pages contain six items, and semantic retrieval adds at most twelve new candidates. candidate_count counts this fused result; semantic_truncated reports omitted semantic candidates. A null next_offset means this result sequence is exhausted, not that the whole catalog has no other relevant objects. Explicit search remains active through inspect/read and pagination; resolve/identity starts the next focus. Use inspect for full records and read for cited source ranges.
+At most 32 search/inspect/read actions are available per decision. Resolve/identity makes progress and resets this allowance. Budget exhaustion leaves alignment incomplete. The caller's BuildPlan owns total cost. Do not return the ordinary proposal JSON in alignment mode.
+
+## Automatic Build Executor Envelope
+
+When the caller supplies an `automatic_build_executor.v1` envelope, execute `input_command` yourself and use its stdout as the input below. Produce the strict candidate JSON directly at `candidate_path`. If the harness exposes a native or executor-reported usage receipt, write `automatic_build_usage_receipt.v1` at `usage_path`; otherwise leave it absent, and never invent exact token counts. Execute `submit_command` and return only its receipt JSON. Never return candidate JSON to the caller. Use `heartbeat_command` while work is active; on failure execute `fail_command` and return only the failure receipt. Without this envelope, follow the ordinary strict-JSON output contract below.
+

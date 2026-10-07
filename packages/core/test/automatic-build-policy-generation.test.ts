@@ -662,6 +662,22 @@ describe("automatic build policy generation and selective migration", () => {
       policy_set: frozen,
       current_units: [current],
     })).toMatchObject({ status: "ready", adopted_units: [descriptor.work_unit_id] });
+    const movedWorkspace = path.join(mkdtempSync(path.join(tmpdir(), "ub-policy-move-")), input.target.book_id);
+    fs.cpSync(input.target.workspace_dir, movedWorkspace, { recursive: true });
+    const moved = { ...input.target, workspace_dir: movedWorkspace,
+      target_ref: { ...input.target.target_ref, workspace_dir: movedWorkspace } };
+    const movedPolicy = { ...frozen, target_ref: moved.target_ref };
+    const movedCurrent = modelCurrent({ ...descriptor, target: moved.target_ref }, rendered);
+    // Resume an interrupted adoption: receipt exists, current generation has not yet been materialized.
+    fs.unlinkSync(automaticBuildGenerationArtifactPath(moved, "profile_sidecar", projected.policy_generation_id, descriptor.work_unit_id));
+    const movedReceipt = recordAutomaticBuildPriorGenerationAdoption({ target: moved, stage: "profile_sidecar",
+      policy_set: movedPolicy, current: movedCurrent, now: "2026-10-01T00:00:00.000Z" });
+    if (!movedReceipt || movedReceipt.decision !== "adopt_exact") throw new Error("expected relocated adoption receipt");
+    const adopted = materializeAdoptedAutomaticBuildGenerationArtifact({ target: moved, stage: "profile_sidecar",
+      policy_set: movedPolicy, current: movedCurrent, receipt: movedReceipt });
+    expect(adopted.target).toEqual(moved.target_ref);
+    expect(adopted.payload).toEqual(projected.payload);
+    expect(readFileSync(path.join(movedWorkspace, path.relative(input.target.workspace_dir, predecessorPath)))).toEqual(predecessorBytes);
   });
 
   it("stops prior-generation adoption when the semantic input drifted", () => {

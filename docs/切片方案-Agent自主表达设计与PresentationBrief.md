@@ -2,6 +2,8 @@
 
 日期：2026-09-18；修订：2026-09-25。
 
+后续方向（2026-10-02）：共同解释原则、全局框架与阶段交接按 [ADR-0154](adr/0154-presentation-global-framework-and-staged-authoring.md) 和 [EX12 切片方案](切片方案-演示页全局框架与分阶段制作.md) 推进。下文保留 ED 原切片及历史状态；当前运行内框架不以 ED5 的持久 Brief 为前提。
+
 状态：ED1 与 ED2 已实现并完成 Windows 本机定向验收；ED2 已完成真实模型同题各一次绘图对照，Linux 实机和手机入口仍待验收。证据见 [ED1–ED2 记录](performance/agent-presentation-ed1-ed2-20260925.md)。决策依据：[ADR-0133](adr/0133-agent-led-explorable-explanations-and-evolving-presentation-brief.md)。既有制作基线：[ADR-0130](adr/0130-agent-rich-presentation-and-read-time-authoring.md)。
 
 **下一刀：补齐目标 Linux/手机宿主验收，再进入 ED3 自然请求与短说明对照。** ED4 补齐模型预览观察；ED5 条件性试接 Brief；ED6 完成连续使用与发布验收。ED7–ED9 按实际缺口启动。短说明、稳定性和绘图能力均不依赖 Brief。新增 ED1/ED2 后，原 ED1–ED7 顺延为 ED3–ED9；ED 编号不替代 RP8 正式教学接入。

@@ -4,6 +4,8 @@
 
 普通回答需要更清楚的重点、比较与图文组织，阅读过程还需要交互讲解、可运行教具和持续更新的内容。首版允许 Resident Agent 在回答内容区域内遵循共同样式，现场编写、预览和修改 HTML/CSS/JavaScript；可复用组件用于减少重复工作。
 
+后续扩展（2026-09-29）：[ADR-0144](0144-shared-presentation-conversation-workspace.md) 的共享工作区已按 [Tutor 切片方案](../切片方案-Tutor全局模式与教学闭环.md) T1 实现，T2 提供全局控制与私人会话；[ADR-0143](0143-teaching-trace-assessment-and-learning-evidence.md) 的正式教学行为与证据由待实施的 T6/T8–T12 承接 RP8。上述扩展不改变 RP1–RP7 的完成记录。
+
 细化 [ADR-0119](0119-agent-native-learning-environment-and-teaching-agency.md) 的行动与反馈能力，扩展 [ADR-0127](0127-resident-agent-streaming-and-runtime-activity.md) 的回答交付类型。修订 `grill.md` Q83 对生成 UI 的全面限制，保留其教学行为、呈现记录及 Q84 判题合同。既有 [ADR-0094](0094-codex-designed-artifact-blueprints-and-versioned-registry.md) 的 Blueprint 仍是数据合同，新能力采用其约定的独立非数据型能力边界。
 
 ## §1 内容表达范围

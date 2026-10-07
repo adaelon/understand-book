@@ -51,6 +51,14 @@ Cordis 发布入口为 `dist/index.js`，导出 `name`、`inject`、`Config`、`
 
 预算示例：`{"on_exceed":"needs_user","max_total_tokens":100000,"max_wall_clock_minutes":60}`。省略预算时沿用 Engine 标准计划规则；超预算不会自动扩大授权。
 
+源码的 SR5 已增加可选检索配置（既有发布包尚未更新）。在宿主启动前设置
+`UNDERSTAND_BOOK_EMBEDDING_CONFIG` 为本地 MiniLM 安装配置文件的绝对路径，然后给
+`ub_build_prepare_and_confirm` 增加例如
+`"retrieval":{"retrieval_mode":"semantic_required","budget":{"max_documents":12,"max_queries":4,"max_calls":12}}`。
+确认框会展示实际模型、local 数据去向、一跳对象投影/query 范围、未知工作量与明确额度；批准后才执行。
+失败和重试均计入额度。`lexical_only` 无需模型配置，可将这些额度设为 0；默认仍使用词法路径。
+安装文件格式、当前本地 adapter 和 SR6 验收限制见 [SR5 说明](../../docs/performance/semantic-retrieval-sr5-20261001.md)。
+
 ## 并发与恢复
 
 容量取已确认并发、当前 owned child、宿主实时 Agent 注册表和在途创建的交集。固定宿主已验证三并发；原生 spawn 没有实时配额 API，因此按所有当前子代理占用保守扣减，返回 `agent_registry_conservative` 来源。先完成的 child 清理后立即推进 Engine，正常让出和用户边界会收尾已有 child。

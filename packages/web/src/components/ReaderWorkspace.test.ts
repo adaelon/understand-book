@@ -23,6 +23,44 @@ const environment = (width: number, height: number) => ({
 });
 
 describe("ReaderWorkspace", () => {
+  it("focuses reading and restores the previous compare choice, foreground and instances", async () => {
+    const mounted = vi.fn();
+    const Core = defineComponent({ mounted, setup: () => () => h('textarea', 'draft') });
+    const wrapper = mount(ReaderWorkspace, {
+      props: { logical, preference: 'compare', environment: environment(844, 390) },
+      slots: { default: () => h(Core) },
+    });
+    await wrapper.findAll('.workspace-mobile-nav button')[1].trigger('click');
+    await wrapper.get('.workspace-mobile-top .workspace-focus').trigger('click');
+    expect(wrapper.attributes('data-mode')).toBe('single');
+    expect(wrapper.attributes('data-foreground')).toBe('reader');
+    expect(wrapper.attributes('data-focus-reading')).toBe('true');
+    await wrapper.get('.workspace-mobile-top .workspace-focus').trigger('click');
+    expect(wrapper.attributes('data-mode')).toBe('compare');
+    expect(wrapper.attributes('data-foreground')).toBe('assistant');
+    expect(wrapper.emitted('before-display-change')).toHaveLength(2);
+    expect(wrapper.emitted('focus-change')).toEqual([[true], [false]]);
+    expect(mounted).toHaveBeenCalledTimes(1);
+    expect(logical.revision).toBe(1n);
+  });
+
+  it("drops a focus return point when the reading scene changes", async () => {
+    const wrapper = mount(ReaderWorkspace, { props: { logical, contextKey: 'user-a:workspace-1', environment: environment(1440, 900) } });
+    (wrapper.vm as unknown as { toggleFocus(): void }).toggleFocus();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.attributes('data-mode')).toBe('single');
+    await wrapper.setProps({ contextKey: 'user-b:workspace-2' });
+    expect(wrapper.attributes('data-focus-reading')).toBe('false');
+    expect(wrapper.attributes('data-mode')).toBe('wide');
+  });
+  it('does not replay an already handled logical focus when only the chat scene changes', async () => {
+    const wrapper = mount(ReaderWorkspace, { props: { logical: { ...logical, focusedSlot: 'technical.agent' }, contextKey: 'book:chat-a', environment: environment(390, 844) } });
+    expect(wrapper.attributes('data-foreground')).toBe('assistant');
+    await wrapper.setProps({ contextKey: 'book:chat-b' });
+    expect(wrapper.attributes('data-foreground')).toBe('reader');
+    await wrapper.setProps({ logical: { ...logical, revision: 2n, focusedSlot: 'technical.agent' } });
+    expect(wrapper.attributes('data-foreground')).toBe('assistant');
+  });
   it("switches single-region foreground without remounting core slots", async () => {
     const mounted = vi.fn();
     const Core = defineComponent({

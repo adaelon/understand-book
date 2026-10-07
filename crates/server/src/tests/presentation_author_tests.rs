@@ -3,8 +3,12 @@ use super::*;
 pub(crate) mod ex10;
 #[path = "presentation_ex11_tests.rs"]
 mod ex11;
+#[path = "presentation_ex12_tests.rs"]
+mod ex12;
 #[path = "presentation_animation_tests.rs"]
 mod animation;
+#[path = "presentation_edit_tests.rs"]
+mod editing;
 use crate::agent_run::{AppStatePort, BorrowedAppPort, RuntimeStatePort};
 use runtime::{
     presentation_author::*,
@@ -15,8 +19,8 @@ use runtime::{
 fn setup() -> (tempfile::TempDir, AppState, AgentTurnRef) {
     let root = tempfile::tempdir().unwrap();
     let mut state = state_named("rp4-authoring");
-    state.history_path = Some(root.path().join("history.json"));
-    let book = state.book.base.book_id.clone();
+    state.user.history_path = Some(root.path().join("history.json"));
+    let book = state.workspace.book.base.book_id.clone();
     let turn = precommit_agent_turn(
         &mut state,
         &book,
@@ -37,6 +41,7 @@ fn presentation_ex6_model_preview_json_deserializes() {
 }
 fn write(html: &str) -> AuthorRequest {
     AuthorRequest::Write {
+        new_object: false,
         libraries: vec![],
         based_on: None,
         state_contract: json!({}),
@@ -66,11 +71,117 @@ fn working() -> String {
 }
 
 #[test]
+fn ex12_source_list_error_explains_recovery_without_granting_sources() {
+    let (_root, mut state, turn) = setup();
+    let evidence_range = EvidenceRange { start_lid: "1.1".into(), end_lid: "1.1".into(), ranges: vec![] };
+    let resolved = state.workspace.book.resolve_source(&evidence_range, "zh-CN", None).unwrap();
+    let binding = runtime::orchestrator::SourceBinding { source_ref_id: "source-observed".into(),
+        book_id: state.workspace.book.base.book_id.clone(), evidence_range,
+        evidence_text_digest: resolved.evidence_text_digest, label_snapshot: resolved.label,
+        preview_snapshot: resolved.preview };
+    let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope, port: &app, turn_ref: &turn,
+        previewed: Default::default(), animations: Default::default(), plots: Default::default() };
+    let request = |ids: Vec<String>| {
+        let mut request = write(r#"<p>证据。</p><button data-source-ref="source-observed">来源</button>"#);
+        if let AuthorRequest::Write { readable_content, source_ref_ids, .. } = &mut request {
+            *readable_content = "证据。[[source:source-observed]]".into();
+            *source_ref_ids = ids;
+        }
+        request
+    };
+    let cancellation = CancellationToken::default();
+    let error = port.author_presentation(request(vec![]), &[binding.clone()], &[], &cancellation).err().unwrap();
+    assert!(error.message.contains("UNKNOWN_SOURCE_REF"));
+    assert!(error.message.contains("write.source_ref_ids"));
+    assert!(error.message.contains("need not be registered again"));
+    assert_eq!(port.author_presentation(request(vec!["source-observed".into()]), &[binding], &[], &cancellation).unwrap().body["status"], "candidate_saved");
+    assert_eq!(port.author_presentation(request(vec!["source-observed".into()]), &[], &[], &cancellation).err().unwrap().error_code, "PRESENTATION_SOURCE_UNKNOWN");
+}
+
+#[test]
+#[ignore = "requires installed Chromium/Edge"]
+fn ex12_scroll_author_binds_images_reading_and_candidate_receipts() {
+    let (_root, mut state, turn) = setup();
+    let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope, port: &app, turn_ref: &turn,
+        previewed: Default::default(), animations: Default::default(), plots: Default::default() };
+    let cancellation = CancellationToken::default();
+    let html = include_str!("../../tests/fixtures/presentation-scroll.html");
+    let id = candidate(&mut port, html);
+    for (name, viewport) in REQUIRED_PREVIEW_ENVIRONMENTS {
+        let result = port.author_presentation(AuthorRequest::Preview {
+            candidate_id: id.clone(), width: None, viewport: Some(viewport),
+            read_selector: Some("#end".into()),
+            actions: vec![PreviewAction::Click { selector: "#change".into() }, PreviewAction::Scroll { y: 99999 }],
+        }, &[], &[], &cancellation).unwrap();
+        assert_ne!(result.body["status"], "preview_failed", "{}", result.body);
+        let last = &result.body["observations"][2];
+        assert_eq!(last["action"], json!({"kind":"scroll","y":99999}));
+        // Author preview applies host document padding; use its rendered document size.
+        let actual_y = last["scroll"]["y"].as_f64().unwrap();
+        assert_eq!(last["scroll"]["max_y"].as_f64(), Some(actual_y));
+        assert_eq!(actual_y, last["layout"]["cssContentSize"]["height"].as_f64().unwrap() - f64::from(viewport.height));
+        assert!(actual_y > 1900.0);
+        for field in ["x", "y", "max_y", "viewport_width", "viewport_height"] {
+            assert_eq!(result.body["reading"]["scroll"][field].as_f64(), last["scroll"][field].as_f64());
+        }
+        assert_eq!(result.body["reading"]["text"], "END");
+        assert_eq!(last["dom"]["controls"][0]["text"], "1");
+        let image = &result.images[2];
+        assert_eq!(image.candidate_id.as_deref(), Some(id.as_str()));
+        assert_eq!(image.environment_name.as_deref(), Some(name));
+        assert!(image.caption.contains("step 2"));
+        assert!(image.caption.contains("99999"));
+        assert!(image.caption.contains(&format!("y={actual_y}")));
+    }
+    let changed = candidate(&mut port, html);
+    assert!(port.author_presentation(AuthorRequest::Deliver { candidate_id: changed }, &[], &[], &cancellation).is_err());
+    assert!(port.author_presentation(AuthorRequest::Preview {
+        candidate_id: id.clone(), width: None, viewport: None, read_selector: None,
+        actions: (0..5).map(|_| PreviewAction::Scroll { y:0 }).collect(),
+    }, &[], &[], &cancellation).is_err());
+    assert!(port.author_presentation(AuthorRequest::Deliver { candidate_id: id }, &[], &[], &cancellation).unwrap().delivered.is_some());
+}
+
+#[test]
+#[ignore = "requires installed Chromium/Edge"]
+fn source_chips_match_reader_preview_and_keep_labels_out_of_answer_semantics() {
+    let (_root, mut state, turn) = setup();
+    let bindings: Vec<_> = [0_u32, 4].into_iter().enumerate().map(|(index, start)| {
+        let evidence_range = EvidenceRange { start_lid: "1.1".into(), end_lid: "1.1".into(), ranges: vec![read_tools::SourceSelectedRange {
+            lid: "1.1".into(), range: read_tools::SourceTextRange { start, end: start + 3 },
+        }] };
+        let resolved = state.workspace.book.resolve_source(&evidence_range, "zh-CN", None).unwrap();
+        runtime::orchestrator::SourceBinding { source_ref_id: format!("source-{index}"), book_id: state.workspace.book.base.book_id.clone(), evidence_range,
+            evidence_text_digest: resolved.evidence_text_digest, label_snapshot: resolved.label, preview_snapshot: resolved.preview }
+    }).collect();
+    let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope, port: &app, turn_ref: &turn, previewed: Default::default(), animations: Default::default(), plots: Default::default() };
+    let mut request = write(r#"<p>比较两处证据。</p><button data-source-ref="source-0">old</button><button data-source-ref="source-1">old</button><button data-source-ref="source-0">repeat</button>"#);
+    if let AuthorRequest::Write { source_ref_ids, .. } = &mut request { *source_ref_ids = vec!["source-0".into(), "source-1".into()]; }
+    let cancellation = CancellationToken::default();
+    let candidate = port.author_presentation(request, &bindings, &[], &cancellation).unwrap();
+    let result = port.author_presentation(AuthorRequest::Preview {
+        candidate_id: candidate.body["candidate_id"].as_str().unwrap().into(), read_selector: None, width: None, viewport: None, actions: vec![],
+    }, &bindings, &[], &cancellation).unwrap();
+    assert_eq!(result.body["status"], "preview_ready_for_inspection", "{}", result.body);
+    let dom = &result.body["observations"][0]["dom"];
+    let labels: Vec<_> = dom["controls"].as_array().unwrap().iter().map(|v| v["text"].as_str().unwrap()).collect();
+    assert_eq!(labels, vec!["正文 [1]", "正文 [2]", "正文 [1]"]);
+    assert!(!dom["semantic_text"].as_str().unwrap().contains("正文"));
+}
+
+#[test]
 #[ignore = "requires installed Chromium/Edge"]
 fn selected_result_reads_live_state_after_actions() {
     let (_root, mut state, turn) = setup();
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort { port: &app, turn_ref: &turn, previewed: Default::default(), animations: Default::default(), plots: Default::default() };
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope, port: &app, turn_ref: &turn, previewed: Default::default(), animations: Default::default(), plots: Default::default() };
     let html = r#"<input id="eta" type="number" value="1.2"><button id="next">Next</button><p id="result"></p><script>
       let k=4,w=0;const eta=document.getElementById('eta'),result=document.getElementById('result');
       function render(){w=0;for(let i=0;i<k;i++)w=w-2*Number(eta.value)*(w-2);const next=w-2*Number(eta.value)*(w-2);result.textContent=`eta=${eta.value}; k=${k}; w=${w.toFixed(6)}; next k=${k+1}; w=${next.toFixed(6)}`;}
@@ -95,7 +206,8 @@ fn selected_result_reads_live_state_after_actions() {
 fn presentation_plot_renders_real_image_and_freezes_assets_in_candidate() {
     let (_root, mut state, turn) = setup();
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort {
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope,
         port: &app,
         turn_ref: &turn,
         previewed: Default::default(),
@@ -118,6 +230,7 @@ fn presentation_plot_renders_real_image_and_freezes_assets_in_candidate() {
     let saved = port
         .author_presentation(
             AuthorRequest::Write {
+                new_object: false,
                 libraries: vec![],
                 based_on: None,
                 state_contract: json!({}),
@@ -137,7 +250,7 @@ fn presentation_plot_renders_real_image_and_freezes_assets_in_candidate() {
         .unwrap();
     let candidate = app
         .with_app(|state| {
-            state.read_presentation_candidate(
+            state.private_context().read_presentation_candidate(
                 &turn.session_id,
                 saved.body["candidate_id"].as_str().unwrap(),
             )
@@ -204,7 +317,8 @@ fn presentation_plot_cancellation_stops_running_python() {
 fn presentation_plot_previews_and_reopens_the_same_version_asset() {
     let (_root, mut state, turn) = setup();
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort {
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope,
         port: &app,
         turn_ref: &turn,
         previewed: Default::default(),
@@ -220,6 +334,7 @@ fn presentation_plot_previews_and_reopens_the_same_version_asset() {
     let candidate_id = port
         .author_presentation(
             AuthorRequest::Write {
+                new_object: false,
                 libraries: vec![],
                 based_on: None,
                 state_contract: json!({}),
@@ -273,13 +388,12 @@ fn presentation_plot_previews_and_reopens_the_same_version_asset() {
         .delivered
         .unwrap();
     let original = app
-        .with_app(|state| state.read_presentation(&turn.session_id, &reference))
+        .with_app(|state| state.private_context().read_presentation(&turn.session_id, &reference))
         .unwrap();
     let mut reopened = state_named("rp4-authoring");
-    reopened.history_path = app.with_app(|state| state.history_path.clone());
-    reopened.agent_history = app.with_app(|state| state.agent_history.clone());
-    let disk = reopened
-        .read_presentation(&turn.session_id, &reference)
+    reopened.user.history_path = app.with_app(|state| state.user.history_path.clone());
+    reopened.user.agent_history = app.with_app(|state| state.user.agent_history.clone());
+    let disk = reopened.private_context().read_presentation(&turn.session_id, &reference)
         .unwrap();
     assert_eq!(
         disk.content.content_files[&path],
@@ -306,6 +420,7 @@ fn presentation_plot_previews_and_reopens_the_same_version_asset() {
     let next_id = port
         .author_presentation(
             AuthorRequest::Write {
+                new_object: false,
                 libraries: vec![],
                 based_on: Some(reference.clone()),
                 state_contract: json!({}),
@@ -329,7 +444,7 @@ fn presentation_plot_previews_and_reopens_the_same_version_asset() {
         .unwrap()
         .to_string();
     let next_candidate = app
-        .with_app(|state| state.read_presentation_candidate(&turn.session_id, &next_id))
+        .with_app(|state| state.private_context().read_presentation_candidate(&turn.session_id, &next_id))
         .unwrap();
     assert!(next_candidate
         .content
@@ -369,7 +484,7 @@ fn presentation_plot_previews_and_reopens_the_same_version_asset() {
         .unwrap();
     assert_eq!(next_version.revision, reference.revision + 1);
     assert_eq!(
-        app.with_app(|state| state.read_presentation(&turn.session_id, &reference))
+        app.with_app(|state| state.private_context().read_presentation(&turn.session_id, &reference))
             .unwrap()
             .content
             .content_files[&path],
@@ -387,7 +502,7 @@ fn presentation_plot_real_resident_route() {
     );
     std::fs::create_dir_all(&root).unwrap();
     let mut state = state_named("ed2-live-plot");
-    state.history_path = Some(root.join("history.json"));
+    state.user.history_path = Some(root.join("history.json"));
     let config = ProviderConfig::from_env().unwrap();
     let model = config.model.clone();
     let adapter = FaultInjectionAdapter {
@@ -433,7 +548,7 @@ fn presentation_plot_real_resident_route() {
         })
         .expect("model did not deliver a presentation");
     app.with_app(|state| {
-        let version = state.read_presentation(&turn_ref.session_id, &reference).unwrap();
+        let version = state.private_context().read_presentation(&turn_ref.session_id, &reference).unwrap();
         if browser_baseline {
             assert!(!version.content.content_files.keys().any(|path| path.ends_with(".py")));
             assert!(version.content.content_files["index.html"].contains("<svg"));
@@ -442,7 +557,7 @@ fn presentation_plot_real_resident_route() {
             assert!(version.content.content_files.keys().any(|path| path.ends_with(".py")));
         }
         assert!(version.content.readable_content.contains("摄氏度"));
-        let response = crate::presentation_api::route(state, &json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(), false);
+        let response = crate::presentation_api::route(&state.private_context(), &json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(), false);
         assert_eq!(response.status, 200, "{}", response.body);
         std::fs::write(root.join("view.json"), response.body).unwrap();
     });
@@ -547,7 +662,7 @@ fn presentation_method_natural_request_comparison() {
     )
     .unwrap();
     let mut state = state_named(&format!("ed3-{condition}-{task}"));
-    state.history_path = Some(root.join("history.json"));
+    state.user.history_path = Some(root.join("history.json"));
     let config = ProviderConfig::from_env().unwrap();
     let model = config.model.clone();
     let adapter = Ed3RecordingAdapter {
@@ -587,7 +702,7 @@ fn presentation_method_natural_request_comparison() {
             })
         }) {
             app.with_app(|state| {
-                let response = crate::presentation_api::route(state, &json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(), false);
+                let response = crate::presentation_api::route(&state.private_context(), &json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(), false);
                 std::fs::write(root.join("view.json"), response.body).unwrap();
             });
         }
@@ -643,7 +758,7 @@ fn presentation_method_ex2_comparison() {
     let message = inputs["tasks"].as_array().unwrap().iter().find(|item| item["id"] == task).and_then(|item| item["message"].as_str()).expect("frozen task id");
     std::fs::write(root.join("input.json"),serde_json::to_vec_pretty(&json!({"condition":condition,"task":task,"message":message})).unwrap()).unwrap();
     let mut state = state_named(&format!("ex2-{condition}-{task}"));
-    state.history_path = Some(root.join("history.json"));
+    state.user.history_path = Some(root.join("history.json"));
     let config = ProviderConfig::from_env().unwrap();
     let model = config.model.clone();
     let adapter = Ex2SkillAdapter {
@@ -669,7 +784,7 @@ fn presentation_method_ex2_comparison() {
             _ => None,
         })) {
             app.with_app(|state| {
-                let response = crate::presentation_api::route(state,&json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(),false);
+                let response = crate::presentation_api::route(&state.private_context(),&json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(),false);
                 std::fs::write(root.join("view.json"),response.body).unwrap();
             });
         }
@@ -685,11 +800,11 @@ fn resident_goal_g6_natural_chapter_request() {
     std::fs::create_dir_all(&root).unwrap();
     let book = Book::load(book_dir.to_str().unwrap()).expect("G6 book must load");
     let mut state = state_named("g6-natural-chapter");
-    state.book_dir = book_dir;
-    state.book = book.into();
-    state.reader = Reader::new(&state.book, DEFAULT_RADIUS);
-    state.reader.goto_lid(&state.book, &mut state.store, "1.11", "2026-09-25T00:00:00Z").unwrap();
-    state.history_path = Some(root.join("history.json"));
+    state.workspace.book_dir = book_dir;
+    state.workspace.book = book.into();
+    state.workspace.reader = Reader::new(&state.workspace.book, DEFAULT_RADIUS);
+    state.workspace.reader.goto_lid(&state.workspace.book, &mut state.user.store, "1.11", "2026-09-25T00:00:00Z").unwrap();
+    state.user.history_path = Some(root.join("history.json"));
     let config = ProviderConfig::from_env().unwrap();
     let model = config.model.clone();
     let adapter = Ed3RecordingAdapter {
@@ -705,7 +820,7 @@ fn resident_goal_g6_natural_chapter_request() {
         _ => panic!("unknown G6_SCENARIO"),
     };
     std::fs::write(root.join("input.json"), serde_json::to_vec_pretty(&json!({
-        "scenario":scenario, "message": message, "book_id":state.book.base.book_id, "reader_anchor":"1.11", "model":model
+        "scenario":scenario, "message": message, "book_id":state.workspace.book.base.book_id, "reader_anchor":"1.11", "model":model
     })).unwrap()).unwrap();
     let prepared = prepare_agent_chat(&mut state, &json!({"message":message}).to_string(), "2026-09-25T00:00:00Z")
         .unwrap_or_else(|reply| panic!("prepare: {}", reply.body));
@@ -715,7 +830,7 @@ fn resident_goal_g6_natural_chapter_request() {
     let report = crate::agent_run::execute_prepared(&app, &adapter, prepared, CancellationToken::default());
     std::fs::write(root.join("outcome.json"), &report.reply.body).unwrap();
     let (goal, stop_reason) = app.with_app(|state| {
-        let session = state.agent_history.sessions.iter().find(|session| session.id == turn_ref.session_id).unwrap();
+        let session = state.user.agent_history.sessions.iter().find(|session| session.id == turn_ref.session_id).unwrap();
         let goal = session.goals.iter().find(|goal| goal.origin_turn_id == turn_ref.turn_id).cloned();
         let stop = session.turns.iter().find(|turn| turn.turn_id == turn_ref.turn_id)
             .and_then(|turn| turn.error.as_ref().map(|error| error.error_code.clone()).or_else(|| turn.outcome.as_ref().and_then(|outcome| outcome.warning.clone())));
@@ -733,7 +848,7 @@ fn resident_goal_g6_natural_chapter_request() {
             _ => None,
         })) {
             app.with_app(|state| {
-                let response = crate::presentation_api::route(state, &json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(), false);
+                let response = crate::presentation_api::route(&state.private_context(), &json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(), false);
                 std::fs::write(root.join("view.json"), response.body).unwrap();
             });
         }
@@ -744,7 +859,8 @@ fn resident_goal_g6_natural_chapter_request() {
 fn presentation_author_requires_preview_and_current_source_bindings() {
     let (_root, mut state, turn) = setup();
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort {
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope,
         port: &app,
         turn_ref: &turn,
         previewed: Default::default(),
@@ -788,7 +904,8 @@ fn presentation_author_requires_preview_and_current_source_bindings() {
 fn presentation_author_browser_correction_and_private_delivery() {
     let (_root, mut state, turn) = setup();
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort {
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope,
         port: &app,
         turn_ref: &turn,
         previewed: Default::default(),
@@ -885,9 +1002,8 @@ fn presentation_author_browser_correction_and_private_delivery() {
         .delivered
         .unwrap();
     app.with_app(|state| {
-        assert!(state.read_presentation(&turn.session_id, &saved).is_ok());
-        let reply = crate::presentation_api::route(
-            state,
+        assert!(state.private_context().read_presentation(&turn.session_id, &saved).is_ok());
+        let reply = crate::presentation_api::route(&state.private_context(),
             &json!({"session_id":turn.session_id,"turn_id":turn.turn_id,"reference":saved})
                 .to_string(),
             false,
@@ -901,7 +1017,8 @@ fn presentation_author_browser_correction_and_private_delivery() {
 fn presentation_author_requires_three_explicit_environment_receipts() {
     let (_root, mut state, turn) = setup();
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort {
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope,
         port: &app,
         turn_ref: &turn,
         previewed: Default::default(),
@@ -973,7 +1090,8 @@ fn presentation_author_requires_three_explicit_environment_receipts() {
 fn presentation_ex1_gold_uses_three_real_preview_environments() {
     let (_root, mut state, turn) = setup();
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort {
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope,
         port: &app,
         turn_ref: &turn,
         previewed: Default::default(),
@@ -988,6 +1106,7 @@ fn presentation_ex1_gold_uses_three_real_preview_environments() {
     let written = port
         .author_presentation(
             AuthorRequest::Write {
+                new_object: false,
                 libraries: vec![],
                 based_on: None,
                 state_contract: json!({
@@ -1051,7 +1170,8 @@ fn presentation_ex1_gold_uses_three_real_preview_environments() {
 fn presentation_ex6_seeks_and_observes_the_same_frozen_scene() {
     let (_root, mut state, turn) = setup();
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort {
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope,
         port: &app,
         turn_ref: &turn,
         previewed: Default::default(),
@@ -1065,6 +1185,7 @@ fn presentation_ex6_seeks_and_observes_the_same_frozen_scene() {
     let cancellation = CancellationToken::default();
     let candidate_id = port.author_presentation(
         AuthorRequest::Write {
+            new_object: false,
             libraries: vec![],
             based_on: None,
             state_contract: json!({"eta":"fixed learning rate 0.1..1.1","semantic_state":"completed iteration 0..5","transition_progress":"visual interpolation in [0,1)"}),
@@ -1140,7 +1261,8 @@ fn presentation_ex6_seeks_and_observes_the_same_frozen_scene() {
 fn presentation_ex6_reports_page_that_ignores_seek_and_keeps_playing() {
     let (_root, mut state, turn) = setup();
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort {
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope,
         port: &app,
         turn_ref: &turn,
         previewed: Default::default(),
@@ -1173,7 +1295,7 @@ fn presentation_ex6_real_model_receives_middle_frame_and_revises() {
     let message = "请制作一页很小的可交互说明，解释 L(w)=(w-2)^2、w₀=0、wₜ₊₁=wₜ-2η(wₜ-2) 在 η=0.8 时如何跨过最优点。页面只需一条位置轴、一颗沿真实迭代间过渡的点、步数/过渡读数和播放按钮。请在页面提供 window.presentationScene.seek({semantic_state,transition_progress}) 与 snapshot()；seek 停止播放并立即重建该位置，snapshot 返回语义步数、过渡进度和 playing。先写候选，在桌面 preview 用 seek 定位真实第 1 步、过渡 50%，读实际截图和观察值；根据该中途帧修订一次可见标记或文字，再预览新候选的三种必需视口，最后交付。数值只按给定递推计算，不引用书外材料。";
     std::fs::write(root.join("input.json"), serde_json::to_vec_pretty(&json!({"message":message})).unwrap()).unwrap();
     let mut state = state_named("ex6-real-middle-frame");
-    state.history_path = Some(root.join("history.json"));
+    state.user.history_path = Some(root.join("history.json"));
     let config = ProviderConfig::from_env().unwrap();
     let model = config.model.clone();
     let adapter = Ed3RecordingAdapter {
@@ -1221,7 +1343,7 @@ fn presentation_ex6_real_model_receives_middle_frame_and_revises() {
     let reference = outcome["answer_view"]["parts"].as_array().unwrap().iter()
         .find(|part| part["kind"] == "presentation").expect("model did not deliver a presentation");
     app.with_app(|state| {
-        let response = crate::presentation_api::route(state, &json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":{"presentation_id":reference["presentation_id"],"revision":reference["revision"]}}).to_string(), false);
+        let response = crate::presentation_api::route(&state.private_context(), &json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":{"presentation_id":reference["presentation_id"],"revision":reference["revision"]}}).to_string(), false);
         assert_eq!(response.status, 200, "{}", response.body);
         std::fs::write(root.join("view.json"), response.body).unwrap();
     });
@@ -1235,7 +1357,7 @@ fn selected_result_real_model_reads_and_explains() {
     let message = "请做一页很小的交互说明：L(w)=(w-2)^2，w0=0，w(k+1)=wk-2η(wk-2)。固定 η=1.2，初始显示 k=4，按钮前进一步。页面用程序按递推生成当前步和下一步的读数，均显示六位小数，提供 state reader 返回实际 η 和 k。把这些读数放在同一结果区域，使用 presentation.author preview 的 read_selector，在点击一次之后读取它，再根据工具返回的 reading 解释当前步和下一步为何在最优点两侧，并在最终回答逐项写明 η、k、w。最终文字里的具体数值必须来自该 reading。预览三种所需视口后交付，不引用书外材料。";
     std::fs::write(root.join("input.json"), serde_json::to_vec_pretty(&json!({"message":message,"kind":"directed_capability_diagnostic","runs":1})).unwrap()).unwrap();
     let mut state = state_named("ex2-selected-result");
-    state.history_path = Some(root.join("history.json"));
+    state.user.history_path = Some(root.join("history.json"));
     let config = ProviderConfig::from_env().unwrap();
     let model = config.model.clone();
     let adapter = Ed3RecordingAdapter { inner: ProviderRegistry::adapter_from_config(config), baseline: false, evidence: root.clone(), requests: Default::default() };
@@ -1262,7 +1384,7 @@ fn selected_result_real_model_reads_and_explains() {
     assert!(received, "model did not receive the complete post-click page reading");
     let reference = outcome["answer_view"]["parts"].as_array().unwrap().iter().find(|part| part["kind"] == "presentation").expect("model did not deliver");
     app.with_app(|state| {
-        let response = crate::presentation_api::route(state, &json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":{"presentation_id":reference["presentation_id"],"revision":reference["revision"]}}).to_string(), false);
+        let response = crate::presentation_api::route(&state.private_context(), &json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":{"presentation_id":reference["presentation_id"],"revision":reference["revision"]}}).to_string(), false);
         assert_eq!(response.status, 200);
         std::fs::write(root.join("view.json"), response.body).unwrap();
     });
@@ -1275,7 +1397,8 @@ fn selected_result_real_model_reads_and_explains() {
 fn presentation_author_browser_dynamic_semantics_and_cancel() {
     let (_root, mut state, turn) = setup();
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort {
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope,
         port: &app,
         turn_ref: &turn,
         previewed: Default::default(),
@@ -1433,7 +1556,7 @@ fn presentation_author_real_model_repairs_and_delivers() {
     );
     std::fs::create_dir_all(&root).unwrap();
     let mut state = state_named("rp4-live-model");
-    state.history_path = Some(root.join("history.json"));
+    state.user.history_path = Some(root.join("history.json"));
     let config = ProviderConfig::from_env().unwrap();
     let model = config.model.clone();
     let adapter = FaultInjectionAdapter {
@@ -1476,9 +1599,9 @@ fn presentation_author_real_model_repairs_and_delivers() {
         })
         .expect("no delivered presentation");
     app.with_app(|state| {
-        let version = state.read_presentation(&turn_ref.session_id,&reference).unwrap();
+        let version = state.private_context().read_presentation(&turn_ref.session_id,&reference).unwrap();
         assert!(!version.content.content_files[&version.content.entrypoint].contains("RP4_INJECTED_RUNTIME_FAILURE"));
-        let response = crate::presentation_api::route(state,&json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(),false);
+        let response = crate::presentation_api::route(&state.private_context(),&json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(),false);
         assert_eq!(response.status,200,"{}",response.body);
         std::fs::write(root.join("view.json"),&response.body).unwrap();
     });
@@ -1492,9 +1615,9 @@ fn presentation_author_real_model_repairs_and_delivers() {
 fn presentation_author_mount_host() {
     let root = std::path::PathBuf::from(std::env::var("RP4_EVIDENCE_DIR").unwrap());
     let mut state = state_named("rp4-mount");
-    state.history_path = Some(root.join("history.json"));
-    state.agent_history = load_agent_history(&state.history_path).unwrap();
-    let session = state.agent_history.sessions.last().unwrap();
+    state.user.history_path = Some(root.join("history.json"));
+    state.user.agent_history = load_agent_history(&state.user.history_path).unwrap();
+    let session = state.user.agent_history.sessions.last().unwrap();
     let turn = session.turns.last().unwrap();
     let fixture = json!({"session_id":session.id,"turn_id":turn.turn_id,"outcome":turn.outcome});
     let server = tiny_http::Server::http("127.0.0.1:4175").unwrap();
@@ -1528,4 +1651,23 @@ fn presentation_author_mount_host() {
             )
             .unwrap();
     }
+}
+
+#[test]
+fn mu1c_presentation_author_keeps_original_chat_and_material_after_switch() {
+    let (_root, mut state, turn) = setup();
+    let scope = crate::run_scope::RunScope::capture(&state, &turn, "test", None, None);
+    let other = write_multi_leaf_book("mu1c-presentation-other", "mu1c-presentation-other", 4);
+    assert_eq!(route_open_book(&mut state, &json!({"dir":other}).to_string(), "later").status, 200);
+    let app = BorrowedAppPort(RefCell::new(&mut state));
+    let mut port = RuntimeStatePort { port:&app, turn_ref:&turn, scope:&scope,
+        previewed:Default::default(), animations:Default::default(), plots:Default::default() };
+    let id = candidate(&mut port, &working());
+    let reference = app.with_app(|state| scope.private_context(state).persist_presentation_candidate(&turn.session_id, &turn.turn_id, &id)).unwrap();
+    let version = port.author_presentation(serde_json::from_value(json!({"operation":"read","reference":reference})).unwrap(), &[], &[], &CancellationToken::default());
+    assert!(version.is_ok());
+    app.with_app(|state| {
+        assert!(state.private_context().read_presentation(&turn.session_id, &reference).is_err());
+        assert_eq!(scope.private_context(state).read_presentation(&turn.session_id, &reference).unwrap().owner.book_id, scope.book.base.book_id);
+    });
 }

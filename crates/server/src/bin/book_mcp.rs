@@ -45,25 +45,20 @@ fn main() {
             .ok()
             .map(|port| Box::new(port) as Box<dyn ArtifactSnapshotReadPort>);
     let mut state = AppState {
-        desktop_host: false,
-        reader_only: false,
-        book_dir: dir,
-        library_root: None,
-        book: book.into(),
-        reader,
-        store,
-        intent_store_root: None,
+        services: server::service_state::ServiceState {
+            desktop_host: false,
+            reader_only: false,
+            library_root: None,
+            adapter,
+        },
+        user: server::user_runtime::UserRuntime::visitor(store),
+
         mcp_artifact_read_port,
-        adapter,
-        messages: new_session(),
-        session_path: None,
-        history_path: None,
-        agent_history: server::AgentHistory::default(),
-        profile_context_cache: runtime::profile_context::ProfileContextCache::default(),
+
         visitor_sessions: VisitorSessions::default(),
-        workbench_loaded_revision: None,
-        active_agent_stream: None,
-    };
+
+        workspace: server::reader_workspace::ReaderWorkspace::local(dir, book.into(), reader, new_session(), None),
+};
 
     let stdin = std::io::stdin();
     let mut stdout = std::io::stdout();

@@ -39,6 +39,8 @@ import {
   buildSemanticArtifactEnvelopeV3,
   semanticArtifactMatches,
   semanticContractEqual,
+  sameBuildContent,
+  relocateGenerationTask,
   semanticContractFromExtractionPolicy,
   extractionPolicyFromSemanticContract,
   writeAutomaticBuildGenerationArtifact,
@@ -524,7 +526,7 @@ export function freezeProfileSidecarDiscourseShadowTask(
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
     if (code !== "EEXIST") throw error;
-    if (readFileSync(file, "utf8") !== bytes) {
+    if (`${JSON.stringify(readProfileSidecarDiscourseShadowTask(target, task.policy_generation_id, task.descriptor.work_unit_id), null, 2)}\n` !== bytes) {
       throw new Error(`policy_generation_conflict: profile sidecar shadow task is already frozen: ${file}`);
     }
     return file;
@@ -549,7 +551,7 @@ export function freezeProfileSidecarSemanticFastPathTask(
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
     if (code !== "EEXIST") throw error;
-    if (readFileSync(file, "utf8") !== bytes) {
+    if (`${JSON.stringify(readProfileSidecarProductionTask(target, task.policy_generation_id, task.descriptor.work_unit_id), null, 2)}\n` !== bytes) {
       throw new Error(`policy_generation_conflict: profile sidecar fast-path task is already frozen: ${file}`);
     }
     return file;
@@ -564,7 +566,7 @@ export function readProfileSidecarDiscourseShadowTask(
   const file = profileSidecarDiscourseShadowTaskPath(target, policyGenerationId, workUnitId);
   if (!existsSync(file)) throw new Error(`profile sidecar shadow task does not exist: ${workUnitId}`);
   return validateProfileSidecarDiscourseShadowTask(
-    JSON.parse(readFileSync(file, "utf8")) as ProfileSidecarDiscourseShadowTaskV1,
+    relocateGenerationTask(JSON.parse(readFileSync(file, "utf8")) as ProfileSidecarDiscourseShadowTaskV1, target.target_ref),
     target,
   );
 }
@@ -576,7 +578,7 @@ export function readProfileSidecarProductionTask(
 ): ProfileSidecarProductionTaskV1 {
   const file = profileSidecarDiscourseShadowTaskPath(target, policyGenerationId, workUnitId);
   if (!existsSync(file)) throw new Error(`profile sidecar production task does not exist: ${workUnitId}`);
-  const value = JSON.parse(readFileSync(file, "utf8")) as ProfileSidecarProductionTaskV1;
+  const value = relocateGenerationTask(JSON.parse(readFileSync(file, "utf8")) as ProfileSidecarProductionTaskV1, target.target_ref);
   return value.version === "profile_sidecar_semantic_fast_path_task.v1"
     ? validateProfileSidecarSemanticFastPathTask(value, target)
     : validateProfileSidecarDiscourseShadowTask(value, target);
@@ -1343,7 +1345,7 @@ function readShadowReductionDependency(input: {
     || artifact.work_unit_id !== input.work_unit_id
     || artifact.policy_generation_id !== input.policy_generation_id
     || artifact.artifact_hash !== input.artifact_hash
-    || !sameResolvedTarget(artifact.target, input.task.target_ref)
+    || !sameBuildContent(artifact.target, input.task.target_ref)
     || !semanticArtifactMatches(artifact, {
       target: artifact.target,
       stage: "profile_sidecar",

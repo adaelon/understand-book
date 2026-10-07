@@ -10,6 +10,19 @@ const input: BookStructureRelationInput = { version: "book_structure_relation_in
   entries: lines.map(line => ({ id: line.id, kind: "throughline", name: line.name, summary: line.summary, unit_lids: line.lids, key_stops: [], throughline: line })) };
 const empty = (): BookStructureRelationDelta => ({ new_throughlines: [], extend_throughlines: [], merge_throughlines: [], add_dependencies: [] });
 
+it("keeps new-theme identities stable when independent tasks finish out of order", () => {
+  const delta = empty();
+  delta.new_throughlines.push({ id: "proposed", name: "AC", summary: summary(["a", "c"]), lids: ["a", "c"], key_stop_ids: [] });
+  const later = { work_unit_id: "stitch:relation:000008", delta };
+  const earlier = { work_unit_id: "stitch:relation:000003", delta };
+  const partial = applyBookStructureRelationDeltas(base, [later]);
+  const complete = applyBookStructureRelationDeltas(base, [later, earlier]);
+  expect(partial.candidate.throughlines!.find(line => line.id === "relation-8-0")).toEqual(
+    complete.candidate.throughlines!.find(line => line.id === "relation-8-0"));
+  expect(complete.candidate.throughlines!.some(line => line.id === "relation-3-0")).toBe(true);
+  expect(applyBookStructureRelationDeltas(base, [earlier, later])).toEqual(complete);
+});
+
 it("keeps local artifact bytes and applies empty and repeated deltas without loss", () => {
   const before = JSON.stringify(base);
   const delta = empty(); delta.add_dependencies.push({ unit_lid: "a", depends_on: "c", evidence_lids: ["a.1", "c.1"] });

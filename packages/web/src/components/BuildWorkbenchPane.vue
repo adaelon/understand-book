@@ -90,6 +90,7 @@ const stageOrder: BuildStageId[] = [
   "pass2",
   "book_structure",
   "paper_reading_guide",
+  "formal_objects", "cognitive_materials", "teaching_publish",
 ];
 const executorOptions: ExecutorId[] = ["codex", "manual", "opencode", "claude"];
 const adapterModeOptions: WorkbenchAdapterMode[] = ["builtin", "contract_only", "fake_success", "fake_failure", "fake_permission"];
@@ -228,6 +229,9 @@ const stageLabels: Record<BuildStageId, string> = {
   pass2: "Pass2 长程关联",
   book_structure: "书结构",
   paper_reading_guide: "论文阅读指南",
+  formal_objects: "正式学习对象",
+  cognitive_materials: "重点认知素材",
+  teaching_publish: "教学材料验收发布",
 };
 const executorLabels: Record<ExecutorId, string> = {
   codex: "Codex",

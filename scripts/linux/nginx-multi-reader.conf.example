@@ -1,0 +1,60 @@
+# Separate multi-reader endpoint. Supply your hostname and TLS certificate.
+# Backend: server --multi-user /srv/understand-book --origin https://reader.example --addr 127.0.0.1:8788
+# Build: bash scripts/linux/build-multi-reader.sh
+# Set root to packages/web/dist-multi in that same final release directory.
+# Do not combine this application identity with the legacy Basic Auth template.
+server {
+    listen 443 ssl http2;
+    server_name reader.example;
+    ssl_certificate /etc/letsencrypt/live/reader.example/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/reader.example/privkey.pem;
+    client_max_body_size 64k;
+    auth_basic off;
+    # Request URLs can carry private search text. Disable query-bearing access logs.
+    access_log off;
+    root /opt/understand-book/releases/MU11_RELEASE/packages/web/dist-multi;
+    # Vite emits content-versioned filenames only under /assets/.
+    location /assets/ {
+        try_files $uri =404;
+        include /etc/nginx/mime.types;
+        types { application/javascript mjs; }
+        gzip on;
+        gzip_vary on;
+        gzip_min_length 1024;
+        gzip_types text/css application/javascript text/javascript application/json image/svg+xml;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-store" always;
+    }
+    location /api/ {
+        gzip on;
+        gzip_vary on;
+        gzip_min_length 1024;
+        gzip_comp_level 5;
+        gzip_types application/json;
+        proxy_pass http://127.0.0.1:8788;
+        proxy_http_version 1.1;
+        proxy_set_header Host reader.example;
+        proxy_set_header Connection "";
+        proxy_set_header Authorization "";
+        proxy_set_header X-User-Id "";
+        proxy_set_header X-Forwarded-User "";
+        proxy_set_header Forwarded "";
+        proxy_set_header X-Forwarded-For "";
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_read_timeout 600s;
+        proxy_buffering off;
+        proxy_cache off;
+        # PDF ranges retain upstream authorization and no-store, like all API responses.
+        location /api/books/ {
+            proxy_pass http://127.0.0.1:8788;
+            # Let PDF.js request page byte ranges; every request still reaches authorization.
+            location ~ /(?:pdf/original|original\.pdf)$ {
+                proxy_pass http://127.0.0.1:8788;
+                proxy_force_ranges on;
+            }
+        }
+    }
+}

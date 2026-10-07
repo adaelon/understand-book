@@ -43,6 +43,7 @@ import {
   buildSemanticArtifactEnvelopeV3,
   semanticArtifactMatches,
   semanticContractEqual,
+  relocateGenerationTask,
   semanticContractFromExtractionPolicy,
   writeAutomaticBuildGenerationArtifact,
   type ExtractionPolicyFingerprintV1,
@@ -1075,7 +1076,7 @@ export function freezePass1ShadowTask(target: AutomaticBuildTarget, input: Pass1
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
     if (code !== "EEXIST") throw error;
-    if (readFileSync(file, "utf8") !== bytes) {
+    if (`${JSON.stringify(readPass1ShadowTask(target, task.policy_generation_id, task.descriptor.work_unit_id), null, 2)}\n` !== bytes) {
       throw new Error(`policy_generation_conflict: pass1 shadow task is already frozen: ${file}`);
     }
     return file;
@@ -1090,7 +1091,7 @@ export function readPass1ShadowTask(
   const file = pass1ShadowTaskPath(target, policyGenerationId, workUnitId);
   if (!existsSync(file)) throw new Error(`pass1 shadow task does not exist: ${workUnitId}`);
   return validatePass1ShadowTask(
-    JSON.parse(readFileSync(file, "utf8")) as Pass1ShadowTaskV1,
+    relocateGenerationTask(JSON.parse(readFileSync(file, "utf8")) as Pass1ShadowTaskV1, target.target_ref),
     target,
   );
 }

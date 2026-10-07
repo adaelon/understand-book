@@ -1,42 +1,59 @@
-# SESSION_CHECKPOINT — 2026-09-29 集成基线
+# SESSION_CHECKPOINT — 2026-10-03 16:56
 
 ## 新鲜度自检
-- 写入前最新 commit：`c2ff3e1 feat: ship reader, agent, viewport, and observability updates`。
-- 本页随 `feat: integrate agent goals, presentation, build harness and reader updates` 提交；实际提交身份以 `git log -1` 为准。
+- 当前HEAD：5e10516 feat: integrate agent goals, presentation, build harness and reader updates（本次落盘已核对）。
+- 本轮未创建commit；保留全部既有未提交工作。冷启动以本页及实际JSON凭据为准。
 
-## 当前在做什么
-现有源码、测试、固定资源及实施文档整合为一个可继续工作的基线。主要在途工作是 EX11.7 跨题真实生成与验收；EX11.1–6 工程完成，制作方法为 ex11.v9。各条工作线的验收状态保持原结论。
+## 当前状态
+BSR0–BSR7已完成。BSR7真实全书、同源C/B主题对照、最终来源、fresh重放、Engine发布、安装和新书读取全部完成。
+- 用户授权独立Codex子代理、3并发、embedding优先、token总量无预算，验收后安装交付；失败/重试和C/B共享1200提交。
+- 原开始2026-10-02T02:26:22.597Z，最终生成截止2026-10-03T02:56:00Z（香港10月3日10:56）；未重置。两组生成在截止前结束，后续验证/安装完成。
+- 累计891/1200：884接受、7拒绝。共享前缀806提交/799接受；C主题新增39/B46全部接受。授权见DIR/quota-amendment.json、deadline-amendment.json。
+- DIR=docs/performance/book-structure-bsr7-20261002；CWORK=tmp/bsr7-book-structure-bsr7-20261002/.understand-book/ai-infra-book-complete；B在DIR/lexical及同tmp/lexical-workspace。
+- 主交付新书=E:/allwork/download/agent/lifebook/versions/bsr7-20261002/.understand-book/ai-infra-book-complete。
+- 原书E:/allwork/download/agent/lifebook/.understand-book/ai-infra-book-complete保留；新书复制完整公共输入、.build/history及实际公开book_structure.json。
+- 发现14单元、572/572片段、9111/9111 core叶节点、2636候选；新副本只复用六项公共前置，五处公式修正见formula-corrections.json。
+- 14章来源全部通过，最终946章节重点/345宏观；unit8/9/11补遗漏、unit14剔除读取误标均经正式有限修订，历史保留。
+- C=14单元/956重点/345宏观/11主线，49主题阶段/9依赖/10新增重点；B=14/948/345/11，47/7/2。C按用户embedding优先作主交付。
+- 同源11主题/47seed、共享plan247已接受，实际输入19304/20000；B在任何theme next前派生。comparison.json确认同目录/章节与共同候选正文。
+- C/B最终来源报告均pass/open0：B预算kernel口径及有效吞吐分子/观察时间分母、C附近工作站/云端称谓三项theme revisions均正式接纳并关闭。
+- C真实embedding2650docs/12queries/344calls，125159实际输入tokens，调用累计15690.6121ms；B全0。已安装MiniLM L12-v2/q8/CPU/384维，无下载或外部生成API。
+- C/B主题序列化输入/输出估算324899/10962及371792/11568，wall4945835/4446630ms；实际Codex模型calls/tokens未知null，独立查询与动作不能证明因果费用或提速。
 
-## 下一步（可直接接手）
-1. 阅读 EX11.6–7 报告和 EX11 方案 §8–10；检查本地 batch8 的 summary/outcome，先确认已有运行终态，再决定是否启动后续样本。
-2. 对已交付原稿运行独立数学/图元或真实解码帧核对，按实际页面适配 reader-selectors.json；不要人工改模型页补算成功。
-3. 使用 `EX10_CONTENT=<run>/content.json` 启动 `presentation_ex10_browser_host --ignored --nocapture`，通过 `playwright.ex10.config.ts` 执行 Reader 使用链，完成后 POST /stop。
-4. 按冻结合同完成剩余重复题和短答；工程或方法修复另开批次，完整合同实际通过后才标记 EX11.7 完成。
-5. 下一项实现按独立切片提交；DH6 和调用成本后续分别从专用 checkpoint 接手。
+## 实际验收与安装凭据
+- DIR/verification.json：C838接纳步骤fresh重放passed；DIR/lexical/verification.json：B799共享+46自身=845步passed。
+- 两组same_inputs/candidates/structure=true、full quality passed、9111叶节点无缺口，重放0模型/Provider，保存Core检索准备与当前请求和完整目录依赖一致。
+- 两组publication.json均closed；durable-book.json记录实际新目录，installed-quality.json在新位置gate/integrity passed、无缺口/重叠。
+- 最新成品25提示Node/Bun parity、T7、plugin-release、release-config、完整NSIS/export通过；dist/UnderstandBookSetup-BSR7-20261002.exe为63177800bytes。
+- 安装于E:/allwork/Understand Book：Reader46605312bytes、Book MCP7884800、build106867712，web资源已覆盖。binary-installation.json记录实际文件与旧备份。
+- 旧3exe/web备份tmp/bsr7-release/installed-before；运行中MCP/build改名before-bsr7-20261003保留，未终止其他连接。
+- 插件0.1.0+codex.20261003012800实际installed/enabled；本地understand-book市场和其他市场保留。CLI缓存访问拒绝后完整published插件复制到独立新cache，plugin-installation.json记录方式与实际list证明。
+- 已安装Reader通过实际POST /book/open加载新书并保存current_book_dir，再重启本任务Reader；reader-session.json、reader-start.json、reader-active-host.json记录实际选书与运行端口。
+- reader-explicit/reader-verification.json和reader-active/reader-verification.json均passed：14/956/345/11，章节身份/内容/顺序及锚定原因、完整主线一致，训练unit12=117重点/44宏观，模型0。
+- 验收工具曾将跨Buffer的汉字解码为���；evals/book-structure/verify-reader-full-book.ts已设置stdout/stderr连续UTF8并在比较前保存投影，同一全书双入口后绿。Rust保持原文，成品无需重建。
+- package-final-build.json状态delivered；delivery.json及上述真实回执集中DIR。两组生成者均官方next complete后停止。
 
-## 未提交 / 未完成
-- 本次集成提交纳入当前实现、测试、依赖、固定资源、切片方案及报告；本机配置、临时文件、书籍、handoff 和大批原始运行产物保留本地。
-- EX11.7 尚未完成完整六例与短答使用链；batch1–7 的原始失败及归因保留。batch8 的最新终态以本地运行目录为准。
-- G6 整体自然请求/发布验收、CQ 范围表达稳定性、DH0 人工作答以及 DH6 真实模型质量/业务恢复/回滚仍有未完成项；DH7 属于后续扩展。
-- DeepSeek 续接、状态追加和压缩预算工程已完成；真实缓存命中和费用收益尚待实际任务观测。
-- ED3、EX2、EX10 保留其未通过的实验结论；EV7 候选已撤回。TutorSession 等教学领域 ADR 仍为设计决策。
+## 实现与落档
+- Core有限章节分段选择/章节来源修订/主题来源修订、request事件与fresh恢复已完成；冻结前任务/prompt/proof、失败计量和原时间保留。
+- 训练114/44在实际1981 candidate容量内以48/48/18+final接受；3500/6500为预留。64项分页、稳定read索引、inspect/read去重及32字规划导航通过实际容量验收。
+- BookStructure范围关闭保留来源/当前输入/完整覆盖/质量/新鲜度门禁，普通全书路由不变；compiled CommonJS入口与源码一致。
+- 章节planning8、分段/修订writer、主题revision12、双模式fullbook/fresh/compare/close2、Core typecheck及关闭/路由/恢复回归通过；实际全书验证不以fixtures替代。
+- 架构、代码链路、BSR切片方案、ADR0151、evals README和docs/performance/book-structure-bsr7.md均已收口完成。
 
-## 当前代码与验证
-- EX11.6：页内交互归 content，宿主 Reader 动作归 ReaderAction；原 Goal 误分类复现已修复，不提高回合上限。
-- Flash Author 输出预留为 131072，输入压缩水位保持原范围；普通请求和显式配置保持原合同。
-- 压缩补全既有 v1 结构；最终历史改写/截断已保存前缀时失效派生 checkpoint；严格加载校验保持。
-- 成功预览按实际请求区分新进展；重复输入/失败不增进展。AnimationCue 覆盖实际 Provider JSON 小数解析路径。
-- ex11.v9 增加最小 160px Reader 内容区的媒体控件布局指导；实际解码帧、播放、恢复与追问仍需逐题验收。
-- 集成前重新执行本地 Rust 回归、Core/Web 定向回归、前端构建、评测脚本、观测层/只读 MCP 测试和 DSH 类型检查/打包；最终结果见本次提交说明。
+## Linux书籍同步（2026-10-03 16:51发布）
+- 按用户后续同步请求，已发布到115.190.121.150；正式程序沿用实际release `/opt/understand-book/releases/ex13-jl-20261002`，未改源码/程序。
+- 正文/base与原线上书逐字节一致，复用线上来源清单及图片；新增完整book_structure、discourse与修正后的formula。公共阅读材料已同步，约1.6GB构建/重放档案继续保留Windows。
+- 新默认publication=`01a100f5-e3c3-72f3-8bfb-eb8a08774ab5`，书籍身份ai-infra-book-complete；继承reader/puff/adaelon授权。旧发布与私人数据保留，停服前活动/未保存运行0，原生备份在 `/opt/understand-book/backups/bsr7-20261003/service`。
+- DIR/linux保存5份真实回执；公网HTTPS认证Reader全14章内容、956重点、345宏观顺序、11完整主线及图片读取passed，模型请求0，服务active。已打开的旧现场仍绑定旧发布，需重新选择本书新版（默认）。
+
+## 已知限制与下一步
+- 当前聊天既有Book工具仍返回book_structure.json not attached，尚未附着新书；新的已安装MCP显式及Reader真实默认入口已全量通过。本轮未重建旧聊天连接，也无可调用重连接口。
+- 原2636候选/history仍保留unit:14:fragment:0032#f33-1把5.47GB总读取误称权重的误标；正式章节及两组最终主题均未选择。其他unit同后缀不是此问题。
+- 本轮没有待生成、发布、安装或验收步骤。后续按新的用户请求执行；再次真实生成需独立授权，不沿用本轮剩余名额或过期截止。
+- BookStructure交付不改产品全局默认模式或其他SR消费者历史结论；实际模型usage与比较限制沿上文分列。
 
 ## 冷启动读序
-1. `docs/performance/explorable-explanation-ex11-6-7-20260928.md` — 真实失败、修复和批次结论。
-2. `docs/切片方案-EX11-Konva通用能力与局部动态演示.md` §8–10 — 当前状态、验收合同。
-3. `docs/performance/ARTIFACTS.md`，然后本地 `docs/performance/ex11-local-demonstrations/ex11.7/batch8/` — 证据保存边界及已有结果。
-4. `docs/代码链路.md` 自 2026-09-20 选区采样修复起的新增记录 — 集成改动归属。
-5. 按接手任务读取 `SESSION_CHECKPOINT_DSH.md` 或 `SESSION_CHECKPOINT_KV_CACHE.md`；EX11 环境见 `docs/Manim-部署.md` 和 EX11.3–5 报告。
-
-## 本会话决策摘要
-- 用户确认将交织的现有改动筛选后整体提交；保持未完成验收和失败实验的真实状态。
-- 原始模型记录、截图、视频、trace 和逐批源码副本保留在原位置；报告、复现脚本与必要夹具进入仓库。
-- 提交后以这份基线继续，后续按独立切片落 commit。
+1. docs/performance/book-structure-bsr7.md、DIR/package-final-build.json、delivery.json、comparison.json及真实verification/publication/Reader回执。
+2. DIR各章节与themes-C/B-source-review.json、source-review-material、plan/session/events及授权修订；原发现与审阅历史保留。
+3. docs/adr/0151-book-structure-global-outline-and-semantic-retrieval.md、docs/切片方案-BookStructure全局框架与语义召回.md BSR7、docs/架构.md与docs/代码链路.md。
+4. evals/book-structure/README.md及full-book/verify-full-book/compare-full-book/verify-reader-full-book.ts，Core organization/planning/themes与focused stage-close。

@@ -171,6 +171,49 @@ function workspaceFileSnapshot(root: string): Record<string, string> {
 }
 
 describe("automatic build executor dispatch runtime", () => {
+  it("skips work leased by an older accepted plan when refilling a new plan", () => {
+    const { target, descriptors, plan, manifest, bindings } = fixture(16);
+    const original = persistAutomaticBuildDispatch(target, manifest, {
+      owner: "original-plan", created_at: "2026-09-02T01:00:00.000Z",
+      reserve_ttl_ms: 60_000, run_ttl_ms: 1_800_000,
+    }).persisted;
+    expect(advanceAutomaticBuildDispatch(target, "profile_sidecar", manifest.dispatch_id, {
+      now: "2026-09-02T01:00:00.100Z", dispatch_run_id: original.dispatch_run_id,
+      descriptors, task_bindings: bindings,
+    }).status).toBe("leased");
+    const refill = selectAutomaticBuildDispatchHandoff(target, {
+      accepted_plan_digest: "new-plan-with-additional-ready-work", current_dispatch_plan: plan,
+      available_new_executor_slots: 1, created_at: "2026-09-02T01:00:00.200Z",
+    });
+    expect(refill.selected_manifests).toEqual([plan.dispatches[1]]);
+    // Once the original lease expires, that work becomes dispatchable again.
+    const recovered = selectAutomaticBuildDispatchHandoff(target, {
+      accepted_plan_digest: "new-plan-with-additional-ready-work", current_dispatch_plan: plan,
+      available_new_executor_slots: 1, created_at: "2026-09-02T02:00:00.000Z",
+    });
+    expect(recovered.selected_manifests).toEqual([plan.dispatches[0]]);
+  });
+
+  it("keeps a live executor's delivered batch occupied before generation.start claims its task", () => {
+    const { target, plan, manifest } = fixture(16);
+    persistAutomaticBuildDispatch(target, manifest, {
+      owner: "receiving-input", created_at: "2026-09-02T01:00:00.000Z",
+      reserve_ttl_ms: 60_000, run_ttl_ms: 1_800_000,
+    });
+    const held = selectAutomaticBuildDispatchHandoff(target, {
+      accepted_plan_digest: "changed-ready-work-during-delivery", current_dispatch_plan: plan,
+      available_new_executor_slots: 1, created_at: "2026-09-02T01:00:00.200Z",
+      held_work_unit_ids: manifest.ordered_work_unit_ids,
+    });
+    expect(held.selected_manifests).toEqual([plan.dispatches[1]]);
+    // The same plan remains usable when the caller releases that executor.
+    const released = selectAutomaticBuildDispatchHandoff(target, {
+      accepted_plan_digest: "changed-ready-work-during-delivery", current_dispatch_plan: plan,
+      available_new_executor_slots: 1, created_at: "2026-09-02T01:01:00.000Z",
+    });
+    expect(released.selected_manifests).toEqual([plan.dispatches[0]]);
+  });
+
   it("R2 preserves an active lease when a stale unopened correction is reported", () => {
     const { target, descriptors, manifest, bindings } = fixture();
     const persisted = persistAutomaticBuildDispatch(target, manifest, {

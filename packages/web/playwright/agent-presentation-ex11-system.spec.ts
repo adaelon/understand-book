@@ -1,6 +1,7 @@
 import {test,expect} from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+const host='http://127.0.0.1:'+(process.env.PRESENTATION_TEST_PORT || '4175');
 
 // Batch8 system-1's untouched SVG and bars. Expectations come from T=22-20h.
 test('EX11 system: independent latency and actual geometry preserve media position',async({browser})=>{
@@ -8,9 +9,9 @@ test('EX11 system: independent latency and actual geometry preserve media positi
   const root=path.resolve(process.env.EX11_RUN_DIR!);const results:any[]=[];
   for(const viewport of [{width:960,height:720},{width:320,height:420},{width:640,height:240}]) {
     const context=await browser.newContext({viewport});const page=await context.newPage();
-    await page.request.post('http://127.0.0.1:4175/reset-scene');
+    await page.request.post(host+'/reset-scene');
     await page.route('**/api/**',async route=>{
-      const response=await route.fetch({url:route.request().url().replace(/^.*\/api/,'http://127.0.0.1:4175')});
+      const response=await route.fetch({url:route.request().url().replace(/^.*\/api/,host)});
       await route.fulfill({response});
     });
     await page.goto('/agent-presentation-visual.html');

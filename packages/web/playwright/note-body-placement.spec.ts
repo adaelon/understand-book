@@ -275,6 +275,16 @@ async function installFixture(page: Page, surface: FixtureSurface = "pdf") {
         text: lid === "1.2" ? "Second placement target for moving the note." : "First placement target for an Agent note.",
       });
     }
+    if (path === '/api/reader/goto') return json(route, { ok: true, viewport: { ...readerState.viewport, top_lid: body?.lid, anchor_lid: body?.lid } });
+    if (path === '/api/memory/replace') {
+      const index = records.findIndex(r => r.mem_id === body?.mem_id);
+      const record = { ...records[index], mem_id: body?.mem_id + '-edited', content: body?.content };
+      records.splice(index, 1, record); return json(route, record);
+    }
+    if (path === '/api/memory/delete') {
+      const index = records.findIndex(r => r.mem_id === body?.mem_id);
+      if (index >= 0) records.splice(index, 1); return json(route, { ok: true });
+    }
     if (path === "/api/reader/state") return json(route, readerState);
     if (path === "/api/agent/history") return json(route, history);
     if (path === "/api/build_intent/artifacts") return json(route, { overlay: null });
@@ -339,12 +349,13 @@ async function installFixture(page: Page, surface: FixtureSurface = "pdf") {
       message: `Unmocked fixture route: ${path}`,
     }, 500);
   });
-  return { calls, records };
+  return { calls, records, history };
 }
 
 async function selectAgentExcerpt(page: Page) {
   const answer = page.locator(".answer-markdown").first();
   await expect(answer).toContainText("Agent answer excerpt");
+  if (!(await answer.isVisible())) await page.locator('.workspace-mobile-nav').getByRole('button', { name: '问答', exact: true }).click();
   await answer.scrollIntoViewIfNeeded();
   await answer.evaluate((element) => {
     const range = document.createRange();
@@ -382,6 +393,12 @@ async function clickPdfRegion(page: Page, bbox: [number, number, number, number]
   await page.mouse.move(x, y);
   await expect(page.locator(".pdf-note-placement-candidate")).toBeVisible();
   await page.mouse.click(x, y);
+}
+
+async function openNotes(page: Page) {
+  const mobile = page.locator('.workspace-mobile-nav').getByRole('button', { name: '笔记', exact: true });
+  if (await mobile.isVisible()) await mobile.click();
+  else await page.locator('button.tab').filter({ hasText: '笔记' }).click();
 }
 
 async function startNotePlacementFromList(page: Page, memId: string) {
@@ -440,7 +457,7 @@ for (const viewport of viewports) {
     await expect(page.locator(".note-placement-status")).toHaveCount(0);
     await expect(page.locator(".pdf-note-marker")).toHaveCount(1);
 
-    await page.locator("button.tab").filter({ hasText: "笔记" }).click();
+    await openNotes(page);
     await startNotePlacementFromList(page, "note-created");
     if (viewport.name === "desktop") fixture.calls.failNextReanchor = true;
     else fixture.calls.uncertainNextReanchor = true;
@@ -459,7 +476,7 @@ for (const viewport of viewports) {
 
     await page.reload();
     await expect(page.locator(".pdf-note-marker")).toHaveCount(1);
-    await page.locator("button.tab").filter({ hasText: "笔记" }).click();
+    await openNotes(page);
     await startNotePlacementFromList(page, "legacy-old");
     await clickPdfRegion(page, [70, 690, 390, 722]);
     await expect.poll(() => fixture.records.some((record) => record.mem_id === "legacy-moved")).toBe(true);
@@ -496,9 +513,9 @@ for (const viewport of viewports) {
     });
     expect(fixture.calls.saves[0]).not.toHaveProperty("anchor_lid");
     await expect(page.locator(".note-placement-status")).toHaveCount(0);
-    await expect(page.locator(".reader-pane .note-card")).toHaveCount(1);
+    await expect(page.locator(".reader-pane .annotation-marker")).toHaveCount(1);
 
-    await page.locator("button.tab").filter({ hasText: "\u7b14\u8bb0" }).click();
+    await openNotes(page);
     await startNotePlacementFromList(page, "note-created");
     if (viewport.name === "desktop") fixture.calls.failNextReanchor = true;
     else fixture.calls.uncertainNextReanchor = true;
@@ -516,15 +533,231 @@ for (const viewport of viewports) {
       record.note_placement?.lid === "1.2" && record.content.includes("Agent answer excerpt"))).toBe(true);
 
     await page.reload();
-    await expect(page.locator(".reader-pane .note-card")).toHaveCount(1);
-    await page.locator("button.tab").filter({ hasText: "\u7b14\u8bb0" }).click();
+    await expect(page.locator(".reader-pane .annotation-marker")).toHaveCount(1);
+    await openNotes(page);
     await startNotePlacementFromList(page, "legacy-old");
     await clickMarkdownLid(page, "1.1");
     await expect.poll(() => fixture.records.some((record) => record.mem_id === "legacy-moved")).toBe(true);
-    await expect(page.locator(".reader-pane .note-card")).toHaveCount(2);
+    await expect(page.locator(".reader-pane .annotation-marker")).toHaveCount(2);
 
     await page.reload();
-    await expect(page.locator(".reader-pane .note-card")).toHaveCount(2);
+    await expect(page.locator(".reader-pane .annotation-marker")).toHaveCount(2);
     expect(fixture.records.every((record) => record.note_placement?.kind === "lid_block")).toBe(true);
+  });
+}
+
+function addReaderAnnotations(fixture: Awaited<ReturnType<typeof installFixture>>) {
+  fixture.records.push({
+    mem_id: 're-note', type: 'note', layer: 'long_term', book_id: 'paper-a',
+    anchor: { lid: '1.1' }, content: '对这段证据的批注。',
+    note_placement: { kind: 'lid_block', source_fingerprint: sourceFingerprint, lid: '1.1' },
+  }, {
+    mem_id: 're-cross', type: 'note', layer: 'long_term', book_id: 'paper-a',
+    anchor: { lid: '1.1' }, content: '> Agent note. Second placement target\n\n跨段引用的解释。',
+    selection_context: { status: 'resolved', raw_quote: 'Agent note. Second placement target', resolved_quote: 'Agent note. Second placement target',
+      ranges: [{ lid: '1.1', range: { start: 30, end: 41 } }, { lid: '1.2', range: { start: 0, end: 23 } }] },
+  }, {
+    mem_id: 're-highlight', type: 'highlight', layer: 'long_term', book_id: 'paper-a',
+    anchor: { lid: '1.1' }, content: 'First placement', range: { start: 0, end: 15 },
+  });
+}
+
+for (const viewport of viewports) {
+  test(`RE3 RE4 annotations, edit identity, geometry and source return on ${viewport.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.emulateMedia({ reducedMotion: viewport.name === 'mobile' ? 'reduce' : 'no-preference' });
+    const fixture = await installFixture(page, 'markdown');
+    addReaderAnnotations(fixture);
+    await page.goto('/');
+    const marker = page.locator('[data-annotation-lid="1.1"]');
+    await expect(marker).toContainText('3');
+    await page.evaluate(() => document.fonts.ready);
+    const body = page.locator('.prose [data-lid="1.2"]');
+    const before = await body.boundingBox();
+    await page.screenshot({ path: `../../docs/performance/reader-re3-re4/${viewport.name}-closed.png` });
+    await marker.focus(); await page.keyboard.press('Enter');
+    const preview = page.getByRole('dialog', { name: '正文批注', exact: true });
+    await expect(preview).toBeVisible();
+    await expect(preview.locator('header')).toContainText('3 条');
+    expect(await body.boundingBox()).toEqual(before);
+    if (viewport.name === 'mobile') await expect(preview).toHaveCSS('animation-name', 'none');
+    await preview.getByRole('button', { name: '笔记 2', exact: true }).click();
+    await expect(preview.locator('.annotation-source')).toContainText('Agent note. Second placement target');
+    await preview.getByRole('button', { name: '高亮 3', exact: true }).click();
+    await expect(preview.getByRole('button', { name: '高亮 3', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(preview.locator('.annotation-content')).toContainText('First placement');
+    await page.screenshot({ path: `../../docs/performance/reader-re3-re4/${viewport.name}-open.png` });
+    await page.keyboard.press('Escape');
+    await expect(preview).toHaveCount(0); await expect(marker).toBeFocused();
+    await marker.click(); await page.keyboard.press('Escape'); await marker.click();
+    await expect(preview).toHaveCount(1);
+    const selected = await page.locator('.prose').evaluate(el => {
+      const range = document.createRange(); range.selectNodeContents(el);
+      getSelection()!.removeAllRanges(); getSelection()!.addRange(range);
+      return getSelection()!.toString();
+    });
+    expect(selected).toContain('First placement'); expect(selected).toContain('Second placement');
+    expect(selected).not.toMatch(/批注|笔记|编辑|对这段证据/);
+    await page.evaluate(() => getSelection()!.removeAllRanges());
+    await preview.getByRole('button', { name: '编辑', exact: true }).click();
+    await expect(preview).toHaveCount(0);
+    const editor = page.locator('.note-modal textarea');
+    await editor.fill('编辑后仍是同一条批注');
+    await page.locator('.reader-pane').dispatchEvent('scroll');
+    await expect(editor).toHaveValue('编辑后仍是同一条批注');
+    await page.locator('.note-modal').getByRole('button', { name: '保存', exact: true }).click();
+    await expect(page.locator('.note-modal')).toHaveCount(0);
+    expect(fixture.records.some(r => r.mem_id === 're-note')).toBe(false);
+    expect(fixture.records.some(r => r.mem_id === 're-note-edited')).toBe(true);
+    await marker.click();
+    await expect(preview).toContainText('编辑后仍是同一条批注');
+    await preview.getByRole('button', { name: '查看来源', exact: true }).click();
+    await expect(page.locator('.source-preview-dialog')).toBeVisible();
+    await page.getByRole('button', { name: '在阅读区打开', exact: true }).click();
+    await expect(page.locator('[data-reader-arrival]')).toHaveCount(1);
+    await page.getByRole('button', { name: '返回阅读位置', exact: true }).click();
+    expect(await body.boundingBox()).toEqual(before);
+    await marker.click();
+    await preview.getByRole('button', { name: '在笔记中查看', exact: true }).click();
+    const card = page.locator('details[data-mem-id="re-note-edited"]');
+    await expect(card).toHaveAttribute('open', ''); await expect(card).toBeFocused();
+    await card.locator('.note-source-button').click();
+    await page.getByRole('button', { name: '在阅读区打开', exact: true }).click();
+    await page.getByRole('button', { name: '返回笔记', exact: true }).click();
+    await expect(card).toBeVisible(); await expect(card).toBeFocused();
+    page.once('dialog', dialog => dialog.accept());
+    await card.getByRole('button', { name: '删除', exact: true }).click();
+    await expect(card).toHaveCount(0);
+    expect(fixture.records.some(r => r.mem_id === 're-note-edited')).toBe(false);
+    if (viewport.name === 'mobile') await page.locator('.workspace-mobile-nav').getByRole('button', { name: '阅读', exact: true }).click();
+    await expect(marker).toContainText('2');
+  });
+}
+
+
+test('RE4 closing a loading source rejects its late content', async ({ page }) => {
+  const fixture = await installFixture(page, 'markdown'); addReaderAnnotations(fixture);
+  await page.goto('/');
+  await page.locator('[data-annotation-lid="1.1"]').click();
+  let release!: () => void; let requests = 0;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/book/text?*', async route => { requests++; await held; await route.fallback(); });
+  await page.getByRole('dialog', { name: '正文批注', exact: true }).getByRole('button', { name: '查看来源', exact: true }).click();
+  await expect.poll(() => requests).toBeGreaterThan(0);
+  await page.getByRole('button', { name: '关闭来源预览', exact: true }).click();
+  release();
+  await page.waitForResponse(r => r.url().includes('/api/book/text?'));
+  await expect(page.locator('.source-preview-modal')).toHaveCount(0);
+});
+
+
+test('RE4 a narrow Notes source return restores the hidden long-paragraph position', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const fixture = await installFixture(page, 'markdown'); addReaderAnnotations(fixture);
+  await page.route('**/api/book/text?lid=1.1', route => json(route, { lid: '1.1', text: 'Long paragraph preserves the reading position through Notes and source navigation. '.repeat(70) }));
+  await page.goto('/');
+  await expect(page.locator('.prose')).toContainText('Long paragraph');
+  await page.evaluate(() => document.fonts.ready);
+  const reader = page.locator('.reader-pane');
+  await reader.evaluate(el => { el.scrollTop = 900; });
+  await openNotes(page);
+  const card = page.locator('details[data-mem-id="re-note"]');
+  await card.locator('.note-source-button').click();
+  await page.getByRole('button', { name: '在阅读区打开', exact: true }).click();
+  await page.getByRole('button', { name: '返回笔记', exact: true }).click();
+  await expect(card).toBeVisible();
+  await page.locator('.workspace-mobile-nav').getByRole('button', { name: '阅读', exact: true }).click();
+  await expect.poll(() => reader.evaluate(el => el.scrollTop)).toBeCloseTo(900, 0);
+});
+
+for (const width of [1440, 1024, 390, 320]) {
+  test(`RE5 focus preserves the source character, draft and layout authority at ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const fixture = await installFixture(page, 'markdown');
+    fixture.history.current.turns[0].outcome.answer = 'A long answer keeps its message position while reading.\n\n'.repeat(100);
+    await page.route('**/api/book/manifest', route => json(route, { tree: [
+      { lid: '1', kind: 'chapter', title: '第一章 · 阅读与理解：在同一材料中保持位置和思考', children: ['1.1', '1.2'], span: { start: 0, end: 88 } },
+      { lid: '1.1', kind: 'paragraph', children: [], span: { start: 0, end: 42 } },
+      { lid: '1.2', kind: 'paragraph', children: [], span: { start: 42, end: 88 } },
+    ], stats_by_lid: {} }));
+    await page.route('**/api/book/text?lid=1.1', route => json(route, { lid: '1.1', text: 'Reading keeps the same source character through focus and return. '.repeat(130) }));
+    const layoutWrites: string[] = [];
+    page.on('request', request => { if (request.method() === 'POST' && /layout|bootstrap|attach/.test(request.url())) layoutWrites.push(request.url()); });
+    await page.goto('/');
+    const reader = page.locator('.reader-pane');
+    await expect(reader).toContainText('Reading keeps');
+    await page.evaluate(() => document.fonts.ready);
+    await reader.evaluate(el => { el.scrollTop = 800; });
+    // Capture a real DOM character through the exposed Reader contract, with its source offset.
+    const anchor = await reader.evaluate((el: any) => el.__vueParentComponent.exposed.captureScrollAnchor(['1.1']));
+    await reader.evaluate(el => el.setAttribute('data-instance', 'stable-reader'));
+    const rail = page.locator('.right-rail');
+    await rail.evaluate(el => el.setAttribute('data-instance', 'stable-rail'));
+    if (width < 1024) await page.locator('.workspace-mobile-nav').getByRole('button', { name: '问答', exact: true }).click();
+    await page.locator('.agent-input textarea').fill('Keep this question draft');
+    const transcript = page.locator('.transcript');
+    await transcript.evaluate(el => { el.scrollTop = 180; });
+    if (width < 1024) await page.locator('.workspace-mobile-nav').getByRole('button', { name: '阅读', exact: true }).click();
+    const beforeWrites = layoutWrites.length;
+    await page.getByRole('button', { name: '专注阅读', exact: true }).filter({ visible: true }).click();
+    await expect(page.locator('.workspace-shell')).toHaveAttribute('data-foreground', 'reader');
+    await expect(rail).toBeHidden();
+    const characterOffset = () => reader.evaluate((el, position) => {
+      const paragraph = el.querySelector('[data-lid="1.1"]')!;
+      const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT);
+      let remaining = position.start, node: Node | null;
+      while ((node = walker.nextNode())) {
+        if (remaining < node.textContent!.length) {
+          const range = document.createRange(); range.setStart(node, remaining); range.setEnd(node, remaining + 1);
+          return Math.abs(range.getBoundingClientRect().top - el.getBoundingClientRect().top - position.top);
+        }
+        remaining -= node.textContent!.length;
+      }
+      return Infinity;
+    }, anchor.textPosition);
+    await expect.poll(characterOffset).toBeLessThanOrEqual(36);
+    await page.screenshot({ path: `../../docs/performance/reader-re5-re6/focus-${width}.png` });
+    await page.locator('.workspace-mobile-top').getByRole('button', { name: '目录', exact: true }).click();
+    await expect(page.locator('#reader-outline')).toBeVisible();
+    await expect(page.locator('.outline-item[aria-current="location"]')).toContainText('阅读与理解');
+    if (width === 390) {
+      await page.locator('#reader-outline').evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
+      await page.screenshot({ path: '../../docs/performance/reader-re5-re6/outline-mobile.png' });
+    }
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#reader-outline')).toBeHidden();
+    await page.getByRole('button', { name: '退出专注', exact: true }).filter({ visible: true }).click();
+    await expect.poll(characterOffset).toBeLessThanOrEqual(36);
+    if (width < 1024) await page.locator('.workspace-mobile-nav').getByRole('button', { name: '问答', exact: true }).click();
+    await expect(page.locator('.agent-input textarea')).toHaveValue('Keep this question draft');
+    expect(await transcript.evaluate(el => el.scrollTop)).toBe(180);
+    await expect(page.locator('[data-instance="stable-reader"]')).toHaveCount(1);
+    await expect(page.locator('[data-instance="stable-rail"]')).toHaveCount(1);
+    expect(layoutWrites.length).toBe(beforeWrites);
+    await page.screenshot({ path: `../../docs/performance/reader-re5-re6/workspace-${width}.png` });
+  });
+}
+
+for (const width of [1440, 390]) {
+  test(`RE6 surface return preserves PDF page position and scale at ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 700 });
+    await installFixture(page);
+    await page.goto('/');
+    const pdf = page.locator('.pdf-reader-pane');
+    await expect(page.locator('.pdf-text-layer span').first()).toHaveText(/First placement/);
+    await page.getByLabel('PDF 缩放倍率（相对适宽）').selectOption('2');
+    await expect(page.locator('.pdf-page-list')).toHaveAttribute('aria-busy', 'false');
+    await page.locator('.pdf-page-list').evaluate(el => { el.scrollTop = 200; });
+    const before = await pdf.evaluate((el: any) => el.__vueParentComponent.exposed.captureReadingAnchor());
+    await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+    await expect(page.locator('.reader-pane')).toBeVisible();
+    await page.getByRole('button', { name: 'PDF', exact: true }).click();
+    await expect(page.locator('.pdf-page-list')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.getByLabel('PDF 缩放倍率（相对适宽）')).toHaveValue('2');
+    await expect.poll(async () => {
+      const after = await pdf.evaluate((el: any) => el.__vueParentComponent.exposed.captureReadingAnchor());
+      return after ? Math.abs(after.pageRatio - before.pageRatio) : 1;
+    }).toBeLessThan(0.003);
+    await page.screenshot({ path: `../../docs/performance/reader-re5-re6/pdf-return-${width}.png` });
   });
 }

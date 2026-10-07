@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { renderStructureOrganizationInput, type StructureOrganizationInput } from "./book-structure-organization";
 import { renderBookStructureRelationInput, type BookStructureRelationSelectionInput } from "./book-structure-relation-routing";
 import type { BookStructureRelationInput } from "./book-structure-relations";
 import type {
@@ -19,6 +20,14 @@ import type { ProfileSidecarSemanticPacketV2 } from "./profile-sidecar-router";
 import type { ModelInputSliceRenderContextV1 } from "./model-input-slice";
 import { estimateTokens } from "./window";
 import { bookStructureReferenceScope } from "./book-structure-evidence";
+import type { StructureOutlineInput, structureChapterInput } from "./book-structure-planning";
+
+/** BSR2 consumers choose their output reserve separately from the legacy 1024-token contract. */
+export function renderStructurePlanningInput(input: StructureOutlineInput | ReturnType<typeof structureChapterInput>, maxInputTokens = 12000): string {
+  const rendered = JSON.stringify(input, null, 2) + "\n";
+  if (estimateTokens(rendered) > maxInputTokens) throw new Error("structure planning input exceeds budget; narrow the requested evidence page");
+  return rendered;
+}
 
 export const MODEL_INPUT_RENDER_CONTRACT_VERSION = "model_input_render.v1" as const;
 
@@ -123,6 +132,7 @@ export type ModelInputRenderRequest =
       >;
     }
   | { kind: "pass2_candidate_batch"; input: Pass2WorkPacket }
+  | { kind: "structure_outline" | "structure_chapter" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile"; input: StructureOrganizationInput }
   | { kind: "structure_unit"; input: BookStructureUnitSource }
   | { kind: "structure_fragment"; input: BookStructureFragmentInputV1 }
   | { kind: "structure_reduce"; input: BookStructureReductionInputV1 }
@@ -348,6 +358,8 @@ export function renderModelInput(request: ModelInputRenderRequest): string {
       return renderPaperLexiconModelInput(request.input);
     case "pass2_candidate_batch":
       return renderPass2ModelInput(request.input);
+    case "structure_outline": case "structure_chapter": case "structure_theme_plan": case "structure_theme": case "structure_theme_reconcile":
+      return renderStructureOrganizationInput(request.input);
     case "structure_unit":
     case "structure_stitch":
       return renderBookStructureModelInput(request.input);

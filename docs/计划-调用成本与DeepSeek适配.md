@@ -29,13 +29,15 @@
 
 四步实现及定向验证已完成，纳入 2026-09-29 的集成提交，与 Goal、演示能力、构建宿主及 Reader 改动形成同一基线。
 
+2026-10-02 的后续工作见 [EX13：Goal 工作计划与演示修订上下文](切片方案-EX13-Goal工作计划与演示修订上下文.md)及 [ADR-0155](adr/0155-goal-work-plan-and-version-centered-presentation-context.md)。EX13.0 已复用现有录制完成[离线基线与比较入口](performance/presentation-context-ex13/README.md)，EX13.1 已实现[指导追加](performance/presentation-context-ex13/ex13-1/README.md)，EX13.2 已完成[保存后源码投影](performance/presentation-context-ex13/ex13-2/README.md)：受控末次请求 128,457→52,654 字节，Runtime 443 项、Server 编辑/存储 4 项、专属录制测试 1 项通过。比较入口原有 10 项验证及冻结基线保持原记录。EX13.3 已完成 [Goal 工作计划](performance/presentation-context-ex13/ex13-3/README.md)的更新、保存、恢复和投影，Runtime 447 项、Server 相关 10 项、Web 27 项及类型检查通过；EX13.4 已完成[确切版本修订](performance/presentation-context-ex13/ex13-4/README.md)：追问 37,142→1,706 字节，正文按需分页取回，receipt 写入要求明确修订或新建；Runtime 449 项、Server 23 项通过。EX13.5 已完成[摘要输入与修复前缀](performance/presentation-context-ex13/ex13-5/README.md)：完整来源与覆盖约束保留，诊断在原材料之后追加，预算使用同一投影；Runtime 453 项、Native/ReAct 本地 HTTP 与离线对照通过。EX13.6 已在用户授权的 9 元内完成[真实接续](performance/presentation-context-ex13/ex13-6/README.md)：累计 22 次提供方调用、空闲价估算 0.93951468 元、高峰价保守累计 1.87902936 元；余额净减 0.59 元另记。主线缓存输入占 71.56%，一次自然压缩首轮通过，同对象 revision 2 通过原生交付与独立内容验收。
+
 ## 续接与请求规则
 
 续接字段是 `Message.provider_continuation` 中仅供原模型协议回放的私有状态。有工具调用、普通终答和预算耗尽后的终答均随消息保留。模型切换或旧历史缺字段时，缺口之前的 assistant/tool 消息作为带原角色标签的历史记录投影，保留正文与工具记录，缺口之后完整的工具调用链正常回放。持久历史本身保持原样。
 
 动态片段每次采样形成一个完整状态快照，位于完整工具结果组之后。旧快照不改写，最后快照权威；本回合结束即释放。中途压缩保留当前回合完整后缀，快照继续锚定对应消息位置。
 
-压缩输出上限为 16,384 token；DeepSeek 压缩使用 low 思考强度。普通回答参数不随之改变。压缩输入限额扣除同一输出预留；所有分块与合并请求沿用来源覆盖校验。
+压缩输出默认上限为 16,384 token；CatalogMatch 的 DeepSeek Flash 档案使用 65,536 token。EX12.4 实际接续中，低思考强度仍用掉约 13–14k token，原 16k 总输出不足以容纳来源关联摘要，先调至 32k 后，连续修订的 237 项摘要仍达到上限（18k reasoning），故最终调整至 64k。DeepSeek 压缩继续使用 low 思考强度，普通回答参数不随之改变。压缩输入限额扣除同一输出预留；所有分块与合并请求沿用来源覆盖校验。失败与复验见 [EX12.4](performance/presentation-staged-authoring-ex12-4.md)。
 
 ## 已知问题与验证边界
 

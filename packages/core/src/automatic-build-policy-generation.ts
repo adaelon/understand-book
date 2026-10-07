@@ -16,6 +16,7 @@ import {
   buildSemanticArtifactEnvelopeV3,
   assertPolicyGenerationId,
   semanticContractEqual,
+  sameBuildContent,
   semanticContractFromExtractionPolicy,
   inspectSemanticArtifact,
   readAutomaticBuildStagePolicyLock,
@@ -267,11 +268,7 @@ function assertBounded(value: string, field: string, maxBytes = 512): string {
 }
 
 function sameTarget(left: BuildTargetRefV2, right: BuildTargetRefV2): boolean {
-  return left.version === right.version
-    && path.resolve(left.workspace_dir) === path.resolve(right.workspace_dir)
-    && left.book_id === right.book_id
-    && left.profile_id === right.profile_id
-    && left.input_fingerprint === right.input_fingerprint;
+  return sameBuildContent(left, right);
 }
 
 function assertSemanticContract(
@@ -297,8 +294,8 @@ function normalizePolicyMemberInputs(
   if (!members.length) throw new Error("automatic build stage policy set must contain at least one member");
   const normalized = members.map((member) => {
     assertBounded(member.kind, "policy member kind");
-    const expectedExtractor = automaticBuildExtractorForWorkUnitKind(stage, member.kind);
-    if (member.extractor !== expectedExtractor) {
+    const expectedExtractor = automaticBuildExtractorForWorkUnitKind(stage, member.kind, targetRef.profile_id);
+    if (member.extractor !== expectedExtractor && member.extractor !== automaticBuildExtractorForWorkUnitKind(stage, member.kind)) {
       throw new Error(`policy member extractor does not match ${stage}/${member.kind}`);
     }
     if (member.policy_fingerprint.profile_id !== targetRef.profile_id) {
@@ -357,8 +354,8 @@ export function validateAutomaticBuildStagePolicySet(
   }
   const normalized = policySet.members.map((member) => {
     assertBounded(member.kind, "policy member kind");
-    const expectedExtractor = automaticBuildExtractorForWorkUnitKind(policySet.stage, member.kind);
-    if (member.extractor !== expectedExtractor) {
+    const expectedExtractor = automaticBuildExtractorForWorkUnitKind(policySet.stage, member.kind, policySet.target_ref.profile_id);
+    if (member.extractor !== expectedExtractor && member.extractor !== automaticBuildExtractorForWorkUnitKind(policySet.stage, member.kind)) {
       throw new Error(`policy member extractor does not match ${policySet.stage}/${member.kind}`);
     }
     return {
@@ -678,7 +675,7 @@ export function validateAutomaticBuildPolicyMigrationReceipt(
       throw new Error("receipt deterministic skip evidence_lids are invalid");
     }
   }
-  return receipt;
+  return { ...receipt, target_ref: target.target_ref };
 }
 
 function persistMigrationReceipt(

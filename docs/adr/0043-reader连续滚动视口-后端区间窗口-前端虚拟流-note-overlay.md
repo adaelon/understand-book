@@ -2,6 +2,8 @@
 
 状态:已接受(2026-07-01,`grill.md` 连续阅读体验 grill)
 
+第 7 项的笔记默认呈现设计于 2026-09-30 由 [ADR-0148 §3](0148-reader-typography-annotations-and-motion.md#3-正文批注的默认呈现) 修订为正文标记与按需展开；实现待 RE3，当前段内卡片仍是实现基线。
+
 ## 背景
 
 当前 reader 视口承 [[ADR-0027]] 定义为 `anchor ± radius` 的叶序滑动窗口:`DEFAULT_RADIUS=3`,窗口最多 7 叶,且 `anchor_lid` 是窗口中心。前端 TopBar 的上/下按钮发 `scroll(-3)` / `scroll(+3)`。因此一次滚动后旧窗口与新窗口通常只重叠 1 叶,正文视觉上接近整屏替换,用户已读位置被甩到窗口边缘,不符合连续阅读习惯。

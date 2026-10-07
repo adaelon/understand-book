@@ -73,7 +73,7 @@ describe("ReaderPane Note rendering", () => {
     expect(styles).toContain(".flow-text.hl");
   });
 
-  it("keeps flow and single notes behaviorally identical", async () => {
+  it("groups annotations outside prose and keeps one preview with original record actions", async () => {
     const short = note("note-short", "1.1", "> quoted source\n\nShort **body**");
     const long = note("note-long", "2.1", `> long source\n\n${"x".repeat(400)}`);
     const renderMarkdown = vi.fn((source: string) => `<p data-markdown>${source}</p>`);
@@ -89,34 +89,38 @@ describe("ReaderPane Note rendering", () => {
         isHighlighted: () => false,
         highlightsOf: () => [],
         highlightCardsOf: () => [],
-        visibleNotes: [short, long],
+        visibleNotes: [short, { ...short, mem_id: "note-second" }, long],
         hlExcerpt: () => "",
         imageMeta: () => null,
         imageAsset: () => null,
       },
     });
 
-    const cards = wrapper.findAll(".note-card");
-    expect(cards).toHaveLength(2);
-    expect(cards[0].attributes()).toHaveProperty("open");
-    expect(cards[1].attributes()).not.toHaveProperty("open");
-    expect(cards[0].get(".note-source").text()).toBe("引用来源");
-    expect(cards[1].get(".note-source").text()).toBe("引用来源");
-    expect(cards[0].find(".note-preview").exists()).toBe(false);
-    expect(cards[1].get(".note-preview").text()).toContain("x".repeat(40));
-    expect(cards[1].get(".note-preview").text()).not.toContain("long source");
-    expect(cards[0].get(".note-md").html()).toContain("Short **body**");
-
-    await cards[0].get(".note-source").trigger("click");
-    await cards[0].get('button[title="编辑"]').trigger("click");
-    await cards[0].get('button[title="删除"]').trigger("click");
-    expect(wrapper.emitted("focus-source-local")?.at(-1)).toEqual([
-      { lid: "1.1", quote: "quoted source" },
-    ]);
-    expect(wrapper.emitted("edit-note")?.at(-1)).toEqual([short]);
-    expect(wrapper.emitted("delete-note")?.at(-1)).toEqual([short]);
-    expect(renderMarkdown).toHaveBeenCalledWith(short.content);
-    expect(renderMarkdown).toHaveBeenCalledWith(long.content);
+    expect(wrapper.find('.prose .note-card').exists()).toBe(false);
+    expect(wrapper.find('.prose .block-actions').exists()).toBe(false);
+    expect(wrapper.findAll('.annotation-marker')).toHaveLength(2);
+    expect(wrapper.findAll('.annotation-marker')[0].text()).toContain('2');
+    await wrapper.findAll('.annotation-marker')[0].trigger('click');
+    let preview = document.querySelector('.annotation-preview')!;
+    expect(preview.textContent).toContain('Short **body**');
+    expect(document.querySelectorAll('.annotation-preview')).toHaveLength(1);
+    (preview.querySelector('footer button') as HTMLButtonElement).click();
+    expect(wrapper.emitted('edit-note')?.at(-1)).toEqual([short]);
+    await wrapper.vm.$nextTick();
+    expect(document.querySelector('.annotation-preview')).toBeNull();
+    await wrapper.findAll('.annotation-marker')[1].trigger('click');
+    preview = document.querySelector('.annotation-preview')!;
+    expect(preview.textContent).toContain('x'.repeat(400));
+    (preview.querySelector('footer button:nth-child(2)') as HTMLButtonElement).click();
+    expect(wrapper.emitted('delete-note')?.at(-1)).toEqual([long]);
+    await wrapper.setProps({ visibleNotes: [short] });
+    expect(document.querySelector('.annotation-preview')).toBeNull();
+    await wrapper.findAll('.annotation-marker')[0].trigger('click');
+    await wrapper.setProps({ contextKey: 'other-user' });
+    expect(document.querySelector('.annotation-preview')).toBeNull();
+    await wrapper.findAll('.annotation-marker')[0].trigger('click');
+    await wrapper.setProps({ segments: [] });
+    expect(document.querySelector('.annotation-preview')).toBeNull();
 
     wrapper.unmount();
   });
@@ -201,7 +205,7 @@ describe("ReaderPane Note rendering", () => {
     wrapper.unmount();
   });
 
-  it("previews and submits a real target at 390px while rejecting toolbar controls", async () => {
+  it("previews and submits a real target at 390px while rejecting annotation controls", async () => {
     Object.defineProperty(window, "innerWidth", { value: 390, configurable: true });
     const wrapper = mount(ReaderPane, {
       props: {
@@ -216,7 +220,7 @@ describe("ReaderPane Note rendering", () => {
         isHighlighted: () => false,
         highlightsOf: () => [],
         highlightCardsOf: () => [],
-        visibleNotes: [],
+        visibleNotes: [note("existing-note", "1.1", "Saved annotation")],
         hlExcerpt: () => "",
         imageMeta: () => null,
         imageAsset: () => null,
@@ -229,7 +233,8 @@ describe("ReaderPane Note rendering", () => {
     await body.trigger("pointerup", { pointerType: "touch" });
     expect(wrapper.emitted("note-placement-target")?.at(-1)).toEqual([{ lid: "1.1" }]);
 
-    const action = wrapper.get(".block-actions button");
+    expect(wrapper.find('[aria-label="段落操作"]').exists()).toBe(false);
+    const action = wrapper.get(".annotation-marker");
     await action.trigger("pointermove", { pointerType: "touch" });
     expect(body.classes()).not.toContain("note-placement-candidate");
     await action.trigger("pointerup", { pointerType: "touch" });

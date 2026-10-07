@@ -23,6 +23,28 @@ impl ReaderPrivateStorageDiagnostic {
 pub struct ReaderPrivateStorageGate;
 
 impl ReaderPrivateStorageGate {
+    /// Sync newly created directory entries as well as the final file's parent on Unix.
+    pub fn create_dir_all(path: &Path) -> Result<(), std::io::Error> {
+        #[cfg(unix)]
+        let missing: Vec<_> = path.ancestors().take_while(|p| !p.exists()).map(Path::to_path_buf).collect();
+        std::fs::create_dir_all(path)?;
+        #[cfg(unix)]
+        for directory in missing.iter().rev() {
+            Self::sync_parent(directory)?;
+        }
+        Ok(())
+    }
+    /// Linux durable rename boundary, after syncing file contents. Windows retains
+    /// the existing backup/recovery protocol; this does not claim power-loss testing.
+    pub fn sync_parent(path: &Path) -> Result<(), std::io::Error> {
+        #[cfg(unix)]
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            std::fs::File::open(parent)?.sync_all()?;
+        }
+        #[cfg(not(unix))]
+        let _ = path;
+        Ok(())
+    }
     pub fn enforce(memory_path: &Path) -> Result<(), ToolError> {
         let directory = memory_path
             .parent()
@@ -30,7 +52,7 @@ impl ReaderPrivateStorageGate {
             .ok_or_else(|| {
                 private_storage_error("reader-private storage has no parent directory")
             })?;
-        std::fs::create_dir_all(directory).map_err(|error| {
+        Self::create_dir_all(directory).map_err(|error| {
             private_storage_error(format!(
                 "reader-private storage directory cannot be created: {error}"
             ))
@@ -39,6 +61,13 @@ impl ReaderPrivateStorageGate {
             private_storage_error(format!(
                 "reader-private storage permissions cannot be enforced or verified: {error}"
             ))
+        })
+    }
+
+    /// Service containers also contain read-only publications; never rewrite descendants.
+    pub fn secure_directory(path: &Path) -> Result<(), ToolError> {
+        platform::secure_directory(path).map_err(|error| {
+            private_storage_error(format!("reader-private directory permissions cannot be enforced: {error}"))
         })
     }
 
@@ -68,6 +97,11 @@ mod platform {
     use std::fs::Permissions;
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
     use std::path::Path;
+
+    pub(super) fn secure_directory(path: &Path) -> Result<(), String> {
+        verify_root_directory(path)?;
+        secure_path(path, true)
+    }
 
     pub(super) fn secure_tree(path: &Path) -> Result<(), String> {
         verify_root_directory(path)?;
@@ -181,6 +215,12 @@ mod platform {
             }
         }
         Ok(())
+    }
+
+    pub(super) fn secure_directory(path: &Path) -> Result<(), String> {
+        verify_root_directory(path)?;
+        let (sid_buffer, _token) = current_user_sid()?;
+        secure_path(path, token_user_sid(&sid_buffer)?, true)
     }
 
     fn verify_root_directory(path: &Path) -> Result<(), String> {
@@ -388,6 +428,9 @@ mod platform {
 
     pub(super) fn secure_tree(_path: &Path) -> Result<(), String> {
         Err("reader-private permissions are unsupported on this operating system".into())
+    }
+    pub(super) fn secure_directory(_path: &Path) -> Result<(), String> {
+        Err("private directory permissions are unsupported on this platform".into())
     }
 
     pub(super) fn secure_file(_path: &Path) -> Result<(), String> {

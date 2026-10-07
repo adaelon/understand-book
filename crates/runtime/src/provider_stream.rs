@@ -34,6 +34,9 @@ impl ModelUsage {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ModelDelta {
+    /// Final wire request, emitted once per logical call (before any identical-body retry).
+    /// ObservedAdapter consumes this in memory; it must not reach answer or export sinks.
+    Request(std::sync::Arc<Value>),
     Text(String),
     ToolArguments {
         index: usize,

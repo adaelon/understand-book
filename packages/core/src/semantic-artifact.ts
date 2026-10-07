@@ -10,6 +10,7 @@ import type { ContentProfileDefinition } from "./content-profile";
 import { EXTRACTOR_CONTRACT_SCHEMA_VERSIONS } from "./extractor-contract";
 import { PROFILE_SIDECAR_POLICY_V2 } from "./automatic-build-protocol";
 import { routerVersionForStage } from "./stage-work-unit";
+import { TEACHING_POLICIES } from "./teaching-policy";
 
 export type SemanticBuildStage = Exclude<AutomaticBuildStage, "paper_reading_guide">;
 export type ExtractionQualityProfile = "full" | "balanced" | "sparse";
@@ -112,6 +113,7 @@ const STAGE_POLICIES: Record<SemanticBuildStage, {
   prompt_sha256: string;
   schema_version: string;
 }> = {
+  ...TEACHING_POLICIES,
   pass1: {
     stage_policy_version: "pass1_policy.v1",
     prompt_sha256: "7f95eb6352042a9d37866488d71418f2a730e78eeedfdbdebe646cc912cb1330",
@@ -156,11 +158,28 @@ function sha256(value: unknown): string {
 }
 
 function sameTarget(left: BuildTargetRefV2, right: BuildTargetRefV2): boolean {
+  return sameBuildContent(left, right)
+    && path.resolve(left.workspace_dir) === path.resolve(right.workspace_dir);
+}
+
+/** Completed computation belongs to a book/source/profile, independent of its location. */
+export function sameBuildContent(left: BuildTargetRefV2, right: BuildTargetRefV2): boolean {
   return left.version === right.version
-    && path.resolve(left.workspace_dir) === path.resolve(right.workspace_dir)
     && left.book_id === right.book_id
     && left.profile_id === right.profile_id
     && left.input_fingerprint === right.input_fingerprint;
+}
+
+/** Project a persisted generation recipe into the current location without rewriting its history. */
+export function relocateGenerationTask<T extends { target_ref?: BuildTargetRefV2; descriptor: { target: BuildTargetRefV2 } }>(
+  task: T, target: BuildTargetRefV2,
+): T {
+  if (!sameBuildContent(task.descriptor.target, target)
+    || (task.target_ref && !sameTarget(task.target_ref, task.descriptor.target))) {
+    throw new Error("generation task source identity does not match current target");
+  }
+  return { ...task, ...(task.target_ref ? { target_ref: target } : {}),
+    descriptor: { ...task.descriptor, target } };
 }
 
 export function extractionPolicyEqual(
@@ -316,7 +335,7 @@ export function semanticArtifactMatches(
   expected: SemanticArtifactExpectation,
 ): boolean {
   if (!isEnvelope(value)) return false;
-  const commonMatches = sameTarget(value.target, expected.target)
+  const commonMatches = sameBuildContent(value.target, expected.target)
     && value.stage === expected.stage
     && value.work_unit_id === expected.work_unit_id
     && value.input_hash === expected.input_hash
@@ -397,7 +416,7 @@ export function readAutomaticBuildStagePolicyLock(
   const lock = JSON.parse(readFileSync(file, "utf8")) as AutomaticBuildStagePolicyLockV2;
   if (lock.version !== "automatic_build_stage_policy_lock.v2"
     || lock.stage !== stage
-    || !sameTarget(lock.target_ref, target.target_ref)
+    || !sameBuildContent(lock.target_ref, target.target_ref)
     || !assertPolicyGenerationId(lock.policy_generation_id)
     || !Number.isFinite(Date.parse(lock.frozen_at))) {
     throw new Error(`invalid automatic build stage policy lock: ${file}`);
@@ -466,7 +485,7 @@ export function freezeAutomaticBuildStagePolicyGeneration(
     const existing = JSON.parse(readFileSync(file, "utf8")) as AutomaticBuildStagePolicyLockV2;
     if (existing.version !== lock.version
       || existing.stage !== stage
-      || !sameTarget(existing.target_ref, target.target_ref)
+      || !sameBuildContent(existing.target_ref, target.target_ref)
       || existing.policy_generation_id !== generationId
       || !semanticContractEqual(existing.semantic_contract, lock.semantic_contract)
       || !Number.isFinite(Date.parse(existing.frozen_at))) {

@@ -170,6 +170,7 @@ describe("IP3 capability registry and deterministic BuildPlan compiler", () => {
       "profile_sidecar",
       "pass2",
       "book_structure",
+      "formal_objects", "cognitive_materials", "teaching_publish",
     ]);
     expect(standardDeepStageClosure(profile("paper"))).toEqual([
       "pass1",
@@ -179,11 +180,13 @@ describe("IP3 capability registry and deterministic BuildPlan compiler", () => {
       "pass2",
       "book_structure",
       "paper_reading_guide",
+      "formal_objects", "cognitive_materials", "teaching_publish",
     ]);
     expect(standardDeepStageClosure(profile("technical_learning"), { pass2: "disabled" })).toEqual([
       "pass1",
       "profile_sidecar",
       "book_structure",
+      "formal_objects", "cognitive_materials", "teaching_publish",
     ]);
     expect(standardDeepStageClosure(profile("paper"), { pass2: "disabled" })).toEqual([
       "pass1",
@@ -192,6 +195,7 @@ describe("IP3 capability registry and deterministic BuildPlan compiler", () => {
       "profile_sidecar",
       "book_structure",
       "paper_reading_guide",
+      "formal_objects", "cognitive_materials", "teaching_publish",
     ]);
 
     const paperFreshness = inspectAutomaticBuildStageFreshness(
@@ -218,6 +222,7 @@ describe("IP3 capability registry and deterministic BuildPlan compiler", () => {
       "public.pass2",
       "public.book_structure",
       "public.paper_reading_guide",
+      "public.formal_objects", "public.cognitive_materials", "public.teaching_publish",
     ]);
 
     const withoutPass2 = compileBuildMode({
@@ -236,11 +241,13 @@ describe("IP3 capability registry and deterministic BuildPlan compiler", () => {
       "pass1",
       "profile_sidecar",
       "book_structure",
+      "formal_objects", "cognitive_materials", "teaching_publish",
     ]);
     expect(withoutPass2.plan?.create).toEqual([
       "public.pass1",
       "public.profile_sidecar",
       "public.book_structure",
+      "public.formal_objects", "public.cognitive_materials", "public.teaching_publish",
     ]);
     expect(withoutPass2.plan?.excluded).toContainEqual({
       artifact: "public.pass2",
@@ -248,7 +255,7 @@ describe("IP3 capability registry and deterministic BuildPlan compiler", () => {
     });
 
     const stalePass2WithFreshStructure = inspectAutomaticBuildStageFreshness(
-      snapshot("technical_learning", ["pass1", "profile_sidecar", "book_structure"]),
+      snapshot("technical_learning", ["pass1", "profile_sidecar", "book_structure", "formal_objects", "cognitive_materials", "teaching_publish"]),
     );
     const enablingPass2 = compileBuildMode({
       mode: "standard_deep",
@@ -266,7 +273,7 @@ describe("IP3 capability registry and deterministic BuildPlan compiler", () => {
       "public.pass1",
       "public.profile_sidecar",
     ]);
-    expect(enablingPass2.plan?.create).toEqual(["public.pass2", "public.book_structure"]);
+    expect(enablingPass2.plan?.create).toEqual(["public.pass2", "public.book_structure", "public.formal_objects", "public.cognitive_materials", "public.teaching_publish"]);
   });
 
   it("reuses the four SidecarPlan contracts as private lid-required overlays", () => {
@@ -288,6 +295,9 @@ describe("IP3 capability registry and deterministic BuildPlan compiler", () => {
       { artifact: "public.profile_sidecar", fresh: false },
       { artifact: "public.pass2", fresh: false },
       { artifact: "public.book_structure", fresh: false },
+      { artifact: "public.formal_objects", fresh: false },
+      { artifact: "public.cognitive_materials", fresh: false },
+      { artifact: "public.teaching_publish", fresh: false },
     ]);
     expect(inspected[0].freshness_digest).toMatch(/^[a-f0-9]{64}$/u);
     expect(inspected[1].freshness_digest).toBeUndefined();

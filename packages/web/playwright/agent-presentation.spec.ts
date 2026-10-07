@@ -14,6 +14,28 @@ test.afterEach(async ({ page }) => {
   await page.unrouteAll({ behavior: "ignoreErrors" });
 });
 
+test("MU7 frame messages require the current window, channel and bound source", async ({ page }) => {
+  await page.goto("/agent-presentation-visual.html");
+  const frame = page.frameLocator(".agent-presentation iframe");
+  await expect(frame.locator("#result")).toBeVisible();
+  const channel = await frame.locator("body").evaluate(() => {
+    const script = document.head.querySelector("script")!.textContent!;
+    return /"channel":"([^"]+)"/.exec(script)![1];
+  });
+  await page.evaluate(channel => window.postMessage({ channel, kind: "source", source_ref_id: "source-1" }, "*"), channel);
+  await frame.locator("body").evaluate((_, channel) => {
+    parent.postMessage({ channel: "agent-presentation", kind: "error" }, "*");
+    parent.postMessage({ channel: channel + "-old", kind: "error" }, "*");
+    parent.postMessage({ channel, kind: "source", source_ref_id: "another-user-source" }, "*");
+    parent.postMessage({ channel, kind: "navigate", url: "/api/me/chats" }, "*");
+  }, channel);
+  await page.waitForTimeout(100);
+  await expect(page.getByRole("dialog", { name: "回答来源" })).toHaveCount(0);
+  await expect(frame.locator("#result")).toBeVisible();
+  await frame.locator("[data-source-ref]").first().click();
+  await expect(page.getByRole("dialog", { name: "回答来源" })).toBeVisible();
+});
+
 test("rich answer uses bound static/dynamic sources, one frame, responsive layout and theme", async ({ page }, info) => {
   await page.setViewportSize({ width: 1100, height: 850 });
   await page.goto("/agent-presentation-visual.html");
@@ -41,9 +63,11 @@ test("rich answer uses bound static/dynamic sources, one frame, responsive layou
   await expect(frame.locator("#result")).toHaveText("1");
   await expect(page.locator(".agent-presentation iframe")).toHaveCount(1);
   const expanded = await page.locator(".agent-presentation").boundingBox();
-  expect(expanded?.x).toBe(20);
-  expect(expanded?.width).toBe(1060);
-  expect(expanded?.height).toBe(810);
+  expect(expanded?.x).toBe(12);
+  expect(expanded?.width).toBeCloseTo(1100 * .63 - 12, 0);
+  expect(expanded!.height).toBeGreaterThan(780);
+  expect((await page.locator('.agent-presentation iframe').boundingBox())!.height).toBeGreaterThan(720);
+  await expect(page.locator('.presentation-workspace .agent-input')).toBeVisible();
   await frame.locator("#dynamic [data-source-ref]").click();
   await expect(page.getByRole("dialog", { name: "回答来源" })).toBeVisible();
   await page.getByRole("button", { name: "在正文中查看" }).click();
@@ -65,8 +89,47 @@ test("rich answer uses bound static/dynamic sources, one frame, responsive layou
   });
   await expect.poll(() => frame.locator("body").evaluate(node => getComputedStyle(node).backgroundColor)).toBe("rgb(32, 32, 32)");
   await page.screenshot({ path: info.outputPath("narrow-theme.png") });
-  await page.getByText("文字说明与来源", { exact: true }).click();
+  await page.getByRole('button', { name: '文字说明与来源', exact: true }).click();
   await expect(page.locator(".readable-text")).toContainText("需要三处证据");
+});
+
+test('content zoom preserves the live controls, source navigation and iframe', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/agent-presentation-visual.html');
+  const frame = page.frameLocator('.agent-presentation iframe');
+  await expect(frame.locator('#result')).toHaveText('2/3');
+  await frame.locator('#complete').click();
+  await expect(frame.locator('#result')).toHaveText('1');
+  await page.getByRole('button', { name: '展开', exact: true }).click();
+  await page.getByRole('button', { name: '缩小演示' }).click();
+  await page.getByRole('button', { name: '缩小演示' }).click();
+  await expect(frame.locator('html')).toHaveCSS('zoom', '0.8');
+  await expect(frame.locator('#result')).toHaveText('1');
+  await expect(page.locator('.agent-presentation iframe')).toHaveAttribute('data-load-count', '1');
+  await frame.locator('[data-source-ref]').first().click();
+  await expect(page.getByRole('dialog', { name: '回答来源' })).toBeVisible();
+  await page.getByRole('button', { name: '关闭来源' }).click();
+  await page.getByRole('button', { name: '恢复演示原始大小' }).click();
+  await expect(frame.locator('html')).toHaveCSS('zoom', '1');
+  await expect(frame.locator('#result')).toHaveText('1');
+});
+
+test('compact mobile toolbar remains reachable when switching to discussion', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/agent-presentation-visual.html');
+  const frame = page.frameLocator('.agent-presentation iframe');
+  await expect(frame.locator('#result')).toHaveText('2/3');
+  await page.getByRole('button', { name: '展开', exact: true }).click();
+  await page.getByRole('button', { name: '缩小演示' }).click();
+  await expect(frame.locator('html')).toHaveCSS('zoom', '0.9');
+  const tools = await page.locator('.workspace-tools').boundingBox();
+  expect(tools!.height).toBeLessThan(140);
+  await page.getByRole('button', { name: '展开讨论', exact: true }).click();
+  await expect(page.locator('.agent-input')).toBeVisible();
+  await expect(page.getByRole('button', { name: '缩小演示' })).toBeVisible();
+  await page.getByRole('button', { name: '收起讨论', exact: true }).click();
+  await expect(frame.locator('#result')).toBeVisible();
+  await page.screenshot({ path: info.outputPath('mobile-workspace.png') });
 });
 
 test("validation and save notices keep the same frame position and load", async ({ page }) => {

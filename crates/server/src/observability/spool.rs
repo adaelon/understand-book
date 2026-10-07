@@ -867,6 +867,7 @@ mod tests {
                         usage_total_tokens: None,
                         usage: None,
                         model_first_text_ms: None,
+                        request_diagnostics: None,
                         model_name: Some("configured-model".into()),
                         model_name_source: Some("configured".into()),
                         accepted_evidence_count: None,

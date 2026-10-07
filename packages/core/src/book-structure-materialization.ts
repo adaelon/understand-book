@@ -1,4 +1,6 @@
 import type { BookStructureCandidate, BookStructureStitchReductionChildV1 } from "./book-structure";
+import { isDeepStrictEqual } from "node:util";
+import { acceptStructureChapterSelection, type AcceptedStructureChapterSelection, type StructureCandidateCatalog } from "./book-structure-candidates";
 
 /** The caller supplies only artifacts accepted under the current frozen task identities. */
 export type BookStructureContribution = BookStructureStitchReductionChildV1;
@@ -45,6 +47,7 @@ export function materializeBookStructureContributions(
   if (incomplete.length) throw new BookStructureContributionCoverageError(incomplete);
   const identities: BookStructureMaterialization["identities"] = [];
   const candidate: Required<BookStructureCandidate> = {
+    unit_titles: {},
     spine: [], throughlines: [], key_stops: [], context_units: [],
     reference_scope: { unit_lids: [...unitOrder], dependency_target_lids: [...unitOrder], evidence_by_unit: {} },
   };
@@ -56,6 +59,7 @@ export function materializeBookStructureContributions(
       || range.start_ordinal >= range.end_ordinal_exclusive) throw new Error("invalid contribution core range");
     const core = unitOrder.slice(range.start_ordinal, range.end_ordinal_exclusive);
     const payload = source.payload;
+    Object.assign(candidate.unit_titles, payload.unit_titles ?? {});
     const ids = new Map<string, string>();
     const stops = [...(payload.key_stops ?? [])].sort((a, b) => a.id < b.id ? -1 : 1);
     for (const [index, stop] of stops.entries()) {
@@ -97,5 +101,40 @@ export function materializeBookStructureContributions(
   for (const unit of candidate.spine) {
     if (unit.depends_on.some(lid => lid === unit.lid || !owners.has(lid))) throw new Error("invalid materialized dependency");
   }
+  if (!Object.keys(candidate.unit_titles).length) delete (candidate as BookStructureCandidate).unit_titles;
   return { candidate, identities };
+}
+
+/** Batch boundaries and completion order do not take part in candidate identity. */
+export function materializeStructureChapterSelections(catalog: StructureCandidateCatalog,
+  accepted: AcceptedStructureChapterSelection[], unitOrder: string[], titles: Record<string, string> = {}): BookStructureCandidate {
+  const selections = new Map<string, AcceptedStructureChapterSelection>();
+  for (const item of accepted) {
+    const checked = acceptStructureChapterSelection(item.selection, catalog, item.selection.unit_lid, item.reference_scope);
+    const previous = selections.get(item.selection.unit_lid);
+    if (previous && !isDeepStrictEqual(previous, checked)) throw new Error(`conflicting chapter selection: ${item.selection.unit_lid}`);
+    selections.set(item.selection.unit_lid, checked);
+  }
+  if (new Set(unitOrder).size !== unitOrder.length || selections.size !== unitOrder.length
+    || unitOrder.some(lid => !selections.has(lid))) throw new Error("chapter selections must cover requested units exactly");
+  const byRef = new Map(catalog.candidates.map(c => [c.ref, c]));
+  const key_stops: NonNullable<BookStructureCandidate["key_stops"]> = [];
+  const evidence_by_unit: Record<string, string[]> = {};
+  const spine = unitOrder.map(lid => {
+    const { selection } = selections.get(lid)!;
+    const evidence = new Set(selection.summary.evidence_lids);
+    for (const ref of selection.accepted_stop_refs) {
+      const candidate = byRef.get(ref)!;
+      candidate.evidence_lids.forEach(lid => evidence.add(lid));
+      const text = [...new Set([candidate.meaning, ...candidate.conditions, candidate.reason.text])].join("\n");
+      key_stops.push({ id: ref, lid: candidate.lid, type: candidate.type,
+        ...(candidate.title ? { title: candidate.title } : {}),
+        reason: { text, evidence_lids: [...candidate.evidence_lids] } });
+    }
+    evidence_by_unit[lid] = [...evidence].sort();
+    return { lid, role: selection.role, summary: structuredClone(selection.summary),
+      key_stop_ids: [...selection.macro_stop_refs], depends_on: [] };
+  });
+  return { spine, key_stops, throughlines: [], unit_titles: Object.fromEntries(unitOrder.map(lid => [lid, titles[lid] ?? "未命名单元"])),
+    reference_scope: { unit_lids: [...unitOrder], dependency_target_lids: [...unitOrder], evidence_by_unit } };
 }

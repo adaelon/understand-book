@@ -208,7 +208,7 @@ describe("IP4 confirmed BuildPlan execution gate", () => {
     ]);
     const plan = confirmedStandardPlan(current, { pass2: "disabled" });
 
-    expect(plan.public_stage_closure).toEqual(["pass1", "profile_sidecar", "book_structure"]);
+    expect(plan.public_stage_closure).toEqual(["pass1", "profile_sidecar", "book_structure", "formal_objects", "cognitive_materials", "teaching_publish"]);
     expect(nextPlannedAutomaticBuildAction(current, plan, 3)).toMatchObject({
       kind: "extract",
       stage: "book_structure",

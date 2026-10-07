@@ -1399,7 +1399,7 @@ describe("S0 deterministic automatic-build driver protocol", () => {
     expect(await driver.automaticBuildStep(request)).toEqual(resumed);
   });
 
-  it("gives an expired recovery generation a new opaque handoff while keeping its dispatch slot", async () => {
+  it.each(["same", "fresh"])("gives an expired recovery generation a new handoff in the %s invocation while keeping its dispatch slot", async (invocationMode) => {
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date("2026-08-08T05:00:00.000Z"));
@@ -1421,10 +1421,10 @@ describe("S0 deterministic automatic-build driver protocol", () => {
       startV3GenerationForHandoff(firstLaunch.opaque_handoff_ref, "2026-08-08T05:00:01.000Z");
 
       vi.setSystemTime(new Date("2026-08-09T05:00:00.000Z"));
-      const freshInvocation = await createInvocation(driver, value, {
+      const freshInvocation = invocationMode === "same" ? firstInvocation : await createInvocation(driver, value, {
         created_at: "2026-08-09T05:00:00.000Z",
       });
-      expect(freshInvocation.invocation_ref).not.toBe(firstInvocation.invocation_ref);
+      if (invocationMode === "fresh") expect(freshInvocation.invocation_ref).not.toBe(firstInvocation.invocation_ref);
 
       const resumed = await driver.automaticBuildStep({
         version: "automatic_build_step_request.v1",
@@ -1437,11 +1437,16 @@ describe("S0 deterministic automatic-build driver protocol", () => {
       }
       expect(resumed.action.executors[0]?.opaque_handoff_ref).not.toBe(firstLaunch.opaque_handoff_ref);
       expect(resumed.action.executors[0]?.dispatch_slot_ref).toBe(firstLaunch.dispatch_slot_ref);
+      const generated = startV3GenerationForHandoff(resumed.action.executors[0]!.opaque_handoff_ref, "2026-08-09T05:00:01.000Z");
+      expect(generated.action).toMatchObject({ kind: "GENERATE", semantic_attempt: 1 });
+      const target = resolveAutomaticBuildTarget(value.source, value.root);
+      expect(Object.values(readAutomaticBuildAttemptSnapshot(target).stages.pass1 ?? {})[0])
+        .toMatchObject({ semantic_attempt: 1, lease_epoch: 2, failures: 0 });
       expectRootSafeStep(resumed, [value.root, value.source, value.buildPlanPath]);
     } finally {
       vi.useRealTimers();
     }
-  });
+  }, 30_000);
 
   it("reissues a durable active dispatch after volatile registry loss without another semantic attempt", async () => {
     vi.useFakeTimers();

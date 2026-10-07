@@ -42,6 +42,8 @@ import {
 } from "../src/profile-sidecar-reduction";
 import {
   bookStructureGenerationTaskPath,
+  freezeBookStructureGenerationTask,
+  writeBookStructureGenerationCandidate,
   renderBookStructureGenerationTaskInput,
 } from "../src/book-structure-generation";
 import { stageAutomaticBuildCandidate } from "../src/automatic-build-mailbox";
@@ -55,6 +57,10 @@ import {
   submitAutomaticBuildTaskCandidate,
 } from "../../../skills/build/automatic-build";
 import { writePass1ProductionTaskArtifact } from "./helpers/model-input-routability-fixture";
+import { zipSync, strToU8 } from "fflate";
+import { claimAutomaticBuildTask, readAutomaticBuildLease } from "../src/automatic-build-lease";
+import { structureProductionResponse } from "./helpers/book-structure-production";
+import { confirmedStandardBuildPlan } from "./helpers/confirmed-build-plan";
 
 const mutationCount = vi.hoisted(() => ({ active: false, count: 0 }));
 vi.mock("node:fs", async (original) => {
@@ -284,6 +290,123 @@ function writeTechnicalLearningWorkspace(root: string, bookId = "guide"): {
 }
 
 describe("automatic build orchestrator", () => {
+  it("U2 resumes partial completed work after relocation and rejects the old executor", async () => {
+    const root = tempDir();
+    const source = path.join(root, "portable.md");
+    writeFileSync(source, "# One\n\nFirst independent chapter.\n\n# Two\n\nSecond independent chapter.\n");
+    const imported = spawnSync(process.execPath, [path.resolve(__dirname, "../../../node_modules/tsx/dist/cli.mjs"),
+      path.resolve(__dirname, "../../../skills/build/pass1-batch.ts"), source, "--allow-partial"], { cwd: root, encoding: "utf8" });
+    expect(imported.status, imported.stderr).toBe(0);
+    const target = resolveAutomaticBuildTarget("portable", root);
+    const prepared = prepareAutomaticBuildSnapshot(target, "pass1");
+    expect(prepared.status).toBe("ready");
+    const stage = buildAutomaticBuildSnapshot(target).stages[0];
+    expect(stage.pending_work_units!.length).toBeGreaterThan(1);
+    const [done, pending] = stage.pending_work_units!;
+    for (const unit of [done, pending]) {
+      const task = stage.generation_tasks![unit.work_unit_id];
+      if (task.kind !== "pass1") throw new Error("expected pass1");
+      freezePass1ShadowTask(target, task.task);
+    }
+    const binding = stage.task_bindings![done.work_unit_id];
+    if (!("policy_generation_id" in binding)) throw new Error("expected v3");
+    writePass1ProductionTaskArtifact({ target, policy_generation_id: binding.policy_generation_id,
+      work_unit_id: done.work_unit_id, marker: "Portable completed work", generated_at: "2026-10-01T00:00:00.000Z" });
+    const artifactFile = automaticBuildGenerationArtifactPath(target, "pass1", binding.policy_generation_id, done.work_unit_id);
+    const originalArtifact = readFileSync(artifactFile, "utf8");
+    const lease = claimAutomaticBuildTask(target, "pass1", pending.work_unit_id, { owner: "before-move",
+      descriptor: pending, binding: stage.task_bindings![pending.work_unit_id] });
+    if (lease.status !== "leased") throw new Error("expected original lease");
+    const movedRoot = tempDir();
+    const moved = path.join(movedRoot, ".understand-book", target.book_id);
+    fs.cpSync(target.workspace_dir, moved, { recursive: true });
+    unlinkSync(source);
+    const resumed = resolveAutomaticBuildTarget(moved, movedRoot);
+    expect(buildAutomaticBuildSnapshot(resumed).stages[0].pending_tasks).not.toContain(done.work_unit_id);
+    const buildPlan = confirmedStandardBuildPlan(moved, movedRoot);
+    const plan = automaticBuildPlan(moved, movedRoot, { build_plan: buildPlan });
+    const next = automaticBuildNext(moved, movedRoot, 1, { build_plan: buildPlan,
+      protocol: AUTOMATIC_BUILD_PROTOCOL_V2, accepted_plan_digest: plan.preflight!.descriptor_plan_digest });
+    expect(next.action.kind).toBe("extract");
+    if (next.action.kind !== "extract" || !next.action.tasks) throw new Error("expected pending task dispatch");
+    const scheduled = next.action.tasks[0];
+    expect(scheduled.task_id).toBe(pending.work_unit_id);
+    expect(scheduled.lease.target_ref).toEqual(resumed.target_ref);
+    expect(scheduled.lease.attempt).toBeGreaterThan(lease.lease.attempt);
+    expect(runAutomaticBuildTaskInput(resumed, "pass1", pending.work_unit_id, scheduled.lease_ref,
+      scheduled.lease.token).stdout).toContain("Second independent chapter");
+    expect(JSON.stringify(next.action)).not.toContain(`"work_unit_id":"${done.work_unit_id}"`);
+    const copiedLease = path.join(moved, path.relative(target.workspace_dir, lease.lease_ref));
+    expect(() => readAutomaticBuildLease(resumed, copiedLease, lease.lease.token)).toThrow("target mismatch");
+    expect(() => submitAutomaticBuildTaskCandidate(resumed, "pass1", pending.work_unit_id,
+      copiedLease, lease.lease.token)).toThrow("target mismatch");
+    expect(existsSync(path.join(path.dirname(copiedLease), "result.json"))).toBe(false);
+    closeV3Pass1(resumed);
+    expect(buildAutomaticBuildSnapshot(resumed).stages[0].closed).toBe(true);
+    closeV3ProfileSidecar(resumed);
+    const movedAgainRoot = tempDir();
+    const movedAgain = path.join(movedAgainRoot, ".understand-book", target.book_id);
+    fs.cpSync(moved, movedAgain, { recursive: true });
+    const twice = resolveAutomaticBuildTarget(movedAgain, movedAgainRoot);
+    const twiceSnapshot = buildAutomaticBuildSnapshot(twice);
+    expect(twiceSnapshot.stages.find(s => s.stage === "pass1")?.closed).toBe(true);
+    expect(twiceSnapshot.stages.find(s => s.stage === "profile_sidecar")?.closed).toBe(true);
+    expect(readFileSync(artifactFile, "utf8")).toBe(originalArtifact);
+    expect(readFileSync(path.join(moved, path.relative(target.workspace_dir, artifactFile)), "utf8")).toBe(originalArtifact);
+  }, 30_000);
+  it.each(["md", "epub"])("U1 resumes an imported %s snapshot after relocation and external edits", (extension) => {
+    const root = tempDir();
+    const source = path.join(root, `imported.${extension}`);
+    const image = Buffer.from("imported image bytes");
+    writeFileSync(path.join(root, "figure.png"), image);
+    writeFileSync(source, extension === "md" ? "# Guide\n\nOriginal paragraph.\n\n![Figure](figure.png)\n" : zipSync({
+      "META-INF/container.xml": strToU8('<container><rootfiles><rootfile full-path="content.opf"/></rootfiles></container>'),
+      "content.opf": strToU8('<package><manifest><item id="c" href="chapter.xhtml"/></manifest><spine><itemref idref="c"/></spine></package>'),
+      "chapter.xhtml": strToU8('<html><body><h1>Guide</h1><p>Original paragraph.</p><h2>Details</h2><p>Another paragraph.</p><img src="figure.png" alt="Figure"/></body></html>'),
+      "figure.png": image,
+    }));
+    const initial = resolveAutomaticBuildTarget(source, root);
+    const before = buildAutomaticBuildSnapshot(initial).stages[0];
+    const imported = spawnSync(process.execPath, [path.resolve(__dirname, "../../../node_modules/tsx/dist/cli.mjs"),
+      path.resolve(__dirname, "../../../skills/build/pass1-batch.ts"), source, "--allow-partial"], { cwd: root, encoding: "utf8" });
+    expect(imported.status, imported.stderr).toBe(0);
+    const movedRoot = tempDir();
+    const moved = path.join(movedRoot, ".understand-book", initial.book_id);
+    fs.cpSync(initial.workspace_dir, moved, { recursive: true });
+    writeFileSync(source, "changed external source");
+    const resumed = resolveAutomaticBuildTarget(moved, movedRoot);
+    expect(resumed.source_path.startsWith(moved + path.sep)).toBe(true);
+    expect(resolveAutomaticBuildTarget(resumed.source_path, movedRoot)).toEqual(resumed);
+    expect(resumed.target_ref.input_fingerprint).toBe(initial.target_ref.input_fingerprint);
+    expect(buildAutomaticBuildSnapshot(resumed).stages[0].work_units).toEqual(before.work_units?.map(unit => ({
+      ...unit, target: resumed.target_ref,
+    })));
+    unlinkSync(source);
+    unlinkSync(path.join(root, "figure.png"));
+    expect(resolveAutomaticBuildTarget(moved, movedRoot)).toEqual(resumed);
+    const assetBefore = readFileSync(path.join(moved, "asset_manifest.json"), "utf8");
+    const reclosed = spawnSync(process.execPath, [path.resolve(__dirname, "../../../node_modules/tsx/dist/cli.mjs"),
+      path.resolve(__dirname, "../../../skills/build/pass1-batch.ts"), resumed.source_path,
+      "--book-id", resumed.book_id, "--allow-partial"], { cwd: movedRoot, encoding: "utf8" });
+    expect(reclosed.status, reclosed.stderr).toBe(0);
+    expect(readFileSync(path.join(moved, "asset_manifest.json"), "utf8")).toBe(assetBefore);
+    const asset = JSON.parse(assetBefore).images[0];
+    expect(asset.status).toBe("available");
+    expect(readFileSync(path.join(moved, asset.stored_path))).toEqual(image);
+    if (extension === "epub") {
+      expect(resumed.target_ref.input_fingerprint).not.toBe(sha256Text(readFileSync(path.join(moved, "source.txt"), "utf8")));
+      // Pre-U1 imports retained the canonical text and LID tree, but not the package bytes.
+      unlinkSync(path.join(moved, "source.epub"));
+      const manifestPath = path.join(moved, "source_manifest.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      delete manifest.canonical_source.snapshot_path;
+      writeJson(manifestPath, manifest);
+      const legacy = resolveAutomaticBuildTarget(moved, movedRoot);
+      expect(legacy.source_path).toBe(path.join(moved, "source.txt"));
+      expect(buildAutomaticBuildSnapshot(legacy).stages[0].work_units?.map(u => [u.work_unit_id, u.input_hash, u.evidence_lids]))
+        .toEqual(before.work_units?.map(u => [u.work_unit_id, u.input_hash, u.evidence_lids]));
+    }
+  });
   it("uses an explicit book id before falling back to the source filename slug", () => {
     const root = tempDir();
     const source = path.join(root, "renamed-import.md");
@@ -311,7 +434,7 @@ describe("automatic build orchestrator", () => {
       profile_id: "technical_learning",
       root_dir: path.resolve(root),
       workspace_dir: path.resolve(workspace),
-      source_path: path.resolve(sourceFile),
+      source_path: path.join(workspace, "source.txt"),
       target_ref: {
         version: "build_target_ref.v2",
         workspace_dir: path.resolve(workspace),
@@ -455,7 +578,7 @@ describe("automatic build orchestrator", () => {
     expect(prepareAutomaticBuildSnapshot(target, "book_structure").status).toBe("ready");
     const current = buildAutomaticBuildSnapshot(target).stages.find(item => item.stage === "book_structure");
     expect(current?.policy_set?.members.every(member => member.policy_generation_id.endsWith(
-      member.kind.startsWith("structure_relation_") ? ".v1" : ".v4",
+      ["structure_unit", "structure_fragment", "structure_reduce", "structure_stitch", "structure_stitch_fragment"].includes(member.kind) ? ".v4" : ".v1",
     ))).toBe(true);
     previous.members.forEach((member, index) => expect(readFileSync(path.join(workspace, ".build", "automatic-build",
       "v4", "policies", "book_structure", member.policy_generation_id, "policy.json"))).toEqual(before[index]));
@@ -478,12 +601,17 @@ describe("automatic build orchestrator", () => {
     expect(bookStructure?.pending_work_units?.every((unit) => unit.cost.candidate_count === 0)).toBe(true);
     expect(bookStructure?.policy_set?.stage).toBe("book_structure");
     expect(bookStructure?.policy_set?.members.map((member) => member.kind)).toEqual([
+      "structure_chapter",
       "structure_fragment",
+      "structure_outline",
       "structure_reduce",
       "structure_relation_delta",
       "structure_relation_select",
       "structure_stitch",
       "structure_stitch_fragment",
+      "structure_theme",
+      "structure_theme_plan",
+      "structure_theme_reconcile",
       "structure_unit",
     ]);
     expect(bookStructure?.pending_work_units?.every((unit) => (
@@ -505,7 +633,7 @@ describe("automatic build orchestrator", () => {
           semanticContractFromExtractionPolicy(generation.task.descriptor.policy_fingerprint),
         ));
     })).toBe(true);
-    expect(target.source_path).toBe(path.resolve(sourceFile));
+    expect(target.source_path).toBe(path.join(workspace, "source.txt"));
 
     const unitWork = bookStructure?.pending_work_units ?? [];
     for (const unit of unitWork) {
@@ -607,84 +735,18 @@ describe("automatic build orchestrator", () => {
       ));
     }
 
-    const stitchSnapshot = buildAutomaticBuildSnapshot(target);
-    const stitchStage = stitchSnapshot.stages.find((stage) => stage.stage === "book_structure");
-    const stitch = stitchStage?.pending_work_units?.find((unit) => unit.work_unit_id === "stitch");
-    expect(stitch).toBeDefined();
-    const stitchGeneration = stitchStage?.generation_tasks?.stitch;
-    if (stitchGeneration?.kind !== "book_structure") {
-      throw new Error("missing BookStructure stitch production task");
+    for (let round = 0; round < 8; round++) {
+      const state = buildAutomaticBuildSnapshot(target).stages.find(stage => stage.stage === "book_structure")!;
+      if (!state.pending_tasks.length) break;
+      for (const id of state.pending_tasks) {
+        const generation = state.generation_tasks![id];
+        if (generation.kind !== "book_structure") throw Error("expected BookStructure task");
+        freezeBookStructureGenerationTask(target, generation.task);
+        writeBookStructureGenerationCandidate({ target, task: generation.task,
+          candidate: structureProductionResponse(generation.task),
+          provenance: { executor: "bsr5-orchestrator", attempt: 1, generated_at: "2026-07-31T00:01:00.000Z" } });
+      }
     }
-    if (!stitchStage?.policy_set || !stitch) {
-      throw new Error("missing proof-bound BookStructure stitch stage");
-    }
-    const stitchPlan = automaticBuildPlan(target.source_path, root, {
-      book_id: target.book_id,
-      requested_workers: 1,
-      available_agent_slots: 1,
-      build_plan: buildPlan,
-    });
-    if (!stitchPlan.preflight) throw new Error("expected BookStructure stitch preflight");
-    const stitchNext = automaticBuildNext(target.source_path, root, 1, {
-      book_id: target.book_id,
-      protocol: AUTOMATIC_BUILD_PROTOCOL_V2,
-      owner: "book-structure-stitch",
-      now: "2026-07-31T00:01:00.000Z",
-      available_agent_slots: 1,
-      accepted_plan_digest: stitchPlan.preflight.descriptor_plan_digest,
-      build_plan: buildPlan,
-    });
-    if (stitchNext.action.kind !== "extract"
-      || stitchNext.action.stage !== "book_structure"
-      || stitchNext.action.tasks.length !== 1
-      || stitchNext.action.tasks[0].task_id !== "stitch") {
-      throw new Error("expected active BookStructure stitch extraction action");
-    }
-    const stitchTask = stitchNext.action.tasks[0];
-    expect(stitchTask.lease).toMatchObject({
-      policy_generation_id: stitchGeneration.task.policy_generation_id,
-      semantic_contract: semanticContractFromExtractionPolicy(stitchGeneration.task.descriptor.policy_fingerprint),
-    });
-    expect(existsSync(bookStructureGenerationTaskPath(
-      target,
-      stitchGeneration.task.policy_generation_id,
-      "stitch",
-    ))).toBe(true);
-    const stitchInput = runAutomaticBuildTaskInput(
-      target,
-      "book_structure",
-      "stitch",
-      stitchTask.lease_ref,
-      stitchTask.lease.token,
-      { now: "2026-07-31T00:01:01.000Z", run_ttl_ms: 60_000 },
-    );
-    expect(stitchInput.stdout).toBe(renderBookStructureGenerationTaskInput(stitchGeneration.task));
-    const stitchCandidatePath = path.join(root, "book-structure-stitch.json");
-    const stitchCards = JSON.parse(stitchInput.stdout).unit_cards;
-    writeJson(stitchCandidatePath, { spine: stitchCards.map((card: any) => ({
-      lid: card.unit_lid, role: card.role, summary: card.summary, key_stop_ids: [], depends_on: [],
-    })), throughlines: [], key_stops: [] });
-    stageAutomaticBuildCandidate(
-      target,
-      stitchTask.lease_ref,
-      stitchTask.lease.token,
-      stitchCandidatePath,
-      { now: "2026-07-31T00:01:02.000Z" },
-    );
-    const stitchReceipt = submitAutomaticBuildTaskCandidate(
-      target,
-      "book_structure",
-      "stitch",
-      stitchTask.lease_ref,
-      stitchTask.lease.token,
-      { now: "2026-07-31T00:01:03.000Z" },
-    );
-    expect(stitchReceipt.artifact_path).toBe(automaticBuildGenerationArtifactPath(
-      target,
-      "book_structure",
-      stitchGeneration.task.policy_generation_id,
-      "stitch",
-    ));
     const closeResult = runAutomaticBuildCloseStage(
       target.source_path,
       root,
@@ -699,7 +761,7 @@ describe("automatic build orchestrator", () => {
     });
     expect(JSON.parse(readFileSync(path.join(workspace, "book_structure.json"), "utf8"))).toMatchObject({
       header: { book_id: target.book_id, profile_id: target.profile_id },
-      spine: stitchCards.map((card: any) => expect.objectContaining({ lid: card.unit_lid })),
+      spine: unitWork.map(unit => expect.objectContaining({ lid: (bookStructure.generation_tasks![unit.work_unit_id] as any).task.parent_unit_lid })),
       throughlines: [],
       key_stops: [],
     });

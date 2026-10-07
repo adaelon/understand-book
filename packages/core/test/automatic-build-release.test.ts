@@ -149,6 +149,9 @@ describe("automatic build BP8 production release", () => {
           status: "compatible",
           source: "node_source",
           checked_extractors: [
+            "formal-objects-extractor.md",
+            "cognitive-materials-extractor.md",
+            "teaching-source-reviewer.md",
             "pass1-local-extractor.md",
             "paper-metadata-extractor.md",
             "paper-lexicon-extractor.md",
@@ -164,6 +167,8 @@ describe("automatic build BP8 production release", () => {
             "book-structure-reducer.md",
             "book-structure-stitch-fragment-extractor.md",
             "book-structure-stitch-reducer.md",
+            "book-structure-relation-selector.md",
+            "book-structure-relation-extractor.md",
           ],
         },
         handoff_preparation: {

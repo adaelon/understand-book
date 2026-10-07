@@ -243,10 +243,10 @@ pub fn dispatch_mcp_tool(state: &mut AppState, name: &str, arguments: Value, now
         Err(error) => return validation(error.code, &error.message),
     };
     match (id, input) {
-        (BookToolId::Manifest, BookToolInput::Empty(_)) => ok_json(&state.book.manifest()),
+        (BookToolId::Manifest, BookToolInput::Empty(_)) => ok_json(&state.workspace.book.manifest()),
         (BookToolId::Text, BookToolInput::Text(input)) => route_book_text(state, input),
         (BookToolId::SearchText, BookToolInput::SearchText(input)) => {
-            match state.book.search_text(&input) {
+            match state.workspace.book.search_text(&input) {
                 Ok(result) => ok_json(&result),
                 Err(error) => err_reply(&error),
             }
@@ -367,7 +367,7 @@ fn artifact_overlay_unavailable(message: impl Into<String>) -> ToolError {
 }
 
 fn route_book_text(state: &AppState, input: book_tool_contracts::TextInput) -> Reply {
-    match state.book.text(&input.lid, input.end_lid.as_deref()) {
+    match state.workspace.book.text(&input.lid, input.end_lid.as_deref()) {
         Ok(text) => ok_json(&json!({ "lid": input.lid, "text": text })),
         Err(e) => err_reply(&e),
     }
@@ -375,15 +375,14 @@ fn route_book_text(state: &AppState, input: book_tool_contracts::TextInput) -> R
 
 fn route_book_context(state: &AppState, input: book_tool_contracts::ContextInput) -> Reply {
     let granularity = input.granularity.map(|value| value.as_str());
-    match state.book.context(&input.lid, granularity, input.k) {
+    match state.workspace.book.context(&input.lid, granularity, input.k) {
         Ok(ctx) => ok_json(&ctx),
         Err(e) => err_reply(&e),
     }
 }
 
 fn route_book_concept(state: &AppState, input: book_tool_contracts::ConceptInput) -> Reply {
-    match state
-        .book
+    match state.workspace.book
         .concept_candidates(&input.query, input.anchor_lid.as_deref(), input.limit)
     {
         Ok(concept) => ok_json(&concept),
@@ -392,33 +391,32 @@ fn route_book_concept(state: &AppState, input: book_tool_contracts::ConceptInput
 }
 
 fn route_book_structure(state: &AppState, input: book_tool_contracts::AtInput) -> Reply {
-    match state.book.structure(input.at.as_deref()) {
+    match state.workspace.book.structure(input.at.as_deref()) {
         Ok(projection) => ok_json(&projection),
         Err(e) => err_reply(&e),
     }
 }
 
 fn route_book_guide_path(state: &AppState, input: book_tool_contracts::AtInput) -> Reply {
-    match state.book.guide_path(input.at.as_deref()) {
+    match state.workspace.book.guide_path(input.at.as_deref()) {
         Ok(path) => ok_json(&path),
         Err(e) => err_reply(&e),
     }
 }
 
 fn route_book_paper_metadata(state: &AppState) -> Reply {
-    ok_json(&state.book.paper_metadata_projection())
+    ok_json(&state.workspace.book.paper_metadata_projection())
 }
 
 fn route_book_paper_lexicon(state: &AppState) -> Reply {
-    ok_json(&state.book.paper_lexicon_projection())
+    ok_json(&state.workspace.book.paper_lexicon_projection())
 }
 
 fn route_book_paper_reading_guide(
     state: &AppState,
     input: book_tool_contracts::PaperReadingGuideInput,
 ) -> Reply {
-    match state
-        .book
+    match state.workspace.book
         .paper_reading_guide(Some(input.mode.as_str()), Some(input.stage.as_str()))
     {
         Ok(guide) => ok_json(&guide),
@@ -431,7 +429,7 @@ fn route_book_query(state: &AppState, args: &Value) -> Reply {
         Ok(request) => request,
         Err(outcome) => return ok_json(&outcome),
     };
-    match query(&state.book, &request, state.adapter.as_ref()) {
+    match query(&state.workspace.book, &request, state.services.adapter.as_ref()) {
         Ok(resp) => ok_json(&resp),
         Err(e) => err_reply(&e),
     }
@@ -439,10 +437,10 @@ fn route_book_query(state: &AppState, args: &Value) -> Reply {
 
 fn route_book_synthesize(state: &AppState, input: book_tool_contracts::SynthesizeInput) -> Reply {
     match synthesize(
-        &state.book,
+        &state.workspace.book,
         &input.lids,
         input.task.as_deref(),
-        state.adapter.as_ref(),
+        state.services.adapter.as_ref(),
     ) {
         Ok(resp) => ok_json(&resp),
         Err(e) => err_reply(&e),
@@ -471,7 +469,7 @@ fn route_book_guide(state: &mut AppState, input: GuideInput, now_ms: u128) -> Re
             let Some(session) = state.visitor_sessions.get(&session_id) else {
                 return visitor_session_not_found(&session_id);
             };
-            if session.book_id != state.book.base.book_id {
+            if session.book_id != state.workspace.book.base.book_id {
                 return validation(
                     "INVALID_RANGE",
                     "VisitorSession 所属 book 与当前 book 不一致",
@@ -483,7 +481,7 @@ fn route_book_guide(state: &mut AppState, input: GuideInput, now_ms: u128) -> Re
             let session_id =
                 state
                     .visitor_sessions
-                    .open(&state.book.base.book_id, Some(intent.clone()), now_ms);
+                    .open(&state.workspace.book.base.book_id, Some(intent.clone()), now_ms);
             (session_id, true)
         }
     };
@@ -498,13 +496,13 @@ fn route_book_guide(state: &mut AppState, input: GuideInput, now_ms: u128) -> Re
         guide_intent.push_str(feedback);
     }
     let guide = match book_guide(
-        &state.book,
+        &state.workspace.book,
         BookGuideRequest {
             intent: guide_intent,
             anchor_lid,
         },
         Some(&ctx),
-        state.adapter.as_ref(),
+        state.services.adapter.as_ref(),
     ) {
         Ok(guide) => guide,
         Err(e) => return err_reply(&e),
@@ -929,27 +927,27 @@ mod tests {
         let book = book();
         let reader = Reader::new(&book, DEFAULT_RADIUS);
         AppState {
-            desktop_host: false,
-            reader_only: false,
-            book_dir: std::env::temp_dir(),
-            library_root: None,
-            book: book.into(),
-            reader,
-            store: MemoryStore::open(tmp("memory")).unwrap(),
-            intent_store_root: None,
+            services: crate::service_state::ServiceState {
+                desktop_host: false,
+                reader_only: false,
+                library_root: None,
+                adapter: Box::new(StubAdapter),
+            },
+            user: crate::user_runtime::UserRuntime::local(
+                MemoryStore::open(tmp("memory")).unwrap(),
+                None,
+                crate::AgentHistory::default(),
+                None,
+            ),
+
             mcp_artifact_read_port: None,
-            adapter: Box::new(StubAdapter),
-            messages: new_session(),
-            session_path: None,
-            history_path: None,
-            agent_history: crate::AgentHistory::default(),
-            profile_context_cache: runtime::profile_context::ProfileContextCache::default(),
+
             visitor_sessions: timeout_ms
                 .map(VisitorSessions::with_timeout_ms)
                 .unwrap_or_default(),
-            workbench_loaded_revision: None,
-            active_agent_stream: None,
-        }
+
+        workspace: crate::reader_workspace::ReaderWorkspace::local(std::env::temp_dir(), book.into(), reader, new_session(), None),
+}
     }
 
     fn artifact_snapshot(revision: char) -> Result<ArtifactAccessSnapshot, ToolError> {
@@ -1327,16 +1325,35 @@ mod tests {
     #[test]
     fn visitor_dispatch_has_no_reader_or_memory_branch() {
         let mut s = state(None);
+        let root = tempfile::tempdir().unwrap();
+        s.user = crate::user_runtime::UserRuntime::visitor(MemoryStore::unavailable(
+            root.path().join("memory.json"),
+            ToolError {
+                error_code: memory::READER_PRIVATE_STORAGE_UNAVAILABLE.into(),
+                category: "permission".into(),
+                message: "visitor MCP cannot access resident private memory".into(),
+            },
+            "1000",
+        ));
+        assert_eq!(s.user.user_id(), None);
+        assert!(s.user.learning_store().is_err());
+        assert!(s.user.intent_store().is_err());
+        assert!(s.user.presentation_root().is_err());
+        let text = dispatch_mcp_tool(&mut s, "book_text", json!({"lid":"1.1"}), "1000");
+        assert_eq!(text.status, 200, "{}", text.body);
         let r = dispatch_mcp_tool(&mut s, "reader.goto", json!({"lid":"1.1"}), "1000");
         assert_eq!(r.status, 404);
         assert!(r.body.contains("TOOL_NOT_FOUND"));
+        let r = dispatch_mcp_tool(&mut s, "memory.save", json!({"text":"private"}), "1000");
+        assert_eq!(r.status, 404);
         assert_eq!(s.visitor_sessions.len(), 0);
+        assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 0);
     }
 
     #[test]
     fn visitor_guide_never_reads_or_injects_reader_private_profile() {
         let mut s = state(None);
-        s.store
+        s.user.store
             .create_profile_fact(
                 CreateProfileFact {
                     scope: ProfileScope::Global,
@@ -1357,9 +1374,9 @@ mod tests {
                 "2026-01-01T00:00:00Z",
             )
             .unwrap();
-        let revision = s.store.projection_revision();
+        let revision = s.user.store.projection_revision();
         let requests = Arc::new(Mutex::new(Vec::new()));
-        s.adapter = Box::new(CompleteRecordingAdapter {
+        s.services.adapter = Box::new(CompleteRecordingAdapter {
             requests: Arc::clone(&requests),
         });
 
@@ -1379,8 +1396,8 @@ mod tests {
             .join("\n");
         assert!(!serialized.contains("reader_profile_snapshot.v1"));
         assert!(!serialized.contains("PRIVATE_VISITOR_SENTINEL"));
-        assert_eq!(s.store.projection_revision(), revision);
-        assert_eq!(s.store.profile_facts().len(), 1);
+        assert_eq!(s.user.store.projection_revision(), revision);
+        assert_eq!(s.user.store.profile_facts().len(), 1);
     }
 
     #[test]
@@ -1505,7 +1522,7 @@ mod tests {
     #[test]
     fn unconfigured_adapter_errors_do_not_create_tier1_session() {
         let mut s = state(None);
-        s.adapter = Box::new(UnconfiguredAdapter);
+        s.services.adapter = Box::new(UnconfiguredAdapter);
         let r = dispatch_mcp_tool(
             &mut s,
             "book_query",

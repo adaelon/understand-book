@@ -5,6 +5,34 @@ export type UsageSource = "provider_reported" | "executor_reported" | "estimated
 export type UsageCompleteness = "complete" | "partial" | "unavailable";
 export type ObservationCoverage = "complete" | "partial" | "unknown";
 
+export interface RequestDiagnostics {
+  request_index: number;
+  step_id: number;
+  previous_step_id: number | null;
+  message_count: number;
+  previous_message_count: number | null;
+  unchanged_prefix_messages: number | null;
+  first_changed_message: {
+    index: number;
+    role: "system" | "developer" | "user" | "assistant" | "tool" | "other";
+    fields: ("added" | "removed" | "role" | "content" | "images" | "reasoning_content"
+      | "tool_arguments" | "tool_call_ids" | "tool_names" | "tool_calls" | "tool_call_id" | "other")[];
+    previous_bytes: number;
+    current_bytes: number;
+    unchanged_prefix_bytes: number;
+  } | null;
+  messages_append_only: boolean | null;
+  tool_count: number;
+  previous_tool_count: number | null;
+  tools_changed: boolean | null;
+  first_changed_tool: number | null;
+  settings_changed: boolean | null;
+  image_count: number;
+  previous_image_count: number | null;
+  reasoning_message_count: number;
+  previous_reasoning_message_count: number | null;
+}
+
 export interface TokenUsage {
   input_tokens: number | null;
   output_tokens: number | null;
@@ -48,6 +76,7 @@ export interface ObservationMetadata {
   request_tool_schema_count: number | null;
   request_estimated_input_tokens: number | null;
   request_estimate_source: "runtime_estimated" | null;
+  request_diagnostics?: RequestDiagnostics;
   interruption_detected_at: string | null;
   source_refs: string[];
   executed: boolean;
@@ -92,6 +121,7 @@ const metadataKeys = new Set([
   "delivery_repair_issue_count", "delivery_classification", "delivery_error_codes",
   "request_count", "request_message_count", "request_tool_schema_count",
   "request_estimated_input_tokens", "request_estimate_source", "interruption_detected_at",
+  "request_diagnostics",
   "source_refs", "executed", "incomplete",
 ]);
 const kinds = new Set(["run", "model", "tool", "activity"]);
@@ -109,10 +139,29 @@ function exactKeys(value: unknown, allowed: Set<string>, optional: readonly stri
     && [...allowed].every((key) => key in value || optional.includes(key));
 }
 
+function validRequestDiagnostics(value: unknown): boolean {
+  const counts = ["request_index", "step_id", "message_count", "tool_count", "image_count", "reasoning_message_count"];
+  const nullableCounts = ["previous_step_id", "previous_message_count", "unchanged_prefix_messages",
+    "previous_tool_count", "first_changed_tool", "previous_image_count", "previous_reasoning_message_count"];
+  const nullableBooleans = ["messages_append_only", "tools_changed", "settings_changed"];
+  const count = (v: unknown) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
+  if (!exactKeys(value, new Set([...counts, ...nullableCounts, ...nullableBooleans, "first_changed_message"]))
+      || !counts.every((key) => count(value[key]))
+      || !nullableCounts.every((key) => value[key] === null || count(value[key]))
+      || !nullableBooleans.every((key) => value[key] === null || typeof value[key] === "boolean")) return false;
+  const change = value.first_changed_message;
+  return change === null || (exactKeys(change, new Set(["index", "role", "fields", "previous_bytes", "current_bytes", "unchanged_prefix_bytes"]))
+    && ["index", "previous_bytes", "current_bytes", "unchanged_prefix_bytes"].every((key) => count(change[key]))
+    && new Set(["system", "developer", "user", "assistant", "tool", "other"]).has(change.role as string)
+    && Array.isArray(change.fields) && change.fields.length > 0 && change.fields.length <= 12
+    && change.fields.every((field) => new Set(["added", "removed", "role", "content", "images",
+      "reasoning_content", "tool_arguments", "tool_call_ids", "tool_names", "tool_calls", "tool_call_id", "other"]).has(field)));
+}
+
 export function parseObservation(value: unknown): ObservationEnvelope {
   if (!exactKeys(value, topLevelKeys) || !exactKeys(value.usage, usageKeys, ["reasoning_output_tokens"])
       || !exactKeys(value.completeness, completenessKeys)
-      || !exactKeys(value.metadata, metadataKeys)) {
+      || !exactKeys(value.metadata, metadataKeys, ["request_diagnostics"])) {
     throw new Error("observation contains missing or unknown fields");
   }
   if (value.schema_version !== OBSERVATION_SCHEMA_VERSION
@@ -154,6 +203,9 @@ export function parseObservation(value: unknown): ObservationEnvelope {
     throw new Error("observation completeness is invalid");
   }
   const metadata = value.metadata;
+  if (metadata.request_diagnostics !== undefined && !validRequestDiagnostics(metadata.request_diagnostics)) {
+    throw new Error("request diagnostics must contain only structural metadata");
+  }
   if (!Array.isArray(value.metadata.source_refs)
       || value.metadata.source_refs.length > MAX_OBSERVATION_SOURCE_REFS
       || !value.metadata.source_refs.every((entry) => typeof entry === "string")

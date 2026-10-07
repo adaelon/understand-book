@@ -32,12 +32,14 @@ fn ex10_preflight() {
     let (_temp, mut state, turn) = setup();
     let root = evidence().join("preflight");
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort { port: &app, turn_ref: &turn, previewed: Default::default(), animations: Default::default(), plots: Default::default() };
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope, port: &app, turn_ref: &turn, previewed: Default::default(), animations: Default::default(), plots: Default::default() };
     let raw = std::fs::read_to_string(evidence().join("preflight-scene.html")).unwrap();
     let html = assemble(&raw, true);
     std::fs::write(root.join("assembled.html"), &html).unwrap();
     let cancellation = CancellationToken::default();
     let written = port.author_presentation(AuthorRequest::Write {
+        new_object: false,
         libraries: vec![],
         based_on: None, title: "拖动点与线段".into(), html,
         readable_content: "拖动蓝点，线段和位置读数同步变化。".into(),
@@ -62,10 +64,10 @@ fn ex10_preflight() {
             answer:Some("拖动点与线段".into()),answer_view:Some(AgentAnswerView {parts:vec![AgentAnswerPart::Presentation {presentation_id:reference.presentation_id.clone(),revision:reference.revision}],sources:vec![]}),
             incomplete:false,warning:None,turns:1,tokens_spent:0,effects:vec![],trace:vec![],profile_usage:Default::default(),memory_updates:vec![],source_bindings:vec![],delivery_diagnostics:None,request_audit:Default::default(),
         };
-        finalize_agent_turn_completed(state,&turn,&outcome,&state.messages.clone(),"2026-09-27T15:00:00Z").unwrap();
-        let version = state.read_presentation(&turn.session_id,&reference).unwrap();
+        finalize_agent_turn_completed(state,&turn,&outcome,&state.workspace.messages.clone(),"2026-09-27T15:00:00Z").unwrap();
+        let version = state.private_context().read_presentation(&turn.session_id,&reference).unwrap();
         save_json(root.join("content.json"), &serde_json::to_value(version.content).unwrap());
-        let response = crate::presentation_api::route(state,&json!({"session_id":turn.session_id,"turn_id":turn.turn_id,"reference":reference}).to_string(),false);
+        let response = crate::presentation_api::route(&state.private_context(),&json!({"session_id":turn.session_id,"turn_id":turn.turn_id,"reference":reference}).to_string(),false);
         assert_eq!(response.status,200,"{}",response.body);
         std::fs::write(root.join("view.json"),response.body).unwrap();
     });
@@ -129,12 +131,13 @@ fn ex10_write_assembles_candidate_without_expanding_request() {
         root:temp.path().to_owned(),konva:true,writes:0,started:std::time::Instant::now(),
     }));
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort { port:&app,turn_ref:&turn,previewed:Default::default(),animations:Default::default(),plots:Default::default() };
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope, port:&app,turn_ref:&turn,previewed:Default::default(),animations:Default::default(),plots:Default::default() };
     let result = port.author_presentation(request, &[], &[], &CancellationToken::default()).unwrap();
     ASSEMBLY_RUN.with(|slot| assert_eq!(slot.borrow_mut().take().unwrap().writes,1));
     assert_eq!(returned.tool_calls[0].arguments,arguments);
     app.with_app(|state| {
-        let candidate = state.read_presentation_candidate(&turn.session_id,result.body["candidate_id"].as_str().unwrap()).unwrap();
+        let candidate = state.private_context().read_presentation_candidate(&turn.session_id,result.body["candidate_id"].as_str().unwrap()).unwrap();
         assert_eq!(candidate.content.content_files["index.html"],assemble(&raw,true));
     });
     assert_eq!(assemble_write(&raw),raw);
@@ -181,7 +184,7 @@ fn ex10_agent_comparison() {
     save_json(root.join("input.json"), &input);
     let message = input["message"].as_str().unwrap();
     let mut state = state_named(&format!("ex10-{condition}"));
-    state.history_path = Some(root.join("history.json"));
+    state.user.history_path = Some(root.join("history.json"));
     let config = ProviderConfig::from_env().unwrap();
     let model = config.model.clone();
     let started = std::time::Instant::now();
@@ -207,9 +210,9 @@ fn ex10_agent_comparison() {
             AgentAnswerPart::Presentation {presentation_id,revision} => Some(runtime::presentation::PresentationRef {presentation_id,revision}), _=>None,
         })) {
             app.with_app(|state| {
-                let version = state.read_presentation(&turn_ref.session_id,&reference).unwrap();
+                let version = state.private_context().read_presentation(&turn_ref.session_id,&reference).unwrap();
                 save_json(root.join("content.json"), &serde_json::to_value(version.content).unwrap());
-                let response = crate::presentation_api::route(state,&json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(),false);
+                let response = crate::presentation_api::route(&state.private_context(),&json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(),false);
                 std::fs::write(root.join("view.json"),response.body).unwrap();
             });
         }

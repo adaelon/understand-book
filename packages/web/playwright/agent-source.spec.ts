@@ -9,6 +9,7 @@ async function installSourceRoutes(page: Page) {
   await page.route("**/api/agent/source.resolve", async (route) => {
     calls.push("resolve");
     const body = route.request().postDataJSON() as { source_ref_id: string };
+    const text = `## 实验方法\n\n${contextBefore}\n\n${evidence}\n\n${contextAfter}\n\n- 独立队列\n- 功能实验\n\n$$E=mc^2$$\n\n\`\`\`python\ncount = 2\n\`\`\``;
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -20,6 +21,7 @@ async function installSourceRoutes(page: Page) {
         highlighted_quote: evidence,
         context_before: contextBefore,
         context_after: contextAfter,
+        excerpt: { text, highlight: { start: text.indexOf(evidence), end: text.indexOf(evidence) + evidence.length } },
         stale: false,
         can_open_in_reader: true,
       }),
@@ -53,7 +55,7 @@ test("desktop source stays inline and opens an anchored popup before reader navi
 
   const sourceButtons = page.locator(".agent-source-button");
   await expect(sourceButtons).toHaveCount(2);
-  await expect(sourceButtons.nth(0)).toContainText("正文 · Materials and Methods");
+  await expect(sourceButtons.nth(0)).toContainText("Materials and … [1]");
   await expect(sourceButtons.nth(1)).toContainText("2 个来源");
   const paragraphBox = await page.locator(".answer-markdown.before-source p").first().boundingBox();
   const buttonBox = await sourceButtons.first().boundingBox();
@@ -65,6 +67,11 @@ test("desktop source stays inline and opens an anchored popup before reader navi
   const popup = page.getByRole("dialog", { name: "回答来源" });
   await expect(popup).toBeVisible();
   await expect(popup.locator("mark")).toHaveText(evidence);
+  await expect(popup.locator('h2')).toHaveText('实验方法');
+  await expect(popup.locator('li')).toHaveCount(2);
+  await expect(popup.locator('.katex')).toHaveCount(1);
+  await expect(popup.locator('.katex-mathml')).toHaveCSS('position', 'absolute');
+  await expect(popup.locator('pre code')).toContainText('count = 2');
   await expect(page.getByTestId("reader-status")).toHaveText("保持当前阅读位置");
   expect(calls).toEqual(["resolve"]);
   await expectInsideViewport(page, ".agent-source-popup", 1440, 640);
@@ -100,6 +107,7 @@ test("mobile source popup is a viewport-bound bottom sheet", async ({ page }, te
 
   const popup = page.getByRole("dialog", { name: "回答来源" });
   await expect(popup.locator("mark")).toHaveText(evidence);
+  await popup.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
   const box = await popup.boundingBox();
   expect(box).not.toBeNull();
   expect(Math.round(box!.x)).toBe(0);
@@ -108,7 +116,7 @@ test("mobile source popup is a viewport-bound bottom sheet", async ({ page }, te
   await expectInsideViewport(page, ".agent-source-popup", 390, 844);
   expect(calls).toEqual(["resolve"]);
 
-  const textOverflow = await popup.locator(".source-popup-head strong, .source-context, .source-open-reader").evaluateAll(
+  const textOverflow = await popup.locator(".source-popup-head strong, .source-excerpt, .source-open-reader").evaluateAll(
     (nodes) => nodes.some((node) => node.scrollWidth > node.clientWidth + 1),
   );
   expect(textOverflow).toBe(false);
@@ -120,12 +128,14 @@ test("answer fullscreen fills the viewport without losing the draft or answer", 
     await page.setViewportSize(size);
     await page.goto("/agent-source-visual.html");
     await page.locator(".agent-input textarea").fill("未发送的问题");
+    if (size.width < 1024) await page.getByRole('button', { name: '问答操作', exact: true }).click();
     await page.getByRole("button", { name: "问答全屏" }).click();
     const rail = page.locator(".right-rail.fullscreen");
     await expect(rail).toBeVisible();
     await expectInsideViewport(page, ".right-rail.fullscreen", size.width, size.height);
     const box = await rail.boundingBox();
-    expect(box).toMatchObject({ x: 0, y: 0, width: size.width, height: size.height });
+    expect(box).toMatchObject({ x: 0, y: 0, width: size.width });
+    expect(Math.abs(box!.height - size.height)).toBeLessThan(1);
     await expect(page.locator(".agent-input textarea")).toHaveValue("未发送的问题");
     await expect(page.locator(".transcript")).toContainText("剪接调控会改变心肌细胞");
     await page.keyboard.press("Escape");

@@ -37,13 +37,16 @@ describe("stage work-unit router framework", () => {
   it("registers an explicit versioned router for every current semantic stage", () => {
     expect(Object.keys(STAGE_WORK_UNIT_ROUTERS).sort()).toEqual([
       "book_structure",
+      "cognitive_materials",
+      "formal_objects",
       "paper_lexicon",
       "paper_metadata",
       "pass1",
       "pass2",
       "profile_sidecar",
+      "teaching_publish",
     ]);
-    expect(new Set(Object.values(STAGE_WORK_UNIT_ROUTERS).map((router) => router.router_version)).size).toBe(6);
+    expect(new Set(Object.values(STAGE_WORK_UNIT_ROUTERS).map((router) => router.router_version)).size).toBe(7);
     expect(STAGE_WORK_UNIT_ROUTERS.pass1).toMatchObject({ kind: "pass1_window", compatibility_mode: true });
   });
 

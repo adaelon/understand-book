@@ -1,0 +1,21 @@
+[Unit]
+Description=Understand Book multi-reader service
+After=network.target
+
+[Service]
+Type=simple
+User=understand-book
+Group=understand-book
+# Set both paths to the same final release directory before installation.
+WorkingDirectory=/opt/understand-book/releases/MU11_RELEASE
+EnvironmentFile=/opt/understand-book/multi-reader.env
+ExecStart=/bin/bash /opt/understand-book/releases/MU11_RELEASE/scripts/linux/start-reader.sh
+KillSignal=SIGTERM
+KillMode=mixed
+TimeoutStopSec=180
+Restart=on-failure
+RestartSec=3
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -1,4 +1,5 @@
-export interface MarkdownReadingAnchor {
+import type { ScrollAnchor } from './reader-text-anchor';
+export interface MarkdownReadingAnchor extends ScrollAnchor {
   surface: "markdown";
   lid: string;
   top: number;
@@ -12,6 +13,7 @@ export interface PdfReadingAnchor {
   probeRatio: number;
   horizontalRatio: number | null;
   anchorLid: string | null;
+  zoom?: number;
 }
 
 export type ReadingAnchor = MarkdownReadingAnchor | PdfReadingAnchor;
@@ -19,6 +21,8 @@ export type ReadingAnchor = MarkdownReadingAnchor | PdfReadingAnchor;
 export interface ReadingReturnPoint {
   contextKey: string;
   turnId: string;
+  origin?: 'reader' | 'notes';
+  memId?: string;
   anchor: ReadingAnchor | null;
 }
 
@@ -47,6 +51,9 @@ export function createReadingContinuity(limit = 16) {
   function has(contextKey: string): boolean {
     return points.some((point) => point.contextKey === contextKey);
   }
+  function peek(contextKey: string): ReadingReturnPoint | null {
+    return [...points].reverse().find(point => point.contextKey === contextKey) ?? null;
+  }
 
   function invalidateContext(contextKey: string) {
     points = points.filter((point) => point.contextKey === contextKey);
@@ -66,5 +73,5 @@ export function createReadingContinuity(limit = 16) {
     restoreGeneration += 1;
   }
 
-  return { push, pop, has, invalidateContext, beginRestore, isCurrent, cancelRestore };
+  return { push, pop, peek, has, invalidateContext, beginRestore, isCurrent, cancelRestore };
 }

@@ -48,6 +48,7 @@ const pdfMocks = vi.hoisted(() => {
     this.cancel = textLayerCancel;
   });
   return {
+    pdfDocument,
     modernWorkerOptions: { workerSrc: "" },
     legacyWorkerOptions: { workerSrc: "" },
     modernGetDocument: vi.fn(task),
@@ -73,6 +74,7 @@ vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({
 }));
 vi.mock("pdfjs-dist/legacy/build/pdf.worker.mjs?url", () => ({ default: "legacy-worker.mjs" }));
 vi.mock("pdfjs-dist/web/pdf_viewer.mjs", () => ({ TextLayerBuilder: pdfMocks.textLayerBuilder }));
+vi.mock("../pdf-range-source", () => ({ pdfRangeSource: async () => ({ data: new Uint8Array([37, 80, 68, 70]) }) }));
 
 import PdfReaderPane from "./PdfReaderPane.vue";
 
@@ -128,6 +130,31 @@ function annotation(memId: string, type: "highlight" | "note", lid = "1.1"): Mem
 }
 
 describe("PdfReaderPane", () => {
+  it('restores the surface scale only for the same PDF source', async () => {
+    const anchor = { surface: 'pdf' as const, sourceKey: 'paper-a:cfg:/api/book/pdf/original', pageIndex: 0, pageRatio: 0.5, probeRatio: 0.28, horizontalRatio: null, anchorLid: null, zoom: 2 };
+    for (const sameSource of [true, false]) {
+      const wrapper = mount(PdfReaderPane, { props: { sourceManifest: null, sourceMap, pdfUrl: '/api/book/pdf/original', activeLid: null, selectedLid: null, initialReadingAnchor: { ...anchor, sourceKey: sameSource ? anchor.sourceKey : 'other-source' } } });
+      await flushPromises();
+      expect((wrapper.get('.pdf-zoom-select').element as HTMLSelectElement).value).toBe(sameSource ? '2' : '1');
+      wrapper.unmount();
+    }
+  });
+  it('finishes a pending document load after a container resize invalidates rendering', async () => {
+    let release!: (doc: typeof pdfMocks.pdfDocument) => void;
+    const promise = new Promise<typeof pdfMocks.pdfDocument>(resolve => { release = resolve; });
+    pdfMocks.legacyGetDocument.mockReturnValueOnce({ promise, destroy: vi.fn(async () => undefined) });
+    const wrapper = mount(PdfReaderPane, { props: { sourceManifest: null, sourceMap, pdfUrl: '/pending.pdf', activeLid: null, selectedLid: null } });
+    await flushPromises();
+    const root = wrapper.get('.pdf-page-list').element;
+    vi.spyOn(root, 'clientWidth', 'get').mockReturnValue(500);
+    TestResizeObserver.instances[0].trigger(root);
+    await flushPromises();
+    release(pdfMocks.pdfDocument);
+    await flushPromises(); await flushPromises();
+    expect(wrapper.text()).not.toContain('正在加载 PDF');
+    expect(wrapper.findAll('.pdf-text-layer span').length).toBeGreaterThan(0);
+    wrapper.unmount();
+  });
   beforeEach(() => {
     vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
     vi.stubGlobal("ResizeObserver", TestResizeObserver);
@@ -165,7 +192,7 @@ describe("PdfReaderPane", () => {
     await flushPromises();
     await flushPromises();
 
-    expect(pdfMocks.legacyGetDocument).toHaveBeenCalledWith({ url: "/api/book/pdf/original" });
+    expect(pdfMocks.legacyGetDocument).toHaveBeenCalledWith({ data: new Uint8Array([37, 80, 68, 70]) });
     expect(pdfMocks.legacyWorkerOptions.workerSrc).toBe("legacy-worker.mjs");
     expect(pdfMocks.textLayerBuilder).toHaveBeenCalledTimes(sourceMap.pages.length);
     expect(pdfMocks.textLayerBuilder).toHaveBeenNthCalledWith(
@@ -387,7 +414,7 @@ describe("PdfReaderPane", () => {
     await zoomIn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.get('[aria-label="\u9002\u5408\u680f\u5bbd"]').text()).toContain("125%");
+    expect((wrapper.get('.pdf-zoom-select').element as HTMLSelectElement).value).toBe('1.25');
     expect(wrapper.get(".pdf-page-list").classes()).toContain("is-zoomed");
     expect(pageShells[0].attributes("style")).toContain("125%");
     expect(pdfMocks.getViewport).toHaveBeenCalledWith({ scale: 1.25 });
@@ -398,7 +425,7 @@ describe("PdfReaderPane", () => {
     pdfMocks.getViewport.mockClear();
     await zoomFit.trigger("click");
     await flushPromises();
-    expect(zoomFit.text()).toContain("100%");
+    expect((wrapper.get('.pdf-zoom-select').element as HTMLSelectElement).value).toBe('1');
     expect(wrapper.get(".pdf-page-list").classes()).not.toContain("is-zoomed");
     expect(pdfMocks.getViewport).toHaveBeenCalledWith({ scale: 1 });
 
@@ -406,9 +433,15 @@ describe("PdfReaderPane", () => {
     pdfMocks.getViewport.mockClear();
     await zoomOut.trigger("click");
     await flushPromises();
-    expect(zoomFit.text()).toContain("75%");
+    expect((wrapper.get('.pdf-zoom-select').element as HTMLSelectElement).value).toBe('0.75');
     expect(zoomOut.attributes()).toHaveProperty("disabled");
     expect(pdfMocks.getViewport).toHaveBeenCalledWith({ scale: 0.75 });
+
+    for (const width of pageWidthSpies) width.mockReturnValue(1200);
+    await wrapper.get('.pdf-zoom-select').setValue('2');
+    await flushPromises();
+    expect(pageShells[0].attributes('style')).toContain('200%');
+    expect(pdfMocks.getViewport).toHaveBeenCalledWith({ scale: 2 });
 
     wrapper.unmount();
   });

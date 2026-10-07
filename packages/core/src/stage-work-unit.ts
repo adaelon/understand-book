@@ -32,7 +32,8 @@ export type WorkUnitStage =
   | "paper_lexicon"
   | "profile_sidecar"
   | "pass2"
-  | "book_structure";
+  | "book_structure"
+  | "formal_objects" | "cognitive_materials" | "teaching_publish";
 
 export type WorkUnitKind =
   | "pass1_window"
@@ -48,6 +49,7 @@ export type WorkUnitKind =
   | "discourse_paragraph_group"
   | "formula_context_group"
   | "pass2_candidate_batch"
+  | "structure_outline" | "structure_chapter" | "structure_chapter_selection" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile"
   | "structure_unit"
   | "structure_fragment"
   | "structure_reduce"
@@ -55,7 +57,8 @@ export type WorkUnitKind =
   | "structure_stitch_reduce"
   | "structure_relation_select"
   | "structure_relation_delta"
-  | "structure_stitch";
+  | "structure_stitch"
+  | "formal_object_set" | "cognitive_step" | "teaching_source_review";
 
 export interface WorkUnitCostV1 {
   estimated_input_tokens: number;
@@ -86,7 +89,7 @@ export type ModelInputBasisV1 =
   | { kind: "source_slices"; slices: ModelInputSliceV1[] }
   | {
       kind: "semantic_projection";
-      projection_kind: "book_structure";
+      projection_kind: "book_structure" | "teaching_map";
       source_fingerprint: string;
       projection_sha256: string;
       parent_lids: string[];
@@ -145,6 +148,9 @@ export interface StageWorkUnitRouterRegistration {
 }
 
 export const STAGE_WORK_UNIT_ROUTERS: Record<WorkUnitStage, StageWorkUnitRouterRegistration> = {
+  formal_objects: { stage: "formal_objects", router_version: "teaching_map.v1", kind: "formal_object_set", compatibility_mode: false },
+  cognitive_materials: { stage: "cognitive_materials", router_version: "teaching_map.v1", kind: "cognitive_step", compatibility_mode: false },
+  teaching_publish: { stage: "teaching_publish", router_version: "teaching_map.v1", kind: "teaching_source_review", compatibility_mode: false },
   pass1: { stage: "pass1", router_version: "pass1_window.v1", kind: "pass1_window", compatibility_mode: true },
   paper_metadata: { stage: "paper_metadata", router_version: "paper_metadata_candidate.v2", kind: "metadata_region", compatibility_mode: false },
   paper_lexicon: { stage: "paper_lexicon", router_version: "paper_lexicon_cluster.v4", kind: "lexicon_candidate_batch", compatibility_mode: false },
@@ -236,7 +242,7 @@ function normalizeInputBasis(inputBasis: ModelInputBasisV1): ModelInputBasisV1 {
     return { kind: "source_slices", slices };
   }
   if (inputBasis.kind === "semantic_projection") {
-    if (inputBasis.projection_kind !== "book_structure") {
+    if (inputBasis.projection_kind !== "book_structure" && inputBasis.projection_kind !== "teaching_map") {
       throw new Error("unsupported semantic projection input basis");
     }
     const sourceFingerprint = boundedIdentity(

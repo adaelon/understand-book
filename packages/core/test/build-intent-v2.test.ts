@@ -330,8 +330,8 @@ describe("AA3 BuildIntentV2 and BuildPlanV2", () => {
       public_freshness: [],
     });
 
-    expect(compiled.plan?.public_stage_closure).toEqual(["pass1", "profile_sidecar", "book_structure"]);
-    expect(compiled.plan?.create).toEqual(["public.pass1", "public.profile_sidecar", "public.book_structure"]);
+    expect(compiled.plan?.public_stage_closure).toEqual(["pass1", "profile_sidecar", "book_structure", "formal_objects", "cognitive_materials", "teaching_publish"]);
+    expect(compiled.plan?.create).toEqual(["public.pass1", "public.profile_sidecar", "public.book_structure", "public.formal_objects", "public.cognitive_materials", "public.teaching_publish"]);
     expect(compiled.plan?.excluded).toContainEqual({
       artifact: "public.pass2",
       reason: "disabled by the confirmed standard_deep plan",

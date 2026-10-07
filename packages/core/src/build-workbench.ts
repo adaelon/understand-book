@@ -19,6 +19,9 @@ export type BuildStageId =
   | "profile_sidecar"
   | "pass2"
   | "book_structure"
+  | "formal_objects"
+  | "cognitive_materials"
+  | "teaching_publish"
   | "paper_reading_guide";
 
 export interface BuildStageNode {
@@ -36,6 +39,9 @@ export const BUILD_STAGE_DAG: Record<BuildStageId, BuildStageNode> = {
   pass2: { id: "pass2", depends_on: ["profile_sidecar"] },
   book_structure: { id: "book_structure", depends_on: ["profile_sidecar"] },
   paper_reading_guide: { id: "paper_reading_guide", depends_on: ["book_structure"] },
+  formal_objects: { id: "formal_objects", depends_on: ["book_structure"] },
+  cognitive_materials: { id: "cognitive_materials", depends_on: ["formal_objects"] },
+  teaching_publish: { id: "teaching_publish", depends_on: ["cognitive_materials"] },
 };
 
 export type BuildRoute = "reader" | "workbench";

@@ -102,7 +102,7 @@ fn status(state: &AppState) -> Result<Value, ToolError> {
     let store = private_store(state)?;
     Ok(json!({
         "version": "build_intent_status_response.v1",
-        "inspection": store.inspect_redacted(&state.book.base.book_id)?,
+        "inspection": store.inspect_redacted(&state.workspace.book.base.book_id)?,
     }))
 }
 
@@ -111,7 +111,7 @@ fn artifacts(state: &AppState) -> Result<Value, ToolError> {
     Ok(json!({
         "version": "intent_artifact_overlay_response.v1",
         "overlay": private_store(state)?.read_active_overlay_artifacts(
-            &state.book.base.book_id,
+            &state.workspace.book.base.book_id,
             &source_fingerprint,
         )?,
     }))
@@ -124,7 +124,7 @@ fn usage_report(state: &AppState, now: &str) -> Result<Value, ToolError> {
         "operation": "report",
         "input": {
             "private_root": store.root(),
-            "book_id": state.book.base.book_id,
+            "book_id": state.workspace.book.base.book_id,
             "as_of": now,
             "window_days": 7,
         }
@@ -144,7 +144,7 @@ fn prepare_artifacts(state: &AppState, body: &str, now: &str) -> Result<Value, T
         ));
     }
     store.read_active_overlay_artifacts(
-        &state.book.base.book_id,
+        &state.workspace.book.base.book_id,
         &current_source_fingerprint(state)?,
     )?;
     let (available_lids, resolved_scope_lids) = artifact_scope(state, &intent)?;
@@ -187,7 +187,7 @@ fn submit_artifact(state: &AppState, body: &str, now: &str) -> Result<Value, Too
             "accepted_at": now,
         }
     }))?;
-    store.read_active_overlay_artifacts(&state.book.base.book_id, &source_fingerprint)?;
+    store.read_active_overlay_artifacts(&state.workspace.book.base.book_id, &source_fingerprint)?;
     append_artifact_accepted_usage(state, &plan, &receipt)?;
     Ok(json!({
         "version": "intent_artifact_task_response.v1",
@@ -283,7 +283,7 @@ fn edit(state: &mut AppState, body: &str, now: &str) -> Result<Value, ToolError>
     reject_unknown_fields(&input, &["plan_id", "user_goal", "budget"])?;
     let plan_id = required_string(&input, "plan_id")?;
     let store = private_store(state)?;
-    let plan = store.read_plan(&state.book.base.book_id, plan_id)?;
+    let plan = store.read_plan(&state.workspace.book.base.book_id, plan_id)?;
     if plan.get("status").and_then(Value::as_str) != Some("draft") {
         return Err(error(
             INTENT_BUILD_CONFLICT,
@@ -301,7 +301,7 @@ fn edit(state: &mut AppState, body: &str, now: &str) -> Result<Value, ToolError>
                 "standard plans are not editable",
             )
         })?;
-    let intent = store.read_intent(&state.book.base.book_id, intent_id)?;
+    let intent = store.read_intent(&state.workspace.book.base.book_id, intent_id)?;
     if intent.get("status").and_then(Value::as_str) != Some("draft") {
         return Err(error(
             INTENT_BUILD_CONFLICT,
@@ -341,7 +341,7 @@ fn estimate(state: &AppState, body: &str) -> Result<Value, ToolError> {
     reject_unknown_fields(&input, &["plan_id", "plan_revision"])?;
     let plan_id = required_string(&input, "plan_id")?;
     let plan_revision = required_positive_u64(&input, "plan_revision")?;
-    let plan = private_store(state)?.read_plan(&state.book.base.book_id, plan_id)?;
+    let plan = private_store(state)?.read_plan(&state.workspace.book.base.book_id, plan_id)?;
     if required_revision(&plan)? != plan_revision {
         return Err(error(
             INTENT_BUILD_CONFLICT,
@@ -372,7 +372,7 @@ fn confirm_with_source(
     let plan_id = required_string(&input, "plan_id")?;
     let plan_revision = required_positive_u64(&input, "plan_revision")?;
     let store = private_store(state)?;
-    let plan = store.read_plan(&state.book.base.book_id, plan_id)?;
+    let plan = store.read_plan(&state.workspace.book.base.book_id, plan_id)?;
     if plan.get("status").and_then(Value::as_str) != Some("draft")
         || required_revision(&plan)? != plan_revision
     {
@@ -383,7 +383,7 @@ fn confirm_with_source(
         ));
     }
     validate_plan_blueprints_current(state, &plan)?;
-    let intent = read_plan_intent(&store, &state.book.base.book_id, &plan)?;
+    let intent = read_plan_intent(&store, &state.workspace.book.base.book_id, &plan)?;
     let selection = selection_from_artifacts(plan, intent)?;
     let confirmed = run_core(&json!({
         "operation": "confirm",
@@ -405,7 +405,7 @@ fn reject(state: &mut AppState, body: &str) -> Result<Value, ToolError> {
     let input = parse_body(body)?;
     let plan_id = required_string(&input, "plan_id")?;
     let store = private_store(state)?;
-    let plan = store.read_plan(&state.book.base.book_id, plan_id)?;
+    let plan = store.read_plan(&state.workspace.book.base.book_id, plan_id)?;
     if plan.get("status").and_then(Value::as_str) != Some("draft") {
         return Err(error(
             INTENT_BUILD_CONFLICT,
@@ -413,7 +413,7 @@ fn reject(state: &mut AppState, body: &str) -> Result<Value, ToolError> {
             "only a draft plan can be rejected",
         ));
     }
-    let intent = read_plan_intent(&store, &state.book.base.book_id, &plan)?;
+    let intent = read_plan_intent(&store, &state.workspace.book.base.book_id, &plan)?;
     let selection = selection_from_artifacts(plan, intent)?;
     let rejected = run_core(&json!({ "operation": "reject", "selection": selection }))?;
     persist_selection(state, &rejected)?;
@@ -430,17 +430,17 @@ fn delete_intent(state: &AppState, body: &str) -> Result<Value, ToolError> {
         "operation": "delete_intent",
         "input": {
             "private_root": store.root(),
-            "book_id": state.book.base.book_id,
+            "book_id": state.workspace.book.base.book_id,
             "intent_id": intent_id,
         }
     }))?;
-    let deleted = store.hard_delete_intent(&state.book.base.book_id, intent_id)?;
+    let deleted = store.hard_delete_intent(&state.workspace.book.base.book_id, intent_id)?;
     Ok(json!({
         "version": "build_intent_delete_response.v1",
         "intent_id": intent_id,
         "deleted": deleted,
         "deleted_usage_event_count": usage.get("deleted_event_count").cloned().unwrap_or(json!(0)),
-        "inspection": store.inspect_redacted(&state.book.base.book_id)?,
+        "inspection": store.inspect_redacted(&state.workspace.book.base.book_id)?,
     }))
 }
 
@@ -519,11 +519,11 @@ fn append_plan_selected_usage(
     let mode = required_string(selection, "mode")?;
     let plan = selection.get("plan").cloned().unwrap_or(Value::Null);
     let identity = if plan.is_null() {
-        format!("{}:{mode}:{occurred_at}", state.book.base.book_id)
+        format!("{}:{mode}:{occurred_at}", state.workspace.book.base.book_id)
     } else {
         format!(
             "{}:{}:{}",
-            state.book.base.book_id,
+            state.workspace.book.base.book_id,
             required_string(&plan, "plan_id")?,
             required_revision(&plan)?,
         )
@@ -535,7 +535,7 @@ fn append_plan_selected_usage(
         "input": {
             "private_root": store.root(),
             "event_id": usage_event_id("plan-selected", &identity),
-            "book_id": state.book.base.book_id,
+            "book_id": state.workspace.book.base.book_id,
             "occurred_at": occurred_at,
             "mode": mode,
             "plan": plan,
@@ -561,7 +561,7 @@ fn append_artifact_accepted_usage(
                 required_string(receipt, "terminal_at")?,
             ),
         ),
-        "book_id": state.book.base.book_id,
+        "book_id": state.workspace.book.base.book_id,
         "mode": "goal_directed",
         "occurred_at": required_string(receipt, "terminal_at")?,
         "kind": "artifact_accepted",
@@ -576,13 +576,13 @@ fn append_artifact_accepted_usage(
 fn current_usage_plan(state: &AppState) -> Result<Option<Value>, ToolError> {
     let store = private_store(state)?;
     let source_fingerprint = current_source_fingerprint(state)?;
-    let inspection = store.inspect_redacted(&state.book.base.book_id)?;
+    let inspection = store.inspect_redacted(&state.workspace.book.base.book_id)?;
     let mut candidates = Vec::new();
     for entry in inspection.plans {
         if entry.status != "confirmed" && entry.status != "completed" {
             continue;
         }
-        let plan = store.read_plan(&state.book.base.book_id, &entry.plan_id)?;
+        let plan = store.read_plan(&state.workspace.book.base.book_id, &entry.plan_id)?;
         if plan.get("source_fingerprint").and_then(Value::as_str)
             != Some(source_fingerprint.as_str())
         {
@@ -639,7 +639,7 @@ fn reader_usage_request(state: &AppState, body: &str) -> Result<Value, ToolError
             json!({
                 "version": "intent_build_usage_event.v1",
                 "event_id": event_id,
-                "book_id": state.book.base.book_id,
+                "book_id": state.workspace.book.base.book_id,
                 "mode": required_string(&plan, "recipe_id")?,
                 "occurred_at": occurred_at,
                 "kind": kind,
@@ -649,7 +649,7 @@ fn reader_usage_request(state: &AppState, body: &str) -> Result<Value, ToolError
             json!({
                 "version": "intent_build_usage_event.v1",
                 "event_id": event_id,
-                "book_id": state.book.base.book_id,
+                "book_id": state.workspace.book.base.book_id,
                 "mode": "read_now",
                 "occurred_at": occurred_at,
                 "kind": kind,
@@ -660,7 +660,7 @@ fn reader_usage_request(state: &AppState, body: &str) -> Result<Value, ToolError
         let artifact_id = required_string(&input, "artifact_id")?;
         let (store, _intent, plan) = active_selection(state)?;
         let overlay = store.read_active_overlay_artifacts(
-            &state.book.base.book_id,
+            &state.workspace.book.base.book_id,
             &current_source_fingerprint(state)?,
         )?;
         if !overlay
@@ -677,7 +677,7 @@ fn reader_usage_request(state: &AppState, body: &str) -> Result<Value, ToolError
         let mut event = json!({
             "version": "intent_build_usage_event.v1",
             "event_id": event_id,
-            "book_id": state.book.base.book_id,
+            "book_id": state.workspace.book.base.book_id,
             "mode": "goal_directed",
             "occurred_at": occurred_at,
             "kind": kind,
@@ -717,7 +717,7 @@ fn append_cost_usage_event(state: &AppState, body: &str) -> Result<Value, ToolEr
     let plan = input
         .get("plan_id")
         .and_then(Value::as_str)
-        .map(|plan_id| store.read_plan(&state.book.base.book_id, plan_id))
+        .map(|plan_id| store.read_plan(&state.workspace.book.base.book_id, plan_id))
         .transpose()?;
     let (mode, plan_ref) = if let Some(plan) = plan.as_ref() {
         if plan.get("status").and_then(Value::as_str) == Some("draft") {
@@ -734,7 +734,7 @@ fn append_cost_usage_event(state: &AppState, body: &str) -> Result<Value, ToolEr
     let mut event = json!({
         "version": "intent_build_usage_event.v1",
         "event_id": required_string(&input, "event_id")?,
-        "book_id": state.book.base.book_id,
+        "book_id": state.workspace.book.base.book_id,
         "mode": mode,
         "occurred_at": required_string(&input, "occurred_at")?,
         "kind": "cost_observed",
@@ -783,12 +783,12 @@ fn build_core_draft_input(state: &AppState, mode: &str, now: &str) -> Result<Val
         "operation": "inspect_freshness",
         "target": {
             "version": "intent_plan_freshness_target.v1",
-            "book_id": state.book.base.book_id,
+            "book_id": state.workspace.book.base.book_id,
             "source_fingerprint": source_fingerprint,
             "profile_id": profile_id,
-            "root_dir": state.library_root.as_deref().unwrap_or(&state.book_dir),
-            "workspace_dir": state.book_dir,
-            "source_path": state.book_dir.join("source.txt"),
+            "root_dir": state.services.library_root.as_deref().unwrap_or(&state.workspace.book_dir),
+            "workspace_dir": state.workspace.book_dir,
+            "source_path": state.workspace.book_dir.join("source.txt"),
         }
     }))?;
     let public_freshness = freshness
@@ -804,7 +804,7 @@ fn build_core_draft_input(state: &AppState, mode: &str, now: &str) -> Result<Val
     Ok(json!({
         "mode": mode,
         "target": {
-            "book_id": state.book.base.book_id,
+            "book_id": state.workspace.book.base.book_id,
             "source_fingerprint": source_fingerprint,
             "content_profile": { "id": profile_id, "version": profile_version },
             "public_freshness": public_freshness,
@@ -814,7 +814,7 @@ fn build_core_draft_input(state: &AppState, mode: &str, now: &str) -> Result<Val
 }
 
 fn issue_new_draft_identity(state: &AppState) -> Result<DraftRevisionIdentity, ToolError> {
-    let inspection = private_store(state)?.inspect_redacted(&state.book.base.book_id)?;
+    let inspection = private_store(state)?.inspect_redacted(&state.workspace.book.base.book_id)?;
     let mut ordinal = inspection.store_revision.checked_add(1).ok_or_else(|| {
         error(
             INTENT_BUILD_CONFLICT,
@@ -850,7 +850,7 @@ fn issue_new_draft_identity(state: &AppState) -> Result<DraftRevisionIdentity, T
 
 fn apply_active_replan_identity(state: &AppState, core_input: &mut Value) -> Result<(), ToolError> {
     let store = private_store(state)?;
-    let inspection = store.inspect_redacted(&state.book.base.book_id)?;
+    let inspection = store.inspect_redacted(&state.workspace.book.base.book_id)?;
     let lineage = if let Some(active) = inspection.active_overlay {
         Some((active.intent_id, active.plan_id))
     } else {
@@ -871,8 +871,8 @@ fn apply_active_replan_identity(state: &AppState, core_input: &mut Value) -> Res
     let Some((intent_id, plan_id)) = lineage else {
         return Ok(());
     };
-    let intent = store.read_intent(&state.book.base.book_id, &intent_id)?;
-    let plan = store.read_plan(&state.book.base.book_id, &plan_id)?;
+    let intent = store.read_intent(&state.workspace.book.base.book_id, &intent_id)?;
+    let plan = store.read_plan(&state.workspace.book.base.book_id, &plan_id)?;
     core_input["intent_revision"] = json!(required_revision(&intent)? + 1);
     core_input["plan_revision"] = json!(required_revision(&plan)? + 1);
     core_input["supersedes_intent_id"] = json!(intent_id);
@@ -881,7 +881,7 @@ fn apply_active_replan_identity(state: &AppState, core_input: &mut Value) -> Res
 
 fn synchronize_active_source(state: &AppState) -> Result<(), ToolError> {
     let store = private_store(state)?;
-    let inspection = store.inspect_redacted(&state.book.base.book_id)?;
+    let inspection = store.inspect_redacted(&state.workspace.book.base.book_id)?;
     let current_source = current_source_fingerprint(state)?;
     let mut clear_active = false;
     for entry in inspection
@@ -889,11 +889,11 @@ fn synchronize_active_source(state: &AppState) -> Result<(), ToolError> {
         .iter()
         .filter(|plan| matches!(plan.status.as_str(), "draft" | "confirmed" | "completed"))
     {
-        let plan = store.read_plan(&state.book.base.book_id, &entry.plan_id)?;
+        let plan = store.read_plan(&state.workspace.book.base.book_id, &entry.plan_id)?;
         if required_string(&plan, "source_fingerprint")? == current_source {
             continue;
         }
-        let intent = read_plan_intent(&store, &state.book.base.book_id, &plan)?;
+        let intent = read_plan_intent(&store, &state.workspace.book.base.book_id, &plan)?;
         let selection = selection_from_artifacts(plan, intent)?;
         let stale = run_core(&json!({ "operation": "stale_source", "selection": selection }))?;
         persist_selection(state, &stale)?;
@@ -903,7 +903,7 @@ fn synchronize_active_source(state: &AppState) -> Result<(), ToolError> {
             .is_some_and(|active| active.plan_id == entry.plan_id);
     }
     if clear_active {
-        store.set_active_overlay(&state.book.base.book_id, None)?;
+        store.set_active_overlay(&state.workspace.book.base.book_id, None)?;
     }
     Ok(())
 }
@@ -922,12 +922,12 @@ fn activate_confirmed_selection(state: &AppState, confirmed: &Value) -> Result<(
         })?;
     let next_plan_id = required_string(next_plan, "plan_id")?;
     if let Some(active) = store
-        .inspect_redacted(&state.book.base.book_id)?
+        .inspect_redacted(&state.workspace.book.base.book_id)?
         .active_overlay
     {
         if active.plan_id != next_plan_id {
-            let previous_plan = store.read_plan(&state.book.base.book_id, &active.plan_id)?;
-            let previous_intent = store.read_intent(&state.book.base.book_id, &active.intent_id)?;
+            let previous_plan = store.read_plan(&state.workspace.book.base.book_id, &active.plan_id)?;
+            let previous_intent = store.read_intent(&state.workspace.book.base.book_id, &active.intent_id)?;
             let previous = selection_from_artifacts(previous_plan, Some(previous_intent))?;
             let superseded = run_core(&json!({
                 "operation": "supersede",
@@ -946,11 +946,11 @@ fn activate_confirmed_selection(state: &AppState, confirmed: &Value) -> Result<(
     } else {
         None
     };
-    store.set_active_overlay(&state.book.base.book_id, next_active)
+    store.set_active_overlay(&state.workspace.book.base.book_id, next_active)
 }
 
 fn current_source_fingerprint(state: &AppState) -> Result<String, ToolError> {
-    let source = std::fs::read(state.book_dir.join("source.txt")).map_err(|io_error| {
+    let source = std::fs::read(state.workspace.book_dir.join("source.txt")).map_err(|io_error| {
         error(
             "BUILD_INTENT_SOURCE_UNAVAILABLE",
             "unavailable",
@@ -962,7 +962,7 @@ fn current_source_fingerprint(state: &AppState) -> Result<String, ToolError> {
 
 fn active_selection(state: &AppState) -> Result<(IntentArtifactStore, Value, Value), ToolError> {
     let store = private_store(state)?;
-    let inspection = store.inspect_redacted(&state.book.base.book_id)?;
+    let inspection = store.inspect_redacted(&state.workspace.book.base.book_id)?;
     let active = inspection.active_overlay.ok_or_else(|| {
         error(
             INTENT_BUILD_NOT_FOUND,
@@ -970,8 +970,8 @@ fn active_selection(state: &AppState) -> Result<(IntentArtifactStore, Value, Val
             "active intent artifact overlay does not exist",
         )
     })?;
-    let plan = store.read_plan(&state.book.base.book_id, &active.plan_id)?;
-    let intent = store.read_intent(&state.book.base.book_id, &active.intent_id)?;
+    let plan = store.read_plan(&state.workspace.book.base.book_id, &active.plan_id)?;
+    let intent = store.read_intent(&state.workspace.book.base.book_id, &active.intent_id)?;
     if required_string(&plan, "status")? != "confirmed"
         || required_string(&intent, "status")? != "confirmed"
         || required_string(&plan, "intent_id")? != active.intent_id
@@ -999,8 +999,7 @@ fn artifact_scope(
     state: &AppState,
     intent: &Value,
 ) -> Result<(Vec<String>, Vec<String>), ToolError> {
-    let available = state
-        .book
+    let available = state.workspace.book
         .base
         .lid_nodes
         .iter()
@@ -1052,8 +1051,7 @@ fn plan_candidate(
     state: &AppState,
     user_goal: &str,
 ) -> Result<runtime::build_intent::BuildIntentPlannerCandidateV2, ToolError> {
-    let lids = state
-        .book
+    let lids = state.workspace.book
         .base
         .lid_nodes
         .iter()
@@ -1065,7 +1063,7 @@ fn plan_candidate(
     };
     let blueprints = blueprint_registry_summaries(state)?;
     plan_build_intent_candidate(
-        state.adapter.as_ref(),
+        state.services.adapter.as_ref(),
         &BuildIntentPlannerRequest {
             user_goal,
             content_profile: profile,
@@ -1077,8 +1075,8 @@ fn plan_candidate(
 }
 
 fn current_content_profile_id(state: &AppState) -> Result<ContentProfileId, ToolError> {
-    let Some(manifest) = read_workbench_input_manifest(&state.book_dir)? else {
-        return Ok(state.book.content_profile_id());
+    let Some(manifest) = read_workbench_input_manifest(&state.workspace.book_dir)? else {
+        return Ok(state.workspace.book.content_profile_id());
     };
     let manifest_book_id = manifest
         .get("book_id")
@@ -1091,7 +1089,7 @@ fn current_content_profile_id(state: &AppState) -> Result<ContentProfileId, Tool
                 "Workbench input manifest has no book_id",
             )
         })?;
-    if manifest_book_id != state.book.base.book_id {
+    if manifest_book_id != state.workspace.book.base.book_id {
         return Err(error(
             "WORKBENCH_INPUT_MANIFEST_INVALID",
             "conflict",
@@ -1121,15 +1119,13 @@ fn current_planning_context(state: &AppState) -> Result<Value, ToolError> {
         ContentProfileId::TechnicalLearning => "technical_learning",
         ContentProfileId::Paper => "paper",
     };
-    let available_lids = state
-        .book
+    let available_lids = state.workspace.book
         .base
         .lid_nodes
         .iter()
         .map(|node| node.lid.as_str())
         .collect::<Vec<_>>();
-    let available_sections = state
-        .book
+    let available_sections = state.workspace.book
         .base
         .lid_nodes
         .iter()
@@ -1138,7 +1134,7 @@ fn current_planning_context(state: &AppState) -> Result<Value, ToolError> {
         .collect::<Vec<_>>();
     let blueprints = blueprint_registry_summaries(state)?;
     let legacy = build_planning_context_v1(&BuildPlanningContextInputV1 {
-        book_id: &state.book.base.book_id,
+        book_id: &state.workspace.book.base.book_id,
         source_fingerprint: &source_fingerprint,
         content_profile: profile,
         available_lids: &available_lids,
@@ -1180,7 +1176,7 @@ fn current_planning_context(state: &AppState) -> Result<Value, ToolError> {
             })?
             .remove("digest");
     }
-    private_store(state)?.issue_planning_context_v2(&state.book.base.book_id, &body)
+    private_store(state)?.issue_planning_context_v2(&state.workspace.book.base.book_id, &body)
 }
 
 fn validate_candidate_against_current_state(
@@ -1188,8 +1184,7 @@ fn validate_candidate_against_current_state(
     user_goal: &str,
     candidate: &BuildIntentPlannerCandidateV2,
 ) -> Result<(), ToolError> {
-    let lids = state
-        .book
+    let lids = state.workspace.book
         .base
         .lid_nodes
         .iter()
@@ -1521,14 +1516,14 @@ fn response(state: &AppState, selection: Value, planning_source: &str) -> Result
         "version": RESPONSE_VERSION,
         "planning_source": planning_source,
         "selection": selection,
-        "inspection": private_store(state)?.inspect_redacted(&state.book.base.book_id)?,
+        "inspection": private_store(state)?.inspect_redacted(&state.workspace.book.base.book_id)?,
     }))
 }
 
 fn codex_selection(state: &AppState, input: &Value) -> Result<Option<Value>, ToolError> {
     reject_unknown_fields(input, &["plan_id"])?;
     let store = private_store(state)?;
-    let inspection = store.inspect_redacted(&state.book.base.book_id)?;
+    let inspection = store.inspect_redacted(&state.workspace.book.base.book_id)?;
     let plan_id = if let Some(plan_id) = input.get("plan_id") {
         Some(
             plan_id
@@ -1577,8 +1572,8 @@ fn codex_selection(state: &AppState, input: &Value) -> Result<Option<Value>, Too
     let Some(plan_id) = plan_id else {
         return Ok(None);
     };
-    let plan = store.read_plan(&state.book.base.book_id, &plan_id)?;
-    let intent = read_plan_intent(&store, &state.book.base.book_id, &plan)?;
+    let plan = store.read_plan(&state.workspace.book.base.book_id, &plan_id)?;
+    let intent = read_plan_intent(&store, &state.workspace.book.base.book_id, &plan)?;
     selection_from_artifacts(plan, intent).map(Some)
 }
 
@@ -1596,7 +1591,7 @@ fn codex_response(state: &AppState, selection: Option<Value>) -> Result<Value, T
                     "Codex selection has no BuildPlan identity",
                 )
             })?;
-        let path = store.build_plan_path(&state.book.base.book_id, plan_id)?;
+        let path = store.build_plan_path(&state.workspace.book.base.book_id, plan_id)?;
         (
             run_core(&json!({ "operation": "project_codex", "selection": selection }))?,
             Value::String(path.to_string_lossy().into_owned()),
@@ -1608,7 +1603,7 @@ fn codex_response(state: &AppState, selection: Option<Value>) -> Result<Value, T
         "version": "codex_build_intent_response.v1",
         "projection": projection,
         "build_plan_path": build_plan_path,
-        "inspection": store.inspect_redacted(&state.book.base.book_id)?,
+        "inspection": store.inspect_redacted(&state.workspace.book.base.book_id)?,
     }))
 }
 
@@ -1711,14 +1706,7 @@ pub(super) fn run_codex_command(
 }
 
 fn private_store(state: &AppState) -> Result<IntentArtifactStore, ToolError> {
-    let root = state.intent_store_root.as_ref().ok_or_else(|| {
-        error(
-            "READER_PRIVATE_STORAGE_UNAVAILABLE",
-            "permission",
-            "this host cannot access reader-private build intents",
-        )
-    })?;
-    IntentArtifactStore::open(root)
+    state.user.intent_store()
 }
 
 fn resolve_core_command() -> Result<CoreIntentCommand, ToolError> {

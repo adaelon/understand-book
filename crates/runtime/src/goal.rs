@@ -45,11 +45,28 @@ pub enum GoalStatus {
     Superseded,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GoalWorkItem {
+    pub id: String,
+    pub description: String,
+    pub status: GoalWorkItemStatus,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GoalWorkItemStatus {
+    Pending,
+    InProgress,
+    Completed,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GoalWorkingState {
     pub focus: String,
     pub open_questions: Vec<String>,
     pub next_move: String,
+    #[serde(default)]
+    pub items: Vec<GoalWorkItem>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -60,6 +77,8 @@ pub enum GoalUpdate {
         #[serde(default)]
         open_questions: Vec<String>,
         next_move: String,
+        #[serde(default)]
+        items: Option<Vec<GoalWorkItem>>,
     },
     Refine {
         interpretation: String,
@@ -126,8 +145,20 @@ impl ResidentGoal {
         }
         let previous = self.clone();
         match update {
-            GoalUpdate::Working { focus, open_questions, next_move } => {
-                self.working = GoalWorkingState { focus, open_questions, next_move };
+            GoalUpdate::Working { focus, open_questions, next_move, items } => {
+                if let Some(items) = items {
+                    if items.iter().any(|item| item.id.trim().is_empty() || item.description.trim().is_empty()) {
+                        return Err("goal work items need non-empty IDs and descriptions".into());
+                    }
+                    let mut ids = std::collections::HashSet::new();
+                    if items.iter().any(|item| !ids.insert(&item.id)) {
+                        return Err("goal work item IDs must be unique".into());
+                    }
+                    self.working.items = items;
+                }
+                self.working.focus = focus;
+                self.working.open_questions = open_questions;
+                self.working.next_move = next_move;
             }
             GoalUpdate::Refine { interpretation, requirements } => {
                 if self.origin_turn_id != current_turn_id {
@@ -178,12 +209,13 @@ impl ResidentGoal {
     pub fn projection(&self, observed_passages: usize, pending_candidates: usize, delivered_presentations: usize) -> String {
         let delivery_required = self.requirements.iter().any(|r| r.verification == GoalVerification::PresentationDelivery);
         format!(
-            "resident_goal.v1\nid={} revision={} status={:?}\nOrigin turn: {}. Current request turn: {}.\nUser task: {}\nRequirements: {}\nActual results in this run: observed passages={observed_passages}, uncommitted presentation candidates={pending_candidates}, delivered presentations={delivered_presentations}.\nSaved result references: {}\nRemaining delivery: {}\nWorking focus: {}\nNext move: {}\nA source receipt or candidate is not a delivered page. An old tool activation or candidate cannot be reused in a new run.",
+            "resident_goal.v1\nid={} revision={} status={:?}\nOrigin turn: {}. Current request turn: {}.\nUser task: {}\nRequirements: {}\nActual results in this run: observed passages={observed_passages}, uncommitted presentation candidates={pending_candidates}, delivered presentations={delivered_presentations}.\nSaved result references: {}\nRemaining delivery: {}\nWorking focus: {}\nOpen questions: {}\nNext move: {}\nWork items (method/progress only): {}\nThis current Goal revision is authoritative over historical active_goal summaries. Work items may change without changing requirements; completed items do not prove delivery or content completeness. A source receipt or candidate is not a delivered page. An old tool activation or candidate cannot be reused in a new run.",
             self.id, self.revision, self.status, self.origin_turn_id, self.user_message_refs.last().map(String::as_str).unwrap_or(&self.origin_turn_id), self.interpretation,
             self.requirements.iter().map(|r| format!("{} [{:?}]", r.description, r.verification)).collect::<Vec<_>>().join("; "),
             self.result_refs.join(", "),
             if delivery_required && delivered_presentations == 0 { "presentation delivery still required" } else { "no objective presentation gap recorded" },
-            self.working.focus, self.working.next_move,
+            self.working.focus, self.working.open_questions.join("; "), self.working.next_move,
+            serde_json::to_string(&self.working.items).expect("goal work items serialize"),
         )
     }
 }
@@ -199,9 +231,9 @@ mod tests {
     #[test]
     fn original_request_can_be_refined_and_working_updates_do_not_erase_delivery() {
         let mut goal = ResidentGoal::new("g".into(), "t1".into(), "把这一章富文本演示给我看".into());
-        assert!(goal.apply_update(GoalUpdate::Working { focus: "read chapter".into(), open_questions: vec![], next_move: "author".into() }, "t1", "把这一章富文本演示给我看").unwrap());
+        assert!(goal.apply_update(GoalUpdate::Working { focus: "read chapter".into(), open_questions: vec![], next_move: "author".into(), items: None }, "t1", "把这一章富文本演示给我看").unwrap());
         let revision = goal.revision;
-        assert!(!goal.apply_update(GoalUpdate::Working { focus: "read chapter".into(), open_questions: vec![], next_move: "author".into() }, "t1", "把这一章富文本演示给我看").unwrap());
+        assert!(!goal.apply_update(GoalUpdate::Working { focus: "read chapter".into(), open_questions: vec![], next_move: "author".into(), items: None }, "t1", "把这一章富文本演示给我看").unwrap());
         assert_eq!(goal.revision, revision);
         goal.apply_update(GoalUpdate::Refine { interpretation: "Show the chapter as a rich page".into(), requirements: vec![page("page", "t1")] }, "t1", "把这一章富文本演示给我看").unwrap();
         assert!(goal.projection(2, 0, 0).contains("presentation delivery still required"));
@@ -214,7 +246,7 @@ mod tests {
         let mut goal = ResidentGoal::new("g".into(), "t1".into(), "做网页".into());
         goal.apply_update(GoalUpdate::Refine { interpretation: "Make a page".into(), requirements: vec![page("page", "t1")] }, "t1", "做网页").unwrap();
         goal.user_message_refs.push("t2".into());
-        goal.apply_update(GoalUpdate::Working { focus: "只修引用".into(), open_questions: vec![], next_move: "preview again".into() }, "t2", "请只修引用").unwrap();
+        goal.apply_update(GoalUpdate::Working { focus: "只修引用".into(), open_questions: vec![], next_move: "preview again".into(), items: None }, "t2", "请只修引用").unwrap();
         assert_eq!(goal.requirements[0].verification, GoalVerification::PresentationDelivery);
         let no_basis = GoalUpdate::Revise { basis_turn_id: "t2".into(), basis_quote: "改成文字即可".into(), interpretation: "Text only".into(), requirements: vec![GoalRequirement { id: "text".into(), description: "Text".into(), basis_turn_id: "t2".into(), verification: GoalVerification::Content }] };
         assert!(goal.apply_update(no_basis, "t2", "请只修引用").is_err());
@@ -232,6 +264,105 @@ mod tests {
         assert!(goal.projection(5, 1, 1).contains("no objective presentation gap recorded"));
         let restored: ResidentGoal = serde_json::from_str(&serde_json::to_string(&goal).unwrap()).unwrap();
         assert_eq!(restored.requirements, goal.requirements);
+    }
+
+    fn working(items: Option<serde_json::Value>) -> GoalUpdate {
+        let mut value = serde_json::json!({"operation":"working", "focus":"check the whole page",
+            "open_questions":["Does the example cover the remaining case?"], "next_move":"preview"});
+        if let Some(items) = items { value["items"] = items; }
+        serde_json::from_value(value).unwrap()
+    }
+
+    #[test]
+    fn ex13_work_plan_replacement_omission_clear_and_noop_preserve_requirements() {
+        use serde_json::json;
+        let mut goal = ResidentGoal::new("g".into(), "t1".into(), "做网页".into());
+        let requirements = goal.requirements.clone();
+        let plan = json!([
+            {"id":"prototype","description":"Try the key relationship","status":"completed"},
+            {"id":"expand","description":"Cover the full scope","status":"in_progress"},
+            {"id":"review","description":"Review and deliver","status":"pending"}
+        ]);
+        assert!(goal.apply_update(working(Some(plan.clone())), "t1", "做网页").unwrap());
+        assert_eq!(goal.revision, 2);
+        assert_eq!(serde_json::to_value(&goal.working.items).unwrap(), plan);
+        assert!(!goal.apply_update(working(Some(plan.clone())), "t1", "做网页").unwrap());
+        assert!(!goal.apply_update(working(None), "t1", "做网页").unwrap());
+        assert_eq!(goal.revision, 2);
+        // A normal focus/next-move update must not erase the multi-step plan.
+        let update = serde_json::from_value(json!({"operation":"working", "focus":"rethink the example", "next_move":"change the representation"})).unwrap();
+        assert!(goal.apply_update(update, "t2", "继续").unwrap());
+        assert_eq!(serde_json::to_value(&goal.working.items).unwrap(), plan);
+        let revised = json!([
+            {"id":"review","description":"Recheck the remaining case","status":"in_progress"},
+            {"id":"prototype","description":"Replace the example","status":"in_progress"}
+        ]);
+        assert!(goal.apply_update(working(Some(revised.clone())), "t2", "继续").unwrap());
+        assert_eq!(serde_json::to_value(&goal.working.items).unwrap(), revised);
+        assert_eq!(goal.requirements, requirements);
+        assert_eq!(goal.interpretation, "做网页");
+        assert!(goal.apply_update(working(Some(json!([]))), "t2", "继续").unwrap());
+        assert!(goal.working.items.is_empty());
+        assert!(!goal.apply_update(working(Some(json!([]))), "t2", "继续").unwrap());
+        assert_eq!(goal.revision, 5);
+    }
+
+    #[test]
+    fn ex13_invalid_work_plan_is_rejected_without_partial_update() {
+        use serde_json::json;
+        let mut goal = ResidentGoal::new("g".into(), "t1".into(), "做网页".into());
+        let valid = json!({"id":"review","description":"Review the page","status":"pending"});
+        goal.apply_update(working(Some(json!([valid]))), "t1", "做网页").unwrap();
+        let before = goal.clone();
+        for items in [
+            json!([{"id":" ","description":"Review","status":"pending"}]),
+            json!([{"id":"review","description":"\n ","status":"pending"}]),
+            json!([valid, valid]),
+        ] {
+            let update = serde_json::from_value(json!({"operation":"working", "focus":"must not replace focus", "next_move":"must not replace next move", "items":items})).unwrap();
+            assert!(goal.apply_update(update, "t1", "做网页").is_err());
+            assert_eq!(goal, before);
+        }
+        for invalid in [
+            json!({"id":"review","description":"Review","status":"done"}),
+            json!({"id":"review","status":"pending"}),
+        ] {
+            assert!(serde_json::from_value::<GoalUpdate>(json!({"operation":"working","focus":"review","next_move":"preview","items":[invalid]})).is_err());
+        }
+    }
+
+    #[test]
+    fn ex13_legacy_goal_defaults_and_work_plan_roundtrip() {
+        use serde_json::json;
+        let mut goal = ResidentGoal::new("g".into(), "t1".into(), "做网页".into());
+        let mut old = serde_json::to_value(&goal).unwrap();
+        old["working"].as_object_mut().unwrap().remove("items");
+        assert_eq!(serde_json::from_value::<ResidentGoal>(old.clone()).unwrap(), goal);
+        old.as_object_mut().unwrap().remove("working");
+        assert_eq!(serde_json::from_value::<ResidentGoal>(old).unwrap(), goal);
+        goal.apply_update(working(Some(json!([{"id":"review","description":"Review","status":"in_progress"}]))), "t1", "做网页").unwrap();
+        assert_eq!(serde_json::from_str::<ResidentGoal>(&serde_json::to_string(&goal).unwrap()).unwrap(), goal);
+    }
+
+    #[test]
+    fn ex13_completed_items_do_not_complete_goal_or_satisfy_delivery() {
+        let mut goal = ResidentGoal::new("g".into(), "t1".into(), "做网页".into());
+        let update = working(Some(serde_json::json!([{"id":"all","description":"Make the page","status":"completed"}])));
+        goal.apply_update(update.clone(), "t1", "做网页").unwrap();
+        assert_eq!(goal.status, GoalStatus::Open);
+        assert!(goal.objective_gap(0, 0).is_some());
+        assert!(goal.objective_gap(1, 0).is_none());
+        let projection = goal.projection(2, 1, 0);
+        assert!(projection.contains("\"id\":\"all\""));
+        assert!(projection.contains("\"status\":\"completed\""));
+        assert!(projection.contains("Does the example cover the remaining case?"));
+        assert!(projection.contains("presentation delivery still required"));
+        for status in [GoalStatus::Completed, GoalStatus::Cancelled, GoalStatus::Superseded] {
+            goal.status = status;
+            let before = goal.clone();
+            assert!(goal.apply_update(update.clone(), "t2", "继续").is_err());
+            assert_eq!(goal, before);
+        }
     }
 
     #[test]

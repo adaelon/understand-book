@@ -18,7 +18,10 @@
       "public_stages_to_create": [
         "profile_sidecar",
         "pass2",
-        "book_structure"
+        "book_structure",
+        "formal_objects",
+        "cognitive_materials",
+        "teaching_publish"
       ],
       "private_capabilities_to_create": [],
       "reused_artifacts": [
@@ -32,7 +35,10 @@
         "pass1",
         "profile_sidecar",
         "pass2",
-        "book_structure"
+        "book_structure",
+        "formal_objects",
+        "cognitive_materials",
+        "teaching_publish"
       ],
       "private_artifacts": [],
       "reuse": [
@@ -44,7 +50,10 @@
       "create": [
         "public.profile_sidecar",
         "public.pass2",
-        "public.book_structure"
+        "public.book_structure",
+        "public.formal_objects",
+        "public.cognitive_materials",
+        "public.teaching_publish"
       ],
       "excluded": [
         {
@@ -81,7 +90,10 @@
         "unknown_stages": [
           "profile_sidecar",
           "pass2",
-          "book_structure"
+          "book_structure",
+          "formal_objects",
+          "cognitive_materials",
+          "teaching_publish"
         ],
         "historical_match": {
           "stage": false,
@@ -95,7 +107,7 @@
         "max_total_tokens": 100000,
         "on_exceed": "needs_user"
       },
-      "plan_digest": "2e7073f5da20706133e11dbebe423bc44344784577a53caf70dc7750f42e037d"
+      "plan_digest": "247c9cb6fdfed5641fdc12098e60acf49c6ceac537d04c1239df023a85fe8868"
     }
   },
   {
@@ -241,7 +253,10 @@
         "profile_sidecar",
         "pass2",
         "book_structure",
-        "paper_reading_guide"
+        "paper_reading_guide",
+        "formal_objects",
+        "cognitive_materials",
+        "teaching_publish"
       ],
       "private_capabilities_to_create": [],
       "reused_artifacts": [
@@ -259,7 +274,10 @@
         "profile_sidecar",
         "pass2",
         "book_structure",
-        "paper_reading_guide"
+        "paper_reading_guide",
+        "formal_objects",
+        "cognitive_materials",
+        "teaching_publish"
       ],
       "private_artifacts": [],
       "reuse": [
@@ -277,7 +295,10 @@
         "public.profile_sidecar",
         "public.pass2",
         "public.book_structure",
-        "public.paper_reading_guide"
+        "public.paper_reading_guide",
+        "public.formal_objects",
+        "public.cognitive_materials",
+        "public.teaching_publish"
       ],
       "excluded": [
         {
@@ -316,7 +337,10 @@
           "profile_sidecar",
           "pass2",
           "book_structure",
-          "paper_reading_guide"
+          "paper_reading_guide",
+          "formal_objects",
+          "cognitive_materials",
+          "teaching_publish"
         ],
         "historical_match": {
           "stage": false,
@@ -330,7 +354,7 @@
         "max_total_tokens": 100000,
         "on_exceed": "needs_user"
       },
-      "plan_digest": "c257a5e1f851e216248f80c47f8eb2b3649f957fc046c3721902b2d58fd83722"
+      "plan_digest": "295b5047c662bc73025ebd4628aab331c5cfc6cdb0693da5079630dbb3c20345"
     }
   },
   {

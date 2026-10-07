@@ -11,6 +11,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct PlotAsset {
     pub svg: String,
     pub png_base64: String,
@@ -135,26 +136,14 @@ pub(crate) fn render(
             .map_err(|e| failed(e.to_string()))?;
         return Err(failed(format!("Python plot error: {}", message.trim())));
     }
-    let svg_path = dir.path().join("plot.svg");
-    let png_path = dir.path().join("preview.png");
-    if fs::metadata(&svg_path)
-        .map_err(|e| failed(e.to_string()))?
-        .len()
-        > 512 * 1024
-        || fs::metadata(&png_path)
-            .map_err(|e| failed(e.to_string()))?
-            .len()
-            > 1024 * 1024
-    {
-        return Err(failed("Plot image exceeds the authoring limit"));
-    }
-    let svg = fs::read_to_string(svg_path).map_err(|e| failed(e.to_string()))?;
-    if !svg.contains("<svg") {
-        return Err(failed("Matplotlib did not produce an SVG"));
-    }
-    let png_base64 = STANDARD.encode(fs::read(png_path).map_err(|e| failed(e.to_string()))?);
-    let font =
-        fs::read_to_string(dir.path().join("font.txt")).map_err(|e| failed(e.to_string()))?;
+    let svg = String::from_utf8(crate::presentation_sandbox::output_file(dir.path(), "plot.svg", 512 * 1024)?)
+        .map_err(|_| failed("Invalid SVG encoding"))?;
+    if !svg.contains("<svg") { return Err(failed("Matplotlib did not produce an SVG")); }
+    let png = crate::presentation_sandbox::output_file(dir.path(), "preview.png", 1024 * 1024)?;
+    crate::presentation_sandbox::png(&png, size.width, size.height)?;
+    let png_base64 = STANDARD.encode(png);
+    let font = String::from_utf8(crate::presentation_sandbox::output_file(dir.path(), "font.txt", 256)?)
+        .map_err(|_| failed("Invalid font metadata"))?;
     Ok(PlotAsset {
         svg,
         png_base64,

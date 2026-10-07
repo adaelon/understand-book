@@ -1,7 +1,19 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { FolderOpen, Highlighter, Languages, MessageSquareText, RotateCcw, Save, Sparkles, X } from "@lucide/vue";
-import { api, ApiError } from "./api";
+import { api as sharedApi, ApiError } from "./api";
+import { network, bindSceneApi, sceneKey, readerPreferenceOwner, type ChatDraft } from './network-context';
+import { useReaderTypography } from './useReaderTypography';
+import ReaderTypographyPanel from './components/ReaderTypographyPanel.vue';
+import BookCover from './components/BookCover.vue';
+import type { ScrollAnchor } from './reader-text-anchor';
+import { typographyHtml } from './reader-typography';
+import { recoverSubmissions, recoverWorkspaceBinding } from './network-client';
+import type { RecapTarget } from './session-recap';
+const recapProps = defineProps<{ recapTarget?: RecapTarget | null; chatDraft?: ChatDraft | null }>();
+const recapEmit = defineEmits<{ (e: 'recap-publication', target: RecapTarget): void; (e: 'recap-consumed'): void; (e: 'update:chatDraft', draft: ChatDraft): void }>();
+const api = bindSceneApi(sharedApi);
+let disposed = false;
 import { generateBookIdFromTitle } from "./book-id";
 import type {
   AgentChatSessionSummary,
@@ -121,6 +133,9 @@ import {
   type AppSurface,
 } from "./surface-selection";
 import TopBar from "./components/TopBar.vue";
+import TutorControl from './components/TutorControl.vue';
+import TutorPanel from './components/TutorPanel.vue';
+import { useTutorControl } from './useTutorControl';
 import BuildWorkbenchPane from "./components/BuildWorkbenchPane.vue";
 import BuildIntentPane from "./components/BuildIntentPane.vue";
 import FileDropField from "./components/FileDropField.vue";
@@ -139,14 +154,16 @@ import {
 } from "./reader-surface";
 import type { ReaderSelectionSnapshot } from "./useReaderSelection";
 import { createReadingContinuity, type PdfReadingAnchor, type ReadingReturnPoint } from "./useReadingContinuity";
+import { effectId, dispositionLabel, type EffectDisposition } from "./effect-disposition";
 import { runStatusText, type RunActivity, type RunSnapshot } from "./agent-run-state";
 import type { WorkspaceLogicalState, WorkspaceProjection } from "./workspace-layout";
 
 type NodeKind = import("./api").Manifest["tree"][number]["kind"];
 type ManifestNode = import("./api").Manifest["tree"][number];
-interface ScrollAnchor {
-  lid: string;
-  top: number;
+const typography = useReaderTypography(computed(readerPreferenceOwner));
+function closeTypography() {
+  typography.open.value = false;
+  nextTick(() => document.querySelector<HTMLElement>('.topbar [data-typography-trigger]')?.focus());
 }
 
 export interface OutlineItem {
@@ -196,7 +213,7 @@ function endWorkbenchAction(owner: number) {
 }
 
 const sourceReviewEvidenceKey = computed(() => JSON.stringify(
-  (buildWorkbenchSnapshot.value?.source_review.unresolved ?? []).map((block) => [
+  (buildWorkbenchSnapshot.value?.source_review?.unresolved ?? []).map((block) => [
     block.id,
     block.status,
     block.md_excerpt ?? "",
@@ -224,8 +241,9 @@ let manualReaderBoundary: Promise<void> = Promise.resolve();
 let manualReaderState: { book_id: string; revision: number } | null = null;
 const edgeLoading = ref(false);
 const readerPaneRef = ref<{
+  cancelTypographyRestore: () => void;
   captureScrollAnchor: (candidateLids: string[]) => ScrollAnchor | null;
-  restoreScrollAnchor: (anchor: ScrollAnchor | null) => Promise<void>;
+  restoreScrollAnchor: (anchor: ScrollAnchor | null, current?: () => boolean) => Promise<void>;
   scrollLidIntoView: (lid: string) => Promise<boolean>;
 } | null>(null);
 const pdfReaderPaneRef = ref<{
@@ -236,10 +254,15 @@ const workspaceRef = ref<{
   showReader: () => void;
   showAssistant: (tab?: WorkspaceAuxTab) => void;
   toggleOutline: () => void;
+  toggleFocus: () => void;
 } | null>(null);
+const focusReading = ref(false);
+const previousPdfAnchor = ref<PdfReadingAnchor | null>(null);
 const mobileGlobalActionsOpen = ref(false);
 const rightRailRef = ref<{
   scrollToTurn: (turnId: string) => Promise<boolean>;
+  showMemory: (memId: string) => Promise<boolean>;
+  openRecapTarget: (target: RecapTarget) => Promise<void>;
 } | null>(null);
 interface Segment {
   lid: string;
@@ -389,6 +412,8 @@ function startResize(which: "left" | "right", event: MouseEvent) {
 }
 
 function fail(e: unknown) {
+  if (e instanceof ApiError && e.errorCode === "CHAT_BUSY") { banner.value = "此对话仍有排队、执行中或未保存的回合，请先处理原运行再删除。"; return; }
+  if (e instanceof ApiError && e.errorCode === "REQUEST_KEY_CLOSED") { banner.value = "原对话已删除或原请求已关闭，不会转投其他对话。"; return; }
   if (e instanceof ApiError) banner.value = `[${e.category}] ${e.errorCode}: ${e.message}`;
   else banner.value = String(e);
 }
@@ -426,7 +451,7 @@ const readerSurfacePreference = ref<ReaderSurface | null>(null);
 const readerSurfaceIdentity = computed(() => {
   const bookId = buildWorkbenchSnapshot.value?.book_id;
   const sourceFingerprint = noteSourceFingerprint.value;
-  return bookId && sourceFingerprint ? { bookId, sourceFingerprint } : null;
+  return bookId && sourceFingerprint ? { bookId, sourceFingerprint, userId: network.value.identity?.user_id } : null;
 });
 const activeReaderSurface = computed<ReaderSurface>(() => resolveReaderSurface(
   readerSurfacePreference.value,
@@ -1077,7 +1102,7 @@ function renderSegWithFocus(seg: Segment, focus: SourceFocus | null, sourceSegme
       return { start, end, className: "hl-mark" };
     })
     .filter(({ start, end }) => end > start);
-  if (focusRange) ranges.push({ start: focusRange[0], end: focusRange[1], className: "hl-mark source-focus-mark" });
+  if (focusRange) ranges.push({ start: focusRange[0], end: focusRange[1], className: "source-focus-mark" });
   const root = document.createElement("span");
   root.innerHTML = renderSegmentText(seg, display.text);
   markMarkdownDomSourceRanges(display.text, root, ranges);
@@ -1170,6 +1195,7 @@ const noteEditor = ref<{
   content: string;
   selectionContext: SelectionContext | null;
 } | null>(null);
+const noteSaving = ref(false);
 const notePreview = computed(() => renderMarkdown(noteEditor.value?.content ?? ""));
 function openNewNote(lid = selectedLid.value, content = "", selectionContext: SelectionContext | null = null) {
   if (!lid) return;
@@ -1184,6 +1210,12 @@ function openEditNote(rec: MemoryRecord) {
     selectionContext: null,
   };
 }
+async function showAnnotationInNotes(record: MemoryRecord) {
+  workspaceRef.value?.showAssistant('notes');
+  requestWorkspaceTab('notes');
+  await nextTick();
+  await rightRailRef.value?.showMemory(record.mem_id);
+}
 function cancelNote() {
   if (noteEditor.value?.selectionContext && pdfSelectionState.value.phase === "saving") {
     cancelPdfSelectionDraft();
@@ -1193,9 +1225,11 @@ function cancelNote() {
 // 保存:新建走 save;编辑走原子 replace,默认继承旧锚与 selection context。
 async function saveNote() {
   const ed = noteEditor.value;
-  if (!ed) return;
+  if (!ed || noteSaving.value) return;
+  const contextKey = workspaceContextKey.value;
   const content = ed.content.trim();
   if (!content) return;
+  noteSaving.value = true;
   try {
     banner.value = "";
     if (ed.memId) {
@@ -1214,14 +1248,15 @@ async function saveNote() {
     } else {
       await api.note(ed.lid, content);
     }
-    noteEditor.value = null;
+    if (disposed || contextKey !== workspaceContextKey.value) return;
+    if (noteEditor.value === ed) noteEditor.value = null;
     await refreshAnnotations();
     if (ed.selectionContext && pdfSelectionState.value.phase === "saving") {
       completePdfSelectionAction();
     }
   } catch (e) {
-    fail(e);
-  }
+    if (!disposed && contextKey === workspaceContextKey.value) fail(e);
+  } finally { noteSaving.value = false; }
 }
 async function deleteNote(rec: MemoryRecord) {
   if (!window.confirm("删除这条笔记?")) return;
@@ -1370,6 +1405,7 @@ async function loadWindow(
   mode: SegmentLoadMode = "replace",
   navigationTargetLid = vp.top_lid,
   stillCurrent: () => boolean = () => true,
+  withAnnotations = true,
 ) {
   const next = await hydrateSegments(vp.visible_lids);
   if (!stillCurrent()) return;
@@ -1382,15 +1418,16 @@ async function loadWindow(
   if (mode === "replace") {
     await readerPaneRef.value?.scrollLidIntoView(navigationTargetLid);
   }
-  await refreshAnnotations();
+  if (withAnnotations) await refreshAnnotations();
   await loadChapter(vp.top_lid);
 }
 
 // 阅读区与服务端 reader 同步(agent 可能改了视口 → 重新拉 state 渲染)。
-async function ensureProfileManifest(summary: ProfileSummary) {
+async function ensureProfileManifest(summary: ProfileSummary, stillCurrent: () => boolean = () => true) {
   const current = profileManifest.value;
   if (current?.profile_id === summary.profile_id && current.profile_version === summary.profile_version) return;
-  profileManifest.value = await api.profileManifest(summary.profile_id);
+  const manifest = await api.profileManifest(summary.profile_id);
+  if (stillCurrent()) profileManifest.value = manifest;
 }
 async function applyReaderState(st: Awaited<ReturnType<typeof api.state>>) {
   profileSummary.value = st.profile;
@@ -1443,6 +1480,7 @@ async function refreshProfileBackfill(preserveFeedback = false) {
 }
 
 async function refreshProfileSurface(preserveFeedback = false) {
+  if (network.value.enabled) { await refreshProfileMemory(preserveFeedback); return; }
   await Promise.all([
     refreshProfileMemory(preserveFeedback),
     refreshProfileBackfill(preserveFeedback),
@@ -1610,21 +1648,26 @@ async function loadChapter(anchorLid: string) {
   }
 }
 
-async function loadPdfRuntimeArtifacts() {
+async function loadPdfRuntimeArtifacts(stillCurrent: () => boolean = () => true) {
   sourceManifest.value = null;
   pdfSourceMap.value = null;
   pdfRuntimeError.value = null;
   try {
     const manifest = await api.sourceManifest();
+    if (!stillCurrent()) return;
     sourceManifest.value = manifest;
     if (!manifest) return;
     if (
       manifest.capabilities.view_pdf.status === "available"
       && pdfCapabilityUsable(manifest.capabilities.project_lid_to_pdf.status)
     ) {
-      pdfSourceMap.value = await api.pdfSourceMap();
+      const map = await api.pdfSourceMap();
+      if (!stillCurrent()) return;
+      pdfSourceMap.value = map;
+      await refreshPdfAnnotationProjection(annotations.value);
     }
   } catch (e) {
+    if (!stillCurrent()) return;
     if (e instanceof ApiError && e.status === 404) return;
     pdfRuntimeError.value = errorMessage(e);
   }
@@ -1973,6 +2016,7 @@ function nextIntentUsageEventId(kind: IntentBuildReaderUsageKind): string {
 }
 
 function recordIntentUsage(kind: IntentBuildReaderUsageKind, artifactId?: string) {
+  if (network.value.enabled) return;
   void api.intentUsageEvent({
     event_id: nextIntentUsageEventId(kind),
     occurred_at: new Date().toISOString(),
@@ -2047,7 +2091,7 @@ async function confirmBuildIntent(payload: { plan_id: string; plan_digest: strin
     if (request === buildIntentRequestSeq) {
       buildIntentSelection.value = response.selection;
       buildIntentPlanningSource.value = response.planning_source;
-      void refreshIntentArtifacts();
+      if (!network.value.enabled) void refreshIntentArtifacts();
     }
   } catch (error) {
     if (request === buildIntentRequestSeq) buildIntentError.value = errorMessage(error);
@@ -2073,7 +2117,10 @@ async function rejectBuildIntent(payload: { plan_id: string }) {
   }
 }
 
+let workspaceLoadSeq = 0;
 async function init() {
+  const request = ++workspaceLoadSeq;
+  const current = () => !disposed && request === workspaceLoadSeq;
   try {
     appSurface.value = "loading";
     startupHistoryRequestSeq += 1;
@@ -2083,7 +2130,7 @@ async function init() {
     intentArtifacts.value = null;
     intentArtifactsLoading.value = false;
     intentArtifactsError.value = null;
-    const desktop = await api.desktopStatus().catch((error) => {
+    const desktop = network.value.enabled ? { desktop_host: false, reader_only: true, active_book: true, book_dir: null, library_root: "", library_root_available: true } : await api.desktopStatus().catch((error) => {
       if (error instanceof ApiError && error.status === 404) return null;
       throw error;
     });
@@ -2104,7 +2151,11 @@ async function init() {
       return;
     }
     desktopNeedsBook.value = false;
-    const workbench = await loadBuildWorkbenchSnapshot();
+    const workbench = network.value.enabled ? null : await loadBuildWorkbenchSnapshot();
+    if (network.value.enabled) {
+      const w = network.value.workspace!;
+      buildWorkbenchSnapshot.value = { book_id: w.published_book_ref.book_id, readiness: { route: "reader", reasons: [], stages: {} } } as unknown as BuildWorkbenchSnapshot;
+    }
     if (!workbench && buildWorkbenchError.value) {
       appSurface.value = readerOnly.value ? "waiting-materials" : "workbench";
       return;
@@ -2116,28 +2167,38 @@ async function init() {
         return;
       }
     }
-    const m = await api.manifest();
-    const assets = await api.assetManifest();
-    const noteSource = await api.sourceFingerprint();
+    const pdfReady = loadPdfRuntimeArtifacts(current);
+    const [m, assets, noteSource, st] = await Promise.all([
+      api.manifest(), api.assetManifest(), api.sourceFingerprint(),
+      network.value.enabled ? Promise.resolve(network.value.workspace!.reader) : api.state(),
+    ]);
+    if (!current()) return;
     if (buildWorkbenchSnapshot.value?.book_id !== noteSource.book_id) {
       throw new Error("Note source identity does not match the active book");
     }
     noteSourceFingerprint.value = noteSource.source_fingerprint;
-    await loadPdfRuntimeArtifacts();
+    await nextTick(); // Apply this book's saved reading surface before deciding what blocks display.
     kindByLid.value = new Map(m.tree.map((n) => [n.lid, n.kind]));
     imageAssetByLid.value = new Map(assets.images.map((img) => [img.lid, img]));
     leafOrder.value = m.tree.filter((n) => n.children.length === 0).map((n) => n.lid);
     loadOutlineTitles(m.tree);
-    const st = await api.state();
-    await applyReaderState(st);
-    await loadWindow(st.viewport);
+    profileSummary.value = st.profile;
+    readerLayout.value = st.layout;
+    void ensureProfileManifest(st.profile, current).catch(error => { if (current()) fail(error); });
+    await Promise.all([
+      loadWindow(st.viewport, "replace", st.viewport.top_lid, current, false),
+      readerSurfacePreference.value === "markdown" ? Promise.resolve() : pdfReady,
+    ]);
+    if (!current()) return;
     appSurface.value = "reader";
+    void refreshAnnotations().catch(error => { if (current()) fail(error); });
     recordIntentUsage("reader_ready");
     void loadPaperProjectionData();
     void loadStartupHistory();
     void refreshProfileSurface();
-    void refreshIntentArtifacts();
+    if (!network.value.enabled) void refreshIntentArtifacts();
   } catch (e) {
+    if (!current()) return;
     appSurface.value = buildWorkbenchSnapshot.value?.readiness.route === "workbench" ? "workbench" : "reader";
     fail(e);
   }
@@ -2159,6 +2220,7 @@ async function recoverWorkspaceState() {
         await init();
         return;
       }
+      if (network.value.enabled) await recoverSubmissions();
       if (agentHistoryError.value) await loadStartupHistory();
       else applyAgentHistory(await api.agentHistory());
     } catch (error) {
@@ -2174,12 +2236,21 @@ async function recoverWorkspaceState() {
   return workspaceRecoveryTask;
 }
 
-function scheduleWorkspaceRecovery() {
+function scheduleWorkspaceRecovery(event?: Event) {
+  // NetworkApp owns wake-up authentication and attachment; wait for its completion.
+  if (network.value.enabled && event && ['visibilitychange', 'pageshow', 'online'].includes(event.type)) return;
   if (document.visibilityState === "hidden" || workspaceRecoveryTask || workspaceRecoveryTimer !== null) return;
   workspaceRecoveryTimer = window.setTimeout(() => {
     workspaceRecoveryTimer = null;
     void recoverWorkspaceState();
   }, 0);
+}
+async function refreshLinkedReader() {
+  try {
+    const state = await api.state();
+    await applyReaderState(state);
+    await loadWindow(state.viewport, "replace", resolveReaderStateNavigationTarget(state.viewport.top_lid, state.selection, leafOrder.value));
+  } catch (error) { if (!disposed) fail(error); }
 }
 
 async function invokeDesktop<T>(command: string, args?: Record<string, unknown>): Promise<T> {
@@ -2304,12 +2375,22 @@ function codexPluginStateLabel(state: CodexPluginState): string {
   }[state];
 }
 onMounted(() => {
+  window.addEventListener("agent-admission-changed", scheduleWorkspaceRecovery);
+  window.addEventListener("workspace-recovered", scheduleWorkspaceRecovery);
+  window.addEventListener("linked-reader-changed", refreshLinkedReader);
+  window.addEventListener("tutor-response", onTutorResponse);
+  void tutor.load();
   void init();
   document.addEventListener("visibilitychange", scheduleWorkspaceRecovery);
   window.addEventListener("pageshow", scheduleWorkspaceRecovery);
   window.addEventListener("online", scheduleWorkspaceRecovery);
 });
 onBeforeUnmount(() => {
+  disposed = true;
+  window.removeEventListener("agent-admission-changed", scheduleWorkspaceRecovery);
+  window.removeEventListener("workspace-recovered", scheduleWorkspaceRecovery);
+  window.removeEventListener("linked-reader-changed", refreshLinkedReader);
+  window.removeEventListener("tutor-response", onTutorResponse);
   startupHistoryRequestSeq += 1;
   document.removeEventListener("visibilitychange", scheduleWorkspaceRecovery);
   window.removeEventListener("pageshow", scheduleWorkspaceRecovery);
@@ -2351,16 +2432,24 @@ async function onScrollEdge(direction: "up" | "down") {
     edgeLoading.value = false;
   }
 }
-async function doGoto(lid: string, focusQuote?: string | null): Promise<boolean> {
+let readerNavigationRequest = 0;
+async function doGoto(lid: string, focusQuote?: string | null, restoreCurrent?: () => boolean): Promise<boolean> {
   if (!lid) return false;
+  if (!restoreCurrent) readingContinuity.cancelRestore();
+  const request = ++readerNavigationRequest;
+  const contextKey = workspaceContextKey.value;
+  const current = () => !disposed && request === readerNavigationRequest && contextKey === workspaceContextKey.value && (restoreCurrent?.() ?? true);
+  readerPaneRef.value?.cancelTypographyRestore();
   try {
     banner.value = "";
     sourceFocus.value = focusQuote === undefined ? null : { lid, quote: focusQuote };
     const gotoEffect = await api.goto(lid);
+    if (!current()) return false;
     outlineNavigationLid.value = lid;
     const navigationTargetLid = resolveReaderNavigationTarget(lid, leafOrder.value)
       ?? gotoEffect.viewport.top_lid;
-    await loadWindow(gotoEffect.viewport, "replace", navigationTargetLid);
+    await loadWindow(gotoEffect.viewport, "replace", navigationTargetLid, current);
+    if (!current()) return false;
     queuePaperSelection(lid);
     if (activeReaderSurface.value === "pdf" && !hasMappedPdfNavigationTarget(
       lid,
@@ -2373,6 +2462,7 @@ async function doGoto(lid: string, focusQuote?: string | null): Promise<boolean>
     gotoInput.value = "";
     return true;
   } catch (e) {
+    if (!current()) return false;
     if (outlineNavigationLid.value === lid) outlineNavigationLid.value = null;
     fail(e);
     return false;
@@ -2389,6 +2479,7 @@ async function selectReaderSurface(surface: ReaderSurface) {
     ? readerPaneRef.value?.captureScrollAnchor(segments.value.map((segment) => segment.lid)) ?? null
     : null;
   const pdfAnchor = previous === "pdf" ? pdfReaderPaneRef.value?.captureReadingAnchor() ?? null : null;
+  if (previous === 'pdf') previousPdfAnchor.value = pdfAnchor;
   hlPopover.value = null;
   window.getSelection()?.removeAllRanges();
   cancelPdfSelectionDraftFor("reader-surface-switch");
@@ -2416,11 +2507,11 @@ async function selectReaderSurface(surface: ReaderSurface) {
     await readerPaneRef.value?.scrollLidIntoView(lid);
   }
 }
-async function focusSource(source: { lid: string; quote: string | null }) {
-  await openSourcePreview(source);
+async function focusSource(source: { lid: string; quote: string | null; memId?: string }) {
+  await openSourcePreview(source, 'notes', source.memId);
 }
 function focusLocalSource(source: { lid: string; quote: string | null }) {
-  void openSourcePreview(source);
+  void openSourcePreview(source, 'reader');
 }
 function sourcePreviewCenterLid(lid: string): string {
   return resolveReaderNavigationTarget(lid, leafOrder.value) ?? lid;
@@ -2444,44 +2535,46 @@ async function centerSourcePreview() {
     body?.querySelector<HTMLElement>(".source-preview-text");
   target?.scrollIntoView({ block: "center" });
 }
-async function openSourcePreview(source: SourceFocus) {
+let sourcePreviewSequence = 0;
+let sourcePreviewReturn: ReadingReturnPoint | null = null;
+let sourcePreviewTrigger: HTMLElement | null = null;
+async function openSourcePreview(source: SourceFocus, origin: 'reader' | 'notes' = 'reader', memId?: string) {
+  const sequence = ++sourcePreviewSequence;
+  const contextKey = workspaceContextKey.value;
+  sourcePreviewReturn = { ...captureReadingReturnPoint(''), origin, memId };
+  sourcePreviewTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const centerLid = sourcePreviewCenterLid(source.lid);
   const focus: SourceFocus = { lid: centerLid, quote: source.quote };
   sourcePreview.value = { focus, segments: [], loading: true, error: null };
   try {
     banner.value = "";
     const previewSegments = await hydrateSegments(sourcePreviewLids(centerLid));
+    if (disposed || sequence !== sourcePreviewSequence || contextKey !== workspaceContextKey.value) return;
     sourcePreview.value = { focus, segments: previewSegments, loading: false, error: null };
     await centerSourcePreview();
+    document.querySelector<HTMLButtonElement>('.source-preview-actions [aria-label="关闭来源预览"]')?.focus({ preventScroll: true });
   } catch (e) {
-    sourcePreview.value = { focus, segments: [], loading: false, error: errorMessage(e) };
+    if (!disposed && sequence === sourcePreviewSequence && contextKey === workspaceContextKey.value) sourcePreview.value = { focus, segments: [], loading: false, error: errorMessage(e) };
   }
 }
 function closeSourcePreview() {
+  sourcePreviewSequence++;
+  sourcePreviewReturn = null;
   sourcePreview.value = null;
+  if (sourcePreviewTrigger?.isConnected) sourcePreviewTrigger.focus({ preventScroll: true });
+  sourcePreviewTrigger = null;
 }
 async function openSourceInReader() {
   const focus = sourcePreview.value?.focus;
   if (!focus) return;
+  const point = sourcePreviewReturn;
   closeSourcePreview();
-  await doGoto(focus.lid, focus.quote);
-}
-// block actions:整段/asset 高亮和笔记;段内自由高亮走下面的选区 toolbar。
-async function highlightBlock(lid: string) {
-  try {
-    banner.value = "";
-    selectedLid.value = lid;
-    await api.highlight(lid);
-    await refreshAnnotations();
-  } catch (e) {
-    fail(e);
+  workspaceRef.value?.showReader();
+  if (await doGoto(focus.lid, focus.quote) && point?.contextKey === workspaceContextKey.value) {
+    readingContinuity.push(point);
+    updateReadingReturn();
   }
 }
-function noteBlock(lid: string) {
-  selectedLid.value = lid;
-  openNewNote(lid);
-}
-
 const pdfSelectionSession = usePdfSelectionDraft((capture) =>
   api.pdfSelectionResolve({ rects: capture.rects, raw_quote: capture.raw_quote }),
 );
@@ -2528,6 +2621,8 @@ function cancelPdfSelectionDraft() {
 }
 
 function onReaderViewportInteraction() {
+  readerNavigationRequest++;
+  readerPaneRef.value?.cancelTypographyRestore();
   readingContinuity.cancelRestore();
   clearOutlineNavigation();
   const interaction = readerInteractionRevision;
@@ -3002,6 +3097,8 @@ function clearAskDraft() {
 
 // ── agent 对话区(外层 E agent 主入口)`[ADR-0030]` ──
 interface ChatTurn {
+  teachingRef?: string | null;
+  presentationFollowUp?: import('./generated/PresentationFollowUp').PresentationFollowUp | null;
   turnId: string | null;
   user: string;
   outcome: OuterOutcome | null;
@@ -3010,6 +3107,7 @@ interface ChatTurn {
   questionAnchorLid: string | null;
   questionQuote: AgentQuestionQuoteView | null;
   questionSelection: AskDraft | null;
+  dispositions?: Record<string, EffectDisposition>;
   liveEffects?: { effect_id: string; effect: AgentEffect }[];
   effectLabels: string[];
   activities?: RunActivity[];
@@ -3025,20 +3123,36 @@ type AskDraft = AskQuote;
 const chat = ref<ChatTurn[]>([]);
 const chatSessions = ref<AgentChatSessionSummary[]>([]);
 const chatGoals = ref<ResidentGoal[]>([]);
-const targetGoalId = ref<string | null>(null);
+const targetGoalId = ref<string | null>(recapProps.chatDraft?.goalId ?? null);
 const activeChatSessionId = ref("");
 const agentHistoryLoading = ref(true);
 const agentHistoryError = ref<string | null>(null);
 let startupHistoryRequestSeq = 0;
-const agentInput = ref("");
-const askDraft = ref<AskDraft | null>(null);
+const agentInput = ref(recapProps.chatDraft?.message ?? "");
+const tutor = useTutorControl();
+const tutorPanelOpen = ref(false);
+const presentationWorkspace = ref<import('./presentation-workspace').PresentationWorkspace | null>(null);
+watch(() => [recapProps.recapTarget, agentHistoryLoading.value, rightRailRef.value] as const, async ([target, loading, rail]) => {
+  if (!target || loading || !rail) return;
+  recapEmit('recap-consumed');
+  try {
+    if (target.session_id !== activeChatSessionId.value) applyAgentHistory(await api.agentHistorySelect(target.session_id));
+    await nextTick();
+    workspaceRef.value?.showAssistant('agent');
+    await rail.openRecapTarget(target);
+  } catch (failure) { fail(failure); }
+});
+const askDraft = ref<AskDraft | null>(recapProps.chatDraft?.quote ?? null);
+watch([agentInput, askDraft, targetGoalId], ([message, quote, goalId]) => {
+  if (!disposed) recapEmit('update:chatDraft', { message, quote, goalId });
+}, { flush: 'sync' });
 const unknownSubmissionsBySession = new Map<string, UnknownSubmissionRecord[]>();
 const workspaceAuxTab = ref<WorkspaceAuxTab | null>(null);
 const workspaceAuxTabRevision = ref(0);
 const agentFullscreen = ref(false);
 const agentFullscreenSuspendedForSource = ref(false);
 const mobileWorkspaceEnabled = import.meta.env.VITE_MOBILE_WORKSPACE !== "0";
-const workspaceContextKey = computed(() => `${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}:${activeChatSessionId.value || "no-chat"}`);
+const workspaceContextKey = computed(() => `${network.value.enabled ? sceneKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}:${activeChatSessionId.value || "no-chat"}`);
 const workspaceLogicalState = computed<WorkspaceLogicalState>(() => ({
   // Reader layout belongs to the book; recovering a chat must not replay saved focus.
   contextKey: buildWorkbenchSnapshot.value?.book_id ?? "no-book",
@@ -3049,16 +3163,25 @@ const workspaceLogicalState = computed<WorkspaceLogicalState>(() => ({
 }));
 const readingContinuity = createReadingContinuity();
 const returnToAnswerAvailable = ref(false);
+const readingReturnLabel = ref('返回回答');
+function updateReadingReturn() {
+  const point = readingContinuity.peek(workspaceContextKey.value);
+  returnToAnswerAvailable.value = !!point;
+  readingReturnLabel.value = point?.origin === 'reader' ? '返回阅读位置' : point?.origin === 'notes' ? '返回笔记' : '返回回答';
+}
 let pendingReadingReturnPoint: ReadingReturnPoint | null = null;
 watch(workspaceContextKey, (contextKey, previous) => {
-  const recoveringFirstChat = previous === `${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}:no-chat`;
+  previousPdfAnchor.value = null;
+  const recoveringFirstChat = previous === `${network.value.enabled ? sceneKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}:no-chat`;
   if (!recoveringFirstChat) {
     hlPopover.value = null;
     window.getSelection()?.removeAllRanges();
   }
+  noteEditor.value = null;
+  closeSourcePreview();
   pendingReadingReturnPoint = null;
   readingContinuity.invalidateContext(contextKey);
-  returnToAnswerAvailable.value = readingContinuity.has(contextKey);
+  updateReadingReturn();
   agentFullscreenSuspendedForSource.value = false;
 });
 function toggleAgentFullscreen() {
@@ -3066,6 +3189,8 @@ function toggleAgentFullscreen() {
   agentFullscreenSuspendedForSource.value = false;
 }
 function requestWorkspaceTab(tab: WorkspaceAuxTab) {
+  // The foreground request runs before Vue hides the Reader on a narrow screen.
+  readerPaneRef.value?.captureScrollAnchor(segments.value.map(segment => segment.lid));
   if (tab !== "agent") {
     agentFullscreen.value = false;
     agentFullscreenSuspendedForSource.value = false;
@@ -3076,8 +3201,25 @@ function requestWorkspaceTab(tab: WorkspaceAuxTab) {
 function handleWorkspaceProjection(projection: WorkspaceProjection) {
   if (projection.navigation === "desktop") mobileGlobalActionsOpen.value = false;
 }
+let displayReadingPoint: { point: ReadingReturnPoint; interaction: number; navigation: number } | null = null;
+async function preserveDisplayReadingPosition() {
+  // Repeated display-only changes keep the same source character. Recapturing
+  // the new line start would accumulate drift when returning to a narrow column.
+  const saved = displayReadingPoint;
+  const point = saved && saved.point.contextKey === workspaceContextKey.value
+    && saved.point.anchor?.surface === activeReaderSurface.value
+    && saved.interaction === readerInteractionRevision && saved.navigation === readerNavigationRequest
+    ? saved.point : captureReadingReturnPoint('');
+  displayReadingPoint = { point, interaction: readerInteractionRevision, navigation: readerNavigationRequest };
+  const token = readingContinuity.beginRestore(point.contextKey);
+  const current = () => !disposed && point.contextKey === workspaceContextKey.value && readingContinuity.isCurrent(token);
+  await nextTick();
+  if (!current() || !point.anchor) return;
+  if (point.anchor.surface === 'markdown') await readerPaneRef.value?.restoreScrollAnchor(point.anchor, current);
+  else await pdfReaderPaneRef.value?.restoreReadingAnchor(point.anchor);
+}
 function toggleNavigationOutline() {
-  if (mobileGlobalActionsOpen.value) workspaceRef.value?.toggleOutline();
+  if (mobileGlobalActionsOpen.value || focusReading.value) workspaceRef.value?.toggleOutline();
   else leftRailOpen.value = !leftRailOpen.value;
 }
 const acceptingRun = ref(false);
@@ -3095,12 +3237,19 @@ watch([residentRun.snapshot, residentRun.connection], ([snapshot]) => {
   turn.pending = snapshot.persistence_state === "pending";
   turn.runStatus = runStatusText(snapshot, residentRun.connection.value);
   if (snapshot.final_view) Object.assign(turn, chatTurnFromHistory(snapshot.final_view, turn), { runStatus: turn.runStatus });
-  if (snapshot.persistence_state === "failed") turn.error = "运行已结束，但结果未保存。已发生的阅读操作保留。";
+  if (snapshot.persistence_state === "failed") turn.error = snapshot.error ? runStatusText(snapshot, residentRun.connection.value) : "运行已结束，但结果未保存。已发生的阅读操作保留。";
 }, { flush: "sync" });
 const seenResidentEffects = new Set<string>();
 let residentReaderRevision = -1;
 let residentReaderTurn = "";
+function runOwnsCurrentScene(snapshot: RunSnapshot) {
+  if (!network.value.enabled) return true;
+  const w = network.value.workspace, d = snapshot.descriptor;
+  return !!w && d.workspace_id === w.workspace_id && d.workspace_generation === w.generation
+    && d.published_book_ref?.book_id === w.published_book_ref.book_id && d.published_book_ref?.publication_id === w.published_book_ref.publication_id;
+}
 async function syncResidentChanges(snapshot: RunSnapshot) {
+  if (!runOwnsCurrentScene(snapshot)) return;
   const matches = () => snapshot.descriptor.book_id === buildWorkbenchSnapshot.value?.book_id && snapshot.descriptor.session_id === activeChatSessionId.value;
   if (!matches()) return;
   if (residentReaderTurn !== snapshot.descriptor.turn_id) { residentReaderTurn = snapshot.descriptor.turn_id; residentReaderRevision = -1; seenResidentEffects.clear(); }
@@ -3127,18 +3276,25 @@ async function syncResidentChanges(snapshot: RunSnapshot) {
   else await refreshAnnotations();
   if (stillCurrent()) await loadPaperProjectionData(true);
 }
+async function retryResidentSave() {
+  const current = residentRun.snapshot.value;
+  if (!current) return;
+  try { await api.agentRunRetrySave(current.descriptor.turn_id); residentRun.forget(); residentRun.observe(current.descriptor); }
+  catch (error) { fail(error); }
+}
 async function stopResidentRun() {
   try { await residentRun.cancel(); } catch (error) { fail(error); }
 }
 async function finishResidentRun(snapshot: RunSnapshot) {
   if (snapshot.descriptor.session_id !== activeChatSessionId.value || snapshot.descriptor.book_id !== buildWorkbenchSnapshot.value?.book_id) return;
-  const outcome = snapshot.final_view?.outcome;
+  const outcome = runOwnsCurrentScene(snapshot) ? snapshot.final_view?.outcome : null;
   const proposalEffect = outcome?.effects.find(effect => effect.kind === "LayoutProposal");
   if (proposalEffect?.kind === "LayoutProposal") pendingLayoutProposal.value = proposalEffect.proposal;
   const minimapEffect = [...(outcome?.effects ?? [])].reverse().find(effect => effect.kind === "PaperMinimap");
   if (minimapEffect?.kind === "PaperMinimap") lastPaperMinimapEffect.value = minimapEffect.effect;
   await refreshAnnotations();
   if (snapshot.persistence_state === "saved" && snapshot.descriptor.session_id === activeChatSessionId.value) await refreshAgentHistory();
+  window.dispatchEvent(new Event("tutor-state-changed"));
   await refreshProfileSurface(true);
 }
 
@@ -3213,6 +3369,7 @@ function askPdfSelection() {
   selectedLid.value = first.lid;
   agentInput.value = "";
   completePdfSelectionAction();
+  workspaceRef.value?.showAssistant("agent");
 }
 const showTrace = ref<Record<string, boolean>>({});
 const latestTrace = computed<TraceStep[]>(() => {
@@ -3226,13 +3383,14 @@ const latestTrace = computed<TraceStep[]>(() => {
   }
   return [];
 });
-// 提议处置态:key=`${turnIdx}:${effIdx}` → "已保留" | "已撤销"。
-const handled = ref<Record<string, string>>({});
-function effKey(ti: number, ei: number) {
-  return `${ti}:${ei}`;
-}
+const effectPending = ref<Record<string, boolean>>({});
 function effState(ti: number, ei: number): string | undefined {
-  return handled.value[effKey(ti, ei)];
+  const turn = chat.value[ti];
+  const effect = turn?.outcome?.effects[ei];
+  if (!effect) return undefined;
+  const id = effectId(effect);
+  if (effectPending.value[`${turn.turnId}:${id}`]) return "正在处理";
+  return dispositionLabel(turn.dispositions?.[id], effect);
 }
 function toggleTrace(ti: number) {
   showTrace.value[ti] = !showTrace.value[ti];
@@ -3249,6 +3407,9 @@ function localQuestionQuoteView(draft: AskDraft): AgentQuestionQuoteView {
 function chatTurnFromHistory(turn: StoredAgentChatTurn, previous?: ChatTurn): ChatTurn {
   const matchingPrevious = previous?.user === turn.user ? previous : undefined;
   return {
+    dispositions: Object.fromEntries((turn.domain?.effects ?? []).filter(e => e.disposition).map(e => [e.effect_id, e.disposition!])),
+    teachingRef: turn.teaching_ref,
+    presentationFollowUp: turn.presentation_follow_up,
     turnId: turn.turn_id,
     user: turn.user,
     outcome: turn.outcome ?? null,
@@ -3259,7 +3420,7 @@ function chatTurnFromHistory(turn: StoredAgentChatTurn, previous?: ChatTurn): Ch
     questionAnchorLid: matchingPrevious?.questionAnchorLid ?? null,
     questionQuote: turn.question_quote ? { ...turn.question_quote } : null,
     questionSelection: matchingPrevious?.questionSelection ?? null,
-    liveEffects: turn.run_summary?.effects.map((effect, index) => ({ effect_id: `${turn.turn_id}:${index}`, effect })),
+    liveEffects: turn.run_summary?.effects.map(effect => ({ effect_id: effectId(effect), effect })),
     effectLabels: [...turn.effect_labels],
     activities: turn.run_summary?.activities ?? undefined,
     runTrace: turn.run_summary?.trace,
@@ -3276,7 +3437,7 @@ function applyAgentHistory(history: AgentHistoryResponse) {
   if (!chatGoals.value.some(goal => goal.id === targetGoalId.value && goal.status === "open")) targetGoalId.value = null;
   chat.value = history.current.turns.map((turn, index) => chatTurnFromHistory(turn, previousChat[index]));
   const unknown = unknownSubmissionsBySession.get(history.current.id) ?? [];
-  const unresolved = unknown.filter((record) => !submissionWasAccepted(record, {
+  const unresolved = network.value.enabled ? [] : unknown.filter((record) => !submissionWasAccepted(record, {
     sessionId: history.current.id,
     turns: history.current.turns.map((turn) => ({ turnId: turn.turn_id, user: turn.user })),
   }));
@@ -3286,7 +3447,7 @@ function applyAgentHistory(history: AgentHistoryResponse) {
   } else {
     unknownSubmissionsBySession.delete(history.current.id);
   }
-  handled.value = {};
+  effectPending.value = {};
   showTrace.value = {};
   const pending = history.current.turns.find(turn => turn.status === "pending_assistant");
   if (pending && !(residentRun.snapshot.value?.descriptor.turn_id === pending.turn_id && residentRun.snapshot.value.persistence_state === "failed")) {
@@ -3300,7 +3461,7 @@ function applyAgentHistory(history: AgentHistoryResponse) {
       current.draft = snapshot.draft;
       current.pending = snapshot.persistence_state === "pending";
       current.runStatus = runStatusText(snapshot, residentRun.connection.value);
-      if (snapshot.persistence_state === "failed") current.error = "运行已结束，但结果未保存。已发生的阅读操作保留。";
+      if (snapshot.persistence_state === "failed") current.error = snapshot.error ? runStatusText(snapshot, residentRun.connection.value) : "运行已结束，但结果未保存。已发生的阅读操作保留。";
     }
   }
 }
@@ -3323,6 +3484,22 @@ async function loadStartupHistory() {
     if (request === startupHistoryRequestSeq) agentHistoryError.value = errorMessage(error);
   } finally {
     if (request === startupHistoryRequestSeq) agentHistoryLoading.value = false;
+  }
+}
+
+async function retryHistory() {
+  if (!network.value.enabled) { await loadStartupHistory(); return; }
+  agentHistoryLoading.value = true;
+  agentHistoryError.value = null;
+  try {
+    await recoverWorkspaceBinding();
+    // A new generation remounts App; its startup owns the next history read.
+    await nextTick();
+    if (!disposed) await loadStartupHistory();
+  } catch (error) {
+    if (!disposed) agentHistoryError.value = errorMessage(error);
+  } finally {
+    if (!disposed) agentHistoryLoading.value = false;
   }
 }
 
@@ -3371,20 +3548,34 @@ async function applyLayoutActions(actions: ReaderLayoutAction[]) {
   const st = await api.state();
   await applyReaderState(st);
 }
-async function applyPendingLayoutProposal(proposal = pendingLayoutProposal.value) {
-  if (!proposal) return;
-  const outcome = await api.layoutApply({
-    proposal_id: proposal.proposal_id,
-    base_layout_rev: layoutRevNumber(proposal.base_layout_rev),
-  });
-  pendingLayoutProposal.value = outcome.kind === "proposal" ? outcome.proposal : null;
-  const st = await api.state();
-  await applyReaderState(st);
+async function tutorAction(action: import("./generated/TutorAction").TutorAction) {
+  await tutor.act(action);
+  window.dispatchEvent(new Event("tutor-state-changed"));
+  if (tutor.error.value || tutor.pending.value) return;
+  if (action.kind === "start" || action.kind === "resume" || (action.kind === "set_enabled" && action.enabled)) {
+    try {
+      const result = await api.tutorStart();
+      await tutor.load();
+      if (result.started && result.message && sending.value) {
+        banner.value = "教学设置已保存，当前回复完成后可点击继续教学。";
+      } else if (result.started && result.message) {
+        tutorPanelOpen.value = false;
+        await submitAgentMessage(result.message, "继续学习", null);
+      } else if (result.reason) banner.value = result.reason;
+    } catch (failure) { banner.value = `教学未开始：${failure instanceof Error ? failure.message : String(failure)}`; }
+  }
 }
-async function submitAgentMessage(msg: string, displayUser: string, draft: AskDraft | null, presentationFollowUp?: import("./generated/PresentationFollowUp").PresentationFollowUp, goalMeta: Pick<AgentChatMeta, "goal_id" | "goal_action"> = {}) {
+function onTutorResponse(event: Event) {
+  const detail = (event as CustomEvent<{ eventId: string; text: string }>).detail;
+  if (sending.value) { banner.value = "回答已记录，请等待当前回复完成后继续。"; return; }
+  void submitAgentMessage(detail.text, detail.text, null, undefined, { teaching_ref: detail.eventId });
+}
+async function submitAgentMessage(msg: string, displayUser: string, draft: AskDraft | null, presentationFollowUp?: import("./generated/PresentationFollowUp").PresentationFollowUp, goalMeta: Pick<AgentChatMeta, "goal_id" | "goal_action" | "teaching_ref"> = {}) {
   if (sending.value || agentHistoryLoading.value || agentHistoryError.value) return;
   const questionAnchorLid = draft?.lid ?? selectedLid.value ?? viewport.value?.top_lid ?? null;
   const turn: ChatTurn = {
+    teachingRef: goalMeta.teaching_ref,
+    presentationFollowUp,
     turnId: null,
     user: displayUser,
     outcome: null,
@@ -3406,6 +3597,7 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
       display_user: displayUser, question_anchor_lid: questionAnchorLid,
       question_quote: draft ? { ...draft } : null,
     });
+    if (disposed) return;
     if ("turn_id" in result) {
       turn.turnId = result.turn_id;
       activeChatSessionId.value = result.session_id;
@@ -3483,79 +3675,40 @@ async function confirmSensitiveProfile() {
 }
 
 // 提议「撤销」:Goto→ 返回回合前 anchor;Highlight/Note→ memory.delete(mem_id)。
-async function undoEffect(ti: number, ei: number, e: AgentEffect) {
+async function disposeEffect(ti: number, effect: AgentEffect, action: "keep" | "undo" | "dismiss") {
+  const turn = chat.value[ti];
+  const sessionId = activeChatSessionId.value;
+  if (!turn?.turnId || !sessionId) return;
+  const turnId = turn.turnId;
+  const id = effectId(effect);
+  const key = `${turnId}:${id}`;
+  if (effectPending.value[key]) return;
+  effectPending.value[key] = true;
   try {
     banner.value = "";
-    if (e.kind === "Goto") {
-      await api.goto(e.before_anchor);
-      await syncViewport();
-    } else if (e.kind === "Highlight" || e.kind === "Note") {
-      await api.delete(e.mem_id);
-      await refreshAnnotations();
-    } else if (e.kind === "LayoutProposal") {
-      if (pendingLayoutProposal.value?.proposal_id === e.proposal.proposal_id) pendingLayoutProposal.value = null;
-    } else if (e.kind === "PaperMinimap") {
-      const snapshot = paperMinimapSnapshot.value ?? await api.paperMinimapState();
-      await api.paperMinimapApply({
-        base_state_rev: Number(snapshot.state.rev),
-        undo_effect_id: e.effect.effect_id,
-      });
-      if (lastPaperMinimapEffect.value?.effect_id === e.effect.effect_id) lastPaperMinimapEffect.value = null;
-      paperMinimapSnapshot.value = await api.paperMinimapState();
-    } else if (e.kind === "PaperMinimapProposal") {
-      await api.paperMinimapApply({
-        base_state_rev: Number(e.proposal.base_state_rev),
-        base_map_rev: e.proposal.base_map_rev,
-        dismiss_proposal_id: e.proposal.proposal_id,
-      });
-    }
-    handled.value[effKey(ti, ei)] = e.kind === "LayoutProposal" || e.kind === "PaperMinimapProposal"
-      ? "已忽略"
-      : "已撤销";
+    const disposition = await api.disposeEffect({ session_id: sessionId, turn_id: turnId, effect_id: id, action });
+    const savedTurn = chat.value.find(t => t.turnId === turnId);
+    if (savedTurn) savedTurn.dispositions = { ...savedTurn.dispositions, [id]: disposition };
+    if (disposition.receipt?.error) throw new Error(disposition.receipt.error.message);
+    if (!disposition.receipt) return;
+    if (effect.kind === "LayoutProposal" && pendingLayoutProposal.value?.proposal_id === effect.proposal.proposal_id) pendingLayoutProposal.value = null;
+    if (effect.kind === "PaperMinimap") lastPaperMinimapEffect.value = null;
+    await syncViewport();
+    await refreshAnnotations();
+    if (effect.kind === "PaperMinimap" || effect.kind === "PaperMinimapProposal") paperMinimapSnapshot.value = await api.paperMinimapState();
   } catch (err) {
     fail(err);
+  } finally {
+    delete effectPending.value[key];
   }
 }
 
-// 提议「保留」:Note 按当前 mem_id 原子 promote；Highlight 保持既有 long_term save 语义。
-async function keepEffect(ti: number, ei: number, e: AgentEffect) {
-  if (e.kind === "PaperMinimap") return;
-  if (e.kind === "Goto" || e.kind === "Layout") return;
-  try {
-    banner.value = "";
-    if (e.kind === "LayoutProposal") {
-      await applyPendingLayoutProposal(e.proposal);
-      handled.value[effKey(ti, ei)] = "已应用";
-      return;
-    }
-    if (e.kind === "PaperMinimapProposal") {
-      const outcome = await api.paperMinimapApply({
-        proposal_id: e.proposal.proposal_id,
-        base_map_rev: e.proposal.base_map_rev,
-        base_state_rev: Number(e.proposal.base_state_rev),
-      });
-      if (outcome.kind === "effect") lastPaperMinimapEffect.value = outcome.effect;
-      paperMinimapSnapshot.value = await api.paperMinimapState();
-      handled.value[effKey(ti, ei)] = "已应用";
-      return;
-    }
-    if (e.kind === "Note") {
-      await api.promote(e.mem_id);
-    } else if (e.kind === "Highlight") {
-      const recs = await api.recall({ layer: "session" });
-      const content = recs.find((r) => r.mem_id === e.mem_id)?.content ?? "";
-      await api.save({
-        type: "highlight",
-        anchor_lid: e.lid,
-        content,
-        layer: "long_term",
-      });
-    }
-    await refreshAnnotations();
-    handled.value[effKey(ti, ei)] = "已保留";
-  } catch (err) {
-    fail(err);
-  }
+async function undoEffect(ti: number, _ei: number, effect: AgentEffect) {
+  await disposeEffect(ti, effect, effect.kind === "LayoutProposal" || effect.kind === "PaperMinimapProposal" ? "dismiss" : "undo");
+}
+
+async function keepEffect(ti: number, _ei: number, effect: AgentEffect) {
+  await disposeEffect(ti, effect, "keep");
 }
 
 function notePlacementDraftId(): string {
@@ -3593,6 +3746,7 @@ async function startNotePlacement(note: MemoryRecord) {
       surface_kind: surface,
       source_fingerprint: source.source_fingerprint,
     });
+    if (started) { window.getSelection()?.removeAllRanges(); workspaceRef.value?.showReader(); }
     const targetLabel = surface === "pdf" ? "PDF 正文区域" : "正文块";
     banner.value = started
       ? note.note_placement
@@ -3634,6 +3788,7 @@ async function saveAgentSelection(turn: ChatTurn, text: string) {
         content: noteContent,
         origin: { kind: "agent_answer", chat_session_id: activeChatSessionId.value },
       });
+      if (created) { window.getSelection()?.removeAllRanges(); workspaceRef.value?.showReader(); }
       const targetLabel = surface === "pdf" ? "PDF 正文区域" : "正文中的真实段落";
       banner.value = created
         ? `请选择${targetLabel}放置这条 Note。`
@@ -3664,11 +3819,11 @@ async function saveAgentSelection(turn: ChatTurn, text: string) {
   }
 }
 
-function captureAgentSourceReturnPoint(source: { turnId: string; sourceRefId: string }) {
+function captureReadingReturnPoint(turnId: string): ReadingReturnPoint {
   const markdownAnchor = readerPaneRef.value?.captureScrollAnchor(segments.value.map((segment) => segment.lid)) ?? null;
-  pendingReadingReturnPoint = {
+  return {
     contextKey: workspaceContextKey.value,
-    turnId: source.turnId,
+    turnId,
     anchor: activeReaderSurface.value === "pdf"
       ? pdfReaderPaneRef.value?.captureReadingAnchor() ?? null
       : markdownAnchor
@@ -3677,16 +3832,20 @@ function captureAgentSourceReturnPoint(source: { turnId: string; sourceRefId: st
   };
 }
 
+function captureAgentSourceReturnPoint(source: { turnId: string; sourceRefId: string }) {
+  pendingReadingReturnPoint = captureReadingReturnPoint(source.turnId);
+}
 async function syncAfterAgentSourceOpen() {
   const returnPoint = pendingReadingReturnPoint;
   pendingReadingReturnPoint = null;
   if (returnPoint?.contextKey === workspaceContextKey.value) {
     readingContinuity.push(returnPoint);
-    returnToAnswerAvailable.value = true;
+    updateReadingReturn();
     if (agentFullscreen.value) {
       agentFullscreenSuspendedForSource.value = true;
       agentFullscreen.value = false;
     }
+    if (presentationWorkspace.value) presentationWorkspace.value.suspended = true;
   }
   workspaceRef.value?.showReader();
   try {
@@ -3699,16 +3858,17 @@ async function syncAfterAgentSourceOpen() {
 async function returnToAgentAnswer() {
   const contextKey = workspaceContextKey.value;
   const point = readingContinuity.pop(contextKey);
-  returnToAnswerAvailable.value = readingContinuity.has(contextKey);
+  updateReadingReturn();
   if (!point) return;
   const token = readingContinuity.beginRestore(contextKey);
   if (point.anchor) {
     const restored = point.anchor.surface === "pdf"
-      ? !point.anchor.anchorLid || await doGoto(point.anchor.anchorLid)
-      : await doGoto(point.anchor.lid);
+      ? !point.anchor.anchorLid || await doGoto(point.anchor.anchorLid, undefined, () => readingContinuity.isCurrent(token))
+      : await doGoto(point.anchor.lid, undefined, () => readingContinuity.isCurrent(token));
+    if (!readingContinuity.isCurrent(token) || workspaceContextKey.value !== contextKey) return;
     if (!restored) {
       readingContinuity.push(point);
-      returnToAnswerAvailable.value = true;
+      updateReadingReturn();
       return;
     }
     if (!readingContinuity.isCurrent(token) || workspaceContextKey.value !== contextKey) return;
@@ -3717,12 +3877,21 @@ async function returnToAgentAnswer() {
       : (await readerPaneRef.value?.restoreScrollAnchor(point.anchor), true);
     if (!positionRestored) {
       readingContinuity.push(point);
-      returnToAnswerAvailable.value = true;
+      updateReadingReturn();
       return;
     }
   }
   if (!readingContinuity.isCurrent(token) || workspaceContextKey.value !== contextKey) return;
+  if (point.origin === 'reader') { workspaceRef.value?.showReader(); return; }
+  if (point.origin === 'notes') {
+    workspaceRef.value?.showAssistant('notes');
+    requestWorkspaceTab('notes');
+    await nextTick();
+    if (point.memId) await rightRailRef.value?.showMemory(point.memId);
+    return;
+  }
   workspaceRef.value?.showAssistant("agent");
+  if (presentationWorkspace.value) presentationWorkspace.value.suspended = false;
   if (agentFullscreenSuspendedForSource.value) {
     agentFullscreen.value = true;
     agentFullscreenSuspendedForSource.value = false;
@@ -3733,6 +3902,7 @@ async function returnToAgentAnswer() {
 
 async function newChat() {
   if (agentHistoryLoading.value || agentHistoryError.value) return;
+  agentHistoryLoading.value = true;
   try {
     const response = await api.agentNew();
     applyAgentHistory(response.history);
@@ -3741,10 +3911,11 @@ async function newChat() {
     await refreshProfileSurface(true);
   } catch (e) {
     fail(e);
-  }
+  } finally { if (!disposed) agentHistoryLoading.value = false; }
 }
 async function selectChat(sessionId: string) {
   if (!sessionId || sessionId === activeChatSessionId.value) return;
+  agentHistoryLoading.value = true;
   try {
     applyAgentHistory(await api.agentHistorySelect(sessionId));
     askDraft.value = null;
@@ -3752,7 +3923,7 @@ async function selectChat(sessionId: string) {
     await refreshProfileSurface(true);
   } catch (e) {
     fail(e);
-  }
+  } finally { if (!disposed) agentHistoryLoading.value = false; }
 }
 async function deleteChat(sessionId: string) {
   if (!sessionId) return;
@@ -3950,7 +4121,7 @@ function resetBookSessionUi() {
   unknownSubmissionsBySession.clear();
   askDraft.value = null;
   agentInput.value = "";
-  handled.value = {};
+  effectPending.value = {};
   showTrace.value = {};
 }
 
@@ -3979,8 +4150,13 @@ async function submitOpenBook(dir = bookPickerDir.value) {
 </script>
 
 <template>
-  <div class="app">
+  <div class="app" :style="typography.style.value">
     <TopBar
+      :focus-available="appSurface === 'reader'"
+      :focus-reading="focusReading"
+      @toggle-focus="workspaceRef?.toggleFocus()"
+      :typography-available="appSurface === 'reader'"
+      @open-typography="typography.open.value = true"
       :chapter-title="appSurface === 'workbench' ? '构建工作台' : activeChapterTitle"
       :progress-pct="appSurface === 'reader' ? progressPct : 0"
       :anchor-lid="readingAnchorLid"
@@ -4001,7 +4177,14 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       @open-build-intent="openBuildIntent"
       @toggle-debug="debugOpen = !debugOpen"
       @close-mobile="mobileGlobalActionsOpen = false"
-    />
+    >
+      <template #account><slot name="account" /></template>
+      <template #tutor-control>
+        <TutorControl :enabled="!!tutor.state.value?.control.enabled" :label="tutor.label.value" :busy="tutor.busy.value" :unavailable="!tutor.state.value || !!tutor.pending.value" :error="tutor.error.value" @toggle="tutorAction({ kind: 'set_enabled', enabled: !tutor.state.value?.control.enabled })" @manage="tutorPanelOpen = true" />
+      </template>
+    </TopBar>
+    <ReaderTypographyPanel v-if="typography.open.value" :preferences="typography.preferences.value" :save-error="typography.saveError.value" :pdf="activeReaderSurface === 'pdf'" @change="typography.update" @close="closeTypography" />
+    <TutorPanel v-if="tutorPanelOpen" :readiness="tutor.readiness.value" :readiness-error="tutor.readinessError.value" @refresh-readiness="tutor.loadReadiness" :state="tutor.state.value" :busy="tutor.busy.value" :error="tutor.error.value" :pending="!!tutor.pending.value" :source-id="tutor.readiness.value?.source_id ?? buildWorkbenchSnapshot?.book_id" :label="tutor.label.value" @action="tutorAction" @retry="tutor.retry" @close="tutorPanelOpen = false" />
 
     <AlignmentQualityBar
       v-if="appSurface === 'reader' && sourceManifest?.alignment_quality"
@@ -4011,6 +4194,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
     />
 
     <p v-if="banner" class="banner">{{ banner }}</p>
+    <p v-if="network.enabled && residentRun.snapshot.value?.persistence_state === 'failed' && residentRun.snapshot.value?.execution_state !== 'interrupted'" role="status">原回合结果尚未保存。<button @click="retryResidentSave">重试保存原结果</button></p>
 
     <section v-if="appSurface === 'waiting-materials'" class="build-workbench" role="status">
       <h2>等待完整阅读材料</h2>
@@ -4170,7 +4354,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         </div>
 
         <div v-if="bookPickerMode === 'open'" class="book-picker-body">
-          <div class="book-picker-input-row">
+          <div v-if="!network.enabled" class="book-picker-input-row">
             <label>
               <span>目录</span>
               <input
@@ -4200,11 +4384,12 @@ async function submitOpenBook(dir = bookPickerDir.value) {
               @click="bookPickerDir = book.dir"
               @dblclick="submitOpenBook(book.dir)"
             >
+              <BookCover :title="book.book_id || book.name" :cover="book.cover" />
               <span class="book-picker-card-title">
                 <strong>{{ book.book_id || book.name }}</strong>
                 <small v-if="book.route === 'workbench'">构建中</small>
               </span>
-              <span>{{ book.dir }}</span>
+              <span v-if="!network.enabled" class="book-picker-path">{{ book.dir }}</span>
             </button>
           </div>
         </div>
@@ -4305,15 +4490,19 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       v-else-if="appSurface === 'reader'"
       ref="workspaceRef"
       :logical="workspaceLogicalState"
+      :context-key="workspaceContextKey"
       :enabled="mobileWorkspaceEnabled"
       :selection-active="!!hlPopover"
       :left-collapsed="!leftRailOpen"
       :return-available="returnToAnswerAvailable"
+      :return-label="readingReturnLabel"
       :reader-surface="activeReaderSurface"
       :pdf-surface-available="pdfReaderAvailable"
       :global-actions-open="mobileGlobalActionsOpen"
       :style="workspaceStyle"
       @tab-request="requestWorkspaceTab"
+      @before-display-change="preserveDisplayReadingPosition"
+      @focus-change="focusReading = $event"
       @projection-change="handleWorkspaceProjection"
       @global-actions-request="mobileGlobalActionsOpen = !mobileGlobalActionsOpen"
       @return="returnToAgentAnswer"
@@ -4361,6 +4550,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         :source-manifest="sourceManifest"
         :source-map="pdfSourceMap"
         :pdf-url="api.pdfOriginalUrl()"
+        :initial-reading-anchor="previousPdfAnchor"
         :active-lid="pdfActiveLid"
         :selected-lid="selectedLid"
         :annotation-projection="pdfAnnotationProjection"
@@ -4384,6 +4574,8 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       <ReaderPane
         v-else
         ref="readerPaneRef"
+        :typography="typography.preferences.value"
+        :context-key="workspaceContextKey"
         :segments="segments"
         :viewport-anchor="readingAnchorLid"
         :selected-lid="selectedLid"
@@ -4406,8 +4598,6 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @note-placement-target="onMarkdownNotePlacementTarget"
         @note-placement-invalid="onMarkdownNotePlacementInvalid"
         @scroll-edge="onScrollEdge"
-        @highlight-block="highlightBlock"
-        @note-block="noteBlock"
         @goto="doGoto"
         @focus-source-local="focusLocalSource"
         @open-formula="openFormulaDialog"
@@ -4415,6 +4605,8 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @delete-highlight="deleteHighlight"
         @edit-note="openEditNote"
         @delete-note="deleteNote"
+        @show-notes="showAnnotationInNotes"
+        @place-note="startNotePlacement"
       />
 
       <div
@@ -4426,7 +4618,9 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       ></div>
 
       <RightRail
+        v-model:presentation-workspace="presentationWorkspace"
         ref="rightRailRef"
+        @recap-publication="recapEmit('recap-publication', $event)"
         :fullscreen="agentFullscreen"
         v-model:agent-input="agentInput"
         :history-loading="agentHistoryLoading"
@@ -4481,7 +4675,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         :requested-tab="workspaceAuxTab"
         :requested-tab-revision="workspaceAuxTabRevision"
         @send-agent="sendAgent"
-        @retry-history="loadStartupHistory"
+        @retry-history="retryHistory"
         @toggle-fullscreen="toggleAgentFullscreen"
         @presentation-follow-up="sendPresentationFollowUp"
         @new-chat="newChat"
@@ -4495,6 +4689,10 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @keep-effect="keepEffect"
         @save-answer-selection="saveAgentSelection"
         @place-note="startNotePlacement"
+        @edit-note="openEditNote"
+        @delete-note="deleteNote"
+        @modify-highlight="modifyHighlight"
+        @delete-highlight="deleteHighlight"
         @agent-source-will-open="captureAgentSourceReturnPoint"
         @agent-source-opened="syncAfterAgentSourceOpen"
         @refresh-profile="refreshProfileSurface()"
@@ -4506,7 +4704,11 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @refresh-artifacts="refreshIntentArtifacts"
         @open-artifacts="openIntentArtifacts"
         @artifact-cited="recordIntentUsage('artifact_cited', $event)"
-      />
+      >
+        <template #tutor-control>
+          <TutorControl :enabled="!!tutor.state.value?.control.enabled" :label="tutor.label.value" :busy="tutor.busy.value" :unavailable="!tutor.state.value || !!tutor.pending.value" :error="tutor.error.value" @toggle="tutorAction({ kind: 'set_enabled', enabled: !tutor.state.value?.control.enabled })" @manage="tutorPanelOpen = true" />
+        </template>
+      </RightRail>
     </ReaderWorkspace>
 
     <aside
@@ -4664,7 +4866,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       </section>
     </div>
 
-    <div v-if="sourcePreview" class="source-preview-modal" @click.self="closeSourcePreview">
+    <div v-if="sourcePreview" class="source-preview-modal" @click.self="closeSourcePreview" @keydown.esc.stop="closeSourcePreview">
       <section
         class="source-preview-dialog"
         role="dialog"
@@ -4684,7 +4886,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         <div ref="sourcePreviewBodyRef" class="source-preview-body">
           <p v-if="sourcePreview.loading" class="source-preview-state">正在加载来源...</p>
           <p v-else-if="sourcePreview.error" class="source-preview-state error">{{ sourcePreview.error }}</p>
-          <div v-else class="source-preview-text md" v-html="sourcePreviewHtml"></div>
+          <div v-else class="source-preview-text md" v-html="typographyHtml(sourcePreviewHtml)"></div>
         </div>
       </section>
     </div>
@@ -4708,7 +4910,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
           <span class="nd-hint">Ctrl+Enter 保存 · Markdown/LaTeX 预览</span>
           <span class="nd-actions">
             <button @click="cancelNote">取消</button>
-            <button class="primary" :disabled="!noteEditor.content.trim()" @click="saveNote">保存</button>
+            <button class="primary" :disabled="noteSaving || !noteEditor.content.trim()" @click="saveNote">保存</button>
           </span>
         </div>
       </div>
@@ -5262,12 +5464,15 @@ async function submitOpenBook(dir = bookPickerDir.value) {
 }
 .book-picker-list {
   display: grid;
-  gap: 0.55rem;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 1rem;
   margin-top: 0.9rem;
 }
 .book-picker-card {
   display: grid;
-  gap: 0.22rem;
+  align-content: start;
+  gap: 0.65rem;
+  min-width: 0;
   width: 100%;
   min-height: 58px;
   border: 1px solid var(--hairline-soft);
@@ -5287,7 +5492,8 @@ async function submitOpenBook(dir = bookPickerDir.value) {
 }
 .book-picker-card-title {
   display: flex;
-  align-items: center;
+  align-items: start;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 0.75rem;
   color: var(--ink) !important;
@@ -5304,12 +5510,15 @@ async function submitOpenBook(dir = bookPickerDir.value) {
   font-size: 0.68rem;
   font-weight: 650;
 }
-.book-picker-card span {
+.book-picker-card > span {
   color: var(--muted);
   font-family: var(--mono);
   font-size: 0.74rem;
   overflow-wrap: anywhere;
 }
+.book-picker-path { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.book-picker-card:nth-child(3n + 2) { --cover-color: #ece2d4; }
+.book-picker-card:nth-child(3n) { --cover-color: #dfe6ee; }
 .book-picker-actions {
   border-top: 1px solid var(--line);
   border-bottom: none;
@@ -5467,9 +5676,11 @@ async function submitOpenBook(dir = bookPickerDir.value) {
   color: #8f1f1f;
 }
 .source-preview-text {
-  max-width: 46rem;
+  max-width: var(--reader-measure);
   margin: 0 auto;
-  line-height: 1.75;
+  font-family: var(--reader-font);
+  font-size: var(--reader-size);
+  line-height: var(--reader-leading);
   color: var(--ink);
 }
 .source-preview-text > *:first-child {

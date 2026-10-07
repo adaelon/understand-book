@@ -71,53 +71,61 @@ use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
+pub mod private_book_context;
+use private_book_context::PrivateBookContext;
+mod run_scope;
+pub mod reader_workspace;
+pub mod workspace_registry;
+mod workspace_client;
+pub mod service_state;
+pub mod user_runtime;
+pub mod user_storage_paths;
+pub mod control_store;
+pub mod reader_maintenance;
+pub mod user_registry;
+pub mod published_library;
+mod book_cover;
+pub mod auth;
+pub mod authorization;
+pub mod multi_user_host;
+mod pending_confirmation;
 pub mod agent_run;
+mod run_admission;
+mod session_event;
+mod session_log;
+mod session_store;
+mod session_runtime;
+mod session_recap;
+mod effect_disposition;
+pub mod service_limits;
 pub mod agent_stream;
 pub mod host;
 mod host_lifecycle;
 pub mod mcp;
 pub mod observability;
 mod presentation_api;
+mod tutor_api;
+mod teaching;
 mod presentation_author;
+mod presentation_source;
 mod presentation_plot;
+mod presentation_sandbox;
+pub use presentation_sandbox::worker as presentation_worker;
 mod presentation_animation;
 mod presentation_libraries;
 pub mod presentation_preview;
 pub mod presentation_store;
 
-/// 服务的单会话共享状态(切片0 单用户单书)`[ADR-0028 决策2]`。
-/// S10b:持只读 `Book` + 会话态 `Reader` + 用户私有 `MemoryStore`(物理隔离 `[ADR-0006]`)。
-/// S10c:持 LLM `adapter`(`book.query` 经它触模型;`+ Send` 供 `Arc<Mutex<_>>` 跨 worker 线程)。
+/// Local host composition. Private authority and service configuration are explicit.
+/// The local host explicitly owns one ReaderWorkspace; private authority is user-owned.
 pub struct AppState {
-    pub desktop_host: bool,
-    pub reader_only: bool,
-    pub book_dir: PathBuf,
-    /// Stable desktop library root. `None` preserves the legacy current-book-derived behavior.
-    pub library_root: Option<PathBuf>,
-    pub book: std::sync::Arc<Book>,
-    pub reader: Reader,
-    pub store: MemoryStore,
-    /// Resident-only root for private build intents. Visitor/MCP hosts always set `None`.
-    pub intent_store_root: Option<PathBuf>,
-    /// Book MCP-only read port for current active + accepted artifacts. It never exposes write APIs.
+    pub services: service_state::ServiceState,
+    pub user: user_runtime::UserRuntime,
+    pub workspace: reader_workspace::ReaderWorkspace,
+    /// Book MCP-only read port; never grants private write APIs.
     pub mcp_artifact_read_port: Option<Box<dyn mcp::ArtifactSnapshotReadPort>>,
-    pub adapter: Box<dyn ModelAdapter + Send>,
-    /// 外层 E agent 的当前会话 messages(S10f `[ADR-0030]`)。`/agent/chat` 跨回合累积;
-    /// `/agent/new`/history select 会切换到另一份可恢复 session。
-    pub messages: Vec<Message>,
-    /// 阅读位置持久化文件路径(~/.understand-book/session.json);None 则不持久化。
-    pub session_path: Option<PathBuf>,
-    /// resident agent 对话历史文件路径(~/.understand-book/memory/agent-history.json);None 则只保存在本进程。
-    pub history_path: Option<PathBuf>,
-    /// resident agent 的可恢复历史会话。只服务当前人类读者,不写 memory,不开放给访客。
-    pub agent_history: AgentHistory,
-    /// Resident-only ReaderProfileSnapshot cache;visitor/MCP paths never read it.
-    pub profile_context_cache: runtime::profile_context::ProfileContextCache,
-    /// P7 访客向导会话表:ephemeral ③,只给 MCP `book_guide` 使用,不写 durable memory。
     pub visitor_sessions: mcp::VisitorSessions,
-    /// Last durable Workbench job revision loaded into `book`/`reader`.
-    pub workbench_loaded_revision: Option<String>,
-    pub active_agent_stream: Option<std::sync::Weak<agent_stream::RunStream>>,
+
 }
 
 pub struct CodexBuildIntentControllerConfig {
@@ -193,25 +201,25 @@ pub fn run_codex_build_intent_command(
         None => Some(intent_build_store::IntentArtifactStore::default_root()?),
     };
     let mut state = AppState {
-        desktop_host: false,
-        reader_only: false,
-        book_dir,
-        library_root: Some(config.library_root),
-        book: book.into(),
-        reader,
-        store,
-        intent_store_root,
+        services: crate::service_state::ServiceState {
+            desktop_host: false,
+            reader_only: false,
+            library_root: Some(config.library_root),
+            adapter,
+        },
+        user: crate::user_runtime::UserRuntime::local(
+            store,
+            None,
+            AgentHistory::default(),
+            intent_store_root,
+        ),
+
         mcp_artifact_read_port: None,
-        adapter,
-        messages: new_session(),
-        session_path: None,
-        history_path: None,
-        agent_history: AgentHistory::default(),
-        profile_context_cache: runtime::profile_context::ProfileContextCache::default(),
+
         visitor_sessions: mcp::VisitorSessions::default(),
-        workbench_loaded_revision: None,
-        active_agent_stream: None,
-    };
+
+        workspace: crate::reader_workspace::ReaderWorkspace::local(book_dir, book.into(), reader, new_session(), None),
+};
     build_intent_api::run_codex_command(&mut state, operation, input, now)
 }
 
@@ -636,11 +644,11 @@ fn paper_minimap_localization_request(base: &PaperMinimapBase) -> CompletionRequ
 }
 
 fn route_paper_minimap_localize(state: &mut AppState) -> Reply {
-    let base = state.book.paper_minimap();
+    let base = state.workspace.book.paper_minimap();
     localize_paper_minimap(
         base,
-        paper_minimap_localization_cache_path(&state.session_path),
-        state.adapter.as_ref(),
+        state.workspace.localization_cache_path(),
+        state.services.adapter.as_ref(),
     )
 }
 
@@ -651,6 +659,17 @@ fn localize_paper_minimap(
     cache_path: Option<PathBuf>,
     adapter: &dyn ModelAdapter,
 ) -> Reply {
+    // Coalesce pure-content work without holding the Reader or registry lock.
+    static FLIGHTS: std::sync::LazyLock<std::sync::Mutex<HashMap<PathBuf, std::sync::Weak<std::sync::Mutex<()>>>>> = std::sync::LazyLock::new(Default::default);
+    let flight = cache_path.as_ref().map(|path| {
+        let mut flights = FLIGHTS.lock().unwrap_or_else(|p| p.into_inner());
+        flights.retain(|_, lock| lock.strong_count() > 0);
+        if let Some(lock) = flights.get(path).and_then(std::sync::Weak::upgrade) { return lock; }
+        let lock = std::sync::Arc::new(std::sync::Mutex::new(()));
+        flights.insert(path.clone(), std::sync::Arc::downgrade(&lock));
+        lock
+    });
+    let _flight = flight.as_ref().map(|lock| lock.lock().unwrap_or_else(|p| p.into_inner()));
     if base.regions.is_empty() {
         return ok_json(&fallback_paper_minimap_localization(
             &base,
@@ -975,6 +994,14 @@ pub struct AgentTurnError {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AgentChatTurn {
+    #[serde(default)]
+    pub domain: session_event::TurnDomain,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) admission_input: Option<run_admission::FrozenTurn>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub published_book_ref: Option<published_library::PublishedBookRef>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub teaching_ref: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub goal_ref: Option<AgentGoalRef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1023,6 +1050,8 @@ pub struct AgentGoalRef {
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct AgentHistory {
+    #[serde(skip)]
+    pub(crate) pending_confirmations: BTreeMap<String, pending_confirmation::PendingConfirmation>,
     #[serde(default)]
     pub active_by_book: BTreeMap<String, String>,
     #[serde(default)]
@@ -1063,6 +1092,10 @@ pub struct AgentChatSessionSummary {
 
 #[derive(Debug, serde::Serialize)]
 pub struct AgentChatTurnView {
+    pub domain: session_event::TurnDomain,
+    pub published_book_ref: Option<published_library::PublishedBookRef>,
+    pub teaching_ref: Option<String>,
+    pub presentation_follow_up: Option<runtime::presentation::PresentationFollowUp>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub goal_ref: Option<AgentGoalRef>,
     pub turn_id: String,
@@ -1114,6 +1147,8 @@ pub struct SourcePopupView {
     pub context_after: String,
     pub stale: bool,
     pub can_open_in_reader: bool,
+    pub excerpt: Option<read_tools::SourceExcerpt>,
+    pub heading_path: Vec<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -1317,7 +1352,7 @@ fn persist_agent_history_atomically(path: &Path, history: &AgentHistory) -> Resu
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
-    std::fs::create_dir_all(parent)
+    memory::ReaderPrivateStorageGate::create_dir_all(parent)
         .map_err(|error| agent_history_internal(format!("建 agent history 目录失败: {error}")))?;
     let serialized = serde_json::to_string_pretty(history)
         .map_err(|error| agent_history_internal(format!("序列化 agent history 失败: {error}")))?;
@@ -1358,6 +1393,7 @@ fn persist_agent_history_atomically(path: &Path, history: &AgentHistory) -> Resu
             )));
         }
     }
+    memory::ReaderPrivateStorageGate::sync_parent(path).map_err(|e| agent_history_internal(e.to_string()))?;
     if let Err(error) = std::fs::rename(&temporary, path) {
         if had_original {
             let _ = std::fs::rename(&backup, path);
@@ -1367,6 +1403,7 @@ fn persist_agent_history_atomically(path: &Path, history: &AgentHistory) -> Resu
             "切换 agent history 快照失败: {error}"
         )));
     }
+    memory::ReaderPrivateStorageGate::sync_parent(path).map_err(|e| agent_history_internal(e.to_string()))?;
     if had_original {
         let _ = std::fs::remove_file(backup);
     }
@@ -1439,6 +1476,12 @@ fn save_agent_history_path(
     let Some(path) = path else {
         return Ok(());
     };
+    // A published JSONL directory is the only source once present. Runtime
+    // event writers replace these snapshot callers in JL3/JL4, before JL7 publishes.
+    if session_store::SessionPaths::from_history(path).root.try_exists()
+        .map_err(|e| agent_history_internal(e.to_string()))? {
+        return Err(user_storage_paths::error("SESSION_EVENT_WRITE_REQUIRED", "conflict", "This session requires the event writer"));
+    }
     validate_agent_history(history)?;
     persist_agent_history_atomically(path, history)
 }
@@ -1454,8 +1497,8 @@ fn commit_agent_history_candidate(
     state: &mut AppState,
     candidate: AgentHistory,
 ) -> Result<(), ToolError> {
-    save_agent_history_path(&state.history_path, &candidate)?;
-    state.agent_history = candidate;
+    save_agent_history_path(&state.user.history_path, &candidate)?;
+    state.user.agent_history = candidate;
     Ok(())
 }
 
@@ -1464,7 +1507,12 @@ pub fn install_agent_compaction_checkpoint(
     session_id: &str,
     checkpoint: CompactionCheckpoint,
 ) -> Result<(), ToolError> {
-    let mut candidate = state.agent_history.clone();
+    if let Some(store) = &mut state.user.session_store {
+        return store.append(&mut state.user.agent_history, session_id,
+            &multi_user_host::now().to_string(), None,
+            session_event::EventBody::CheckpointInstalled { checkpoint });
+    }
+    let mut candidate = state.user.agent_history.clone();
     let session = candidate
         .sessions
         .iter_mut()
@@ -1519,13 +1567,44 @@ fn precommit_agent_turn_with_goal(
     question_anchor_lid: Option<String>,
     question_quote: Option<AskQuote>,
     presentation_follow_up: Option<runtime::presentation::PresentationFollowUp>,
+    teaching_ref: Option<String>,
     requested_goal_id: Option<&str>,
     goal_action: Option<&str>,
     now: &str,
 ) -> Result<AgentTurnRef, ToolError> {
-    let mut candidate = state.agent_history.clone();
-    let session_index = ensure_active_agent_session(&mut candidate, book_id, now);
+    if state.user.session_store.is_some() {
+        let index = selected_agent_session_index(&state.user.agent_history, book_id, state.workspace.selected_chat.as_deref())
+            .ok_or_else(|| agent_history_internal("selected session missing"))?;
+        let mut session = state.user.agent_history.sessions[index].clone();
+        let turn_ref = append_pending_agent_turn(&mut session, user, question_anchor_lid, question_quote,
+            presentation_follow_up, teaching_ref, requested_goal_id, goal_action,
+            state.workspace.publication.as_ref().map(|p| p.reference.clone()), None, now)?;
+        session.turns.last_mut().unwrap().domain.scene = Some(session_event::ReadingScene::capture(&state.workspace));
+        let messages = session.messages.clone();
+        state.user.session_store.as_mut().unwrap().accept(&mut state.user.agent_history, session, now)?;
+        state.workspace.select_chat(turn_ref.session_id.clone(), messages);
+        return Ok(turn_ref);
+    }
+    let mut candidate = state.user.agent_history.clone();
+    let session_index = selected_agent_session_index(&candidate, book_id, state.workspace.selected_chat.as_deref())
+        .unwrap_or_else(|| ensure_active_agent_session(&mut candidate, book_id, now));
     let session = &mut candidate.sessions[session_index];
+    let turn_ref = append_pending_agent_turn(session, user, question_anchor_lid, question_quote,
+        presentation_follow_up, teaching_ref, requested_goal_id, goal_action,
+        state.workspace.publication.as_ref().map(|p| p.reference.clone()), None, now)?;
+    session.turns.last_mut().unwrap().domain.scene = Some(session_event::ReadingScene::capture(&state.workspace));
+    let messages = session.messages.clone();
+    commit_agent_history_candidate(state, candidate)?;
+    state.workspace.select_chat(turn_ref.session_id.clone(), messages);
+    Ok(turn_ref)
+}
+
+fn append_pending_agent_turn(
+    session: &mut AgentChatSession, user: String, question_anchor_lid: Option<String>,
+    question_quote: Option<AskQuote>, presentation_follow_up: Option<runtime::presentation::PresentationFollowUp>,
+    teaching_ref: Option<String>, requested_goal_id: Option<&str>, goal_action: Option<&str>,
+    published_book_ref: Option<published_library::PublishedBookRef>, allocated_turn_id: Option<&str>, now: &str,
+) -> Result<AgentTurnRef, ToolError> {
     let user_turn_ordinal = session
         .turns
         .last()
@@ -1533,7 +1612,8 @@ fn precommit_agent_turn_with_goal(
         .unwrap_or(0)
         .checked_add(1)
         .ok_or_else(|| agent_history_internal("agent turn ordinal overflow"))?;
-    let turn_id = stable_agent_turn_id(&session.id, user_turn_ordinal);
+    let turn_id = allocated_turn_id.map(str::to_owned)
+        .unwrap_or_else(|| stable_agent_turn_id(&session.id, user_turn_ordinal));
     let goal_index = if let Some(id) = requested_goal_id {
         Some(session.goals.iter().position(|goal| goal.id == id)
             .ok_or_else(|| ToolError { error_code: "GOAL_NOT_FOUND".into(), category: "validation".into(), message: "selected Goal is not in this chat".into() })?)
@@ -1583,6 +1663,10 @@ fn precommit_agent_turn_with_goal(
     }
     session.updated_at = now.into();
     session.turns.push(AgentChatTurn {
+        domain: Default::default(),
+        admission_input: None,
+        published_book_ref,
+        teaching_ref,
         goal_ref,
         presentation_follow_up,
         turn_id: turn_id.clone(),
@@ -1602,9 +1686,6 @@ fn precommit_agent_turn_with_goal(
         turn_id,
         user_turn_ordinal,
     };
-    let messages = session.messages.clone();
-    commit_agent_history_candidate(state, candidate)?;
-    state.messages = messages;
     Ok(turn_ref)
 }
 
@@ -1618,11 +1699,24 @@ fn precommit_agent_turn(
     presentation_follow_up: Option<runtime::presentation::PresentationFollowUp>,
     now: &str,
 ) -> Result<AgentTurnRef, ToolError> {
-    precommit_agent_turn_with_goal(state, book_id, user, question_anchor_lid, question_quote, presentation_follow_up, None, None, now)
+    precommit_agent_turn_with_goal(state, book_id, user, question_anchor_lid, question_quote, presentation_follow_up, None, None, None, now)
 }
 
 fn finalize_agent_turn(
     state: &mut AppState,
+    turn_ref: &AgentTurnRef,
+    status: AgentAssistantStatus,
+    outcome: Option<OuterOutcome>,
+    error: Option<AgentTurnError>,
+    run_summary: Option<agent_run::AgentRunSummary>,
+    messages: &[Message],
+    now: &str,
+) -> Result<(), ToolError> {
+    finalize_user_agent_turn(&mut state.user, turn_ref, status, outcome, error, run_summary, messages, now)
+}
+
+fn finalize_user_agent_turn(
+    user: &mut user_runtime::UserRuntime,
     turn_ref: &AgentTurnRef,
     status: AgentAssistantStatus,
     mut outcome: Option<OuterOutcome>,
@@ -1631,7 +1725,9 @@ fn finalize_agent_turn(
     messages: &[Message],
     now: &str,
 ) -> Result<(), ToolError> {
-    let mut candidate = state.agent_history.clone();
+    let mut candidate = if user.session_store.is_some() {
+        AgentHistory { sessions: user.agent_history.sessions.iter().filter(|s| s.id == turn_ref.session_id).cloned().collect(), ..Default::default() }
+    } else { user.agent_history.clone() };
     let session = candidate
         .sessions
         .iter_mut()
@@ -1673,7 +1769,7 @@ fn finalize_agent_turn(
         .unwrap_or_default();
     if let Some(outcome) = &outcome {
         presentation_store::validate_answer_references(
-            state,
+            user,
             &turn_ref.session_id,
             outcome,
             messages,
@@ -1708,7 +1804,12 @@ fn finalize_agent_turn(
         session.compaction_checkpoint = None;
     }
     session.messages = messages.to_vec();
-    commit_agent_history_candidate(state, candidate)
+    if user.session_store.is_some() {
+        return session_runtime::finish(user, turn_ref, session, now);
+    }
+    save_agent_history_path(&user.history_path, &candidate)?;
+    user.agent_history = candidate;
+    Ok(())
 }
 
 fn goal_turn_delivered(goal: &runtime::goal::ResidentGoal, outcome: &OuterOutcome) -> bool {
@@ -1765,11 +1866,11 @@ fn agent_history_review_cursors(history: &AgentHistory) -> Vec<ReviewSessionCurs
 }
 
 fn reconcile_agent_history_review_jobs(state: &mut AppState, now: &str) -> Result<(), ToolError> {
-    if !state.store.private_storage_available() {
+    if !state.user.store.private_storage_available() {
         return Ok(());
     }
-    let cursors = agent_history_review_cursors(&state.agent_history);
-    state.store.reconcile_review_jobs(&cursors, now)?;
+    let cursors = agent_history_review_cursors(&state.user.agent_history);
+    state.user.store.reconcile_review_jobs(&cursors, now)?;
     Ok(())
 }
 
@@ -2270,6 +2371,10 @@ fn turn_view(book: &Book, turn: &AgentChatTurn) -> AgentChatTurnView {
         }
     }
     AgentChatTurnView {
+        domain: turn.domain.clone(),
+        published_book_ref: turn.published_book_ref.clone(),
+        teaching_ref: turn.teaching_ref.clone(),
+        presentation_follow_up: turn.presentation_follow_up.clone(),
         goal_ref: turn.goal_ref.clone(),
         turn_id: turn.turn_id.clone(),
         user_turn_ordinal: turn.user_turn_ordinal,
@@ -2342,22 +2447,38 @@ fn active_agent_session_index(history: &AgentHistory, book_id: &str) -> Option<u
         })
 }
 
+fn selected_agent_session_index(history: &AgentHistory, book_id: &str, selected: Option<&str>) -> Option<usize> {
+    match selected {
+        Some(id) => history.sessions.iter().position(|s| s.book_id == book_id && s.id == id),
+        None => active_agent_session_index(history, book_id),
+    }
+}
+
 fn agent_history_response(
     history: &AgentHistory,
     book: &Book,
+    selected: Option<&str>,
 ) -> Result<AgentHistoryResponse, ToolError> {
     let book_id = book.base.book_id.as_str();
-    let i = active_agent_session_index(history, book_id).ok_or_else(|| {
+    let i = selected_agent_session_index(history, book_id, selected).ok_or_else(|| {
         agent_history_internal(format!(
             "agent history has no session for current book: {book_id}"
         ))
     })?;
     let active_session_id = history.sessions[i].id.clone();
     let current = session_view(&history.sessions[i], book);
+    Ok(AgentHistoryResponse {
+        active_session_id,
+        sessions: agent_session_summaries(history, book),
+        current,
+    })
+}
+
+fn agent_session_summaries(history: &AgentHistory, book: &Book) -> Vec<AgentChatSessionSummary> {
     let mut sessions: Vec<AgentChatSessionSummary> = history
         .sessions
         .iter()
-        .filter(|session| session.book_id == book_id)
+        .filter(|session| session.book_id == book.base.book_id)
         .map(|session| session_summary(session, book))
         .collect();
     sessions.sort_by(|a, b| {
@@ -2366,11 +2487,7 @@ fn agent_history_response(
             .then_with(|| b.created_at.cmp(&a.created_at))
             .then_with(|| b.id.cmp(&a.id))
     });
-    Ok(AgentHistoryResponse {
-        active_session_id,
-        sessions,
-        current,
-    })
+    sessions
 }
 
 /// 一次请求的传输无关输入:方法 + 原始 url(含 query)+ JSON body(GET 为空)+ 时间戳。
@@ -2402,6 +2519,7 @@ struct BookLibraryEntry {
     book_id: String,
     dir: String,
     route: String,
+    cover: Option<book_cover::CoverDescriptor>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq)]
@@ -2551,8 +2669,39 @@ pub(crate) fn reader_only_disallows(path: &str, method: &str) -> bool {
 }
 
 pub fn route(state: &mut AppState, req: Req) -> Reply {
+    let publication = state.workspace.publication.clone();
+    let mut url = req.url.to_string();
+    if let Some(p) = &publication {
+        let prefix = p.reference.url("");
+        let normalized = if url.starts_with("/api/") { url.clone() } else { format!("/api{url}") };
+        if normalized.starts_with("/api/books/") {
+            let Some(leaf) = normalized.strip_prefix(&prefix) else {
+                return err_reply(&user_storage_paths::error("PUBLICATION_UNAVAILABLE", "not_found", "The exact publication is unavailable"));
+            };
+            url = format!("/book/{leaf}");
+        }
+        if url == "/book/build_workbench" && req.method == "GET" {
+            return published_library::bind_reply(ok_json(&json!({"book_id":p.reference.book_id,
+                "readiness":p.manifest.build_readiness,"jobs":[]})), &p.reference);
+        }
+    }
+    let reply = route_inner(state, Req { url: &url, method: req.method, body: req.body, now: req.now });
+    match publication { Some(p) => published_library::bind_reply(reply, &p.reference), None => reply }
+}
+
+fn route_inner(state: &mut AppState, req: Req) -> Reply {
+    if state.workspace.publication.is_some() {
+        let (path, _) = parse_query(req.url);
+        if path.starts_with("/build_workbench/") || path.starts_with("/sidecar_plan/")
+            || matches!(path.as_str(), "/book/create" | "/book/open" | "/book/library" | "/book/build_workbench") {
+            return validation("PUBLICATION_READ_ONLY", "Published materials are immutable");
+        }
+    }
+    if req.url.starts_with("/tutor/") {
+        return tutor_api::dispatch(state, req);
+    }
     let (path, q) = parse_query(req.url);
-    if state.reader_only && reader_only_disallows(&path, req.method) {
+    if (state.services.reader_only || state.workspace.publication.is_some()) && reader_only_disallows(&path, req.method) {
         return Reply {
             status: 403,
             body: json!({
@@ -2570,13 +2719,13 @@ pub fn route(state: &mut AppState, req: Req) -> Reply {
         if req.method != "GET" {
             return method_not_allowed();
         }
-        let active_book = state.book_dir.file_name().and_then(|name| name.to_str())
+        let active_book = state.workspace.book_dir.file_name().and_then(|name| name.to_str())
             != Some("__desktop_bootstrap__");
         return ok_json(&json!({
-            "desktop_host": state.desktop_host,
-            "reader_only": state.reader_only,
+            "desktop_host": state.services.desktop_host,
+            "reader_only": state.services.reader_only,
             "active_book": active_book,
-            "book_dir": active_book.then(|| path_string(&state.book_dir)),
+            "book_dir": active_book.then(|| path_string(&state.workspace.book_dir)),
             "library_root": path_string(&state_library_root(state)),
             "library_root_available": state_library_root(state).is_dir(),
         }));
@@ -2617,13 +2766,13 @@ pub fn route(state: &mut AppState, req: Req) -> Reply {
         if req.method != "POST" {
             return method_not_allowed();
         }
-        return route_sidecar_plan_confirm(&state.book, &state.book_dir, req.body, req.now);
+        return route_sidecar_plan_confirm(&state.workspace.book, &state.workspace.book_dir, req.body, req.now);
     }
     if path == "/build_workbench/sidecar_plan.draft" {
         if req.method != "POST" {
             return method_not_allowed();
         }
-        return route_sidecar_plan_draft(&state.book, &state.book_dir, req.body, req.now);
+        return route_sidecar_plan_draft(&state.workspace.book, &state.workspace.book_dir, req.body, req.now);
     }
     if path == "/build_workbench/input.import" {
         if req.method != "POST" {
@@ -2680,14 +2829,25 @@ pub fn route(state: &mut AppState, req: Req) -> Reply {
         return route_workbench_permission_resolve(state, req.body, req.now);
     }
     // agent.*(S10f):外层 E agent 编排,POST(会话命令)`[ADR-0030]`。
+    if path == "/agent/history/recap" {
+        if req.method != "GET" { return agent_history_method_not_allowed(); }
+        return match session_recap::local(state, &q, req.now) {
+            Ok(recap) => ok_json(&recap), Err(error) => err_reply(&error),
+        };
+    }
     if path == "/agent/history" {
         if req.method != "GET" {
             return agent_history_method_not_allowed();
         }
-        return match agent_history_response(&state.agent_history, &state.book) {
+        return match agent_history_response(&state.user.agent_history, &state.workspace.book, state.workspace.selected_chat.as_deref()) {
             Ok(response) => ok_json(&response),
             Err(error) => err_reply(&error),
         };
+    }
+    if path == "/agent/effect/dispose" {
+        if req.method != "POST" { return agent_method_not_allowed(); }
+        let input: Value = match serde_json::from_str(req.body) { Ok(v) => v, Err(_) => return validation("INVALID_EFFECT_REQUEST", "Invalid effect request") };
+        return match effect_disposition::route(state, &input, req.now) { Ok(value) => ok_json(&value), Err(e) => err_reply(&e) };
     }
     if path == "/agent/goals/cancel" {
         if req.method != "POST" {
@@ -2717,13 +2877,13 @@ pub fn route(state: &mut AppState, req: Req) -> Reply {
         if req.method != "POST" {
             return agent_method_not_allowed();
         }
-        return presentation_api::save_state(state, req.body);
+        return presentation_api::save_state(&state.private_context(), req.body);
     }
     if path == "/agent/presentation.read" || path == "/agent/presentation.observe" {
         if req.method != "POST" {
             return agent_method_not_allowed();
         }
-        return presentation_api::route(state, req.body, path.ends_with(".observe"));
+        return presentation_api::route(&state.private_context(), req.body, path.ends_with(".observe"));
     }
     if path == "/agent/source.open" {
         if req.method != "POST" {
@@ -2771,7 +2931,7 @@ pub fn route(state: &mut AppState, req: Req) -> Reply {
         if req.method != "GET" {
             return method_not_allowed();
         }
-        return route_profile_manifest(&state.book, &q);
+        return route_profile_manifest(&state.workspace.book, &q);
     }
     if path == "/book/build_workbench" {
         if req.method != "GET" {
@@ -2783,7 +2943,7 @@ pub fn route(state: &mut AppState, req: Req) -> Reply {
         if req.method != "GET" {
             return method_not_allowed();
         }
-        route_book(&state.book, &state.book_dir, &state.store, p, &q)
+        route_book(&state.workspace.book, &state.workspace.book_dir, &state.user.store, p, &q)
     } else if path.starts_with("/reader/") || path.starts_with("/memory/") {
         if req.method != "POST" {
             return method_not_allowed();
@@ -2795,6 +2955,9 @@ pub fn route(state: &mut AppState, req: Req) -> Reply {
 }
 
 fn route_open_book(state: &mut AppState, body: &str, now: &str) -> Reply {
+    if state.workspace.publication.is_some() {
+        return validation("PUBLICATION_BINDING_REQUIRED", "Open a publication through the authorized library");
+    }
     let v = match body_value(body) {
         Ok(v) => v,
         Err(r) => return r,
@@ -2810,7 +2973,7 @@ fn route_open_book(state: &mut AppState, body: &str, now: &str) -> Reply {
     }
     // ADR-0106:切书是已读账本的有序边界。失败批次仍留在同一个 Store 中，
     // 不阻断切书，Host 后台 worker 会继续重试。
-    if let Err(error) = state.store.flush_pending_reads() {
+    if let Err(error) = state.user.store.flush_pending_reads() {
         eprintln!(
             "read ledger book-switch flush failed [{}]: {}",
             error.error_code, error.message
@@ -2820,15 +2983,16 @@ fn route_open_book(state: &mut AppState, body: &str, now: &str) -> Reply {
         Ok(book) => book,
         Err(e) => {
             if Path::new(dir).is_dir() {
-                state.book_dir = PathBuf::from(dir);
+                state.workspace.invalidate();
+                state.workspace.book_dir = PathBuf::from(dir);
                 let _ = register_external_workspace(state, Path::new(dir));
-                state.workbench_loaded_revision = None;
+                state.workspace.workbench_loaded_revision = None;
                 let _ = save_session(state, Some(dir));
                 return ok_json(&json!({
                     "ok": true,
                     "book_id": read_book_id_from_base(&Path::new(dir).join("base.json"))
                         .or_else(|| Path::new(dir).file_name().and_then(|s| s.to_str()).map(str::to_string))
-                        .unwrap_or_else(|| state.book.base.book_id.clone()),
+                        .unwrap_or_else(|| state.workspace.book.base.book_id.clone()),
                     "route": "workbench"
                 }));
             }
@@ -2839,29 +3003,35 @@ fn route_open_book(state: &mut AppState, body: &str, now: &str) -> Reply {
             });
         }
     };
-    let saved_top = load_session(&state.session_path)
+    let saved_top = load_session(&state.workspace.session_path)
         .and_then(|session| session.top_lid_for_dir(dir).map(str::to_string));
     let mut reader = Reader::new(&book, DEFAULT_RADIUS);
     if let Some(top) = saved_top {
         reader.restore_top_lid(&book, &top);
     }
-    if let Err(error) = restore_saved_paper_minimap_overlay(&mut reader, &book, &state.session_path)
+    if let Err(error) = restore_saved_paper_minimap_overlay(&mut reader, &book, &state.workspace.session_path)
     {
         return err_reply(&error);
     }
-    let mut history_candidate = state.agent_history.clone();
-    let messages = ensure_agent_history_for_book(&mut history_candidate, &book.base.book_id, now);
-    if let Err(e) = commit_agent_history_candidate(state, history_candidate) {
+    let saved = if let Some(store) = &mut state.user.session_store {
+        store.ensure_book(&mut state.user.agent_history, &book.base.book_id, now)
+    } else {
+        let mut history_candidate = state.user.agent_history.clone();
+        ensure_agent_history_for_book(&mut history_candidate, &book.base.book_id, now);
+        commit_agent_history_candidate(state, history_candidate)
+    };
+    if let Err(e) = saved {
         return err_reply(&e);
     }
-    state.reader = reader;
-    state.book_dir = PathBuf::from(dir);
+    state.workspace.invalidate();
+    state.workspace.reader = reader;
+    state.workspace.book_dir = PathBuf::from(dir);
     let _ = register_external_workspace(state, Path::new(dir));
-    state.book = (book).into();
-    state.workbench_loaded_revision = None;
-    state.messages = messages;
+    state.workspace.book = (book).into();
+    state.workspace.workbench_loaded_revision = None;
+    state.workspace.restore_chat(&mut state.user.agent_history, now);
     let _ = save_session(state, Some(dir));
-    ok_json(&json!({ "ok": true, "book_id": state.book.base.book_id }))
+    ok_json(&json!({ "ok": true, "book_id": state.workspace.book.base.book_id }))
 }
 
 fn route_profile_manifest(book: &Book, q: &HashMap<String, String>) -> Reply {
@@ -2938,9 +3108,9 @@ fn book_library_root(book_dir: &Path) -> PathBuf {
 
 fn state_library_root(state: &AppState) -> PathBuf {
     state
-        .library_root
+        .services.library_root
         .clone()
-        .unwrap_or_else(|| book_library_root(&state.book_dir))
+        .unwrap_or_else(|| book_library_root(&state.workspace.book_dir))
 }
 
 #[derive(Default, Deserialize, Serialize)]
@@ -2961,7 +3131,7 @@ fn read_library_registry(root: &Path) -> LibraryRegistry {
 }
 
 fn register_external_workspace(state: &AppState, workspace: &Path) -> Result<(), String> {
-    let Some(root) = state.library_root.as_deref() else {
+    let Some(root) = state.services.library_root.as_deref() else {
         return Ok(());
     };
     let workspace_path = if workspace.is_absolute() {
@@ -3057,6 +3227,7 @@ fn book_library_entry(path: &Path) -> Option<BookLibraryEntry> {
         name,
         book_id,
         dir: path_string(path),
+        cover: book_cover::local(path),
         route: if base_path.is_file() {
             "reader".into()
         } else {
@@ -4579,7 +4750,7 @@ fn stage_value(stage: &str, status: &str, reason: Option<&str>) -> serde_json::V
     }
 }
 
-const BUILD_WORKBENCH_STAGE_IDS: [&str; 9] = [
+const BUILD_WORKBENCH_STAGE_IDS: [&str; 12] = [
     "source_reconciliation",
     "hybrid_foundation",
     "pass1",
@@ -4589,7 +4760,25 @@ const BUILD_WORKBENCH_STAGE_IDS: [&str; 9] = [
     "pass2",
     "book_structure",
     "paper_reading_guide",
+    "formal_objects",
+    "cognitive_materials",
+    "teaching_publish",
 ];
+
+fn teaching_workbench_stages(book: &Book, book_dir: &Path, stages: &mut serde_json::Map<String, serde_json::Value>) {
+    for (stage, file) in [("formal_objects", "formal_objects.json"), ("cognitive_materials", "cognitive_materials.json")] {
+        let artifact = std::fs::read(book_dir.join(file)).ok().and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok());
+        let status = match artifact {
+            None => "missing",
+            Some(value) if value["source_revision"].as_str() == Some(book.source_fingerprint()) && value["source_id"].as_str() == Some(book.base.book_id.as_str()) => "done",
+            Some(_) => "stale",
+        };
+        stages.insert(stage.into(), stage_value(stage, status, None));
+    }
+    let view: serde_json::Value = serde_json::from_str(&tutor_api::source_readiness(book, book_dir).body).unwrap();
+    let status = match view["status"].as_str() { Some("ready") => "done", Some("stale") => "stale", _ => "missing" };
+    stages.insert("teaching_publish".into(), stage_value("teaching_publish", status, view["reason"].as_str()));
+}
 
 fn value_array_len(value: Option<&serde_json::Value>, key: &str) -> Option<usize> {
     value
@@ -4911,6 +5100,7 @@ fn route_existing_technical_book_workbench(book: &Book, book_dir: &Path) -> Repl
             ),
         );
     }
+    teaching_workbench_stages(book, book_dir, &mut stages);
     ok_json(&json!({
         "version": "build_workbench_snapshot.v1",
         "book_id": workbench_book_id(&book.base.book_id, book_dir, None, None),
@@ -4961,7 +5151,7 @@ fn route_workbench_input_import(state: &mut AppState, body: &str, now: &str) -> 
         .map(str::trim)
         .filter(|s| !s.is_empty())
         .map(PathBuf::from)
-        .unwrap_or_else(|| state.book_dir.clone());
+        .unwrap_or_else(|| state.workspace.book_dir.clone());
     let existing_manifest = match read_workbench_input_manifest(&target_dir) {
         Ok(value) => value,
         Err(e) => return err_reply(&e),
@@ -4987,7 +5177,7 @@ fn route_workbench_input_import(state: &mut AppState, body: &str, now: &str) -> 
                 .and_then(|s| s.to_str())
                 .map(str::to_string)
         })
-        .unwrap_or_else(|| state.book.base.book_id.clone());
+        .unwrap_or_else(|| state.workspace.book.base.book_id.clone());
     let display_title = value
         .get("display_title")
         .and_then(|v| v.as_str())
@@ -5006,7 +5196,7 @@ fn route_workbench_input_import(state: &mut AppState, body: &str, now: &str) -> 
             Ok(value) => value,
             Err(e) => return err_reply(&e),
         };
-    if target_dir != state.book_dir {
+    if target_dir != state.workspace.book_dir {
         if let Err(error) = reconcile_agent_history_review_jobs(state, now) {
             return err_reply(&error);
         }
@@ -5076,10 +5266,10 @@ fn route_workbench_input_import(state: &mut AppState, body: &str, now: &str) -> 
         return err_reply(&e);
     }
 
-    state.book_dir = target_dir;
-    state.workbench_loaded_revision = None;
-    let _ = save_session(state, state.book_dir.to_str());
-    route_build_workbench(&state.book, &state.book_dir)
+    state.workspace.book_dir = target_dir;
+    state.workspace.workbench_loaded_revision = None;
+    let _ = save_session(state, state.workspace.book_dir.to_str());
+    route_build_workbench(&state.workspace.book, &state.workspace.book_dir)
 }
 
 fn current_workbench_job_input(
@@ -5258,14 +5448,14 @@ fn body_executor(value: &serde_json::Value) -> Result<&str, Reply> {
 
 fn route_workbench_job_create(state: &mut AppState, now: &str) -> Reply {
     let (book_id, fingerprint) =
-        match current_workbench_job_input(&state.book_dir, &state.book.base.book_id) {
+        match current_workbench_job_input(&state.workspace.book_dir, &state.workspace.book.base.book_id) {
             Ok(value) => value,
             Err(e) => return err_reply(&e),
         };
-    if let Err(e) = create_or_reuse_build_job(&state.book_dir, &book_id, &fingerprint, now) {
+    if let Err(e) = create_or_reuse_build_job(&state.workspace.book_dir, &book_id, &fingerprint, now) {
         return err_reply(&e);
     }
-    route_build_workbench(&state.book, &state.book_dir)
+    route_build_workbench(&state.workspace.book, &state.workspace.book_dir)
 }
 
 fn route_workbench_job_start(state: &mut AppState, body: &str, now: &str) -> Reply {
@@ -5286,17 +5476,17 @@ fn route_workbench_job_start(state: &mut AppState, body: &str, now: &str) -> Rep
         .and_then(|value| value.as_str())
         .unwrap_or("contract_only");
     let job = if let Some(job_id) = value.get("job_id").and_then(|value| value.as_str()) {
-        match read_build_job_by_id(&state.book_dir, job_id.trim()) {
+        match read_build_job_by_id(&state.workspace.book_dir, job_id.trim()) {
             Ok(job) => job,
             Err(e) => return err_reply(&e),
         }
     } else {
         let (book_id, fingerprint) =
-            match current_workbench_job_input(&state.book_dir, &state.book.base.book_id) {
+            match current_workbench_job_input(&state.workspace.book_dir, &state.workspace.book.base.book_id) {
                 Ok(value) => value,
                 Err(e) => return err_reply(&e),
             };
-        match create_or_reuse_build_job(&state.book_dir, &book_id, &fingerprint, now) {
+        match create_or_reuse_build_job(&state.workspace.book_dir, &book_id, &fingerprint, now) {
             Ok(job) => job,
             Err(e) => return err_reply(&e),
         }
@@ -5337,10 +5527,10 @@ fn route_workbench_job_start(state: &mut AppState, body: &str, now: &str) -> Rep
         None,
     );
     let started = match if adapter_mode == "builtin" {
-        spawn_builtin_stage_runner(&state.book_dir, started, &run_id, stage, now)
+        spawn_builtin_stage_runner(&state.workspace.book_dir, started, &run_id, stage, now)
     } else {
         apply_executor_adapter_skeleton(
-            &state.book_dir,
+            &state.workspace.book_dir,
             started,
             &run_id,
             stage,
@@ -5352,10 +5542,10 @@ fn route_workbench_job_start(state: &mut AppState, body: &str, now: &str) -> Rep
         Ok(job) => job,
         Err(e) => return err_reply(&e),
     };
-    if let Err(e) = write_build_job_atomic(&state.book_dir, &started) {
+    if let Err(e) = write_build_job_atomic(&state.workspace.book_dir, &started) {
         return err_reply(&e);
     }
-    route_build_workbench(&state.book, &state.book_dir)
+    route_build_workbench(&state.workspace.book, &state.workspace.book_dir)
 }
 
 fn route_workbench_job_resume(state: &mut AppState, body: &str, now: &str) -> Reply {
@@ -5367,7 +5557,7 @@ fn route_workbench_job_resume(state: &mut AppState, body: &str, now: &str) -> Re
         Ok(job_id) => job_id,
         Err(reply) => return reply,
     };
-    let mut job = match read_build_job_by_id(&state.book_dir, job_id) {
+    let mut job = match read_build_job_by_id(&state.workspace.book_dir, job_id) {
         Ok(job) => job,
         Err(e) => return err_reply(&e),
     };
@@ -5425,14 +5615,14 @@ fn route_workbench_job_resume(state: &mut AppState, body: &str, now: &str) -> Re
             Some("Interrupted build job restarted from durable stage state"),
             Some(json!({ "previous_run_id": previous_run_id, "run_id": run_id })),
         );
-        let job = match spawn_builtin_stage_runner(&state.book_dir, job, &run_id, &stage, now) {
+        let job = match spawn_builtin_stage_runner(&state.workspace.book_dir, job, &run_id, &stage, now) {
             Ok(job) => job,
             Err(e) => return err_reply(&e),
         };
-        if let Err(e) = write_build_job_atomic(&state.book_dir, &job) {
+        if let Err(e) = write_build_job_atomic(&state.workspace.book_dir, &job) {
             return err_reply(&e);
         }
-        return route_build_workbench(&state.book, &state.book_dir);
+        return route_build_workbench(&state.workspace.book, &state.workspace.book_dir);
     }
     job["status"] = json!("running");
     let stage = job
@@ -5448,10 +5638,10 @@ fn route_workbench_job_resume(state: &mut AppState, body: &str, now: &str) -> Re
         Some("Build job resumed"),
         None,
     );
-    if let Err(e) = write_build_job_atomic(&state.book_dir, &job) {
+    if let Err(e) = write_build_job_atomic(&state.workspace.book_dir, &job) {
         return err_reply(&e);
     }
-    route_build_workbench(&state.book, &state.book_dir)
+    route_build_workbench(&state.workspace.book, &state.workspace.book_dir)
 }
 
 fn route_workbench_job_event_append(state: &mut AppState, body: &str, now: &str) -> Reply {
@@ -5471,15 +5661,15 @@ fn route_workbench_job_event_append(state: &mut AppState, body: &str, now: &str)
     }
     let message = value.get("message").and_then(|value| value.as_str());
     let payload = value.get("payload").cloned();
-    let job = match read_build_job_by_id(&state.book_dir, job_id) {
+    let job = match read_build_job_by_id(&state.workspace.book_dir, job_id) {
         Ok(job) => job,
         Err(e) => return err_reply(&e),
     };
     let job = append_job_event(job, now, "job_event_appended", stage, message, payload);
-    if let Err(e) = write_build_job_atomic(&state.book_dir, &job) {
+    if let Err(e) = write_build_job_atomic(&state.workspace.book_dir, &job) {
         return err_reply(&e);
     }
-    route_build_workbench(&state.book, &state.book_dir)
+    route_build_workbench(&state.workspace.book, &state.workspace.book_dir)
 }
 
 fn route_workbench_decision_resolve(state: &mut AppState, body: &str, now: &str) -> Reply {
@@ -5497,7 +5687,7 @@ fn route_workbench_decision_resolve(state: &mut AppState, body: &str, now: &str)
     let Some(answer) = value.get("answer").and_then(|value| value.as_str()) else {
         return validation("INVALID_BUILD_DECISION", "需 answer 字段");
     };
-    let mut job = match read_build_job_by_id(&state.book_dir, job_id) {
+    let mut job = match read_build_job_by_id(&state.workspace.book_dir, job_id) {
         Ok(job) => job,
         Err(e) => return err_reply(&e),
     };
@@ -5534,10 +5724,10 @@ fn route_workbench_decision_resolve(state: &mut AppState, body: &str, now: &str)
         Some(&format!("Build decision {decision_id} resolved")),
         Some(json!({ "decision_id": decision_id, "answer": answer })),
     );
-    if let Err(e) = write_build_job_atomic(&state.book_dir, &job) {
+    if let Err(e) = write_build_job_atomic(&state.workspace.book_dir, &job) {
         return err_reply(&e);
     }
-    route_build_workbench(&state.book, &state.book_dir)
+    route_build_workbench(&state.workspace.book, &state.workspace.book_dir)
 }
 
 fn route_workbench_source_review_analyze(state: &mut AppState, body: &str) -> Reply {
@@ -5555,7 +5745,7 @@ fn route_workbench_source_review_analyze(state: &mut AppState, body: &str) -> Re
     };
 
     let report = match read_json_artifact_optional(
-        &source_reconciliation_dir(&state.book_dir).join("report.json"),
+        &source_reconciliation_dir(&state.workspace.book_dir).join("report.json"),
         "SOURCE_RECONCILIATION_REPORT_INVALID",
     ) {
         Ok(Some(report)) => report,
@@ -5567,7 +5757,7 @@ fn route_workbench_source_review_analyze(state: &mut AppState, body: &str) -> Re
         }
         Err(e) => return err_reply(&e),
     };
-    let current_fingerprint = match read_workbench_input_manifest(&state.book_dir) {
+    let current_fingerprint = match read_workbench_input_manifest(&state.workspace.book_dir) {
         Ok(manifest) => input_fingerprint_from_manifest(manifest.as_ref()),
         Err(e) => return err_reply(&e),
     };
@@ -5632,7 +5822,7 @@ fn route_workbench_source_review_analyze(state: &mut AppState, body: &str) -> Re
             serde_json::to_string_pretty(&evidence).unwrap_or_else(|_| evidence.to_string())
         ),
     };
-    let model_output = match state.adapter.complete_structured(request) {
+    let model_output = match state.services.adapter.complete_structured(request) {
         Ok(output) => output,
         Err(e) => {
             return err_reply(&source_review_llm_provider_error(
@@ -5680,7 +5870,7 @@ fn route_workbench_source_review_resolve(state: &mut AppState, body: &str, now: 
         .and_then(|value| value.as_str())
         .map(str::trim)
         .filter(|value| !value.is_empty());
-    let report_dir = source_reconciliation_dir(&state.book_dir);
+    let report_dir = source_reconciliation_dir(&state.workspace.book_dir);
     let report_path = report_dir.join("report.json");
     let report =
         match read_json_artifact_optional(&report_path, "SOURCE_RECONCILIATION_REPORT_INVALID") {
@@ -5721,7 +5911,7 @@ fn route_workbench_source_review_resolve(state: &mut AppState, body: &str, now: 
         Ok(Some(value)) => value,
         Ok(None) => json!({
             "version": "source_review_decisions.v1",
-            "book_id": state.book.base.book_id,
+            "book_id": state.workspace.book.base.book_id,
             "stage": "source_reconciliation",
             "input_fingerprint": report.get("input_fingerprint").cloned().unwrap_or_else(|| json!(null)),
             "decisions": [],
@@ -5759,7 +5949,7 @@ fn route_workbench_source_review_resolve(state: &mut AppState, body: &str, now: 
     let ready_for_rerun = source_review_ready_for_rerun(Some(&report), Some(&decisions));
 
     if let Some(job_id) = value.get("job_id").and_then(|value| value.as_str()) {
-        let mut job = match read_build_job_by_id(&state.book_dir, job_id) {
+        let mut job = match read_build_job_by_id(&state.workspace.book_dir, job_id) {
             Ok(job) => job,
             Err(e) => return err_reply(&e),
         };
@@ -5800,12 +5990,12 @@ fn route_workbench_source_review_resolve(state: &mut AppState, body: &str, now: 
                 json!({ "block_id": block_id, "decision": decision, "ready_for_rerun": ready_for_rerun }),
             ),
         );
-        if let Err(e) = write_build_job_atomic(&state.book_dir, &job) {
+        if let Err(e) = write_build_job_atomic(&state.workspace.book_dir, &job) {
             return err_reply(&e);
         }
     }
 
-    route_build_workbench(&state.book, &state.book_dir)
+    route_build_workbench(&state.workspace.book, &state.workspace.book_dir)
 }
 
 fn route_workbench_permission_resolve(state: &mut AppState, body: &str, now: &str) -> Reply {
@@ -5823,7 +6013,7 @@ fn route_workbench_permission_resolve(state: &mut AppState, body: &str, now: &st
     let Some(granted) = value.get("granted").and_then(|value| value.as_bool()) else {
         return validation("INVALID_EXECUTOR_PERMISSION", "需 granted 布尔字段");
     };
-    let mut job = match read_build_job_by_id(&state.book_dir, job_id) {
+    let mut job = match read_build_job_by_id(&state.workspace.book_dir, job_id) {
         Ok(job) => job,
         Err(e) => return err_reply(&e),
     };
@@ -5882,7 +6072,7 @@ fn route_workbench_permission_resolve(state: &mut AppState, body: &str, now: &st
         Some(json!({ "request_id": request_id, "granted": granted })),
     );
     if let Err(e) = append_permission_audit(
-        &state.book_dir,
+        &state.workspace.book_dir,
         json!({
             "job_id": job_id,
             "request_id": request_id,
@@ -5897,10 +6087,10 @@ fn route_workbench_permission_resolve(state: &mut AppState, body: &str, now: &st
     ) {
         return err_reply(&e);
     }
-    if let Err(e) = write_build_job_atomic(&state.book_dir, &job) {
+    if let Err(e) = write_build_job_atomic(&state.workspace.book_dir, &job) {
         return err_reply(&e);
     }
-    route_build_workbench(&state.book, &state.book_dir)
+    route_build_workbench(&state.workspace.book, &state.workspace.book_dir)
 }
 
 fn route_build_workbench(book: &Book, book_dir: &Path) -> Reply {
@@ -6239,6 +6429,7 @@ fn build_workbench_snapshot(book: &Book, book_dir: &Path, maintain_jobs: bool) -
         reasons.push(reason.into());
     }
 
+    teaching_workbench_stages(book, book_dir, &mut stages);
     let route = if source_status == "done" && foundation_status == "done" {
         "reader"
     } else {
@@ -6343,14 +6534,14 @@ fn build_workbench_snapshot(book: &Book, book_dir: &Path, maintain_jobs: bool) -
 }
 
 fn route_build_workbench_state(state: &mut AppState, now: &str) -> Reply {
-    if state.reader_only {
-        return build_workbench_snapshot(&state.book, &state.book_dir, false);
+    if state.services.reader_only {
+        return build_workbench_snapshot(&state.workspace.book, &state.workspace.book_dir, false);
     }
-    if let Err(e) = recover_orphaned_active_runs(&state.book_dir, now) {
+    if let Err(e) = recover_orphaned_active_runs(&state.workspace.book_dir, now) {
         return err_reply(&e);
     }
-    let reply = route_build_workbench(&state.book, &state.book_dir);
-    if reply.status != 200 || !workbench_input_manifest_path(&state.book_dir).is_file() {
+    let reply = route_build_workbench(&state.workspace.book, &state.workspace.book_dir);
+    if reply.status != 200 || !workbench_input_manifest_path(&state.workspace.book_dir).is_file() {
         return reply;
     }
     let snapshot = serde_json::from_str::<serde_json::Value>(&reply.body).ok();
@@ -6392,7 +6583,7 @@ fn route_build_workbench_state(state: &mut AppState, now: &str) -> Reply {
                 .unwrap_or("");
             format!("{job_id}:{updated_at}:{last_event}")
         });
-    let dir = path_string(&state.book_dir);
+    let dir = path_string(&state.workspace.book_dir);
     let loaded = match Book::load(&dir) {
         Ok(book) => book,
         Err(e) => {
@@ -6403,17 +6594,22 @@ fn route_build_workbench_state(state: &mut AppState, now: &str) -> Reply {
             })
         }
     };
-    if loaded.base != state.book.base || revision != state.workbench_loaded_revision {
-        let mut history_candidate = state.agent_history.clone();
-        let messages =
+    if loaded.base != state.workspace.book.base || revision != state.workspace.workbench_loaded_revision {
+        let saved = if let Some(store) = &mut state.user.session_store {
+            store.ensure_book(&mut state.user.agent_history, &loaded.base.book_id, now)
+        } else {
+            let mut history_candidate = state.user.agent_history.clone();
             ensure_agent_history_for_book(&mut history_candidate, &loaded.base.book_id, now);
-        if let Err(e) = commit_agent_history_candidate(state, history_candidate) {
+            commit_agent_history_candidate(state, history_candidate)
+        };
+        if let Err(e) = saved {
             return err_reply(&e);
         }
-        state.reader = Reader::new(&loaded, DEFAULT_RADIUS);
-        state.book = (loaded).into();
-        state.workbench_loaded_revision = revision;
-        state.messages = messages;
+        state.workspace.invalidate();
+        state.workspace.reader = Reader::new(&loaded, DEFAULT_RADIUS);
+        state.workspace.book = (loaded).into();
+        state.workspace.workbench_loaded_revision = revision;
+        state.workspace.restore_chat(&mut state.user.agent_history, now);
         let _ = save_session(state, Some(&dir));
     }
     reply
@@ -7049,6 +7245,22 @@ fn route_original_pdf_file(book_dir: &Path) -> BinaryReply {
     }
 }
 
+pub fn route_workspace_asset_file(workspace: &reader_workspace::ReaderWorkspace, path: &str) -> Option<BinaryReply> {
+    let Some(publication) = &workspace.publication else {
+        return route_book_asset_file(&workspace.book_dir, path);
+    };
+    let prefix = publication.reference.url("");
+    let normalized = if path.starts_with("/api/") { path.to_string() } else { format!("/api{path}") };
+    let leaf = normalized.strip_prefix(&prefix);
+    let result = match leaf {
+        Some("pdf/original") => publication.asset("original.pdf"),
+        Some(leaf) if leaf.starts_with("assets/") => publication.asset(leaf),
+        _ if path.starts_with("/book/assets/") || path == "/book/pdf/original" || (normalized.starts_with("/api/books/") && (normalized.contains("/assets/") || normalized.ends_with("/pdf/original"))) => Err(user_storage_paths::error("PUBLICATION_BINDING_REQUIRED", "not_found", "An exact publication resource is required")),
+        _ => return None,
+    };
+    Some(result.unwrap_or_else(|e| BinaryReply { status: status_for(&e.category), content_type: "application/json".into(), body: to_body(&e).into_bytes() }))
+}
+
 pub fn route_book_asset_file(book_dir: &Path, path: &str) -> Option<BinaryReply> {
     if path == "/book/pdf/original" {
         return Some(route_original_pdf_file(book_dir));
@@ -7135,7 +7347,8 @@ fn parse_optional_selection_context(value: &Value) -> Result<Option<SelectionCon
 }
 
 fn save_user_note(
-    state: &mut AppState,
+    user: &mut user_runtime::UserRuntime,
+    workspace: &reader_workspace::ReaderWorkspace,
     value: &Value,
     now: &str,
 ) -> Result<NoteSaveOutcome, ToolError> {
@@ -7181,11 +7394,11 @@ fn save_user_note(
         ));
     }
     if let Some(placement) = &note_placement {
-        validate_note_body_placement(&state.book, &state.book_dir, placement)?;
+        validate_note_body_placement(&workspace.book, &workspace.book_dir, placement)?;
     }
     if let Some(context) = &selection_context {
         for range in &context.ranges {
-            state.book.text(&range.lid, None)?;
+            workspace.book.text(&range.lid, None)?;
         }
     }
     let anchor_lid = note_placement
@@ -7204,12 +7417,12 @@ fn save_user_note(
         .and_then(Value::as_str)
         .filter(|value| !value.trim().is_empty())
         .map(str::to_string);
-    let mut outcome = state.store.save_note(
+    let mut outcome = user.store.save_note(
         SaveInput {
             mem_id: None,
             mem_type: "note".into(),
             layer: "long_term".into(),
-            book_id: state.book.base.book_id.clone(),
+            book_id: workspace.book.base.book_id.clone(),
             anchor: Anchor {
                 lid: anchor_lid,
                 concept: None,
@@ -7224,7 +7437,7 @@ fn save_user_note(
         now,
     )?;
     if outcome.status == NoteSaveStatus::Existing && outcome.record.layer == "session" {
-        outcome.record = state.store.promote(PromoteInput {
+        outcome.record = user.store.promote(PromoteInput {
             mem_id: outcome.record.mem_id,
             from_layer: "session".into(),
             to_layer: "long_term".into(),
@@ -7234,13 +7447,13 @@ fn save_user_note(
 }
 
 fn route_user_note_save(state: &mut AppState, value: &Value, now: &str) -> Reply {
-    match save_user_note(state, value, now) {
+    match save_user_note(&mut state.user, &state.workspace, value, now) {
         Ok(outcome) => ok_json(&outcome),
         Err(error) => err_reply(&error),
     }
 }
 
-fn route_note_reanchor(state: &mut AppState, value: &Value) -> Reply {
+fn route_note_reanchor(user: &mut user_runtime::UserRuntime, workspace: &reader_workspace::ReaderWorkspace, value: &Value) -> Reply {
     let Some(mem_id) = value.get("mem_id").and_then(Value::as_str) else {
         return validation("INVALID_NOTE_PLACEMENT", "memory.reanchor requires mem_id");
     };
@@ -7260,13 +7473,12 @@ fn route_note_reanchor(state: &mut AppState, value: &Value) -> Reply {
         }
         Err(error) => return err_reply(&error),
     };
-    if let Some(record) = state
-        .store
+    if let Some(record) = user.store
         .recall(&RecallQuery::default())
         .into_iter()
         .find(|record| record.mem_id == mem_id)
     {
-        if record.book_id != state.book.base.book_id {
+        if record.book_id != workspace.book.base.book_id {
             return validation(
                 "INVALID_NOTE_PLACEMENT",
                 "memory.reanchor target belongs to another book",
@@ -7279,10 +7491,10 @@ fn route_note_reanchor(state: &mut AppState, value: &Value) -> Reply {
             );
         }
     }
-    if let Err(error) = validate_note_body_placement(&state.book, &state.book_dir, &placement) {
+    if let Err(error) = validate_note_body_placement(&workspace.book, &workspace.book_dir, &placement) {
         return err_reply(&error);
     }
-    match state.store.reanchor(ReanchorInput {
+    match user.store.reanchor(ReanchorInput {
         mem_id: mem_id.into(),
         note_placement: placement,
     }) {
@@ -7309,7 +7521,7 @@ fn route_memory_promote(state: &mut AppState, value: &Value) -> Reply {
             "memory.promote only supports session to long_term",
         );
     }
-    match state.store.promote(PromoteInput {
+    match state.user.store.promote(PromoteInput {
         mem_id: mem_id.into(),
         from_layer: from_layer.into(),
         to_layer: to_layer.into(),
@@ -7329,7 +7541,7 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
         return route_user_note_save(state, &v, now);
     }
     if path == "/memory/reanchor" {
-        return route_note_reanchor(state, &v);
+        return route_note_reanchor(&mut state.user, &state.workspace, &v);
     }
     if path == "/memory/promote" {
         return route_memory_promote(state, &v);
@@ -7337,8 +7549,8 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
     match path {
         "/reader/paper_minimap.localize" => route_paper_minimap_localize(state),
         "/reader/paper_minimap.state" => {
-            let base = state.book.paper_minimap();
-            let minimap_state = state.reader.paper_minimap_state();
+            let base = state.workspace.book.paper_minimap();
+            let minimap_state = state.workspace.reader.paper_minimap_state();
             let focus_region_id = minimap_state
                 .map_focus
                 .as_ref()
@@ -7367,18 +7579,17 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
                 );
             };
             if let Some(effect_id) = sget("undo_effect_id") {
-                if let Some(path) = paper_minimap_overlay_path(&state.session_path) {
+                if let Some(path) = paper_minimap_overlay_path(&state.workspace.session_path) {
                     if let Err(error) = load_paper_minimap_overlay_store(&path) {
                         return err_reply(&error);
                     }
                 }
-                match state
-                    .reader
+                match state.workspace.reader
                     .undo_paper_minimap_effect_by_id(effect_id, base_state_rev, now)
                 {
                     Ok(effect) => {
                         if effect.before.saved_user_overlay != effect.after.saved_user_overlay {
-                            if let Some(path) = paper_minimap_overlay_path(&state.session_path) {
+                            if let Some(path) = paper_minimap_overlay_path(&state.workspace.session_path) {
                                 if let Err(error) = save_saved_paper_minimap_overlay(
                                     &path,
                                     &effect.after.saved_user_overlay,
@@ -7398,7 +7609,7 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
                         "dismissed minimap proposal requires base_map_rev",
                     );
                 };
-                match state.reader.dismiss_paper_minimap_proposal(
+                match state.workspace.reader.dismiss_paper_minimap_proposal(
                     proposal_id,
                     base_map_rev,
                     base_state_rev,
@@ -7413,13 +7624,13 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
                         "confirmed minimap proposal requires base_map_rev",
                     );
                 };
-                if let Some(path) = paper_minimap_overlay_path(&state.session_path) {
+                if let Some(path) = paper_minimap_overlay_path(&state.workspace.session_path) {
                     if let Err(error) = load_paper_minimap_overlay_store(&path) {
                         return err_reply(&error);
                     }
                 }
-                match state.reader.apply_paper_minimap_proposal(
-                    &state.book,
+                match state.workspace.reader.apply_paper_minimap_proposal(
+                    &state.workspace.book,
                     proposal_id,
                     base_map_rev,
                     base_state_rev,
@@ -7427,7 +7638,7 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
                 ) {
                     Ok(effect) => {
                         if effect.before.saved_user_overlay != effect.after.saved_user_overlay {
-                            if let Some(path) = paper_minimap_overlay_path(&state.session_path) {
+                            if let Some(path) = paper_minimap_overlay_path(&state.workspace.session_path) {
                                 if let Err(error) = save_saved_paper_minimap_overlay(
                                     &path,
                                     &effect.after.saved_user_overlay,
@@ -7480,8 +7691,8 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
                     },
                     None => Vec::new(),
                 };
-                match state.reader.apply_paper_minimap_commands(
-                    &state.book,
+                match state.workspace.reader.apply_paper_minimap_commands(
+                    &state.workspace.book,
                     base_state_rev,
                     actor,
                     commands,
@@ -7500,9 +7711,8 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
                 return validation("INVALID_RANGE", "reader.goto 需 lid");
             };
             // 字段级不相交借用:reader(mut) + book(shared) + store(mut,记账)。
-            match state
-                .reader
-                .goto_lid(&state.book, &mut state.store, lid, now)
+            match state.workspace.reader
+                .goto_lid(&state.workspace.book, &mut state.user.store, lid, now)
             {
                 Ok(e) => {
                     let _ = save_session(state, None);
@@ -7516,9 +7726,8 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
                 return validation("INVALID_RANGE", "reader.scroll 需 delta(整数)");
             };
             // scroll 只登记异步已读队列 `[ADR-0038/0106]`;响应不等待账本落盘。
-            match state
-                .reader
-                .scroll(&state.book, &mut state.store, delta, now)
+            match state.workspace.reader
+                .scroll(&state.workspace.book, &mut state.user.store, delta, now)
             {
                 Ok(e) => {
                     let _ = save_session(state, None);
@@ -7542,9 +7751,9 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
                 .and_then(|x| x.as_str())
                 .filter(|s| !s.trim().is_empty())
                 .map(|s| s.to_string());
-            match state.reader.highlight(
-                &state.book,
-                &mut state.store,
+            match state.workspace.reader.highlight(
+                &state.workspace.book,
+                &mut state.user.store,
                 lid,
                 range,
                 source_session_id,
@@ -7559,25 +7768,24 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
             let (Some(lid), Some(text)) = (sget("lid"), sget("text")) else {
                 return validation("INVALID_RANGE", "reader.note 需 lid + text");
             };
-            let current_fingerprint = match current_note_source_fingerprint(&state.book_dir) {
+            let current_fingerprint = match current_note_source_fingerprint(&state.workspace.book_dir) {
                 Ok(fingerprint) => fingerprint,
                 Err(error) => return err_reply(&error),
             };
-            if current_fingerprint != state.book.source_fingerprint() {
+            if current_fingerprint != state.workspace.book.source_fingerprint() {
                 return err_reply(&stale_note_source(
-                    state.book.source_fingerprint(),
+                    state.workspace.book.source_fingerprint(),
                     &current_fingerprint,
                 ));
             }
-            match state
-                .reader
-                .note(&state.book, &mut state.store, lid, text, "long_term", now)
+            match state.workspace.reader
+                .note(&state.workspace.book, &mut state.user.store, lid, text, "long_term", now)
             {
                 Ok(e) => ok_json(&e),
                 Err(e) => err_reply(&e),
             }
         }
-        "/reader/state" => ok_json(&reader_state_response(&state.book, &state.reader)),
+        "/reader/state" => ok_json(&reader_state_response(&state.workspace.book, &state.workspace.reader)),
         "/reader/layout.apply" => {
             if let Some(proposal_id) = sget("proposal_id") {
                 let Some(base_layout_rev) = v.get("base_layout_rev").and_then(|x| x.as_u64())
@@ -7587,9 +7795,8 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
                         "reader.layout.apply proposal 需 base_layout_rev",
                     );
                 };
-                match state
-                    .reader
-                    .apply_layout_proposal(&state.book, proposal_id, base_layout_rev)
+                match state.workspace.reader
+                    .apply_layout_proposal(&state.workspace.book, proposal_id, base_layout_rev)
                 {
                     Ok(effect) => ok_json(&json!({ "kind": "effect", "effect": effect })),
                     Err(e) => err_reply(&e),
@@ -7612,16 +7819,16 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
                         );
                     }
                 };
-                match state.reader.apply_layout_actions(&state.book, actions) {
+                match state.workspace.reader.apply_layout_actions(&state.workspace.book, actions) {
                     Ok(outcome) => ok_json(&outcome),
                     Err(e) => err_reply(&e),
                 }
             }
         }
         "/reader/pdf_selection.resolve" => {
-            route_pdf_selection_resolve(&state.book, &state.book_dir, &v)
+            route_pdf_selection_resolve(&state.workspace.book, &state.workspace.book_dir, &v)
         }
-        "/reader/pdf_ranges.project" => route_pdf_ranges_project(&state.book, &state.book_dir, &v),
+        "/reader/pdf_ranges.project" => route_pdf_ranges_project(&state.workspace.book, &state.workspace.book_dir, &v),
         "/memory/save" => {
             let (Some(ty), Some(anchor), Some(content)) =
                 (sget("type"), sget("anchor_lid"), sget("content"))
@@ -7653,7 +7860,7 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
                 mem_id: None,
                 mem_type: ty.into(),
                 layer: layer.into(),
-                book_id: state.book.base.book_id.clone(),
+                book_id: state.workspace.book.base.book_id.clone(),
                 anchor: Anchor {
                     lid: Some(anchor.into()),
                     concept: None,
@@ -7665,7 +7872,7 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
                 citations: None,
                 source_session_id: None,
             };
-            match state.store.save(input, now) {
+            match state.user.store.save(input, now) {
                 Ok(r) => ok_json(&r),
                 Err(e) => err_reply(&e),
             }
@@ -7679,7 +7886,7 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
                 layer: sget("layer").map(String::from),
                 text: sget("text").map(String::from),
             };
-            ok_json(&state.store.recall(&q))
+            ok_json(&state.user.store.recall(&q))
         }
         "/memory/replace" => {
             let (Some(mem_id), Some(content)) = (sget("mem_id"), sget("content")) else {
@@ -7700,7 +7907,7 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
                     }
                 },
             };
-            match state.store.replace(
+            match state.user.store.replace(
                 ReplaceInput {
                     mem_id: mem_id.into(),
                     content: content.into(),
@@ -7717,7 +7924,7 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
             let Some(mem_id) = sget("mem_id") else {
                 return validation("INVALID_RANGE", "memory.delete 需 mem_id");
             };
-            match state.store.delete(mem_id) {
+            match state.user.store.delete(mem_id) {
                 Ok(()) => ok_json(&json!({ "ok": true })),
                 Err(e) => err_reply(&e),
             }
@@ -9742,7 +9949,7 @@ fn route_query(state: &mut AppState, body: &str) -> Reply {
         Ok(request) => request,
         Err(outcome) => return ok_json(&outcome),
     };
-    match runtime::query(&state.book, &request, state.adapter.as_ref()) {
+    match runtime::query(&state.workspace.book, &request, state.services.adapter.as_ref()) {
         Ok(resp) => ok_json(&resp),
         Err(e) => err_reply(&e),
     }
@@ -9764,10 +9971,10 @@ fn route_synthesize(state: &mut AppState, body: &str) -> Reply {
         Err(error) => return validation(error.code, &error.message),
     };
     match synthesize(
-        &state.book,
+        &state.workspace.book,
         &input.lids,
         input.task.as_deref(),
-        state.adapter.as_ref(),
+        state.services.adapter.as_ref(),
     ) {
         Ok(resp) => ok_json(&resp),
         Err(e) => err_reply(&e),
@@ -11102,7 +11309,12 @@ fn profile_governance_applied_reply(outcome: ProfileGovernanceOutcome) -> Reply 
 }
 
 fn route_profile_memory_apply(state: &mut AppState, body: &str, now: &str) -> Reply {
-    if let Err(error) = state.store.ensure_storage_available() {
+    user_profile_memory_apply(&mut state.user, &mut state.workspace, body, now)
+}
+
+fn user_profile_memory_apply(user: &mut user_runtime::UserRuntime, workspace: &mut reader_workspace::ReaderWorkspace, body: &str, now: &str) -> Reply {
+    user.agent_history.expire_confirmations(std::time::Instant::now());
+    if let Err(error) = user.store.ensure_storage_available() {
         return err_reply(&error);
     }
     let request = match serde_json::from_str::<ProfileGovernanceMutationRequest>(body) {
@@ -11114,23 +11326,22 @@ fn route_profile_memory_apply(state: &mut AppState, body: &str, now: &str) -> Re
             );
         }
     };
-    let book_id = state.book.base.book_id.clone();
-    let content_profile = current_content_profile(&state.book);
+    let book_id = workspace.book.base.book_id.clone();
+    let content_profile = current_content_profile(&workspace.book);
     let (mutation, privacy) =
-        match prepare_profile_governance_mutation(request, &state.store, &book_id, content_profile)
+        match prepare_profile_governance_mutation(request, &user.store, &book_id, content_profile)
         {
             Ok(prepared) => prepared,
             Err(error) => return err_reply(&error),
         };
     if privacy == ProfilePrivacyClass::Sensitive {
-        match state
-            .store
+        match user.store
             .apply_profile_governance_mutation(mutation.clone(), now)
         {
             Ok(outcome) => return profile_governance_applied_reply(outcome),
             Err(error) if error.error_code == "SENSITIVE_CONFIRMATION_REQUIRED" => {}
             Err(error) if error.error_code == "PROFILE_OPERATION_ID_CONFLICT" => {
-                match state.store.apply_profile_governance_mutation(
+                match user.store.apply_profile_governance_mutation(
                     acknowledge_sensitive_governance_mutation(mutation.clone()),
                     now,
                 ) {
@@ -11140,15 +11351,17 @@ fn route_profile_memory_apply(state: &mut AppState, body: &str, now: &str) -> Re
             }
             Err(error) => return err_reply(&error),
         }
-        let session_index = ensure_active_agent_session(&mut state.agent_history, &book_id, now);
-        let session_id = state.agent_history.sessions[session_index].id.clone();
-        if state
-            .agent_history
+        let session_index = selected_agent_session_index(&user.agent_history, &book_id, workspace.selected_chat.as_deref())
+            .unwrap_or_else(|| ensure_active_agent_session(&mut user.agent_history, &book_id, now));
+        let session_id = user.agent_history.sessions[session_index].id.clone();
+        if workspace.selected_chat.as_deref() != Some(&session_id) {
+            workspace.select_chat(session_id.clone(), user.agent_history.sessions[session_index].messages.clone());
+        }
+        if user.agent_history
             .pending_governance_mutations
             .get(&session_id)
             .is_some_and(|pending| pending != &mutation)
-            || state
-                .agent_history
+            || user.agent_history
                 .pending_memory_ops
                 .contains_key(&session_id)
         {
@@ -11158,45 +11371,44 @@ fn route_profile_memory_apply(state: &mut AppState, body: &str, now: &str) -> Re
                 message: "another sensitive profile operation is awaiting confirmation".into(),
             });
         }
-        state.agent_history.pending_memory_ops.remove(&session_id);
-        state
-            .agent_history
+        user.agent_history.pending_memory_ops.remove(&session_id);
+        user.agent_history
             .pending_governance_mutations
-            .insert(session_id, mutation);
+            .insert(session_id.clone(), mutation);
+        user.agent_history.arm_confirmation(&session_id);
         return ok_json(&ProfileGovernanceResponseView::NeedsSensitiveConfirmation {
             warning: "This sensitive profile value will be stored as local plaintext. Send an exact confirmation as your next message to save it.".into(),
         });
     }
-    match state.store.apply_profile_governance_mutation(mutation, now) {
+    match user.store.apply_profile_governance_mutation(mutation, now) {
         Ok(outcome) => profile_governance_applied_reply(outcome),
         Err(error) => err_reply(&error),
     }
 }
 
 fn route_profile_memory_state(state: &mut AppState, now: &str) -> Reply {
-    let book_id = state.book.base.book_id.clone();
-    let content_profile = current_content_profile(&state.book);
-    let request = profile_snapshot_request(state, &book_id, content_profile, now);
-    let snapshot = state
-        .profile_context_cache
-        .snapshot(&state.store, &request)
+    user_profile_memory_state(&mut state.user, &state.workspace, now)
+}
+
+fn user_profile_memory_state(user: &mut user_runtime::UserRuntime, workspace: &reader_workspace::ReaderWorkspace, now: &str) -> Reply {
+    user.agent_history.expire_confirmations(std::time::Instant::now());
+    let book_id = workspace.book.base.book_id.clone();
+    let content_profile = current_content_profile(&workspace.book);
+    let request = user_profile_snapshot_request(user, &workspace.book, &book_id, content_profile, now);
+    let snapshot = user.profile_context_cache
+        .snapshot(&user.store, &request)
         .clone();
-    let pending_sensitive_confirmation = state
-        .agent_history
-        .active_by_book
-        .get(&book_id)
+    let pending_sensitive_confirmation = workspace.selected_chat.as_ref()
         .is_some_and(|session_id| {
-            state
-                .agent_history
+            user.agent_history
                 .pending_memory_ops
                 .contains_key(session_id)
-                || state
-                    .agent_history
+                || user.agent_history
                     .pending_governance_mutations
                     .contains_key(session_id)
         });
     ok_json(&runtime::profile_api::build_profile_memory_state(
-        &state.store,
+        &user.store,
         &snapshot,
         &book_id,
         pending_sensitive_confirmation,
@@ -11204,9 +11416,9 @@ fn route_profile_memory_state(state: &mut AppState, now: &str) -> Reply {
 }
 
 fn profile_backfill_state(state: &AppState) -> HistoricalBackfillStateView {
-    let current_book_id = &state.book.base.book_id;
+    let current_book_id = &state.workspace.book.base.book_id;
     let mut sessions: Vec<_> = state
-        .agent_history
+        .user.agent_history
         .sessions
         .iter()
         .filter(|session| &session.book_id == current_book_id)
@@ -11231,7 +11443,7 @@ fn profile_backfill_state(state: &AppState) -> HistoricalBackfillStateView {
             .then_with(|| right.session_id.cmp(&left.session_id))
     });
     let mut jobs: Vec<_> = state
-        .store
+        .user.store
         .historical_backfill_jobs()
         .iter()
         .filter(|job| &job.book_id == current_book_id)
@@ -11267,8 +11479,8 @@ fn route_profile_backfill_action(
                     );
                 }
             };
-            let Some(session) = state.agent_history.sessions.iter().find(|session| {
-                session.id == request.session_id && session.book_id == state.book.base.book_id
+            let Some(session) = state.user.agent_history.sessions.iter().find(|session| {
+                session.id == request.session_id && session.book_id == state.workspace.book.base.book_id
             }) else {
                 return err_reply(&ToolError {
                     error_code: "HISTORICAL_BACKFILL_SESSION_NOT_FOUND".into(),
@@ -11289,7 +11501,7 @@ fn route_profile_backfill_action(
                     "historical backfill range must stay within the selected resident session",
                 );
             }
-            state.store.start_historical_backfill_job(
+            state.user.store.start_historical_backfill_job(
                 HistoricalBackfillRange {
                     session_id: session.id.clone(),
                     book_id: session.book_id.clone(),
@@ -11311,14 +11523,14 @@ fn route_profile_backfill_action(
             };
             match action {
                 "cancel" => state
-                    .store
+                    .user.store
                     .cancel_historical_backfill_job(&request.job_id, now),
                 "retry" => state
-                    .store
+                    .user.store
                     .retry_historical_backfill_job(&request.job_id, now),
                 "clear" => {
                     return match state
-                        .store
+                        .user.store
                         .clear_historical_backfill_job(&request.job_id, now)
                     {
                         Ok(_) => ok_json(&profile_backfill_state(state)),
@@ -11353,26 +11565,34 @@ fn parse_agent_source_request(body: &str) -> Result<AgentSourceRequest, Reply> {
     Ok(request)
 }
 
-fn agent_source_binding(
-    state: &AppState,
+fn agent_source_binding(state: &AppState, request: &AgentSourceRequest) -> Result<SourceBinding, ToolError> {
+    workspace_source_binding(&state.user, &state.workspace, request)
+}
+
+fn workspace_source_binding(
+    user: &user_runtime::UserRuntime, workspace: &reader_workspace::ReaderWorkspace,
     request: &AgentSourceRequest,
 ) -> Result<SourceBinding, ToolError> {
-    if let Some(stream) = state.active_agent_stream.as_ref().and_then(|s| s.upgrade()) {
+    if let Some(stream) = workspace.active_agent_stream.as_ref().and_then(|s| s.upgrade()) {
         if let Some(binding) = stream.source_binding(
-            &state.book.base.book_id,
+            &workspace.book.base.book_id,
             &request.turn_id,
             &request.source_ref_id,
         ) {
             return Ok(binding);
         }
     }
-    let turn = state
-        .agent_history
+    let turn = user.agent_history
         .sessions
         .iter()
-        .filter(|session| session.book_id == state.book.base.book_id)
+        .filter(|session| session.book_id == workspace.book.base.book_id)
         .flat_map(|session| session.turns.iter())
         .find(|turn| turn.turn_id == request.turn_id);
+    if let Some(turn) = turn {
+        if turn.published_book_ref.as_ref() != workspace.publication.as_ref().map(|p| &p.reference) {
+            return Err(user_storage_paths::error("PUBLICATION_BINDING_REQUIRED", "not_found", "Open the original publication to read this source; no replacement is selected"));
+        }
+    }
     let binding = turn.and_then(|turn| {
         turn.source_bindings
             .iter()
@@ -11380,7 +11600,7 @@ fn agent_source_binding(
             .cloned()
             .or_else(|| {
                 turn.outcome.as_ref().and_then(|outcome| {
-                    legacy_answer_projection(&turn.turn_id, outcome, &state.book).and_then(
+                    legacy_answer_projection(&turn.turn_id, outcome, &workspace.book).and_then(
                         |projection| {
                             projection
                                 .bindings
@@ -11393,7 +11613,7 @@ fn agent_source_binding(
     });
     binding
         .or_else(|| {
-            presentation_api::source_binding(state, &request.turn_id, &request.source_ref_id)
+            presentation_api::source_binding(&PrivateBookContext { user, book: &workspace.book, book_dir: &workspace.book_dir, messages: &workspace.messages, selected_chat: workspace.selected_chat.as_deref() }, &request.turn_id, &request.source_ref_id)
         })
         .ok_or_else(|| ToolError {
             error_code: "SOURCE_REF_NOT_FOUND".into(),
@@ -11411,7 +11631,7 @@ fn route_agent_source_resolve(state: &AppState, body: &str) -> Reply {
         Ok(binding) => binding,
         Err(error) => return err_reply(&error),
     };
-    match state.book.resolve_source(
+    match state.workspace.book.resolve_source(
         &binding.evidence_range,
         "zh-CN",
         Some(&binding.evidence_text_digest),
@@ -11424,6 +11644,8 @@ fn route_agent_source_resolve(state: &AppState, body: &str) -> Reply {
             context_after: source.context_after,
             stale: false,
             can_open_in_reader: true,
+            excerpt: Some(source.excerpt),
+            heading_path: source.heading_path,
         }),
         Err(_) => ok_json(&SourcePopupView {
             source_ref_id: binding.source_ref_id,
@@ -11433,6 +11655,8 @@ fn route_agent_source_resolve(state: &AppState, body: &str) -> Reply {
             context_after: String::new(),
             stale: true,
             can_open_in_reader: false,
+            excerpt: None,
+            heading_path: vec![],
         }),
     }
 }
@@ -11446,8 +11670,7 @@ fn route_agent_source_open(state: &mut AppState, body: &str, now: &str) -> Reply
         Ok(binding) => binding,
         Err(error) => return err_reply(&error),
     };
-    if state
-        .book
+    if state.workspace.book
         .resolve_source(
             &binding.evidence_range,
             "zh-CN",
@@ -11461,9 +11684,9 @@ fn route_agent_source_open(state: &mut AppState, body: &str, now: &str) -> Reply
             message: "source text changed; reader navigation is disabled".into(),
         });
     }
-    if let Err(error) = state.reader.goto_lid(
-        &state.book,
-        &mut state.store,
+    if let Err(error) = state.workspace.reader.goto_lid(
+        &state.workspace.book,
+        &mut state.user.store,
         &binding.evidence_range.start_lid,
         now,
     ) {
@@ -11480,11 +11703,13 @@ fn route_agent_source_open(state: &mut AppState, body: &str, now: &str) -> Reply
 /// `book/store/reader/messages/adapter`(与前端共享视口、跨回合 messages)。body `{message}` →
 /// `OuterOutcome{answer, incomplete, effects, trace, ...}`;agent 动作即时驱动共享 reader 视口,
 /// effects 供前端可撤销提议、trace 供查询踪迹展示。provider 错经 run 映射 `PROVIDER_ERROR` 透传不降级。
-fn prepare_agent_chat(
-    state: &mut AppState,
-    body: &str,
-    now: &str,
-) -> Result<agent_run::PreparedAgentChat, Reply> {
+struct ValidatedAgentInput {
+    request: Value, message: String, display_user: String, question_anchor_lid: Option<String>,
+    question_quote: Option<AskQuote>, presentation_follow_up: Option<runtime::presentation::PresentationFollowUp>,
+    agent_message: String, presentation_context: Option<String>,
+}
+fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader_workspace::ReaderWorkspace, body: &str) -> Result<ValidatedAgentInput, Reply> {
+    user.agent_history.expire_confirmations(std::time::Instant::now());
     let v = match body_value(body) {
         Ok(v) => v,
         Err(reply) => return Err(reply),
@@ -11504,7 +11729,7 @@ fn prepare_agent_chat(
         .get("question_anchor_lid")
         .and_then(|x| x.as_str())
         .map(str::to_string);
-    let question_quote = match parse_question_quote(&v, &state.book) {
+    let question_quote = match parse_question_quote(&v, &workspace.book) {
         Ok(q) => q,
         Err(reply) => return Err(reply),
     };
@@ -11518,31 +11743,31 @@ fn prepare_agent_chat(
             "question_anchor_lid 必须等于 question_quote lid",
         ));
     }
-    let initial_evidence = verified_question_evidence(&state.book, question_quote.as_ref());
     let memory_intent = scan_memory_intent(msg);
+    if is_sensitive_memory_confirmation(msg) && workspace.selected_chat.as_deref()
+        .and_then(|id| user.agent_history.confirmation_id(id)).is_none() {
+        return Err(err_reply(&pending_confirmation::required()));
+    }
     if memory_intent.is_some() && classify_profile_privacy(msg) == ProfilePrivacyClass::Secret {
-        if let Some(session_id) = state
-            .agent_history
-            .active_by_book
-            .get(&state.book.base.book_id)
+        if let Some(session_id) = workspace.selected_chat.as_ref()
             .cloned()
         {
-            state.agent_history.pending_memory_ops.remove(&session_id);
-            state
+            user.agent_history.pending_memory_ops.remove(&session_id);
+            user
                 .agent_history
                 .pending_governance_mutations
                 .remove(&session_id);
         }
         return Err(ok_json(&rejected_memory_outcome(
-            state.store.projection_revision(),
+            user.store.projection_revision(),
             "SECRET_PROFILE_REJECTED",
             "credentials and other secrets are never stored in profile memory",
         )));
     }
     if memory_intent.is_some() {
-        if let Err(error) = state.store.ensure_storage_available() {
+        if let Err(error) = user.store.ensure_storage_available() {
             return Err(ok_json(&rejected_memory_outcome(
-                state.store.projection_revision(),
+                user.store.projection_revision(),
                 &error.error_code,
                 &error.message,
             )));
@@ -11560,11 +11785,8 @@ fn prepare_agent_chat(
         return Err(validation("GOAL_ACTION_INVALID", "goal_action must be cancel or replace"));
     }
     let mut agent_message = agent_question_with_provenance(msg, question_quote.as_ref());
-    if let Some(session) = state
-        .agent_history
-        .active_by_book
-        .get(&state.book.base.book_id)
-        .and_then(|id| state.agent_history.sessions.iter().find(|s| &s.id == id))
+    if let Some(session) = workspace.selected_chat.as_ref()
+        .and_then(|id| user.agent_history.sessions.iter().find(|s| &s.id == id))
     {
         let recent: Vec<_> = session.turns.iter().rev().filter_map(|turn| turn.outcome.as_ref()
             .and_then(|o| o.answer_view.as_ref()).map(|view| (turn, view)))
@@ -11576,20 +11798,34 @@ fn prepare_agent_chat(
             agent_message.push_str(&format!("\n\nRecent delivered presentations (newest answer first; read exact reference on demand for edits): {}", json!(recent)));
         }
     }
-    if let Some(receipt) = &presentation_follow_up {
-        agent_message.push_str(
-            &presentation_api::follow_up_context(state, receipt)
-                .map_err(|error| err_reply(&error))?,
-        );
+    if let Some(reference) = v.get("teaching_ref").and_then(Value::as_str) {
+        agent_message.push_str(&teaching::reference_context(&private_book_context::PrivateBookContext { user, book: &workspace.book, book_dir: &workspace.book_dir, messages: &workspace.messages, selected_chat: workspace.selected_chat.as_deref() }, reference).map_err(|e| err_reply(&e))?);
     }
-    let current_book_id = state.book.base.book_id.clone();
+    let presentation_context = presentation_follow_up.as_ref()
+        .map(|receipt| presentation_api::follow_up_context(&private_book_context::PrivateBookContext { user, book: &workspace.book, book_dir: &workspace.book_dir, messages: &workspace.messages, selected_chat: workspace.selected_chat.as_deref() }, receipt))
+        .transpose().map_err(|error| err_reply(&error))?;
+    let message = msg.to_string();
+    Ok(ValidatedAgentInput { request: v, message, display_user, question_anchor_lid, question_quote,
+        presentation_follow_up, agent_message, presentation_context })
+}
+
+fn prepare_agent_chat(
+    state: &mut AppState,
+    body: &str,
+    now: &str,
+) -> Result<agent_run::PreparedAgentChat, Reply> {
+    let ValidatedAgentInput { request: v, message, display_user, question_anchor_lid, question_quote,
+        presentation_follow_up, mut agent_message, presentation_context } = validate_agent_input(&mut state.user, &state.workspace, body)?;
+    let msg = message.as_str();
+    let current_book_id = state.workspace.book.base.book_id.clone();
     let turn_ref = match precommit_agent_turn_with_goal(
         state,
         &current_book_id,
         display_user,
         question_anchor_lid,
-        question_quote,
-        presentation_follow_up,
+        question_quote.clone(),
+        presentation_follow_up.clone(),
+        v.get("teaching_ref").and_then(Value::as_str).map(str::to_string),
         v.get("goal_id").and_then(|value| value.as_str()),
         v.get("goal_action").and_then(|value| value.as_str()),
         now,
@@ -11597,16 +11833,32 @@ fn prepare_agent_chat(
         Ok(turn_ref) => turn_ref,
         Err(error) => return Err(err_reply(&error)),
     };
+    let tutor = match teaching::prepare(&state.private_context(), &turn_ref, &v, now) {
+        Ok(tutor) => tutor,
+        Err(error) => {
+            // The user message already exists: close that pending turn on a learning-store failure.
+            let messages = state.workspace.messages.clone();
+            finalize_agent_turn(state, &turn_ref, AgentAssistantStatus::Failed, None,
+                Some(AgentTurnError { error_code: error.error_code.clone(), category: error.category.clone(), message: error.message.clone() }),
+                None, &messages, now).map_err(|e| err_reply(&e))?;
+            return Err(err_reply(&error));
+        }
+    };
+    session_runtime::link_teaching(&mut state.user, &turn_ref, now).map_err(|e| err_reply(&e))?;
+    let scope = run_scope::RunScope::capture(state, &turn_ref, msg, question_quote, presentation_follow_up);
+    if scope.presentation_follow_up.is_some() {
+        agent_message.push_str(presentation_context.as_deref().expect("validated presentation context"));
+    }
     Ok(agent_run::PreparedAgentChat {
-        goal: state.agent_history.sessions.iter().find(|s| s.id == turn_ref.session_id)
+        scope,
+        tutor,
+        goal: state.user.agent_history.sessions.iter().find(|s| s.id == turn_ref.session_id)
             .and_then(|s| s.turns.iter().find(|t| t.turn_id == turn_ref.turn_id).and_then(|t| t.goal_ref.as_ref().and_then(|r| s.goals.iter().find(|g| g.id == r.id))))
             .cloned(),
-        book: state.book.clone(),
         turn_ref,
         message: msg.into(),
         agent_message,
-        initial_evidence,
-        messages: state.messages.clone(),
+        messages: state.workspace.messages.clone(),
         now: now.into(),
     })
 }
@@ -11616,22 +11868,22 @@ fn route_agent_chat(state: &mut AppState, body: &str, now: &str) -> Reply {
         Ok(value) => value,
         Err(reply) => return reply,
     };
-    let adapter = std::mem::replace(&mut state.adapter, Box::new(UnconfiguredAdapter));
+    let adapter = std::mem::replace(&mut state.services.adapter, Box::new(UnconfiguredAdapter));
     let reply = agent_run::execute_prepared(
         &agent_run::BorrowedAppPort(std::cell::RefCell::new(state)),
         adapter.as_ref(),
         prepared,
         runtime::run_context::CancellationToken::default(),
     );
-    state.adapter = adapter;
+    state.services.adapter = adapter;
     reply.reply
 }
 
 fn freeze_resident_artifact_snapshot(
-    state: &AppState,
+    state: &PrivateBookContext<'_>,
     current_book_id: &str,
 ) -> Result<Option<ArtifactAccessSnapshot>, ToolError> {
-    let Some(store_root) = state.intent_store_root.as_ref() else {
+    let Some(store_root) = state.user.intent_store_root.as_ref() else {
         return Ok(None);
     };
     let store = intent_build_store::IntentArtifactStore::open(store_root)?;
@@ -11655,10 +11907,25 @@ fn run_precommitted_agent_chat(
     prepared: &agent_run::PreparedAgentChat,
     context: &mut runtime::run_context::RunContext,
 ) -> Result<OuterOutcome, ToolError> {
+    let mut state_port = agent_run::RuntimeStatePort {
+        port, turn_ref: &prepared.turn_ref, scope: &prepared.scope,
+        previewed: Default::default(), animations: Default::default(), plots: Default::default(),
+    };
+    run_precommitted_with_ports(port, &mut state_port, adapter, prepared, context)
+}
+
+fn run_precommitted_with_ports(
+    port: &impl agent_run::UserStatePort,
+    state_port: &mut impl runtime::run_context::ResidentStatePort,
+    adapter: &dyn ModelAdapter,
+    prepared: &agent_run::PreparedAgentChat,
+    context: &mut runtime::run_context::RunContext,
+) -> Result<OuterOutcome, ToolError> {
     context.cancellation.check()?;
+    port.check_access()?;
     let msg = prepared.message.as_str();
     let agent_message = prepared.agent_message.as_str();
-    let book = prepared.book.as_ref();
+    let book = prepared.scope.book.as_ref();
     let current_book_id = book.base.book_id.as_str();
     let turn_ref = &prepared.turn_ref;
     let now = prepared.now.as_str();
@@ -11669,8 +11936,14 @@ fn run_precommitted_agent_chat(
         mut memory_updates,
         confirmation_applied,
         active_facts,
-    ) = port.with_app(|state| {
-        let artifact_snapshot = freeze_resident_artifact_snapshot(state, current_book_id)?;
+    ) = port.with_user(|user| {
+        prepared.scope.check_user(user)?;
+        user.agent_history.expire_confirmations(std::time::Instant::now());
+        if is_sensitive_memory_confirmation(msg) && (prepared.scope.confirmation_id.is_none()
+            || prepared.scope.confirmation_id.as_deref() != user.agent_history.confirmation_id(&turn_ref.session_id)) {
+            return Err(pending_confirmation::required());
+        }
+        let artifact_snapshot = freeze_resident_artifact_snapshot(&prepared.scope.private_user(user), current_book_id)?;
         let profile_context = ProfileResolutionContext {
             book_id: Some(current_book_id.into()),
             content_profile: Some(content_profile.into()),
@@ -11680,14 +11953,14 @@ fn run_precommitted_agent_chat(
         let mut memory_events = Vec::new();
         let mut memory_updates = Vec::new();
         let mut confirmation_applied = false;
-        if let Some(pending) = state
+        if let Some(pending) = user
             .agent_history
             .pending_governance_mutations
             .remove(&turn_ref.session_id)
         {
             if is_sensitive_memory_confirmation(msg) {
                 let retry = pending.clone();
-                match state.store.apply_profile_governance_mutation(
+                match user.store.apply_profile_governance_mutation(
                     acknowledge_sensitive_governance_mutation(pending),
                     now,
                 ) {
@@ -11701,7 +11974,7 @@ fn run_precommitted_agent_chat(
                     }
                     Err(error) => {
                         if error.category == "internal" {
-                            state
+                            user
                                 .agent_history
                                 .pending_governance_mutations
                                 .insert(turn_ref.session_id.clone(), retry);
@@ -11712,14 +11985,14 @@ fn run_precommitted_agent_chat(
             } else {
                 record_sensitive_confirmation_cancelled(&mut memory_events, &mut memory_updates);
             }
-        } else if let Some(pending) = state
+        } else if let Some(pending) = user
             .agent_history
             .pending_memory_ops
             .remove(&turn_ref.session_id)
         {
             if is_sensitive_memory_confirmation(msg) {
                 let retry = pending.clone();
-                match state
+                match user
                     .store
                     .apply_memory_op(acknowledge_sensitive_memory_op(pending), now)
                 {
@@ -11729,7 +12002,7 @@ fn run_precommitted_agent_chat(
                     }
                     Err(error) => {
                         if error.category == "internal" {
-                            state
+                            user
                                 .agent_history
                                 .pending_memory_ops
                                 .insert(turn_ref.session_id.clone(), retry);
@@ -11742,7 +12015,8 @@ fn run_precommitted_agent_chat(
             }
         }
 
-        let active_facts = state.store.resolve_profile_facts(&profile_context);
+        user.agent_history.pending_confirmations.remove(&turn_ref.session_id);
+        let active_facts = user.store.resolve_profile_facts(&profile_context);
         Ok::<_, ToolError>((
             artifact_snapshot,
             memory_events,
@@ -11752,6 +12026,7 @@ fn run_precommitted_agent_chat(
         ))
     })?;
     context.cancellation.check()?;
+    port.check_access()?;
     if !confirmation_applied {
         let operation_id =
             stable_memory_operation_id(&turn_ref.session_id, turn_ref.user_turn_ordinal, msg);
@@ -11769,12 +12044,13 @@ fn run_precommitted_agent_chat(
             },
         )?;
         context.cancellation.check()?;
+    port.check_access()?;
         drop(purpose);
-        let rejected = port.with_app(|state| {
+        let rejected = port.with_user(|user| {
             match decision {
                 MemoryIntentDecision::NoIntent => {}
                 MemoryIntentDecision::Apply { operation } => {
-                    let outcome = state.store.apply_memory_op(operation, now)?;
+                    let outcome = user.store.apply_memory_op(operation, now)?;
                     record_memory_outcome(&outcome, &mut memory_events, &mut memory_updates);
                 }
                 MemoryIntentDecision::NeedsClarification {
@@ -11804,14 +12080,15 @@ fn run_precommitted_agent_chat(
                     preview,
                     warning,
                 } => {
-                    state
+                    user
                         .agent_history
                         .pending_governance_mutations
                         .remove(&turn_ref.session_id);
-                    state
+                    user
                         .agent_history
                         .pending_memory_ops
                         .insert(turn_ref.session_id.clone(), operation);
+                    user.agent_history.arm_confirmation(&turn_ref.session_id);
                     memory_events.push(json!({
                         "kind": "needs_sensitive_confirmation",
                         "preview": preview,
@@ -11829,7 +12106,7 @@ fn run_precommitted_agent_chat(
                     message,
                 } => {
                     return Ok(Some(rejected_memory_outcome(
-                        state.store.projection_revision(),
+                        user.store.projection_revision(),
                         &error_code,
                         &message,
                     )));
@@ -11841,26 +12118,35 @@ fn run_precommitted_agent_chat(
             return Ok(outcome);
         }
     }
-    let (profile_snapshot, context_fragments, active_checkpoint) = port.with_app(|state| {
+    port.check_access()?;
+    let (profile_snapshot, context_fragments, active_checkpoint) = port.with_user(|user| {
         let snapshot_request =
-            profile_snapshot_request(state, current_book_id, content_profile, now);
-        let profile_snapshot = state
+            user_profile_snapshot_request(user, book, current_book_id, content_profile, now);
+        let profile_snapshot = user
             .profile_context_cache
-            .snapshot(&state.store, &snapshot_request)
+            .snapshot(&user.store, &snapshot_request)
             .clone();
         let context_fragments = memory_context_fragment(&memory_events)
             .into_iter()
             .collect::<Vec<_>>();
         // 字段级不相交借用:book(shared)+ store/reader/messages(mut)+ adapter(shared)。
-        let active_checkpoint = state
+        let active_checkpoint = user
             .agent_history
             .sessions
             .iter()
             .find(|session| session.id == turn_ref.session_id)
             .and_then(|session| session.compaction_checkpoint.clone());
-        (profile_snapshot, context_fragments, active_checkpoint)
-    });
-    let initial_evidence = prepared.initial_evidence.clone();
+        let active_checkpoint = if let Some(store) = &user.session_store {
+            let log = &store.logs[&turn_ref.session_id];
+            match log.projection.inputs.get(&turn_ref.turn_id).map(|f| &f.messages) {
+                Some(session_event::HistoryPosition::Committed { history_through_seq }) =>
+                    log.at(*history_through_seq)?.session.and_then(|s| s.compaction_checkpoint),
+                _ => active_checkpoint,
+            }
+        } else { active_checkpoint };
+        Ok::<_, ToolError>((profile_snapshot, context_fragments, active_checkpoint))
+    })?;
+    let initial_evidence = verified_question_evidence(book, prepared.scope.question_quote.as_ref());
     let mut turn_resources =
         ResidentTurnResources::new(context_fragments, initial_evidence, memory_updates);
     if let Some(snapshot) = artifact_snapshot {
@@ -11879,16 +12165,10 @@ fn run_precommitted_agent_chat(
             })
         }
     };
-    let mut state_port = agent_run::RuntimeStatePort {
-        port,
-        turn_ref,
-        previewed: Default::default(),
-        animations: Default::default(), plots: Default::default(),
-    };
     let mut checkpoint_sink = agent_run::RunCheckpointSink { port, turn_ref };
     runtime::orchestrator::run_context(
         experimental_book.as_ref().unwrap_or(book),
-        &mut state_port,
+        state_port,
         adapter,
         context,
         &profile_snapshot,
@@ -11900,27 +12180,32 @@ fn run_precommitted_agent_chat(
     )
 }
 
-fn profile_snapshot_request(
-    state: &AppState,
+fn profile_snapshot_request(state: &AppState, book: &Book, book_id: &str, content_profile: &str, now: &str) -> SnapshotRequest {
+    user_profile_snapshot_request(&state.user, book, book_id, content_profile, now)
+}
+
+fn user_profile_snapshot_request(
+    user: &user_runtime::UserRuntime,
+    book: &Book,
     book_id: &str,
     content_profile: &str,
     now: &str,
 ) -> SnapshotRequest {
-    let review_state = state.store.review_state();
+    let review_state = user.store.review_state();
     let unresolved = review_state
         .review_jobs
         .iter()
         .any(|job| job.book_id == book_id && job.status != ReviewJobStatus::Completed);
     let review_stale = unresolved && review_state.last_error.is_some();
-    let stale = state.store.private_storage_diagnostic().is_some() || review_stale;
+    let stale = user.store.private_storage_diagnostic().is_some() || review_stale;
     let context = SnapshotContext {
         book_id: Some(book_id.into()),
         content_profile: Some(content_profile.into()),
         now: Some(now.into()),
         ..Default::default()
     };
-    let reading_state = state.store.derive_book_reading_state(book_id);
-    let resolved_facts = state
+    let reading_state = user.store.derive_book_reading_state(book_id);
+    let resolved_facts = user
         .store
         .resolve_profile_facts(&ProfileResolutionContext {
             book_id: Some(book_id.into()),
@@ -11928,10 +12213,9 @@ fn profile_snapshot_request(
             now: Some(now.into()),
             ..Default::default()
         });
-    let manifest = state.book.profile_manifest();
+    let manifest = book.profile_manifest();
     let paper_context = if manifest.memory_policy.policy_id == PAPER_MEMORY_POLICY_ID {
-        state
-            .book
+        book
             .paper_reading_guide(None, None)
             .ok()
             .filter(|guide| guide.available)
@@ -11942,7 +12226,7 @@ fn profile_snapshot_request(
     let policy_projection = MemoryPolicyRegistry::default().project(
         &manifest.memory_policy,
         &PolicyProjectionInput {
-            source_revision: state.store.projection_revision(),
+            source_revision: user.store.projection_revision(),
             reading_state: &reading_state,
             resolved_facts: &resolved_facts,
             paper_context: paper_context.as_ref(),
@@ -11953,16 +12237,16 @@ fn profile_snapshot_request(
     if stale {
         request.profile_status = ProfileStatus::Stale;
         if review_stale {
-            request.pending_context = pending_review_context(state, book_id);
+            request.pending_context = pending_review_context(user, book_id);
         }
     }
     request
 }
 
-fn pending_review_context(state: &AppState, book_id: &str) -> Vec<PendingTurnRef> {
-    let reviewed_through = &state.store.review_state().reviewed_through;
+fn pending_review_context(user: &user_runtime::UserRuntime, book_id: &str) -> Vec<PendingTurnRef> {
+    let reviewed_through = &user.store.review_state().reviewed_through;
     let mut pending = Vec::new();
-    for session in state
+    for session in user
         .agent_history
         .sessions
         .iter()
@@ -11996,27 +12280,35 @@ fn route_agent_new(state: &mut AppState, now: &str) -> Reply {
     if let Err(error) = reconcile_agent_history_review_jobs(state, now) {
         return err_reply(&error);
     }
-    let book_id = state.book.base.book_id.clone();
-    let mut candidate = state.agent_history.clone();
+    let book_id = state.workspace.book.base.book_id.clone();
+    if state.user.session_store.is_some() {
+        return session_store::route_new(state, &book_id, now);
+    }
+    let mut candidate = state.user.agent_history.clone();
     let ordinal = candidate.sessions.len();
     let session = new_agent_session(&book_id, now, ordinal);
     candidate
         .active_by_book
         .insert(book_id.clone(), session.id.clone());
     let messages = session.messages.clone();
+    let selected = session.id.clone();
     candidate.sessions.push(session);
-    let response = match agent_history_response(&candidate, &state.book) {
+    let response = match agent_history_response(&candidate, &state.workspace.book, Some(&selected)) {
         Ok(response) => response,
         Err(error) => return err_reply(&error),
     };
     if let Err(e) = commit_agent_history_candidate(state, candidate) {
         return err_reply(&e);
     }
-    state.messages = messages;
+    state.workspace.select_chat(selected, messages);
     ok_json(&json!({ "ok": true, "history": response }))
 }
 
 fn route_agent_goal_cancel(state: &mut AppState, body: &str, now: &str) -> Reply {
+    user_goal_cancel(&mut state.user, &state.workspace, body, now)
+}
+
+fn user_goal_cancel(user: &mut user_runtime::UserRuntime, workspace: &reader_workspace::ReaderWorkspace, body: &str, now: &str) -> Reply {
     let v = match body_value(body) {
         Ok(v) => v,
         Err(reply) => return reply,
@@ -12024,11 +12316,13 @@ fn route_agent_goal_cancel(state: &mut AppState, body: &str, now: &str) -> Reply
     let Some(goal_id) = v.get("goal_id").and_then(|value| value.as_str()) else {
         return validation("GOAL_NOT_FOUND", "goal_id is required");
     };
-    let book_id = &state.book.base.book_id;
-    let mut candidate = state.agent_history.clone();
-    let Some(session_id) = candidate.active_by_book.get(book_id) else {
+    let book_id = &workspace.book.base.book_id;
+    let Some(session_id) = workspace.selected_chat.as_ref() else {
         return validation("GOAL_NOT_FOUND", "no active chat has this Goal");
     };
+    let mut candidate = if user.session_store.is_some() {
+        AgentHistory { sessions: user.agent_history.sessions.iter().filter(|s| s.id == *session_id).cloned().collect(), ..Default::default() }
+    } else { user.agent_history.clone() };
     let Some(session) = candidate.sessions.iter_mut().find(|session| session.id == *session_id && session.book_id == *book_id) else {
         return validation("GOAL_NOT_FOUND", "no active chat has this Goal");
     };
@@ -12046,11 +12340,18 @@ fn route_agent_goal_cancel(state: &mut AppState, body: &str, now: &str) -> Reply
     goal.last_stop_reason = None;
     goal.revision += 1;
     session.updated_at = now.into();
-    let response = match agent_history_response(&candidate, &state.book) {
+    if let Some(store) = &mut user.session_store {
+        if let Err(e) = store.append(&mut user.agent_history, session_id, now, None,
+            session_event::EventBody::GoalUpdated { goal: goal.clone() }) { return err_reply(&e); }
+        return match agent_history_response(&user.agent_history, &workspace.book, Some(session_id)) {
+            Ok(response) => ok_json(&response), Err(e) => err_reply(&e),
+        };
+    }
+    let response = match agent_history_response(&candidate, &workspace.book, workspace.selected_chat.as_deref()) {
         Ok(response) => response,
         Err(error) => return err_reply(&error),
     };
-    if let Err(error) = commit_agent_history_candidate(state, candidate) {
+    if let Err(error) = save_agent_history_path(&user.history_path, &candidate).map(|()| { user.agent_history = candidate; }) {
         return err_reply(&error);
     }
     ok_json(&response)
@@ -12064,8 +12365,11 @@ fn route_agent_history_select(state: &mut AppState, body: &str) -> Reply {
     let Some(session_id) = v.get("session_id").and_then(|x| x.as_str()) else {
         return validation("INVALID_RANGE", "agent.history.select 需 session_id");
     };
-    let book_id = state.book.base.book_id.clone();
-    let mut candidate = state.agent_history.clone();
+    let book_id = state.workspace.book.base.book_id.clone();
+    if state.user.session_store.is_some() {
+        return session_store::route_select(state, &book_id, session_id);
+    }
+    let mut candidate = state.user.agent_history.clone();
     let Some(idx) = candidate
         .sessions
         .iter()
@@ -12080,14 +12384,14 @@ fn route_agent_history_select(state: &mut AppState, body: &str) -> Reply {
         .active_by_book
         .insert(book_id.clone(), session_id.into());
     let messages = candidate.sessions[idx].messages.clone();
-    let response = match agent_history_response(&candidate, &state.book) {
+    let response = match agent_history_response(&candidate, &state.workspace.book, Some(session_id)) {
         Ok(response) => response,
         Err(error) => return err_reply(&error),
     };
     if let Err(e) = commit_agent_history_candidate(state, candidate) {
         return err_reply(&e);
     }
-    state.messages = messages;
+    state.workspace.select_chat(session_id.into(), messages);
     ok_json(&response)
 }
 
@@ -12099,8 +12403,11 @@ fn route_agent_history_delete(state: &mut AppState, body: &str, now: &str) -> Re
     let Some(session_id) = v.get("session_id").and_then(|x| x.as_str()) else {
         return validation("INVALID_RANGE", "agent.history.delete 需 session_id");
     };
-    let book_id = state.book.base.book_id.clone();
-    let mut candidate = state.agent_history.clone();
+    let book_id = state.workspace.book.base.book_id.clone();
+    if state.user.session_store.is_some() {
+        return session_store::route_delete(state, &book_id, session_id, now);
+    }
+    let mut candidate = state.user.agent_history.clone();
     let before = candidate.sessions.len();
     candidate
         .sessions
@@ -12120,16 +12427,20 @@ fn route_agent_history_delete(state: &mut AppState, body: &str, now: &str) -> Re
     {
         candidate.active_by_book.remove(&book_id);
     }
-    let idx = ensure_active_agent_session(&mut candidate, &book_id, now);
+    let idx = state.workspace.selected_chat.as_deref()
+        .filter(|id| *id != session_id)
+        .and_then(|id| selected_agent_session_index(&candidate, &book_id, Some(id)))
+        .unwrap_or_else(|| ensure_active_agent_session(&mut candidate, &book_id, now));
+    let selected = candidate.sessions[idx].id.clone();
     let messages = candidate.sessions[idx].messages.clone();
-    let response = match agent_history_response(&candidate, &state.book) {
+    let response = match agent_history_response(&candidate, &state.workspace.book, Some(&selected)) {
         Ok(response) => response,
         Err(error) => return err_reply(&error),
     };
     if let Err(e) = commit_agent_history_candidate(state, candidate) {
         return err_reply(&e);
     }
-    state.messages = messages;
+    state.workspace.select_chat(selected, messages);
     ok_json(&response)
 }
 
@@ -12433,18 +12744,18 @@ pub fn select_start_book(
 
 /// 把 AppState 当前书目录和阅读位置写入 session.json。dir=Some 覆盖当前书(开新书);None 使用 AppState 当前书。
 pub fn save_session(state: &AppState, dir: Option<&str>) {
-    let Some(path) = &state.session_path else {
+    let Some(path) = &state.workspace.session_path else {
         return;
     };
     let book_dir = dir
         .map(str::to_string)
-        .unwrap_or_else(|| path_string(&state.book_dir));
+        .unwrap_or_else(|| path_string(&state.workspace.book_dir));
     if book_dir.trim().is_empty() {
         return;
     }
     let key = session_dir_key(&book_dir);
-    let top_lid = state.reader.viewport().top_lid;
-    let mut session = load_session(&state.session_path).unwrap_or_else(|| SessionState {
+    let top_lid = state.workspace.reader.viewport().top_lid;
+    let mut session = load_session(&state.workspace.session_path).unwrap_or_else(|| SessionState {
         current_book_dir: key.clone(),
         books: BTreeMap::new(),
     });
@@ -12468,8 +12779,23 @@ pub fn load_session(path: &Option<PathBuf>) -> Option<SessionState> {
 
 #[cfg(test)]
 mod tests {
+    mod mu2_tests;
+    mod mu3_tests;
+    mod mu4_tests;
+    mod mu5_tests;
+    mod mu6_tests;
+    mod session_management_tests;
+    mod session_runtime_tests;
+    mod effect_disposition_tests;
+    mod session_recap_tests;
+    mod mu7_tests;
+    mod mu8_tests;
+    mod mu9_tests;
+    pub(crate) mod mu10_tests;
     pub(crate) mod presentation_author_tests;
     mod presentation_store_tests;
+    mod tutor_tests;
+    mod tutor_loop_tests;
     use super::*;
     use base_schema::{
         sample_base, FormulaComposition, FormulaParameter, FormulaSemantics, LidNode, NodeKind,
@@ -12538,8 +12864,7 @@ mod tests {
     }
 
     fn write_current_book_files(s: &AppState) {
-        let max_end = s
-            .book
+        let max_end = s.workspace.book
             .base
             .lid_nodes
             .iter()
@@ -12547,20 +12872,20 @@ mod tests {
             .max()
             .unwrap_or(0);
         std::fs::write(
-            s.book_dir.join("base.json"),
-            serde_json::to_string(&s.book.base).unwrap(),
+            s.workspace.book_dir.join("base.json"),
+            serde_json::to_string(&s.workspace.book.base).unwrap(),
         )
         .unwrap();
-        std::fs::write(s.book_dir.join("source.txt"), "X".repeat(max_end + 8)).unwrap();
+        std::fs::write(s.workspace.book_dir.join("source.txt"), "X".repeat(max_end + 8)).unwrap();
     }
 
     fn attach_paper_profile(s: &mut AppState) {
         write_current_book_files(s);
         std::fs::write(
-            s.book_dir.join("book_structure.json"),
+            s.workspace.book_dir.join("book_structure.json"),
             serde_json::json!({
                 "header": {
-                    "book_id": s.book.base.book_id,
+                    "book_id": s.workspace.book.base.book_id,
                     "book_version": "v1",
                     "profile_id": "paper",
                     "profile_version": "paper_v0",
@@ -12574,8 +12899,8 @@ mod tests {
             .to_string(),
         )
         .unwrap();
-        s.book = (Book::load(s.book_dir.to_str().unwrap()).unwrap()).into();
-        s.reader = Reader::new(&s.book, DEFAULT_RADIUS);
+        s.workspace.book = (Book::load(s.workspace.book_dir.to_str().unwrap()).unwrap()).into();
+        s.workspace.reader = Reader::new(&s.workspace.book, DEFAULT_RADIUS);
     }
 
     fn write_pdf_runtime_artifacts(s: &mut AppState) {
@@ -12587,7 +12912,7 @@ mod tests {
         });
         let source_manifest = serde_json::json!({
             "version": "source_manifest.v2",
-            "book_id": s.book.base.book_id,
+            "book_id": s.workspace.book.base.book_id,
             "canonical_source": {
                 "kind": "reconciled_markdown",
                 "path": "source.txt",
@@ -12624,16 +12949,16 @@ mod tests {
             }
         });
         std::fs::write(
-            s.book_dir.join("source_manifest.json"),
+            s.workspace.book_dir.join("source_manifest.json"),
             source_manifest.to_string(),
         )
         .unwrap();
-        std::fs::write(s.book_dir.join("paper.pdf"), b"%PDF-1.4\nfixture\n").unwrap();
+        std::fs::write(s.workspace.book_dir.join("paper.pdf"), b"%PDF-1.4\nfixture\n").unwrap();
         let region =
             serde_json::json!({"region_id":"r1","pageIndex":0,"bbox":[10.0,10.0,80.0,20.0]});
         let pdf_source_map = serde_json::json!({
             "version": "pdf_source_map.v1",
-            "book_id": s.book.base.book_id,
+            "book_id": s.workspace.book.base.book_id,
             "coordinate_system": coord,
             "pages": [{"pageIndex":0,"width":100.0,"height":100.0,"rotate":0,"view":[0.0,0.0,100.0,100.0]}],
             "entries": [{
@@ -12650,15 +12975,15 @@ mod tests {
             "config_hash": "cfg-a"
         });
         std::fs::write(
-            s.book_dir.join("pdf_source_map.json"),
+            s.workspace.book_dir.join("pdf_source_map.json"),
             pdf_source_map.to_string(),
         )
         .unwrap();
-        let selection_dir = s.book_dir.join("pdf_selection_map");
+        let selection_dir = s.workspace.book_dir.join("pdf_selection_map");
         std::fs::create_dir_all(selection_dir.join("pages")).unwrap();
         let selection_manifest = serde_json::json!({
             "version": "pdf_selection_map.v1",
-            "book_id": s.book.base.book_id,
+            "book_id": s.workspace.book.base.book_id,
             "coordinate_system": {
                 "space": "pdf_user_space",
                 "origin": "bottom_left",
@@ -12675,7 +13000,7 @@ mod tests {
         .unwrap();
         let page = serde_json::json!({
             "version": "pdf_selection_map_page.v1",
-            "book_id": s.book.base.book_id,
+            "book_id": s.workspace.book.base.book_id,
             "pageIndex": 0,
             "chars": [
                 {"char_index":0,"text":"P","rect":{"pageIndex":0,"bbox":[10.0,10.0,12.0,20.0]},"source_span":{"start":0,"end":1},"lid":"1.1"},
@@ -12688,24 +13013,24 @@ mod tests {
 
     fn use_pdf_runtime_fixture_source(s: &mut AppState) {
         let source = format!("PDF{}", "X".repeat(97));
-        s.book = (Book::new(sample_base(), &source)).into();
-        s.reader = Reader::new(&s.book, DEFAULT_RADIUS);
+        s.workspace.book = (Book::new(sample_base(), &source)).into();
+        s.workspace.reader = Reader::new(&s.workspace.book, DEFAULT_RADIUS);
     }
 
     fn write_note_pdf_route_artifacts(s: &mut AppState) -> String {
         let source = format!("PDF{}", "X".repeat(97));
         use_pdf_runtime_fixture_source(s);
-        std::fs::write(s.book_dir.join("source.txt"), &source).unwrap();
+        std::fs::write(s.workspace.book_dir.join("source.txt"), &source).unwrap();
         write_pdf_runtime_artifacts(s);
-        let source_fingerprint = current_note_source_fingerprint(&s.book_dir).unwrap();
+        let source_fingerprint = current_note_source_fingerprint(&s.workspace.book_dir).unwrap();
 
-        let manifest_path = s.book_dir.join("source_manifest.json");
+        let manifest_path = s.workspace.book_dir.join("source_manifest.json");
         let mut manifest: Value =
             serde_json::from_str(&std::fs::read_to_string(&manifest_path).unwrap()).unwrap();
         manifest["canonical_source"]["sha256"] = json!(source_fingerprint);
         std::fs::write(&manifest_path, manifest.to_string()).unwrap();
 
-        let source_map_path = s.book_dir.join("pdf_source_map.json");
+        let source_map_path = s.workspace.book_dir.join("pdf_source_map.json");
         let mut source_map: Value =
             serde_json::from_str(&std::fs::read_to_string(&source_map_path).unwrap()).unwrap();
         source_map["entries"][0]["status"] = json!("word_mapped");
@@ -12714,7 +13039,7 @@ mod tests {
     }
 
     fn rewrite_pdf_runtime_artifacts_v2(s: &AppState, precision: &str, exact_end: usize) {
-        let source_map_path = s.book_dir.join("pdf_source_map.json");
+        let source_map_path = s.workspace.book_dir.join("pdf_source_map.json");
         let mut source_map: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&source_map_path).unwrap()).unwrap();
         source_map["version"] = serde_json::json!("pdf_source_map.v2");
@@ -12733,14 +13058,13 @@ mod tests {
         }
         std::fs::write(source_map_path, source_map.to_string()).unwrap();
 
-        let selection_manifest_path = s.book_dir.join("pdf_selection_map").join("manifest.json");
+        let selection_manifest_path = s.workspace.book_dir.join("pdf_selection_map").join("manifest.json");
         let mut selection_manifest: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&selection_manifest_path).unwrap())
                 .unwrap();
         selection_manifest["version"] = serde_json::json!("pdf_selection_map.v2");
         std::fs::write(selection_manifest_path, selection_manifest.to_string()).unwrap();
-        let selection_page_path = s
-            .book_dir
+        let selection_page_path = s.workspace.book_dir
             .join("pdf_selection_map")
             .join("pages")
             .join("0.json");
@@ -12755,7 +13079,7 @@ mod tests {
     }
 
     fn write_projection_selection_pages(s: &AppState, pages: Vec<serde_json::Value>) {
-        let selection_dir = s.book_dir.join("pdf_selection_map");
+        let selection_dir = s.workspace.book_dir.join("pdf_selection_map");
         std::fs::create_dir_all(selection_dir.join("pages")).unwrap();
         let page_shards = pages
             .iter()
@@ -12770,7 +13094,7 @@ mod tests {
             .collect::<Vec<_>>();
         let manifest = serde_json::json!({
             "version":"pdf_selection_map.v1",
-            "book_id":s.book.base.book_id,
+            "book_id":s.workspace.book.base.book_id,
             "coordinate_system":{
                 "space":"pdf_user_space","origin":"bottom_left","unit":"pt",
                 "rotation_applied":false
@@ -12794,13 +13118,13 @@ mod tests {
     fn write_workbench_review_artifacts(s: &mut AppState) {
         attach_paper_profile(s);
 
-        let report_dir = s.book_dir.join(".build").join("source-reconciliation");
+        let report_dir = s.workspace.book_dir.join(".build").join("source-reconciliation");
         std::fs::create_dir_all(&report_dir).unwrap();
         std::fs::write(
             report_dir.join("report.json"),
             serde_json::json!({
                 "version": "source_reconciliation_report.v1",
-                "book_id": s.book.base.book_id,
+                "book_id": s.workspace.book.base.book_id,
                 "input_fingerprint": {
                     "paper_md_sha256": "sha-md",
                     "paper_pdf_sha256": "sha-pdf",
@@ -12832,14 +13156,14 @@ mod tests {
         )
         .unwrap();
 
-        let jobs_dir = s.book_dir.join(".build").join("jobs");
+        let jobs_dir = s.workspace.book_dir.join(".build").join("jobs");
         std::fs::create_dir_all(&jobs_dir).unwrap();
         std::fs::write(
             jobs_dir.join("job_review.json"),
             serde_json::json!({
                 "version": "build_job_state.v1",
                 "job_id": "job_review",
-                "book_id": s.book.base.book_id,
+                "book_id": s.workspace.book.base.book_id,
                 "input_fingerprint": {
                     "paper_md_sha256": "sha-md",
                     "paper_pdf_sha256": "sha-pdf",
@@ -12862,13 +13186,13 @@ mod tests {
         )
         .unwrap();
 
-        let sidecar_dir = s.book_dir.join(".build").join("sidecar-plan");
+        let sidecar_dir = s.workspace.book_dir.join(".build").join("sidecar-plan");
         std::fs::create_dir_all(&sidecar_dir).unwrap();
         std::fs::write(
             sidecar_dir.join("sidecar_plan.json"),
             serde_json::json!({
                 "version": "sidecar_plan.v1",
-                "book_id": s.book.base.book_id,
+                "book_id": s.workspace.book.base.book_id,
                 "status": "draft",
                 "stage": "custom_sidecar",
                 "sidecar_generation_allowed": false
@@ -12991,6 +13315,67 @@ mod tests {
         }
     }
 
+    #[test]
+    fn mu1c_chat_switch_back_keeps_old_run_stale_and_input_frozen() {
+        use agent_run::{AppStatePort, BorrowedAppPort, RuntimeStatePort};
+        use runtime::run_context::ResidentStatePort;
+        let mut state = state_named("mu1c-chat-generation");
+        let prepared = prepare_agent_chat(&mut state, r#"{"message":"解释 1.1"}"#, "now").unwrap_or_else(|r| panic!("{}", r.body));
+        let chat = prepared.turn_ref.session_id.clone();
+        let input = serde_json::to_value(&prepared.scope.reader_input.state).unwrap();
+        assert_eq!(route_agent_new(&mut state, "later").status, 200);
+        assert_eq!(route_agent_history_select(&mut state, &json!({"session_id":chat}).to_string()).status, 200);
+        let app = BorrowedAppPort(RefCell::new(&mut state));
+        let mut port = RuntimeStatePort { port:&app, scope:&prepared.scope, turn_ref:&prepared.turn_ref,
+            previewed:Default::default(), animations:Default::default(), plots:Default::default() };
+        assert_eq!(port.read_live_reader(|r| r.revision()).unwrap_err().error_code, "WORKSPACE_STALE");
+        assert_eq!(port.apply_reader(|_, _| panic!("stale closure ran")).unwrap_err().error_code, "WORKSPACE_STALE");
+        assert_eq!(serde_json::to_value(port.reader_input(&prepared.scope.book, "new question").state).unwrap(), input);
+        assert!(port.submit_private(|store| store.projection_revision()).is_ok());
+        app.with_app(|state| state.user = user_runtime::UserRuntime::visitor(MemoryStore::unavailable(tmp("mu1c-visitor"), agent_history_internal("unavailable"), "now")));
+        assert_eq!(port.submit_private(|_| panic!("wrong owner closure ran")).unwrap_err().error_code, "RUN_OWNER_MISMATCH");
+    }
+
+    #[test]
+    fn mu1b_workspaces_keep_independent_book_reader_and_chat_selection() {
+        let mut state = state_named("mu1b-workspaces");
+        assert_eq!(post(&mut state, "/agent/new", "{}").status, 200);
+        let first_chat = state.workspace.selected_chat.clone().unwrap();
+        let other_book = Book::load(&write_multi_leaf_book("mu1b-other", "mu1b-other", 3).to_string_lossy()).unwrap();
+        let other_reader = Reader::new(&other_book, DEFAULT_RADIUS);
+        let mut other = reader_workspace::ReaderWorkspace::local(PathBuf::new(), other_book.into(), other_reader, new_session(), None);
+        other.id = "second".into();
+        std::mem::swap(&mut state.workspace, &mut other);
+        assert_eq!(post(&mut state, "/agent/new", "{}").status, 200);
+        let second_chat = state.workspace.selected_chat.clone().unwrap();
+        assert_ne!(first_chat, second_chat);
+        assert_eq!(other.selected_chat.as_deref(), Some(first_chat.as_str()));
+        assert_ne!(other.book.base.book_id, state.workspace.book.base.book_id);
+        assert_eq!(post(&mut state, "/reader/goto", r#"{"lid":"1.2"}"#).status, 200);
+        assert_ne!(other.reader.state().viewport.anchor_lid, state.workspace.reader.state().viewport.anchor_lid);
+        std::mem::swap(&mut state.workspace, &mut other);
+        assert_eq!(serde_json::from_str::<Value>(&get(&mut state, "/agent/history").body).unwrap()["active_session_id"], first_chat);
+        // Two scenes on the same book also retain different selections, even as
+        // commands update the user's legacy resume hint.
+        let book = state.workspace.book.clone();
+        let reader = Reader::new(&book, DEFAULT_RADIUS);
+        let mut same_book = reader_workspace::ReaderWorkspace::local(PathBuf::new(), book, reader, new_session(), None);
+        same_book.id = "same-book".into();
+        std::mem::swap(&mut state.workspace, &mut same_book);
+        assert_eq!(post(&mut state, "/agent/new", "{}").status, 200);
+        let new_chat = state.workspace.selected_chat.clone().unwrap();
+        std::mem::swap(&mut state.workspace, &mut same_book);
+        assert_eq!(serde_json::from_str::<Value>(&get(&mut state, "/agent/history").body).unwrap()["active_session_id"], first_chat);
+        let generation = state.workspace.generation;
+        assert_eq!(post(&mut state, "/agent/history/delete", &json!({"session_id":new_chat}).to_string()).status, 200);
+        assert_eq!(state.workspace.selected_chat.as_deref(), Some(first_chat.as_str()));
+        assert_eq!(state.workspace.generation, generation);
+        let turn = precommit_agent_turn(&mut state, &same_book.book.base.book_id, "original scene".into(), None, None, None, "now");
+        // The fixture book identity is authoritative, not the other scene's resume hint.
+        assert!(turn.is_ok());
+        assert_eq!(turn.unwrap().session_id, first_chat);
+    }
+
     fn state_named(mem: &str) -> AppState {
         // sample_base:容器 "1" + 叶 "1.1";entity:command occ=["1.1"]、claim source=1.1。
         let src = "X".repeat(100) + "尾巴";
@@ -13003,25 +13388,24 @@ mod tests {
         // 桩固定引用首叶 "1.1"；typed query 的 anchor 由请求显式提供。
         let adapter = Box::new(StubAdapter { lid: "1.1".into() });
         AppState {
-            desktop_host: false,
-            reader_only: false,
-            intent_store_root: Some(book_dir.join("private-build-intents")),
+            services: crate::service_state::ServiceState {
+                desktop_host: false,
+                reader_only: false,
+                library_root: None,
+                adapter,
+            },
+            user: crate::user_runtime::UserRuntime::local(
+                store,
+                None,
+                AgentHistory::default(),
+                Some(book_dir.join("private-build-intents")),
+            ),
             mcp_artifact_read_port: None,
-            book_dir,
-            library_root: None,
-            book: book.into(),
-            reader,
-            store,
-            adapter,
-            messages: new_session(),
-            session_path: None,
-            history_path: None,
-            agent_history: AgentHistory::default(),
-            profile_context_cache: runtime::profile_context::ProfileContextCache::default(),
+
             visitor_sessions: mcp::VisitorSessions::default(),
-            workbench_loaded_revision: None,
-            active_agent_stream: None,
-        }
+
+        workspace: crate::reader_workspace::ReaderWorkspace::local(book_dir, book.into(), reader, new_session(), None),
+}
     }
 
     /// 脚本化外层 chat 替身(S10f):按序吐 AssistantTurn,driv 外层 loop 脱真 LLM 可测(守 A2)。
@@ -13359,7 +13743,7 @@ mod tests {
     fn unavailable_private_memory_exposes_diagnostic_without_blocking_reading() {
         let mut state = state_named("private-storage-degraded");
         let path = tmp("private-storage-degraded-no-write");
-        state.store = MemoryStore::unavailable(
+        state.user.store = MemoryStore::unavailable(
             &path,
             ToolError {
                 error_code: memory::READER_PRIVATE_STORAGE_UNAVAILABLE.into(),
@@ -13445,7 +13829,7 @@ mod tests {
     fn asset_manifest_reads_book_dir_json() {
         let mut s = state_named("asset-manifest-json");
         std::fs::write(
-            s.book_dir.join("asset_manifest.json"),
+            s.workspace.book_dir.join("asset_manifest.json"),
             r#"{"version":"asset_manifest.v1","book_id":"sample","images":[{"lid":"1.1"}]}"#,
         )
         .unwrap();
@@ -13457,7 +13841,7 @@ mod tests {
     #[test]
     fn desktop_status_blocks_content_initialization_until_a_workspace_is_selected() {
         let mut state = state_named("desktop-status");
-        state.book_dir = tmp_dir("desktop-library").join("__desktop_bootstrap__");
+        state.workspace.book_dir = tmp_dir("desktop-library").join("__desktop_bootstrap__");
 
         let bootstrap = get(&mut state, "/desktop/status");
         assert_eq!(bootstrap.status, 200);
@@ -13465,18 +13849,18 @@ mod tests {
         assert_eq!(bootstrap["active_book"], false);
         assert_eq!(bootstrap["book_dir"], serde_json::Value::Null);
 
-        state.book_dir = tmp_dir("desktop-library").join("paper-a");
+        state.workspace.book_dir = tmp_dir("desktop-library").join("paper-a");
         let selected = get(&mut state, "/desktop/status");
         let selected: serde_json::Value = serde_json::from_str(&selected.body).unwrap();
         assert_eq!(selected["active_book"], true);
-        assert_eq!(selected["book_dir"], path_string(&state.book_dir));
+        assert_eq!(selected["book_dir"], path_string(&state.workspace.book_dir));
     }
 
     #[test]
     fn reader_only_real_metrics_persist_and_report_without_a_plan() {
         let mut s = state_named("lx4-reader-metrics");
         write_current_book_files(&s);
-        s.reader_only = true;
+        s.services.reader_only = true;
         let event = post_at(
             &mut s,
             "/build_intent/usage.event",
@@ -13490,15 +13874,15 @@ mod tests {
         assert_eq!(report["event_count"], 1);
         let empty = get(&mut s, "/build_intent/artifacts");
         assert_eq!(empty.status, 404, "{}", empty.body);
-        assert!(!s.book_dir.join(".build").exists());
+        assert!(!s.workspace.book_dir.join(".build").exists());
     }
 
     #[test]
     fn host_modes_and_reader_only_build_boundary() {
         let mut state = state_named("lx2-host-modes");
         for (desktop, reader_only) in [(true, false), (false, false), (false, true)] {
-            state.desktop_host = desktop;
-            state.reader_only = reader_only;
+            state.services.desktop_host = desktop;
+            state.services.reader_only = reader_only;
             let status: Value =
                 serde_json::from_str(&get(&mut state, "/desktop/status").body).unwrap();
             assert_eq!(status["desktop_host"], desktop);
@@ -13518,7 +13902,7 @@ mod tests {
             assert_eq!(reply.status, 403, "{path}: {}", reply.body);
             assert!(reply.body.contains("READER_ONLY_UNSUPPORTED"));
         }
-        assert!(!state.book_dir.join(".build").exists());
+        assert!(!state.workspace.book_dir.join(".build").exists());
         for (path, method) in [
             ("/build_intent/artifacts", "GET"),
             ("/build_intent/usage", "GET"),
@@ -13528,7 +13912,7 @@ mod tests {
         ] {
             assert!(!reader_only_disallows(path, method));
         }
-        state.reader_only = false;
+        state.services.reader_only = false;
         assert_ne!(
             post(&mut state, "/build_workbench/job.start", "{}").status,
             403
@@ -13539,7 +13923,7 @@ mod tests {
     fn desktop_status_reports_an_unavailable_configured_library_root() {
         let mut state = state_named("desktop-library-unavailable");
         let missing = tmp_dir("desktop-library-missing").join("removed");
-        state.library_root = Some(missing.clone());
+        state.services.library_root = Some(missing.clone());
 
         let response = get(&mut state, "/desktop/status");
         let body: serde_json::Value = serde_json::from_str(&response.body).unwrap();
@@ -13569,7 +13953,7 @@ mod tests {
         )
         .unwrap();
         std::fs::write(stray.join("source.txt"), "not a valid book").unwrap();
-        s.book_dir = alpha.clone();
+        s.workspace.book_dir = alpha.clone();
 
         let r = get(&mut s, "/book/library");
         assert_eq!(r.status, 200);
@@ -13595,7 +13979,7 @@ mod tests {
         std::fs::create_dir_all(&local).unwrap();
         std::fs::write(local.join("base.json"), r#"{"book_id":"local-book"}"#).unwrap();
         let external = write_multi_leaf_book("desktop-external-book", "external-book", 2);
-        s.library_root = Some(root.clone());
+        s.services.library_root = Some(root.clone());
 
         let opened = post(
             &mut s,
@@ -13626,7 +14010,7 @@ mod tests {
         let root = base.join(".understand-book");
         let current = root.join("current");
         std::fs::create_dir_all(&current).unwrap();
-        s.book_dir = current;
+        s.workspace.book_dir = current;
 
         let created = post(
             &mut s,
@@ -13635,8 +14019,8 @@ mod tests {
         );
 
         assert_eq!(created.status, 200);
-        assert_eq!(s.book_dir, root.join("paper-new"));
-        assert!(workbench_input_manifest_path(&s.book_dir).is_file());
+        assert_eq!(s.workspace.book_dir, root.join("paper-new"));
+        assert!(workbench_input_manifest_path(&s.workspace.book_dir).is_file());
         let body: serde_json::Value = serde_json::from_str(&created.body).unwrap();
         assert_eq!(body["book_id"], "paper-new");
         assert_eq!(body["readiness"]["route"], "workbench");
@@ -13656,7 +14040,7 @@ mod tests {
         let existing = root.join("paper-existing");
         std::fs::create_dir_all(&current).unwrap();
         std::fs::create_dir_all(&existing).unwrap();
-        s.book_dir = current;
+        s.workspace.book_dir = current;
 
         let invalid = post(
             &mut s,
@@ -13707,7 +14091,7 @@ mod tests {
     fn build_workbench_routes_existing_technical_book_to_reader_without_paper_gate() {
         let mut s = state_named("workbench-tech-existing");
         write_current_book_files(&s);
-        std::fs::write(s.book_dir.join("source_manifest.json"), "{not-json").unwrap();
+        std::fs::write(s.workspace.book_dir.join("source_manifest.json"), "{not-json").unwrap();
 
         let r = get(&mut s, "/book/build_workbench");
 
@@ -13748,10 +14132,10 @@ mod tests {
             let mut job = create_build_job_value("paper", &json!({}), &index.to_string());
             job["job_id"] = json!(format!("lx3-{index}"));
             job["status"] = json!("running");
-            write_build_job_atomic(&s.book_dir, &job).unwrap();
+            write_build_job_atomic(&s.workspace.book_dir, &job).unwrap();
         }
-        s.reader_only = true;
-        let before = files(&s.book_dir);
+        s.services.reader_only = true;
+        let before = files(&s.workspace.book_dir);
         for _ in 0..2 {
             let response = get(&mut s, "/book/build_workbench");
             assert_eq!(response.status, 200, "{}", response.body);
@@ -13759,8 +14143,8 @@ mod tests {
             assert_eq!(snapshot["readiness"]["route"], "workbench");
             assert!(snapshot["jobs"].as_array().unwrap().len() > MAX_BUILD_JOBS);
         }
-        assert_eq!(files(&s.book_dir), before);
-        std::fs::remove_file(s.book_dir.join(".build/source-reconciliation/report.json")).unwrap();
+        assert_eq!(files(&s.workspace.book_dir), before);
+        std::fs::remove_file(s.workspace.book_dir.join(".build/source-reconciliation/report.json")).unwrap();
         let response: Value =
             serde_json::from_str(&get(&mut s, "/book/build_workbench").body).unwrap();
         assert_eq!(response["readiness"]["route"], "workbench");
@@ -13771,12 +14155,12 @@ mod tests {
 
         let mut technical = state_named("lx3-technical");
         write_current_book_files(&technical);
-        technical.reader_only = true;
-        let before = files(&technical.book_dir);
+        technical.services.reader_only = true;
+        let before = files(&technical.workspace.book_dir);
         let response: Value =
             serde_json::from_str(&get(&mut technical, "/book/build_workbench").body).unwrap();
         assert_eq!(response["readiness"]["route"], "reader");
-        assert_eq!(files(&technical.book_dir), before);
+        assert_eq!(files(&technical.workspace.book_dir), before);
     }
 
     #[test]
@@ -13846,7 +14230,7 @@ mod tests {
 
         let decisions: serde_json::Value = serde_json::from_str(
             &std::fs::read_to_string(
-                s.book_dir
+                s.workspace.book_dir
                     .join(".build")
                     .join("source-reconciliation")
                     .join("review-decisions.json"),
@@ -13870,7 +14254,7 @@ mod tests {
         );
         assert_eq!(resolved.status, 200, "{}", resolved.body);
 
-        let report_path = source_reconciliation_dir(&s.book_dir).join("report.json");
+        let report_path = source_reconciliation_dir(&s.workspace.book_dir).join("report.json");
         let mut report: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
         report["acceptance"] = valid_manual_override_acceptance();
@@ -13906,7 +14290,7 @@ mod tests {
         );
         assert_eq!(resolved.status, 200, "{}", resolved.body);
 
-        let report_path = source_reconciliation_dir(&s.book_dir).join("report.json");
+        let report_path = source_reconciliation_dir(&s.workspace.book_dir).join("report.json");
         let base_report: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
 
@@ -14020,13 +14404,13 @@ mod tests {
     fn source_review_manual_override_does_not_bypass_stale_fingerprint() {
         let mut s = state_named("workbench-source-review-stale-manual-override");
         write_workbench_review_artifacts(&mut s);
-        let report_path = source_reconciliation_dir(&s.book_dir).join("report.json");
+        let report_path = source_reconciliation_dir(&s.workspace.book_dir).join("report.json");
         let mut report: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
         report["acceptance"] = valid_manual_override_acceptance();
         std::fs::write(&report_path, report.to_string()).unwrap();
 
-        let input_dir = s.book_dir.join(".build").join("input");
+        let input_dir = s.workspace.book_dir.join(".build").join("input");
         std::fs::create_dir_all(&input_dir).unwrap();
         std::fs::write(
             input_dir.join("manifest.json"),
@@ -14059,13 +14443,13 @@ mod tests {
         write_workbench_review_artifacts(&mut s);
         let v4_config_hash =
             sha256_hex(b"workbench_input_manifest.v1:paper:source_reconciliation_v4");
-        let report_path = source_reconciliation_dir(&s.book_dir).join("report.json");
+        let report_path = source_reconciliation_dir(&s.workspace.book_dir).join("report.json");
         let mut report: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
         report["input_fingerprint"]["config_hash"] = json!(v4_config_hash.clone());
         std::fs::write(&report_path, report.to_string()).unwrap();
 
-        let input_dir = s.book_dir.join(".build").join("input");
+        let input_dir = s.workspace.book_dir.join(".build").join("input");
         std::fs::create_dir_all(&input_dir).unwrap();
         std::fs::write(
             input_dir.join("manifest.json"),
@@ -14095,12 +14479,12 @@ mod tests {
     fn source_review_resolve_replaces_all_duplicate_block_decisions_with_latest_entry() {
         let mut s = state_named("workbench-source-review-resolve-duplicate");
         write_workbench_review_artifacts(&mut s);
-        let decisions_path = source_reconciliation_dir(&s.book_dir).join("review-decisions.json");
+        let decisions_path = source_reconciliation_dir(&s.workspace.book_dir).join("review-decisions.json");
         std::fs::write(
             &decisions_path,
             json!({
                 "version": "source_review_decisions.v1",
-                "book_id": s.book.base.book_id,
+                "book_id": s.workspace.book.base.book_id,
                 "stage": "source_reconciliation",
                 "input_fingerprint": {
                     "paper_md_sha256": "sha-md",
@@ -14146,7 +14530,7 @@ mod tests {
         let mut s = state_named("workbench-source-review-llm-analysis");
         write_workbench_review_artifacts(&mut s);
         let users = Arc::new(Mutex::new(Vec::new()));
-        s.adapter = Box::new(StructuredRecordingAdapter {
+        s.services.adapter = Box::new(StructuredRecordingAdapter {
             users: Arc::clone(&users),
             answer: serde_json::json!({
                 "summary": "The patient count differs.",
@@ -14180,7 +14564,7 @@ mod tests {
         let prompt = users.lock().unwrap().join("\n");
         assert!(prompt.contains("Markdown says 12 patients."));
         assert!(prompt.contains("PDF says 21 patients."));
-        assert!(!source_reconciliation_dir(&s.book_dir)
+        assert!(!source_reconciliation_dir(&s.workspace.book_dir)
             .join("review-decisions.json")
             .exists());
     }
@@ -14189,7 +14573,7 @@ mod tests {
     fn source_review_llm_analysis_rejects_invalid_model_contract() {
         let mut s = state_named("workbench-source-review-llm-invalid");
         write_workbench_review_artifacts(&mut s);
-        s.adapter = Box::new(StructuredRecordingAdapter {
+        s.services.adapter = Box::new(StructuredRecordingAdapter {
             users: Arc::new(Mutex::new(Vec::new())),
             answer: r#"{"summary":"missing required fields"}"#.into(),
         });
@@ -14202,7 +14586,7 @@ mod tests {
 
         assert_eq!(response.status, 502);
         assert!(response.body.contains("SOURCE_REVIEW_LLM_OUTPUT_INVALID"));
-        assert!(!source_reconciliation_dir(&s.book_dir)
+        assert!(!source_reconciliation_dir(&s.workspace.book_dir)
             .join("review-decisions.json")
             .exists());
     }
@@ -14246,13 +14630,13 @@ mod tests {
 
         assert_eq!(r.status, 200);
         let plan: serde_json::Value = serde_json::from_str(
-            &std::fs::read_to_string(s.book_dir.join(".build/sidecar-plan/sidecar_plan.json"))
+            &std::fs::read_to_string(s.workspace.book_dir.join(".build/sidecar-plan/sidecar_plan.json"))
                 .unwrap(),
         )
         .unwrap();
         let spec: serde_json::Value = serde_json::from_str(
             &std::fs::read_to_string(
-                s.book_dir
+                s.workspace.book_dir
                     .join(".build/sidecar-plan/sidecar_build_spec.json"),
             )
             .unwrap(),
@@ -14290,12 +14674,12 @@ mod tests {
             sha256_hex(b"pdf")
         );
         assert_eq!(
-            std::fs::read_to_string(s.book_dir.join("paper.md")).unwrap(),
+            std::fs::read_to_string(s.workspace.book_dir.join("paper.md")).unwrap(),
             "abc"
         );
-        assert_eq!(std::fs::read(s.book_dir.join("paper.pdf")).unwrap(), b"pdf");
+        assert_eq!(std::fs::read(s.workspace.book_dir.join("paper.pdf")).unwrap(), b"pdf");
         let manifest: serde_json::Value = serde_json::from_str(
-            &std::fs::read_to_string(workbench_input_manifest_path(&s.book_dir)).unwrap(),
+            &std::fs::read_to_string(workbench_input_manifest_path(&s.workspace.book_dir)).unwrap(),
         )
         .unwrap();
         assert_eq!(manifest["version"], "workbench_input_manifest.v1");
@@ -14312,7 +14696,7 @@ mod tests {
             r#"{"book_id":"paper-reopen","paper_md_text":"abc","paper_pdf_base64":"cGRm"}"#,
         );
         assert_eq!(r.status, 200);
-        let dir = s.book_dir.clone();
+        let dir = s.workspace.book_dir.clone();
 
         let mut reopened = state_named("workbench-input-reopen-target");
         let body = format!(
@@ -14496,8 +14880,7 @@ mod tests {
             .iter()
             .any(|event| event["type"] == "executor_contract_written"));
 
-        let contract_path = s
-            .book_dir
+        let contract_path = s.workspace.book_dir
             .join(".build")
             .join("executor-runs")
             .join("run-codex")
@@ -14576,8 +14959,8 @@ mod tests {
     #[test]
     fn builtin_stage_runner_reaches_reader_and_reloads_app_book() {
         let mut s = state_named("workbench-builtin-stage-runner");
-        let input_md = s.book_dir.join("selected-paper.md");
-        let input_pdf = s.book_dir.join("selected-paper.pdf");
+        let input_md = s.workspace.book_dir.join("selected-paper.md");
+        let input_pdf = s.workspace.book_dir.join("selected-paper.pdf");
         std::fs::write(&input_md, "Hello PDF\n").unwrap();
         std::fs::write(&input_pdf, simple_pdf("Hello PDF")).unwrap();
         let import_body = json!({
@@ -14604,7 +14987,7 @@ mod tests {
             .to_string();
         assert_eq!(source_body["jobs"][0]["status"], "running");
         assert!(source_body["jobs"][0]["active_run"]["telemetry"]["pid"].is_number());
-        wait_for_job_status(&s.book_dir, &job_id, "ready");
+        wait_for_job_status(&s.workspace.book_dir, &job_id, "ready");
 
         let foundation_started = post(
             &mut s,
@@ -14623,21 +15006,21 @@ mod tests {
             "{}",
             foundation_started.body
         );
-        wait_for_job_status(&s.book_dir, &job_id, "done");
+        wait_for_job_status(&s.workspace.book_dir, &job_id, "done");
 
         let snapshot = get(&mut s, "/book/build_workbench");
         assert_eq!(snapshot.status, 200, "{}", snapshot.body);
         let snapshot_body: serde_json::Value = serde_json::from_str(&snapshot.body).unwrap();
         assert_eq!(snapshot_body["readiness"]["route"], "reader");
-        assert_eq!(s.book.base.book_id, "paper-builtin");
-        assert!(s.book.base.lid_nodes.iter().any(|node| node.lid == "1"));
+        assert_eq!(s.workspace.book.base.book_id, "paper-builtin");
+        assert!(s.workspace.book.base.lid_nodes.iter().any(|node| node.lid == "1"));
         assert_eq!(
-            s.book.content_profile_id(),
+            s.workspace.book.content_profile_id(),
             ContentProfileId::TechnicalLearning
         );
 
         std::fs::write(
-            s.book_dir.join("book_structure.json"),
+            s.workspace.book_dir.join("book_structure.json"),
             json!({
                 "header": {
                     "book_id": "paper-builtin",
@@ -14654,7 +15037,7 @@ mod tests {
             .to_string(),
         )
         .unwrap();
-        let mut projection_job = read_build_job_by_id(&s.book_dir, &job_id).unwrap();
+        let mut projection_job = read_build_job_by_id(&s.workspace.book_dir, &job_id).unwrap();
         projection_job["updated_at"] = json!("stage-4");
         projection_job = append_job_event(
             projection_job,
@@ -14664,18 +15047,18 @@ mod tests {
             Some("Book structure completed"),
             None,
         );
-        write_build_job_atomic(&s.book_dir, &projection_job).unwrap();
+        write_build_job_atomic(&s.workspace.book_dir, &projection_job).unwrap();
 
         let refreshed = get_at(&mut s, "/book/build_workbench", "stage-4");
         assert_eq!(refreshed.status, 200, "{}", refreshed.body);
-        assert_eq!(s.book.content_profile_id(), ContentProfileId::Paper);
+        assert_eq!(s.workspace.book.content_profile_id(), ContentProfileId::Paper);
     }
 
     #[test]
     fn interrupted_builtin_run_is_detected_and_resumed_from_durable_job() {
         let mut s = state_named("workbench-interrupted-resume");
-        let input_md = s.book_dir.join("selected-paper.md");
-        let input_pdf = s.book_dir.join("selected-paper.pdf");
+        let input_md = s.workspace.book_dir.join("selected-paper.md");
+        let input_pdf = s.workspace.book_dir.join("selected-paper.pdf");
         std::fs::write(&input_md, "Hello PDF\n").unwrap();
         std::fs::write(&input_pdf, simple_pdf("Hello PDF")).unwrap();
         assert_eq!(
@@ -14695,7 +15078,7 @@ mod tests {
         let created = post(&mut s, "/build_workbench/job.create", "{}");
         let created_body: serde_json::Value = serde_json::from_str(&created.body).unwrap();
         let job_id = created_body["jobs"][0]["job_id"].as_str().unwrap();
-        let mut job = read_build_job_by_id(&s.book_dir, job_id).unwrap();
+        let mut job = read_build_job_by_id(&s.workspace.book_dir, job_id).unwrap();
         job["status"] = json!("running");
         job["active_run"] = json!({
             "run_id": "run-orphaned",
@@ -14704,7 +15087,7 @@ mod tests {
             "runner_kind": "builtin_stage",
             "telemetry": { "pid": 999999, "started_at": "1", "last_heartbeat_at": "1" }
         });
-        write_build_job_atomic(&s.book_dir, &job).unwrap();
+        write_build_job_atomic(&s.workspace.book_dir, &job).unwrap();
 
         let interrupted = get_at(&mut s, "/book/build_workbench", "20000");
         let interrupted_body: serde_json::Value = serde_json::from_str(&interrupted.body).unwrap();
@@ -14727,7 +15110,7 @@ mod tests {
             resumed_body["jobs"][0]["active_run"]["run_id"],
             "run-orphaned"
         );
-        let completed = wait_for_job_status(&s.book_dir, job_id, "ready");
+        let completed = wait_for_job_status(&s.workspace.book_dir, job_id, "ready");
         assert!(completed["events"]
             .as_array()
             .unwrap()
@@ -14751,8 +15134,7 @@ mod tests {
             r#"{"stage":"source_reconciliation","executor":"codex","run_id":"run-invalid","adapter_mode":"browser_shell"}"#,
         );
         assert_eq!(started.status, 400);
-        assert!(!s
-            .book_dir
+        assert!(!s.workspace.book_dir
             .join(".build")
             .join("executor-runs")
             .join("run-invalid")
@@ -14830,7 +15212,7 @@ mod tests {
                     None,
                 );
             }
-            write_build_job_atomic(&s.book_dir, &job).unwrap();
+            write_build_job_atomic(&s.workspace.book_dir, &job).unwrap();
         }
 
         let snapshot = get(&mut s, "/book/build_workbench");
@@ -14842,7 +15224,7 @@ mod tests {
             .iter()
             .all(|job| job["events"].as_array().unwrap().len() <= MAX_BUILD_JOB_EVENTS));
         assert_eq!(
-            std::fs::read_dir(build_jobs_dir(&s.book_dir))
+            std::fs::read_dir(build_jobs_dir(&s.workspace.book_dir))
                 .unwrap()
                 .filter_map(Result::ok)
                 .filter(
@@ -14863,9 +15245,9 @@ mod tests {
             r#"{"book_id":"paper-draft","paper_md_text":"draft","paper_pdf_base64":"JVBERi1kcmFmdA=="}"#,
         );
         assert_eq!(imported.status, 200);
-        assert!(!s.book_dir.join("source_manifest.json").exists());
+        assert!(!s.workspace.book_dir.join("source_manifest.json").exists());
 
-        let pdf = route_book_asset_file(&s.book_dir, "/book/pdf/original").unwrap();
+        let pdf = route_book_asset_file(&s.workspace.book_dir, "/book/pdf/original").unwrap();
         assert_eq!(pdf.status, 200);
         assert_eq!(pdf.content_type, "application/pdf");
         assert_eq!(pdf.body, b"%PDF-draft");
@@ -14888,7 +15270,7 @@ mod tests {
             .contains("\"version\":\"pdf_source_map.v1\""));
         assert!(source_map.body.contains("\"primary_region\""));
 
-        let pdf = route_book_asset_file(&s.book_dir, "/book/pdf/original").unwrap();
+        let pdf = route_book_asset_file(&s.workspace.book_dir, "/book/pdf/original").unwrap();
         assert_eq!(pdf.status, 200);
         assert_eq!(pdf.content_type, "application/pdf");
         assert!(pdf.body.starts_with(b"%PDF-1.4"));
@@ -14984,8 +15366,7 @@ mod tests {
 
         write_pdf_runtime_artifacts(&mut s);
         rewrite_pdf_runtime_artifacts_v2(&s, "region_exact", 0);
-        let selection_page_path = s
-            .book_dir
+        let selection_page_path = s.workspace.book_dir
             .join("pdf_selection_map")
             .join("pages")
             .join("0.json");
@@ -15033,7 +15414,7 @@ mod tests {
 
         write_pdf_runtime_artifacts(&mut s);
         rewrite_pdf_runtime_artifacts_v2(&s, "char_exact", 3);
-        let source_map_path = s.book_dir.join("pdf_source_map.json");
+        let source_map_path = s.workspace.book_dir.join("pdf_source_map.json");
         let mut wrong_book_map: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&source_map_path).unwrap()).unwrap();
         wrong_book_map["book_id"] = serde_json::json!("another-book");
@@ -15050,7 +15431,7 @@ mod tests {
         write_pdf_runtime_artifacts(&mut s);
         rewrite_pdf_runtime_artifacts_v2(&s, "char_exact", 3);
 
-        let source_map_path = s.book_dir.join("pdf_source_map.json");
+        let source_map_path = s.workspace.book_dir.join("pdf_source_map.json");
         let mut source_map: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&source_map_path).unwrap()).unwrap();
         source_map["display_token_policy_version"] =
@@ -15070,7 +15451,7 @@ mod tests {
         write_pdf_runtime_artifacts(&mut s);
         rewrite_pdf_runtime_artifacts_v2(&s, "char_exact", 3);
 
-        let source_map_path = s.book_dir.join("pdf_source_map.json");
+        let source_map_path = s.workspace.book_dir.join("pdf_source_map.json");
         let mut source_map: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&source_map_path).unwrap()).unwrap();
         source_map["formula_region_policy_version"] =
@@ -15090,7 +15471,7 @@ mod tests {
         write_pdf_runtime_artifacts(&mut s);
         rewrite_pdf_runtime_artifacts_v2(&s, "char_exact", 3);
 
-        let source_map_path = s.book_dir.join("pdf_source_map.json");
+        let source_map_path = s.workspace.book_dir.join("pdf_source_map.json");
         let mut source_map: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&source_map_path).unwrap()).unwrap();
         source_map["formula_glyph_policy_version"] =
@@ -15110,7 +15491,7 @@ mod tests {
         write_pdf_runtime_artifacts(&mut s);
         rewrite_pdf_runtime_artifacts_v2(&s, "char_exact", 3);
 
-        let source_map_path = s.book_dir.join("pdf_source_map.json");
+        let source_map_path = s.workspace.book_dir.join("pdf_source_map.json");
         let mut source_map: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&source_map_path).unwrap()).unwrap();
         source_map["asset_region_policy_version"] =
@@ -15130,7 +15511,7 @@ mod tests {
         write_pdf_runtime_artifacts(&mut s);
         rewrite_pdf_runtime_artifacts_v2(&s, "char_exact", 3);
 
-        let source_map_path = s.book_dir.join("pdf_source_map.json");
+        let source_map_path = s.workspace.book_dir.join("pdf_source_map.json");
         let mut source_map: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&source_map_path).unwrap()).unwrap();
         source_map["binding_ownership_policy_version"] =
@@ -15294,13 +15675,13 @@ mod tests {
     fn write_formula_recovery_runtime_artifacts(s: &mut AppState) -> usize {
         let formula = "$ W_{Ui}, W_{Di} $";
         let source = format!("{formula}{}", "X".repeat(100 - formula.len()));
-        s.book = (Book::new(sample_base(), &source)).into();
-        s.reader = Reader::new(&s.book, DEFAULT_RADIUS);
+        s.workspace.book = (Book::new(sample_base(), &source)).into();
+        s.workspace.reader = Reader::new(&s.workspace.book, DEFAULT_RADIUS);
         write_pdf_runtime_artifacts(s);
         rewrite_pdf_runtime_artifacts_v2(s, "partial", formula.len());
 
         let formula_offsets = [2usize, 5, 6, 8, 10, 13, 14];
-        let source_map_path = s.book_dir.join("pdf_source_map.json");
+        let source_map_path = s.workspace.book_dir.join("pdf_source_map.json");
         let mut source_map: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&source_map_path).unwrap()).unwrap();
         let entry = &mut source_map["entries"][0];
@@ -15330,8 +15711,7 @@ mod tests {
                 "lid":"1.1"
             })
         }).collect::<Vec<_>>();
-        let selection_page_path = s
-            .book_dir
+        let selection_page_path = s.workspace.book_dir
             .join("pdf_selection_map")
             .join("pages")
             .join("0.json");
@@ -15339,7 +15719,7 @@ mod tests {
             selection_page_path,
             serde_json::json!({
                 "version":"pdf_selection_map_page.v2",
-                "book_id":s.book.base.book_id,
+                "book_id":s.workspace.book.base.book_id,
                 "pageIndex":0,
                 "chars":chars
             })
@@ -15701,8 +16081,8 @@ unchanged after training concludes";
         assert!(source_prefix.is_ascii());
         assert!(source_prefix.len() < 100);
         let source = format!("{source_prefix}{}", "X".repeat(100 - source_prefix.len()));
-        s.book = (Book::new(sample_base(), &source)).into();
-        s.reader = Reader::new(&s.book, DEFAULT_RADIUS);
+        s.workspace.book = (Book::new(sample_base(), &source)).into();
+        s.workspace.reader = Reader::new(&s.workspace.book, DEFAULT_RADIUS);
         write_pdf_runtime_artifacts(s);
         rewrite_pdf_runtime_artifacts_v2(s, "partial", source_prefix.len());
 
@@ -15724,7 +16104,7 @@ unchanged after training concludes";
         if let Some(start) = run_start {
             exact_spans.push(serde_json::json!({"start":start,"end":source_prefix.len()}));
         }
-        let source_map_path = s.book_dir.join("pdf_source_map.json");
+        let source_map_path = s.workspace.book_dir.join("pdf_source_map.json");
         let mut source_map: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&source_map_path).unwrap()).unwrap();
         source_map["entries"][0]["exact_source_spans"] = serde_json::Value::Array(exact_spans);
@@ -15745,14 +16125,13 @@ unchanged after training concludes";
                 })
             })
             .collect::<Vec<_>>();
-        let selection_page_path = s
-            .book_dir
+        let selection_page_path = s.workspace.book_dir
             .join("pdf_selection_map")
             .join("pages")
             .join("0.json");
         let page = serde_json::json!({
             "version":"pdf_selection_map_page.v2",
-            "book_id":s.book.base.book_id,
+            "book_id":s.workspace.book.base.book_id,
             "pageIndex":0,
             "chars":chars
         });
@@ -16132,7 +16511,7 @@ unchanged after training concludes";
         write_projection_selection_pages(
             &s,
             vec![serde_json::json!({
-                "version":"pdf_selection_map_page.v1","book_id":s.book.base.book_id,
+                "version":"pdf_selection_map_page.v1","book_id":s.workspace.book.base.book_id,
                 "pageIndex":0,"rotate":0,
                 "chars":[
                     {"char_index":0,"text":"X","rect":{"pageIndex":0,"bbox":[10.0,10.0,12.0,20.0]},"source_span":{"start":0,"end":1},"lid":"1.1"},
@@ -16190,7 +16569,7 @@ unchanged after training concludes";
         write_pdf_runtime_artifacts(&mut s);
         let page = serde_json::json!({
             "version": "pdf_selection_map_page.v1",
-            "book_id": s.book.base.book_id,
+            "book_id": s.workspace.book.base.book_id,
             "pageIndex": 0,
             "chars": [
                 {"char_index":0,"text":"P","rect":{"pageIndex":0,"bbox":[10.0,10.0,12.0,20.0]},"source_span":{"start":0,"end":1},"lid":"1.1"},
@@ -16200,7 +16579,7 @@ unchanged after training concludes";
             ]
         });
         std::fs::write(
-            s.book_dir
+            s.workspace.book_dir
                 .join("pdf_selection_map")
                 .join("pages")
                 .join("0.json"),
@@ -16228,7 +16607,7 @@ unchanged after training concludes";
         write_pdf_runtime_artifacts(&mut s);
         let page = serde_json::json!({
             "version": "pdf_selection_map_page.v1",
-            "book_id": s.book.base.book_id,
+            "book_id": s.workspace.book.base.book_id,
             "pageIndex": 0,
             "chars": [
                 {"char_index":0,"text":"P","rect":{"pageIndex":0,"bbox":[10.0,10.0,12.0,20.0]},"source_span":{"start":0,"end":1},"lid":"1.1"},
@@ -16238,7 +16617,7 @@ unchanged after training concludes";
             ]
         });
         std::fs::write(
-            s.book_dir
+            s.workspace.book_dir
                 .join("pdf_selection_map")
                 .join("pages")
                 .join("0.json"),
@@ -16263,7 +16642,7 @@ unchanged after training concludes";
         write_pdf_runtime_artifacts(&mut s);
         let page = serde_json::json!({
             "version": "pdf_selection_map_page.v1",
-            "book_id": s.book.base.book_id,
+            "book_id": s.workspace.book.base.book_id,
             "pageIndex": 0,
             "chars": [
                 {"char_index":0,"text":"P","rect":{"pageIndex":0,"bbox":[10.0,10.0,12.0,20.0]},"source_span":{"start":0,"end":1},"lid":"1.1"},
@@ -16272,7 +16651,7 @@ unchanged after training concludes";
             ]
         });
         std::fs::write(
-            s.book_dir
+            s.workspace.book_dir
                 .join("pdf_selection_map")
                 .join("pages")
                 .join("0.json"),
@@ -16301,7 +16680,7 @@ unchanged after training concludes";
         write_projection_selection_pages(
             &s,
             vec![serde_json::json!({
-                "version":"pdf_selection_map_page.v1","book_id":s.book.base.book_id,
+                "version":"pdf_selection_map_page.v1","book_id":s.workspace.book.base.book_id,
                 "pageIndex":0,"rotate":0,
                 "chars":[
                     {"char_index":0,"text":"X","rect":{"pageIndex":0,"bbox":[1.0,20.0,2.0,22.0]},"source_span":{"start":0,"end":1},"lid":"1.1"},
@@ -16326,7 +16705,7 @@ unchanged after training concludes";
         write_projection_selection_pages(
             &s,
             vec![serde_json::json!({
-                "version":"pdf_selection_map_page.v1","book_id":s.book.base.book_id,
+                "version":"pdf_selection_map_page.v1","book_id":s.workspace.book.base.book_id,
                 "pageIndex":0,"rotate":0,
                 "chars":[
                     {"char_index":0,"text":"X","rect":{"pageIndex":0,"bbox":[1.0,1.0,2.0,2.0]},"source_span":{"start":0,"end":1},"lid":"1.1"},
@@ -16354,7 +16733,7 @@ unchanged after training concludes";
         write_projection_selection_pages(
             &s,
             vec![serde_json::json!({
-                "version":"pdf_selection_map_page.v1","book_id":s.book.base.book_id,
+                "version":"pdf_selection_map_page.v1","book_id":s.workspace.book.base.book_id,
                 "pageIndex":0,"rotate":0,
                 "chars":[
                     {"char_index":0,"text":"X","rect":{"pageIndex":0,"bbox":[1.0,1.0,2.0,2.0]},"source_span":{"start":0,"end":1},"lid":"1.1"},
@@ -16378,7 +16757,7 @@ unchanged after training concludes";
         write_projection_selection_pages(
             &s,
             vec![serde_json::json!({
-                "version":"pdf_selection_map_page.v1","book_id":s.book.base.book_id,
+                "version":"pdf_selection_map_page.v1","book_id":s.workspace.book.base.book_id,
                 "pageIndex":0,"rotate":0,"chars":[]
             })],
         );
@@ -16399,14 +16778,14 @@ unchanged after training concludes";
     fn pdf_range_projection_preserves_request_page_char_order_and_rotated_geometry() {
         let mut s = state_named("pdf-range-order");
         let base = multi_leaf_base("sample-book", 2);
-        s.book = (Book::new(base, &"X".repeat(20))).into();
-        s.reader = Reader::new(&s.book, DEFAULT_RADIUS);
+        s.workspace.book = (Book::new(base, &"X".repeat(20))).into();
+        s.workspace.reader = Reader::new(&s.workspace.book, DEFAULT_RADIUS);
         write_pdf_runtime_artifacts(&mut s);
         write_projection_selection_pages(
             &s,
             vec![
                 serde_json::json!({
-                    "version":"pdf_selection_map_page.v1","book_id":s.book.base.book_id,
+                    "version":"pdf_selection_map_page.v1","book_id":s.workspace.book.base.book_id,
                     "pageIndex":0,"rotate":0,
                     "chars":[
                         {"char_index":0,"text":"X","rect":{"pageIndex":0,"bbox":[1.0,1.0,2.0,2.0]},"source_span":{"start":0,"end":1},"lid":"1.1"},
@@ -16414,7 +16793,7 @@ unchanged after training concludes";
                     ]
                 }),
                 serde_json::json!({
-                    "version":"pdf_selection_map_page.v1","book_id":s.book.base.book_id,
+                    "version":"pdf_selection_map_page.v1","book_id":s.workspace.book.base.book_id,
                     "pageIndex":1,"rotate":90,
                     "chars":[
                         {"char_index":0,"text":"X","rect":{"pageIndex":1,"bbox":[70.0,10.0,80.0,12.0]},"source_span":{"start":1,"end":2},"lid":"1.1"},
@@ -16422,14 +16801,14 @@ unchanged after training concludes";
                     ]
                 }),
                 serde_json::json!({
-                    "version":"pdf_selection_map_page.v1","book_id":s.book.base.book_id,
+                    "version":"pdf_selection_map_page.v1","book_id":s.workspace.book.base.book_id,
                     "pageIndex":2,"rotate":180,
                     "chars":[
                         {"char_index":0,"text":"X","rect":{"pageIndex":2,"bbox":[30.0,40.0,32.0,42.0]},"source_span":{"start":2,"end":3},"lid":"1.1"}
                     ]
                 }),
                 serde_json::json!({
-                    "version":"pdf_selection_map_page.v1","book_id":s.book.base.book_id,
+                    "version":"pdf_selection_map_page.v1","book_id":s.workspace.book.base.book_id,
                     "pageIndex":3,"rotate":270,
                     "chars":[
                         {"char_index":0,"text":"X","rect":{"pageIndex":3,"bbox":[50.0,60.0,52.0,62.0]},"source_span":{"start":3,"end":4},"lid":"1.1"}
@@ -16484,7 +16863,7 @@ unchanged after training concludes";
         let mut s = state_named("pdf-runtime-unavailable");
         write_pdf_runtime_artifacts(&mut s);
         let mut manifest: serde_json::Value = serde_json::from_str(
-            &std::fs::read_to_string(s.book_dir.join("source_manifest.json")).unwrap(),
+            &std::fs::read_to_string(s.workspace.book_dir.join("source_manifest.json")).unwrap(),
         )
         .unwrap();
         manifest["capabilities"]["project_lid_to_pdf"] =
@@ -16494,7 +16873,7 @@ unchanged after training concludes";
         manifest["capabilities"]["resolve_pdf_selection"] =
             serde_json::json!({"status":"unavailable","reason":"fixture disabled"});
         std::fs::write(
-            s.book_dir.join("source_manifest.json"),
+            s.workspace.book_dir.join("source_manifest.json"),
             manifest.to_string(),
         )
         .unwrap();
@@ -16617,25 +16996,25 @@ unchanged after training concludes";
         let store = MemoryStore::open(tmp("formula-semantics-get")).unwrap();
         let adapter = Box::new(StubAdapter { lid: "1.1".into() });
         let mut s = AppState {
-            desktop_host: false,
-            reader_only: false,
-            book_dir: tmp_dir("formula-semantics-book-dir"),
-            library_root: None,
-            book: book.into(),
-            reader,
-            store,
-            intent_store_root: None,
+            services: crate::service_state::ServiceState {
+                desktop_host: false,
+                reader_only: false,
+                library_root: None,
+                adapter,
+            },
+            user: crate::user_runtime::UserRuntime::local(
+                store,
+                None,
+                AgentHistory::default(),
+                None,
+            ),
+
             mcp_artifact_read_port: None,
-            adapter,
-            messages: new_session(),
-            session_path: None,
-            history_path: None,
-            agent_history: AgentHistory::default(),
-            profile_context_cache: runtime::profile_context::ProfileContextCache::default(),
+
             visitor_sessions: mcp::VisitorSessions::default(),
-            workbench_loaded_revision: None,
-            active_agent_stream: None,
-        };
+
+        workspace: crate::reader_workspace::ReaderWorkspace::local(tmp_dir("formula-semantics-book-dir"), book.into(), reader, new_session(), None),
+};
 
         let ok = get(&mut s, "/book/formula_semantics?lid=1.1");
         assert_eq!(ok.status, 200);
@@ -16849,7 +17228,7 @@ unchanged after training concludes";
             1
         );
 
-        s.intent_store_root = None;
+        s.user.intent_store_root = None;
         let denied = get(&mut s, "/build_intent/status");
         assert_eq!(denied.status, 403, "{}", denied.body);
         assert!(denied.body.contains("READER_PRIVATE_STORAGE_UNAVAILABLE"));
@@ -16859,7 +17238,7 @@ unchanged after training concludes";
     fn build_intent_goal_uses_structured_planner_and_status_stays_redacted() {
         let mut s = state_named("build-intent-private-goal");
         let structured_calls = Arc::new(Mutex::new(0usize));
-        s.adapter = Box::new(MemoryFlowAdapter {
+        s.services.adapter = Box::new(MemoryFlowAdapter {
             structured_outputs: RefCell::new(VecDeque::from([json!({
                 "version": "build_intent_planner_candidate.v1",
                 "goal_kind": "compare",
@@ -16918,13 +17297,13 @@ unchanged after training concludes";
             .unwrap()
             .to_string();
         let stored =
-            intent_build_store::IntentArtifactStore::open(s.intent_store_root.as_ref().unwrap())
+            intent_build_store::IntentArtifactStore::open(s.user.intent_store_root.as_ref().unwrap())
                 .unwrap()
-                .read_intent(&s.book.base.book_id, &intent_id)
+                .read_intent(&s.workspace.book.base.book_id, &intent_id)
                 .unwrap();
         assert_eq!(stored["user_goal"], private_goal);
 
-        s.adapter = Box::new(UnconfiguredAdapter);
+        s.services.adapter = Box::new(UnconfiguredAdapter);
         let invalid_edit = post_at(
             &mut s,
             "/build_intent/edit",
@@ -16944,14 +17323,14 @@ unchanged after training concludes";
         assert_eq!(invalid_edit.status, 400, "{}", invalid_edit.body);
         assert_eq!(*structured_calls.lock().unwrap(), 1);
         assert_eq!(
-            intent_build_store::IntentArtifactStore::open(s.intent_store_root.as_ref().unwrap())
+            intent_build_store::IntentArtifactStore::open(s.user.intent_store_root.as_ref().unwrap())
                 .unwrap()
-                .read_intent(&s.book.base.book_id, &intent_id)
+                .read_intent(&s.workspace.book.base.book_id, &intent_id)
                 .unwrap()["intent_revision"],
             1
         );
 
-        s.adapter = Box::new(MemoryFlowAdapter {
+        s.services.adapter = Box::new(MemoryFlowAdapter {
             structured_outputs: RefCell::new(VecDeque::from([json!({
                 "version": "build_intent_planner_candidate.v2",
                 "goal_kind": "compare",
@@ -17001,7 +17380,7 @@ unchanged after training concludes";
     #[test]
     fn build_intent_v3_allows_zero_blueprints_and_confirms_the_same_budgeted_revision() {
         let mut state = state_named("build-intent-zero-blueprints");
-        state.adapter = Box::new(MemoryFlowAdapter {
+        state.services.adapter = Box::new(MemoryFlowAdapter {
             structured_outputs: RefCell::new(VecDeque::from([json!({
                 "version": "build_intent_planner_candidate.v2",
                 "goal_kind": "reference",
@@ -17055,7 +17434,7 @@ unchanged after training concludes";
     #[test]
     fn build_intent_v3_rejects_same_version_blueprint_drift_before_confirmation() {
         let mut state = state_named("build-intent-blueprint-drift");
-        state.adapter = Box::new(MemoryFlowAdapter {
+        state.services.adapter = Box::new(MemoryFlowAdapter {
             structured_outputs: RefCell::new(VecDeque::from([json!({
                 "version": "build_intent_planner_candidate.v2",
                 "goal_kind": "compare",
@@ -17105,7 +17484,7 @@ unchanged after training concludes";
     #[test]
     fn codex_build_intent_uses_the_reader_private_plan_and_returns_no_raw_goal() {
         let mut state = state_named("codex-build-intent-shared-store");
-        state.adapter = Box::new(MemoryFlowAdapter {
+        state.services.adapter = Box::new(MemoryFlowAdapter {
             structured_outputs: RefCell::new(VecDeque::from([json!({
                 "version": "build_intent_planner_candidate.v1",
                 "goal_kind": "compare",
@@ -17230,11 +17609,11 @@ unchanged after training concludes";
         }
 
         let mut state = state_named("codex-planning-context-readonly");
-        state.adapter = Box::new(UnconfiguredAdapter);
-        let private_root = state.intent_store_root.clone().unwrap();
+        state.services.adapter = Box::new(UnconfiguredAdapter);
+        let private_root = state.user.intent_store_root.clone().unwrap();
         let store = intent_build_store::IntentArtifactStore::open(&private_root).unwrap();
         let revision_before = store
-            .inspect_redacted(&state.book.base.book_id)
+            .inspect_redacted(&state.workspace.book.base.book_id)
             .unwrap()
             .store_revision;
         let files_before = tree_snapshot(&private_root);
@@ -17264,7 +17643,7 @@ unchanged after training concludes";
             .unwrap()
             .iter()
             .all(|entry| entry.get("digest").is_none()));
-        assert_eq!(first["target"]["book_id"], state.book.base.book_id);
+        assert_eq!(first["target"]["book_id"], state.workspace.book.base.book_id);
         assert_eq!(first["candidate_contract"]["max_artifacts"], 16);
         assert!(first["blueprint_registry"].as_array().unwrap().len() >= 4);
         assert!(
@@ -17284,25 +17663,25 @@ unchanged after training concludes";
         assert_eq!(tree_snapshot(&private_root), files_after_first);
         assert_eq!(
             store
-                .inspect_redacted(&state.book.base.book_id)
+                .inspect_redacted(&state.workspace.book.base.book_id)
                 .unwrap()
                 .store_revision,
             revision_before
         );
         assert!(store
-            .inspect_redacted(&state.book.base.book_id)
+            .inspect_redacted(&state.workspace.book.base.book_id)
             .unwrap()
             .intents
             .is_empty());
         assert!(store
-            .inspect_redacted(&state.book.base.book_id)
+            .inspect_redacted(&state.workspace.book.base.book_id)
             .unwrap()
             .plans
             .is_empty());
 
-        let original_source = std::fs::read(state.book_dir.join("source.txt")).unwrap();
+        let original_source = std::fs::read(state.workspace.book_dir.join("source.txt")).unwrap();
         std::fs::write(
-            state.book_dir.join("source.txt"),
+            state.workspace.book_dir.join("source.txt"),
             [original_source.as_slice(), b"current-state-drift"].concat(),
         )
         .unwrap();
@@ -17316,13 +17695,13 @@ unchanged after training concludes";
         assert_eq!(first["context_id"], drifted["context_id"]);
         assert_eq!(drifted["context_revision"], 2);
         assert_ne!(first["target"], drifted["target"]);
-        std::fs::write(state.book_dir.join("source.txt"), original_source).unwrap();
+        std::fs::write(state.workspace.book_dir.join("source.txt"), original_source).unwrap();
 
         let base = multi_leaf_base("planning-context-large-book", 1_981);
         let source = "X".repeat(19_810);
-        state.book = (Book::new(base, &source)).into();
-        state.reader = Reader::new(&state.book, DEFAULT_RADIUS);
-        std::fs::write(state.book_dir.join("source.txt"), source).unwrap();
+        state.workspace.book = (Book::new(base, &source)).into();
+        state.workspace.reader = Reader::new(&state.workspace.book, DEFAULT_RADIUS);
+        std::fs::write(state.workspace.book_dir.join("source.txt"), source).unwrap();
         let large = build_intent_api::run_codex_command(
             &mut state,
             "planning.context",
@@ -17355,20 +17734,20 @@ unchanged after training concludes";
     #[test]
     fn codex_planning_context_prefers_workbench_manifest_profile_before_paper_sidecars_exist() {
         let mut state = state_named("codex-planning-context-workbench-profile");
-        state.adapter = Box::new(UnconfiguredAdapter);
+        state.services.adapter = Box::new(UnconfiguredAdapter);
         assert_eq!(
-            state.book.content_profile_id(),
+            state.workspace.book.content_profile_id(),
             ContentProfileId::TechnicalLearning,
             "the fixture intentionally has no paper sidecars"
         );
 
-        let manifest_path = state.book_dir.join(WORKBENCH_INPUT_MANIFEST_RELATIVE);
+        let manifest_path = state.workspace.book_dir.join(WORKBENCH_INPUT_MANIFEST_RELATIVE);
         std::fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
         std::fs::write(
             manifest_path,
             serde_json::to_vec_pretty(&json!({
                 "version": "workbench_input_manifest.v1",
-                "book_id": state.book.base.book_id,
+                "book_id": state.workspace.book.base.book_id,
                 "profile_id": "paper",
                 "fingerprint": {
                     "paper_md_sha256": "a".repeat(64),
@@ -17394,10 +17773,10 @@ unchanged after training concludes";
     #[test]
     fn codex_planning_context_rejects_invalid_workbench_profile_authority() {
         let mut state = state_named("codex-planning-context-invalid-workbench-profile");
-        state.adapter = Box::new(UnconfiguredAdapter);
-        let manifest_path = state.book_dir.join(WORKBENCH_INPUT_MANIFEST_RELATIVE);
+        state.services.adapter = Box::new(UnconfiguredAdapter);
+        let manifest_path = state.workspace.book_dir.join(WORKBENCH_INPUT_MANIFEST_RELATIVE);
         std::fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
-        let book_id = state.book.base.book_id.clone();
+        let book_id = state.workspace.book.base.book_id.clone();
         let fingerprint = json!({ "config_hash": "c".repeat(64) });
         let invalid_manifests = [
             json!({
@@ -17490,7 +17869,7 @@ unchanged after training concludes";
         let now = "2026-07-30T10:00:00.000Z";
 
         let mut codex = state_named("cb3-codex-six-artifacts");
-        codex.adapter = Box::new(UnconfiguredAdapter);
+        codex.services.adapter = Box::new(UnconfiguredAdapter);
         let context =
             build_intent_api::run_codex_command(&mut codex, "planning.context", json!({}), now)
                 .unwrap();
@@ -17559,7 +17938,7 @@ unchanged after training concludes";
         });
         let calls = Arc::new(Mutex::new(0));
         let mut reader = state_named("cb3-reader-parity");
-        reader.adapter = Box::new(MemoryFlowAdapter {
+        reader.services.adapter = Box::new(MemoryFlowAdapter {
             structured_outputs: RefCell::new(VecDeque::from([parity_candidate.clone()])),
             chat_answers: RefCell::new(VecDeque::new()),
             structured_calls: calls.clone(),
@@ -17577,7 +17956,7 @@ unchanged after training concludes";
         assert_eq!(*calls.lock().unwrap(), 1);
 
         let mut codex_parity = state_named("cb3-codex-parity");
-        codex_parity.adapter = Box::new(UnconfiguredAdapter);
+        codex_parity.services.adapter = Box::new(UnconfiguredAdapter);
         let parity_context = build_intent_api::run_codex_command(
             &mut codex_parity,
             "planning.context",
@@ -17616,7 +17995,7 @@ unchanged after training concludes";
     #[test]
     fn codex_candidate_rejects_context_drift_before_persisting_a_plan() {
         let mut state = state_named("cb3-context-drift");
-        state.adapter = Box::new(UnconfiguredAdapter);
+        state.services.adapter = Box::new(UnconfiguredAdapter);
         let context = build_intent_api::run_codex_command(
             &mut state,
             "planning.context",
@@ -17624,7 +18003,7 @@ unchanged after training concludes";
             "2026-07-30T10:10:00.000Z",
         )
         .unwrap();
-        std::fs::write(state.book_dir.join("source.txt"), "changed current source").unwrap();
+        std::fs::write(state.workspace.book_dir.join("source.txt"), "changed current source").unwrap();
         let error = build_intent_api::run_codex_command(
             &mut state,
             "draft.candidate",
@@ -17646,10 +18025,10 @@ unchanged after training concludes";
         assert_eq!(error.error_code, "BUILD_PLANNING_CONTEXT_DRIFT");
         assert_eq!(error.category, "needs_user");
         let inspection = intent_build_store::IntentArtifactStore::open(
-            state.intent_store_root.as_ref().unwrap(),
+            state.user.intent_store_root.as_ref().unwrap(),
         )
         .unwrap()
-        .inspect_redacted(&state.book.base.book_id)
+        .inspect_redacted(&state.workspace.book.base.book_id)
         .unwrap();
         assert!(inspection.intents.is_empty());
         assert!(inspection.plans.is_empty());
@@ -17682,7 +18061,7 @@ unchanged after training concludes";
     #[test]
     fn build_intent_provider_failure_does_not_write_a_default_plan() {
         let mut s = state_named("build-intent-provider-failure");
-        s.adapter = Box::new(UnconfiguredAdapter);
+        s.services.adapter = Box::new(UnconfiguredAdapter);
         let response = post_at(
             &mut s,
             "/build_intent/draft",
@@ -17707,7 +18086,7 @@ unchanged after training concludes";
             "usage_horizon": "one_off"
         });
         let mut state = state_named("cb6-reader-candidate-denied");
-        state.adapter = Box::new(UnconfiguredAdapter);
+        state.services.adapter = Box::new(UnconfiguredAdapter);
 
         for (route, body) in [
             (
@@ -17738,10 +18117,10 @@ unchanged after training concludes";
         }
 
         let inspection = intent_build_store::IntentArtifactStore::open(
-            state.intent_store_root.as_ref().unwrap(),
+            state.user.intent_store_root.as_ref().unwrap(),
         )
         .unwrap()
-        .inspect_redacted(&state.book.base.book_id)
+        .inspect_redacted(&state.workspace.book.base.book_id)
         .unwrap();
         assert_eq!(inspection.store_revision, 0);
         assert!(inspection.intents.is_empty());
@@ -17751,12 +18130,11 @@ unchanged after training concludes";
     #[test]
     fn build_intent_replan_supersedes_active_and_hard_delete_removes_task_mailboxes() {
         let mut s = state_named("build-intent-ip8-replan-delete");
-        let public_policy = s
-            .book_dir
+        let public_policy = s.workspace.book_dir
             .join(".build/automatic-build/v2/tasks/pass1/unit-0/policy.json");
         std::fs::create_dir_all(public_policy.parent().unwrap()).unwrap();
         std::fs::write(&public_policy, "ORIGINAL_PUBLIC_TASK_POLICY_SENTINEL").unwrap();
-        s.adapter = Box::new(MemoryFlowAdapter {
+        s.services.adapter = Box::new(MemoryFlowAdapter {
             structured_outputs: RefCell::new(VecDeque::from([
                 json!({
                     "version": "build_intent_planner_candidate.v1",
@@ -17931,7 +18309,7 @@ unchanged after training concludes";
     #[test]
     fn build_intent_source_change_hides_overlay_and_preserves_stale_replan_lineage() {
         let mut s = state_named("build-intent-ip8-stale-source");
-        s.adapter = Box::new(MemoryFlowAdapter {
+        s.services.adapter = Box::new(MemoryFlowAdapter {
             structured_outputs: RefCell::new(VecDeque::from([
                 json!({
                     "version": "build_intent_planner_candidate.v1",
@@ -17977,7 +18355,7 @@ unchanged after training concludes";
         assert_eq!(confirmed.status, 200, "{}", confirmed.body);
         assert_eq!(get(&mut s, "/build_intent/artifacts").status, 200);
 
-        std::fs::write(s.book_dir.join("source.txt"), "changed source identity").unwrap();
+        std::fs::write(s.workspace.book_dir.join("source.txt"), "changed source identity").unwrap();
         let hidden = get(&mut s, "/build_intent/artifacts");
         assert_eq!(hidden.status, 404, "{}", hidden.body);
         let status: Value =
@@ -18047,7 +18425,7 @@ unchanged after training concludes";
         );
         assert_eq!(drafted.status, 200, "{}", drafted.body);
         let drafted: Value = serde_json::from_str(&drafted.body).unwrap();
-        std::fs::write(s.book_dir.join("source.txt"), "changed before confirmation").unwrap();
+        std::fs::write(s.workspace.book_dir.join("source.txt"), "changed before confirmation").unwrap();
         let rejected = post_at(
             &mut s,
             "/build_intent/confirm",
@@ -18068,7 +18446,7 @@ unchanged after training concludes";
     #[test]
     fn build_intent_standard_confirmation_supersedes_and_clears_a_private_overlay() {
         let mut s = state_named("build-intent-ip8-standard-clears-overlay");
-        s.adapter = Box::new(MemoryFlowAdapter {
+        s.services.adapter = Box::new(MemoryFlowAdapter {
             structured_outputs: RefCell::new(VecDeque::from([json!({
                 "version": "build_intent_planner_candidate.v1",
                 "goal_kind": "analyze",
@@ -18143,8 +18521,8 @@ unchanged after training concludes";
     fn resident_intent_artifact_mailbox_projects_only_the_active_overlay() {
         let mut s = state_named("intent-artifact-resident");
         let private_root = tmp_dir("intent-artifact-resident-private");
-        s.intent_store_root = Some(private_root.clone());
-        s.adapter = Box::new(MemoryFlowAdapter {
+        s.user.intent_store_root = Some(private_root.clone());
+        s.services.adapter = Box::new(MemoryFlowAdapter {
             structured_outputs: RefCell::new(VecDeque::from([json!({
                 "version": "build_intent_planner_candidate.v1",
                 "goal_kind": "compare",
@@ -18257,7 +18635,7 @@ unchanged after training concludes";
         assert!(!submitted.body.contains("evidence_lids"));
 
         let seen_artifact_prompt = Arc::new(Mutex::new(Vec::new()));
-        s.adapter = Box::new(ChatRecordingAdapter {
+        s.services.adapter = Box::new(ChatRecordingAdapter {
             seen_messages: Arc::clone(&seen_artifact_prompt),
         });
         let chat = post(
@@ -18272,8 +18650,8 @@ unchanged after training concludes";
         assert!(provider_prompt.contains("artifact.search"));
         assert!(!provider_prompt.contains(private_goal));
         assert!(!provider_prompt.contains(private_body));
-        let persisted_messages = serde_json::to_string(&s.messages).unwrap();
-        let persisted_history = serde_json::to_string(&s.agent_history).unwrap();
+        let persisted_messages = serde_json::to_string(&s.workspace.messages).unwrap();
+        let persisted_history = serde_json::to_string(&s.user.agent_history).unwrap();
         assert!(!persisted_messages.contains("artifact_routing_cards.v1"));
         assert!(!persisted_history.contains("artifact_routing_cards.v1"));
         assert!(!persisted_messages.contains(private_body));
@@ -18335,7 +18713,7 @@ unchanged after training concludes";
             .body
             .contains("PRIVATE_HTTP_CANDIDATE_SENTINEL"));
 
-        s.reader_only = true;
+        s.services.reader_only = true;
         let projected = get(&mut s, "/build_intent/artifacts");
         assert_eq!(projected.status, 200, "{}", projected.body);
         let projected_body: Value = serde_json::from_str(&projected.body).unwrap();
@@ -18351,17 +18729,17 @@ unchanged after training concludes";
                 }
             }
         }
-        let original_private = s.intent_store_root.clone().unwrap();
+        let original_private = s.user.intent_store_root.clone().unwrap();
         let migrated_private = tmp_dir("lx5-migrated-private 中文");
         copy_private_dir(&original_private, &migrated_private);
-        s.intent_store_root = Some(migrated_private);
+        s.user.intent_store_root = Some(migrated_private);
         let migrated = get(&mut s, "/build_intent/artifacts");
         assert_eq!(migrated.status, 200, "{}", migrated.body);
         assert_eq!(
             serde_json::from_str::<Value>(&migrated.body).unwrap(),
             projected_body
         );
-        s.intent_store_root = Some(original_private);
+        s.user.intent_store_root = Some(original_private);
 
         assert_eq!(
             projected_body["overlay"]["artifacts"][0]["payload"]["records"][0]["data"]
@@ -18399,7 +18777,7 @@ unchanged after training concludes";
             );
             assert_eq!(usage_event.status, 200, "{}", usage_event.body);
         }
-        s.reader_only = false;
+        s.services.reader_only = false;
         let artifact_cost = post_at(
             &mut s,
             "/build_intent/usage.cost",
@@ -18432,9 +18810,9 @@ unchanged after training concludes";
         assert!(!status.body.contains(private_goal));
         assert!(!status.body.contains(private_body));
         assert!(!status.body.contains(private_failure));
-        assert!(!s.book_dir.join("artifacts").exists());
+        assert!(!s.workspace.book_dir.join("artifacts").exists());
 
-        s.intent_store_root = None;
+        s.user.intent_store_root = None;
         let denied = get(&mut s, "/build_intent/artifacts");
         assert_eq!(denied.status, 403, "{}", denied.body);
         assert!(denied.body.contains("READER_PRIVATE_STORAGE_UNAVAILABLE"));
@@ -18545,7 +18923,7 @@ unchanged after training concludes";
     fn paper_minimap_http_base_state_apply_proposal_and_saved_persistence() {
         let mut s = state_named("paper-minimap-http");
         let user_dir = tmp_dir("paper-minimap-http-user");
-        s.session_path = Some(user_dir.join("session.json"));
+        s.workspace.session_path = Some(user_dir.join("session.json"));
 
         let base = get(&mut s, "/book/paper_minimap");
         assert_eq!(base.status, 200);
@@ -18562,7 +18940,7 @@ unchanged after training concludes";
         );
         assert_eq!(direct.status, 200);
         assert!(direct.body.contains("\"kind\":\"effect\""));
-        assert_eq!(s.reader.paper_minimap_state().rev, 1);
+        assert_eq!(s.workspace.reader.paper_minimap_state().rev, 1);
 
         let proposal = post(
             &mut s,
@@ -18586,7 +18964,7 @@ unchanged after training concludes";
         );
         assert_eq!(confirmed.status, 200);
         assert_eq!(
-            s.reader.paper_minimap_state().mode,
+            s.workspace.reader.paper_minimap_state().mode,
             reader::PaperMinimapMode::Deep
         );
 
@@ -18608,7 +18986,7 @@ unchanged after training concludes";
             .to_string(),
         );
         assert_eq!(saved_confirmed.status, 200);
-        let overlay_path = paper_minimap_overlay_path(&s.session_path).unwrap();
+        let overlay_path = paper_minimap_overlay_path(&s.workspace.session_path).unwrap();
         let persisted = load_paper_minimap_overlay_store(&overlay_path).unwrap();
         assert_eq!(persisted.overlays[0].custom_landmarks.len(), 1);
 
@@ -18627,8 +19005,8 @@ unchanged after training concludes";
         let mut s = state_named("paper-minimap-position-sync");
         attach_paper_profile(&mut s);
         write_pdf_runtime_artifacts(&mut s);
-        s.book = (Book::load(s.book_dir.to_str().unwrap()).unwrap()).into();
-        s.reader = Reader::new(&s.book, DEFAULT_RADIUS);
+        s.workspace.book = (Book::load(s.workspace.book_dir.to_str().unwrap()).unwrap()).into();
+        s.workspace.reader = Reader::new(&s.workspace.book, DEFAULT_RADIUS);
         let base: serde_json::Value =
             serde_json::from_str(&get(&mut s, "/book/paper_minimap").body).unwrap();
         assert_ne!(base["status"], "unavailable");
@@ -18665,7 +19043,7 @@ unchanged after training concludes";
             .to_string(),
         );
         assert_eq!(synced.status, 200, "{}", synced.body);
-        let state = s.reader.paper_minimap_state();
+        let state = s.workspace.reader.paper_minimap_state();
         assert_eq!(state.viewport_position.center_page, 0.5);
         assert_eq!(state.selected_lid.as_deref(), Some("1.1"));
         assert!(state.map_focus.is_none());
@@ -18684,9 +19062,9 @@ unchanged after training concludes";
         let mut s = state_named("paper-minimap-localization-cache");
         attach_paper_profile(&mut s);
         write_pdf_runtime_artifacts(&mut s);
-        s.book = (Book::load(s.book_dir.to_str().unwrap()).unwrap()).into();
-        s.reader = Reader::new(&s.book, DEFAULT_RADIUS);
-        let base = s.book.paper_minimap();
+        s.workspace.book = (Book::load(s.workspace.book_dir.to_str().unwrap()).unwrap()).into();
+        s.workspace.reader = Reader::new(&s.workspace.book, DEFAULT_RADIUS);
+        let base = s.workspace.book.paper_minimap();
         let answer = serde_json::json!({
             "regions": base.regions.iter().map(|region| serde_json::json!({
                 "id": region.region_id,
@@ -18699,12 +19077,12 @@ unchanged after training concludes";
         })
         .to_string();
         let users = Arc::new(Mutex::new(Vec::new()));
-        s.adapter = Box::new(StructuredRecordingAdapter {
+        s.services.adapter = Box::new(StructuredRecordingAdapter {
             users: Arc::clone(&users),
             answer,
         });
         let user_dir = tmp_dir("paper-minimap-localization-cache-user");
-        s.session_path = Some(user_dir.join("session.json"));
+        s.workspace.session_path = Some(user_dir.join("session.json"));
 
         let first = post(&mut s, "/reader/paper_minimap.localize", "{}");
         assert_eq!(first.status, 200, "{}", first.body);
@@ -18723,9 +19101,9 @@ unchanged after training concludes";
         let mut s = state_named("paper-minimap-localization-fallback");
         attach_paper_profile(&mut s);
         write_pdf_runtime_artifacts(&mut s);
-        s.book = (Book::load(s.book_dir.to_str().unwrap()).unwrap()).into();
-        s.reader = Reader::new(&s.book, DEFAULT_RADIUS);
-        s.adapter = Box::new(UnconfiguredAdapter);
+        s.workspace.book = (Book::load(s.workspace.book_dir.to_str().unwrap()).unwrap()).into();
+        s.workspace.reader = Reader::new(&s.workspace.book, DEFAULT_RADIUS);
+        s.services.adapter = Box::new(UnconfiguredAdapter);
 
         let response = post(&mut s, "/reader/paper_minimap.localize", "{}");
         assert_eq!(response.status, 200, "{}", response.body);
@@ -18739,14 +19117,14 @@ unchanged after training concludes";
         let mut s = state_named("paper-minimap-localization-invalid");
         attach_paper_profile(&mut s);
         write_pdf_runtime_artifacts(&mut s);
-        s.book = (Book::load(s.book_dir.to_str().unwrap()).unwrap()).into();
-        s.reader = Reader::new(&s.book, DEFAULT_RADIUS);
-        s.adapter = Box::new(StructuredRecordingAdapter {
+        s.workspace.book = (Book::load(s.workspace.book_dir.to_str().unwrap()).unwrap()).into();
+        s.workspace.reader = Reader::new(&s.workspace.book, DEFAULT_RADIUS);
+        s.services.adapter = Box::new(StructuredRecordingAdapter {
             users: Arc::new(Mutex::new(Vec::new())),
             answer: r#"{"regions":[{"id":"invented","zh":"伪造区域"}],"landmarks":[]}"#.into(),
         });
         let user_dir = tmp_dir("paper-minimap-localization-invalid-user");
-        s.session_path = Some(user_dir.join("session.json"));
+        s.workspace.session_path = Some(user_dir.join("session.json"));
 
         let response = post(&mut s, "/reader/paper_minimap.localize", "{}");
         assert_eq!(response.status, 200, "{}", response.body);
@@ -18767,8 +19145,7 @@ unchanged after training concludes";
         assert_eq!(applied.status, 200, "{}", applied.body);
         let applied_value: serde_json::Value = serde_json::from_str(&applied.body).unwrap();
         let effect_id = applied_value["effect"]["effect_id"].as_str().unwrap();
-        assert!(!s
-            .reader
+        assert!(!s.workspace.reader
             .paper_minimap_state()
             .session_overlay
             .visible_layers
@@ -18785,13 +19162,12 @@ unchanged after training concludes";
             .to_string(),
         );
         assert_eq!(undone.status, 200, "{}", undone.body);
-        assert!(s
-            .reader
+        assert!(s.workspace.reader
             .paper_minimap_state()
             .session_overlay
             .visible_layers
             .contains(&"arguments".to_string()));
-        assert_eq!(s.reader.paper_minimap_state().rev, 2);
+        assert_eq!(s.workspace.reader.paper_minimap_state().rev, 2);
 
         let replay = post(
             &mut s,
@@ -18825,7 +19201,7 @@ unchanged after training concludes";
         );
         assert_eq!(dismissed.status, 200, "{}", dismissed.body);
         assert!(dismissed.body.contains("\"kind\":\"noop\""));
-        assert_eq!(s.reader.paper_minimap_state().rev, 0);
+        assert_eq!(s.workspace.reader.paper_minimap_state().rev, 0);
 
         let missing = post(
             &mut s,
@@ -18854,9 +19230,9 @@ unchanged after training concludes";
         );
         assert_eq!(direct.status, 200);
         assert!(direct.body.contains("\"kind\":\"effect\""));
-        assert_eq!(s.reader.layout_state().rev, 1);
+        assert_eq!(s.workspace.reader.layout_state().rev, 1);
         assert_eq!(
-            s.reader.layout_state().focused_slot.as_deref(),
+            s.workspace.reader.layout_state().focused_slot.as_deref(),
             Some("technical.evidence")
         );
 
@@ -18867,8 +19243,7 @@ unchanged after training concludes";
         );
         assert_eq!(proposal.status, 200);
         assert!(proposal.body.contains("\"kind\":\"proposal\""));
-        assert!(s
-            .reader
+        assert!(s.workspace.reader
             .layout_state()
             .open_slots
             .iter()
@@ -18882,8 +19257,7 @@ unchanged after training concludes";
             &format!(r#"{{"proposal_id":"{proposal_id}","base_layout_rev":{base_layout_rev}}}"#),
         );
         assert_eq!(apply.status, 200);
-        assert!(!s
-            .reader
+        assert!(!s.workspace.reader
             .layout_state()
             .open_slots
             .iter()
@@ -18974,19 +19348,19 @@ unchanged after training concludes";
     fn note_body_placement_markdown_routes_fail_closed_and_reanchor_atomically() {
         let mut s = state_named("note-placement-markdown-routes");
         let source = format!("{}{}", "A".repeat(10), "B".repeat(10));
-        s.book = (Book::new(
+        s.workspace.book = (Book::new(
             multi_leaf_base("note-placement-markdown-routes", 2),
             &source,
         ))
         .into();
-        s.reader = Reader::new(&s.book, DEFAULT_RADIUS);
-        std::fs::write(s.book_dir.join("source.txt"), &source).unwrap();
-        let source_fingerprint = current_note_source_fingerprint(&s.book_dir).unwrap();
+        s.workspace.reader = Reader::new(&s.workspace.book, DEFAULT_RADIUS);
+        std::fs::write(s.workspace.book_dir.join("source.txt"), &source).unwrap();
+        let source_fingerprint = current_note_source_fingerprint(&s.workspace.book_dir).unwrap();
 
         let fingerprint = get(&mut s, "/book/source_fingerprint");
         assert_eq!(fingerprint.status, 200, "{}", fingerprint.body);
         let fingerprint: Value = serde_json::from_str(&fingerprint.body).unwrap();
-        assert_eq!(fingerprint["book_id"], s.book.base.book_id);
+        assert_eq!(fingerprint["book_id"], s.workspace.book.base.book_id);
         assert_eq!(fingerprint["source_fingerprint"], source_fingerprint);
 
         let anchor_only = post(
@@ -18996,7 +19370,7 @@ unchanged after training concludes";
         );
         assert_eq!(anchor_only.status, 400, "{}", anchor_only.body);
         assert!(anchor_only.body.contains("NOTE_PLACEMENT_REQUIRED"));
-        assert!(s.store.recall(&RecallQuery::default()).is_empty());
+        assert!(s.user.store.recall(&RecallQuery::default()).is_empty());
 
         let first_placement = json!({
             "kind": "lid_block",
@@ -19023,7 +19397,7 @@ unchanged after training concludes";
         let duplicate: Value = serde_json::from_str(&duplicate.body).unwrap();
         assert_eq!(duplicate["status"], "EXISTING");
         assert_eq!(duplicate["record"]["mem_id"], old_id);
-        assert_eq!(s.store.recall(&RecallQuery::default()).len(), 1);
+        assert_eq!(s.user.store.recall(&RecallQuery::default()).len(), 1);
 
         let mixed = post(
             &mut s,
@@ -19091,7 +19465,7 @@ unchanged after training concludes";
         );
         assert_eq!(missing_lid.status, 404, "{}", missing_lid.body);
         assert!(missing_lid.body.contains("LID_NOT_FOUND"));
-        assert_eq!(s.store.recall(&RecallQuery::default()).len(), 1);
+        assert_eq!(s.user.store.recall(&RecallQuery::default()).len(), 1);
 
         let second_placement = json!({
             "kind": "lid_block",
@@ -19109,7 +19483,7 @@ unchanged after training concludes";
         assert_eq!(reanchored["content"], "placed markdown note");
         assert_eq!(reanchored["anchor"]["lid"], "1.2");
         assert_eq!(reanchored["note_placement"], second_placement);
-        let records = s.store.recall(&RecallQuery::default());
+        let records = s.user.store.recall(&RecallQuery::default());
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].mem_id, reanchored["mem_id"]);
 
@@ -19149,11 +19523,10 @@ unchanged after training concludes";
             .body
             .contains("NOTE_REANCHOR_NOT_ALLOWED"));
 
-        let agent_note = s
-            .reader
+        let agent_note = s.workspace.reader
             .note(
-                &s.book,
-                &mut s.store,
+                &s.workspace.book,
+                &mut s.user.store,
                 "1.1",
                 "agent proposal",
                 "session",
@@ -19180,7 +19553,7 @@ unchanged after training concludes";
         let direct: Value = serde_json::from_str(&direct.body).unwrap();
         assert_eq!(direct["status"], "CREATED");
         let direct_record = s
-            .store
+            .user.store
             .recall(&RecallQuery::default())
             .into_iter()
             .find(|record| record.mem_id == direct["note_id"])
@@ -19188,9 +19561,9 @@ unchanged after training concludes";
         assert_eq!(direct_record.layer, "long_term");
         assert_eq!(direct_record.note_placement.unwrap().lid(), "1.2");
 
-        let records_before_stale_book = s.store.recall(&RecallQuery::default()).len();
-        std::fs::write(s.book_dir.join("source.txt"), format!("{source}changed")).unwrap();
-        let changed_source_fingerprint = current_note_source_fingerprint(&s.book_dir).unwrap();
+        let records_before_stale_book = s.user.store.recall(&RecallQuery::default()).len();
+        std::fs::write(s.workspace.book_dir.join("source.txt"), format!("{source}changed")).unwrap();
+        let changed_source_fingerprint = current_note_source_fingerprint(&s.workspace.book_dir).unwrap();
         let stale_loaded_book = post(
             &mut s,
             "/memory/save",
@@ -19208,7 +19581,7 @@ unchanged after training concludes";
         assert_eq!(stale_loaded_book.status, 409, "{}", stale_loaded_book.body);
         assert!(stale_loaded_book.body.contains("STALE_NOTE_SOURCE"));
         assert_eq!(
-            s.store.recall(&RecallQuery::default()).len(),
+            s.user.store.recall(&RecallQuery::default()).len(),
             records_before_stale_book
         );
     }
@@ -19240,7 +19613,7 @@ unchanged after training concludes";
         let created: Value = serde_json::from_str(&created.body).unwrap();
         assert_eq!(created["status"], "CREATED");
         assert_eq!(created["record"]["note_placement"], placement);
-        assert_eq!(s.store.recall(&RecallQuery::default()).len(), 1);
+        assert_eq!(s.user.store.recall(&RecallQuery::default()).len(), 1);
 
         let stale_source = post(
             &mut s,
@@ -19284,7 +19657,7 @@ unchanged after training concludes";
         assert_eq!(stale_map.status, 409, "{}", stale_map.body);
         assert!(stale_map.body.contains("STALE_PDF_NOTE_PLACEMENT"));
 
-        let source_map_path = s.book_dir.join("pdf_source_map.json");
+        let source_map_path = s.workspace.book_dir.join("pdf_source_map.json");
         let mut source_map: Value =
             serde_json::from_str(&std::fs::read_to_string(&source_map_path).unwrap()).unwrap();
         source_map["entries"][0]["status"] = json!("line_fallback");
@@ -19322,7 +19695,7 @@ unchanged after training concludes";
         );
         assert_eq!(ambiguous.status, 409, "{}", ambiguous.body);
         assert!(ambiguous.body.contains("AMBIGUOUS_NOTE_TARGET"));
-        assert_eq!(s.store.recall(&RecallQuery::default()).len(), 1);
+        assert_eq!(s.user.store.recall(&RecallQuery::default()).len(), 1);
     }
 
     #[test]
@@ -19479,7 +19852,7 @@ unchanged after training concludes";
     #[test]
     fn search_text_rest_mcp_and_resident_contracts_have_parity() {
         let mut state = state_named("search-text-parity");
-        state.book = (Book::new(sample_base(), &"X".repeat(100))).into();
+        state.workspace.book = (Book::new(sample_base(), &"X".repeat(100))).into();
 
         let rest = get(
             &mut state,
@@ -19525,7 +19898,7 @@ unchanged after training concludes";
             .join("../..")
             .join(".understand-book/quantification-essence");
         let mut state = state_named("search-real-mcp");
-        state.book = (Book::load(path.to_str().unwrap()).unwrap()).into();
+        state.workspace.book = (Book::load(path.to_str().unwrap()).unwrap()).into();
         let query = r"\sqrt{2\ln N}";
         let mut cursor: Option<String> = None;
         let mut ordinals = Vec::new();
@@ -19546,7 +19919,7 @@ unchanged after training concludes";
                 BookToolInput::SearchText(input) => input,
                 _ => unreachable!(),
             };
-            let core = state.book.search_text(&canonical).unwrap();
+            let core = state.workspace.book.search_text(&canonical).unwrap();
             let reply = mcp::dispatch_mcp_tool(&mut state, "book_search_text", arguments, "1000");
             assert_eq!(reply.status, 200);
             let mcp: read_tools::SearchTextResult = serde_json::from_str(&reply.body).unwrap();
@@ -19616,7 +19989,7 @@ unchanged after training concludes";
     #[test]
     fn book_query_provider_error_502() {
         let mut s = state_named("query-err");
-        s.adapter = Box::new(UnconfiguredAdapter);
+        s.services.adapter = Box::new(UnconfiguredAdapter);
         let r = post(
             &mut s,
             "/book/query",
@@ -19694,25 +20067,25 @@ unchanged after training concludes";
             users: Arc::clone(&users),
         });
         let mut s = AppState {
-            desktop_host: false,
-            reader_only: false,
-            book_dir: dir.clone(),
-            library_root: None,
-            book: book.into(),
-            reader,
-            store,
-            intent_store_root: None,
+            services: crate::service_state::ServiceState {
+                desktop_host: false,
+                reader_only: false,
+                library_root: None,
+                adapter,
+            },
+            user: crate::user_runtime::UserRuntime::local(
+                store,
+                None,
+                AgentHistory::default(),
+                None,
+            ),
+
             mcp_artifact_read_port: None,
-            adapter,
-            messages: new_session(),
-            session_path: None,
-            history_path: None,
-            agent_history: AgentHistory::default(),
-            profile_context_cache: runtime::profile_context::ProfileContextCache::default(),
+
             visitor_sessions: mcp::VisitorSessions::default(),
-            workbench_loaded_revision: None,
-            active_agent_stream: None,
-        };
+
+        workspace: crate::reader_workspace::ReaderWorkspace::local(dir.clone(), book.into(), reader, new_session(), None),
+};
 
         let r = post(
             &mut s,
@@ -19796,7 +20169,7 @@ unchanged after training concludes";
         let dir_b = write_multi_leaf_book("session-book-b", "book-b", 30);
         let session_path = tmp("session-per-book");
         let mut s = state_named("session-per-book-store");
-        s.session_path = Some(session_path.clone());
+        s.workspace.session_path = Some(session_path.clone());
 
         let body_a = format!(
             r#"{{"dir":{}}}"#,
@@ -19812,19 +20185,19 @@ unchanged after training concludes";
             post(&mut s, "/reader/goto", r#"{"lid":"1.11"}"#).status,
             200
         );
-        assert_eq!(s.reader.viewport().top_lid, "1.11");
-        assert!(s.store.pending_read_count() > 0);
+        assert_eq!(s.workspace.reader.viewport().top_lid, "1.11");
+        assert!(s.user.store.pending_read_count() > 0);
 
         assert_eq!(post(&mut s, "/book/open", &body_b).status, 200);
-        assert_eq!(s.store.pending_read_count(), 0);
-        assert!(!s.store.read_lids("book-a").is_empty());
+        assert_eq!(s.user.store.pending_read_count(), 0);
+        assert!(!s.user.store.read_lids("book-a").is_empty());
         assert_eq!(post(&mut s, "/reader/goto", r#"{"lid":"1.6"}"#).status, 200);
-        assert_eq!(s.reader.viewport().top_lid, "1.6");
+        assert_eq!(s.workspace.reader.viewport().top_lid, "1.6");
 
         assert_eq!(post(&mut s, "/book/open", &body_a).status, 200);
-        assert_eq!(s.reader.viewport().top_lid, "1.11");
+        assert_eq!(s.workspace.reader.viewport().top_lid, "1.11");
         assert_eq!(post(&mut s, "/book/open", &body_b).status, 200);
-        assert_eq!(s.reader.viewport().top_lid, "1.6");
+        assert_eq!(s.workspace.reader.viewport().top_lid, "1.6");
 
         let session = load_session(&Some(session_path)).unwrap();
         assert_eq!(session.top_lid_for_dir(&path_string(&dir_a)), Some("1.11"));
@@ -19844,7 +20217,7 @@ unchanged after training concludes";
         std::fs::write(dir.join("source.txt"), "Y".repeat(100)).unwrap();
 
         let mut s = state_named("open-book");
-        s.messages.push(Message::user("old conversation"));
+        s.workspace.messages.push(Message::user("old conversation"));
         let body = format!(
             r#"{{"dir":{}}}"#,
             serde_json::to_string(dir.to_str().unwrap()).unwrap()
@@ -19852,9 +20225,9 @@ unchanged after training concludes";
         let r = post(&mut s, "/book/open", &body);
         assert_eq!(r.status, 200);
         assert!(r.body.contains("opened-book"));
-        assert_eq!(s.book.base.book_id, "opened-book");
-        assert_eq!(s.reader.state().viewport.anchor_lid, "1.1");
-        assert_eq!(s.messages.len(), 1);
+        assert_eq!(s.workspace.book.base.book_id, "opened-book");
+        assert_eq!(s.workspace.reader.state().viewport.anchor_lid, "1.1");
+        assert_eq!(s.workspace.messages.len(), 1);
 
         assert_eq!(post(&mut s, "/book/open", "{}").status, 400);
         assert_eq!(get(&mut s, "/book/open").status, 405);
@@ -19874,7 +20247,7 @@ unchanged after training concludes";
         let r = post(&mut s, "/book/open", &body);
         assert_eq!(r.status, 200);
         assert!(r.body.contains("\"route\":\"workbench\""));
-        assert_eq!(s.book_dir, dir);
+        assert_eq!(s.workspace.book_dir, dir);
 
         let snapshot = get(&mut s, "/book/build_workbench");
         assert_eq!(snapshot.status, 200);
@@ -19889,7 +20262,7 @@ unchanged after training concludes";
     fn agent_chat_drives_shared_reader_and_returns_effects() {
         let mut s = state_named("agent");
         // 脚本:显式 Reader 写意图下先发现 deferred reader tool,下一采样调用 highlight,再终答。
-        s.adapter = Box::new(ChatStubAdapter::scripted(vec![
+        s.services.adapter = Box::new(ChatStubAdapter::scripted(vec![
             AssistantTurn {
                 provider_continuation: None,
                 text: None,
@@ -19933,7 +20306,7 @@ unchanged after training concludes";
     #[test]
     fn profile_snapshot_new_resident_chat_injects_without_persisting_snapshot() {
         let mut s = state_named("agent-profile-injection");
-        s.store
+        s.user.store
             .create_profile_fact(
                 CreateProfileFact {
                     scope: ProfileScope::Global,
@@ -19956,7 +20329,7 @@ unchanged after training concludes";
             .unwrap();
         assert_eq!(post(&mut s, "/agent/new", "{}").status, 200);
         let seen = Arc::new(Mutex::new(Vec::new()));
-        s.adapter = Box::new(ChatRecordingAdapter {
+        s.services.adapter = Box::new(ChatRecordingAdapter {
             seen_messages: Arc::clone(&seen),
         });
 
@@ -19970,8 +20343,8 @@ unchanged after training concludes";
         assert!(prompt.contains("PRIVATE_PROFILE_SENTINEL"));
         drop(requests);
 
-        let persisted_messages = serde_json::to_string(&s.messages).unwrap();
-        let persisted_history = serde_json::to_string(&s.agent_history).unwrap();
+        let persisted_messages = serde_json::to_string(&s.workspace.messages).unwrap();
+        let persisted_history = serde_json::to_string(&s.user.agent_history).unwrap();
         assert!(!persisted_messages.contains("reader_profile_snapshot.v1"));
         assert!(!persisted_messages.contains("PRIVATE_PROFILE_SENTINEL"));
         assert!(!persisted_history.contains("reader_profile_snapshot.v1"));
@@ -19982,7 +20355,7 @@ unchanged after training concludes";
     fn profile_snapshot_context_fragment_reuses_and_replaces_revision_across_turns() {
         let mut state = state_named("profile-snapshot-context-fragment-revision");
         let seen = Arc::new(Mutex::new(Vec::new()));
-        state.adapter = Box::new(ChatRecordingAdapter {
+        state.services.adapter = Box::new(ChatRecordingAdapter {
             seen_messages: Arc::clone(&seen),
         });
 
@@ -19995,7 +20368,7 @@ unchanged after training concludes";
             assert_eq!(reply.status, 200, "{}", reply.body);
         }
         state
-            .store
+            .user.store
             .create_profile_fact(
                 CreateProfileFact {
                     scope: ProfileScope::Global,
@@ -20051,7 +20424,7 @@ unchanged after training concludes";
             .contains("REVISION_CHANGE_SENTINEL"));
         drop(requests);
 
-        let durable = serde_json::to_string(&(&state.messages, &state.agent_history)).unwrap();
+        let durable = serde_json::to_string(&(&state.workspace.messages, &state.user.agent_history)).unwrap();
         assert!(!durable.contains("context_fragment.v1"));
         assert!(!durable.contains("reader.profile_snapshot"));
         assert!(!durable.contains("REVISION_CHANGE_SENTINEL"));
@@ -20062,7 +20435,7 @@ unchanged after training concludes";
         let mut s = state_named("agent-memory-remember");
         let structured_calls = Arc::new(Mutex::new(0));
         let seen = Arc::new(Mutex::new(Vec::new()));
-        s.adapter = Box::new(MemoryFlowAdapter {
+        s.services.adapter = Box::new(MemoryFlowAdapter {
             structured_outputs: RefCell::new(
                 vec![memory_extraction(
                     "remember",
@@ -20078,23 +20451,23 @@ unchanged after training concludes";
 
         let first = post(&mut s, "/agent/chat", r#"{"message":"记住我喜欢详细解释"}"#);
         assert_eq!(first.status, 200, "{}", first.body);
-        assert_eq!(s.store.profile_facts().len(), 1);
+        assert_eq!(s.user.store.profile_facts().len(), 1);
         let first_body: serde_json::Value = serde_json::from_str(&first.body).unwrap();
         assert_eq!(first_body["memory_updates"][0]["kind"], "remembered");
         assert_eq!(
             first_body["profile_usage"]["snapshot_revision"],
-            s.store.projection_revision()
+            s.user.store.projection_revision()
         );
         assert_eq!(
             first_body["profile_usage"]["injected_fact_ids"][0],
-            s.store.profile_facts()[0].fact_id
+            s.user.store.profile_facts()[0].fact_id
         );
         assert!(first_body["profile_usage"]["claimed_used_fact_ids"]
             .as_array()
             .unwrap()
             .is_empty());
         assert_eq!(
-            s.store.profile_facts()[0].status,
+            s.user.store.profile_facts()[0].status,
             memory::FactStatus::Confirmed
         );
         assert_eq!(*structured_calls.lock().unwrap(), 1);
@@ -20104,7 +20477,7 @@ unchanged after training concludes";
         assert!(first_prompt.contains("memory_operation_result.v1"));
         assert!(first_prompt.contains("M1_PROFILE_SENTINEL"));
         drop(requests);
-        let durable = serde_json::to_string(&(&s.messages, &s.agent_history)).unwrap();
+        let durable = serde_json::to_string(&(&s.workspace.messages, &s.user.agent_history)).unwrap();
         assert!(!durable.contains("reader_profile_snapshot.v1"));
         assert!(!durable.contains("memory_operation_result.v1"));
         assert!(!durable.contains("M1_PROFILE_SENTINEL"));
@@ -20125,7 +20498,7 @@ unchanged after training concludes";
         let mut s = state_named("agent-memory-sensitive");
         let structured_calls = Arc::new(Mutex::new(0));
         let seen = Arc::new(Mutex::new(Vec::new()));
-        s.adapter = Box::new(MemoryFlowAdapter {
+        s.services.adapter = Box::new(MemoryFlowAdapter {
             structured_outputs: RefCell::new(
                 vec![memory_extraction(
                     "remember",
@@ -20141,21 +20514,21 @@ unchanged after training concludes";
 
         let first = post(&mut s, "/agent/chat", r#"{"message":"记住我的医疗偏好"}"#);
         assert_eq!(first.status, 200, "{}", first.body);
-        assert!(s.store.profile_facts().is_empty());
-        assert_eq!(s.agent_history.pending_memory_ops.len(), 1);
+        assert!(s.user.store.profile_facts().is_empty());
+        assert_eq!(s.user.agent_history.pending_memory_ops.len(), 1);
         assert_eq!(*structured_calls.lock().unwrap(), 1);
-        let durable = serde_json::to_string(&(&s.messages, &s.agent_history)).unwrap();
+        let durable = serde_json::to_string(&(&s.workspace.messages, &s.user.agent_history)).unwrap();
         assert!(!durable.contains("SENSITIVE_SERVER_ONLY"));
         assert!(!durable.contains("memory_operation_result.v1"));
 
         let confirmed = post(&mut s, "/agent/chat", r#"{"message":"确认以明文保存"}"#);
         assert_eq!(confirmed.status, 200, "{}", confirmed.body);
-        assert_eq!(s.store.profile_facts().len(), 1);
+        assert_eq!(s.user.store.profile_facts().len(), 1);
         assert_eq!(
-            s.store.profile_facts()[0].sensitivity,
+            s.user.store.profile_facts()[0].sensitivity,
             Sensitivity::Sensitive
         );
-        assert!(s.agent_history.pending_memory_ops.is_empty());
+        assert!(s.user.agent_history.pending_memory_ops.is_empty());
         assert_eq!(*structured_calls.lock().unwrap(), 1);
         let requests = seen.lock().unwrap();
         let confirmation_prompt = serde_json::to_string(&requests[1]).unwrap();
@@ -20168,7 +20541,7 @@ unchanged after training concludes";
         let mut s = state_named("agent-memory-sensitive-cancel");
         let structured_calls = Arc::new(Mutex::new(0));
         let seen = Arc::new(Mutex::new(Vec::new()));
-        s.adapter = Box::new(MemoryFlowAdapter {
+        s.services.adapter = Box::new(MemoryFlowAdapter {
             structured_outputs: RefCell::new(
                 vec![memory_extraction("remember", "health", "cancel me")].into(),
             ),
@@ -20180,12 +20553,12 @@ unchanged after training concludes";
             post(&mut s, "/agent/chat", r#"{"message":"记住我的医疗信息"}"#).status,
             200
         );
-        assert_eq!(s.agent_history.pending_memory_ops.len(), 1);
+        assert_eq!(s.user.agent_history.pending_memory_ops.len(), 1);
 
         let ordinary = post(&mut s, "/agent/chat", r#"{"message":"继续讲这一章"}"#);
         assert_eq!(ordinary.status, 200, "{}", ordinary.body);
-        assert!(s.agent_history.pending_memory_ops.is_empty());
-        assert!(s.store.profile_facts().is_empty());
+        assert!(s.user.agent_history.pending_memory_ops.is_empty());
+        assert!(s.user.store.profile_facts().is_empty());
         assert_eq!(*structured_calls.lock().unwrap(), 1);
         let requests = seen.lock().unwrap();
         assert!(serde_json::to_string(&requests[1])
@@ -20200,7 +20573,7 @@ unchanged after training concludes";
         let mut s = state_named(name);
         let structured_calls = Arc::new(Mutex::new(0));
         let seen = Arc::new(Mutex::new(Vec::new()));
-        s.adapter = Box::new(MemoryFlowAdapter {
+        s.services.adapter = Box::new(MemoryFlowAdapter {
             structured_outputs: RefCell::new(VecDeque::new()),
             chat_answers: RefCell::new(VecDeque::new()),
             structured_calls: Arc::clone(&structured_calls),
@@ -20217,8 +20590,8 @@ unchanged after training concludes";
         assert!(!reply.body.contains(secret));
         assert_eq!(*structured_calls.lock().unwrap(), 0);
         assert!(seen.lock().unwrap().is_empty());
-        assert!(s.store.profile_facts().is_empty());
-        assert!(!serde_json::to_string(&(&s.messages, &s.agent_history))
+        assert!(s.user.store.profile_facts().is_empty());
+        assert!(!serde_json::to_string(&(&s.workspace.messages, &s.user.agent_history))
             .unwrap()
             .contains(secret));
         assert!(!std::fs::read_to_string(memory_path)
@@ -20230,7 +20603,7 @@ unchanged after training concludes";
     fn ambiguous_forget_reaches_main_agent_as_ephemeral_clarification_only() {
         let mut s = state_named("agent-memory-clarification");
         for (key, turn) in [("depth", "turn-a"), ("tone", "turn-b")] {
-            s.store
+            s.user.store
                 .create_profile_fact(
                     CreateProfileFact {
                         scope: ProfileScope::Global,
@@ -20254,7 +20627,7 @@ unchanged after training concludes";
         }
         let structured_calls = Arc::new(Mutex::new(0));
         let seen = Arc::new(Mutex::new(Vec::new()));
-        s.adapter = Box::new(MemoryFlowAdapter {
+        s.services.adapter = Box::new(MemoryFlowAdapter {
             structured_outputs: RefCell::new(
                 vec![memory_extraction("forget", "unused", "unused")].into(),
             ),
@@ -20265,12 +20638,12 @@ unchanged after training concludes";
 
         let reply = post(&mut s, "/agent/chat", r#"{"message":"忘记我的偏好"}"#);
         assert_eq!(reply.status, 200, "{}", reply.body);
-        assert_eq!(s.store.profile_facts().len(), 2);
+        assert_eq!(s.user.store.profile_facts().len(), 2);
         assert_eq!(*structured_calls.lock().unwrap(), 1);
         let prompt = serde_json::to_string(&seen.lock().unwrap()[0]).unwrap();
         assert!(prompt.contains("memory_operation_result.v1"));
         assert!(prompt.contains("needs_clarification"));
-        assert!(!serde_json::to_string(&s.messages)
+        assert!(!serde_json::to_string(&s.workspace.messages)
             .unwrap()
             .contains("needs_clarification"));
     }
@@ -20288,7 +20661,7 @@ unchanged after training concludes";
         assert_eq!(reply.status, 200, "{}", reply.body);
         assert!(reply.body.contains("applied"));
         assert!(reply.body.contains("remembered"));
-        assert_eq!(normal.store.profile_facts().len(), 1);
+        assert_eq!(normal.user.store.profile_facts().len(), 1);
 
         let mut sensitive = state_named("structured-memory-sensitive");
         let mut forged_fact = profile_fact_draft("book", "health", "UI_SENSITIVE_ONLY", "normal");
@@ -20302,17 +20675,17 @@ unchanged after training concludes";
         let reply = post_profile(&mut sensitive, 0, sensitive_action.clone());
         assert_eq!(reply.status, 200, "{}", reply.body);
         assert!(reply.body.contains("needs_sensitive_confirmation"));
-        assert!(sensitive.store.profile_facts().is_empty());
+        assert!(sensitive.user.store.profile_facts().is_empty());
         assert_eq!(
-            sensitive.agent_history.pending_governance_mutations.len(),
+            sensitive.user.agent_history.pending_governance_mutations.len(),
             1
         );
-        assert!(sensitive.agent_history.pending_memory_ops.is_empty());
-        assert!(!serde_json::to_string(&sensitive.agent_history)
+        assert!(sensitive.user.agent_history.pending_memory_ops.is_empty());
+        assert!(!serde_json::to_string(&sensitive.user.agent_history)
             .unwrap()
             .contains("UI_SENSITIVE_ONLY"));
 
-        sensitive.adapter = Box::new(ChatStubAdapter::scripted(vec![AssistantTurn {
+        sensitive.services.adapter = Box::new(ChatStubAdapter::scripted(vec![AssistantTurn {
             provider_continuation: None,
             text: Some("saved".into()),
             tool_calls: vec![],
@@ -20325,29 +20698,29 @@ unchanged after training concludes";
         );
         assert_eq!(confirmed.status, 200, "{}", confirmed.body);
         assert!(sensitive
-            .agent_history
+            .user.agent_history
             .pending_governance_mutations
             .is_empty());
-        assert_eq!(sensitive.store.profile_facts().len(), 1);
+        assert_eq!(sensitive.user.store.profile_facts().len(), 1);
         assert_eq!(
-            sensitive.store.profile_facts()[0].sensitivity,
+            sensitive.user.store.profile_facts()[0].sensitivity,
             Sensitivity::Sensitive
         );
         assert_eq!(
-            match &sensitive.store.profile_facts()[0].payload {
+            match &sensitive.user.store.profile_facts()[0].payload {
                 ProfilePayload::ExplanationPreference(claim) => claim.value.as_str(),
                 _ => unreachable!(),
             },
             "UI_SENSITIVE_ONLY"
         );
-        assert!(!serde_json::to_string(&sensitive.agent_history)
+        assert!(!serde_json::to_string(&sensitive.user.agent_history)
             .unwrap()
             .contains("UI_SENSITIVE_ONLY"));
 
         let replay = post_profile(&mut sensitive, 0, sensitive_action);
         assert_eq!(replay.status, 200, "{}", replay.body);
         assert!(replay.body.contains("remembered"));
-        assert_eq!(sensitive.store.profile_facts().len(), 1);
+        assert_eq!(sensitive.user.store.profile_facts().len(), 1);
     }
 
     #[test]
@@ -20364,7 +20737,7 @@ unchanged after training concludes";
         let state = get(&mut s, "/profile/memory");
         assert_eq!(state.status, 200, "{}", state.body);
         let body: serde_json::Value = serde_json::from_str(&state.body).unwrap();
-        assert_eq!(body["current_book_id"], s.book.base.book_id);
+        assert_eq!(body["current_book_id"], s.workspace.book.base.book_id);
         assert_eq!(body["status"]["document_revision"], 1);
         assert_eq!(body["status"]["projection_revision"], 1);
         assert_eq!(body["status"]["profile_status"], "current");
@@ -20404,9 +20777,13 @@ unchanged after training concludes";
     #[test]
     fn profile_backfill_http_freezes_only_selected_current_book_history() {
         let mut state = state_named("profile-backfill-http");
-        let book_id = state.book.base.book_id.clone();
+        let book_id = state.workspace.book.base.book_id.clone();
         let turns = (1..=3)
             .map(|ordinal| AgentChatTurn {
+                domain: Default::default(),
+                admission_input: None,
+                published_book_ref: None,
+                teaching_ref: None,
                 goal_ref: None,
                 presentation_follow_up: None,
                 turn_id: format!("turn-{ordinal}"),
@@ -20426,7 +20803,7 @@ unchanged after training concludes";
                 delivery_diagnostics: None,
             })
             .collect();
-        state.agent_history.sessions.push(AgentChatSession {
+        state.user.agent_history.sessions.push(AgentChatSession {
             id: "session-current".into(),
             book_id: book_id.clone(),
             title: "Current book history".into(),
@@ -20437,13 +20814,17 @@ unchanged after training concludes";
             goals: vec![],
             compaction_checkpoint: None,
         });
-        state.agent_history.sessions.push(AgentChatSession {
+        state.user.agent_history.sessions.push(AgentChatSession {
             id: "session-other".into(),
             book_id: "other-book".into(),
             title: "Other book history".into(),
             created_at: "created".into(),
             updated_at: "updated".into(),
             turns: vec![AgentChatTurn {
+                domain: Default::default(),
+                admission_input: None,
+                published_book_ref: None,
+                teaching_ref: None,
                 goal_ref: None,
                 presentation_follow_up: None,
                 turn_id: "other-turn".into(),
@@ -20473,7 +20854,7 @@ unchanged after training concludes";
         assert_eq!(preview["sessions"].as_array().unwrap().len(), 1);
         assert_eq!(preview["sessions"][0]["session_id"], "session-current");
         assert!(preview["jobs"].as_array().unwrap().is_empty());
-        assert!(state.store.profile_facts().is_empty());
+        assert!(state.user.store.profile_facts().is_empty());
 
         let invalid = post(
             &mut state,
@@ -20481,7 +20862,7 @@ unchanged after training concludes";
             r#"{"session_id":"session-current","from_turn_exclusive":0,"to_turn_inclusive":4}"#,
         );
         assert_eq!(invalid.status, 400, "{}", invalid.body);
-        assert!(state.store.historical_backfill_jobs().is_empty());
+        assert!(state.user.store.historical_backfill_jobs().is_empty());
         let other = post(
             &mut state,
             "/profile/backfill/start",
@@ -20535,7 +20916,7 @@ unchanged after training concludes";
         let mut pending_ids = Vec::new();
         for (key, turn_id) in [("candidate-a", "turn-a"), ("candidate-b", "turn-b")] {
             let fact = state
-                .store
+                .user.store
                 .create_profile_fact(
                     CreateProfileFact {
                         scope: ProfileScope::Global,
@@ -20605,7 +20986,7 @@ unchanged after training concludes";
         let replay = post_profile(&mut state, 4, remember_action);
         assert_eq!(replay.status, 200, "{}", replay.body);
         assert_eq!(replay.body, remembered.body);
-        assert_eq!(state.store.document_revision(), 5);
+        assert_eq!(state.user.store.document_revision(), 5);
 
         let reused = post_profile(
             &mut state,
@@ -20671,7 +21052,7 @@ unchanged after training concludes";
             .unwrap()
             .to_string();
 
-        let book_id = state.book.base.book_id.clone();
+        let book_id = state.workspace.book.base.book_id.clone();
         let rule_added = post_profile(
             &mut state,
             7,
@@ -20722,7 +21103,7 @@ unchanged after training concludes";
         );
         assert_eq!(forgotten.status, 200, "{}", forgotten.body);
         assert!(forgotten.body.contains("forgotten"));
-        assert_eq!(state.store.document_revision(), 10);
+        assert_eq!(state.user.store.document_revision(), 10);
         let after_forget = get(&mut state, "/profile/memory");
         assert_eq!(after_forget.status, 200, "{}", after_forget.body);
         assert!(!after_forget.body.contains(&scoped_fact_id));
@@ -20733,7 +21114,7 @@ unchanged after training concludes";
     #[test]
     fn profile_memory_state_filters_other_book_facts_evidence_and_rules() {
         let mut state = state_named("profile-memory-book-boundary");
-        let current_book_id = state.book.base.book_id.clone();
+        let current_book_id = state.workspace.book.base.book_id.clone();
         for (scope, key, value, turn_id) in [
             (
                 ProfileScope::Global,
@@ -20759,7 +21140,7 @@ unchanged after training concludes";
             ),
         ] {
             state
-                .store
+                .user.store
                 .create_profile_fact(
                     CreateProfileFact {
                         scope,
@@ -20782,7 +21163,7 @@ unchanged after training concludes";
                 .unwrap();
         }
         state
-            .store
+            .user.store
             .create_profile_fact(
                 CreateProfileFact {
                     scope: ProfileScope::Global,
@@ -20804,9 +21185,9 @@ unchanged after training concludes";
             )
             .unwrap();
 
-        let revision = state.store.document_revision();
+        let revision = state.user.store.document_revision();
         state
-            .store
+            .user.store
             .apply_profile_governance_mutation(
                 ProfileGovernanceMutation {
                     expected_document_revision: revision,
@@ -20826,7 +21207,7 @@ unchanged after training concludes";
             )
             .unwrap();
         state
-            .store
+            .user.store
             .apply_profile_governance_mutation(
                 ProfileGovernanceMutation {
                     expected_document_revision: revision + 1,
@@ -20861,13 +21242,13 @@ unchanged after training concludes";
     #[test]
     fn profile_memory_state_includes_technical_activity_and_raw_projection() {
         let mut state = state_named("profile-memory-neutral-activity");
-        let book_id = state.book.base.book_id.clone();
+        let book_id = state.workspace.book.base.book_id.clone();
         state
-            .store
+            .user.store
             .mark_read(&book_id, "1.1", "2026-07-14T00:00:00Z")
             .unwrap();
         state
-            .store
+            .user.store
             .save(
                 SaveInput {
                     mem_id: None,
@@ -20922,15 +21303,15 @@ unchanged after training concludes";
     fn profile_memory_state_uses_paper_guide_ids_without_copying_public_text() {
         let mut state = state_named("profile-memory-paper-policy");
         attach_paper_profile(&mut state);
-        let book_id = state.book.base.book_id.clone();
-        let guide = state.book.paper_reading_guide(None, None).unwrap();
+        let book_id = state.workspace.book.base.book_id.clone();
+        let guide = state.workspace.book.paper_reading_guide(None, None).unwrap();
         let question = guide
             .questions
             .iter()
             .find(|question| !question.evidence_lids.is_empty())
             .expect("the paper fixture exposes a question with LID evidence");
         state
-            .store
+            .user.store
             .mark_read(&book_id, &question.evidence_lids[0], "2026-07-14T00:00:00Z")
             .unwrap();
         for (turn_id, key, value) in [
@@ -20938,7 +21319,7 @@ unchanged after training concludes";
             ("paper-stage", "paper_reading_stage", "critical"),
         ] {
             state
-                .store
+                .user.store
                 .create_profile_fact(
                     CreateProfileFact {
                         scope: ProfileScope::Book {
@@ -20964,7 +21345,7 @@ unchanged after training concludes";
                 )
                 .unwrap();
         }
-        let fact_count = state.store.profile_facts().len();
+        let fact_count = state.user.store.profile_facts().len();
 
         let response = get(&mut state, "/profile/memory");
 
@@ -20980,11 +21361,11 @@ unchanged after training concludes";
             .questions
             .iter()
             .all(|question| !response.body.contains(&question.question)));
-        assert_eq!(state.store.profile_facts().len(), fact_count);
+        assert_eq!(state.user.store.profile_facts().len(), fact_count);
     }
 
     fn install_source_bound_turn(state: &mut AppState, history_path: PathBuf) -> (String, String) {
-        state.history_path = Some(history_path);
+        state.user.history_path = Some(history_path);
         let evidence_range = EvidenceRange {
             start_lid: "1.1".into(),
             end_lid: "1.1".into(),
@@ -20993,14 +21374,13 @@ unchanged after training concludes";
                 range: SourceTextRange { start: 0, end: 1 },
             }],
         };
-        let resolved = state
-            .book
+        let resolved = state.workspace.book
             .resolve_source(&evidence_range, "zh-CN", None)
             .unwrap();
         let source_ref_id = "source_ref_server_fixture".to_string();
         let binding = runtime::orchestrator::SourceBinding {
             source_ref_id: source_ref_id.clone(),
-            book_id: state.book.base.book_id.clone(),
+            book_id: state.workspace.book.base.book_id.clone(),
             evidence_range,
             evidence_text_digest: resolved.evidence_text_digest,
             label_snapshot: resolved.label.clone(),
@@ -21018,7 +21398,7 @@ unchanged after training concludes";
             raw_quote: Some("X".into()),
             resolved_quote: Some("X".into()),
         };
-        let book_id = state.book.base.book_id.clone();
+        let book_id = state.workspace.book.base.book_id.clone();
         let turn_ref = precommit_agent_turn(
             state,
             &book_id,
@@ -21058,7 +21438,7 @@ unchanged after training concludes";
             request_audit: Default::default(),
         };
         {
-            let messages = state.messages.clone();
+            let messages = state.workspace.messages.clone();
             finalize_agent_turn_completed(
                 state,
                 &turn_ref,
@@ -21076,8 +21456,8 @@ unchanged after training concludes";
         history_path: PathBuf,
         answer: &str,
     ) -> String {
-        state.history_path = Some(history_path);
-        let book_id = state.book.base.book_id.clone();
+        state.user.history_path = Some(history_path);
+        let book_id = state.workspace.book.base.book_id.clone();
         let turn_ref = precommit_agent_turn(
             state,
             &book_id,
@@ -21104,7 +21484,7 @@ unchanged after training concludes";
             request_audit: Default::default(),
         };
         {
-            let messages = state.messages.clone();
+            let messages = state.workspace.messages.clone();
             finalize_agent_turn_completed(
                 state,
                 &turn_ref,
@@ -21150,7 +21530,7 @@ unchanged after training concludes";
     fn agent_warning_projection_persists_typed_stops_and_reads_legacy_context_budget() {
         let mut state = state_named("agent-warning-projection");
         let history_path = tmp("agent-warning-projection-history");
-        state.history_path = Some(history_path.clone());
+        state.user.history_path = Some(history_path.clone());
         let warning_codes = [
             "AGENT_NO_PROGRESS",
             "COMPACTION_FAILED",
@@ -21160,7 +21540,7 @@ unchanged after training concludes";
         ];
 
         for (index, warning) in warning_codes.iter().enumerate() {
-            let book_id = state.book.base.book_id.clone();
+            let book_id = state.workspace.book.base.book_id.clone();
             let turn_ref = precommit_agent_turn(
                 &mut state,
                 &book_id,
@@ -21187,7 +21567,7 @@ unchanged after training concludes";
                 request_audit: Default::default(),
             };
             {
-                let messages = state.messages.clone();
+                let messages = state.workspace.messages.clone();
                 finalize_agent_turn_completed(
                     &mut state,
                     &turn_ref,
@@ -21217,7 +21597,7 @@ unchanged after training concludes";
         assert_eq!(private_warnings, warning_codes);
 
         let public =
-            serde_json::to_value(agent_history_response(&restarted, &state.book).unwrap()).unwrap();
+            serde_json::to_value(agent_history_response(&restarted, &state.workspace.book, state.workspace.selected_chat.as_deref()).unwrap()).unwrap();
         let public_warnings = public["current"]["turns"]
             .as_array()
             .unwrap()
@@ -21232,8 +21612,8 @@ unchanged after training concludes";
     fn agent_delivery_diagnostics_persist_across_restart_and_stay_out_of_public_views() {
         let mut state = state_named("agent-delivery-diagnostics");
         let history_path = tmp("agent-delivery-diagnostics-history");
-        state.history_path = Some(history_path.clone());
-        let book_id = state.book.base.book_id.clone();
+        state.user.history_path = Some(history_path.clone());
+        let book_id = state.workspace.book.base.book_id.clone();
         let turn_ref = precommit_agent_turn(
             &mut state,
             &book_id,
@@ -21283,7 +21663,7 @@ unchanged after training concludes";
         };
 
         {
-            let messages = state.messages.clone();
+            let messages = state.workspace.messages.clone();
             finalize_agent_turn_completed(
                 &mut state,
                 &turn_ref,
@@ -21337,7 +21717,7 @@ unchanged after training concludes";
     #[test]
     fn repaired_answer_survives_turn_limit_finalization() {
         let mut state = state_named("repaired-answer-at-turn-limit");
-        let book_id = state.book.base.book_id.clone();
+        let book_id = state.workspace.book.base.book_id.clone();
         let turn_ref = precommit_agent_turn(
             &mut state,
             &book_id,
@@ -21380,7 +21760,7 @@ unchanged after training concludes";
         };
 
         {
-            let messages = state.messages.clone();
+            let messages = state.workspace.messages.clone();
             finalize_agent_turn_completed(
                 &mut state,
                 &turn_ref,
@@ -21391,7 +21771,7 @@ unchanged after training concludes";
         }
         .unwrap();
 
-        let turn = &state.agent_history.sessions[0].turns[0];
+        let turn = &state.user.agent_history.sessions[0].turns[0];
         assert_eq!(turn.delivery_diagnostics, Some(diagnostics));
         let persisted = turn.outcome.as_ref().unwrap();
         assert_eq!(
@@ -21420,8 +21800,8 @@ unchanged after training concludes";
     fn agent_request_audit_is_server_only_and_never_persisted_or_exposed() {
         let mut state = state_named("agent-request-audit-server-only");
         let history_path = tmp("agent-request-audit-server-only-history");
-        state.history_path = Some(history_path.clone());
-        let book_id = state.book.base.book_id.clone();
+        state.user.history_path = Some(history_path.clone());
+        let book_id = state.workspace.book.base.book_id.clone();
         let turn_ref = precommit_agent_turn(
             &mut state,
             &book_id,
@@ -21483,7 +21863,7 @@ unchanged after training concludes";
         }
 
         {
-            let messages = state.messages.clone();
+            let messages = state.workspace.messages.clone();
             finalize_agent_turn_completed(
                 &mut state,
                 &turn_ref,
@@ -21512,7 +21892,7 @@ unchanged after training concludes";
     fn agent_history_projection_compacts_provider_request_without_rewriting_persisted_messages() {
         let mut state = state_named("agent-history-provider-projection");
         let history_path = tmp("agent-history-provider-projection-file");
-        state.history_path = Some(history_path.clone());
+        state.user.history_path = Some(history_path.clone());
         let historical_messages = vec![
             Message::system("system"),
             Message::user("old question"),
@@ -21545,19 +21925,19 @@ unchanged after training concludes";
             },
         ];
         let historical_bytes = serde_json::to_vec(&historical_messages).unwrap();
-        let book_id = state.book.base.book_id.clone();
+        let book_id = state.workspace.book.base.book_id.clone();
         let mut session = new_agent_session(&book_id, "2026-07-20T00:00:00Z", 0);
         session.messages = historical_messages.clone();
         state
-            .agent_history
+            .user.agent_history
             .active_by_book
             .insert(book_id.clone(), session.id.clone());
-        state.agent_history.sessions.push(session);
-        state.messages = historical_messages;
-        save_agent_history_path(&state.history_path, &state.agent_history).unwrap();
+        state.user.agent_history.sessions.push(session);
+        state.workspace.messages = historical_messages;
+        save_agent_history_path(&state.user.history_path, &state.user.agent_history).unwrap();
 
         let seen_messages = Arc::new(Mutex::new(Vec::new()));
-        state.adapter = Box::new(ChatRecordingAdapter {
+        state.services.adapter = Box::new(ChatRecordingAdapter {
             seen_messages: Arc::clone(&seen_messages),
         });
         let reply = post_at(
@@ -21655,7 +22035,7 @@ Version 1.2 and bare 1.1 stay unchanged.
         assert!(!resolved.body.contains("1.1"));
         assert_eq!(std::fs::read(&history_path).unwrap(), persisted_before);
 
-        state.agent_history = load_agent_history(&Some(history_path.clone())).unwrap();
+        state.user.agent_history = load_agent_history(&Some(history_path.clone())).unwrap();
         let after_restart = post(&mut state, "/agent/source.resolve", &request);
         assert_eq!(after_restart.status, 200, "{}", after_restart.body);
         let opened_after_restart = post(&mut state, "/agent/source.open", &request);
@@ -21729,8 +22109,8 @@ Version 1.2 and bare 1.1 stay unchanged.
     #[test]
     fn deepseek_continuation_persists_privately_across_server_history_reload() {
         let mut state = state_named("deepseek-private-continuation");
-        state.history_path = Some(tmp("deepseek-private-history"));
-        state.adapter = Box::new(ChatStubAdapter::scripted(vec![AssistantTurn {
+        state.user.history_path = Some(tmp("deepseek-private-history"));
+        state.services.adapter = Box::new(ChatStubAdapter::scripted(vec![AssistantTurn {
             provider_continuation: Some(runtime::ProviderContinuation {
                 model: "deepseek-flash".into(), reasoning_content: "private-provider-probe".into(),
             }),
@@ -21742,9 +22122,9 @@ Version 1.2 and bare 1.1 stay unchanged.
         let history = get(&mut state, "/agent/history");
         assert!(!history.body.contains("provider_continuation"));
         assert!(!history.body.contains("private-provider-probe"));
-        let loaded = load_agent_history(&state.history_path).unwrap();
+        let loaded = load_agent_history(&state.user.history_path).unwrap();
         assert_eq!(loaded.sessions[0].messages.last().unwrap().provider_continuation.as_ref().unwrap().reasoning_content, "private-provider-probe");
-        assert!(!serde_json::to_string(&state.store.review_state()).unwrap().contains("private-provider-probe"));
+        assert!(!serde_json::to_string(&state.user.store.review_state()).unwrap().contains("private-provider-probe"));
     }
 
     #[test]
@@ -21753,7 +22133,7 @@ Version 1.2 and bare 1.1 stay unchanged.
         let history_path = tmp("agent-source-history-file");
         let (turn_id, source_ref_id) = install_source_bound_turn(&mut state, history_path.clone());
 
-        let internal = &state.agent_history.sessions[0].turns[0];
+        let internal = &state.user.agent_history.sessions[0].turns[0];
         assert_eq!(internal.source_bindings.len(), 1);
         let persisted = std::fs::read_to_string(&history_path).unwrap();
         assert!(persisted.contains("source_bindings"));
@@ -21774,7 +22154,7 @@ Version 1.2 and bare 1.1 stay unchanged.
 
         let loaded = load_agent_history(&Some(history_path)).unwrap();
         assert_eq!(loaded.sessions[0].turns[0].source_bindings.len(), 1);
-        state.agent_history = loaded;
+        state.user.agent_history = loaded;
         let after_restart = post(
             &mut state,
             "/agent/source.resolve",
@@ -21795,19 +22175,19 @@ Version 1.2 and bare 1.1 stay unchanged.
         let mut state = state_named("as8-live-source");
         let (turn_id, source_ref_id) =
             install_source_bound_turn(&mut state, tmp("as8-source-history"));
-        let saved = state.agent_history.sessions[0].turns[0].clone();
+        let saved = state.user.agent_history.sessions[0].turns[0].clone();
         let bindings = saved.source_bindings.clone();
         let view = saved.outcome.as_ref().unwrap().answer_view.clone();
-        let turn = &mut state.agent_history.sessions[0].turns[0];
+        let turn = &mut state.user.agent_history.sessions[0].turns[0];
         turn.status = AgentAssistantStatus::PendingAssistant;
         turn.source_bindings.clear();
         turn.outcome = None;
         let stream = RunStream::new(RunDescriptor {
-            book_id: state.book.base.book_id.clone(),
-            session_id: state.agent_history.sessions[0].id.clone(),
+            book_id: state.workspace.book.base.book_id.clone(),
+            session_id: state.user.agent_history.sessions[0].id.clone(),
             turn_id: turn_id.clone(),
         });
-        state.active_agent_stream = Some(std::sync::Arc::downgrade(&stream));
+        state.workspace.active_agent_stream = Some(std::sync::Arc::downgrade(&stream));
         let request = json!({"turn_id":turn_id,"source_ref_id":source_ref_id}).to_string();
         stream.source_bindings(&bindings);
         assert_ne!(
@@ -21826,7 +22206,7 @@ Version 1.2 and bare 1.1 stay unchanged.
             200
         );
         assert_eq!(post(&mut state, "/agent/source.open", &request).status, 200);
-        assert!(state.reader.revision() > 0);
+        assert!(state.workspace.reader.revision() > 0);
         assert!(stream
             .source_binding("another-book", &turn_id, &source_ref_id)
             .is_none());
@@ -21843,7 +22223,7 @@ Version 1.2 and bare 1.1 stay unchanged.
             post(&mut state, "/agent/source.resolve", &request).status,
             200
         );
-        state.agent_history.sessions[0].turns[0] = saved;
+        state.user.agent_history.sessions[0].turns[0] = saved;
         stream.finish(
             Some(json!({"status":"completed","outcome":{"answer_view":view}})),
             None,
@@ -21859,7 +22239,7 @@ Version 1.2 and bare 1.1 stay unchanged.
     fn agent_source_resolve_open_stale_and_wrong_owner_fail_closed() {
         let mut state = state_named("agent-source-endpoints");
         let session_path = tmp("source-open-session");
-        state.session_path = Some(session_path.clone());
+        state.workspace.session_path = Some(session_path.clone());
         let history_path = tmp("agent-source-endpoints-file");
         let (turn_id, source_ref_id) = install_source_bound_turn(&mut state, history_path);
         let request = serde_json::json!({
@@ -21872,6 +22252,9 @@ Version 1.2 and bare 1.1 stay unchanged.
         assert_eq!(resolved.status, 200, "{}", resolved.body);
         let resolved_json: serde_json::Value = serde_json::from_str(&resolved.body).unwrap();
         assert_eq!(resolved_json["highlighted_quote"], "X");
+        let excerpt = &resolved_json["excerpt"];
+        let raw: Vec<_> = excerpt["text"].as_str().unwrap().encode_utf16().collect();
+        assert_eq!(String::from_utf16_lossy(&raw[excerpt["highlight"]["start"].as_u64().unwrap() as usize..excerpt["highlight"]["end"].as_u64().unwrap() as usize]), "X");
         assert_eq!(resolved_json["stale"], false);
         assert_eq!(resolved_json["can_open_in_reader"], true);
         assert!(!resolved.body.contains("1.1"));
@@ -21887,10 +22270,10 @@ Version 1.2 and bare 1.1 stay unchanged.
             load_session(&Some(session_path)).expect("source opening must persist position");
         assert_eq!(
             saved.current_top_lid(),
-            Some(state.reader.viewport().top_lid.as_str())
+            Some(state.workspace.reader.viewport().top_lid.as_str())
         );
 
-        let current_book_id = state.book.base.book_id.clone();
+        let current_book_id = state.workspace.book.base.book_id.clone();
         let second = precommit_agent_turn(
             &mut state,
             &current_book_id,
@@ -21910,7 +22293,7 @@ Version 1.2 and bare 1.1 stay unchanged.
         assert_ne!(rejected.status, 200);
         assert!(rejected.body.contains("SOURCE_REF_NOT_FOUND"));
 
-        state.agent_history.sessions[0].turns[0].source_bindings[0].evidence_text_digest =
+        state.user.agent_history.sessions[0].turns[0].source_bindings[0].evidence_text_digest =
             "source-fnv1a64-stale".into();
         let stale = post(&mut state, "/agent/source.resolve", &request);
         assert_eq!(stale.status, 200, "{}", stale.body);
@@ -21928,7 +22311,7 @@ Version 1.2 and bare 1.1 stay unchanged.
     #[test]
     fn agent_history_new_select_delete_preserves_transcript_and_messages() {
         let mut s = state_named("agent-history");
-        s.adapter = Box::new(ChatStubAdapter::scripted(vec![AssistantTurn {
+        s.services.adapter = Box::new(ChatStubAdapter::scripted(vec![AssistantTurn {
             provider_continuation: None,
             text: Some("答案一".into()),
             tool_calls: vec![],
@@ -21940,12 +22323,12 @@ Version 1.2 and bare 1.1 stay unchanged.
             r#"{"message":"内部提示","display_user":"用户看到的问题","question_anchor_lid":"1.1","question_quote":{"lid":"1.1","quote":"引用"}} "#,
         );
         assert_eq!(chat.status, 200);
-        assert!(s.messages.len() > 1);
-        assert_eq!(s.store.review_state().review_jobs.len(), 1);
+        assert!(s.workspace.messages.len() > 1);
+        assert_eq!(s.user.store.review_state().review_jobs.len(), 1);
         assert_eq!(
             (
-                s.store.review_state().review_jobs[0].from_turn_exclusive,
-                s.store.review_state().review_jobs[0].to_turn_inclusive,
+                s.user.store.review_state().review_jobs[0].from_turn_exclusive,
+                s.user.store.review_state().review_jobs[0].to_turn_inclusive,
             ),
             (0, 1)
         );
@@ -21987,7 +22370,7 @@ Version 1.2 and bare 1.1 stay unchanged.
 
         let new_chat = post(&mut s, "/agent/new", "{}");
         assert_eq!(new_chat.status, 200);
-        assert_eq!(s.messages.len(), 1);
+        assert_eq!(s.workspace.messages.len(), 1);
         let new_chat: serde_json::Value = serde_json::from_str(&new_chat.body).unwrap();
         let new_id = new_chat["history"]["active_session_id"]
             .as_str()
@@ -21999,14 +22382,14 @@ Version 1.2 and bare 1.1 stay unchanged.
         let select_body = format!(r#"{{"session_id":"{old_id}"}}"#);
         let selected = post(&mut s, "/agent/history/select", &select_body);
         assert_eq!(selected.status, 200);
-        assert!(s.messages.len() > 1);
+        assert!(s.workspace.messages.len() > 1);
         let selected: serde_json::Value = serde_json::from_str(&selected.body).unwrap();
         assert_eq!(selected["active_session_id"], old_id);
         assert_eq!(selected["current"]["turns"][0]["user"], "用户看到的问题");
 
         let deleted = post(&mut s, "/agent/history/delete", &select_body);
         assert_eq!(deleted.status, 200);
-        assert_eq!(s.messages.len(), 1);
+        assert_eq!(s.workspace.messages.len(), 1);
         let deleted: serde_json::Value = serde_json::from_str(&deleted.body).unwrap();
         assert_eq!(deleted["active_session_id"], new_id);
         assert_eq!(deleted["sessions"].as_array().unwrap().len(), 1);
@@ -22016,74 +22399,71 @@ Version 1.2 and bare 1.1 stay unchanged.
     fn agent_history_get_is_read_only_and_mutations_remain_atomic() {
         let mut state = state_named("agent-history-read-only");
         let history_path = tmp("agent-history-read-only-file");
-        state.history_path = Some(history_path.clone());
+        state.user.history_path = Some(history_path.clone());
         let created = post_at(&mut state, "/agent/new", "{}", "2026-07-16T00:00:00Z");
         assert_eq!(created.status, 200, "{}", created.body);
 
         let bytes_before_get = std::fs::read(&history_path).unwrap();
-        let history_before_get = serde_json::to_value(&state.agent_history).unwrap();
-        let messages_before_get = serde_json::to_value(&state.messages).unwrap();
+        let history_before_get = serde_json::to_value(&state.user.agent_history).unwrap();
+        let messages_before_get = serde_json::to_value(&state.workspace.messages).unwrap();
         for _ in 0..2 {
             let response = get(&mut state, "/agent/history");
             assert_eq!(response.status, 200, "{}", response.body);
         }
         assert_eq!(std::fs::read(&history_path).unwrap(), bytes_before_get);
         assert_eq!(
-            serde_json::to_value(&state.agent_history).unwrap(),
+            serde_json::to_value(&state.user.agent_history).unwrap(),
             history_before_get
         );
         assert_eq!(
-            serde_json::to_value(&state.messages).unwrap(),
+            serde_json::to_value(&state.workspace.messages).unwrap(),
             messages_before_get
         );
 
         let blocker = tmp("agent-history-read-only-blocker");
         std::fs::write(&blocker, b"not a directory").unwrap();
-        state.history_path = Some(blocker.join("agent-history.json"));
+        state.user.history_path = Some(blocker.join("agent-history.json"));
         let blocked_get = get(&mut state, "/agent/history");
         assert_eq!(blocked_get.status, 200, "{}", blocked_get.body);
 
-        let history_before_failed_mutation = serde_json::to_value(&state.agent_history).unwrap();
-        let messages_before_failed_mutation = serde_json::to_value(&state.messages).unwrap();
+        let history_before_failed_mutation = serde_json::to_value(&state.user.agent_history).unwrap();
+        let messages_before_failed_mutation = serde_json::to_value(&state.workspace.messages).unwrap();
         let failed_mutation = post_at(&mut state, "/agent/new", "{}", "2026-07-16T00:01:00Z");
         assert_eq!(failed_mutation.status, 500, "{}", failed_mutation.body);
         assert_eq!(
-            serde_json::to_value(&state.agent_history).unwrap(),
+            serde_json::to_value(&state.user.agent_history).unwrap(),
             history_before_failed_mutation
         );
         assert_eq!(
-            serde_json::to_value(&state.messages).unwrap(),
+            serde_json::to_value(&state.workspace.messages).unwrap(),
             messages_before_failed_mutation
         );
         assert_eq!(std::fs::read(&history_path).unwrap(), bytes_before_get);
 
-        state.history_path = Some(history_path.clone());
+        state.user.history_path = Some(history_path.clone());
         let committed = post_at(&mut state, "/agent/new", "{}", "2026-07-16T00:02:00Z");
         assert_eq!(committed.status, 200, "{}", committed.body);
         assert_ne!(std::fs::read(&history_path).unwrap(), bytes_before_get);
         assert_eq!(
             serde_json::to_value(load_agent_history(&Some(history_path.clone())).unwrap()).unwrap(),
-            serde_json::to_value(&state.agent_history).unwrap()
+            serde_json::to_value(&state.user.agent_history).unwrap()
         );
 
-        let active_id = state
-            .agent_history
-            .active_by_book
-            .get(&state.book.base.book_id)
+        let active_id = state.workspace.selected_chat.as_ref()
             .unwrap()
             .clone();
         let other_id = state
-            .agent_history
+            .user.agent_history
             .sessions
             .iter()
             .find(|session| session.id != active_id)
             .unwrap()
             .id
             .clone();
-        let committed_bytes = std::fs::read(state.history_path.as_ref().unwrap()).unwrap();
-        state.history_path = Some(blocker.join("agent-history.json"));
-        let history_before_failed_commands = serde_json::to_value(&state.agent_history).unwrap();
-        let messages_before_failed_commands = serde_json::to_value(&state.messages).unwrap();
+        let committed_bytes = std::fs::read(state.user.history_path.as_ref().unwrap()).unwrap();
+        state.user.history_path = Some(blocker.join("agent-history.json"));
+        let history_before_failed_commands = serde_json::to_value(&state.user.agent_history).unwrap();
+        let messages_before_failed_commands = serde_json::to_value(&state.workspace.messages).unwrap();
 
         let select = post_at(
             &mut state,
@@ -22100,11 +22480,11 @@ Version 1.2 and bare 1.1 stay unchanged.
         );
         assert_eq!(delete.status, 500, "{}", delete.body);
         assert_eq!(
-            serde_json::to_value(&state.agent_history).unwrap(),
+            serde_json::to_value(&state.user.agent_history).unwrap(),
             history_before_failed_commands
         );
         assert_eq!(
-            serde_json::to_value(&state.messages).unwrap(),
+            serde_json::to_value(&state.workspace.messages).unwrap(),
             messages_before_failed_commands
         );
         assert_eq!(std::fs::read(&history_path).unwrap(), committed_bytes);
@@ -22115,9 +22495,9 @@ Version 1.2 and bare 1.1 stay unchanged.
         let mut s = state_named("agent-precommit-provider-failure");
         let history_path = tmp("agent-precommit-provider-failure-history");
         let _ = std::fs::remove_file(&history_path);
-        s.history_path = Some(history_path.clone());
+        s.user.history_path = Some(history_path.clone());
         let observed_pending = Arc::new(Mutex::new(false));
-        s.adapter = Box::new(PrecommitInspectingFailAdapter {
+        s.services.adapter = Box::new(PrecommitInspectingFailAdapter {
             history_path: history_path.clone(),
             observed_pending: observed_pending.clone(),
         });
@@ -22130,9 +22510,9 @@ Version 1.2 and bare 1.1 stay unchanged.
         );
         assert_eq!(reply.status, 502);
         assert!(*observed_pending.lock().unwrap());
-        assert_eq!(s.store.review_state().review_jobs.len(), 1);
+        assert_eq!(s.user.store.review_state().review_jobs.len(), 1);
         assert_eq!(
-            s.store.review_state().review_jobs[0].status,
+            s.user.store.review_state().review_jobs[0].status,
             memory::ReviewJobStatus::Queued
         );
 
@@ -22179,13 +22559,12 @@ Version 1.2 and bare 1.1 stay unchanged.
     fn agent_navigation_persists_reading_position_before_reply() {
         let mut state = state_named("agent-navigation-session");
         let book_dir = write_multi_leaf_book("agent-navigation-book", "agent-navigation", 30);
-        state.book = (Book::load(&path_string(&book_dir)).unwrap()).into();
-        state.book_dir = book_dir;
-        state.reader = Reader::new(&state.book, DEFAULT_RADIUS);
+        state.workspace.book = (Book::load(&path_string(&book_dir)).unwrap()).into();
+        state.workspace.book_dir = book_dir;
+        state.workspace.reader = Reader::new(&state.workspace.book, DEFAULT_RADIUS);
         let session_path = tmp("agent-navigation-session-file");
-        state.session_path = Some(session_path.clone());
-        let target = state
-            .book
+        state.workspace.session_path = Some(session_path.clone());
+        let target = state.workspace.book
             .base
             .lid_nodes
             .iter()
@@ -22194,7 +22573,7 @@ Version 1.2 and bare 1.1 stay unchanged.
             .unwrap()
             .lid
             .clone();
-        state.adapter = Box::new(ChatStubAdapter::scripted(vec![
+        state.services.adapter = Box::new(ChatStubAdapter::scripted(vec![
             AssistantTurn {
                 provider_continuation: None,
                 text: None,
@@ -22223,7 +22602,7 @@ Version 1.2 and bare 1.1 stay unchanged.
             .expect("Agent navigation must persist the current viewport");
         assert_eq!(
             saved.current_top_lid(),
-            Some(state.reader.viewport().top_lid.as_str())
+            Some(state.workspace.reader.viewport().top_lid.as_str())
         );
     }
 
@@ -22231,9 +22610,9 @@ Version 1.2 and bare 1.1 stay unchanged.
     fn finalization_protocol_violation_persists_failed_turn_without_effects() {
         let mut state = state_named("finalization-protocol-failure");
         let history_path = tmp("finalization-protocol-history");
-        state.history_path = Some(history_path.clone());
-        let before = serde_json::to_value(state.reader.state()).unwrap();
-        state.adapter = Box::new(ChatStubAdapter::scripted(
+        state.user.history_path = Some(history_path.clone());
+        let before = serde_json::to_value(state.workspace.reader.state()).unwrap();
+        state.services.adapter = Box::new(ChatStubAdapter::scripted(
             (0..3)
                 .map(|i| AssistantTurn {
                     provider_continuation: None,
@@ -22264,9 +22643,9 @@ Version 1.2 and bare 1.1 stay unchanged.
         );
         assert_eq!(reply.status, 500, "{}", reply.body);
         assert!(reply.body.contains("FINALIZATION_TOOL_PROTOCOL_VIOLATION"));
-        assert_eq!(serde_json::to_value(state.reader.state()).unwrap(), before);
+        assert_eq!(serde_json::to_value(state.workspace.reader.state()).unwrap(), before);
         assert!(state
-            .store
+            .user.store
             .recall(&memory::RecallQuery {
                 mem_type: Some("highlight".into()),
                 ..Default::default()
@@ -22287,8 +22666,8 @@ Version 1.2 and bare 1.1 stay unchanged.
         let mut s = state_named("agent-review-job-commit-gap");
         let history_path = tmp("agent-review-job-commit-gap-history");
         let _ = std::fs::remove_file(&history_path);
-        s.history_path = Some(history_path.clone());
-        s.adapter = Box::new(ChatStubAdapter::scripted(vec![AssistantTurn {
+        s.user.history_path = Some(history_path.clone());
+        s.services.adapter = Box::new(ChatStubAdapter::scripted(vec![AssistantTurn {
             provider_continuation: None,
             text: Some("durable answer".into()),
             tool_calls: vec![],
@@ -22306,7 +22685,7 @@ Version 1.2 and bare 1.1 stay unchanged.
             "2026-07-14T00:00:00Z",
         );
         assert_eq!(reply.status, 500);
-        assert!(s.store.review_state().review_jobs.is_empty());
+        assert!(s.user.store.review_state().review_jobs.is_empty());
         let history =
             serde_json::to_value(load_agent_history(&Some(history_path)).unwrap()).unwrap();
         assert_eq!(history["sessions"][0]["turns"][0]["status"], "completed");
@@ -22316,14 +22695,14 @@ Version 1.2 and bare 1.1 stay unchanged.
             post_at(&mut s, "/agent/new", "{}", "2026-07-14T00:01:00Z").status,
             200
         );
-        assert_eq!(s.store.review_state().review_jobs.len(), 1);
-        let job_id = s.store.review_state().review_jobs[0].job_id.clone();
+        assert_eq!(s.user.store.review_state().review_jobs.len(), 1);
+        let job_id = s.user.store.review_state().review_jobs[0].job_id.clone();
         assert_eq!(
             post_at(&mut s, "/agent/new", "{}", "2026-07-14T00:02:00Z").status,
             200
         );
-        assert_eq!(s.store.review_state().review_jobs.len(), 1);
-        assert_eq!(s.store.review_state().review_jobs[0].job_id, job_id);
+        assert_eq!(s.user.store.review_state().review_jobs.len(), 1);
+        assert_eq!(s.user.store.review_state().review_jobs[0].job_id, job_id);
     }
 
     #[test]
@@ -22333,9 +22712,9 @@ Version 1.2 and bare 1.1 stay unchanged.
         let _ = std::fs::remove_file(&blocker);
         let _ = std::fs::remove_dir_all(&blocker);
         std::fs::write(&blocker, "not a directory").unwrap();
-        s.history_path = Some(blocker.join("agent-history.json"));
+        s.user.history_path = Some(blocker.join("agent-history.json"));
         let seen_messages = Arc::new(Mutex::new(Vec::new()));
-        s.adapter = Box::new(ChatRecordingAdapter {
+        s.services.adapter = Box::new(ChatRecordingAdapter {
             seen_messages: seen_messages.clone(),
         });
 
@@ -22347,9 +22726,9 @@ Version 1.2 and bare 1.1 stay unchanged.
         );
         assert_eq!(reply.status, 500);
         assert!(seen_messages.lock().unwrap().is_empty());
-        assert!(s.agent_history.sessions.is_empty());
-        assert_eq!(s.messages.len(), 1);
-        assert_eq!(s.messages[0].role, runtime::Role::System);
+        assert!(s.user.agent_history.sessions.is_empty());
+        assert_eq!(s.workspace.messages.len(), 1);
+        assert_eq!(s.workspace.messages[0].role, runtime::Role::System);
     }
 
     #[test]
@@ -22357,8 +22736,8 @@ Version 1.2 and bare 1.1 stay unchanged.
         let mut s = state_named("agent-history-legacy-turn-migration");
         let history_path = tmp("agent-history-legacy-turn-migration-file");
         let _ = std::fs::remove_file(&history_path);
-        s.history_path = Some(history_path.clone());
-        s.adapter = Box::new(ChatStubAdapter::scripted(vec![AssistantTurn {
+        s.user.history_path = Some(history_path.clone());
+        s.services.adapter = Box::new(ChatStubAdapter::scripted(vec![AssistantTurn {
             provider_continuation: None,
             text: Some("legacy answer".into()),
             tool_calls: vec![],
@@ -22541,7 +22920,7 @@ Version 1.2 and bare 1.1 stay unchanged.
             }],
             anchor_lid: "1.1".into(),
         };
-        let query_run = runtime::query_run(&state.book, &request, state.adapter.as_ref()).unwrap();
+        let query_run = runtime::query_run(&state.workspace.book, &request, state.services.adapter.as_ref()).unwrap();
         let audit = query_run.audit.clone();
         let outer = OuterOutcome {
             answer: Some("resident answer".into()),
@@ -22572,6 +22951,10 @@ Version 1.2 and bare 1.1 stay unchanged.
         let mut history = AgentHistory::default();
         let mut session = new_agent_session("book", "t0", 0);
         session.turns.push(AgentChatTurn {
+                domain: Default::default(),
+                admission_input: None,
+                published_book_ref: None,
+            teaching_ref: None,
             goal_ref: None,
             presentation_follow_up: None,
             turn_id: stable_agent_turn_id(&session.id, 1),
@@ -22620,7 +23003,7 @@ Version 1.2 and bare 1.1 stay unchanged.
     #[test]
     fn agent_chat_validates_formats_and_persists_structured_selection_provenance() {
         let mut s = state_named("agent-selection-provenance");
-        s.adapter = Box::new(ChatStubAdapter::scripted(vec![AssistantTurn {
+        s.services.adapter = Box::new(ChatStubAdapter::scripted(vec![AssistantTurn {
             provider_continuation: None,
             text: Some("基于已解析选区回答".into()),
             tool_calls: vec![],
@@ -22647,7 +23030,7 @@ Version 1.2 and bare 1.1 stay unchanged.
             }"#,
         );
         assert_eq!(chat.status, 200, "{}", chat.body);
-        let prompt = s.messages[1].content.as_deref().unwrap();
+        let prompt = s.workspace.messages[1].content.as_deref().unwrap();
         assert!(prompt.contains("selection_provenance.v1"));
         assert!(prompt.contains("citation_candidate_lids=[\"1\",\"1.1\"]"));
         assert!(prompt.contains("resolved_quote=\"XX\""));
@@ -22657,7 +23040,7 @@ Version 1.2 and bare 1.1 stay unchanged.
         assert!(!prompt.contains("仍须调用 book 工具"));
         assert!(prompt.contains("raw quote 不能作为 citation"));
 
-        let internal_quote = s.agent_history.sessions[0].turns[0]
+        let internal_quote = s.user.agent_history.sessions[0].turns[0]
             .question_quote
             .as_ref()
             .unwrap();
@@ -22679,7 +23062,7 @@ Version 1.2 and bare 1.1 stay unchanged.
     #[test]
     fn agent_chat_preserves_recovered_basis_and_rejects_it_for_partial_selection() {
         let mut recovered = state_named("agent-selection-recovered-basis");
-        recovered.adapter = Box::new(ChatStubAdapter::scripted(vec![AssistantTurn {
+        recovered.services.adapter = Box::new(ChatStubAdapter::scripted(vec![AssistantTurn {
             provider_continuation: None,
             text: Some("recovered selection answer".into()),
             tool_calls: vec![],
@@ -22703,7 +23086,7 @@ Version 1.2 and bare 1.1 stay unchanged.
         );
         assert_eq!(reply.status, 200, "{}", reply.body);
         assert_eq!(
-            recovered.agent_history.sessions[0].turns[0]
+            recovered.user.agent_history.sessions[0].turns[0]
                 .question_quote
                 .as_ref()
                 .unwrap()
@@ -23058,7 +23441,7 @@ Version 1.2 and bare 1.1 stay unchanged.
         let ranges = [selected_range("1", 0, 1), selected_range("1.1", 0, 1)];
 
         let canonical =
-            validate_and_rebuild_selection_quote(&s.book, &ranges, "question_quote").unwrap();
+            validate_and_rebuild_selection_quote(&s.workspace.book, &ranges, "question_quote").unwrap();
 
         assert_eq!(canonical, "XX");
     }
@@ -23085,12 +23468,12 @@ Version 1.2 and bare 1.1 stay unchanged.
             resolved_quote: Some("XX".into()),
         };
 
-        let evidence = verified_question_evidence(&state.book, Some(&quote));
+        let evidence = verified_question_evidence(&state.workspace.book, Some(&quote));
 
         assert_eq!(evidence.len(), 2);
         assert_eq!(evidence[0].ranges[0].range.start, 0);
         assert_eq!(evidence[1].ranges[0].range.start, 2);
-        assert!(verified_question_evidence(&state.book, None).is_empty());
+        assert!(verified_question_evidence(&state.workspace.book, None).is_empty());
     }
 
     #[test]
@@ -23111,7 +23494,7 @@ Version 1.2 and bare 1.1 stay unchanged.
         ];
 
         for (case, ranges, expected_message) in invalid {
-            let error = validate_and_rebuild_selection_quote(&s.book, &ranges, "question_quote")
+            let error = validate_and_rebuild_selection_quote(&s.workspace.book, &ranges, "question_quote")
                 .unwrap_err();
             assert_eq!(error.error_code, "INVALID_SELECTION_CONTEXT", "{case}");
             assert!(
@@ -23158,12 +23541,12 @@ Version 1.2 and bare 1.1 stay unchanged.
     #[test]
     fn agent_new_resets_messages() {
         let mut s = state_named("agentnew");
-        s.messages.push(Message::user("hi"));
-        assert!(s.messages.len() > 1);
+        s.workspace.messages.push(Message::user("hi"));
+        assert!(s.workspace.messages.len() > 1);
         let r = post(&mut s, "/agent/new", "{}");
         assert_eq!(r.status, 200);
         assert!(r.body.contains("\"ok\":true"));
-        assert_eq!(s.messages.len(), 1); // 仅 system
+        assert_eq!(s.workspace.messages.len(), 1); // 仅 system
     }
 
     // agent.* 只支持 POST:GET → 405。
@@ -23306,8 +23689,8 @@ Version 1.2 and bare 1.1 stay unchanged.
     fn compaction_checkpoint_finalization_tracks_redacted_or_truncated_history() {
         for mode in ["append", "redact_author", "redact_discovery", "truncate_failure"] {
             let mut state = state_named(&format!("checkpoint-finalize-{mode}"));
-            state.history_path = Some(tmp(&format!("checkpoint-finalize-{mode}")));
-            let book = state.book.base.book_id.clone();
+            state.user.history_path = Some(tmp(&format!("checkpoint-finalize-{mode}")));
+            let book = state.workspace.book.base.book_id.clone();
             let turn = precommit_agent_turn(&mut state, &book, "revise page".into(), None, None, None, "2026-09-28T10:00:00Z").unwrap();
             let mut messages = vec![Message::system("base"), Message::user("old objective ".repeat(1200))];
             let mut answer = Message::user("old answer ".repeat(1200));
@@ -23334,7 +23717,7 @@ Version 1.2 and bare 1.1 stay unchanged.
             let profile = runtime::ModelRuntimeProfile::fallback("fixture", runtime::ProviderToolProtocol::Native);
             let checkpoint = runtime::compact_with_adapter(&generator, &profile, &prepared,
                 runtime::CompactionLimits { generation_input_limit_tokens:100_000,target_active_tokens:20_000 }).unwrap();
-            ServerAgentCompactionCheckpointSink { history_path:&state.history_path,agent_history:&mut state.agent_history,session_id:&turn.session_id }
+            ServerAgentCompactionCheckpointSink { history_path:&state.user.history_path,agent_history:&mut state.user.agent_history,session_id:&turn.session_id }
                 .install(&checkpoint, &messages).unwrap();
             match mode {
                 "redact_author" => runtime::presentation_author::redact_history(&mut messages),
@@ -23351,8 +23734,9 @@ Version 1.2 and bare 1.1 stay unchanged.
                     incomplete:false,warning:None,turns:1,tokens_spent:1,effects:vec![],trace:vec![],profile_usage:Default::default(),memory_updates:vec![],source_bindings:vec![],delivery_diagnostics:None,request_audit:Default::default()};
                 finalize_agent_turn_completed(&mut state,&turn,&outcome,&messages,"2026-09-28T10:01:00Z").unwrap();
             }
-            let reloaded = load_agent_history(&state.history_path).unwrap();
+            let reloaded = load_agent_history(&state.user.history_path).unwrap();
             let session = reloaded.sessions.iter().find(|s|s.id==turn.session_id).unwrap();
+            crate::session_event::tests::assert_event_roundtrip(session);
             assert_eq!(serde_json::to_value(&session.messages).unwrap(),serde_json::to_value(&messages).unwrap());
             assert_eq!(session.compaction_checkpoint.is_some(),mode=="append");
             assert_ne!(session.turns.last().unwrap().status,AgentAssistantStatus::PendingAssistant);
@@ -23363,8 +23747,8 @@ Version 1.2 and bare 1.1 stay unchanged.
     fn agent_compaction_checkpoint_is_server_only_restartable_and_keeps_raw_messages() {
         let history_path = tmp("agent-compaction-checkpoint");
         let mut state = state_named("agent-compaction-checkpoint-memory");
-        state.history_path = Some(history_path.clone());
-        let book_id = state.book.base.book_id.clone();
+        state.user.history_path = Some(history_path.clone());
+        let book_id = state.workspace.book.base.book_id.clone();
         let long = "historical state ".repeat(1_200);
         let mut messages = vec![Message::system("canonical base")];
         messages.push(Message::user(&long));
@@ -23377,11 +23761,11 @@ Version 1.2 and bare 1.1 stay unchanged.
         });
         messages.push(Message::user("current raw user text"));
         let session_index =
-            ensure_active_agent_session(&mut state.agent_history, &book_id, "2026-07-24T00:00:00Z");
-        let session_id = state.agent_history.sessions[session_index].id.clone();
-        state.agent_history.sessions[session_index].messages = messages.clone();
-        state.messages = messages.clone();
-        save_agent_history_path(&state.history_path, &state.agent_history).unwrap();
+            ensure_active_agent_session(&mut state.user.agent_history, &book_id, "2026-07-24T00:00:00Z");
+        let session_id = state.user.agent_history.sessions[session_index].id.clone();
+        state.user.agent_history.sessions[session_index].messages = messages.clone();
+        state.workspace.messages = messages.clone();
+        save_agent_history_path(&state.user.history_path, &state.user.agent_history).unwrap();
         let raw_bytes = serde_json::to_vec(&messages).unwrap();
 
         let prepared = runtime::prepare_compaction(
@@ -23444,11 +23828,11 @@ Version 1.2 and bare 1.1 stay unchanged.
         )
         .unwrap();
         install_agent_compaction_checkpoint(&mut state, &session_id, checkpoint.clone()).unwrap();
-        assert_eq!(serde_json::to_vec(&state.messages).unwrap(), raw_bytes);
+        assert_eq!(serde_json::to_vec(&state.workspace.messages).unwrap(), raw_bytes);
         assert_eq!(
             serde_json::to_vec(
                 &state
-                    .agent_history
+                    .user.agent_history
                     .sessions
                     .iter()
                     .find(|session| session.id == session_id)
@@ -23459,7 +23843,7 @@ Version 1.2 and bare 1.1 stay unchanged.
             raw_bytes
         );
         let public = serde_json::to_string(
-            &agent_history_response(&state.agent_history, &state.book).unwrap(),
+            &agent_history_response(&state.user.agent_history, &state.workspace.book, state.workspace.selected_chat.as_deref()).unwrap(),
         )
         .unwrap();
         assert!(!public.contains("compaction_checkpoint"));
@@ -23480,6 +23864,8 @@ Version 1.2 and bare 1.1 stay unchanged.
             restarted_session.compaction_checkpoint.as_ref(),
             Some(&checkpoint)
         );
+        crate::session_event::tests::assert_event_roundtrip(restarted_session);
+        crate::session_event::tests::assert_checkpoint_log_contract(restarted_session);
 
         let projected = runtime::project_compaction_checkpoint_messages(
             &restarted_session.messages,
@@ -23514,9 +23900,9 @@ Version 1.2 and bare 1.1 stay unchanged.
         assert_eq!(std::fs::read(&history_path).unwrap(), committed_file);
 
         let seen_messages = Arc::new(Mutex::new(Vec::new()));
-        state.agent_history = restarted;
-        state.messages = messages;
-        state.adapter = Box::new(ChatRecordingAdapter {
+        state.user.agent_history = restarted;
+        state.workspace.messages = messages;
+        state.services.adapter = Box::new(ChatRecordingAdapter {
             seen_messages: Arc::clone(&seen_messages),
         });
         let reply = post(
@@ -23560,3 +23946,4 @@ Version 1.2 and bare 1.1 stay unchanged.
         let _ = std::fs::remove_file(history_path);
     }
 }
+

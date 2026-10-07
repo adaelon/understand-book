@@ -99,6 +99,8 @@ describe("resolveWorkspace", () => {
       inputPriority: true,
       navigation: "compact",
     });
+    expect(resolveWorkspace(logical(), { ...viewport(390, 350, 350), layoutHeight: 669 }, focused, 'auto').inputPriority).toBe(true);
+    expect(resolveWorkspace(logical(), { ...viewport(390, 669, 335), scale: 2 }, focused, 'auto').inputPriority).toBe(false);
   });
 
   it("defers a new logical focus request while composition or selection is protected", () => {

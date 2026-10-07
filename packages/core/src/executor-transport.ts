@@ -515,9 +515,12 @@ export function packExecutorTransportPayload(
   }
   const codePoints = Array.from(input.payload_utf8);
   const byteOffsets = new Array<number>(codePoints.length + 1);
+  const codeUnitOffsets = new Array<number>(codePoints.length + 1);
   byteOffsets[0] = 0;
+  codeUnitOffsets[0] = 0;
   for (let index = 0; index < codePoints.length; index += 1) {
     byteOffsets[index + 1] = byteOffsets[index] + Buffer.byteLength(codePoints[index], "utf8");
+    codeUnitOffsets[index + 1] = codeUnitOffsets[index] + codePoints[index].length;
   }
   const chunks: PackedExecutorTransportChunkV2[] = [];
 
@@ -527,7 +530,7 @@ export function packExecutorTransportPayload(
     response: unknown;
     measurement: ExecutorTransportResponseMeasurementV2;
   } => {
-    const payload = codePoints.slice(start, end).join("");
+    const payload = input.payload_utf8.slice(codeUnitOffsets[start], codeUnitOffsets[end]);
     const frame: ExecutorTransportChunkFrameV2 = {
       ordinal: chunks.length,
       byte_range: { start: byteOffsets[start], end: byteOffsets[end] },

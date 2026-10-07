@@ -1,6 +1,7 @@
 import {test,expect} from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+const host='http://127.0.0.1:'+(process.env.PRESENTATION_TEST_PORT || '4175');
 
 // Capture actual decoded Reader frames. Domain event order is judged against
 // the frozen input using these images, never inferred from snapshot fields.
@@ -15,9 +16,9 @@ test('EX11 decoded frames at forward, fractional, backward and repeated position
     const record:any={viewport,errors:[],frames:[]};results.push(record);
     page.on('pageerror',e=>record.errors.push(e.message));
     try {
-      await page.request.post('http://127.0.0.1:4175/reset-scene');
+      await page.request.post(host+'/reset-scene');
       await page.route('**/api/**',async route=>{
-        const response=await route.fetch({url:route.request().url().replace(/^.*\/api/,'http://127.0.0.1:4175')});
+        const response=await route.fetch({url:route.request().url().replace(/^.*\/api/,host)});
         await route.fulfill({response});
       });
       await page.goto('/agent-presentation-visual.html');

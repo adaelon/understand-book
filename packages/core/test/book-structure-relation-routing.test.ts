@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { BOOK_STRUCTURE_EXECUTION_PROMPTS_V2, createBookStructureExecutionContractsV2, type BookStructureCandidate } from "../src/book-structure";
-import { bookStructureRelationContracts, bookStructureSelectedPairs, routeBookStructureRelationSelections, routeBookStructureRelationDelta, validateBookStructureRelationSelection } from "../src/book-structure-relation-routing";
+import { bookStructureRelationContracts, bookStructureSelectedPairs, bookStructureRelationPredecessors, routeBookStructureRelationSelections, routeBookStructureRelationDelta, validateBookStructureRelationSelection } from "../src/book-structure-relation-routing";
 import { resolveContentProfile } from "../src/content-profile";
 import { renderBookStructureGenerationTaskInput, createBookStructureGenerationTask } from "../src/book-structure-generation";
 import { applyBookStructureRelationDeltas, validateBookStructureRelationDelta } from "../src/book-structure-relations";
@@ -8,6 +8,20 @@ import { applyBookStructureRelationDeltas, validateBookStructureRelationDelta } 
 const target = { version: "build_target_ref.v2" as const, workspace_dir: "C:/repo/relation-routing", book_id: "relations", profile_id: "technical_learning" as const, input_fingerprint: "a".repeat(64) };
 const contracts = bookStructureRelationContracts(createBookStructureExecutionContractsV2({ profile: resolveContentProfile("technical_learning"), prompts: BOOK_STRUCTURE_EXECUTION_PROMPTS_V2 }).stitch_fragment);
 const dependencies = [{ artifact: "fragment:0", sha256: "b".repeat(64) }];
+
+it("allows shared-unit pairs and separate theme edits concurrently, but orders possible merged aliases", () => {
+  expect(bookStructureRelationPredecessors([
+    ["unit:0", "unit:1"], ["unit:0", "unit:2"], ["unit:0", "unit:3"],
+  ])).toEqual([[], [], []]);
+  expect(bookStructureRelationPredecessors([
+    ["throughline:a", "unit:0"],
+    ["throughline:c", "unit:0"],
+    ["throughline:a", "throughline:b"],
+    ["throughline:b", "unit:2"],
+    ["throughline:a", "unit:3"],
+    ["throughline:c", "throughline:b"],
+  ])).toEqual([[], [], [0], [0, 2], [0, 2, 3], [0, 1, 2, 3, 4]]);
+});
 function candidate(count: number): BookStructureCandidate {
   const units = Array.from({ length: count }, (_, i) => String(i));
   return { spine: units.map(lid => ({ lid, role: "foundation", summary: { text: (lid === "0" ? "Ownership transfers" : lid === String(count - 1) ? "Resources released on scope exit" : "Unrelated intermediate subject") + " supported by chapter evidence".repeat(12), evidence_lids: [lid + ".1"] }, key_stop_ids: [], depends_on: [] })), throughlines: [], key_stops: [],

@@ -194,6 +194,9 @@ pub struct ObservationMetadata {
     pub request_tool_schema_count: Option<u32>,
     pub request_estimated_input_tokens: Option<u32>,
     pub request_estimate_source: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub request_diagnostics: Option<crate::request_diagnostics::RequestDiagnostics>,
     #[serde(default)]
     pub interruption_detected_at: Option<String>,
     #[serde(default)]

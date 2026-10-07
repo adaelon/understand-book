@@ -1,6 +1,6 @@
 //! Immutable candidates and versions beside the host's private AgentHistory.
-//! Calls use the authoritative AppState borrow, like history commits (one Reader host).
-use crate::{AgentAssistantStatus, AgentChatSession, AppState};
+//! Calls borrow user authority with an explicit Book binding; no live Reader is consulted.
+use crate::{private_book_context::PrivateBookContext,AgentAssistantStatus, AgentChatSession};
 use read_tools::ToolError;
 use runtime::{
     orchestrator::{AgentAnswerPart, OuterOutcome},
@@ -55,21 +55,83 @@ fn new_id(prefix: &str) -> String {
     )
 }
 
-struct PresentationStore {
+pub(crate) struct PresentationStore {
     root: PathBuf,
+    limits: Option<(u64, usize)>,
+}
+
+#[cfg(test)]
+mod mu2_tests {
+    use super::*;
+    #[test]
+    fn mu7_private_quota_counts_candidates_versions_and_states_before_writing() {
+        let root = tempfile::tempdir().unwrap();
+        let store = PresentationStore { root: root.path().into(), limits: Some((16, 2)) };
+        store.write_private(&root.path().join("candidates/a.json"), &"1234").unwrap();
+        store.write_private(&root.path().join("versions/p/1.json"), &"1234").unwrap();
+        let path = root.path().join("states/p/1/1.json");
+        assert_eq!(store.write_private(&path, &"x").unwrap_err().error_code, "PRESENTATION_STORAGE_LIMIT");
+        assert!(!path.exists());
+        let store = PresentationStore { root: root.path().into(), limits: Some((13, 10)) };
+        assert_eq!(store.write_private(&path, &"xx").unwrap_err().error_code, "PRESENTATION_STORAGE_LIMIT");
+        assert!(!path.exists());
+        assert_eq!(fs::read_to_string(root.path().join("candidates/a.json")).unwrap(), "\"1234\"");
+    }
+    #[test]
+    fn mu2_same_presentation_and_candidate_ids_use_user_private_roots() {
+        let root = tempfile::tempdir().unwrap();
+        let mut users = crate::user_registry::UserRegistry::open(root.path()).unwrap();
+        let reference = PresentationRef { presentation_id: "presentation-legacy".into(), revision: 1 };
+        let owner = PresentationOwner { book_id: "book-legacy".into(), session_id: "session-legacy".into() };
+        for id in ["A", "B"] {
+            users.create_user(id).unwrap();
+            let handle = users.get(id, "1").unwrap(); let user = handle.lock().unwrap();
+            let store = PresentationStore::for_user(&user).unwrap();
+            let version = AgentPresentation { reference: reference.clone(), candidate_id: "candidate-legacy".into(),
+                owner: owner.clone(), created_by_turn_id: "turn-legacy".into(), based_on: None,
+                content: PresentationContent { animation_assets: Default::default(), title: id.into(),
+                    content_files: Default::default(), entrypoint: "index.html".into(), readable_content: id.into(),
+                    source_bindings: vec![], assumptions: vec![], state_contract: serde_json::json!({}), initial_state: serde_json::json!({}) } };
+            PresentationStore::write(&store.version_path(&reference).unwrap(), &version).unwrap();
+            PresentationStore::write(&store.candidate_path("candidate-legacy").unwrap(), &serde_json::json!({"private":id})).unwrap();
+        }
+        for id in ["A", "B"] {
+            let handle = users.get(id, "2").unwrap(); let user = handle.lock().unwrap();
+            let store = PresentationStore::for_user(&user).unwrap();
+            assert_eq!(store.read_version(&owner, &reference).unwrap().content.title, id);
+            assert_eq!(PresentationStore::read::<serde_json::Value>(&store.candidate_path("candidate-legacy").unwrap()).unwrap()["private"], id);
+        }
+    }
 }
 impl PresentationStore {
-    fn for_state(state: &AppState) -> Result<Self, ToolError> {
-        let path = state.history_path.as_ref().ok_or_else(|| {
-            error(
-                "PRESENTATION_STORAGE_UNAVAILABLE",
-                "unavailable",
-                "Presentation delivery requires private persistent history",
-            )
-        })?;
+    pub(crate) fn for_user(user: &crate::user_runtime::UserRuntime) -> Result<Self, ToolError> {
         Ok(Self {
-            root: path.with_extension("presentations"),
+            root: user.presentation_root()?,
+            limits: user.presentation_limits,
         })
+    }
+    fn write_private<T: Serialize>(&self, path: &Path, value: &T) -> Result<(), ToolError> {
+        if let Some((max_bytes, max_files)) = self.limits {
+            let added = serde_json::to_vec(value).map_err(storage)?.len() as u64;
+            let quota = || error("PRESENTATION_STORAGE_LIMIT", "rate_limit", "Private presentation storage limit reached");
+            let mut bytes = added;
+            let mut count = 1usize;
+            let mut dirs = vec![self.root.clone()];
+            while let Some(dir) = dirs.pop() {
+                let entries = match fs::read_dir(dir) { Ok(e) => e, Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue, Err(e) => return Err(storage(e)) };
+                for entry in entries {
+                    let entry = entry.map_err(storage)?;
+                    let kind = entry.file_type().map_err(storage)?;
+                    if kind.is_symlink() { return Err(invalid("Presentation storage contains a symbolic link")); }
+                    if kind.is_dir() { dirs.push(entry.path()); }
+                    else if kind.is_file() { bytes = bytes.saturating_add(entry.metadata().map_err(storage)?.len()); count += 1; }
+                    else { return Err(invalid("Invalid presentation storage entry")); }
+                    if bytes > max_bytes || count > max_files { return Err(quota()); }
+                }
+            }
+            if bytes > max_bytes || count > max_files { return Err(quota()); }
+        }
+        Self::write(path, value)
     }
     fn candidate_path(&self, id: &str) -> Result<PathBuf, ToolError> {
         check_id(id)?;
@@ -103,15 +165,16 @@ impl PresentationStore {
     }
     fn write<T: Serialize>(path: &Path, value: &T) -> Result<(), ToolError> {
         let parent = path.parent().expect("presentation path has parent");
-        fs::create_dir_all(parent).map_err(storage)?;
+        memory::ReaderPrivateStorageGate::create_dir_all(parent).map_err(storage)?;
         let mut temporary = tempfile::NamedTempFile::new_in(parent).map_err(storage)?;
         serde_json::to_writer(&mut temporary, value).map_err(storage)?;
         temporary.flush().map_err(storage)?;
         temporary.as_file().sync_all().map_err(storage)?;
         temporary.persist_noclobber(path).map_err(storage)?;
+        memory::ReaderPrivateStorageGate::sync_parent(path).map_err(storage)?;
         Ok(())
     }
-    fn read_version(
+    pub(crate) fn read_version(
         &self,
         owner: &PresentationOwner,
         reference: &PresentationRef,
@@ -172,22 +235,22 @@ fn owner_error() -> ToolError {
         "Presentation does not belong to this book and session",
     )
 }
-fn session<'a>(state: &'a AppState, session_id: &str) -> Result<&'a AgentChatSession, ToolError> {
+fn session<'a>(state: &'a PrivateBookContext<'_>, session_id: &str) -> Result<&'a AgentChatSession, ToolError> {
     state
-        .agent_history
+        .user.agent_history
         .sessions
         .iter()
         .find(|s| s.id == session_id && s.book_id == state.book.base.book_id)
         .ok_or_else(owner_error)
 }
-fn owner(state: &AppState, session_id: &str) -> Result<PresentationOwner, ToolError> {
+fn owner(state: &PrivateBookContext<'_>, session_id: &str) -> Result<PresentationOwner, ToolError> {
     let session = session(state, session_id)?;
     Ok(PresentationOwner {
         book_id: session.book_id.clone(),
         session_id: session.id.clone(),
     })
 }
-fn pending_turn(state: &AppState, session_id: &str, turn_id: &str) -> Result<(), ToolError> {
+fn pending_turn(state: &PrivateBookContext<'_>, session_id: &str, turn_id: &str) -> Result<(), ToolError> {
     if !session(state, session_id)?
         .turns
         .iter()
@@ -238,7 +301,7 @@ fn validate_content(
     Ok(())
 }
 
-impl AppState {
+impl PrivateBookContext<'_> {
     /// Latest saved scene of this exact version; never search a newer content revision.
     pub(crate) fn latest_presentation_state(
         &self,
@@ -246,7 +309,7 @@ impl AppState {
         reference: &PresentationRef,
     ) -> Result<Option<SavedPresentationState>, ToolError> {
         self.read_presentation(session_id, reference)?;
-        let store = PresentationStore::for_state(self)?;
+        let store = PresentationStore::for_user(&self.user)?;
         let directory = store
             .root
             .join("states")
@@ -292,7 +355,7 @@ impl AppState {
     ) -> Result<PresentationFollowUp, ToolError> {
         let version =
             crate::presentation_api::delivered_version(self, session_id, turn_id, reference)?;
-        let store = PresentationStore::for_state(self)?;
+        let store = PresentationStore::for_user(&self.user)?;
         let directory = store
             .root
             .join("states")
@@ -326,7 +389,7 @@ impl AppState {
             owner: version.owner,
             state,
         };
-        PresentationStore::write(
+        store.write_private(
             &directory.join(format!("{}.json", receipt.state_revision)),
             &saved,
         )?;
@@ -344,7 +407,7 @@ impl AppState {
             &receipt.reference,
         )?;
         check_id(&receipt.saved_state_ref)?;
-        let store = PresentationStore::for_state(self)?;
+        let store = PresentationStore::for_user(&self.user)?;
         let path = store
             .root
             .join("states")
@@ -362,7 +425,7 @@ impl AppState {
 
     /// Called under the existing Reader state borrow; no public book directory is used.
     pub fn create_presentation_candidate(
-        &mut self,
+        &self,
         session_id: &str,
         turn_id: &str,
         based_on: Option<PresentationRef>,
@@ -371,7 +434,7 @@ impl AppState {
         let owner = owner(self, session_id)?;
         pending_turn(self, session_id, turn_id)?;
         validate_content(&content, &owner)?;
-        let store = PresentationStore::for_state(self)?;
+        let store = PresentationStore::for_user(&self.user)?;
         let presentation_id = match &based_on {
             Some(reference) => {
                 store
@@ -389,7 +452,7 @@ impl AppState {
             based_on,
             content,
         };
-        PresentationStore::write(&store.candidate_path(&candidate.candidate_id)?, &candidate)?;
+        store.write_private(&store.candidate_path(&candidate.candidate_id)?, &candidate)?;
         Ok(candidate)
     }
 
@@ -398,20 +461,20 @@ impl AppState {
         session_id: &str,
         candidate_id: &str,
     ) -> Result<PresentationCandidate, ToolError> {
-        PresentationStore::for_state(self)?.read_candidate(&owner(self, session_id)?, candidate_id)
+        PresentationStore::for_user(&self.user)?.read_candidate(&owner(self, session_id)?, candidate_id)
     }
 
     /// Save a complete immutable version before returning a usable reference.
     /// RP4 calls this after preview/source compilation; it does not submit an answer.
     pub fn persist_presentation_candidate(
-        &mut self,
+        &self,
         session_id: &str,
         turn_id: &str,
         candidate_id: &str,
     ) -> Result<PresentationRef, ToolError> {
         let owner = owner(self, session_id)?;
         pending_turn(self, session_id, turn_id)?;
-        let store = PresentationStore::for_state(self)?;
+        let store = PresentationStore::for_user(&self.user)?;
         let candidate = store.read_candidate(&owner, candidate_id)?;
         if candidate.created_by_turn_id != turn_id {
             return Err(owner_error());
@@ -450,7 +513,7 @@ impl AppState {
             based_on: candidate.based_on,
             content: candidate.content,
         };
-        PresentationStore::write(&store.version_path(&reference)?, &version)?;
+        store.write_private(&store.version_path(&reference)?, &version)?;
         Ok(reference)
     }
 
@@ -460,12 +523,12 @@ impl AppState {
         session_id: &str,
         reference: &PresentationRef,
     ) -> Result<AgentPresentation, ToolError> {
-        PresentationStore::for_state(self)?.read_version(&owner(self, session_id)?, reference)
+        PresentationStore::for_user(&self.user)?.read_version(&owner(self, session_id)?, reference)
     }
 }
 
 pub(crate) fn validate_answer_references(
-    state: &AppState,
+    user: &crate::user_runtime::UserRuntime,
     session_id: &str,
     outcome: &OuterOutcome,
     messages: &[runtime::Message],
@@ -479,8 +542,9 @@ pub(crate) fn validate_answer_references(
                 revision,
             } = part
             {
-                let version = state.read_presentation(
-                    session_id,
+                let session = user.agent_history.sessions.iter().find(|s| s.id == session_id).ok_or_else(owner_error)?;
+                let version = PresentationStore::for_user(&user)?.read_version(
+                    &PresentationOwner { book_id: session.book_id.clone(), session_id: session_id.into() },
                     &PresentationRef {
                         presentation_id: presentation_id.clone(),
                         revision: *revision,

@@ -2,6 +2,9 @@ import { readBuildExecutorModelRuntime, type BuildExecutorModelRuntimeV1 } from 
 import { automaticBuildRefill, AutomaticBuildRefillRequestError } from "./automatic-build-refill";
 import { projectAutomaticBuildProgress, type AutomaticBuildProgressV1 } from "../../packages/core/src/automatic-build-progress";
 import { readDshBuildConfirmation, type DshBuildConfirmationV1 } from "../../packages/core/src/build-harness-confirmation";
+import { configuredBuildRetrievalRuntime, buildRetrievalReview, configureBuildRetrieval, reviseBuildRetrieval, buildRetrievalScope } from "../../packages/core/src/build-retrieval-config";
+import { transitionBuildPlan } from "../../packages/core/src/build-intent";
+import type { BuildRetrievalRuntime } from "../../packages/core/src/automatic-build-retrieval";
 import { readDshExecutorObservation } from "../../packages/core/src/dsh-executor-observation";
 import { DSH_BUILD_CONTROL_CONTRACT_V1 } from "../../packages/core/src/dsh-build-executor-contract";
 import { inspectAutomaticBuildTaskClaim } from "../../packages/core/src/automatic-build-lease";
@@ -16,7 +19,6 @@ import {
   writeFileSync,
   unlinkSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { CODEX_BUILD_EXECUTION_PROFILE_V1, resolveBuildExecutionProfile, executionProfileSelection,
   DSH_BUILD_EXECUTION_PROFILE_V1,
@@ -44,6 +46,7 @@ import {
   validateAutomaticBuildOpenCallCorrection,
   type AutomaticBuildOpenCallCorrectionV1,
   resolveAutomaticBuildTargetLids,
+  resolveAutomaticBuildExecutorRegistryRoot,
 } from "../../packages/core/src/automatic-build-executor-session";
 import {
   inspectAutomaticBuildDispatchRecoveryGeneration,
@@ -57,6 +60,8 @@ import {
   prepareAutomaticBuildSnapshot,
   type AutomaticBuildStage,
   type BuildTargetRefV2,
+  type AutomaticBuildAsyncPreparationResult,
+  type AutomaticBuildTarget,
 } from "../../packages/core/src/build-orchestrator";
 import { isAutomaticBuildTaskPolicyBindingV2 } from "../../packages/core/src/semantic-artifact";
 import { canonicalAutomaticBuildJson } from "../../packages/core/src/automatic-build-protocol";
@@ -141,6 +146,7 @@ const STAGES = new Set<AutomaticBuildStage>([
   "profile_sidecar",
   "pass2",
   "book_structure",
+  "formal_objects", "cognitive_materials", "teaching_publish",
   "paper_reading_guide",
 ]);
 const USER_DECISION_REASONS = new Set<AutomaticBuildUserDecisionReasonV1>([
@@ -160,9 +166,13 @@ const USER_DECISION_REASONS = new Set<AutomaticBuildUserDecisionReasonV1>([
   "installation_incompatible",
   "executor_bootstrap_failed",
   "build_engine_failed",
+  "retrieval_unavailable",
+  "retrieval_cancelled",
 ]);
 
 export type AutomaticBuildUserDecisionReasonV1 =
+  | "retrieval_unavailable"
+  | "retrieval_cancelled"
   | "plan_confirmation_required"
   | "plan_changed"
   | "pass2_choice_required"
@@ -606,14 +616,7 @@ function sha256(value: unknown): string {
 }
 
 function registryRoot(): string {
-  const configured = process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
-  const root = path.resolve(configured ?? path.join(tmpdir(), "understand-book-automatic-build-driver-v1"));
-  mkdirSync(root, { recursive: true, mode: 0o700 });
-  const stat = lstatSync(root);
-  if (!stat.isDirectory() || stat.isSymbolicLink()) {
-    throw new Error("automatic build driver registry root is invalid");
-  }
-  return realpathSync(root);
+  return resolveAutomaticBuildExecutorRegistryRoot();
 }
 
 function staysWithin(root: string, file: string): boolean {
@@ -744,8 +747,23 @@ function validatePreflightEvaluationEvidence(
   return value as unknown as AutomaticBuildPreflightEvaluationEvidenceV2;
 }
 
+class AutomaticBuildInvocationMissingError extends Error {
+  constructor() {
+    super("The automatic build invocation record is missing.");
+    this.name = "AutomaticBuildInvocationMissingError";
+  }
+}
+
 function readInvocation(invocationRef: string): AutomaticBuildInvocationRecord {
-  const value = readJsonRecord(invocationRecordPath(invocationRef));
+  let value: unknown;
+  try {
+    value = readJsonRecord(invocationRecordPath(invocationRef));
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      throw new AutomaticBuildInvocationMissingError();
+    }
+    throw error;
+  }
   if (!isRecord(value)) throw new Error("automatic build invocation record is invalid");
   exactKeys(value, [
     "version",
@@ -965,6 +983,8 @@ function authorizePlan(
 
 function externalReason(internalReason: string): AutomaticBuildUserDecisionReasonV1 {
   switch (internalReason) {
+    case "retrieval_provider_failed": return "retrieval_unavailable";
+    case "retrieval_cancelled": return "retrieval_cancelled";
     case "build_plan_required":
     case "build_plan_unconfirmed":
     case "preflight_required":
@@ -978,6 +998,7 @@ function externalReason(internalReason: string): AutomaticBuildUserDecisionReaso
     case "build_plan_policy_drift":
     case "build_plan_closure_drift":
     case "build_plan_freshness_drift":
+    case "build_plan_retrieval_drift":
     case "plan_changed":
     case "evaluation_changed":
     case "invocation_build_plan_drift":
@@ -992,6 +1013,7 @@ function externalReason(internalReason: string): AutomaticBuildUserDecisionReaso
     case "legacy_resume_selected":
     case "legacy_partial_dispatch_run":
       return "legacy_migration_required";
+    case "structure_preparation_incomplete":
     case "quality_gate_failed": return "quality_gate_failed";
     case "retry_exhausted": return "retry_exhausted";
     case "recovery_not_satisfied": return "recovery_not_satisfied";
@@ -1005,6 +1027,8 @@ function externalReason(internalReason: string): AutomaticBuildUserDecisionReaso
 
 function userMessage(reason: AutomaticBuildUserDecisionReasonV1): string {
   switch (reason) {
+    case "retrieval_unavailable": return "The configured embedding provider is unavailable. Restore its local configuration, then resume; accepted model actions are retained.";
+    case "retrieval_cancelled": return "Retrieval preparation was cancelled. Resume to prepare the missing page; accepted model actions are retained.";
     case "plan_confirmation_required": return "Confirm the current build plan before model work starts.";
     case "plan_changed": return "The authoritative build plan changed and requires a fresh confirmation.";
     case "pass2_choice_required": return "Choose whether the confirmed plan should include Pass2 enrichment.";
@@ -2166,7 +2190,15 @@ function finalizeResponse(response: AutomaticBuildStepResponseV1): AutomaticBuil
   return response;
 }
 
-export function automaticBuildStep(inputValue: AutomaticBuildStepRequestV1): AutomaticBuildStepResponseV1 {
+interface DriverRetrievalPreparation {
+  stage: import("../../packages/core/src/semantic-artifact").SemanticBuildStage;
+  target: AutomaticBuildTarget; plan: BuildPlanV1;
+  quality_profile: AutomaticBuildInvocationCreate["quality_profile"];
+  execution_profile: ReturnType<typeof invocationExecutionProfile>;
+}
+
+/** The same control flow serves synchronous readers and asynchronous production hosts. */
+function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1, liveHandoffRefs: string[] = []): Generator<DriverRetrievalPreparation, AutomaticBuildStepResponseV1, AutomaticBuildAsyncPreparationResult> {
   let input: AutomaticBuildStepRequestV1;
   try {
     input = validateStepRequest(inputValue);
@@ -2175,6 +2207,13 @@ export function automaticBuildStep(inputValue: AutomaticBuildStepRequestV1): Aut
   }
   const invocation = readInvocation(input.invocation_ref);
   let current = loadDriverState(invocation, input.available_agent_slots);
+  const heldWorkUnitIds = liveHandoffRefs.flatMap(ref => {
+    const projection = invocationDispatchProjection(invocation, ref);
+    if (!projection) throw new Error("live handoff was not issued by this invocation");
+    const identity = projection.dispatch_identity;
+    return readAutomaticBuildDispatch(current.plan_result.snapshot.target, identity.stage,
+      identity.dispatch_id, identity.dispatch_run_id).manifest.ordered_work_unit_ids;
+  });
   const finish = (response: AutomaticBuildStepResponseV1) => {
     const progress = current.plan_result.snapshot.stages.find(stage => stage.stage === "book_structure")?.book_structure_progress;
     const buildProgress = projectAutomaticBuildProgress({
@@ -2267,6 +2306,13 @@ export function automaticBuildStep(inputValue: AutomaticBuildStepRequestV1): Aut
     // A new transition follows a state change; the initial pure decision shares its read.
     if (transition > 0 || unopenedFailure) current = loadDriverState(invocation, input.available_agent_slots, effect);
     const planAction = current.plan_result.next_action;
+    if (planAction.kind === "needs_user" && planAction.reason === "preparation_required" && current.plan.retrieval) {
+      const prepared = yield { target: current.plan_result.snapshot.target, plan: current.plan, stage: planAction.stage as DriverRetrievalPreparation["stage"],
+        quality_profile: invocation.input.quality_profile, execution_profile: invocationExecutionProfile(invocation.input) };
+      if (prepared.status !== "ready") return finish(issueBoundary(invocation, boundaryFromAction(
+        (prepared.status === "needs_user" ? prepared.action : automaticBuildRecoveryAction(prepared.recovery)) as unknown as Record<string, unknown>, stateIdentity(current))));
+      continue;
+    }
     if (planAction.kind === "needs_user") {
       return finish(issueBoundary(
         invocation,
@@ -2305,6 +2351,7 @@ export function automaticBuildStep(inputValue: AutomaticBuildStepRequestV1): Aut
           : undefined,
         accepted_plan_budget_evidence: effect.accepted_plan_budget_evidence,
         executor_dispatches: true,
+        held_work_unit_ids: heldWorkUnitIds,
         build_plan: current.plan,
       },
       current.plan_result.snapshot,
@@ -2326,7 +2373,8 @@ export function automaticBuildStep(inputValue: AutomaticBuildStepRequestV1): Aut
       const replayIds = Array.isArray(action.replay_dispatch_ids)
         ? action.replay_dispatch_ids.filter(id => !selectedIds.has(id)) : [];
       if (replayIds.length) {
-        const issuedAt = transitionNow(current, input.available_agent_slots, effect);
+        // Lease expiry is a live observation, independent of the stable publication clock.
+        const issuedAt = new Date().toISOString();
         executors.push(...(replayDispatchHandoffRefs(invocation, action.stage, replayIds,
           action.dispatch_run_id, issuedAt) ?? reissueActiveDispatchHandoffRefs(invocation,
           action.stage, replayIds, action.dispatch_run_id, issuedAt)));
@@ -2343,7 +2391,7 @@ export function automaticBuildStep(inputValue: AutomaticBuildStepRequestV1): Aut
     }
     if (action.kind === "waiting") {
       if (action.reason === "active_dispatches") {
-        const issuedAt = transitionNow(current, input.available_agent_slots, effect);
+        const issuedAt = new Date().toISOString();
         const replayed = replayDispatchHandoffRefs(
           invocation,
           action.stage,
@@ -2451,7 +2499,7 @@ export function readDshBuildInvocation(invocationRef: string, rootSessionId: str
 }
 
 /** Engine-owned foreground ownership. Unknown process liveness remains blocked. */
-function dshControllerCommand(value: Record<string, unknown>): unknown {
+function dshControllerCommand(value: Record<string, unknown>, step: DriverStep = automaticBuildStep): unknown {
   const action = value.action;
   exactKeys(value, ["version", "invocation_ref", "root_session_id", "controller_id", "owner_pid", "action"],
     action === "step" ? ["available_agent_slots", "decision"] : action === "observe" ? ["observation"] : []);
@@ -2496,12 +2544,38 @@ function dshControllerCommand(value: Record<string, unknown>): unknown {
     }
     return { recorded: true };
   }
-  return automaticBuildStep({ version: "automatic_build_step_request.v1", invocation_ref: ref,
+  return step({ version: "automatic_build_step_request.v1", invocation_ref: ref,
     available_agent_slots: value.available_agent_slots as 0 | 1 | 2 | 3,
     ...(value.decision === undefined ? {} : { decision: value.decision as AutomaticBuildStepRequestV1["decision"] }) });
 }
 
-export function runAutomaticBuildDriverCommand(value: unknown): unknown {
+type DriverStep = (request: AutomaticBuildStepRequestV1, liveHandoffRefs?: string[]) => AutomaticBuildStepResponseV1 | Promise<AutomaticBuildStepResponseV1>;
+export function automaticBuildStep(input: AutomaticBuildStepRequestV1, liveHandoffRefs: string[] = []): AutomaticBuildStepResponseV1 {
+  const steps = automaticBuildStepTransitions(input, liveHandoffRefs);
+  const next = steps.next();
+  if (next.done) return next.value;
+  return steps.next({ status: "needs_user", action: { kind: "needs_user", reason: "preparation_required", stage: next.value.stage,
+    message: "alignment retrieval requires authorized asynchronous preparation" } }).value as AutomaticBuildStepResponseV1;
+}
+
+export async function automaticBuildStepWithPreparation(input: AutomaticBuildStepRequestV1, liveHandoffRefs: string[] = [],
+  options: { runtime?: BuildRetrievalRuntime; signal?: AbortSignal } = {}): Promise<AutomaticBuildStepResponseV1> {
+  const steps = automaticBuildStepTransitions(input, liveHandoffRefs);
+  let next = steps.next();
+  while (!next.done) {
+    const { target, plan, quality_profile, execution_profile, stage } = next.value;
+    const prepared = await prepareAutomaticBuildSnapshot(target, stage, { quality_profile, execution_profile,
+      authorization: { plan, runtime: options.runtime ?? configuredBuildRetrievalRuntime(plan), signal: options.signal } });
+    next = steps.next(prepared);
+  }
+  return next.value;
+}
+
+export function runAutomaticBuildDriverCommandWithPreparation(value: unknown, signal?: AbortSignal): Promise<unknown> {
+  return Promise.resolve(runAutomaticBuildDriverCommand(value, (request, refs) => automaticBuildStepWithPreparation(request, refs, { signal })));
+}
+
+export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep = automaticBuildStep): unknown {
   if (!isRecord(value) || typeof value.version !== "string") {
     throw new Error("build.step requires a versioned JSON request");
   }
@@ -2509,8 +2583,15 @@ export function runAutomaticBuildDriverCommand(value: unknown): unknown {
     return automaticBuildRefill(value, {
       validateStep: validateStepRequest,
       maxParallel: ref => readInvocation(ref).input.max_parallel,
-      step: request => {
-        try { return automaticBuildStep(request); }
+      step: (request, liveHandoffRefs) => {
+        try {
+          const result = step(request, liveHandoffRefs);
+          return result instanceof Promise ? result.catch(error => {
+            const response = automaticBuildDriverFailureResponse(error);
+            if (response.version !== "automatic_build_step.v1") throw error;
+            return response;
+          }) : result;
+        }
         catch (error) {
           const response = automaticBuildDriverFailureResponse(error);
           if (response.version !== "automatic_build_step.v1") throw error;
@@ -2523,21 +2604,54 @@ export function runAutomaticBuildDriverCommand(value: unknown): unknown {
     exactKeys(value, ["version"]);
     return DSH_BUILD_CONTROL_CONTRACT_V1;
   }
-  if (value.version === "dsh_build_controller.v1") return dshControllerCommand(value);
+  if (value.version === "dsh_build_controller.v1") return dshControllerCommand(value, step);
+  if (value.version === "build_retrieval_configure.v1") {
+    exactKeys(value, ["version", "build_plan_path", "retrieval_mode", "budget"], ["config_file"]);
+    if (value.retrieval_mode !== "lexical_only" && value.retrieval_mode !== "semantic_required") throw new Error("invalid retrieval mode");
+    const source = boundedString(value.build_plan_path, "build_plan_path");
+    const originalPlan = validateBuildPlanV1(JSON.parse(readFileSync(source, "utf8")));
+    const retrieval = configureBuildRetrieval(value.retrieval_mode, value.budget as NonNullable<BuildPlanV1["retrieval"]>["budget"],
+      value.config_file === undefined ? undefined : boundedString(value.config_file, "config_file"), buildRetrievalScope(originalPlan));
+    const plan = reviseBuildRetrieval(originalPlan, retrieval);
+    const file = path.join(path.dirname(source), `${plan.plan_id}-retrieval-r${plan.revision}.json`);
+    if (existsSync(file)) {
+      if (canonicalAutomaticBuildJson(JSON.parse(readFileSync(file, "utf8"))) !== canonicalAutomaticBuildJson(plan)) throw new Error("retrieval draft already exists with different content");
+    } else writeFileSync(file, canonicalAutomaticBuildJson(plan), { flag: "wx" });
+    return { build_plan_path: file, plan, review_markdown: buildRetrievalReview(plan) };
+  }
+  if (value.version === "build_retrieval_confirm.v1") {
+    exactKeys(value, ["version", "build_plan_path", "plan_digest", "confirmation_source"]);
+    if (value.confirmation_source !== "codex_conversation" && value.confirmation_source !== "reader_ui"
+      && value.confirmation_source !== "explicit_legacy_command") throw new Error("invalid confirmation source");
+    const file = boundedString(value.build_plan_path, "build_plan_path");
+    const plan = validateBuildPlanV1(JSON.parse(readFileSync(file, "utf8")));
+    if (!plan.retrieval || plan.plan_digest !== value.plan_digest) throw new Error("retrieval confirmation plan changed");
+    const confirmed = transitionBuildPlan(plan, "confirmed", { at: new Date().toISOString(), confirmation_source: value.confirmation_source });
+    writeFileSync(file, canonicalAutomaticBuildJson(confirmed));
+    return { build_plan_path: file, plan: confirmed, review_markdown: buildRetrievalReview(confirmed) };
+  }
   if (value.version === "dsh_build_prepare.v1" || value.version === "dsh_build_prepare.v2") {
-    exactKeys(value, ["version", "target_input", "root_dir", "pass2", ...(value.version === "dsh_build_prepare.v2" ? ["max_parallel"] : [])], ["budget"]);
+    exactKeys(value, ["version", "target_input", "root_dir", "pass2", ...(value.version === "dsh_build_prepare.v2" ? ["max_parallel"] : [])], ["budget", "retrieval"]);
     const workers = value.version === "dsh_build_prepare.v2" ? nonNegativeSafeInteger(value.max_parallel, "max_parallel") : 1;
     if (workers < 1 || workers > 3) throw new Error("DSH max_parallel must be 1..3");
     if (value.pass2 !== "enabled" && value.pass2 !== "disabled") throw new Error("DSH Pass2 choice is required");
-    const prepared = prepareExplicitLegacyBuildPlan(boundedString(value.target_input, "target_input"),
+    let prepared = prepareExplicitLegacyBuildPlan(boundedString(value.target_input, "target_input"),
       boundedString(value.root_dir, "root_dir"), { pass2: value.pass2,
         budget: value.budget as BuildPlanV1["budget"], execution_profile: DSH_BUILD_EXECUTION_PROFILE_V1 });
+    if (value.retrieval !== undefined) {
+      if (!isRecord(value.retrieval)) throw new Error("invalid retrieval configuration");
+      exactKeys(value.retrieval, ["retrieval_mode", "budget"]);
+      const configured = runAutomaticBuildDriverCommand({ ...value.retrieval, version: "build_retrieval_configure.v1",
+        build_plan_path: prepared.build_plan_path }) as { plan: BuildPlanV1; build_plan_path: string };
+      prepared = { ...prepared, plan: configured.plan, build_plan_path: configured.build_plan_path };
+    }
     const estimate = automaticBuildPlan(boundedString(value.target_input, "target_input"), boundedString(value.root_dir, "root_dir"), {
       build_plan: prepared.plan, execution_profile: DSH_BUILD_EXECUTION_PROFILE_V1, requested_workers: workers, available_agent_slots: workers,
     });
     const plan = prepared.plan;
     const stageNames: Record<string, string> = { pass1: "基础语义抽取", profile_sidecar: "阅读线索与公式", pass2: "跨段关系复核",
-      book_structure: "全书结构", paper_metadata: "论文元信息", paper_lexicon: "论文术语", paper_reading_guide: "论文阅读指南" };
+      book_structure: "全书结构", paper_metadata: "论文元信息", paper_lexicon: "论文术语", paper_reading_guide: "论文阅读指南",
+      formal_objects: "正式学习对象与关系", cognitive_materials: "重点认知素材", teaching_publish: "来源审阅与教学发布" };
     const stageLabel = (stage: string) => stageNames[stage.replace(/^public\./u, "")] ?? stage;
     const review = ["# 本次构建计划", `Pass2：${value.pass2 === "enabled" ? "启用" : "关闭"}`,
       `构建目标：${path.resolve(value.target_input as string)}`,
@@ -2551,7 +2665,7 @@ export function runAutomaticBuildDriverCommand(value: unknown): unknown {
       `计划时长上限（分钟）：${plan.budget.max_wall_clock_minutes ?? "未另设上限"}`,
       `超出预算时：停止并请你决定。并发执行器：${workers}。`,
       ...(estimate.preflight ? [`当前阶段：${stageLabel(estimate.preflight.stage)}；预计 token：${estimate.preflight.token_estimate.total_lower}–${estimate.preflight.token_estimate.total_upper}。此数字仅覆盖当前阶段。`] : []),
-      "后续阶段按完整计划逐段评估，质量门通过后发布。"].join("\n\n");
+      buildRetrievalReview(plan), "后续阶段按完整计划逐段评估，质量门通过后发布。"].join("\n\n");
     // The snapshot contains generation inputs. Only this control projection may enter a root question.
     return { version: value.version === "dsh_build_prepare.v2" ? "dsh_build_prepared.v2" : "dsh_build_prepared.v1", build_plan_path: prepared.build_plan_path, plan, review_markdown: review };
   }
@@ -2564,7 +2678,7 @@ export function runAutomaticBuildDriverCommand(value: unknown): unknown {
     return value.version === "dsh_build_invocation_read.v2" ? { ...saved, version: "dsh_build_invocation.v2", max_parallel } : saved;
   }
   if (value.version === "automatic_build_step_request.v1") {
-    return automaticBuildStep(value as unknown as AutomaticBuildStepRequestV1);
+    return step(value as unknown as AutomaticBuildStepRequestV1);
   }
   throw new Error("build.step request version is unsupported");
 }
@@ -2602,6 +2716,16 @@ export function automaticBuildDriverFailureResponse(error: unknown): AutomaticBu
   };
   let saved = false;
   try { writeCreateOnly(recordFile("diagnostics", requestId), diagnostic); saved = true; } catch { /* Report the unavailable diagnostic explicitly. */ }
+  if (error instanceof AutomaticBuildInvocationMissingError) {
+    return finalizeResponse({
+      version: "automatic_build_step.v1",
+      action: {
+        kind: "NEEDS_USER", request_id: requestId, reason: "build_engine_failed", choices: [],
+        message: "The build invocation record is missing. Recreate the invocation from the saved creation request or the same confirmed plan, then resume the existing workspace. Committed workspace artifacts remain reusable.",
+        projection: { category: "internal", code: "invocation_record_missing" },
+      },
+    });
+  }
   return finalizeResponse({
     version: "automatic_build_step.v1",
     action: {
@@ -2627,9 +2751,14 @@ function isCommandEntrypoint(): boolean {
 }
 
 if (isCommandEntrypoint()) {
+  const cancellation = new AbortController();
+  const cancel = () => cancellation.abort(new Error("build control interrupted"));
+  process.once("SIGINT", cancel); process.once("SIGTERM", cancel);
   try {
-    process.stdout.write(`${canonicalAutomaticBuildJson(runAutomaticBuildDriverCommand(readStdinRequest()))}\n`);
+    process.stdout.write(`${canonicalAutomaticBuildJson(await runAutomaticBuildDriverCommandWithPreparation(readStdinRequest(), cancellation.signal))}\n`);
   } catch (error) {
     process.stdout.write(`${canonicalAutomaticBuildJson(automaticBuildDriverFailureResponse(error))}\n`);
+  } finally {
+    process.removeListener("SIGINT", cancel); process.removeListener("SIGTERM", cancel);
   }
 }

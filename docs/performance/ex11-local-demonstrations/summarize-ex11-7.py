@@ -21,7 +21,16 @@ for name in run_ids:
         continue
     responses = [read(p) for p in sorted(run.glob('response-*.json'))]
     calls = [call for response in responses for call in response.get('tool_calls', [])]
-    author_calls = [json.loads(call['arguments']) for call in calls if call['name'] == 'presentation.author']
+    author_calls = []
+    invalid_author_arguments = []
+    for response_index, response in enumerate(responses):
+        for call in response.get('tool_calls', []):
+            if call['name'] != 'presentation.author':
+                continue
+            try:
+                author_calls.append(json.loads(call['arguments']))
+            except json.JSONDecodeError as error:
+                invalid_author_arguments.append({'response_index': response_index, 'error': str(error)})
     summary = read(run / 'summary.json') if (run / 'summary.json').exists() else {}
     outcome = read(run / 'outcome.json') if (run / 'outcome.json').exists() else {}
     completions = [read(p) for p in sorted(run.glob('completion-*-response.json'))]
@@ -39,6 +48,7 @@ for name in run_ids:
            'elapsed_ms':summary.get('elapsed_ms'), 'incomplete':outcome.get('incomplete'),
            'warning':outcome.get('warning'), 'error':outcome.get('error_code'),
            'author_operations':dict(collections.Counter(call.get('operation', 'missing_operation') for call in author_calls)),
+           'invalid_author_arguments':invalid_author_arguments,
            'delivered':(run / 'content.json').exists()}
     if (run / 'history.json').exists():
         history = read(run / 'history.json')

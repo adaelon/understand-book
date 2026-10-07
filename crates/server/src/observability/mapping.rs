@@ -118,6 +118,7 @@ impl ActivityMapper {
                     accepted_evidence_count: event.activity.accepted_evidence_count,
                     evidence_refs: event.activity.evidence_refs,
                     executed: event.activity.started_ms.is_some(),
+                    request_diagnostics: event.activity.request_diagnostics,
                     ..Default::default()
                 },
             },
@@ -178,13 +179,12 @@ pub fn export_item(
             ObservationKind::Tool => "unknown_tool".into(),
         });
     let metadata = serde_json::to_value(&observation).unwrap_or(Value::Null);
-    let usage_metadata = usage_metadata(&observation.usage);
     let token_event = observation
         .metadata
         .model_first_text_at
         .as_ref()
         .map(|time| json!({"name": "new_token", "time": time}));
-    let payload = match operation {
+    let mut payload = match operation {
         ExportOperation::Create => {
             let mut value = json!({
                 "id": run_id,
@@ -212,9 +212,6 @@ pub fn export_item(
                 if let Some(code) = &observation.metadata.error_code {
                     value["error"] = Value::String(code.clone());
                 }
-                if let Some(usage) = usage_metadata.clone() {
-                    value["usage_metadata"] = usage;
-                }
                 if let Some(event) = token_event.clone() {
                     value["events"] = json!([event]);
                 }
@@ -235,9 +232,6 @@ pub fn export_item(
             if let Some(code) = &observation.metadata.error_code {
                 value.insert("error".into(), Value::String(code.clone()));
             }
-            if let Some(usage) = usage_metadata {
-                value.insert("usage_metadata".into(), usage);
-            }
             if let Some(event) = token_event {
                 value.insert("events".into(), json!([event]));
             }
@@ -254,6 +248,11 @@ pub fn export_item(
             Value::Object(value)
         }
     };
+    // The Runs REST API extracts token counters from extra.metadata.usage_metadata.
+    // A top-level usage_metadata field is silently ignored by LangSmith.
+    if let Some(usage) = usage_metadata(&observation.usage) {
+        payload["extra"]["metadata"]["usage_metadata"] = usage;
+    }
     ExportItem::new(
         root_run_id,
         run_id,
@@ -328,6 +327,26 @@ mod tests {
     }
 
     #[test]
+    fn runs_api_usage_is_in_metadata_for_create_and_update() {
+        let identity = RunIdentity::new("thread".into(), "book".into());
+        let mut observation = root_started(&identity);
+        observation.kind = ObservationKind::Model;
+        observation.execution_state = Some(ExecutionState::Completed);
+        observation.usage = TokenUsage::provider_reported(runtime::provider_stream::ModelUsage {
+            input_tokens: Some(1000), output_tokens: Some(20), cached_input_tokens: Some(800),
+            total_tokens: Some(1020), ..Default::default()
+        }, true);
+        for operation in [ExportOperation::Create, ExportOperation::Update] {
+            let item = export_item(observation.clone(), operation, "dev");
+            assert!(item.payload.get("usage_metadata").is_none());
+            let usage = &item.payload["extra"]["metadata"]["usage_metadata"];
+            assert_eq!(usage["input_tokens"], 1000);
+            assert_eq!(usage["input_token_details"]["cache_read"], 800);
+            assert_eq!(item.payload["outputs"], json!({}));
+        }
+    }
+
+    #[test]
     fn mapping_drops_content_canaries_and_preserves_rejection_semantics() {
         let identity = RunIdentity::new("thread".into(), "book".into());
         let mut mapper = ActivityMapper::new(10);
@@ -350,6 +369,7 @@ mod tests {
                         usage_total_tokens: None,
                         usage: None,
                         model_first_text_ms: None,
+                        request_diagnostics: None,
                         model_name: None,
                         model_name_source: None,
                         accepted_evidence_count: None,
@@ -393,6 +413,7 @@ mod tests {
                 usage_total_tokens: None,
                 usage: None,
                 model_first_text_ms: None,
+                request_diagnostics: None,
                 model_name: Some("configured-model".into()),
                 model_name_source: Some("configured".into()),
                 accepted_evidence_count: None,
@@ -424,6 +445,7 @@ mod tests {
             usage_total_tokens: None,
             usage: None,
             model_first_text_ms: None,
+            request_diagnostics: None,
             model_name: None,
             model_name_source: None,
             accepted_evidence_count: None,

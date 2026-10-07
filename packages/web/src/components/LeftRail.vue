@@ -72,8 +72,14 @@ function outlineKindLabel(kind: string): string {
 
 async function scrollActiveOutlineIntoView() {
   await nextTick();
-  const active = outlineList.value?.querySelector<HTMLElement>(".outline-item.active");
-  active?.scrollIntoView({ block: "nearest" });
+  const list = outlineList.value;
+  const active = list?.querySelector<HTMLElement>(".outline-item.active");
+  if (!list || !active) return;
+  const itemBounds = active.getBoundingClientRect();
+  const listBounds = list.getBoundingClientRect();
+  // Center within the outline only; let the browser clamp at either end.
+  list.scrollTop += itemBounds.top - listBounds.top - list.clientTop
+    + (itemBounds.height - list.clientHeight) / 2;
 }
 
 function gotoOutline(lid: string) {
@@ -97,7 +103,7 @@ watch(activeOutlineLid, () => {
 </script>
 
 <template>
-  <aside class="left-rail">
+  <aside id="reader-outline" class="left-rail" aria-label="阅读目录">
     <PaperMinimap
       v-if="props.paperEnabled"
       :base="props.paperMinimapBase ?? null"
@@ -138,6 +144,7 @@ watch(activeOutlineLid, () => {
           :class="{ active: item.lid === activeOutlineLid }"
           :style="{ paddingLeft: `${0.45 + item.depth * 0.75}rem` }"
           :title="item.title"
+          :aria-current="item.lid === activeOutlineLid ? 'location' : undefined"
           @click="gotoOutline(item.lid)"
         >
           <span class="outline-kind">{{ outlineKindLabel(item.kind) }}</span>
@@ -150,7 +157,7 @@ watch(activeOutlineLid, () => {
     <div class="rail-section rail-position">
       <div class="rail-heading">位置</div>
       <div class="position-row"><span>进度</span><strong>{{ props.progressPct }}%</strong></div>
-      <div class="position-row"><span>叶子数</span><strong>{{ props.leafCount }}</strong></div>
+      <div v-if="props.debugOpen" class="position-row"><span>叶子数</span><strong>{{ props.leafCount }}</strong></div>
       <div class="progress-track"><span :style="{ width: props.progressPct + '%' }"></span></div>
     </div>
 

@@ -3,6 +3,9 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import RightRail from "./RightRail.vue";
+import { api } from '../api';
+import { network, installIdentity, installWorkspace } from '../network-context';
+import type { RecapTarget, SessionRecap } from '../session-recap';
 
 const baseProps = {
   chat: [],
@@ -30,6 +33,56 @@ const baseProps = {
 };
 
 describe("RightRail history recovery", () => {
+  it('shows oldest turns first while effect and trace actions retain their original turn indexes', async () => {
+    const effect = { kind: 'Note' as const, mem_id: 'new-note', lid: '1.1', text: '笔记' };
+    const turns = ['old', 'new'].map(turnId => ({ turnId, user: turnId, pending: false,
+      questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+      outcome: { answer: turnId, effects: [effect], trace: [{}], memory_updates: [], turns: 1, tokens_spent: 0, incomplete: false,
+        profile_usage: { snapshot_revision: 0, injected_fact_ids: [], claimed_used_fact_ids: [], influences: [] } } as never }));
+    const wrapper = mount(RightRail, { props: { ...baseProps, chat: turns, effState: () => '已保留' } });
+    try {
+      expect(wrapper.findAll('.turn').map(t => t.attributes('data-turn-id'))).toEqual(['old', 'new']);
+      await wrapper.findAll('.turn')[1].get('.undo').trigger('click');
+      expect(wrapper.emitted('undo-effect')).toEqual([[1, 0, effect]]);
+      await wrapper.findAll('.turn')[1].get('.trace-toggle').trigger('click');
+      expect(wrapper.emitted('toggle-trace')).toEqual([[1]]);
+      expect(turns.map(t => t.turnId)).toEqual(['old', 'new']);
+    } finally { wrapper.unmount(); }
+  });
+  it('follows new turns at the bottom, preserves older reading, and resets when switching chats', async () => {
+    const turn = { turnId: 'old', user: '旧问题', pending: true, outcome: null,
+      questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] };
+    const wrapper = mount(RightRail, { props: { ...baseProps, chat: [turn] } });
+    try {
+      const transcript = wrapper.get('.transcript');
+      const el = transcript.element as HTMLElement;
+      Object.defineProperty(el, 'scrollHeight', { value: 1000, configurable: true });
+      Object.defineProperty(el, 'clientHeight', { value: 200, configurable: true });
+      el.scrollTop = 790;
+      await transcript.trigger('scroll');
+      await wrapper.setProps({ chat: [turn, { ...turn, turnId: 'new' }] });
+      await flushPromises();
+      expect(el.scrollTop).toBe(1000);
+      el.scrollTop = 200;
+      await transcript.trigger('scroll');
+      await wrapper.setProps({ chat: [turn, { ...turn, turnId: 'new' }, { ...turn, turnId: 'newer' }] });
+      await flushPromises();
+      expect(el.scrollTop).toBe(200);
+      await wrapper.setProps({ activeChatSessionId: 'other', chat: [{ ...turn, turnId: 'other-turn' }] });
+      await flushPromises();
+      expect(el.scrollTop).toBe(1000);
+    } finally { wrapper.unmount(); }
+  });
+  it("loads delivered presentations when history and chat identity arrive together", async () => {
+    const wrapper = mount(RightRail, { props: { ...baseProps, activeChatSessionId: '' }, global: { stubs: { AgentPresentation: true } } });
+    await wrapper.setProps({ activeChatSessionId: 'restored-chat', chat: [{ turnId: 'restored-turn', user: 'question', pending: false, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [], outcome: {
+      answer: '', answer_view: { parts: [{ kind: 'presentation', presentation_id: 'p', revision: 1 }], sources: [] },
+      incomplete: false, warning: null, turns: 1, tokens_spent: 0, effects: [], trace: [], memory_updates: [],
+      profile_usage: { snapshot_revision: 0, injected_fact_ids: [], claimed_used_fact_ids: [], influences: [] },
+    } }] });
+    expect(wrapper.find('agent-presentation-stub').exists()).toBe(true);
+    wrapper.unmount();
+  });
   it("keeps the draft editable, blocks chat changes until recovery, and offers retry", async () => {
     const wrapper = mount(RightRail, { props: { ...baseProps, agentInput: "保留草稿", historyLoading: true } });
     expect(wrapper.get('[role="status"]').text()).toContain("正在恢复对话");
@@ -46,8 +99,77 @@ describe("RightRail history recovery", () => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
+  network.value = { ...network.value, enabled: false, workspace: null, identity: null };
   document.body.replaceChildren();
   vi.unstubAllGlobals();
+});
+
+describe('JL9 recap jumps', () => {
+  it('offers undo of a retained note and removes that action after its receipt', async () => {
+    const effect = { kind: 'Note' as const, mem_id: 'note', lid: '1.1', text: '笔记' };
+    const wrapper = mount(RightRail, { props: { ...baseProps, effState: () => '已保留', chat: [{
+      turnId: 'turn', user: '保留笔记', pending: false, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+      outcome: { answer: '笔记', effects: [effect], trace: [], memory_updates: [], turns: 1, tokens_spent: 0, incomplete: false,
+        profile_usage: { snapshot_revision: 0, injected_fact_ids: [], claimed_used_fact_ids: [], influences: [] } } as never,
+    }] } });
+    try {
+      await wrapper.findAll('button').find(b => b.text() === '撤销保留')!.trigger('click');
+      expect(wrapper.emitted('undo-effect')).toEqual([[0, 0, effect]]);
+      await wrapper.setProps({ effState: () => '已撤销' });
+      expect(wrapper.findAll('button').some(b => b.text() === '撤销保留')).toBe(false);
+    } finally { wrapper.unmount(); }
+  });
+  const evidence = [{ turn_id: 'turn-1', event_seq: 3 }];
+  const source = { source_ref_id: 'source-1', label: '原文', quote: '引文', published_book_ref: null, evidence, unavailable_reason: null };
+  const note = { effect_id: 'memory:original', label: '笔记', status: 'kept', effect: { kind: 'reader' as const, effect: { kind: 'Note' as const, mem_id: 'original', lid: '1.1', text: '笔记' } }, object_id: 'kept-object', published_book_ref: null, evidence, unavailable_reason: null };
+  const presentation = { ...note, effect_id: 'presentation:p:2', object_id: null, effect: { kind: 'presentation' as const, reference: { presentation_id: 'p', revision: 2 } } };
+  const recap: SessionRecap = { session_id: 'chat-1', through_seq: 10, through_at: 'now', generated_at: 'now', questions: [{ text: '原问题', status: 'answered', evidence }], sources: [source], effects: [note, presentation], continuations: [] };
+  const chat = [{ turnId: 'turn-1', user: '原问题', pending: false, outcome: null, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] }];
+  const base = { session_id: 'chat-1', through_seq: 10, turn_id: 'turn-1' };
+  it('opens without navigation, then locates the turn, bound source, kept object and exact presentation version', async () => {
+    vi.spyOn(api, 'sessionRecap').mockResolvedValue(recap);
+    const resolve = vi.spyOn(api, 'agentSourceResolve').mockResolvedValue({ source_ref_id: 'source-1', label: '原文', highlighted_quote: '引文', context_before: '', context_after: '', stale: false, can_open_in_reader: true });
+    const read = vi.spyOn(api, 'presentationRead').mockResolvedValue({} as never);
+    vi.spyOn(api, 'recall').mockResolvedValue([{ mem_id: 'kept-object', anchor: { lid: '1.2' }, content: '保留后的笔记' }] as never);
+    const scroll = vi.fn(); vi.stubGlobal('HTMLElement', HTMLElement);
+    const prior = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scroll;
+    const wrapper = mount(RightRail, { props: { ...baseProps, chat }, global: { stubs: { AgentPresentation: true } } });
+    try {
+      await wrapper.get('.recap-button').trigger('click'); await flushPromises();
+      expect(document.body.querySelector('.session-recap')).not.toBeNull();
+      expect(resolve).not.toHaveBeenCalled(); expect(read).not.toHaveBeenCalled(); expect(scroll).not.toHaveBeenCalled();
+      const rail = wrapper.vm as unknown as { openRecapTarget: (t: RecapTarget) => Promise<void> };
+      await rail.openRecapTarget({ ...base, kind: 'turn' }); expect(scroll).toHaveBeenCalled();
+      await rail.openRecapTarget({ ...base, kind: 'source', source });
+      expect(resolve).toHaveBeenCalledWith('turn-1', 'source-1');
+      await wrapper.setProps({ chat: [{ ...chat[0], pending: true, runStatus: '新活动' }] });
+      expect(document.body.querySelector('.agent-source-popup')).not.toBeNull();
+      await rail.openRecapTarget({ ...base, kind: 'effect', effect: note });
+      expect(wrapper.emitted('focus-source')?.[0]).toEqual([{ lid: '1.2', quote: null, memId: 'kept-object' }]);
+      await rail.openRecapTarget({ ...base, kind: 'effect', effect: presentation });
+      expect(read).toHaveBeenCalledWith('chat-1', 'turn-1', { presentation_id: 'p', revision: 2 });
+      expect(wrapper.getComponent({ name: 'AgentPresentation' }).props('reference')).toEqual({ presentation_id: 'p', revision: 2 });
+      await wrapper.setProps({ activeChatSessionId: 'chat-2', chat: [] });
+      expect(document.body.querySelector('.session-recap')).toBeNull();
+      expect(wrapper.find('agent-presentation-stub').exists()).toBe(false);
+    } finally { wrapper.unmount(); HTMLElement.prototype.scrollIntoView = prior; }
+  });
+  it('requests the original publication before any source navigation in another publication', async () => {
+    installIdentity({ user_id: 'A', csrf_token: 'csrf' });
+    installWorkspace({ workspace_id: 'w', generation: 1, revision: 1, selected_chat: 'chat-1', published_book_ref: { book_id: 'book', publication_id: 'new' }, reader: {} } as never);
+    const original = { ...source, published_book_ref: { book_id: 'book', publication_id: 'original' } };
+    vi.spyOn(api, 'sessionRecap').mockResolvedValue({ ...recap, sources: [original] });
+    const resolve = vi.spyOn(api, 'agentSourceResolve');
+    const wrapper = mount(RightRail, { props: { ...baseProps, chat } });
+    try {
+      const target: RecapTarget = { ...base, kind: 'source', source: original };
+      await (wrapper.vm as unknown as { openRecapTarget: (t: RecapTarget) => Promise<void> }).openRecapTarget(target);
+      expect(wrapper.emitted('recap-publication')).toEqual([[target]]);
+      expect(resolve).not.toHaveBeenCalled();
+    } finally { wrapper.unmount(); }
+  });
 });
 
 describe("RightRail fullscreen", () => {
@@ -292,7 +414,7 @@ describe("RightRail agent sources", () => {
 
     const buttons = wrapper.findAll(".agent-source-button");
     expect(buttons).toHaveLength(2);
-    expect(buttons[0].text()).toContain("正文 · Methods");
+    expect(buttons[0].text()).toContain("Methods [1]");
     expect(buttons[1].text()).toContain("2 个来源");
     expect(wrapper.get(".turn-quote-head").text()).toContain("正文 · Introduction");
     expect(wrapper.get(".proposal .prop-label").text()).toBe("跳转 · 正文 · Results");
@@ -346,7 +468,7 @@ describe("RightRail agent sources", () => {
       source_ref_id: "source_ref_a",
     });
     expect(document.body.querySelector(".agent-source-popup")?.textContent).toContain("exact evidence");
-    expect(document.body.querySelector(".source-context-before")?.textContent).toContain("substantial context before");
+    expect(document.body.querySelector(".source-excerpt")?.textContent).toContain("substantial context before");
     expect(wrapper.emitted("agent-source-opened")).toBeUndefined();
 
     const open = document.body.querySelector<HTMLButtonElement>(".source-open-reader")!;
@@ -557,10 +679,10 @@ describe("RightRail AskQuote", () => {
     });
     expect(wrapper.get(".ask-draft").text()).toContain("引用来源");
     expect(wrapper.get(".ask-draft").text()).not.toContain("部分定位");
-    expect(wrapper.get(".agent-input > button").attributes()).toHaveProperty("disabled");
+    expect(wrapper.get(".agent-compose-row > button").attributes()).toHaveProperty("disabled");
     await wrapper.get("textarea").setValue("question");
     await wrapper.setProps({ agentInput: "question" });
-    await wrapper.get(".agent-input > button").trigger("click");
+    await wrapper.get(".agent-compose-row > button").trigger("click");
     expect(wrapper.emitted("send-agent")).toHaveLength(1);
 
     const app = readFileSync("src/App.vue", "utf8");
@@ -846,6 +968,7 @@ describe("RightRail Resident task controls", () => {
   it("does not leave a completed task notice in the input area", () => {
     const wrapper = mount(RightRail, { props: { ...baseProps, chatGoals: [{
       id: "goal-1", revision: 2, interpretation: "解释术语", requirements: [],
+      working: { focus: "", open_questions: [], next_move: "", items: [] },
       result_refs: ["answer:t1"], status: "completed" as const, last_stop_reason: null,
     }] } });
     expect(wrapper.find(".goal-card").exists()).toBe(false);
@@ -855,6 +978,7 @@ describe("RightRail Resident task controls", () => {
     const wrapper = mount(RightRail, { props: { ...baseProps, chatGoals: [{
       id: "goal-1", revision: 2, interpretation: "把这一章做成演示页",
       requirements: [{ id: "page", description: "交付演示", basis_turn_id: "t1", verification: "presentation_delivery" as const }],
+      working: { focus: "核对交付", open_questions: [], next_move: "交付页面", items: [{ id: "page", description: "制作页面", status: "completed" as const }] },
       result_refs: ["answer:t1"], status: "open" as const, last_stop_reason: "TURN_LIMIT_EXCEEDED",
     }] } });
     expect(wrapper.find(".goal-card").text()).toContain("页面交付待确认");
@@ -882,3 +1006,4 @@ describe("mobile input continuity", () => {
     expect(wrapper.emitted("send-agent")).toHaveLength(1);
   });
 });
+

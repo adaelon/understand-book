@@ -1,3 +1,5 @@
+import { network } from './network-context';
+import { networkRequest, publishedUrl } from './network-client';
 import type { RunDescriptor, RunSnapshot, RunActivity } from "./agent-run-state";
 // 类型化命令面 REST 客户端 `[ADR-0028]`:前端经 `/api` dev proxy 打到 tiny_http。
 // 端点名 = 命令名;book.*→GET、reader.*/memory.*/book.query→POST;错误透传 §4.4 信封。
@@ -95,7 +97,7 @@ export type {
 };
 
 const BASE = "/api";
-export const agentRunEventsUrl = (turnId: string) => `${BASE}/agent/runs/${encodeURIComponent(turnId)}/events`;
+export const agentRunEventsUrl = (turnId: string, cursor?: string) => `${BASE}/agent/runs/${encodeURIComponent(turnId)}/events${cursor ? `?after=${encodeURIComponent(cursor)}` : ""}`;
 
 /** reader.* 会话态(符 V3 §4.2),与 Rust `Viewport`/`ReaderState` 对齐(memory 类型未走 ts-rs,在此手定)。 */
 export interface Viewport {
@@ -233,11 +235,13 @@ export interface AssetManifest {
   book_id: string;
   images: ImageAssetManifestEntry[];
 }
+export interface BookCoverSource { kind: 'image' | 'pdf'; url: string }
 export interface BookLibraryEntry {
   name: string;
   book_id: string;
   dir: string;
   route: "reader" | "workbench";
+  cover?: BookCoverSource | null;
 }
 export interface BookLibraryResponse {
   root: string;
@@ -778,7 +782,10 @@ export type BuildStageId =
   | "profile_sidecar"
   | "pass2"
   | "book_structure"
-  | "paper_reading_guide";
+  | "paper_reading_guide"
+  | "formal_objects"
+  | "cognitive_materials"
+  | "teaching_publish";
 export type ExecutorId = "codex" | "opencode" | "claude" | "manual";
 export type WorkbenchAdapterMode = "builtin" | "contract_only" | "fake_success" | "fake_failure" | "fake_permission";
 export interface BuildStageReadiness {
@@ -1117,6 +1124,9 @@ export interface AgentQuestionQuoteView {
   status?: SelectionResolution;
 }
 export interface AgentChatTurn {
+  domain?: { effects: { effect_id: string; effect: { kind: "reader"; effect: AgentEffect } | { kind: "presentation"; reference: { presentation_id: string; revision: number } }; disposition: import("./effect-disposition").EffectDisposition | null }[] };
+  teaching_ref?: string | null;
+  presentation_follow_up?: import('./generated/PresentationFollowUp').PresentationFollowUp | null;
   goal_ref?: { id: string; revision: number } | null;
   turn_id: string;
   user_turn_ordinal: number;
@@ -1129,11 +1139,17 @@ export interface AgentChatTurn {
   question_quote: AgentQuestionQuoteView | null;
   effect_labels: string[];
 }
+export interface GoalWorkItem {
+  id: string;
+  description: string;
+  status: "pending" | "in_progress" | "completed";
+}
 export interface ResidentGoal {
   id: string;
   revision: number;
   interpretation: string;
   requirements: { id: string; description: string; basis_turn_id: string; verification: "content" | "presentation_delivery" | "reader_action" }[];
+  working: { focus: string; open_questions: string[]; next_move: string; items: GoalWorkItem[] };
   result_refs: string[];
   status: "open" | "completed" | "cancelled" | "superseded";
   last_stop_reason?: string | null;
@@ -1165,7 +1181,24 @@ export interface AgentHistoryResponse {
   sessions: AgentChatSessionSummary[];
   current: AgentChatSession;
 }
+export interface TutorActivity {
+  delivery_ref: string; move: { move_id: string; prompt: string; actions: string[] }; status: string; attempted: boolean; help_seen: unknown[];
+  assessment?: { action_ref?: string; status: string; attempt?: number; assistance_count?: number; items?: { id: string; reason: string }[] } | null;
+}
+export interface UnderstandingRow {
+  object_id: string; object_revision: number; label: string; capability: string; state: string; historical: boolean;
+  independent_support: number; assisted_support: number; revised_support: number; partial: number; difficulty: number; uncertain: number;
+  evidence_refs: string[]; evidence_count: number;
+}
+export interface UnderstandingView { rows: UnderstandingRow[]; next: number | null; stale: boolean; evidence_watermark: number; projection_watermark: number | null }
+export interface LearningEvidenceView {
+  evidence_id: string; label: string; capability: string; prompt: string; learner_quote: string; interpretation: string;
+  correction: string | null; status: string; assistance_count: number; attempt: number; feedback_hidden: boolean;
+  assessment_ref?: string | null;
+  source_quotes: { reason?: string; quote?: string; response_quote?: string; sources?: { quote: string }[] }[] | null;
+}
 export interface AgentChatMeta {
+  teaching_ref?: string;
   goal_id?: string;
   goal_action?: "cancel" | "replace";
   presentation_follow_up?: import("./generated/PresentationFollowUp").PresentationFollowUp;
@@ -1181,6 +1214,8 @@ export interface SourcePopupView {
   context_after: string;
   stale: boolean;
   can_open_in_reader: boolean;
+  excerpt?: { text: string; highlight: { start: number; end: number } } | null;
+  heading_path?: string[];
 }
 export interface SourceOpenView {
   source_ref_id: string;
@@ -1201,6 +1236,7 @@ export class ApiError extends Error {
 }
 
 async function http<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
+  if (network.value.enabled) return networkRequest<T>(method, path, body);
   const init: RequestInit = { method };
   if (body !== undefined) {
     init.headers = { "Content-Type": "application/json" };
@@ -1241,7 +1277,7 @@ export const api = {
   sourceFingerprint: () => http<SourceFingerprintResponse>("GET", "/book/source_fingerprint"),
   pdfSourceMap: () => http<PdfSourceMap>("GET", "/book/pdf_source_map"),
   paperMinimap: () => http<PaperMinimapBase>("GET", "/book/paper_minimap"),
-  pdfOriginalUrl: () => `${BASE}/book/pdf/original`,
+  pdfOriginalUrl: () => network.value.enabled ? BASE + publishedUrl("pdf/original") : `${BASE}/book/pdf/original`,
   profileManifest: (profile_id?: "technical_learning" | "paper") =>
     http<ProfileManifest>("GET", `/profile/manifest${qs({ profile_id })}`),
   profileMemory: () => http<ProfileMemoryState>("GET", "/profile/memory"),
@@ -1409,11 +1445,16 @@ export const api = {
   // ── agent.*(外层 E agent,POST)`[ADR-0030]` ──
   agentRunCreate: (message: string, meta: AgentChatMeta = {}) => http<RunDescriptor | OuterOutcome>("POST", "/agent/runs", { message, ...meta }),
   agentRun: (turn_id: string) => http<RunSnapshot>("GET", `/agent/runs/${encodeURIComponent(turn_id)}`),
+  agentRunRetrySave: (turn_id: string) => http<RunSnapshot>("POST", `/agent/runs/${encodeURIComponent(turn_id)}/retry-save`, {}),
   agentRunCancel: (turn_id: string) => http<RunSnapshot>("POST", `/agent/runs/${encodeURIComponent(turn_id)}/cancel`, {}),
   agentChat: (message: string, meta: AgentChatMeta = {}) =>
     http<OuterOutcome>("POST", "/agent/chat", { message, ...meta }),
   agentNew: () => http<{ ok: boolean; history: AgentHistoryResponse }>("POST", "/agent/new", {}),
+  disposeEffect: (body: { session_id: string; turn_id: string; effect_id: string; action: "keep" | "undo" | "dismiss" }) =>
+    http<import("./effect-disposition").EffectDisposition>("POST", "/agent/effect/dispose", body),
   agentHistory: () => http<AgentHistoryResponse>("GET", "/agent/history"),
+  sessionRecap: (session_id: string, through_seq?: number) =>
+    http<import('./session-recap').SessionRecap>('GET', `/agent/history/recap?session_id=${encodeURIComponent(session_id)}${through_seq === undefined ? '' : `&through_seq=${through_seq}`}`),
   agentGoalCancel: (goal_id: string) =>
     http<AgentHistoryResponse>("POST", "/agent/goals/cancel", { goal_id }),
   agentHistorySelect: (session_id: string) =>
@@ -1422,8 +1463,21 @@ export const api = {
     http<AgentHistoryResponse>("POST", "/agent/history/delete", { session_id }),
   agentSourceResolve: (turn_id: string, source_ref_id: string) =>
     http<SourcePopupView>("POST", "/agent/source.resolve", { turn_id, source_ref_id }),
-  presentationRead: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef) =>
-    http<import("./generated/PresentationView").PresentationView>("POST", "/agent/presentation.read", { session_id, turn_id, reference }),
+  tutorState: () => http<import('./generated/TutorState').TutorState>('GET', '/tutor/state'),
+  tutorUnderstanding: (after = 0, rebuild = false) => http<UnderstandingView>('POST', '/tutor/understanding', { after, rebuild }),
+  tutorEvidence: (evidence_ref: string) => http<LearningEvidenceView>('POST', '/tutor/evidence', { evidence_ref }),
+  tutorFeedbackDisplayed: (action_ref: string) => http('POST', '/tutor/feedback-displayed', { action_ref }),
+  tutorEvidenceList: (row: Pick<UnderstandingRow,'object_id'|'object_revision'|'capability'>, before?: number) => http<{ refs: string[]; next: number | null }>('POST', '/tutor/evidence-list', { object_id:row.object_id, object_revision:row.object_revision, capability:row.capability, before }),
+  tutorCorrect: (request: { evidence_ref: string; operation_id: string; text: string }) => http<{ evidence_ref: string }>('POST', '/tutor/correct', request),
+  tutorStart: () => http<{ started: boolean; message?: string; reason?: string }>("POST", "/tutor/start", {}),
+  tutorActivities: (session_id: string, turn_id: string, reference?: import("./generated/PresentationRef").PresentationRef) => http<{ activities: TutorActivity[] }>("POST", "/tutor/activities", { session_id, turn_id, reference }),
+  tutorDisplay: (delivery_ref: string, scene?: import("./generated/PresentationFollowUp").PresentationFollowUp) => http("POST", "/tutor/display", { delivery_ref, scene }),
+  tutorAction: (request: { operation_id: string; delivery_ref: string; action: string; response?: string | null; scene?: import("./generated/PresentationFollowUp").PresentationFollowUp }) => http<{ event_id: string; assessment: string; help: { event_id: string; text: string } | null }>("POST", "/tutor/action", request),
+  tutorHelpDisplayed: (help_ref: string) => http("POST", "/tutor/help-displayed", { help_ref }),
+  tutorReadiness: () => http<{ status: 'preparing' | 'ready' | 'stale'; source_id: string; teaching_map_revision: string | null; limitations: string[]; reason: string }>('GET', '/tutor/readiness'),
+  tutorMutate: (request: import('./generated/TutorMutation').TutorMutation) => http<import('./generated/TutorState').TutorState>('POST', '/tutor/mutate', request),
+  presentationRead: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, saved_state?: import("./generated/PresentationFollowUp").PresentationFollowUp) =>
+    http<import("./generated/PresentationView").PresentationView>("POST", "/agent/presentation.read", { session_id, turn_id, reference, saved_state }),
   presentationSaveState: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, state: import("./generated/PresentationState").PresentationState) =>
     http<import("./generated/PresentationFollowUp").PresentationFollowUp>("POST", "/agent/presentation.state.save", { session_id, turn_id, reference, state }),
   presentationObserve: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, text: string, source_ref_ids: string[]) =>

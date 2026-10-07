@@ -20,11 +20,11 @@ The runtime provides:
 - eligible_items: older conversation items that may be compacted, each with a stable source ID;
 - required_source_ids: task-bearing sources that must remain represented;
 - optional_source_ids: sources that may be marked duplicate, superseded, or non-task;
-- raw_retained_item_ids: current user text, verified selection, and incomplete tool-call pairs kept verbatim by the runtime;
 - allowed_evidence_refs: the only evidence references you may use.
 - allowed_supersession_edges: the only source-to-source relationships that may use Superseded.
 
-Return JSON matching CompactionDraft exactly, with these sections:
+Return JSON matching CompactionDraft exactly, with only these ten sections.
+Do not copy input fields or runtime metadata into the output:
 - active_goal
 - progress
 - decisions
@@ -42,7 +42,14 @@ source_item_ids, and evidence_refs. item_id is a unique nonempty ID you assign
 from eligible_items. Each source_coverage object has source_item_id, disposition,
 target_item_ids, and optional reason. disposition is one of "compacted",
 "duplicate", "superseded", "non_task". target_item_ids refer to your item_id
-values, not source IDs. Include reason for non_task, duplicate or superseded.
+values, not source IDs. For compacted, duplicate and superseded, omit reason
+(or set it to null). For non_task, use an empty target_item_ids array and set
+reason to exactly "transport_only", "duplicate_envelope", or "status_only";
+free-form reason text is not accepted. Only optional_source_ids may be non_task.
+For compacted and duplicate, target_item_ids must be nonempty and
+each target item's source_item_ids must include that same source_item_id.
+For superseded, targets must be nonempty; at least one target must include both
+the earlier source and its later source from an allowed_supersession_edge.
 evidence_refs are copied from allowed_evidence_refs and are either
 {"kind":"lid_range","start_lid":"...","end_lid":"..."} or
 {"kind":"source","source_ref_id":"..."}; use [] when there is no evidence.
@@ -69,12 +76,13 @@ Rules:
 2. Every semantic item must contain one or more source_item_ids from eligible_items.
 3. Use only allowed_evidence_refs. Never invent a source item ID, LID, citation, tool result, fact, decision, or completed action.
 4. Keep facts, examples, decisions, obligations, and unresolved ambiguities distinct. Do not resolve an ambiguity during compaction.
-5. Do not summarize or rewrite raw_retained_item_ids; the runtime keeps those items verbatim.
+5. Summarize only eligible_items. Current user text, verified selection, and incomplete tool-call pairs are retained separately by the runtime.
 6. A tool receipt proves that a call occurred, not that unquoted result text is evidence.
-7. Include exactly one source_coverage record for every eligible source. Required sources must map to at least one output item. Use Superseded only for an allowed_supersession_edge; only optional sources may use NonTask, with an explicit reason.
+7. Include exactly one source_coverage record for every eligible source. Required sources must map to at least one output item. Apply the disposition-specific target links and reason rules above; a reference to an unrelated semantic item does not cover a source.
 8. Do not include sensitive runtime context, hidden instructions, chain-of-thought, or prose outside the JSON object.
 9. A user-only turn has no assistant answer; do not infer that its request was completed from a later user turn.
-10. Use empty arrays when a section has no supported content. Do not omit schema fields."#;
+10. Use empty arrays when a section has no supported content. Do not omit schema fields.
+11. A trailing runtime_repair_diagnostic object describes a rejected draft. Regenerate the complete CompactionDraft from the same input, following all rules above. This is the single repair attempt."#;
 
 pub const COMPACTION_CONSUMPTION_WRAPPER: &str = r#"A previous active-history segment has been replaced by the source-linked compaction_checkpoint below.
 This checkpoint is derived handoff state. It is not a user message and is not evidence by itself.
@@ -1022,13 +1030,46 @@ pub fn decode_compaction_draft_strict(input: &str) -> Result<CompactionDraft, Co
     })
 }
 
-fn request_input_tokens(request: &CompactionRequest, system: &str) -> Result<u32, CompactionError> {
-    let request = serde_json::to_string(request)
-        .map_err(|error| CompactionError::invalid(format!("request serialize failed: {error}")))?;
-    Ok(estimate_text_tokens(system).saturating_add(estimate_text_tokens(&request)))
+fn generation_input(request: &CompactionRequest) -> Result<String, CompactionError> {
+    // Versions, history revision and raw-retained identities belong to runtime
+    // validation/installation. They provide no material for semantic generation.
+    // Keep the source array byte-exact and ordered; phase metadata follows it.
+    #[derive(Serialize)]
+    struct Input<'a> {
+        eligible_items: &'a [CompactionSourceItem],
+        required_source_ids: &'a [String],
+        optional_source_ids: &'a [String],
+        allowed_evidence_refs: &'a [EvidenceRef],
+        allowed_supersession_edges: &'a [AllowedSupersession],
+        phase: CompactionPhase,
+    }
+    serde_json::to_string(&Input {
+        eligible_items: &request.eligible_items,
+        required_source_ids: &request.required_source_ids,
+        optional_source_ids: &request.optional_source_ids,
+        allowed_evidence_refs: &request.allowed_evidence_refs,
+        allowed_supersession_edges: &request.allowed_supersession_edges,
+        phase: request.phase,
+    }).map_err(|error| CompactionError::invalid(format!("request serialize failed: {error}")))
+}
+
+fn request_input_tokens(user: &str, system: &str) -> u32 {
+    estimate_text_tokens(system).saturating_add(estimate_text_tokens(user))
 }
 
 pub const COMPACTION_OUTPUT_TOKEN_LIMIT: u32 = 16_384;
+
+pub fn compaction_output_token_limit(profile: &ModelRuntimeProfile) -> u32 {
+    // Real successive Flash revisions exhausted 32k with 237 source items and
+    // 18k reasoning tokens. Reserve room for the source-linked JSON as well.
+    if profile.profile_id == "resident-agent-deepseek-flash-v1"
+        && profile.resolution == crate::model_runtime::ModelProfileResolution::CatalogMatch
+    {
+        65_536
+    } else {
+        COMPACTION_OUTPUT_TOKEN_LIMIT
+    }
+}
 
 fn call_generator(
     adapter: &dyn ModelAdapter,
@@ -1036,22 +1077,43 @@ fn call_generator(
     system: &str,
     request: &CompactionRequest,
     required_states: &BTreeMap<String, RequiredSemanticState>,
+    generation_input_limit_tokens: u32,
 ) -> Result<CompactionDraft, CompactionError> {
-    let user = serde_json::to_string(request)
-        .map_err(|error| CompactionError::invalid(format!("request serialize failed: {error}")))?;
-    let value = adapter
-        .complete_structured(CompletionRequest {
-            output_token_limit: Some(COMPACTION_OUTPUT_TOKEN_LIMIT),
-            reasoning_effort: profile.matched_model.starts_with("deepseek-").then(|| "low".into()),
-            system: system.into(),
-            user,
-        })
-        .map_err(|error| CompactionError::generation(error.message))?;
-    let draft = serde_json::from_value::<CompactionDraft>(value).map_err(|error| {
-        CompactionError::generation(format!("compaction draft schema mismatch: {error}"))
-    })?;
-    validate_draft(request, &draft, required_states)?;
-    Ok(draft)
+    let mut user = generation_input(request)?;
+    let mut repairing = false;
+    loop {
+        let value = adapter
+            .complete_structured(CompletionRequest {
+                output_token_limit: Some(compaction_output_token_limit(profile)),
+                reasoning_effort: profile.matched_model.starts_with("deepseek-").then(|| "low".into()),
+                system: system.to_string(),
+                user: user.clone(),
+            })
+            .map_err(|error| CompactionError::generation(error.message))?;
+        let checked = serde_json::from_value::<CompactionDraft>(value).map_err(|error| {
+            CompactionError::generation(format!("compaction draft schema mismatch: {error}"))
+        }).and_then(|draft| {
+            validate_draft(request, &draft, required_states)?;
+            Ok(draft)
+        });
+        match checked {
+            Ok(draft) => return Ok(draft),
+            Err(error) => {
+                if repairing { return Err(error); }
+                // EX11 real revisions produced forbidden metadata and broken
+                // coverage links. Give one validation-guided regeneration from the
+                // same source request; never install or sanitize a rejected draft.
+                user.push_str("\n\n");
+                user.push_str(&serde_json::json!({"runtime_repair_diagnostic": {
+                    "error_code": error.error_code, "message": error.message,
+                }}).to_string());
+                if request_input_tokens(&user, system) > generation_input_limit_tokens {
+                    return Err(error);
+                }
+                repairing = true;
+            }
+        }
+    }
 }
 
 fn child_request(
@@ -1266,13 +1328,14 @@ fn generate_draft(
         .compaction
         .prompt_asset
         .resolve(COMPACTION_GENERATION_PROMPT);
-    if request_input_tokens(&prepared.request, &system)? <= generation_input_limit_tokens {
+    if request_input_tokens(&generation_input(&prepared.request)?, &system) <= generation_input_limit_tokens {
         return call_generator(
             adapter,
             profile,
             &system,
             &prepared.request,
             &prepared.required_semantic_states,
+            generation_input_limit_tokens,
         );
     }
 
@@ -1281,7 +1344,7 @@ fn generate_draft(
         let mut candidate = chunks.last().cloned().unwrap_or_default();
         candidate.extend(turn.iter().cloned());
         let candidate_request = child_request(&prepared.request, &candidate)?;
-        if request_input_tokens(&candidate_request, &system)? <= generation_input_limit_tokens {
+        if request_input_tokens(&generation_input(&candidate_request)?, &system) <= generation_input_limit_tokens {
             if let Some(last) = chunks.last_mut() {
                 *last = candidate;
             } else {
@@ -1290,7 +1353,7 @@ fn generate_draft(
             continue;
         }
         let single_turn = child_request(&prepared.request, turn)?;
-        if request_input_tokens(&single_turn, &system)? > generation_input_limit_tokens {
+        if request_input_tokens(&generation_input(&single_turn)?, &system) > generation_input_limit_tokens {
             return Err(CompactionError {
                 error_code: "COMPACTION_SOURCE_TURN_TOO_LARGE".into(),
                 message: "one complete source turn cannot fit the compaction generator".into(),
@@ -1313,11 +1376,11 @@ fn generate_draft(
             .filter(|(source, _)| chunk.contains(source))
             .map(|(source, state)| (source.clone(), *state))
             .collect();
-        child_drafts.push(call_generator(adapter, profile, &system, &request, &states)?);
+        child_drafts.push(call_generator(adapter, profile, &system, &request, &states, generation_input_limit_tokens)?);
     }
     let (merge_request, merge_sources) =
         hierarchical_merge_request(&prepared.request, &child_drafts)?;
-    if request_input_tokens(&merge_request, &system)? > generation_input_limit_tokens {
+    if request_input_tokens(&generation_input(&merge_request)?, &system) > generation_input_limit_tokens {
         return Err(CompactionError {
             error_code: "COMPACTION_HIERARCHICAL_MERGE_TOO_LARGE".into(),
             message: "hierarchical child drafts still exceed the merge generator limit".into(),
@@ -1331,7 +1394,7 @@ fn generate_draft(
                 .map(|state| (source.source.source_item_id.clone(), state))
         })
         .collect();
-    let merged = call_generator(adapter, profile, &system, &merge_request, &merge_states)?;
+    let merged = call_generator(adapter, profile, &system, &merge_request, &merge_states, generation_input_limit_tokens)?;
     let expanded =
         expand_hierarchical_draft(&prepared.request, &child_drafts, &merge_sources, merged)?;
     validate_draft(
@@ -1650,6 +1713,14 @@ pub fn evidence_refs_from_ranges(ranges: &[EvidenceRange]) -> Vec<EvidenceRef> {
 }
 
 #[cfg(test)]
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct RecordedCompactionInput {
+    pub phase: CompactionPhase,
+    pub eligible_items: Vec<CompactionSourceItem>,
+    pub required_source_ids: Vec<String>,
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::model_runtime::ProviderToolProtocol;
@@ -1688,20 +1759,22 @@ mod tests {
     }
 
     fn covering_draft(request: &CompactionRequest, text: &str) -> CompactionDraft {
+        covering_sources(&request.eligible_items, text)
+    }
+
+    fn covering_sources(sources: &[CompactionSourceItem], text: &str) -> CompactionDraft {
         let mut draft = empty_draft();
         let item_id = "item.state".to_string();
         draft.active_goal.push(SourcedCheckpointItem {
             item_id: item_id.clone(),
             text: text.into(),
-            source_item_ids: request
-                .eligible_items
+            source_item_ids: sources
                 .iter()
                 .map(|item| item.source_item_id.clone())
                 .collect(),
             evidence_refs: Vec::new(),
         });
-        draft.source_coverage = request
-            .eligible_items
+        draft.source_coverage = sources
             .iter()
             .map(|source| SourceCoverage {
                 source_item_id: source.source_item_id.clone(),
@@ -1771,12 +1844,12 @@ mod tests {
         ) -> Result<serde_json::Value, AdapterError> {
             self.calls.set(self.calls.get() + 1);
             let request =
-                serde_json::from_str::<CompactionRequest>(&req.user).map_err(|error| {
+                serde_json::from_str::<RecordedCompactionInput>(&req.user).map_err(|error| {
                     AdapterError {
                         message: error.to_string(),
                     }
                 })?;
-            serde_json::to_value(covering_draft(&request, "merged state")).map_err(|error| {
+            serde_json::to_value(covering_sources(&request.eligible_items, "merged state")).map_err(|error| {
                 AdapterError {
                     message: error.to_string(),
                 }
@@ -1792,6 +1865,130 @@ mod tests {
 
     fn profile() -> ModelRuntimeProfile {
         ModelRuntimeProfile::fallback("fixture", ProviderToolProtocol::Native)
+    }
+
+    fn feedback5_recording(name: &str) -> serde_json::Value {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/performance/presentation-staged-authoring-ex12-4/mechanism-staged-feedback5")
+            .join(name);
+        serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn ex13_compaction_replays_source_failure_with_stable_repair_prefix() {
+        let original = feedback5_recording("completion-00-request.json");
+        let request: CompactionRequest = serde_json::from_str(original["user"].as_str().unwrap()).unwrap();
+        let rejected = feedback5_recording("completion-00-response.json")["response"].clone();
+        let repaired = feedback5_recording("completion-01-response.json")["response"].clone();
+        let invalid: CompactionDraft = serde_json::from_value(rejected.clone()).unwrap();
+        let error = validate_draft(&request, &invalid, &BTreeMap::new()).unwrap_err();
+        assert_eq!(error.message, "semantic item item.fact.quote_receipts invented or duplicated a source ID");
+        let profile = crate::ModelRuntimeCatalog::default().resolve("deepseek-flash", ProviderToolProtocol::Native, None);
+        let adapter = ScriptedCompactor::new(vec![rejected, repaired.clone()]);
+        let result = call_generator(&adapter, &profile, COMPACTION_GENERATION_PROMPT, &request, &BTreeMap::new(), 100_000).unwrap();
+        assert_eq!(serde_json::to_value(result).unwrap(), repaired);
+        let requests = adapter.requests.borrow();
+        assert_eq!(requests.len(), 2);
+        if let Ok(directory) = std::env::var("EX13_COMPACTION_RECORDING_DIR") {
+            std::fs::create_dir_all(&directory).unwrap();
+            for (index, req) in requests.iter().enumerate() {
+                let record = serde_json::json!({"system":req.system,"user":req.user,
+                    "output_token_limit":req.output_token_limit,"reasoning_effort":req.reasoning_effort,"usage":null});
+                std::fs::write(std::path::Path::new(&directory).join(format!("completion-{index:02}-request.json")), serde_json::to_vec_pretty(&record).unwrap()).unwrap();
+            }
+        }
+        assert_eq!(requests[0].system, requests[1].system, "repair must keep the entire system prefix");
+        assert!(requests[1].user.starts_with(&requests[0].user));
+        assert!(requests[1].user[requests[0].user.len()..].contains(&error.message));
+        let input: serde_json::Value = serde_json::from_str(&requests[0].user).unwrap();
+        for field in ["eligible_items", "required_source_ids", "optional_source_ids", "allowed_evidence_refs", "allowed_supersession_edges", "phase"] {
+            assert_eq!(input[field], serde_json::to_value(&request).unwrap()[field], "changed {field}");
+        }
+        for field in ["schema_version", "prompt_version", "source_history_revision", "raw_retained_item_ids"] {
+            assert!(input.get(field).is_none(), "runtime metadata must stay local: {field}");
+        }
+        assert_eq!(requests[0].output_token_limit, Some(65_536));
+        assert_eq!(requests[1].output_token_limit, Some(65_536));
+        assert_eq!(requests[1].reasoning_effort.as_deref(), Some("low"));
+    }
+
+    #[test]
+    fn compaction_repairs_rejected_draft_once_without_relaxing_validation() {
+        let raw=completed_turn("Keep the requested page", "The page was delivered");
+        let prepared=prepare_compaction(CompactionPhase::PreTurn,&raw,&raw,vec![],vec![],vec![],BTreeMap::new()).unwrap();
+        let valid=serde_json::to_value(covering_draft(&prepared.request,"delivered page")).unwrap();
+        let mut invalid=valid.clone();invalid["schema_version"]=serde_json::json!("compaction_draft.v1");
+        let adapter=ScriptedCompactor::new(vec![invalid.clone(),valid]);
+        generate_draft(&adapter,&profile(),&prepared,100_000).unwrap();
+        let requests=adapter.requests.borrow();
+        assert_eq!(requests.len(),2);
+        assert!(requests[1].user.contains("unknown field `schema_version`"));
+        assert_eq!(requests[0].system,requests[1].system);
+        assert!(requests[1].user.starts_with(&requests[0].user));
+        drop(requests);
+        let twice=ScriptedCompactor::new(vec![invalid.clone(),invalid.clone()]);
+        assert!(generate_draft(&twice,&profile(),&prepared,100_000).is_err());
+        assert_eq!(twice.requests.borrow().len(),2);
+        let tight=ScriptedCompactor::new(vec![invalid]);
+        let tokens=request_input_tokens(&generation_input(&prepared.request).unwrap(),COMPACTION_GENERATION_PROMPT);
+        assert!(generate_draft(&tight,&profile(),&prepared,tokens).is_err());
+        assert_eq!(tight.requests.borrow().len(),1,"repair cannot exceed the input budget");
+    }
+
+    #[test]
+    fn ex13_compaction_budgets_the_exact_projected_input_and_repair_tail() {
+        let mut raw = completed_turn("保留用户的全部要求", "The page is still incomplete");
+        raw.push(Message::user("current user material stays raw"));
+        let prepared = prepare_compaction(CompactionPhase::MidTurn, &raw, &raw, vec![], vec![], vec![], BTreeMap::new()).unwrap();
+        let valid = serde_json::to_value(covering_draft(&prepared.request, "Continue the incomplete page")).unwrap();
+        let mut invalid = valid.clone();
+        invalid["schema_version"] = serde_json::json!("forbidden");
+        let profile = profile();
+        let probe = ScriptedCompactor::new(vec![invalid.clone(), valid.clone()]);
+        generate_draft(&probe, &profile, &prepared, 100_000).unwrap();
+        let requests = probe.requests.borrow();
+        let initial_tokens = request_input_tokens(&requests[0].user, &requests[0].system);
+        let repair_tokens = request_input_tokens(&requests[1].user, &requests[1].system);
+        assert_eq!(repair_tokens, estimate_text_tokens(&requests[1].system) + estimate_text_tokens(&requests[1].user));
+        assert!(repair_tokens > initial_tokens);
+        assert!(initial_tokens < request_input_tokens(&serde_json::to_string(&prepared.request).unwrap(), &requests[0].system));
+        assert!(!requests[0].user.contains(&prepared.request.raw_retained_item_ids[0]));
+        // Exact initial fit must use the projected body, not the larger runtime request.
+        let exact_initial = ScriptedCompactor::new(vec![valid.clone()]);
+        generate_draft(&exact_initial, &profile, &prepared, initial_tokens).unwrap();
+        assert_eq!(exact_initial.requests.borrow().len(), 1);
+        for (limit, calls, succeeds) in [(repair_tokens - 1, 1, false), (repair_tokens, 2, true)] {
+            let adapter = ScriptedCompactor::new(vec![invalid.clone(), valid.clone()]);
+            assert_eq!(generate_draft(&adapter, &profile, &prepared, limit).is_ok(), succeeds);
+            assert_eq!(adapter.requests.borrow().len(), calls);
+            assert!(adapter.requests.borrow().iter().all(|req| request_input_tokens(&req.user, &req.system) <= limit));
+        }
+    }
+
+    #[test]
+    fn ex13_compaction_repair_cannot_bypass_source_or_schema_validation() {
+        let raw = completed_turn("Keep every requested requirement", "Pending work remains");
+        let prepared = prepare_compaction(CompactionPhase::PreTurn, &raw, &raw, vec![], vec![], vec![], BTreeMap::new()).unwrap();
+        let valid = serde_json::to_value(covering_draft(&prepared.request, "Continue pending work")).unwrap();
+        let mut missing = valid.clone();
+        missing["source_coverage"].as_array_mut().unwrap().pop();
+        let mut duplicate = valid.clone();
+        duplicate["source_coverage"].as_array_mut().unwrap().push(valid["source_coverage"][0].clone());
+        let mut non_task = valid.clone();
+        non_task["source_coverage"][0] = serde_json::json!({"source_item_id":prepared.request.required_source_ids[0], "disposition":"non_task", "target_item_ids":[], "reason":"status_only"});
+        let mut evidence = valid.clone();
+        evidence["active_goal"][0]["evidence_refs"] = serde_json::json!([{"kind":"source","source_ref_id":"unknown"}]);
+        let mut unlinked = valid.clone();
+        unlinked["active_goal"][0]["source_item_ids"].as_array_mut().unwrap().pop();
+        let mut nine_sections = valid.clone();
+        nine_sections.as_object_mut().unwrap().remove("next_steps");
+        for invalid in [missing, duplicate, non_task, evidence, unlinked, nine_sections] {
+            // A valid third output is deliberately available: it must never be requested.
+            let adapter = ScriptedCompactor::new(vec![invalid.clone(), invalid, valid.clone()]);
+            assert!(generate_draft(&adapter, &profile(), &prepared, 100_000).is_err());
+            assert_eq!(adapter.requests.borrow().len(), 2);
+            assert_eq!(adapter.outputs.borrow().len(), 1);
+        }
     }
 
     #[test]
@@ -1819,6 +2016,15 @@ mod tests {
         let example = decode_compaction_draft_strict(example).unwrap();
         assert_eq!(example.active_goal[0].item_id, example.source_coverage[0].target_item_ids[0]);
         assert_eq!(example.active_goal[0].source_item_ids[0], example.source_coverage[0].source_item_id);
+        // EX11 revisions hit the real validator: free-form NonTask reasons and
+        // reasons on Duplicate/Superseded were instructed but are not accepted.
+        for rule in [
+            "For compacted, duplicate and superseded, omit reason",
+            "transport_only", "duplicate_envelope", "status_only",
+            "each target item's source_item_ids must include that same source_item_id",
+        ] {
+            assert!(COMPACTION_GENERATION_PROMPT.contains(rule), "missing coverage rule: {rule}");
+        }
         let mut missing_item_id = serde_json::to_value(&example).unwrap();
         missing_item_id["active_goal"][0].as_object_mut().unwrap().remove("item_id");
         assert!(decode_compaction_draft_strict(&missing_item_id.to_string()).is_err());
@@ -2057,7 +2263,7 @@ mod tests {
             Some("current user text must remain byte exact")
         );
         assert_eq!(adapter.requests.borrow().len(), 1);
-        assert_eq!(adapter.requests.borrow()[0].output_token_limit, Some(COMPACTION_OUTPUT_TOKEN_LIMIT));
+        assert_eq!(adapter.requests.borrow()[0].output_token_limit, Some(65_536));
         assert_eq!(adapter.requests.borrow()[0].reasoning_effort.as_deref(), Some("low"));
         assert_eq!(
             adapter.requests.borrow()[0].system,
@@ -2232,13 +2438,12 @@ mod tests {
         )
         .unwrap();
         let system = COMPACTION_GENERATION_PROMPT;
-        let full_tokens = request_input_tokens(&prepared.request, system).unwrap();
+        let full_tokens = request_input_tokens(&generation_input(&prepared.request).unwrap(), system);
         let largest_child = prepared
             .full_turn_source_ids
             .iter()
             .map(|turn| {
-                request_input_tokens(&child_request(&prepared.request, turn).unwrap(), system)
-                    .unwrap()
+                request_input_tokens(&generation_input(&child_request(&prepared.request, turn).unwrap()).unwrap(), system)
             })
             .max()
             .unwrap();

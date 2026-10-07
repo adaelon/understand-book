@@ -4,6 +4,8 @@
 
 关联：[ADR-0130](0130-agent-rich-presentation-and-read-time-authoring.md)、[ADR-0133](0133-agent-led-explorable-explanations-and-evolving-presentation-brief.md)。实施合同见[切片方案](../切片方案-可探索解释方法库与连续视觉演示.md)。
 
+2026-10-02 后续决策：[ADR-0154](0154-presentation-global-framework-and-staged-authoring.md) 修订 §3、§8、§10 的阶段组织与加载边界：复杂演示先形成全局框架，同一 Agent 在后续采样制作局部并串读整篇；本轮框架交接先于持久 Brief。方法与工程能力继续沿用本 ADR，实施见 [EX12](../切片方案-演示页全局框架与分阶段制作.md)。
+
 ## 背景
 
 Understand Book 已有富文本制作、HTML/CSS/JavaScript 交互、真实浏览器预览、版本化内容、现场状态和 Python/Matplotlib 静态绘图。EX6 已补充时间定位预览；连续变化目前主要靠候选临时编写，方法指导的增益仍需真实对照确认。

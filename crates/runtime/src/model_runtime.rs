@@ -312,6 +312,8 @@ pub struct AgentRequestPlan {
     pub version: String,
     pub runtime_profile: ModelRuntimeProfile,
     pub instructions: String,
+    /// Common instruction assets plus the active sampling guidance. Earlier
+    /// guidance stays in input at its original anchor and is not active metadata.
     pub instruction_assets: Vec<InstructionAssetRef>,
     pub input: Vec<Message>,
     pub tools: Vec<ToolSpec>,

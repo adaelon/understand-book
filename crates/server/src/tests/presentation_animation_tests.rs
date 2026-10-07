@@ -52,7 +52,8 @@ fn animation_limits_and_legacy_default() {
 fn ex11_animation_render_version_read_reuse() {
     let (_temp, mut state, turn) = setup();
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort {
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope,
         port: &app,
         turn_ref: &turn,
         previewed: Default::default(),
@@ -100,7 +101,7 @@ fn ex11_animation_render_version_read_reuse() {
         .unwrap();
     let candidate = app
         .with_app(|s| {
-            s.read_presentation_candidate(
+            s.private_context().read_presentation_candidate(
                 &turn.session_id,
                 written.body["candidate_id"].as_str().unwrap(),
             )
@@ -129,7 +130,7 @@ fn ex11_animation_render_version_read_reuse() {
     std::fs::write(root().join("render.json"),serde_json::to_vec_pretty(&json!({"metadata":result.body,"elapsed_ms":started.elapsed().as_millis(),"media_bytes":STANDARD.decode(&asset.video_base64).unwrap().len(),"identity":"engineering scene"})).unwrap()).unwrap();
     let reference = app
         .with_app(|s| {
-            s.persist_presentation_candidate(
+            s.private_context().persist_presentation_candidate(
                 &turn.session_id,
                 &turn.turn_id,
                 &candidate.candidate_id,
@@ -162,7 +163,7 @@ fn ex11_animation_render_version_read_reuse() {
             s,
             &turn,
             &outcome,
-            &s.messages.clone(),
+            &s.workspace.messages.clone(),
             "2026-09-28T06:00:00Z",
         )
         .unwrap();
@@ -177,7 +178,9 @@ fn ex11_animation_render_version_read_reuse() {
         let read = port
             .author_presentation(
                 AuthorRequest::Read {
-                    reference: reference.clone(),
+                    reference: Some(reference.clone()),
+                    candidate_id: None,
+                    length: None,
                     file: file.clone(),
                     offset: 0,
                 },
@@ -192,7 +195,7 @@ fn ex11_animation_render_version_read_reuse() {
         }
     }
     let revision_turn = app.with_app(|s| {
-        let book = s.book.base.book_id.clone();
+        let book = s.workspace.book.base.book_id.clone();
         precommit_agent_turn(
             s,
             &book,
@@ -204,7 +207,8 @@ fn ex11_animation_render_version_read_reuse() {
         )
         .unwrap()
     });
-    let mut port = RuntimeStatePort {
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope,
         port: &app,
         turn_ref: &revision_turn,
         previewed: Default::default(),
@@ -223,7 +227,7 @@ fn ex11_animation_render_version_read_reuse() {
         .unwrap();
     let revised = app
         .with_app(|s| {
-            s.read_presentation_candidate(
+            s.private_context().read_presentation_candidate(
                 &turn.session_id,
                 revised.body["candidate_id"].as_str().unwrap(),
             )
@@ -316,7 +320,8 @@ fn ex11_animation_errors_and_process_tree_cancellation() {
 fn ex11_media_formal_preview_delivery() {
     let (_temp, mut state, turn) = setup();
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort {
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope,
         port: &app,
         turn_ref: &turn,
         previewed: Default::default(),
@@ -407,7 +412,7 @@ fn ex11_media_formal_preview_delivery() {
         )
         .unwrap();
     let saved = app
-        .with_app(|s| s.read_presentation_candidate(&turn.session_id, &candidate))
+        .with_app(|s| s.private_context().read_presentation_candidate(&turn.session_id, &candidate))
         .unwrap();
     std::fs::write(
         output.join("content.json"),

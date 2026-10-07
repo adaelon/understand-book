@@ -11,7 +11,7 @@ import {
   realpathSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir } from "node:os";
 import path from "node:path";
 import { isAutomaticBuildTaskPolicyBindingV2, semanticContractEqual, semanticContractFromExtractionPolicy,
   type AutomaticBuildTaskPolicyBinding } from "./semantic-artifact";
@@ -164,6 +164,7 @@ const STAGES = new Set<AutomaticBuildStage>([
   "profile_sidecar",
   "pass2",
   "book_structure",
+  "formal_objects", "cognitive_materials", "teaching_publish",
   "paper_reading_guide",
 ]);
 
@@ -1015,7 +1016,7 @@ function sha256(value: unknown): string {
 
 function registryRoot(): string {
   const configured = process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
-  const root = path.resolve(configured ?? path.join(tmpdir(), "understand-book-automatic-build-driver-v1"));
+  const root = path.resolve(configured ?? path.join(homedir(), ".understand-book", "automatic-build-driver-v1"));
   mkdirSync(root, { recursive: true, mode: 0o700 });
   const stat = lstatSync(root);
   if (!stat.isDirectory() || stat.isSymbolicLink()) {
@@ -2365,7 +2366,8 @@ function taskDescriptor(
       if (manifest.stage === "paper_reading_guide") throw new Error("executor stage has no semantic descriptor");
       const stage = readAutomaticBuildTaskStage(target, { stage: manifest.stage, work_unit_id: workUnitId,
         ...(task && task.parent_unit_lid !== "stitch" ? { parent_lid: task.parent_unit_lid } : {}) },
-        manifest.policy_fingerprint.quality_profile);
+        manifest.policy_fingerprint.quality_profile,
+        task && "phase" in task.input ? { retrieval: task.input.retrieval_selection } : {});
       descriptor = stage?.work_units?.find(candidate => candidate.work_unit_id === workUnitId);
       currentBinding = stage?.task_bindings?.[workUnitId];
       if (task && canonicalAutomaticBuildJson(task.descriptor) !== canonicalAutomaticBuildJson(descriptor)) {
@@ -2674,7 +2676,7 @@ function packedDeliveryMaterial(input: {
 function renderDeliveryMaterial(input: {
   execution_profile: BuildExecutionProfileV1;
   target: AutomaticBuildTarget;
-  persisted: AutomaticBuildPersistedDispatchV1;
+  task_stage: ReturnType<typeof taskDescriptor>;
   semantic_prompt: string;
   opaque_session_ref: string;
   opaque_handoff_ref: string;
@@ -2682,7 +2684,7 @@ function renderDeliveryMaterial(input: {
   work_unit_id: string;
   semantic_input?: string;
 }): AutomaticBuildExecutorDeliveryMaterialV3 {
-  const stage = taskDescriptor(input.target, input.persisted, input.work_unit_id);
+  const stage = input.task_stage;
   const descriptor = stage.descriptor;
   const binding = stage.task_bindings[input.work_unit_id];
   if (!binding) {
@@ -4175,6 +4177,7 @@ type AutomaticBuildExecutorDeliveryContextV3 =
   | {
       kind: "public_dispatch";
       delivery: PublicDeliveryRecord;
+      task_stage: ReturnType<typeof taskDescriptor>;
       handoff_record: AutomaticBuildOpaqueHandoffRecord;
       target: AutomaticBuildTarget;
       owner: AutomaticBuildDispatchOwnerIdentityV1;
@@ -4261,7 +4264,7 @@ function resolveDeliverySessionContext(
     build_material: (generationInput) => renderDeliveryMaterial({
       execution_profile: profile,
       target: published.target,
-      persisted: published.persisted,
+      task_stage: stage,
       semantic_prompt: generationInput.semantic_prompt,
       opaque_session_ref: delivery.opaque_session_ref,
       opaque_handoff_ref: delivery.opaque_handoff_ref,
@@ -4273,6 +4276,7 @@ function resolveDeliverySessionContext(
   return {
     kind: "public_dispatch",
     delivery,
+    task_stage: stage,
     handoff_record: handoffRecord,
     target: published.target,
     owner: published.owner,
@@ -4448,7 +4452,7 @@ export function openAutomaticBuildExecutorSessionV3(
   const material = renderDeliveryMaterial({
     execution_profile: profile,
     target: published.target,
-    persisted: published.persisted,
+    task_stage: stage,
     semantic_prompt: published.semantic_prompt,
     opaque_session_ref: deliverySessionRef,
     opaque_handoff_ref: opaqueHandoffRef,
@@ -4724,7 +4728,9 @@ export function startAutomaticBuildExecutorGeneration(
   if (!currentRecoveryIdentity) {
     throw new Error("executor generation.start current recovery identity is unavailable");
   }
-  const stage = taskDescriptor(context.target, context.persisted, context.delivery.work_unit_id);
+  // Reuse this request's validated descriptor; rebuilding a stitch descriptor routes the whole book.
+  // The next request still resolves current dependencies and policy afresh.
+  const stage = context.task_stage;
   const currentBinding = stage.task_bindings[context.delivery.work_unit_id];
   if (!currentBinding) {
     throw new Error("executor generation.start current task policy binding is unavailable");
@@ -5000,11 +5006,7 @@ export function submitAutomaticBuildExecutorCandidateV3(
     deliveryContext.material,
     storedSink.created_at,
   );
-  const stage = taskDescriptor(
-    taskSession.target,
-    taskSession.persisted,
-    taskSession.task_session.work_unit_id,
-  );
+  const stage = deliveryContext.task_stage;
   const outputContract = semanticCandidateContractV3(stage.descriptor, deliveryContext.delivery.transport_profile);
   const sink = validateCandidateSinkRecord(
     decodeJsonRecord(candidateSinkRecordFile(taskSession.task_session.opaque_session_ref)),

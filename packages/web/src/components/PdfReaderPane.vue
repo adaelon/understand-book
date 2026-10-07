@@ -31,6 +31,7 @@ import {
 } from "../pdf-rendering";
 import type { PdfSelectionCapture } from "../pdf-selection-draft";
 import type { PdfReadingAnchor } from "../useReadingContinuity";
+import { pdfRangeSource } from "../pdf-range-source";
 import NoteCard from "./NoteCard.vue";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -45,6 +46,7 @@ const props = withDefaults(defineProps<{
   annotationError?: string | null;
   renderMarkdown?: (source: string) => string;
   notePlacementActive?: boolean;
+  initialReadingAnchor?: PdfReadingAnchor | null;
 }>(), {
   annotationProjection: () => EMPTY_PDF_ANNOTATION_PROJECTION,
   annotationError: null,
@@ -106,15 +108,18 @@ const pageRenderTasks = new Map<number, PdfRenderTask>();
 const renderStates = ref<Record<number, PageRenderState>>({});
 const annotationSurface = ref<AnnotationSurface | null>(null);
 const noteMarkersVisible = ref(true);
-const zoom = ref(1);
+const zoom = ref(props.initialReadingAnchor?.sourceKey === `${props.sourceMap?.book_id ?? ""}:${props.sourceMap?.config_hash ?? ""}:${props.pdfUrl}` ? props.initialReadingAnchor.zoom ?? 1 : 1);
+let initialReadingAnchor = props.initialReadingAnchor ?? null;
 const notePlacementCandidate = ref<{ entry: PdfSourceMapEntry; region: PdfRegion } | null>(null);
 const notePlacementFeedback = ref<string | null>(null);
 const geometryReady = ref(false);
 let notePlacementFeedbackTimer: number | null = null;
 let loadingTask: ReturnType<typeof pdfjsLib.getDocument> | null = null;
+let pdfRequests: AbortController | null = null;
 let observer: IntersectionObserver | null = null;
 let resizeObserver: ResizeObserver | null = null;
 let renderToken = 0;
+let documentRequest = 0;
 let renderFrame: number | null = null;
 let viewportFrame: number | null = null;
 let lastViewportFingerprint = "";
@@ -183,7 +188,6 @@ const capabilityStatusLabels: Record<string, string> = {
   unsupported: "暂不支持",
 };
 const mapCapabilityLabel = computed(() => capabilityStatusLabels[mapCapability.value] ?? mapCapability.value);
-const zoomText = computed(() => `${Math.round(zoom.value * 100)}%`);
 
 function pageRegions(pageIndex: number): Array<{ entry: PdfSourceMapEntry; region: PdfRegion }> {
   return entriesByPage.value.get(pageIndex) ?? [];
@@ -270,6 +274,11 @@ function onViewportScroll() {
   notePlacementCandidate.value = null;
   scheduleRenderResidency();
   scheduleViewportChange();
+  emit("viewport-interaction");
+}
+
+function onViewportIntent() {
+  initialReadingAnchor = null;
   emit("viewport-interaction");
 }
 
@@ -644,33 +653,48 @@ function releaseRenderedPage(pageIndex: number) {
 
 async function loadPdfDocument() {
   renderToken += 1;
-  const token = renderToken;
+  // Container changes invalidate geometry, not an in-flight source document.
+  const request = ++documentRequest;
+  pdfRequests?.abort();
+  const requests = new AbortController();
+  pdfRequests = requests;
   geometryReady.value = false;
   pdfDoc.value = null;
   pdfError.value = null;
   pdfLoading.value = true;
   await resetRenderedPages();
-  if (token !== renderToken) return;
+  if (request !== documentRequest) return;
   if (loadingTask) {
     void loadingTask.destroy();
     loadingTask = null;
   }
   try {
-    loadingTask = pdfjsLib.getDocument({ url: props.pdfUrl });
+    const source = await pdfRangeSource(props.pdfUrl, requests, error => {
+      if (request !== documentRequest) return;
+      pdfError.value = error.message;
+      pdfLoading.value = false;
+      void loadingTask?.destroy();
+    });
+    if (request !== documentRequest) return;
+    loadingTask = pdfjsLib.getDocument(source);
     const doc = await loadingTask.promise;
-    if (token !== renderToken) {
+    if (request !== documentRequest) {
       await (doc as unknown as { destroy?: () => Promise<void> }).destroy?.();
       return;
     }
     pdfDoc.value = doc;
     await nextTick();
+    const initial = initialReadingAnchor;
+    initialReadingAnchor = null;
+    if (initial) await restoreReadingAnchor(initial);
+    if (request !== documentRequest) return;
     observePages();
     await reconcileRenderedPages();
     scheduleViewportChange();
   } catch (e) {
-    if (token === renderToken) pdfError.value = e instanceof Error ? e.message : String(e);
+    if (request === documentRequest && !pdfError.value) pdfError.value = e instanceof Error ? e.message : String(e);
   } finally {
-    if (token === renderToken) pdfLoading.value = false;
+    if (request === documentRequest) pdfLoading.value = false;
   }
 }
 
@@ -881,6 +905,7 @@ function captureReadingAnchor(): PdfReadingAnchor | null {
     probeRatio: anchor.probeOffset / root.clientHeight,
     horizontalRatio: anchor.horizontalRatio,
     anchorLid: nearestMappedLid(anchor.pageIndex + anchor.pageRatio),
+    zoom: zoom.value,
   };
 }
 
@@ -1041,6 +1066,7 @@ watch(
 watch(
   () => [props.activeLid, props.selectedLid, props.sourceMap?.config_hash] as const,
   () => {
+    initialReadingAnchor = null;
     void scrollActiveIntoView();
   },
 );
@@ -1086,6 +1112,8 @@ window.addEventListener("resize", onWindowResize);
 window.addEventListener("keydown", onSelectionKeydown);
 
 onBeforeUnmount(() => {
+  documentRequest += 1;
+  pdfRequests?.abort();
   renderToken += 1;
   clearNotePlacementFeedback();
   if (renderFrame !== null) window.cancelAnimationFrame(renderFrame);
@@ -1108,11 +1136,11 @@ onBeforeUnmount(() => {
   <main class="pdf-reader-pane">
     <header class="pdf-reader-head">
       <div>
-        <strong>{{ props.sourceManifest?.book_id ?? props.sourceMap?.book_id ?? "PDF" }}</strong>
-        <span>{{ pageCount }} 页 · {{ mapCapabilityLabel }}</span>
+        <strong>PDF 原版</strong>
+        <span>{{ pageCount }} 页<span v-if="mapCapability !== 'available'"> · {{ mapCapabilityLabel }}</span></span>
       </div>
       <div class="pdf-reader-head-actions">
-        <span v-if="pdfLoading">正在加载 PDF</span>
+        <span v-if="pdfLoading" role="status">正在加载 PDF</span>
         <span v-else-if="pdfError" class="pdf-error">{{ pdfError }}</span>
         <span v-else-if="props.annotationError" class="pdf-annotation-error" :title="props.annotationError">
           标注定位暂不可用
@@ -1144,12 +1172,16 @@ onBeforeUnmount(() => {
             class="pdf-zoom-fit"
             title="适合栏宽"
             aria-label="适合栏宽"
+            :aria-pressed="zoom === 1"
             :disabled="pdfLoading"
             @click="setZoom(1)"
           >
             <Scan :size="15" aria-hidden="true" />
-            <span>{{ zoomText }}</span>
+            <span>适宽</span>
           </button>
+          <select class="pdf-zoom-select" aria-label="PDF 缩放倍率（相对适宽）" :value="zoom" :disabled="pdfLoading" @change="setZoom(Number(($event.target as HTMLSelectElement).value))">
+            <option v-for="factor in [0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5]" :key="factor" :value="factor">{{ Math.round(factor * 100) }}%</option>
+          </select>
           <button
             type="button"
             title="放大"
@@ -1169,8 +1201,8 @@ onBeforeUnmount(() => {
       :class="{ 'is-zoomed': zoom > 1, 'geometry-pending': !geometryReady }"
       :aria-busy="!geometryReady"
       @scroll.passive="onViewportScroll"
-      @wheel.passive="emit('viewport-interaction')"
-      @pointerdown="emit('viewport-interaction')"
+      @wheel.passive="onViewportIntent"
+      @pointerdown="onViewportIntent"
       @mouseup="capturePdfSelection"
     >
       <section
@@ -1309,7 +1341,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 0.5rem;
   padding: 0.65rem 0.85rem;
   border-bottom: 1px solid var(--hairline-soft);
   background: var(--surface-soft);
@@ -1329,7 +1361,7 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 .pdf-reader-head span {
-  color: var(--muted);
+  color: var(--reader-muted);
   font-size: 0.76rem;
 }
 .pdf-reader-head .pdf-error {
@@ -1344,6 +1376,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: flex-end;
   gap: 0.55rem;
+  flex-wrap: wrap;
   margin-left: auto;
 }
 .pdf-reader-tools {
@@ -1353,8 +1386,8 @@ onBeforeUnmount(() => {
   gap: 0.2rem;
 }
 .pdf-reader-tools button {
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1362,7 +1395,7 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   border: 1px solid var(--hairline-soft);
   border-radius: 6px;
-  background: var(--surface);
+  background: var(--reader-card);
   color: var(--slate);
   padding: 0;
 }
@@ -1388,15 +1421,23 @@ onBeforeUnmount(() => {
   font-size: 0.68rem;
   white-space: nowrap;
 }
+.pdf-zoom-select {
+  min-width: 74px; height: 40px; padding: 0 6px;
+  border: 1px solid var(--hairline); border-radius: 6px;
+  color: var(--ink); background: var(--reader-card); font: 13px var(--sans);
+  font-variant-numeric: tabular-nums;
+}
 .pdf-page-list {
   min-height: 0;
   overflow: auto;
   display: grid;
   grid-auto-rows: max-content;
   justify-items: center;
-  gap: 1.1rem;
+  gap: 1.5rem;
   align-content: start;
-  padding: 1.1rem;
+  padding: 1.25rem;
+  background: var(--surface-soft);
+  scrollbar-gutter: stable;
 }
 .pdf-page-list.is-zoomed {
   justify-items: start;
@@ -1412,6 +1453,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border: 1px solid var(--hairline);
   background: #fff;
+  box-shadow: 0 3px 14px rgb(47 38 27 / 9%);
   content-visibility: auto;
   contain-intrinsic-size: 720px 940px;
 }
@@ -1612,8 +1654,8 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   padding: 0.7rem;
   border: 1px solid var(--hairline);
-  border-radius: 8px;
-  background: #fff;
+  border-radius: 12px;
+  background: var(--reader-card);
   box-shadow: 0 12px 34px rgba(27, 31, 35, 0.22);
   color: var(--ink);
 }
@@ -1628,7 +1670,7 @@ onBeforeUnmount(() => {
   margin: -0.7rem -0.7rem 0.65rem;
   padding: 0.45rem 0.55rem 0.4rem 0.7rem;
   border-bottom: 1px solid var(--hairline-soft);
-  background: #fff;
+  background: var(--surface-soft);
 }
 .pdf-annotation-surface-head strong {
   font-size: 0.82rem;
@@ -1636,13 +1678,13 @@ onBeforeUnmount(() => {
 .pdf-annotation-surface-head button {
   display: inline-grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: var(--muted);
+  color: var(--reader-muted);
 }
 .pdf-annotation-note-list,
 .pdf-annotation-note-item {
@@ -1665,11 +1707,11 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
-  min-height: 32px;
+  min-height: 40px;
   border: 1px solid var(--hairline);
   border-radius: 6px;
   background: #fff;
-  color: var(--muted);
+  color: var(--reader-muted);
   font-size: 0.76rem;
 }
 .pdf-annotation-reselect {
@@ -1698,6 +1740,9 @@ onBeforeUnmount(() => {
   }
 }
 @media (max-width: 700px) {
+  .pdf-reader-head { padding: 0.5rem; }
+  .pdf-reader-tools button, .pdf-zoom-select { min-height: 44px; }
+  .pdf-page-list { gap: 1rem; padding: 0.65rem; }
   .pdf-annotation-surface {
     inset: auto 0 0 !important;
     width: 100% !important;

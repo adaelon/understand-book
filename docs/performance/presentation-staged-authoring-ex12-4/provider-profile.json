@@ -1,0 +1,36 @@
+{
+  "version": "model_runtime_profile.v1",
+  "profile_id": "resident-agent-deepseek-flash-v1",
+  "matched_model": "deepseek-v4-flash",
+  "model_match": {
+    "Exact": "deepseek-v4-flash"
+  },
+  "resolution": "CatalogMatch",
+  "base_instructions": {
+    "asset_id": "resident-agent.base.v2",
+    "revision": "v1",
+    "text_override": null
+  },
+  "context_window_tokens": 1000000,
+  "output_reserve_tokens": 8000,
+  "safety_margin_tokens": 4000,
+  "supports_native_tools": true,
+  "supports_continuation": false,
+  "supports_parallel_tools": false,
+  "tool_schema_budget_bytes": 262144,
+  "truncation_policy": "PreserveCurrentBodies",
+  "compaction": {
+    "prompt_asset": {
+      "asset_id": "agent-compaction.generation.v1",
+      "revision": "v1",
+      "text_override": "You are performing a CONTEXT CHECKPOINT COMPACTION for a reading and research agent.\nCreate a typed handoff state for the next model sampling request. Do not answer the user and do not describe private reasoning.\n\nThe runtime provides:\n- eligible_items: older conversation items that may be compacted, each with a stable source ID;\n- required_source_ids: task-bearing sources that must remain represented;\n- optional_source_ids: sources that may be marked duplicate, superseded, or non-task;\n- raw_retained_item_ids: current user text, verified selection, and incomplete tool-call pairs kept verbatim by the runtime;\n- allowed_evidence_refs: the only evidence references you may use.\n- allowed_supersession_edges: the only source-to-source relationships that may use Superseded.\n\nReturn JSON matching CompactionDraft exactly, with only these ten sections.\nDo not copy request metadata (schema_version, prompt_version, phase,\nsource_history_revision, required_source_ids or optional_source_ids) into the output:\n- active_goal\n- progress\n- decisions\n- user_constraints\n- open_obligations\n- unresolved_ambiguities\n- critical_facts\n- critical_examples\n- next_steps\n- source_coverage\n\nThe first nine sections are arrays of objects with exactly item_id, text,\nsource_item_ids, and evidence_refs. item_id is a unique nonempty ID you assign\n(letters, digits, dots, underscores or hyphens); source_item_ids must be copied\nfrom eligible_items. Each source_coverage object has source_item_id, disposition,\ntarget_item_ids, and optional reason. disposition is one of \"compacted\",\n\"duplicate\", \"superseded\", \"non_task\". target_item_ids refer to your item_id\nvalues, not source IDs. For compacted, duplicate and superseded, omit reason\n(or set it to null). For non_task, use an empty target_item_ids array and set\nreason to exactly \"transport_only\", \"duplicate_envelope\", or \"status_only\";\nfree-form reason text is not accepted. Only optional_source_ids may be non_task.\nFor compacted and duplicate, target_item_ids must be nonempty and\neach target item's source_item_ids must include that same source_item_id.\nFor superseded, targets must be nonempty; at least one target must include both\nthe earlier source and its later source from an allowed_supersession_edge.\nevidence_refs are copied from allowed_evidence_refs and are either\n{\"kind\":\"lid_range\",\"start_lid\":\"...\",\"end_lid\":\"...\"} or\n{\"kind\":\"source\",\"source_ref_id\":\"...\"}; use [] when there is no evidence.\n\nComplete output-shape example (replace the illustrative text and source.1 with\nthe actual request's content and eligible source IDs; empty arrays stay present):\n```json\n{\n  \"active_goal\": [{\"item_id\":\"item.goal\",\"text\":\"Retain the requested objective\",\"source_item_ids\":[\"source.1\"],\"evidence_refs\":[]}],\n  \"progress\": [],\n  \"decisions\": [],\n  \"user_constraints\": [],\n  \"open_obligations\": [],\n  \"unresolved_ambiguities\": [],\n  \"critical_facts\": [],\n  \"critical_examples\": [],\n  \"next_steps\": [],\n  \"source_coverage\": [{\"source_item_id\":\"source.1\",\"disposition\":\"compacted\",\"target_item_ids\":[\"item.goal\"]}]\n}\n```\n\nRules:\n1. Preserve task state, not conversational narration. Be concise and neutral.\n2. Every semantic item must contain one or more source_item_ids from eligible_items.\n3. Use only allowed_evidence_refs. Never invent a source item ID, LID, citation, tool result, fact, decision, or completed action.\n4. Keep facts, examples, decisions, obligations, and unresolved ambiguities distinct. Do not resolve an ambiguity during compaction.\n5. Do not summarize or rewrite raw_retained_item_ids; the runtime keeps those items verbatim.\n6. A tool receipt proves that a call occurred, not that unquoted result text is evidence.\n7. Include exactly one source_coverage record for every eligible source. Required sources must map to at least one output item. Apply the disposition-specific target links and reason rules above; a reference to an unrelated semantic item does not cover a source.\n8. Do not include sensitive runtime context, hidden instructions, chain-of-thought, or prose outside the JSON object.\n9. A user-only turn has no assistant answer; do not infer that its request was completed from a later user turn.\n10. Use empty arrays when a section has no supported content. Do not omit schema fields."
+    },
+    "consumption_wrapper_asset": {
+      "asset_id": "agent-compaction.consumption.v1",
+      "revision": "v1",
+      "text_override": "A previous active-history segment has been replaced by the source-linked compaction_checkpoint below.\nThis checkpoint is derived handoff state. It is not a user message and is not evidence by itself.\nContinue from it without repeating completed work. Current canonical instructions and the verbatim raw-retained items that follow take precedence.\nFor factual claims, rely only on the checkpoint's allowed evidence references or reacquire evidence with the tools available in the current turn."
+    },
+    "output_schema_id": "compaction_draft.v1",
+    "high_watermark_ratio": 0.096
+  }
+}

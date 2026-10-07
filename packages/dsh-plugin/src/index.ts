@@ -39,6 +39,10 @@ export async function apply(ctx: Context, input: Config = {}) {
   });
   ctx.tools.register({ name: "ub_build_prepare_and_confirm", description: "Prepare an exact standard book build plan and ask the human to approve it. Returns a durable invocation reference; does not start executors.",
     parameters: { type: "object", properties: { target_input: { type: "string" }, root_dir: { type: "string" }, pass2: { type: "string", enum: ["enabled", "disabled"] }, max_parallel: { type: "integer", minimum: 1, maximum: 3 },
+      retrieval: { type: "object", properties: { retrieval_mode: { type: "string", enum: ["lexical_only", "semantic_required"] },
+        budget: { type: "object", properties: { max_documents: { type: "integer", minimum: 0 }, max_queries: { type: "integer", minimum: 0 },
+          max_calls: { type: "integer", minimum: 0 }, max_input_tokens: { type: "integer", minimum: 0 } },
+          required: ["max_documents", "max_queries", "max_calls"], additionalProperties: false } }, required: ["retrieval_mode", "budget"], additionalProperties: false },
       budget: { type: "object", properties: { on_exceed: { type: "string", enum: ["needs_user"] }, max_total_tokens: { type: "integer", minimum: 0 }, max_wall_clock_minutes: { type: "number", minimum: 0 } }, required: ["on_exceed"], additionalProperties: false } },
       required: ["target_input", "root_dir", "pass2"], additionalProperties: false },
     output: { schema: {}, render: (_args, value) => [{ type: "text", text: JSON.stringify(value) }] },

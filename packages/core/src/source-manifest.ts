@@ -9,6 +9,8 @@ export type PdfCapabilityName =
 export interface CanonicalSourceManifestEntry {
   kind: CanonicalSourceKind;
   path: string;
+  /** Imported EPUB bytes, relative to the workspace; path remains provenance. */
+  snapshot_path?: string;
   truth_file: "source.txt";
   participates_in_lid: true;
   citation_anchor: "lid";
@@ -74,6 +76,7 @@ export interface SourceManifestV2 {
 export interface SourceManifestInput {
   book_id: string;
   source_path: string;
+  snapshot_path?: string;
   original_pdf_path?: string;
   pdf_source_map_path?: string;
 }
@@ -128,6 +131,7 @@ export function buildSourceManifest(input: SourceManifestInput): SourceManifest 
   const canonical_source: CanonicalSourceManifestEntry = {
     kind: canonicalSourceKind(sourcePath),
     path: sourcePath,
+    ...(input.snapshot_path ? { snapshot_path: input.snapshot_path } : {}),
     truth_file: "source.txt",
     participates_in_lid: true,
     citation_anchor: "lid",

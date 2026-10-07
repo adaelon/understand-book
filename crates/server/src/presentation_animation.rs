@@ -14,6 +14,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct RenderedAnimation {
     pub asset: AnimationAsset,
     pub code: String,
@@ -155,32 +156,37 @@ pub(crate) fn render(
         )));
     }
     cancellation.check()?;
-    let metadata: Value = serde_json::from_slice(
-        &fs::read(dir.path().join("metadata.json")).map_err(|e| failed(e.to_string()))?,
-    )
-    .map_err(|e| failed(e.to_string()))?;
-    let video = fs::read(dir.path().join("animation.mp4")).map_err(|e| failed(e.to_string()))?;
-    if video.len() > 8 * 1024 * 1024 {
-        return Err(failed(
-            "Animation MP4 exceeds 8 MiB; shorten the clip or reduce size",
-        ));
+    #[derive(serde::Deserialize)]
+    struct Frame { file: String, at_seconds: f64 }
+    #[derive(serde::Deserialize)]
+    struct Metadata { width: u32, height: u32, duration_seconds: f64, fps: f64, frames: Vec<Frame> }
+    let metadata: Metadata = serde_json::from_slice(&crate::presentation_sandbox::output_file(dir.path(), "metadata.json", 8192)?)
+        .map_err(|_| failed("Invalid animation metadata"))?;
+    if metadata.width != size.width || metadata.height != size.height || !metadata.duration_seconds.is_finite()
+        || metadata.duration_seconds <= 0.0 || metadata.duration_seconds > 180.0 || metadata.fps != 30.0
+        || metadata.frames.is_empty() || metadata.frames.len() > 4
+        || cues.iter().any(|cue| cue.at_seconds > metadata.duration_seconds) {
+        return Err(failed("Invalid animation dimensions, duration or frames"));
     }
+    let video = crate::presentation_sandbox::output_file(dir.path(), "animation.mp4", 8 * 1024 * 1024)?;
+    if video.len() < 12 || &video[4..8] != b"ftyp" { return Err(failed("Invalid MP4")); }
     let mut frames = Vec::new();
-    for frame in metadata["frames"]
-        .as_array()
-        .ok_or_else(|| failed("Missing decoded frames"))?
-    {
-        let png = fs::read(dir.path().join(frame["file"].as_str().unwrap()))
-            .map_err(|e| failed(e.to_string()))?;
-        frames.push((frame["at_seconds"].as_f64().unwrap(), STANDARD.encode(png)));
+    for (index, frame) in metadata.frames.iter().enumerate() {
+        if frame.file != format!("frame-{index}.png") || !frame.at_seconds.is_finite()
+            || frame.at_seconds < 0.0 || frame.at_seconds > metadata.duration_seconds {
+            return Err(failed("Invalid animation frame"));
+        }
+        let png = crate::presentation_sandbox::output_file(dir.path(), &frame.file, 4 * 1024 * 1024)?;
+        crate::presentation_sandbox::png(&png, size.width, size.height)?;
+        frames.push((frame.at_seconds, STANDARD.encode(png)));
     }
     let asset = AnimationAsset {
         video_base64: STANDARD.encode(video),
         poster_png_base64: frames[0].1.clone(),
-        width: metadata["width"].as_u64().unwrap() as u32,
-        height: metadata["height"].as_u64().unwrap() as u32,
-        duration_seconds: metadata["duration_seconds"].as_f64().unwrap(),
-        fps: metadata["fps"].as_f64().unwrap(),
+        width: metadata.width,
+        height: metadata.height,
+        duration_seconds: metadata.duration_seconds,
+        fps: metadata.fps,
         cues,
     };
     Ok(RenderedAnimation {

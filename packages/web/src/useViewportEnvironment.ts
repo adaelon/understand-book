@@ -25,6 +25,7 @@ export function measureViewportEnvironment(
   return {
     containerWidth,
     containerHeight,
+    layoutHeight: window.innerHeight,
     visualWidth: Math.max(0, visualViewport?.width ?? containerWidth),
     visualHeight: Math.max(0, visualViewport?.height ?? containerHeight),
     offsetTop: visualViewport?.offsetTop ?? 0,

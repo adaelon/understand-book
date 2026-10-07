@@ -1,0 +1,14 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+html{scroll-behavior:smooth}body{margin:0;font:24px sans-serif}
+section{box-sizing:border-box;height:900px;display:flex;align-items:flex-start;justify-content:center;padding-top:100px}
+#end{align-items:flex-end;padding-bottom:100px}
+#start{background:rgb(220,80,80)}#middle{background:rgb(80,180,100)}#end{background:rgb(80,120,220)}
+#change{position:fixed;left:8px;top:8px;width:100px;height:48px}
+input{width:120px;height:44px}
+</style></head><body>
+<button id="change" onclick="this.textContent=Number(this.textContent)+1">0</button>
+<section id="start"><h2>START</h2><input id="parameter" type="range" min="0" max="10" value="3"></section>
+<section id="middle"><h2>MIDDLE</h2></section>
+<section id="end"><h2>END</h2></section>
+</body></html>

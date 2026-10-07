@@ -18,6 +18,9 @@ const BUILD_STAGE_IDS = [
   "pass2",
   "book_structure",
   "paper_reading_guide",
+  "formal_objects",
+  "cognitive_materials",
+  "teaching_publish",
 ] as const satisfies readonly BuildStageId[];
 const EXISTING_BUILD_DECISION_KINDS = [
   "source_reconciliation_mode",
@@ -244,6 +247,38 @@ export const BuildPlanBudgetV1Z = z.object({
 
 export type BuildPlanBudgetV1 = z.infer<typeof BuildPlanBudgetV1Z>;
 
+export const BuildRetrievalSelectionZ = z.object({
+  retrieval_mode: z.enum(["lexical_only", "semantic_required"]),
+  provider: z.object({
+    identity: z.object({
+      provider_id: NonBlankStringZ, model_id: NonBlankStringZ, model_revision: z.string().nullable(),
+      embedding_config: z.record(z.union([z.string(), z.number().finite(), z.boolean(), z.null()])),
+      dimensions: z.number().int().positive().safe(),
+    }).strict(),
+    location: z.enum(["local", "remote"]),
+  }).strict().optional(),
+  data_scope: z.enum(["current_and_previous_formal_object_projections_and_queries", "book_structure_projections_and_queries", "book_structure_and_formal_object_projections_and_queries"]),
+}).strict().superRefine((selection, context) => {
+  if (selection.retrieval_mode === "semantic_required" && !selection.provider)
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "semantic_required needs a provider selection" });
+});
+export type BuildRetrievalSelection = z.infer<typeof BuildRetrievalSelectionZ>;
+export function retrievalScopeIncludes(scope: BuildRetrievalSelection["data_scope"], consumer: "book_structure" | "formal_objects"): boolean {
+  return scope === "book_structure_and_formal_object_projections_and_queries"
+    || scope === (consumer === "book_structure" ? "book_structure_projections_and_queries" : "current_and_previous_formal_object_projections_and_queries");
+}
+export const BuildRetrievalPlanZ = z.object({
+  selection: BuildRetrievalSelectionZ,
+  estimate: z.object({ records: NonNegativeSafeIntegerZ.nullable(), queries: NonNegativeSafeIntegerZ.nullable(),
+    basis: z.enum(["unknown_until_fragments", "estimate", "current_catalog"]),
+    cost: z.object({ amount: NonNegativeFiniteZ, currency: NonBlankStringZ }).strict().optional(),
+  }).strict(),
+  budget: z.object({ max_documents: NonNegativeSafeIntegerZ, max_queries: NonNegativeSafeIntegerZ,
+    max_calls: NonNegativeSafeIntegerZ, max_input_tokens: NonNegativeSafeIntegerZ.optional(),
+  }).strict(),
+}).strict();
+export type BuildRetrievalPlan = z.infer<typeof BuildRetrievalPlanZ>;
+
 const PrivateIntentArtifactZ = z.object({
   artifact_id: PathSafeBuildIdZ,
   artifact_type: IntentArtifactTypeZ,
@@ -286,6 +321,7 @@ const BuildPlanShapeZ = z.object({
   excluded: z.array(ExcludedBuildArtifactZ),
   estimate: BuildPlanEstimateV1Z,
   budget: BuildPlanBudgetV1Z,
+  retrieval: BuildRetrievalPlanZ.optional(),
   status: BuildPlanStatusZ,
   plan_digest: Sha256Z,
   confirmation_source: z.enum(["reader_ui", "codex_conversation", "explicit_legacy_command"]).optional(),
@@ -352,6 +388,7 @@ export type BuildPlanDigestSource = Pick<
   | "create"
   | "excluded"
   | "budget"
+  | "retrieval"
 >;
 
 export function buildPlanIdentity(plan: BuildPlanDigestSource): BuildPlanDigestSource {
@@ -366,6 +403,7 @@ export function buildPlanIdentity(plan: BuildPlanDigestSource): BuildPlanDigestS
     create: plan.create,
     excluded: plan.excluded,
     budget: plan.budget,
+    ...(plan.retrieval ? { retrieval: plan.retrieval } : {}),
   };
 }
 

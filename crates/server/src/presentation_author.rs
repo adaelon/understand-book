@@ -28,7 +28,67 @@ fn preview_contract_complete(receipts: &std::collections::HashSet<String>) -> bo
     receipts.contains("legacy") || missing_preview_environments(receipts).is_empty()
 }
 
+fn plot_bytes(p: &crate::presentation_plot::PlotAsset) -> usize {
+    p.svg.len() + p.png_base64.len() + p.code.len() + p.data.to_string().len()
+}
+fn animation_bytes(a: &crate::presentation_animation::RenderedAnimation) -> usize {
+    a.asset.video_base64.len() + a.frames.iter().map(|(_, png)| png.len()).sum::<usize>()
+        + a.code.len() + a.data.to_string().len()
+}
+
+pub(crate) trait AuthorStorage {
+    fn with_private<R>(&self, operation: impl FnOnce(&PrivateBookContext<'_>) -> Result<R, ToolError>) -> Result<R, ToolError>;
+}
+struct LocalStorage<'a, P> { port: &'a P, scope: &'a crate::run_scope::RunScope }
+impl<P: AppStatePort> AuthorStorage for LocalStorage<'_, P> {
+    fn with_private<R>(&self, operation: impl FnOnce(&PrivateBookContext<'_>) -> Result<R, ToolError>) -> Result<R, ToolError> {
+        self.port.with_app(|state| { self.scope.check_owner(state)?; operation(&self.scope.private_context(state)) })
+    }
+}
+pub(crate) struct AuthorSession<'a, H> {
+    pub storage: &'a H,
+    pub turn_ref: &'a AgentTurnRef,
+    pub previewed: &'a mut std::collections::HashMap<String, std::collections::HashSet<String>>,
+    pub animations: &'a mut std::collections::HashMap<String, crate::presentation_animation::RenderedAnimation>,
+    pub plots: &'a mut std::collections::HashMap<String, crate::presentation_plot::PlotAsset>,
+    pub sandbox: Option<crate::presentation_sandbox::Execution<'a>>,
+}
 impl<P: AppStatePort> RuntimeStatePort<'_, P> {
+    pub(crate) fn author(&mut self, request: AuthorRequest, bindings: &[SourceBinding], messages: &[Message], cancellation: &CancellationToken) -> Result<AuthorResult, ToolError> {
+        AuthorSession { storage: &LocalStorage { port: self.port, scope: self.scope }, turn_ref: self.turn_ref,
+            previewed: &mut self.previewed, animations: &mut self.animations, plots: &mut self.plots, sandbox: None,
+        }.author(request, bindings, messages, cancellation)
+    }
+}
+impl<H: AuthorStorage> AuthorSession<'_, H> {
+    fn media_limit(&self, added: usize) -> Result<(), ToolError> {
+        if self.sandbox.is_none() { return Ok(()); }
+        let bytes = self.plots.values().map(plot_bytes).sum::<usize>()
+            + self.animations.values().map(animation_bytes).sum::<usize>();
+        if self.plots.len() + self.animations.len() >= 8 || bytes + added > 32 * 1024 * 1024 {
+            return Err(crate::user_storage_paths::error("PRESENTATION_ASSET_LIMIT", "rate_limit", "This turn's temporary media limit is reached"));
+        }
+        Ok(())
+    }
+    fn with_private<R>(&self, operation: impl FnOnce(&PrivateBookContext<'_>) -> Result<R, ToolError>) -> Result<R, ToolError> {
+        self.storage.with_private(operation)
+    }
+
+    fn edit_base(&self, reference: &Option<PresentationRef>, candidate_id: &Option<String>) -> Result<(PresentationContent, Option<PresentationRef>), ToolError> {
+        self.with_private(|state| match (reference, candidate_id) {
+            (Some(reference), None) => {
+                let version = state.read_presentation(&self.turn_ref.session_id, reference)?;
+                Ok((version.content, Some(reference.clone())))
+            }
+            (None, Some(id)) => {
+                let candidate = state.read_presentation_candidate(&self.turn_ref.session_id, id)?;
+                if candidate.created_by_turn_id != self.turn_ref.turn_id { return Err(invalid("Candidate belongs to a different run")); }
+                Ok((candidate.content, candidate.based_on))
+            }
+            _ => Err(invalid("Provide exactly one reference or candidate_id")),
+        })
+    }
+
     pub(crate) fn author(
         &mut self,
         request: AuthorRequest,
@@ -37,6 +97,9 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
         cancellation: &CancellationToken,
     ) -> Result<AuthorResult, ToolError> {
         cancellation.check()?;
+        if self.sandbox.is_some() && matches!(&request, AuthorRequest::RenderPlot {..} | AuthorRequest::RenderAnimation {..}) {
+            self.media_limit(0)?;
+        }
         let mut result = AuthorResult {
             body: Value::Null,
             images: vec![],
@@ -44,8 +107,12 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
             delivered: None,
         };
         match request {
+            AuthorRequest::Prepare { .. } => return Err(invalid("prepare is handled by the active Runtime run")),
             AuthorRequest::RenderAnimation { code, data, size, cues } => {
-                let rendered = crate::presentation_animation::render(code, data, size, cues, cancellation)?;
+                let rendered = if let Some(executor) = &self.sandbox {
+                    executor.run(crate::presentation_sandbox::Job::Animation { code, data, size, cues }, cancellation)?
+                } else { crate::presentation_animation::render(code, data, size, cues, cancellation)? };
+                self.media_limit(animation_bytes(&rendered))?;
                 let id = format!("animation-{}", uuid::Uuid::now_v7());
                 result.body = crate::presentation_animation::metadata(&id, &rendered.asset);
                 result.body["status"] = json!("animation_rendered");
@@ -56,7 +123,10 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
                 self.animations.insert(id, rendered);
             }
             AuthorRequest::RenderPlot { code, data, size } => {
-                let plot = crate::presentation_plot::render(code, data, size, cancellation)?;
+                let plot = if let Some(executor) = &self.sandbox {
+                    executor.run(crate::presentation_sandbox::Job::Plot { code, data, size }, cancellation)?
+                } else { crate::presentation_plot::render(code, data, size, cancellation)? };
+                self.media_limit(plot_bytes(&plot))?;
                 let asset_ref = format!("plot-{}", uuid::Uuid::now_v7());
                 let asset_path = format!("assets/{asset_ref}.svg");
                 result.images.push(PreviewImage {
@@ -70,48 +140,84 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
                     "next":"Inspect the returned image, then use asset_path in an img src and include asset_ref in write.asset_refs"});
                 self.plots.insert(asset_ref, plot);
             }
-            AuthorRequest::Read {
-                reference,
-                file,
-                offset,
-            } => {
-                let version = self.port.with_app(|state| {
-                    state.read_presentation(&self.turn_ref.session_id, &reference)
-                })?;
-                let content = version.content;
+            AuthorRequest::Read { reference, candidate_id, file, offset, length } => {
+                let (content, based_on) = self.edit_base(&reference, &candidate_id)?;
                 let library_metadata = crate::presentation_libraries::metadata(&content.content_files);
                 let animations: Vec<_> = content.animation_assets.iter().map(|(id,a)| crate::presentation_animation::metadata(id,a)).collect();
+                let explicit_file = file.is_some();
                 let file = file.unwrap_or_else(|| content.entrypoint.clone());
                 if let Some(asset) = animations.iter().find(|a| a["asset_path"] == file || a["poster_path"] == file) {
-                    result.body = json!({"status":"animation_metadata","reference":reference,"animation":asset});
+                    result.body = json!({"status":"animation_metadata","reference":reference,"candidate_id":candidate_id,"animation":asset});
                     return Ok(result);
                 }
-                let source = content
-                    .content_files
-                    .get(&file)
-                    .ok_or_else(|| invalid("Content file not found"))?;
+                let source = if file == "readable_content" { &content.readable_content }
+                    else { content.content_files.get(&file).ok_or_else(|| invalid("Content file not found"))? };
                 if file.starts_with("libraries/") {
-                    result.body = json!({"status":"managed_library", "reference":reference, "file":file,
-                        "libraries":library_metadata, "next":"Use write.libraries to select dependencies; managed source is not authoring text."});
+                    result.body = json!({"status":"managed_library","reference":reference,"candidate_id":candidate_id,"file":file,"libraries":library_metadata,
+                        "next":"Use write.libraries to select dependencies; managed source is not authoring text."});
                     return Ok(result);
                 }
-                let length = source.chars().count();
-                if offset > length {
-                    return Err(invalid("Offset exceeds file length"));
-                }
-                let text: String = source.chars().skip(offset).take(4000).collect();
-                let end = offset + text.chars().count();
-                let next_offset = (end < length).then_some(end);
-                result.body = json!({"status":"version_read","reference":reference,"based_on":version.based_on,
+                result.body = crate::presentation_source::read(source, offset, length).map_err(invalid)?;
+                let metadata = json!({"status":"version_read","reference":reference,"candidate_id":candidate_id,"based_on":based_on,
                     "title":content.title,"libraries":library_metadata,"animations":animations,"files":content.content_files.keys().collect::<Vec<_>>(),"entrypoint":content.entrypoint,
                     "asset_refs":content.content_files.keys().filter_map(|path| path.strip_prefix("assets/").and_then(|name| name.strip_suffix(".svg"))).chain(content.animation_assets.keys().map(String::as_str)).collect::<Vec<_>>(),
-                    "file":file,"offset":offset,"text":text,"next_offset":next_offset,"total_characters":length,"chunk_characters":4000,
-                    "readable_content":content.readable_content,"assumptions":content.assumptions,
-                    "source_ref_ids":content.source_bindings.iter().map(|b| &b.source_ref_id).collect::<Vec<_>>(),
+                    "file":file,"assumptions":content.assumptions,"source_ref_ids":content.source_bindings.iter().map(|b| &b.source_ref_id).collect::<Vec<_>>(),
                     "state_contract":content.state_contract,"initial_state":content.initial_state});
+                result.body.as_object_mut().unwrap().extend(metadata.as_object().unwrap().clone());
+                if !explicit_file { result.body["readable_content"] = json!(content.readable_content); }
+            }
+            AuthorRequest::Search { reference, candidate_id, file, query, offset, max_matches } => {
+                let (content, _) = self.edit_base(&reference, &candidate_id)?;
+                let file = file.unwrap_or_else(|| content.entrypoint.clone());
+                if file.starts_with("libraries/") { return Err(invalid("Managed libraries are not editable source")); }
+                let source = if file == "readable_content" { &content.readable_content }
+                    else { content.content_files.get(&file).ok_or_else(|| invalid("Content file not found"))? };
+                result.body = crate::presentation_source::search(source, &query, offset, max_matches).map_err(invalid)?;
+                for (key, value) in [("status",json!("source_matches")),("reference",json!(reference)),("candidate_id",json!(candidate_id)),("file",json!(file))] {
+                    result.body[key] = value;
+                }
+            }
+            AuthorRequest::Patch { reference, candidate_id, edits, title, readable_content, state_contract, initial_state } => {
+                let (mut content, based_on) = self.edit_base(&reference, &candidate_id)?;
+                let old_contract = content.state_contract.clone();
+                let html = crate::presentation_source::patch(&content.content_files[&content.entrypoint], &edits).map_err(invalid)?;
+                content.content_files.insert(content.entrypoint.clone(), html);
+                if let Some(title) = title { content.title = title; }
+                if let Some(text) = readable_content { content.readable_content = text; }
+                if let Some(contract) = state_contract { content.state_contract = contract; }
+                if let Some(initial) = initial_state { content.initial_state = initial; }
+                if content.content_files.values().map(String::len).sum::<usize>() > 1024 * 1024 {
+                    return Err(invalid("Candidate and version assets exceed 1 MiB"));
+                }
+                // Version patches inherit the exact follow-up receipt, like write.
+                // Candidate patches already carry the parameters chosen by that draft.
+                let saved = self.with_private(|state| {
+                    let receipt = state.user.agent_history.sessions.iter().find(|s| s.id == self.turn_ref.session_id)
+                        .and_then(|s| s.turns.iter().find(|t| t.turn_id == self.turn_ref.turn_id))
+                        .and_then(|t| t.presentation_follow_up.as_ref());
+                    // An explicitly new current-run candidate has no delivered base.
+                    if receipt.is_some_and(|r| based_on.as_ref().is_some_and(|base| &r.reference != base)) {
+                        return Err(invalid("Edit the exact version selected by the presentation follow-up receipt"));
+                    }
+                    match &reference {
+                        Some(reference) => match receipt {
+                            Some(receipt) => state.read_presentation_state(receipt).map(Some),
+                            None => state.latest_presentation_state(&self.turn_ref.session_id, reference),
+                        },
+                        None => Ok(None),
+                    }
+                })?;
+                if let Some(saved) = saved { inherit_parameters(&mut content.initial_state, &content.state_contract, &old_contract, &saved.state); }
+                validate_content_semantics(&content, messages)?;
+                let candidate = self.with_private(|state| state.create_presentation_candidate(
+                    &self.turn_ref.session_id, &self.turn_ref.turn_id, based_on, content))?;
+                result.body = json!({"status":"candidate_saved","candidate_id":candidate.candidate_id,"based_on":candidate.based_on,
+                    "initial_state":candidate.content.initial_state,"applied_edits":edits.len(),
+                    "next":"Preview and inspect this new candidate in all required environments before deliver. The base and its preview receipts are unchanged."});
             }
             AuthorRequest::Write {
                 based_on,
+                new_object,
                 state_contract,
                 title,
                 html,
@@ -122,6 +228,27 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
                 assumptions,
                 mut initial_state,
             } => {
+                if new_object && based_on.is_some() {
+                    return Err(invalid("write.new_object=true conflicts with based_on; choose a new object or an exact version revision"));
+                }
+                let base_and_saved = self.with_private(|state| {
+                    let receipt = state.user.agent_history.sessions.iter().find(|s| s.id == self.turn_ref.session_id)
+                        .and_then(|s| s.turns.iter().find(|t| t.turn_id == self.turn_ref.turn_id))
+                        .and_then(|t| t.presentation_follow_up.as_ref());
+                    if let Some(receipt) = receipt {
+                        if !new_object && based_on.as_ref() != Some(&receipt.reference) {
+                            return Err(invalid(format!("Set write.based_on to the exact presentation follow-up reference {} to revise it, or omit based_on and set new_object=true for an intentionally separate presentation", json!(receipt.reference))));
+                        }
+                    }
+                    based_on.as_ref().map(|reference| {
+                        let base = state.read_presentation(&self.turn_ref.session_id, reference)?;
+                        let saved = match receipt {
+                            Some(receipt) => Some(state.read_presentation_state(receipt)?),
+                            None => state.latest_presentation_state(&self.turn_ref.session_id, reference)?,
+                        };
+                        Ok::<_, ToolError>((base, saved))
+                    }).transpose()
+                })?;
                 #[cfg(test)]
                 let html = crate::tests::presentation_author_tests::ex10::assemble_write(&html);
                 if html.len() > 1024 * 1024 {
@@ -131,19 +258,7 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
                 let mut animation_assets = std::collections::BTreeMap::new();
                 let mut content_files =
                     std::collections::BTreeMap::from([("index.html".to_string(), html.clone())]);
-                if let Some(reference) = &based_on {
-                    let (base, saved) = self.port.with_app(|state| {
-                        let base = state.read_presentation(&self.turn_ref.session_id, reference)?;
-                        let receipt = state.agent_history.sessions.iter().find(|s| s.id == self.turn_ref.session_id)
-                            .and_then(|s| s.turns.iter().find(|t| t.turn_id == self.turn_ref.turn_id))
-                            .and_then(|t| t.presentation_follow_up.as_ref());
-                        if receipt.is_some_and(|r| &r.reference != reference) { return Err(invalid("Edit the exact version selected by the presentation follow-up receipt")); }
-                        let saved = match receipt {
-                            Some(receipt) => Some(state.read_presentation_state(receipt)?),
-                            None => state.latest_presentation_state(&self.turn_ref.session_id, reference)?,
-                        };
-                        Ok::<_, ToolError>((base, saved))
-                    })?;
+                if let Some((base, saved)) = base_and_saved {
                     if let Some(saved) = saved {
                         inherit_parameters(
                             &mut initial_state,
@@ -236,7 +351,7 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
                     initial_state,
                 };
                 validate_content_semantics(&content, messages)?;
-                let candidate = self.port.with_app(|state| {
+                let candidate = self.with_private(|state| {
                     state.create_presentation_candidate(
                         &self.turn_ref.session_id,
                         &self.turn_ref.turn_id,
@@ -244,7 +359,7 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
                         content,
                     )
                 })?;
-                result.body = json!({"candidate_id":candidate.candidate_id,"based_on":candidate.based_on,"initial_state":candidate.content.initial_state,"status":"candidate_saved","libraries":crate::presentation_libraries::metadata(&candidate.content.content_files),"next":"Preview with real actions and inspect screenshots. To revise this undelivered candidate, write a new candidate with full revised HTML and omit based_on; based_on is only for a delivered presentation reference. Deliver the final candidate after its required previews."});
+                result.body = json!({"candidate_id":candidate.candidate_id,"based_on":candidate.based_on,"initial_state":candidate.content.initial_state,"status":"candidate_saved","libraries":crate::presentation_libraries::metadata(&candidate.content.content_files),"next":"Preview with real actions and inspect screenshots. For local changes, search/read/patch this candidate_id. Patch preserves assets and creates a new candidate; preview it again. Use write with full HTML for broad rewrites; based_on is only for a delivered presentation reference. Deliver the final candidate after its required previews."});
             }
             AuthorRequest::Preview {
                 candidate_id,
@@ -259,7 +374,7 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
                 for action in &actions {
                     action.scene_position().map_err(invalid)?;
                 }
-                let candidate = self.port.with_app(|state| {
+                let candidate = self.with_private(|state| {
                     state.read_presentation_candidate(&self.turn_ref.session_id, &candidate_id)
                 })?;
                 if candidate.created_by_turn_id != self.turn_ref.turn_id {
@@ -277,11 +392,12 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
                 let environment = request.environment().map_err(invalid)?;
                 let environment_name = preview_environment_name(environment);
                 let legacy_request = request.viewport.is_none();
-                let browser =
-                    crate::presentation_preview::BrowserPreview::discover().map_err(invalid)?;
-                let report = browser
-                    .preview(&request, cancellation)
-                    .map_err(|error| invalid(format!("{}: {}", error.phase, error.message)))?;
+                let report: PreviewReport = if let Some(executor) = &self.sandbox {
+                    executor.run(crate::presentation_sandbox::Job::Preview { request }, cancellation)?
+                } else {
+                    crate::presentation_preview::BrowserPreview::discover().map_err(invalid)?
+                        .preview(&request, cancellation).map_err(|error| invalid(format!("{}: {}", error.phase, error.message)))?
+                };
                 cancellation.check()?;
                 let mut problems = report
                     .errors
@@ -332,14 +448,15 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
                 recorded_environments.sort();
                 for observation in &report.observations {
                     let scene = observation.scene.as_ref().map(|scene| format!(" Target scene: semantic step {}, transition {:.3}; actual: semantic step {}, transition {:.3}, paused {}.", scene.target.semantic_state, scene.target.transition_progress, scene.actual.semantic_state, scene.actual.transition_progress, !scene.actual.playing)).unwrap_or_default();
-                    result.images.push(PreviewImage { caption: format!("Browser observation: candidate {candidate_id}, environment {} ({}x{} {:?}), step {}, status {status}.{scene} Inspect layout, graphics and agreement with readable content before delivery.", report.environment_name, report.environment.width, report.environment.height, report.environment.input, observation.step), png_base64: observation.screenshot_png_base64.clone(), candidate_id: Some(candidate_id.clone()), environment_name: Some(report.environment_name.clone()) });
+                    let position = format!(" Action: {}; actual document position x={}, y={} CSS px (max y={}), viewport {}x{} CSS px.", serde_json::to_string(&observation.action).unwrap(), observation.scroll.x, observation.scroll.y, observation.scroll.max_y, observation.scroll.viewport_width, observation.scroll.viewport_height);
+                    result.images.push(PreviewImage { caption: format!("Browser observation: candidate {candidate_id}, environment {} ({}x{} {:?}), step {}, status {status}.{position}{scene} Inspect layout, graphics and agreement with readable content before delivery.", report.environment_name, report.environment.width, report.environment.height, report.environment.input, observation.step), png_base64: observation.screenshot_png_base64.clone(), candidate_id: Some(candidate_id.clone()), environment_name: Some(report.environment_name.clone()) });
                 }
                 if complete {
                     result.previewed_candidate = Some(candidate_id.clone());
                 }
                 result.body = json!({"candidate_id":candidate_id,"status":status,"errors":problems,
                     "environment_name":report.environment_name,"environment":report.environment,"recorded_environments":recorded_environments,"missing_environments":missing_environments,
-                    "observations":report.observations.iter().map(|o| json!({"step":o.step,"dom":o.dom,"layout":o.layout,"issues":o.issues,"scene":o.scene})).collect::<Vec<_>>()});
+                    "observations":report.observations.iter().map(|o| json!({"step":o.step,"action":o.action,"scroll":o.scroll,"dom":o.dom,"layout":o.layout,"issues":o.issues,"scene":o.scene})).collect::<Vec<_>>()});
                 if let Some(reading) = report.observations.last().and_then(|o| o.reading.as_ref()) {
                     result.body["reading"] = reading.clone();
                 }
@@ -358,9 +475,8 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
                         "Preview this exact candidate successfully before delivery",
                     ));
                 }
-                let reference = self.port.with_app(|state| {
-                    let candidate = state
-                        .read_presentation_candidate(&self.turn_ref.session_id, &candidate_id)?;
+                let reference = self.with_private(|state| {
+                    let candidate = state.read_presentation_candidate(&self.turn_ref.session_id, &candidate_id)?;
                     validate_content_semantics(&candidate.content, messages)?;
                     cancellation.check()?;
                     state.persist_presentation_candidate(
@@ -446,7 +562,12 @@ fn compile(
 ) -> Result<(), ToolError> {
     let view =
         runtime::orchestrator::compile_presentation_text(text, &content.source_bindings, messages)
-            .map_err(|issues| invalid(format!("Public content rejected: {issues:?}")))?;
+            .map_err(|issues| {
+                let hint = if issues.iter().any(|issue| issue.error_code == "UNKNOWN_SOURCE_REF") {
+                    " Include every cited ref in write.source_ref_ids (or patch.source_ref_ids when adding sources). A ref already observed through source.present or preserved by based_on need not be registered again; it must be explicitly attached to this candidate. Use only observed or preserved refs."
+                } else { "" };
+                invalid(format!("Public content rejected: {issues:?}{hint}"))
+            })?;
     if !allow_refs
         && view
             .parts
@@ -543,16 +664,17 @@ fn preview_document(content: &PresentationContent) -> String {
     // Same common CSS, initial-state and source-label contract as the Reader iframe.
     format!(
         r#"<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; media-src data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
-<style>{}</style><script>{}</script><script>
+<style>{}</style><script>{}</script><script>{}</script><script>
 (()=>{{const config={config};let stateReader=null;window.__presentationPreviewState=()=>stateReader?stateReader():null;window.presentation=Object.freeze({{initialState:config.initialState,restoredState:null,registerStateReader:reader=>{{stateReader=reader}},registerStateRestorer:()=>{{}},commitState:()=>{{}}}});
 document.addEventListener('DOMContentLoaded',()=>{{
- const label=()=>document.querySelectorAll('[data-source-ref]').forEach(e=>{{const s=config.sources.find(s=>s.source_ref_id===e.getAttribute('data-source-ref'));const t=s?s.label:'来源不可用';if(e.textContent!==t)e.textContent=t;}});
+ const label=()=>document.querySelectorAll('[data-source-ref]').forEach(e=>{{const id=e.getAttribute('data-source-ref');const s=config.sources.find(s=>s.source_ref_id===id);const t=sourceChipLabel(config.sources,id);if(e.textContent!==t)e.textContent=t;const title=s?s.label:'来源不可用';if(e.title!==title)e.title=title;const aria=s?t+'：'+s.label:title;if(e.getAttribute('aria-label')!==aria)e.setAttribute('aria-label',aria);}});
  label();new MutationObserver(label).observe(document.body,{{subtree:true,childList:true,attributes:true}});
  document.addEventListener('click',e=>{{if(e.target.closest('[data-source-ref],a'))e.preventDefault();}},true);
  document.addEventListener('submit',e=>e.preventDefault(),true);
 }});}})();</script>{}"#,
         include_str!("../../../packages/web/src/presentation.css"),
         include_str!("../../../packages/web/src/presentation-media.js"),
+        include_str!("../../../packages/web/src/source-chip.js").replace("export function", "function"),
         html
     )
 }

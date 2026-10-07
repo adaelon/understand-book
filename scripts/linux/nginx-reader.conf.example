@@ -1,4 +1,5 @@
 # Independent port; the existing port 80 site keeps its configuration.
+# Legacy single-reader only. For application accounts use nginx-multi-reader.conf.example.
 # Install as /etc/nginx/conf.d/understand-book-reader.conf after creating
 # /etc/nginx/understand-book-reader.htpasswd (root:nginx, 0640).
 server {

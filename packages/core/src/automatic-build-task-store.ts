@@ -496,6 +496,12 @@ function attemptStates(
       const execution = existsSync(executionPath)
         ? readJson<PersistedAutomaticBuildExecutionIdentity>(executionPath)
         : undefined;
+      // A copied attempt remains owned by its original execution location.
+      // Its physical directory still reserves the attempt number, but not a retry budget or lease.
+      const owner = execution?.target_ref ?? lease?.target_ref;
+      if (owner && path.resolve(owner.workspace_dir) !== path.resolve(target.workspace_dir)) {
+        return { attempt, submit_revision: 0, meaningful: false };
+      }
       const observedAt = execution?.created_at ?? lease?.issued_at;
       if (execution && (!(["automatic_build_execution_identity.v1", "automatic_build_execution_identity.v2"] as string[])
           .includes(execution.version)

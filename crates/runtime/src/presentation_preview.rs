@@ -96,6 +96,10 @@ pub fn preview_environment_name(viewport: PreviewViewport) -> String {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PreviewAction {
+    /// Absolute document reading position in CSS pixels; the browser clamps at the bottom.
+    Scroll {
+        y: u32,
+    },
     Click {
         selector: String,
     },
@@ -167,10 +171,21 @@ pub struct PreviewSceneObservation {
     pub after_capture: PreviewSceneSnapshot,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PreviewScrollPosition {
+    pub x: f64,
+    pub y: f64,
+    pub max_y: f64,
+    pub viewport_width: u32,
+    pub viewport_height: u32,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PreviewObservation {
     /// Zero is initial load; subsequent observations follow each action.
     pub step: usize,
+    pub action: Option<PreviewAction>,
+    pub scroll: PreviewScrollPosition,
     pub dom: Value,
     pub layout: Value,
     pub screenshot_png_base64: String,

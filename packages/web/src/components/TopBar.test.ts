@@ -18,6 +18,25 @@ const props = {
 };
 
 describe("TopBar", () => {
+  it('collapses desktop controls, keeps an expand entry, and follows focus mode', async () => {
+    const wrapper = mount(TopBar, { props });
+    await wrapper.get('.topbar-collapse').trigger('click');
+    expect(wrapper.get('.topbar').classes()).toContain('desktop-collapsed');
+    await wrapper.get('.topbar-expand').trigger('click');
+    expect(wrapper.get('.topbar').classes()).not.toContain('desktop-collapsed');
+    await wrapper.setProps({ focusReading: true });
+    expect(wrapper.get('.topbar').classes()).toContain('desktop-collapsed');
+    await wrapper.setProps({ focusReading: false });
+    expect(wrapper.get('.topbar').classes()).not.toContain('desktop-collapsed');
+  });
+  it('offers an explicit reversible focus action', async () => {
+    const wrapper = mount(TopBar, { props: { ...props, focusAvailable: true } });
+    await wrapper.get('.topbar-focus').trigger('click');
+    expect(wrapper.emitted('toggle-focus')).toHaveLength(1);
+    await wrapper.setProps({ focusReading: true });
+    expect(wrapper.get('.topbar-focus').text()).toBe('退出专注');
+    expect(wrapper.get('.topbar-focus').attributes('aria-pressed')).toBe('true');
+  });
   it("keeps mobile actions closed until requested and closes after an action", async () => {
     const wrapper = mount(TopBar, { props });
     expect(wrapper.get(".topbar").classes()).toContain("mobile-collapsible");

@@ -22,6 +22,7 @@ pub mod experiment;
 pub mod goldset;
 pub mod guided_read_replay;
 pub mod goal;
+pub mod tutor;
 pub mod memory_intent;
 pub mod memory_policy;
 pub mod memory_review;
@@ -34,6 +35,7 @@ pub mod presentation_preview;
 pub mod profile_api;
 pub mod profile_context;
 pub mod provider_stream;
+pub mod request_diagnostics;
 pub mod run_context;
 pub mod run_events;
 pub mod semantic_release;
@@ -2645,6 +2647,8 @@ impl NativeAdapter {
         body["stream"] = serde_json::json!(true);
         body["stream_options"] = serde_json::json!({"include_usage": true});
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
+        let body = std::sync::Arc::new(body);
+        observer.observe(provider_stream::ModelDelta::Request(body.clone()));
         let mut retried = false;
         let resp = loop {
             if let Some(cancellation) = self.cancellation.borrow().as_ref() {
@@ -5408,7 +5412,11 @@ mod tests {
             )
             .unwrap();
             let request = handle.join().unwrap();
-            assert!(request.contains("agent-compaction.generation.v1"));
+            let body: serde_json::Value = serde_json::from_str(request.split_once("\r\n\r\n").unwrap().1).unwrap();
+            assert_eq!(body["messages"][0]["content"], crate::compaction::COMPACTION_GENERATION_PROMPT);
+            let input: serde_json::Value = serde_json::from_str(body["messages"][1]["content"].as_str().unwrap()).unwrap();
+            assert!(input.get("prompt_version").is_none());
+            assert_eq!(checkpoint.prompt_version, crate::compaction::COMPACTION_PROMPT_VERSION);
             assert!(request.contains(r#""response_format":{"type":"json_object"}"#));
             assert!(!request.contains(r#""tools":"#));
             assert!(!adapter.model_runtime_profile().supports_continuation);
@@ -5517,6 +5525,67 @@ mod tests {
         handle.join().unwrap();
         assert_eq!(output["summary"], "different");
         assert_eq!(output["confidence"], 0.8);
+    }
+
+    #[test]
+    fn ex13_compaction_repair_prefix_reaches_native_and_react_wire() {
+        use crate::compaction::{compact_with_adapter, prepare_compaction, CompactionLimits, CompactionPhase};
+        for mode in [ProviderMode::Native, ProviderMode::ReAct] {
+            let raw = vec![Message::user("user requirement ".repeat(1000)), Message {
+                role: Role::Assistant, content: Some("pending work ".repeat(1000)),
+                tool_calls: vec![], tool_call_id: None, provider_continuation: None,
+            }];
+            let prepared = prepare_compaction(CompactionPhase::PreTurn, &raw, &raw, vec![], vec![], vec![], BTreeMap::new()).unwrap();
+            let ids = &prepared.request().required_source_ids;
+            let draft = serde_json::json!({
+                "active_goal":[{"item_id":"item.goal","text":"Continue the pending work","source_item_ids":ids,"evidence_refs":[]}],
+                "progress":[],"decisions":[],"user_constraints":[],"open_obligations":[],
+                "unresolved_ambiguities":[],"critical_facts":[],"critical_examples":[],"next_steps":[],
+                "source_coverage":ids.iter().map(|id| serde_json::json!({"source_item_id":id,"disposition":"compacted","target_item_ids":["item.goal"]})).collect::<Vec<_>>()
+            });
+            let mut invalid = draft.clone();
+            invalid["schema_version"] = serde_json::json!("forbidden");
+            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+            listener.set_nonblocking(true).unwrap();
+            let addr = listener.local_addr().unwrap();
+            let handle = std::thread::spawn(move || {
+                let mut requests = Vec::new();
+                for output in [invalid, draft] {
+                    let mut stream = accept_with_timeout(&listener);
+                    let request = read_http_request(&mut stream);
+                    let body: serde_json::Value = serde_json::from_str(request.split_once("\r\n\r\n").unwrap().1).unwrap();
+                    requests.push(body);
+                    let content = serde_json::json!({"choices":[{"message":{"content":output.to_string()}}]}).to_string();
+                    let response = format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", content.len(), content);
+                    stream.write_all(response.as_bytes()).unwrap();
+                }
+                requests
+            });
+            let config = ProviderConfig { mode, api_key: "test-key".into(), base_url: format!("http://{addr}"), model: "deepseek-flash".into() };
+            let adapter: Box<dyn ModelAdapter> = match mode {
+                ProviderMode::Native => Box::new(NativeAdapter::from_config(config)),
+                ProviderMode::ReAct => Box::new(ReActAdapter::from_config(config)),
+            };
+            let profile = ModelRuntimeCatalog::default().resolve("deepseek-flash", ProviderToolProtocol::Native, None);
+            compact_with_adapter(adapter.as_ref(), &profile, &prepared, CompactionLimits { generation_input_limit_tokens:100_000, target_active_tokens:20_000 }).unwrap();
+            let requests = handle.join().unwrap();
+            assert_eq!(requests[0]["messages"][0], requests[1]["messages"][0]);
+            let initial = requests[0]["messages"][1]["content"].as_str().unwrap();
+            let repair = requests[1]["messages"][1]["content"].as_str().unwrap();
+            assert!(repair.starts_with(initial));
+            assert!(repair[initial.len()..].contains("unknown field `schema_version`"));
+            for request in &requests {
+                assert_eq!(request["messages"].as_array().unwrap().len(), 2);
+                assert_eq!(request["max_tokens"], 65_536);
+                assert_eq!(request["reasoning_effort"], "low");
+                assert!(request.get("tools").is_none());
+            }
+            if let Ok(directory) = std::env::var("EX13_COMPACTION_RECORDING_DIR") {
+                std::fs::create_dir_all(&directory).unwrap();
+                let protocol = match mode { ProviderMode::Native => "native", ProviderMode::ReAct => "react" };
+                std::fs::write(std::path::Path::new(&directory).join(format!("wire-{protocol}.json")), serde_json::to_vec_pretty(&requests).unwrap()).unwrap();
+            }
+        }
     }
 
     #[test]

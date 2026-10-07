@@ -1,6 +1,7 @@
 export type ReaderSurface = "markdown" | "pdf";
 
 export interface ReaderSurfaceIdentity {
+  userId?: string;
   bookId: string;
   sourceFingerprint: string;
 }
@@ -8,7 +9,7 @@ export interface ReaderSurfaceIdentity {
 const PREFIX = "understand-book:reader-surface:v1";
 
 function preferenceKey(identity: ReaderSurfaceIdentity): string {
-  return `${PREFIX}:${encodeURIComponent(identity.bookId)}:${encodeURIComponent(identity.sourceFingerprint)}`;
+  return `${PREFIX}${identity.userId ? `:user:${encodeURIComponent(identity.userId)}` : ""}:${encodeURIComponent(identity.bookId)}:${encodeURIComponent(identity.sourceFingerprint)}`;
 }
 
 export function resolveReaderSurface(

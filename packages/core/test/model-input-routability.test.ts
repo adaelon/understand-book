@@ -33,6 +33,7 @@ function sha256(value: string): string {
 }
 
 const kindByStage: Record<WorkUnitStage, WorkUnitKind> = {
+  formal_objects: "formal_object_set", cognitive_materials: "cognitive_step", teaching_publish: "teaching_source_review",
   pass1: "pass1_window",
   paper_metadata: "metadata_region",
   paper_lexicon: "lexicon_candidate_batch",

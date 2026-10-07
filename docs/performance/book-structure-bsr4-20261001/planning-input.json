@@ -1,0 +1,1489 @@
+{
+  "phase": "plan",
+  "fixed_question": "状态复用如何改变容量、传输和恢复成本",
+  "chapters": [
+    {
+      "unit_lid": "1",
+      "title": "深入理解 AI Infra：量化分析与系统设计",
+      "overview": {
+        "text": "封面标明本书聚焦 AI Infra 的量化分析与系统设计，并署名李博杰。",
+        "evidence_lids": [
+          "1.1",
+          "1.2"
+        ]
+      }
+    },
+    {
+      "unit_lid": "2",
+      "title": "前言",
+      "overview": {
+        "text": "前言说明本书从模型执行与硬件约束出发，以计算、存储、通信和等待的量化估算推导 AI Infra 设计；数据搬移是贯穿芯片、互联与服务的分析线索。随后交代十二章的阅读路径、配套实验和目标读者，建议读者代入自己的任务与机器，测量并修正判断。",
+        "evidence_lids": [
+          "2.2",
+          "2.5.5",
+          "2.7.6",
+          "2.8.2",
+          "2.9.14",
+          "2.10.2"
+        ]
+      }
+    },
+    {
+      "unit_lid": "3",
+      "title": "第 1 章 初识 AI Infra",
+      "overview": {
+        "text": "本章先界定 AI Infra 和生成请求的跨层执行，再建立容量、算力、带宽与延迟的估算框架。以 70B 批处理说明读取与计算下界、KV 容量和吞吐延迟权衡；专用处理器与 SmartNIC 案例凸显卸载后的数据搬移约束。最后按容量、工作量、执行依赖分析性能，并用峰值预测与实测差距定位遗漏开销。",
+        "evidence_lids": [
+          "3.2",
+          "3.4.4.7",
+          "3.5.4.22",
+          "3.6.3.11",
+          "3.6.3.34",
+          "3.6.4.7",
+          "3.7.4.14",
+          "3.7.5.12",
+          "3.10.3"
+        ]
+      }
+    },
+    {
+      "unit_lid": "4",
+      "title": "第 2 章 模型架构",
+      "overview": {
+        "text": "以计算图统一模型的参数、FLOPs、显存状态和访问流量：投影按维度计成本，注意力按有效配对数计成本，KV 缓存避免重算却仍有查询与历史读取。比较 GQA、MLA、压缩与递推注意力、MoE 时，分别核算上下文长度、状态容量、新增计算、活跃权重和读取。再按层与执行阶段累计成本，结合长上下文、并发、推测解码及模型案例，将配置映射为权重、计算和状态以选择结构。",
+        "evidence_lids": [
+          "4.18.5.21",
+          "4.18.6.94",
+          "4.18.7.57",
+          "4.19.4.10",
+          "4.20.3",
+          "4.20.8.6",
+          "4.21.5.16",
+          "4.23.3.19",
+          "4.23.4.4",
+          "4.27.3"
+        ]
+      }
+    },
+    {
+      "unit_lid": "5",
+      "title": "第 3 章 推理与训练负载",
+      "overview": {
+        "text": "以任务完成为单位估算 AI 系统负载：请求到达与长度、prefill/decode、排队和重试决定服务容量与成功任务成本；多轮上下文、缓存位置及 Agent 关键路径影响并行收益。多模态与训练分别计入视觉、去噪、音频、计算和显存开销；规模规律与 MoE 比较须结合推理成本、数据供给及整步计算，最终用统一任务质量和时限比较全生命周期成本。",
+        "evidence_lids": [
+          "5.3",
+          "5.5.2.23",
+          "5.5.3.37",
+          "5.6.2.19",
+          "5.6.5.2",
+          "5.7.3.20",
+          "5.7.4.16",
+          "5.7.5.9",
+          "5.8.2.26",
+          "5.8.2.42",
+          "5.10.2.36",
+          "5.10.3.29",
+          "5.10.4.15",
+          "5.10.4.16"
+        ]
+      }
+    },
+    {
+      "unit_lid": "6",
+      "title": "第 4 章 加速器架构",
+      "overview": {
+        "text": "以运算量、数据搬移、算术强度、容量与功耗分析加速器的真实瓶颈；再将矩阵形状、注意力流水、互联启动开销与多级存储纳入设备时间模型。选型时分别核算 prefill 与 decode，并用实测延迟、服务成本和回本量校正理想下界。",
+        "evidence_lids": [
+          "6.5.3.34",
+          "6.5.3.36",
+          "6.7.3.14",
+          "6.8.5.14",
+          "6.9.5.29",
+          "6.12.4.33",
+          "6.12.5.19",
+          "6.12.6.4",
+          "6.12.7.29"
+        ]
+      }
+    },
+    {
+      "unit_lid": "7",
+      "title": "第 5 章 算子与运行时",
+      "overview": {
+        "text": "以 FFN 矩阵乘为主线，讨论分块、局部复用、归约、融合和在线 Softmax 的实现权衡；再把主机准备、传输、调度与共享资源纳入端到端模型，按完整请求的关键路径检验局部优化。",
+        "evidence_lids": [
+          "7.12",
+          "7.17.5.37",
+          "7.17.7.23",
+          "7.18.5.21",
+          "7.19.6.23",
+          "7.20.3.10",
+          "7.21.4.2",
+          "7.25.5"
+        ]
+      }
+    },
+    {
+      "unit_lid": "8",
+      "title": "第 6 章 超节点",
+      "overview": {
+        "text": "本章以容量、延迟、吞吐和成本约束选择多卡放置与并行切分。数据、张量、序列、流水线和专家并行各有内存、计算、通信及负载取舍；集合通信和集群拓扑决定跨卡关键路径。UB 与远端内存池扩展连接和容量设计，但访问受一致性、带宽和往返时间约束。最后用多会话期限与成本比较 TP 配置，并讨论超节点及 ROM 缩短权重读取后的瓶颈转移。",
+        "evidence_lids": [
+          "8.5.3.14",
+          "8.5.3.31",
+          "8.6.3.2",
+          "8.6.4.28",
+          "8.6.6.23",
+          "8.6.7.20",
+          "8.6.8.7",
+          "8.8.3.26",
+          "8.9.2.20",
+          "8.9.6.4",
+          "8.10.3.25",
+          "8.11.2.13",
+          "8.11.3.7",
+          "8.11.5.26"
+        ]
+      }
+    },
+    {
+      "unit_lid": "9",
+      "title": "第 7 章 数据中心网络",
+      "overview": {
+        "text": "以流量、并发和关键路径分析跨服务器模型切分及训练通信；结合拓扑布局、归约与流水线、RDMA 交接和拥塞控制估算传输与同步代价，最终按整步关键路径、吞吐及恢复开销比较部署方案。",
+        "evidence_lids": [
+          "9.5",
+          "9.10.2.17",
+          "9.11.2.4",
+          "9.13.3.63",
+          "9.14.3.18",
+          "9.14.5.74"
+        ]
+      }
+    },
+    {
+      "unit_lid": "10",
+      "title": "第 8 章 推理优化",
+      "overview": {
+        "text": "本章把在线推理拆为排队、prefill 和 decode，以 TTFT、ITL、吞吐及合格结果衡量服务；先以权重、KV 和缓冲区核算显存，再比较连续批处理、KV 分页与共享、压缩与卸载、推测解码的时间和容量取舍，最终按准入、时限及每个合格结果的成本选择配置。",
+        "evidence_lids": [
+          "10.8.2.5",
+          "10.8.3.14",
+          "10.9.3.8",
+          "10.10.2.4",
+          "10.11.2.3",
+          "10.11.4.11",
+          "10.12.2.2",
+          "10.13.3.11",
+          "10.13.4.45"
+        ]
+      }
+    },
+    {
+      "unit_lid": "11",
+      "title": "第 9 章 分布式推理",
+      "overview": {
+        "text": "以资源时间、到达率和状态交接成本比较副本、PD、AF及共享KV部署。PD受两池与KV链路共同约束；AF与专家分离须核算逐层通信、最慢专家、流水效率及背压。共享KV依靠容量、复用收益和完整checkpoint，路由结合排队、取回与重算，兼顾p99。扩缩容和迁移受启动路径、积压排空及状态增长限制；八卡案例以质量、时限和有效成本选择部署，硬件与前缀命中变化后须重估瓶颈。",
+        "evidence_lids": [
+          "11.4",
+          "11.7.2.28",
+          "11.8.4.36",
+          "11.9.5.53",
+          "11.10.4.23",
+          "11.10.3.25",
+          "11.11.3.18",
+          "11.11.3.49",
+          "11.11.4.2",
+          "11.11.5.9",
+          "11.11.5.35",
+          "11.12.3.2",
+          "11.12.3.21",
+          "11.12.4.3",
+          "11.13.3.14",
+          "11.13.4.4",
+          "11.15.5"
+        ]
+      }
+    },
+    {
+      "unit_lid": "12",
+      "title": "第 10 章 训练系统",
+      "overview": {
+        "text": "从训练期限、计算量与MFU推导卡数和步时预算，以状态生命周期核算峰值显存，权衡分片、重计算与卸载。拆批保持全局token归一化，流水与通信调度兼顾依赖、争用和激活峰值。长期成本计入数据停顿、快照提交及故障重做；RL串联生成、验证、学习和发布，并保持采样概率、恢复版本及路由对齐。用Amdahl定律评价收益，4090案例落实满足30天期限的48卡方案。",
+        "evidence_lids": [
+          "12.14.5.2",
+          "12.14.5.9",
+          "12.9.3.19",
+          "12.10.2.17",
+          "12.10.3.33",
+          "12.10.4.9",
+          "12.11.3.9",
+          "12.11.4.145",
+          "12.11.5.35",
+          "12.12.3.5",
+          "12.12.5.13",
+          "12.12.6.16",
+          "12.13.2",
+          "12.13.5.20",
+          "12.13.5.57",
+          "12.13.6.8",
+          "12.14.4.7",
+          "12.17.4"
+        ]
+      }
+    },
+    {
+      "unit_lid": "13",
+      "title": "第 11 章 资源调度与运行环境",
+      "overview": {
+        "text": "以代码修复任务贯穿模型、工具和环境的系统优化：按串行轮次、驻留与等待计算延迟及容量，合算环境释放、预测准备、调度、缓存和采购成本；以成功且按时完成的任务衡量全部尝试支出。恢复依托持久化结果与完整提交轮次；Amdahl定律和案例揭示局部加速、资源占用与期限之间的权衡。",
+        "evidence_lids": [
+          "13.2",
+          "13.9.2.3",
+          "13.9.3.16",
+          "13.10.4.22",
+          "13.10.5.22",
+          "13.11.5.32",
+          "13.12.3.25",
+          "13.12.5.12",
+          "13.13.3.9",
+          "13.13.3.10",
+          "13.13.2.3",
+          "13.13.2.15",
+          "13.13.4.42",
+          "13.15.2",
+          "13.15.4"
+        ]
+      }
+    },
+    {
+      "unit_lid": "14",
+      "title": "第 12 章 端边云协同",
+      "overview": {
+        "text": "以完整交互的步骤时间、执行依赖和系统等待为框架，核算计算、传输、编解码、准备、同步与恢复成本；用资源下界筛除超期方案，再按质量期限、风险与成本比较端边云部署，并通过固定条件的单因素实验验证。",
+        "evidence_lids": [
+          "14.4",
+          "14.5.2.39",
+          "14.7.6.17",
+          "14.9.3.29",
+          "14.11.2",
+          "14.11.6"
+        ]
+      }
+    }
+  ],
+  "candidate_index": [
+    {
+      "ref": "unit:10:fragment:0007#stop-10-7-budget",
+      "unit_lid": "10",
+      "meaning": "给出由输出间隔与上下文长度确定每轮 token 预算的两步方法。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:fragment:0007#stop-10-7-example",
+      "unit_lid": "10",
+      "meaning": "四条请求在 p=4 时分页容量为 52，未用容量从整段预留的 22 降为 10。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:fragment:0007#stop-10-7-paging",
+      "unit_lid": "10",
+      "meaning": "定义逻辑块、物理块、块表及分散存储时的 KV 寻址方式。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:fragment:0007#stop-10-7-waste",
+      "unit_lid": "10",
+      "meaning": "尾块未用槽位为 p⌈L/p⌉−L，说明分页后的空间浪费如何计算。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:fragment:0008#stop-10-8-blocks",
+      "unit_lid": "10",
+      "meaning": "以 95+4×9=131 算出四分支共享后的物理块数。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:fragment:0008#stop-10-8-cow",
+      "unit_lid": "10",
+      "meaning": "解释分支修改共享尾块前为何要写时复制。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:fragment:0008#stop-10-8-kv",
+      "unit_lid": "10",
+      "meaning": "汇总公共与私有部分，得到整批 KV 容量 6048 MiB。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:fragment:0008#stop-10-8-refcount",
+      "unit_lid": "10",
+      "meaning": "定义共享块引用计数及安全回收条件。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:fragment:0009#stop-10-9-capacity",
+      "unit_lid": "10",
+      "meaning": "给出共享前缀提升并发容量的结论。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:fragment:0009#stop-10-9-contiguous",
+      "unit_lid": "10",
+      "meaning": "解释前缀复用止于首个不同token，并引出提示排序方法。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:fragment:0009#stop-10-9-preemption",
+      "unit_lid": "10",
+      "meaning": "说明抢占以恢复重算换取临时内存。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:fragment:0009#stop-10-9-release",
+      "unit_lid": "10",
+      "meaning": "取消返回后仍须等待已提交操作完成才可安全释放KV块。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:fragment:0009#stop-10-9-reuse",
+      "unit_lid": "10",
+      "meaning": "列出跨请求直接复用前缀KV的状态一致条件。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:fragment:0009#stop-10-9-snapshot",
+      "unit_lid": "10",
+      "meaning": "说明递推快照密度在重算量与存储量间的权衡。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:reduce:004:0000#stop-10-11-expected-value",
+      "unit_lid": "10",
+      "meaning": "以命中概率比较重算与取回成本，再扣除缓存维护成本。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:reduce:004:0000#stop-10-12-2-16",
+      "unit_lid": "10",
+      "meaning": "随机采样按 min(1,p(x)/q(x)) 接受草稿 token。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:reduce:004:0000#stop-10-23-2",
+      "unit_lid": "10",
+      "meaning": "以整批 GPU 时间分摊每个合格结果的成本。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:reduce:004:0000#stop-10-batch-traffic",
+      "unit_lid": "10",
+      "meaning": "批内分摊权重读取，各请求的 KV 读取仍相加。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:reduce:004:0000#stop-10-memory",
+      "unit_lid": "10",
+      "meaning": "建立权重、KV 与运行时缓冲区的显存容量约束。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:reduce:004:0000#stop-10-paging",
+      "unit_lid": "10",
+      "meaning": "块表将逻辑 KV 块映射到分散的物理块。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:reduce:004:0000#stop-10-reserve",
+      "unit_lid": "10",
+      "meaning": "准入时须为后续生成预留 KV 空间。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:reduce:004:0000#stop-admission-turning-point",
+      "unit_lid": "10",
+      "meaning": "完成吞吐饱和后有效吞吐可能下降，因此须限制新请求。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:10:reduce:004:0000#stop-goodput-formula",
+      "unit_lid": "10",
+      "meaning": "有效吞吐只计正确且按时完成的请求。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:fragment:0003#stop-11-8-3-13",
+      "unit_lid": "11",
+      "meaning": "给出 GQA 的 KV 状态容量公式，系数 2 对应 K 与 V。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:fragment:0003#stop-11-8-3-16",
+      "unit_lid": "11",
+      "meaning": "用 A100 到 H20 的整份 KV 交接计算链路传输时间。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:fragment:0003#stop-11-8-3-18",
+      "unit_lid": "11",
+      "meaning": "区分完整状态交接的带宽主导与逐层小传输的固定开销影响。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:fragment:0003#stop-11-8-3-24",
+      "unit_lid": "11",
+      "meaning": "给出紧凑 MLA 以潜变量和位置分支计算状态大小的公式。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:fragment:0003#stop-11-8-3-39",
+      "unit_lid": "11",
+      "meaning": "量化展开 MLA 与紧凑 MLA 的容量差距，并约定后文并列给出两种状态的结果。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:fragment:0004#stop-11-4-demand",
+      "unit_lid": "11",
+      "meaning": "定义每请求两阶段的资源需求 d_P=L_new/r_P 与 d_D=(G-1)/r_D，提供配比的统一计量基础。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:fragment:0004#stop-11-4-gpu",
+      "unit_lid": "11",
+      "meaning": "算例显示 A100 在计算受限的 prefill 上占优，H20 在带宽受限的 decode 上占优。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:fragment:0004#stop-11-4-kv-publish",
+      "unit_lid": "11",
+      "meaning": "交代整份双缓冲、完成标记和源缓冲释放的交接顺序，也说明分块传输的释放时机。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:fragment:0004#stop-11-4-network",
+      "unit_lid": "11",
+      "meaning": "以 GQA、MLA 与 100 GbE 的数值对比说明表示方式可改变网络队列是否持续增长。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:fragment:0021#stop-11-checkpoint",
+      "unit_lid": "11",
+      "meaning": "说明 checkpoint 必须保存继续计算所需的全部状态，并从最后一次完整更新恢复。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:fragment:0021#stop-11-prefix-boundary",
+      "unit_lid": "11",
+      "meaning": "用读入 64 页却仅连续复用 63 页的例子区分读取量与有效复用量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:fragment:0021#stop-11-queue-prefetch",
+      "unit_lid": "11",
+      "meaning": "给出队列感知预取与换出策略，并用命中率对照说明效果。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:fragment:0021#stop-11-recompute",
+      "unit_lid": "11",
+      "meaning": "缺页时无限等待可能比重算更慢，还需在请求完成后处理坏页。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:fragment:0021#stop-11-ssd-budget",
+      "unit_lid": "11",
+      "meaning": "量化 SSD 写入寿命预算，指出长期仅约 3.2% 的新 KV 可写入，需要准入策略。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:reduce:004:0000#11-backlog-drain",
+      "unit_lid": "11",
+      "meaning": "μ>λ时积压排空时间为λT_s/(μ−λ)。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:reduce:004:0000#stop-11-10-3-25",
+      "unit_lid": "11",
+      "meaning": "平均稳定仍需管理突发队列与背压。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:reduce:004:0000#stop-11-15-2",
+      "unit_lid": "11",
+      "meaning": "统一计算与状态放置、交接及服务能力权衡。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:reduce:004:0000#stop-11-27-2",
+      "unit_lid": "11",
+      "meaning": "有效成本按满足质量和时限的任务数计算。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:reduce:004:0000#stop-11-4",
+      "unit_lid": "11",
+      "meaning": "概括四种部署组织方式。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:reduce:004:0000#stop-11-7-2-28",
+      "unit_lid": "11",
+      "meaning": "以λd_r<n_r判断资源容量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:reduce:004:0000#stop-11-8-4-36",
+      "unit_lid": "11",
+      "meaning": "PD吞吐取两池与KV链路能力的最小值。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:reduce:004:0000#stop-11-af-threshold",
+      "unit_lid": "11",
+      "meaning": "比较PD、AF启动临界值与累计交接成本。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:reduce:004:0000#stop-11-route-formula",
+      "unit_lid": "11",
+      "meaning": "取回与排队重叠时首token时间为max(Q,R)+C。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:11:reduce:004:0000#stop-reuse-condition",
+      "unit_lid": "11",
+      "meaning": "保存加k次取回须快于k次重算。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:fragment:0021#stop-12-21-input",
+      "unit_lid": "12",
+      "meaning": "以序列需求和 CPU 进程产能说明传输量小仍可能供数不足。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:fragment:0021#stop-12-21-prefetch",
+      "unit_lid": "12",
+      "meaning": "预取到 108 不代表训练已完成，恢复时从 101 继续以免跳过八批。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:fragment:0021#stop-12-21-reshard",
+      "unit_lid": "12",
+      "meaning": "以奇偶 rank 取旧分片不同半区，展示四路到八路的布局变换。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:fragment:0021#stop-12-21-size",
+      "unit_lid": "12",
+      "meaning": "给出每参数 14 字节、总计约 115 GB 的 checkpoint 状态量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:fragment:0021#stop-12-21-state",
+      "unit_lid": "12",
+      "meaning": "列明继续 Adam 训练所需的优化器、学习率、随机及数据状态。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:fragment:0022#stop-12-22-1",
+      "unit_lid": "12",
+      "meaning": "计算 BF16 权重、FP32 主权重和两项 Adam 状态合计 672 MiB。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:fragment:0022#stop-12-22-2",
+      "unit_lid": "12",
+      "meaning": "说明丢失打包器残留 token 会改变恢复后的序列、注意力关系与标签。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:fragment:0022#stop-12-22-3",
+      "unit_lid": "12",
+      "meaning": "区分训练已继续与异步快照已经可用于恢复两个时刻。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:fragment:0022#stop-12-22-4",
+      "unit_lid": "12",
+      "meaning": "用两种写入速度比较故障时可恢复的进度及重做时长。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:fragment:0022#stop-12-22-5",
+      "unit_lid": "12",
+      "meaning": "元数据未提交前的快照不可用，恢复程序会选上一份完整快照。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:reduce:005:0000#async-checkpoint-commit",
+      "unit_lid": "12",
+      "meaning": "已提交快照才构成恢复点。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:reduce:005:0000#batch-scaling-limit",
+      "unit_lid": "12",
+      "meaning": "扩大batch受噪声尺度限制，固定batch强扩展不受此限。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:reduce:005:0000#scale-card-boundary",
+      "unit_lid": "12",
+      "meaning": "以F=6ND连接规模、效率、期限与卡数。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:reduce:005:0000#stop-12-0032-amdahl",
+      "unit_lid": "12",
+      "meaning": "T'/T=1-f+f/r估算资源替换的总收益。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:reduce:005:0000#stop-12-10-4-9",
+      "unit_lid": "12",
+      "meaning": "T_wait=max(0,V/B-W)判断卸载等待。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:reduce:005:0000#stop-12-11-3-9",
+      "unit_lid": "12",
+      "meaning": "共同token分母与统一更新保持拆批梯度一致。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:reduce:005:0000#stop-12-16-3",
+      "unit_lid": "12",
+      "meaning": "按时间或容量约束选择流水调度。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:reduce:005:0000#stop-12-17-4-design-conclusion",
+      "unit_lid": "12",
+      "meaning": "32卡约34.3天、48卡约24.6天，48卡满足30天期限。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:reduce:005:0000#stop-12-29-coverage",
+      "unit_lid": "12",
+      "meaning": "重要性加权无法恢复截断遗漏的事件。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:reduce:005:0000#stop-12-9-3-19",
+      "unit_lid": "12",
+      "meaning": "按同时驻留量核算显存峰值。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:reduce:005:0000#stop-12-step-budget",
+      "unit_lid": "12",
+      "meaning": "由期限建立端到端步时预算。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:12:reduce:005:0000#stop-checkpoint-optimum",
+      "unit_lid": "12",
+      "meaning": "保存间隔√(2c/λ)平衡保存与故障重做成本。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:fragment:0018#agent-transaction",
+      "unit_lid": "13",
+      "meaning": "整轮提交决策、结果和文件版本，并指出本地提交的外部操作边界。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:fragment:0018#batching-tradeoff",
+      "unit_lid": "13",
+      "meaning": "每10请求提交节省0.72秒，故障最多重做计算增至2秒。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:fragment:0018#cloud-gap-example",
+      "unit_lid": "13",
+      "meaning": "展示本地完整、云端不完整的异步增量保存情形。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:fragment:0018#contiguous-progress",
+      "unit_lid": "13",
+      "meaning": "最后收到第三轮不能证明第二轮已保存，须补齐缺口。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:fragment:0018#durability-semantics",
+      "unit_lid": "13",
+      "meaning": "界定持久性语义，并要求跨日志、文件与数据库核对一致性。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:fragment:0018#log-pruning-boundary",
+      "unit_lid": "13",
+      "meaning": "日志删除与位置恢复必须具备完整轮次状态依据。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:fragment:0019#stop-complete-cost",
+      "unit_lid": "13",
+      "meaning": "给出全部支出除以两种成功任务数的成本指标，明确成本分母口径。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:fragment:0019#stop-failed-cost",
+      "unit_lid": "13",
+      "meaning": "十项任务支出1美元、五项成功的例子展示漏计失败成本会把单位成本低估一半。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:fragment:0019#stop-recovery-deadline",
+      "unit_lid": "13",
+      "meaning": "说明恢复策略的超时成功仍耗费资源，并区分评价期限变化与实际限制重试的效果。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:fragment:0019#stop-retry-expectation",
+      "unit_lid": "13",
+      "meaning": "用路径概率加权累计成本，配合条件节点概率在部署前估算恢复策略支出。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:fragment:0019#stop-state-persistence",
+      "unit_lid": "13",
+      "meaning": "把资源释放条件落实为状态可恢复，并指出保存等待与故障重做必须进入调度成本。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:reduce:004:0000#agent-transaction",
+      "unit_lid": "13",
+      "meaning": "以完整轮次恢复，补齐保存缺口才推进。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:reduce:004:0000#stop-13-0013-cache-condition",
+      "unit_lid": "13",
+      "meaning": "缓存节省须摊回创建溢价。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:reduce:004:0000#stop-13-15-4-deadline",
+      "unit_lid": "13",
+      "meaning": "缩短三轮延迟会增加GPU工作与副本需求。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:reduce:004:0000#stop-13-duration",
+      "unit_lid": "13",
+      "meaning": "三轮耗时30秒，超过24秒期限。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:reduce:004:0000#stop-13-fr23-amdahl",
+      "unit_lid": "13",
+      "meaning": "耗时占比决定局部加速的整体收益。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:reduce:004:0000#stop-13-little-environment",
+      "unit_lid": "13",
+      "meaning": "吞吐乘驻留时间给出平均环境需求。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:reduce:004:0000#stop-13-pause-cost",
+      "unit_lid": "13",
+      "meaning": "释放内存收益须超过转换成本。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:reduce:004:0000#stop-13-preemption-reserve",
+      "unit_lid": "13",
+      "meaning": "保存耗时超过在线等待限度，须预留容量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:reduce:004:0000#stop-complete-cost",
+      "unit_lid": "13",
+      "meaning": "全部尝试支出除以成功或按时成功任务数。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:13:reduce:004:0000#system-card-second-cost",
+      "unit_lid": "13",
+      "meaning": "验证省60卡秒却使系统净增68卡秒。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:14:reduce:005:0000#migration-benefit",
+      "unit_lid": "14",
+      "meaning": "G(N)=NΔt−M判断迁移能否回收准备成本。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:14:reduce:005:0000#stop-14-11-2-three-levels",
+      "unit_lid": "14",
+      "meaning": "按步骤时间、执行依赖和系统等待分析完整交互。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:14:reduce:005:0000#stop-14-7-3-8",
+      "unit_lid": "14",
+      "meaning": "B_useful≤min(B_path,W/R)揭示窗口与RTT约束。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:14:reduce:005:0000#stop-14-8-4-21",
+      "unit_lid": "14",
+      "meaning": "双路径复制收益受共同故障下限约束。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:14:reduce:005:0000#stop-14-fr2-recurrence",
+      "unit_lid": "14",
+      "meaning": "逐块最大值表达输入、处理器及网络出口等待。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:14:reduce:005:0000#stop-14-single-factor-experiment",
+      "unit_lid": "14",
+      "meaning": "固定输入、交替测试并配对等待事件以归因调优收益。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:14:reduce:005:0000#stop-14.11.6-deployment",
+      "unit_lid": "14",
+      "meaning": "部署先满足质量期限，再比较成本、超期风险和恢复重做。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:14:reduce:005:0000#stop-14.9.3.29",
+      "unit_lid": "14",
+      "meaning": "b_min=128/(D−11.6)要求D>11.6，否则无有限可行带宽。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:2:reduce:001:0000#stop-2-1",
+      "unit_lid": "2",
+      "meaning": "从 Agent 应用问题引出训练与推理基础设施。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:2:reduce:001:0000#stop-2-10-8",
+      "unit_lid": "2",
+      "meaning": "概括读者应获得的执行分析、估算、假设验证和调整系统选择能力。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:2:reduce:001:0000#stop-2-2",
+      "unit_lid": "2",
+      "meaning": "提出模型上下文成为新的编程抽象，确立跨层系统视角。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:2:reduce:001:0000#stop-2-4",
+      "unit_lid": "2",
+      "meaning": "明确从资源约束推导设计，并用测量校正估算。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:2:reduce:001:0000#stop-2-reading",
+      "unit_lid": "2",
+      "meaning": "建议先自行估算，再核对输入条件与工作量的漏算或重复计算。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:2:reduce:001:0000#stop-2-structure",
+      "unit_lid": "2",
+      "meaning": "交代全书各部分的顺序和承担的问题。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:2:reduce:001:0000#stop-five-questions",
+      "unit_lid": "2",
+      "meaning": "归纳数据搬移的五个问题：搬什么、搬多少、搬几次、经过哪里、谁必须等待。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:3:reduce:003:0000#stop-3-10-3-performance",
+      "unit_lid": "3",
+      "meaning": "比较峰值下界、预测和实测以定位遗漏开销。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:3:reduce:003:0000#stop-3-10-measurement",
+      "unit_lid": "3",
+      "meaning": "并发提高吞吐，也拉长单请求输出间隔。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:3:reduce:003:0000#stop-3-10-roofline",
+      "unit_lid": "3",
+      "meaning": "以算术强度和算力带宽比判断计算或访存瓶颈。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:3:reduce:003:0000#stop-3-3-3",
+      "unit_lid": "3",
+      "meaning": "局部加速受到未加速部分限制。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:3:reduce:003:0000#stop-3-6-3-34",
+      "unit_lid": "3",
+      "meaning": "理论临界批大小可能超出 KV 状态容量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:3:reduce:003:0000#stop-3-6-capacity",
+      "unit_lid": "3",
+      "meaning": "合计权重、请求状态和工作区以判断能否容纳。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:3:reduce:003:0000#stop-3-7-lower",
+      "unit_lid": "3",
+      "meaning": "充分重叠时，读取和计算耗时取较大值。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:3:reduce:003:0000#stop-3-ai-infra",
+      "unit_lid": "3",
+      "meaning": "界定支撑训练和推理的设备与软件。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:3:reduce:003:0000#stop-3-cross-layer",
+      "unit_lid": "3",
+      "meaning": "模型、运行时和硬件相互约束，须联合判断。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:3:reduce:003:0000#stop-3-generation",
+      "unit_lid": "3",
+      "meaning": "区分输入处理、逐 token 生成和状态复用。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:3:reduce:003:0000#stop-analysis-order",
+      "unit_lid": "3",
+      "meaning": "依次检查容量、运算与读写量、执行依赖。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:3:reduce:003:0000#stop-data-movement",
+      "unit_lid": "3",
+      "meaning": "处理器与网络案例归结为数据搬移对架构的约束。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:fragment:0010#stop-4-cache-limit",
+      "unit_lid": "4",
+      "meaning": "指出缓存省去旧 token 的投影与 FFN 重算，却不省当前查询的注意力计算。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:fragment:0010#stop-4-prefill-decode",
+      "unit_lid": "4",
+      "meaning": "界定两阶段的输入处理方式和逐 token 生成过程。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:fragment:0010#stop-4-state-reuse",
+      "unit_lid": "4",
+      "meaning": "把 KV 缓存明确解释为保存与访问旧状态对重复计算的替代。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:fragment:0011#stop-4-19-3-28",
+      "unit_lid": "4",
+      "meaning": "给出键和值、层数、KV 头数、头维度与元素字节数相乘的容量公式，算出 144 KiB。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:fragment:0011#stop-4-19-3-43",
+      "unit_lid": "4",
+      "meaning": "将每 token 增量落实到 1.125 GiB 的上下文容量，并指出层数、KV 头数和 batch 的影响。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:fragment:0011#stop-4-19-4-3",
+      "unit_lid": "4",
+      "meaning": "将权重、上下文状态和临时数据的存储与复用特性对应到各自的容量和访问分析。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:fragment:0011#stop-4-19-4-7",
+      "unit_lid": "4",
+      "meaning": "说明多行输入共享同一权重矩阵，权重块可在片上存储中供多行连续复用。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:fragment:0015#stop-4-20-comparison",
+      "unit_lid": "4",
+      "meaning": "给出比较机制的维度：表示宽度、条目数量、访问方式及新增工作。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:fragment:0015#stop-4-20-context-state",
+      "unit_lid": "4",
+      "meaning": "定义上下文状态，并区分上下文长度与状态容量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:fragment:0015#stop-4-20-four-heads",
+      "unit_lid": "4",
+      "meaning": "四查询头示例比较 MHA、GQA、MQA 保存四、二、一份 KV；GQA 存储减半，各查询头仍分别评分。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:fragment:0015#stop-4-20-kv-sharing",
+      "unit_lid": "4",
+      "meaning": "说明 KV 共享减少每个上下文 token 保存的键值组数，但不减少 token 数量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:fragment:0016#stop-4-20-5-40",
+      "unit_lid": "4",
+      "meaning": "以 Qwen3-8B 的 32 个查询头、8 个 KV 头和 8192 token 容量展示 GQA 的共享收益。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:fragment:0016#stop-4-20-5-58",
+      "unit_lid": "4",
+      "meaning": "KV 组数减半使键值投影参数和上下文状态容量减半。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:fragment:0016#stop-4-20-5-63",
+      "unit_lid": "4",
+      "meaning": "将 KV 共享联系到基础设施约束与模型设计，并引出 GQA 的质量和速度折中。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:fragment:0016#stop-4-20-6-2",
+      "unit_lid": "4",
+      "meaning": "引入 MLA 的低维潜变量压缩，与 GQA、MQA 减少 KV 组数的路径作对照。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:reduce:004:0000#stop-4-12-peak-traffic",
+      "unit_lid": "4",
+      "meaning": "峰值存活容量与累计访问量应分别核算。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:reduce:004:0000#stop-4-20-context-state",
+      "unit_lid": "4",
+      "meaning": "区分上下文 token 长度与状态字节容量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:reduce:004:0000#stop-4-21-5-16",
+      "unit_lid": "4",
+      "meaning": "MoE 分开计算路由行数对应运算与不同专家对应权重读取。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:reduce:004:0000#stop-4-23-3-19",
+      "unit_lid": "4",
+      "meaning": "按层类别和层数累计模型成本。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:reduce:004:0000#stop-4-23-4-4",
+      "unit_lid": "4",
+      "meaning": "由显存预算与单请求状态估算并发容量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:reduce:004:0000#stop-4-27-3",
+      "unit_lid": "4",
+      "meaning": "把结构配置映射到权重、计算、状态与活跃权重。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:reduce:004:0000#stop-4-9",
+      "unit_lid": "4",
+      "meaning": "计算图提供成本分析框架。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:reduce:004:0000#stop-4-frag2-cost-formula",
+      "unit_lid": "4",
+      "meaning": "投影按 kn 参数和 2mkn 运算计量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:4:reduce:004:0000#stop-4-reduce-1-pairs",
+      "unit_lid": "4",
+      "meaning": "注意力成本取决于有效查询—键配对数。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-1",
+      "unit_lid": "5",
+      "meaning": "相同平均请求量可有不同容量需求。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-10-3-29",
+      "unit_lid": "5",
+      "meaning": "专家投影计算不等于整步训练计算。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-17-retention",
+      "unit_lid": "5",
+      "meaning": "固定保留数下生成量与保留率成反比。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-20-3",
+      "unit_lid": "5",
+      "meaning": "边际损失平衡给出最优连续参数量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-20-4",
+      "unit_lid": "5",
+      "meaning": "固定训练预算最优未计推理成本与数据供给。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-25-comparison",
+      "unit_lid": "5",
+      "meaning": "比较模型须统一质量、时限和完成标准。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-25-lifecycle",
+      "unit_lid": "5",
+      "meaning": "合并前期投入与加权任务成本。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-5-edit-position",
+      "unit_lid": "5",
+      "meaning": "改动位置决定前缀缓存复用范围。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-6-5-2",
+      "unit_lid": "5",
+      "meaning": "依赖关键路径决定任务最早完成时间。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-8-2-6nd",
+      "unit_lid": "5",
+      "meaning": "训练计算以 F_train≈6ND 粗估。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-frag-1-stages",
+      "unit_lid": "5",
+      "meaning": "区分 prefill 与 decode 的瓶颈。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-frag2-success-cost",
+      "unit_lid": "5",
+      "meaning": "将全部尝试消耗计入成功任务成本。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-queue-recurrence",
+      "unit_lid": "5",
+      "meaning": "按窗口计算积压、到达和处理量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-r2-buffer",
+      "unit_lid": "5",
+      "meaning": "到达与播放时长之差为音频缓冲余量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-r2-denoise",
+      "unit_lid": "5",
+      "meaning": "去噪量取决于步数、分支数和单步工作量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:5:reduce:004:0000#stop-5-r2-vision",
+      "unit_lid": "5",
+      "meaning": "由图片尺寸、patch 和合并数估算视觉 token。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:6:reduce:004:0000#6-stop-amdahl",
+      "unit_lid": "6",
+      "meaning": "由可加速部分占比计算整体加速收益。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:6:reduce:004:0000#6-stop-batch",
+      "unit_lid": "6",
+      "meaning": "批量复用权重提高算术强度，但有上限。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:6:reduce:004:0000#6-stop-flops",
+      "unit_lid": "6",
+      "meaning": "用矩阵维度求得 2MKN 次浮点操作。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:6:reduce:004:0000#stop-6-12-6-4",
+      "unit_lid": "6",
+      "meaning": "实测 25.83 ms 与 9.12 ms 读取下界的差距表明总耗时还有其他环节。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:6:reduce:004:0000#stop-6-24-break-even",
+      "unit_lid": "6",
+      "meaning": "V*=αR 给出互联启动时间和传输时间相等的消息规模。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:6:reduce:004:0000#stop-6-39-breakeven",
+      "unit_lid": "6",
+      "meaning": "增量固定投入除以单位输出节省得到专用化回本量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:6:reduce:004:0000#stop-6-7-5-20",
+      "unit_lid": "6",
+      "meaning": "有效带宽同时受接口峰值和在途事务数限制。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:6:reduce:004:0000#stop-6-8-5-14",
+      "unit_lid": "6",
+      "meaning": "矩阵与向量单元直接交接可缩短注意力延迟，继续增加槽位无收益。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:6:reduce:004:0000#stop-6-r3-capacity",
+      "unit_lid": "6",
+      "meaning": "由权重、KV 缓存和工作区估算最大并发请求数。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:6:reduce:004:0000#stop-6-shape",
+      "unit_lid": "6",
+      "meaning": "以真实运算量和补齐执行量之比衡量形状效率。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:6:reduce:004:0000#stop-roofline-bound",
+      "unit_lid": "6",
+      "meaning": "算术强度 I=F/V 导出吞吐上界 min(P,RI)。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:7:reduce:004:0000#stop-7-17-5-37",
+      "unit_lid": "7",
+      "meaning": "大块减少读取，却可能因驻留下降损失有效带宽。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:7:reduce:004:0000#stop-7-17-7-23",
+      "unit_lid": "7",
+      "meaning": "区分切输出维的完整分片与切 K 的部分和汇合。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:7:reduce:004:0000#stop-7-17-7-40",
+      "unit_lid": "7",
+      "meaning": "原子合并顺序不定；固定顺序以额外访存和等待换取可复现结果。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:7:reduce:004:0000#stop-7-18-5-21",
+      "unit_lid": "7",
+      "meaning": "定义在线 Softmax 保留的最大值、指数和与加权和。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:7:reduce:004:0000#stop-7-18-5-56",
+      "unit_lid": "7",
+      "meaning": "给出新块到来时分母和分子状态的递推更新。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:7:reduce:004:0000#stop-7-25-5",
+      "unit_lid": "7",
+      "meaning": "以最终请求关键路径评估局部优化。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:7:reduce:004:0000#stop-7-reduce-29-path",
+      "unit_lid": "7",
+      "meaning": "并行分支的总耗时由依赖图最长路径决定。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:7:reduce:004:0000#stop-7-reduce5-fusion",
+      "unit_lid": "7",
+      "meaning": "重复读较大输入使案例访存从 444 MiB 增至 620 MiB。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:7:reduce:004:0000#stop-7-reduce5-host",
+      "unit_lid": "7",
+      "meaning": "仅缩短加速器计算时总耗时几乎不变，缩短主机准备才显著提速。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:7:reduce:004:0000#stop-7-reduce5-order",
+      "unit_lid": "7",
+      "meaning": "部分和先激活再相加不等于完整求和后激活。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:8:reduce:004:0000#stop-8-coherence",
+      "unit_lid": "8",
+      "meaning": "单边远程访问不会自动提供跨设备缓存一致性。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:8:reduce:004:0000#stop-8-cost",
+      "unit_lid": "8",
+      "meaning": "以总占用成本除以按时完成的会话数比较部署。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:8:reduce:004:0000#stop-8-cut",
+      "unit_lid": "8",
+      "meaning": "由传输数据量和割集带宽给出通信时间下界。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:8:reduce:004:0000#stop-8-hotspot",
+      "unit_lid": "8",
+      "meaning": "最重专家组与权重读取共同决定完成时间。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:8:reduce:004:0000#stop-8-memory-budget",
+      "unit_lid": "8",
+      "meaning": "确定每卡权重、KV、激活与工作区的容量约束。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:8:reduce:004:0000#stop-8-pipeline",
+      "unit_lid": "8",
+      "meaning": "刻画微批流水线的填充、排空和阶段利用率。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:8:reduce:004:0000#stop-8-rom",
+      "unit_lid": "8",
+      "meaning": "权重读取缩短后，集合通信转为单用户速度瓶颈。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:8:reduce:004:0000#stop-8-roofline",
+      "unit_lid": "8",
+      "meaning": "用计算与 HBM 访问时间的较大值估算算子耗时。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:8:reduce:004:0000#stop-8-softmax-merge",
+      "unit_lid": "8",
+      "meaning": "给出长序列注意力局部 softmax 统计量的重标定与合并。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:8:reduce:004:0000#stop-8-tp",
+      "unit_lid": "8",
+      "meaning": "对照 TP8 单会话延迟与多个 TP2 实例的多会话完工时间。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:8:reduce:004:0000#stop-8-window",
+      "unit_lid": "8",
+      "meaning": "解释事务大小、往返时间与在途数对远端读取吞吐的影响。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:9:reduce:004:0000#stop-9-13-5-3",
+      "unit_lid": "9",
+      "meaning": "资源依赖闭环刻画队列与缓冲死锁。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:9:reduce:004:0000#stop-9-18-5",
+      "unit_lid": "9",
+      "meaning": "由带宽、往返时延和消息大小求在途并发下界。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:9:reduce:004:0000#stop-9-21-1",
+      "unit_lid": "9",
+      "meaning": "源与目的缓冲复用依赖不同完成事件。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:9:reduce:004:0000#stop-9-30-1",
+      "unit_lid": "9",
+      "meaning": "区分 PFC 逐跳防溢出与 DCQCN 源头降速。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:9:reduce:004:0000#stop-9-cut",
+      "unit_lid": "9",
+      "meaning": "割集流量与有效带宽给出传输时间下界。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:9:reduce:004:0000#stop-9-floor",
+      "unit_lid": "9",
+      "meaning": "计算缩短后，跨域传输成为强扩展的时间地板。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:9:reduce:004:0000#stop-9-models",
+      "unit_lid": "9",
+      "meaning": "建立流量、并发和关键路径三种通信分析视角。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:9:reduce:004:0000#stop-9-moe",
+      "unit_lid": "9",
+      "meaning": "量化 MoE 路由双向跨界通信量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:9:reduce:004:0000#stop-9-pipeline",
+      "unit_lid": "9",
+      "meaning": "流水线时间与利用率取决于微批数和阶段数。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:9:reduce:004:0000#stop-9-placement-comparison",
+      "unit_lid": "9",
+      "meaning": "比较环布局与分层归约的跨服务器流量。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:9:reduce:004:0000#stop-9-r6-feedback",
+      "unit_lid": "9",
+      "meaning": "剩余缓冲与超额到达速率限定反馈时间。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:9:reduce:004:0000#stop-9-r8-overlap",
+      "unit_lid": "9",
+      "meaning": "计算与通信完成时刻的较大值决定重叠后关键路径。",
+      "conditions": ""
+    },
+    {
+      "ref": "unit:9:reduce:004:0000#stop-9-r9-recovery",
+      "unit_lid": "9",
+      "meaning": "将 checkpoint 与恢复开销纳入有效吞吐。",
+      "conditions": ""
+    }
+  ]
+}

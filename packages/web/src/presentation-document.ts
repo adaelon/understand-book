@@ -2,9 +2,10 @@ import type { PresentationView } from "./generated/PresentationView";
 import commonStyle from "./presentation.css?raw";
 import bridge from "./presentation-bridge.js?raw";
 import mediaLifecycle from "./presentation-media.js?raw";
+import sourceChipScript from "./source-chip.js?raw";
 
 /** Assemble private logical assets into one opaque-origin document; no host URL is exposed. */
-export function presentationDocument(view: PresentationView): string {
+export function presentationDocument(view: PresentationView, channel = crypto.randomUUID()): string {
   const doc = new DOMParser().parseFromString(view.content_files[view.entrypoint] ?? "", "text/html");
   const logicalPath = (path: string) => {
     const base = new URL(view.entrypoint, "https://presentation.invalid/");
@@ -52,8 +53,8 @@ export function presentationDocument(view: PresentationView): string {
   const style = doc.createElement("style"); style.textContent = commonStyle;
   const script = doc.createElement("script");
   // JSON escaping protects the script element, not the generated page from its own code.
-  const data = JSON.stringify({ sources: view.sources, initialState: view.initial_state, restoredState: view.restored_state }).replaceAll("<", "\\u003c");
-  script.textContent = `(${bridge.trim()})(${data});\n${mediaLifecycle}`;
+  const data = JSON.stringify({ channel, sources: view.sources, initialState: view.initial_state, restoredState: view.restored_state }).replaceAll("<", "\\u003c");
+  script.textContent = `${sourceChipScript.replace('export function', 'function')}\n(${bridge.trim()})(${data});\n${mediaLifecycle.replaceAll("\"agent-presentation\"", JSON.stringify(channel))}`;
   doc.head.prepend(policy, style, script);
   doc.documentElement.setAttribute("data-presentation-pending", "");
   return "<!doctype html>" + doc.documentElement.outerHTML;

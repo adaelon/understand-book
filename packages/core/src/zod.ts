@@ -139,6 +139,7 @@ export const LegacySourceManifestZ = z.object({
     kind: z.enum(["markdown", "epub"]),
     path: z.string().min(1),
     truth_file: z.literal("source.txt"),
+    snapshot_path: z.string().min(1).optional(),
     participates_in_lid: z.literal(true),
     citation_anchor: z.literal("lid"),
   }),
@@ -472,6 +473,7 @@ export const AssetManifestZ = z.object({
   version: z.literal("asset_manifest.v1"),
   book_id: z.string().min(1),
   images: z.array(ImageAssetManifestEntryZ),
+  cover: z.object({ stored_path: z.string().min(1), mime: z.string().min(1) }).optional(),
 });
 
 export const MetadataSourceZ = z.enum(["front_matter", "paper_text", "user_supplied", "filename", "external_resolver"]);

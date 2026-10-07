@@ -18,9 +18,49 @@ class FakeVisualViewport extends EventTarget {
 
 afterEach(() => {
   document.documentElement.style.removeProperty(APP_VIEWPORT_HEIGHT_PROPERTY);
+  document.body.replaceChildren();
 });
 
 describe("legacy app viewport height", () => {
+  it('fits a workspace input above the keyboard even with dvh, and restores after keyboard dismissal', () => {
+    const visualViewport = new FakeVisualViewport();
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 669 });
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: visualViewport });
+    visualViewport.height = 669;
+    const input = document.createElement('textarea'); input.dataset.workspaceInput = 'agent'; document.body.append(input);
+    const stop = installAppViewportHeightFallback(window, document, true);
+    try {
+      input.focus();
+      visualViewport.height = 350; visualViewport.offsetTop = 80;
+      visualViewport.dispatchEvent(new Event('resize'));
+      const root = document.documentElement;
+      expect(root.dataset.workspaceKeyboard).toBe('true');
+      expect(root.style.getPropertyValue('--app-input-viewport-height')).toBe('350px');
+      expect(root.style.getPropertyValue('--app-input-viewport-top')).toBe('80px');
+      input.blur(); // Clicking send must not move it away while the keyboard is still visible.
+      visualViewport.dispatchEvent(new Event('scroll'));
+      expect(root.dataset.workspaceKeyboard).toBe('true');
+      visualViewport.height = 669; visualViewport.offsetTop = 0;
+      visualViewport.dispatchEvent(new Event('resize'));
+      expect(root.dataset.workspaceKeyboard).toBeUndefined();
+      expect(root.style.getPropertyValue('--app-input-viewport-height')).toBe('');
+    } finally { stop(); }
+  });
+
+  it('does not treat pinch zoom or an unrelated input as a workspace keyboard', () => {
+    const visualViewport = new FakeVisualViewport();
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 669 });
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: visualViewport });
+    visualViewport.height = 335;
+    const input = document.createElement('textarea'); document.body.append(input); input.focus();
+    const stop = installAppViewportHeightFallback(window, document, true);
+    try {
+      expect(document.documentElement.dataset.workspaceKeyboard).toBeUndefined();
+      input.dataset.workspaceInput = 'agent'; visualViewport.scale = 2;
+      visualViewport.dispatchEvent(new Event('resize'));
+      expect(document.documentElement.dataset.workspaceKeyboard).toBeUndefined();
+    } finally { stop(); }
+  });
   it("leaves dynamic viewport sizing to CSS when dvh is supported", () => {
     expect(resolveLegacyAppViewportHeight({
       supportsDynamicViewport: true,

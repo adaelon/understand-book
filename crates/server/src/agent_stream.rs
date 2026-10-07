@@ -47,6 +47,7 @@ pub struct RunStream {
     buffer: Mutex<Buffer>,
     changed: Condvar,
     byte_limit: usize,
+    epoch: Option<String>,
 }
 impl RunStream {
     pub fn new(descriptor: RunDescriptor) -> Arc<Self> {
@@ -66,6 +67,13 @@ impl RunStream {
         stream
     }
     pub fn from_snapshot(snapshot: RunSnapshot) -> Arc<Self> {
+        Self::with_observation(snapshot, None, EVENT_BYTES)
+    }
+    pub(crate) fn with_observation(
+        snapshot: RunSnapshot,
+        epoch: Option<String>,
+        byte_limit: usize,
+    ) -> Arc<Self> {
         Arc::new(Self {
             start: Instant::now(),
             buffer: Mutex::new(Buffer {
@@ -75,8 +83,88 @@ impl RunStream {
                 bytes: 0,
             }),
             changed: Condvar::new(),
-            byte_limit: EVENT_BYTES,
+            byte_limit,
+            epoch,
         })
+    }
+    pub(crate) fn queued(descriptor: RunDescriptor, boot: &str, byte_limit: usize) -> Arc<Self> {
+        Self::with_observation(
+            RunSnapshot {
+                descriptor,
+                last_seq: 0,
+                execution_state: "queued".into(),
+                persistence_state: "pending".into(),
+                activities: vec![],
+                reader_state: None,
+                effects: vec![],
+                draft: None,
+                final_view: None,
+                error: None,
+            },
+            Some(format!("{boot}-{}", uuid::Uuid::now_v7())),
+            byte_limit,
+        )
+    }
+    pub(crate) fn dispatch_state(&self, state: &str) {
+        self.update(
+            "run.dispatch",
+            |s| s.execution_state = state.into(),
+            |s| json!({"execution_state":s.execution_state}),
+        );
+    }
+    pub(crate) fn started(&self) {
+        self.update(
+            "run.started",
+            |s| s.execution_state = "running".into(),
+            |s| json!(s),
+        );
+    }
+    pub(crate) fn resource_wait(&self, waiting: bool) {
+        self.update(
+            "run.resource",
+            |s| {
+                if matches!(s.execution_state.as_str(), "running" | "waiting_model") {
+                    s.execution_state = if waiting { "waiting_model" } else { "running" }.into();
+                }
+            },
+            |s| json!({"execution_state":s.execution_state}),
+        );
+    }
+    pub(crate) fn cursor(&self, value: Option<&str>) -> Result<Option<u64>, read_tools::ToolError> {
+        let Some(value) = value else {
+            return Ok(None);
+        };
+        let (epoch, sequence) = value
+            .rsplit_once(':')
+            .map(|(e, s)| (Some(e), s))
+            .unwrap_or((None, value));
+        let sequence = sequence.parse::<u64>().map_err(|_| {
+            crate::user_storage_paths::error(
+                "INVALID_EVENT_CURSOR",
+                "validation",
+                "Invalid observation cursor",
+            )
+        })?;
+        Ok(if epoch == self.epoch.as_deref() {
+            Some(sequence)
+        } else {
+            None
+        })
+    }
+    pub(crate) fn event_frame(&self, event: &RunEvent) -> String {
+        let id = self
+            .epoch
+            .as_ref()
+            .map(|e| format!("{e}:{}", event.seq))
+            .unwrap_or_else(|| event.seq.to_string());
+        let mut value = json!(event);
+        if let Some(epoch) = &self.epoch {
+            value["observation_epoch"] = json!(epoch);
+            if event.event_type == "run.snapshot" {
+                value["live_buffer_reset"] = json!(true);
+            }
+        }
+        format!("id: {id}\nevent: {}\ndata: {value}\n\n", event.event_type)
     }
     pub fn source_binding(
         &self,
@@ -120,7 +208,12 @@ impl RunStream {
         payload: impl FnOnce(&RunSnapshot) -> Value,
     ) {
         let mut buffer = self.buffer.lock().unwrap();
-        if kind == "run.cancelling" && buffer.snapshot.execution_state != "running" {
+        if kind == "run.cancelling"
+            && !matches!(
+                buffer.snapshot.execution_state.as_str(),
+                "running" | "waiting_model"
+            )
+        {
             return;
         }
         apply(&mut buffer.snapshot);
@@ -243,16 +336,18 @@ impl RunStream {
     }
 }
 impl RunEventSink for RunStream {
-    fn effect_created(&self, step_id: u32, effect: &runtime::orchestrator::AgentEffect) {
+    fn effect_created(&self, _step_id: u32, effect: &runtime::orchestrator::AgentEffect) {
         self.update(
             "effect.created",
             |s| {
-                let id = format!("{}:{step_id}", s.descriptor.turn_id);
-                if !s.effects.iter().any(|e| e["effect_id"] == id) {
+                let id = runtime::orchestrator::effect_id(effect);
+                if let Some(old) = s.effects.iter_mut().find(|e| e["effect_id"] == id) {
+                    *old = json!({"effect_id":id, "effect":effect});
+                } else {
                     s.effects.push(json!({"effect_id":id, "effect":effect}));
                 }
             },
-            |s| s.effects.last().cloned().unwrap_or(Value::Null),
+            |s| s.effects.iter().find(|e| e["effect_id"] == runtime::orchestrator::effect_id(effect)).cloned().unwrap_or(Value::Null),
         );
     }
     fn source_bindings(&self, bindings: &[runtime::orchestrator::SourceBinding]) {
@@ -296,35 +391,102 @@ impl RunEventSink for RunStream {
     }
 }
 
-pub fn serve(request: tiny_http::Request, stream: Arc<RunStream>, mut after: Option<u64>) {
+pub fn serve(request: tiny_http::Request, stream: Arc<RunStream>, after: Option<u64>) {
+    serve_checked(request, stream, after, None);
+}
+
+pub fn serve_authorized(
+    request: tiny_http::Request,
+    stream: Arc<RunStream>,
+    after: Option<u64>,
+    authorization: crate::authorization::AuthorizedObservation,
+) {
+    serve_checked(request, stream, after, Some(authorization));
+}
+
+fn serve_checked(
+    request: tiny_http::Request,
+    stream: Arc<RunStream>,
+    mut after: Option<u64>,
+    authorization: Option<crate::authorization::AuthorizedObservation>,
+) {
     std::thread::spawn(move || {
+        let descriptor = stream.snapshot().descriptor;
+        let allowed = || {
+            authorization
+                .as_ref()
+                .is_none_or(|permit| permit.allows(&descriptor))
+        };
+        if !allowed() {
+            let _ = request.respond(
+                tiny_http::Response::from_string(
+                    json!({"error_code":"OBJECT_NOT_FOUND","message":"Object is unavailable"})
+                        .to_string(),
+                )
+                .with_status_code(404)
+                .with_header(tiny_http::Header::from_bytes("Cache-Control", "no-store").unwrap())
+                .with_header(
+                    tiny_http::Header::from_bytes("Content-Type", "application/json").unwrap(),
+                ),
+            );
+            return;
+        }
         let mut writer = request.into_writer();
         let result = (|| -> std::io::Result<()> {
-            writer.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nX-Accel-Buffering: no\r\nConnection: close\r\n\r\n")?;
+            let chunked = authorization.is_some();
+            writer.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-store\r\nX-Accel-Buffering: no\r\nConnection: close\r\n")?;
+            if chunked {
+                writer.write_all(b"Transfer-Encoding: chunked\r\n")?;
+            }
+            writer.write_all(b"\r\n")?;
             writer.flush()?;
             loop {
-                let (events, terminal) = stream.read_after(after, Duration::from_secs(10));
+                if !allowed() {
+                    break;
+                }
+                let (events, terminal) = stream.read_after(
+                    after,
+                    if authorization.is_some() {
+                        Duration::from_millis(250)
+                    } else {
+                        Duration::from_secs(10)
+                    },
+                );
+                if !allowed() {
+                    break;
+                }
                 if events.is_empty() {
-                    writer.write_all(b": keepalive\n\n")?;
+                    write_observation(&mut writer, b": keepalive\n\n", chunked)?;
                 }
                 for event in events {
-                    write!(
-                        writer,
-                        "id: {}\nevent: {}\ndata: {}\n\n",
-                        event.seq,
-                        event.event_type,
-                        serde_json::to_string(&event).unwrap()
-                    )?;
+                    let frame = stream.event_frame(&event);
+                    write_observation(&mut writer, frame.as_bytes(), chunked)?;
                     after = Some(event.seq);
                 }
                 writer.flush()?;
                 if terminal {
-                    return Ok(());
+                    break;
                 }
             }
+            if chunked {
+                writer.write_all(b"0\r\n\r\n")?;
+                writer.flush()?;
+            }
+            Ok(())
         })();
         let _ = result; // A disconnected observer never cancels or restarts execution.
     });
+}
+
+fn write_observation(writer: &mut impl Write, bytes: &[u8], chunked: bool) -> std::io::Result<()> {
+    if chunked {
+        write!(writer, "{:x}\r\n", bytes.len())?;
+    }
+    writer.write_all(bytes)?;
+    if chunked {
+        writer.write_all(b"\r\n")?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -446,5 +608,39 @@ mod tests {
         assert_eq!(next.len(), 1);
         assert_eq!(next[0].seq, cursor + 1);
         assert!(stream.buffer.lock().unwrap().bytes <= EVENT_BYTES);
+    }
+    #[test]
+    fn mu6d_epoch_and_overflow_reset_without_mixing_sequence_spaces() {
+        let stream = RunStream::queued(
+            RunDescriptor {
+                book_id: "book".into(),
+                session_id: "chat".into(),
+                turn_id: "turn".into(),
+            },
+            "boot-one",
+            512,
+        );
+        let initial = stream.read_after(None, Duration::ZERO).0.remove(0);
+        let frame = stream.event_frame(&initial);
+        let cursor = frame.lines().next().unwrap().strip_prefix("id: ").unwrap();
+        assert_eq!(stream.cursor(Some(cursor)).unwrap(), Some(0));
+        assert_eq!(stream.cursor(Some("old-boot:0")).unwrap(), None);
+        assert_eq!(stream.cursor(Some("0")).unwrap(), None);
+        assert!(stream.cursor(Some("bad:abc")).is_err());
+        for n in 0..30 {
+            stream.reader_changed(json!({"revision":n,"text":"x".repeat(100)}));
+        }
+        let (events, _) = stream.read_after(Some(0), Duration::ZERO);
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].event_type, "run.snapshot");
+        assert!(stream
+            .event_frame(&events[0])
+            .contains("\"live_buffer_reset\":true"));
+        let sequence = events[0].seq;
+        stream.reader_changed(json!({"revision":31}));
+        let (next, _) = stream.read_after(Some(sequence), Duration::ZERO);
+        assert_eq!(next.len(), 1);
+        assert_eq!(next[0].seq, sequence + 1);
+        assert!(stream.buffer.lock().unwrap().bytes <= 512);
     }
 }

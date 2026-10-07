@@ -61,7 +61,7 @@ ResidentGoal {
   intent: { user_message_refs, interpretation },
   scope_and_constraints,
   requirements: [{ id, description, basis, verification }],
-  working_state: { focus, open_questions, next_move },
+  working_state: { focus, open_questions, next_move, items: [{ id, description, status }] },
   result_refs,
   status,
   last_stop_reason
@@ -73,6 +73,8 @@ result_refs = 既有证据/回答/确切呈现版本/实际操作结果的引用
 ```
 
 `intent.interpretation` 与 `working_state` 是 Agent 判断；工具执行与交付结果是宿主事实。`requirements` 记录有用户依据的要求：用户明确指定网页时，交付网页是条件；用户只要求讲懂时，Agent 选择网页只是可变方法。首版复用已支持的交付类型，不为假想产物建立插件式验收框架。
+
+EX13.3 已扩展工作项：状态为 pending / in_progress / completed，working 更新提供 items 时原子替换，省略保留、空列表清空。进展沿同一 Goal 保存与恢复，所有工作项完成不代替实际交付；合同与验证见 [EX13 第 4 节](切片方案-EX13-Goal工作计划与演示修订上下文.md#4-goal-工作计划的最小合同)与 [EX13.3 记录](performance/presentation-context-ex13/ex13-3/README.md)。
 
 原用户请求在回合预提交时绑定 Goal。主 Agent 在正常决策中解释意图、建立或细化要求；使用轻量 `goal.update` 控制工具更新工作判断，工具在需要任务管理的采样中直接可见，不先进行能力搜索。工具不能写入“已预览”“已交付”或直接标记完成；完成由正常终答路径提出并核对。
 

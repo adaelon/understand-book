@@ -13,9 +13,9 @@ fn diagnostic_state() -> AppState {
     // The shared unit-test fixture appends an uncovered source tail. Natural
     // authoring may search the book, so use a valid complete leaf here.
     let source = "X".repeat(100);
-    state.book = Book::new(base_schema::sample_base(), &source).into();
-    state.reader = Reader::new(&state.book, DEFAULT_RADIUS);
-    std::fs::write(state.book_dir.join("source.txt"), source).unwrap();
+    state.workspace.book = Book::new(base_schema::sample_base(), &source).into();
+    state.workspace.reader = Reader::new(&state.workspace.book, DEFAULT_RADIUS);
+    std::fs::write(state.workspace.book_dir.join("source.txt"), source).unwrap();
     state
 }
 fn copy_revision_store(source: &std::path::Path, target: &std::path::Path) {
@@ -78,7 +78,8 @@ impl ModelAdapter for Ex11RecordingAdapter {
 fn ex11_library_write_read_revision_and_size_contract() {
     let (_temp, mut state, turn) = setup();
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort {
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope,
         port: &app,
         turn_ref: &turn,
         previewed: Default::default(),
@@ -92,7 +93,7 @@ fn ex11_library_write_read_revision_and_size_contract() {
     assert_eq!(written.body["libraries"][0]["version"], "10.7.0");
     let id = written.body["candidate_id"].as_str().unwrap();
     let candidate = app
-        .with_app(|s| s.read_presentation_candidate(&turn.session_id, id))
+        .with_app(|s| s.private_context().read_presentation_candidate(&turn.session_id, id))
         .unwrap();
     let html = &candidate.content.content_files["index.html"];
     assert_eq!(html.matches("data-presentation-library").count(), 1);
@@ -104,7 +105,7 @@ fn ex11_library_write_read_revision_and_size_contract() {
     assert!(!raw.contains(source));
     assert!(!written.body.to_string().contains(source));
     let reference = app
-        .with_app(|s| s.persist_presentation_candidate(&turn.session_id, &turn.turn_id, id))
+        .with_app(|s| s.private_context().persist_presentation_candidate(&turn.session_id, &turn.turn_id, id))
         .unwrap();
     // Link the version to completed history so subsequent reads use the actual ownership path.
     app.with_app(|s| {
@@ -133,7 +134,7 @@ fn ex11_library_write_read_revision_and_size_contract() {
             s,
             &turn,
             &outcome,
-            &s.messages.clone(),
+            &s.workspace.messages.clone(),
             "2026-09-28T04:00:00Z",
         )
         .unwrap();
@@ -151,7 +152,9 @@ fn ex11_library_write_read_revision_and_size_contract() {
         let read = port
             .author_presentation(
                 AuthorRequest::Read {
-                    reference: reference.clone(),
+                    reference: Some(reference.clone()),
+                    candidate_id: None,
+                    length: None,
                     file: file.clone(),
                     offset: 0,
                 },
@@ -169,7 +172,7 @@ fn ex11_library_write_read_revision_and_size_contract() {
         }
     }
     let revision_turn = app.with_app(|s| {
-        let book = s.book.base.book_id.clone();
+        let book = s.workspace.book.base.book_id.clone();
         precommit_agent_turn(
             s,
             &book,
@@ -181,7 +184,8 @@ fn ex11_library_write_read_revision_and_size_contract() {
         )
         .unwrap()
     });
-    let mut port = RuntimeStatePort {
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope,
         port: &app,
         turn_ref: &revision_turn,
         previewed: Default::default(),
@@ -191,7 +195,7 @@ fn ex11_library_write_read_revision_and_size_contract() {
         let revised = port.author_presentation(serde_json::from_value(json!({"operation":"write","title":"revised", "based_on":reference,"libraries":libraries,"html":html,"readable_content":"point"})).unwrap(),&[],&[],&cancel).unwrap();
         let next = app
             .with_app(|s| {
-                s.read_presentation_candidate(
+                s.private_context().read_presentation_candidate(
                     &turn.session_id,
                     revised.body["candidate_id"].as_str().unwrap(),
                 )
@@ -206,7 +210,7 @@ fn ex11_library_write_read_revision_and_size_contract() {
         );
         assert_eq!(next.content.content_files.len(), 1 + 2 * count);
         assert_eq!(
-            app.with_app(|s| s.read_presentation(&turn.session_id, &reference))
+            app.with_app(|s| s.private_context().read_presentation(&turn.session_id, &reference))
                 .unwrap()
                 .content,
             candidate.content
@@ -221,9 +225,10 @@ fn ex11_preflight() {
     let (_temp, mut state, turn) = setup();
     let root = evidence().join("ex11.1");
     std::fs::create_dir_all(&root).unwrap();
-    state.history_path = Some(root.join("history.json"));
+    state.user.history_path = Some(root.join("history.json"));
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
-    let mut port = RuntimeStatePort {
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope,
         port: &app,
         turn_ref: &turn,
         previewed: Default::default(),
@@ -236,6 +241,7 @@ fn ex11_preflight() {
     let written = port
         .author_presentation(
             AuthorRequest::Write {
+                new_object: false,
                 libraries: vec![PresentationLibrary::Konva],
                 based_on: None,
                 title: "拖动点与线段".into(),
@@ -315,19 +321,17 @@ fn ex11_preflight() {
             state,
             &turn,
             &outcome,
-            &state.messages.clone(),
+            &state.workspace.messages.clone(),
             "2026-09-28T04:00:00Z",
         )
         .unwrap();
-        let version = state
-            .read_presentation(&turn.session_id, &reference)
+        let version = state.private_context().read_presentation(&turn.session_id, &reference)
             .unwrap();
         save_json(
             root.join("content.json"),
             &serde_json::to_value(version.content).unwrap(),
         );
-        let response = crate::presentation_api::route(
-            state,
+        let response = crate::presentation_api::route(&state.private_context(),
             &json!({"session_id":turn.session_id,"turn_id":turn.turn_id,"reference":reference})
                 .to_string(),
             false,
@@ -351,7 +355,7 @@ fn ex11_agent_diagnostic() {
     save_json(root.join("input.json"), &input);
     let message = input["message"].as_str().unwrap();
     let mut state = diagnostic_state();
-    state.history_path = Some(root.join("history.json"));
+    state.user.history_path = Some(root.join("history.json"));
     let config = ProviderConfig::from_env().unwrap();
     let model = config.model.clone();
     let method = runtime::agent_prompt::policy_modules_for_tools(&[spec()]).into_iter()
@@ -394,9 +398,9 @@ fn ex11_agent_diagnostic() {
             })
         }) {
             app.with_app(|state| {
-                let version = state.read_presentation(&turn_ref.session_id,&reference).unwrap();
+                let version = state.private_context().read_presentation(&turn_ref.session_id,&reference).unwrap();
                 save_json(root.join("content.json"), &serde_json::to_value(version.content).unwrap());
-                let response = crate::presentation_api::route(state,&json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(),false);
+                let response = crate::presentation_api::route(&state.private_context(),&json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(),false);
                 std::fs::write(root.join("view.json"),response.body).unwrap();
             });
         }
@@ -411,12 +415,12 @@ fn ex11_agent_revision() {
     let root = base.join(std::env::var("EX11_REVISION_NAME").unwrap_or_else(|_| "revision".into()));
     std::fs::create_dir(&root).unwrap();
     let mut state = diagnostic_state();
-    state.history_path = Some(base.join("history.json"));
-    state.agent_history = load_agent_history(&state.history_path).unwrap();
+    state.user.history_path = Some(base.join("history.json"));
+    state.user.agent_history = load_agent_history(&state.user.history_path).unwrap();
     std::fs::copy(base.join("history.json"), root.join("history-before.json")).unwrap();
     // Keep the original run immutable; continuation history belongs to this revision.
     copy_revision_store(&base.join("history.presentations"), &root.join("history.presentations"));
-    state.history_path = Some(root.join("history.json"));
+    state.user.history_path = Some(root.join("history.json"));
     let view: Value =
         serde_json::from_str(&std::fs::read_to_string(std::path::PathBuf::from(std::env::var("EX11_REFERENCE_DIR").unwrap_or_else(|_| base.to_string_lossy().into_owned())).join("view.json")).unwrap()).unwrap();
     let message = format!("请修订已交付页面 {}：先读取页面与 libraries/konva-10.7.0.min.js 的托管元数据，再把标题加上‘（修订）’，保留交互与布局。实际调用 write(based_on) 并完成三视口预览和交付。",view["reference"]);
@@ -467,9 +471,9 @@ fn ex11_agent_revision() {
         })
         .expect("revision was not delivered; inspect retained evidence");
     app.with_app(|s| {
-        let version = s.read_presentation(&turn_ref.session_id,&reference).unwrap();
+        let version = s.private_context().read_presentation(&turn_ref.session_id,&reference).unwrap();
         save_json(root.join("content.json"),&serde_json::to_value(&version.content).unwrap());
-        let response = crate::presentation_api::route(s,&json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(),false);
+        let response = crate::presentation_api::route(&s.private_context(),&json!({"session_id":turn_ref.session_id,"turn_id":turn_ref.turn_id,"reference":reference}).to_string(),false);
         std::fs::write(root.join("view.json"),response.body).unwrap();
         // Library presence is audited against the original artifact. A transfer
         // sample may legitimately use SVG rather than the EX11.2 Konva fixture.

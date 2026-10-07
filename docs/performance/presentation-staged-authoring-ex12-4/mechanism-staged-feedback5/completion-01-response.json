@@ -1,0 +1,2595 @@
+{
+  "duration_ms": 136374,
+  "error": null,
+  "response": {
+    "active_goal": [
+      {
+        "evidence_refs": [
+          {
+            "end_lid": "3.6",
+            "kind": "lid_range",
+            "start_lid": "3.6"
+          }
+        ],
+        "item_id": "item.goal.revise",
+        "source_item_ids": [
+          "source.1.fnv1a64-7e214e5f396f09ff",
+          "source.53.fnv1a64-d35bafd6642f2a43",
+          "source.64.fnv1a64-e60d7d5227a2a311",
+          "source.66.fnv1a64-fb04123c6247f683",
+          "source.127.fnv1a64-27c79849f8e03a06"
+        ],
+        "text": "Revise the already-delivered interactive HTML presentation for book section 1.3 (用几个数字估算一次模型执行) in place: finish the section scope (练习 1-3, 练习 1-4, 1.3.4), correct the '更早转向受计算限制' claim, improve the parameter↔result linkage at narrow viewports, and complete a full-document review before delivering."
+      }
+    ],
+    "critical_examples": [
+      {
+        "evidence_refs": [
+          {
+            "end_lid": "3.6",
+            "kind": "lid_range",
+            "start_lid": "3.6"
+          }
+        ],
+        "item_id": "item.critical_example.example1_1",
+        "source_item_ids": [
+          "source.64.fnv1a64-e60d7d5227a2a311",
+          "source.177.fnv1a64-0f0dec49b5fb2af0"
+        ],
+        "text": "例题 1-1 asks whether a DeepSeek-R1-Distill-Llama-70B on one H100 SXM can generate a new token within 10 ms, first at 1 byte per parameter, then comparing compute doubling, bandwidth doubling and intra-batch weight reuse."
+      }
+    ],
+    "critical_facts": [
+      {
+        "evidence_refs": [
+          {
+            "end_lid": "3.6",
+            "kind": "lid_range",
+            "start_lid": "3.6"
+          },
+          {
+            "end_lid": "3.6.1",
+            "kind": "lid_range",
+            "start_lid": "3.6.1"
+          }
+        ],
+        "item_id": "item.fact.estimate",
+        "source_item_ids": [
+          "source.64.fnv1a64-e60d7d5227a2a311",
+          "source.75.fnv1a64-298893cd8151e0d3",
+          "source.177.fnv1a64-0f0dec49b5fb2af0"
+        ],
+        "text": "例题 1-1 estimation conditions: N≈70×10⁹ parameters at 1 byte per parameter → R_W=M_W≈70 GB; F≈2N≈140 GFLOPs per step; capacity stated as 73.73 GB including quant data; all weights are re-read each step."
+      },
+      {
+        "evidence_refs": [
+          {
+            "end_lid": "3.6",
+            "kind": "lid_range",
+            "start_lid": "3.6"
+          }
+        ],
+        "item_id": "item.fact.two_bounds",
+        "source_item_ids": [
+          "source.75.fnv1a64-298893cd8151e0d3",
+          "source.177.fnv1a64-0f0dec49b5fb2af0"
+        ],
+        "text": "Single-request time lower bounds: weight read 70 GB ÷ 3350 GB/s ≈ 20.90 ms; matrix compute 140 GFLOPs ÷ 989400 GFLOP/s ≈ 0.1415 ms; the read bound is about 148× the compute bound."
+      },
+      {
+        "evidence_refs": [
+          {
+            "end_lid": "3.6",
+            "kind": "lid_range",
+            "start_lid": "3.6"
+          }
+        ],
+        "item_id": "item.fact.interventions",
+        "source_item_ids": [
+          "source.75.fnv1a64-298893cd8151e0d3",
+          "source.177.fnv1a64-0f0dec49b5fb2af0"
+        ],
+        "text": "Intervention comparison: doubling compute gives 0.1415→0.0707 ms while the read bound stays 20.90 ms; doubling HBM bandwidth or halving weight volume lowers the read bound to ≈10.45 ms."
+      },
+      {
+        "evidence_refs": [
+          {
+            "end_lid": "3.6",
+            "kind": "lid_range",
+            "start_lid": "3.6"
+          }
+        ],
+        "item_id": "item.fact.batch",
+        "source_item_ids": [
+          "source.75.fnv1a64-298893cd8151e0d3",
+          "source.177.fnv1a64-0f0dec49b5fb2af0"
+        ],
+        "text": "Batch reuse: B=8 requests share one 70 GB read while compute grows ≈8× (≈1.13 ms); per-output amortized read ≈2.61 ms; throughput 47.9→383 token/s; the per-output amortization is a batch time divided by output count, not single-request latency."
+      },
+      {
+        "evidence_refs": [
+          {
+            "end_lid": "3.6",
+            "kind": "lid_range",
+            "start_lid": "3.6"
+          }
+        ],
+        "item_id": "item.fact.turnpoint",
+        "source_item_ids": [
+          "source.75.fnv1a64-298893cd8151e0d3",
+          "source.177.fnv1a64-0f0dec49b5fb2af0"
+        ],
+        "text": "Turnpoint B*=b_WΠ/(2β)≈147.7; beyond ~148, batch time grows approximately proportionally; the turnpoint compares only matrix compute and weight read and ignores KV capacity (only ~6.27 GB free after 73.73 GB of weights, not enough for 148 requests' KV)."
+      },
+      {
+        "evidence_refs": [
+          {
+            "end_lid": "3.6",
+            "kind": "lid_range",
+            "start_lid": "3.6"
+          }
+        ],
+        "item_id": "item.fact.arithmetic_intensity",
+        "source_item_ids": [
+          "source.75.fnv1a64-298893cd8151e0d3",
+          "source.177.fnv1a64-0f0dec49b5fb2af0"
+        ],
+        "text": "Arithmetic intensity I=F/R_W=2B/b_W (FLOP per byte read) is compared with the machine balance Π/β; below it the read time dominates, above it the compute time dominates."
+      },
+      {
+        "evidence_refs": [
+          {
+            "end_lid": "3.6",
+            "kind": "lid_range",
+            "start_lid": "3.6"
+          }
+        ],
+        "item_id": "item.fact.measured",
+        "source_item_ids": [
+          "source.75.fnv1a64-298893cd8151e0d3",
+          "source.177.fnv1a64-0f0dec49b5fb2af0"
+        ],
+        "text": "Measurements: 1→64 requests raise batch throughput ≈31× while single-request output interval grows 26.5→40.5 ms; setup is Qwen3-8B BF16 on RTX PRO 6000 Blackwell Workstation Edition (96 GB, 1.792 TB/s, 503.8 TFLOP/s dense BF16)."
+      },
+      {
+        "evidence_refs": [
+          {
+            "end_lid": "3.6.3.51",
+            "kind": "lid_range",
+            "start_lid": "3.6.3.51"
+          }
+        ],
+        "item_id": "item.fact.exercise13",
+        "source_item_ids": [
+          "source.164.fnv1a64-824b32a33861fa18",
+          "source.166.fnv1a64-98d877f75d3444f8",
+          "source.167.fnv1a64-7d241a4961fc835c",
+          "source.177.fnv1a64-0f0dec49b5fb2af0"
+        ],
+        "text": "练习 1-3 requires: with effective bandwidth 70% and effective compute 50%, compute batch lower bounds, per-output amortized time and ideal throughput for B=1/16/64, judge the 10 ms per-request-per-step target, repeat with weight read halved at unchanged compute, find the B* where compute and read times are equal, and explain why smaller per-output amortized time does not shorten single-request step latency."
+      },
+      {
+        "evidence_refs": [
+          {
+            "end_lid": "3.6.4.17",
+            "kind": "lid_range",
+            "start_lid": "3.6.4.17"
+          }
+        ],
+        "item_id": "item.fact.exercise14",
+        "source_item_ids": [
+          "source.165.fnv1a64-28586a540c2f3439",
+          "source.177.fnv1a64-0f0dec49b5fb2af0"
+        ],
+        "text": "练习 1-4 requires: from the four measured concurrency levels in figures 1-13/1-14 compute throughput ratios and TPOT growth, state the ideal prediction if only the shared weight read limits growth, offer two explanations distinguishable by measurement, and design a measurement varying only context length while holding model, output length and timing points fixed."
+      },
+      {
+        "evidence_refs": [
+          {
+            "end_lid": "3.6.5.1",
+            "kind": "lid_range",
+            "start_lid": "3.6.5.1"
+          }
+        ],
+        "item_id": "item.fact.134",
+        "source_item_ids": [
+          "source.177.fnv1a64-0f0dec49b5fb2af0",
+          "source.202.fnv1a64-12cd8a930f6114d5",
+          "source.204.fnv1a64-02eb038480c04e12",
+          "source.205.fnv1a64-972931380abccc16",
+          "source.206.fnv1a64-7543ccc0c53fd12f",
+          "source.207.fnv1a64-4a5df51d5e1c6be7",
+          "source.208.fnv1a64-6f3879ca7d09704e"
+        ],
+        "text": "1.3.4: by 1.792 TB/s a decode step reading weights and old KV needs at least 8.62 ms, yet batch=1 measured 26.5 ms (MBU 33%); the gap has two sources — model missing terms (lower bound rises, fix the model) or implementation overhead (host Python/driver/PCIe, removable); closing per-step logging gives 12.1 ms and accelerator-event timing gives 10.7 ms, ~20% above the bound; the check order is first model, then implementation."
+      },
+      {
+        "evidence_refs": [],
+        "item_id": "item.fact.claim_correction",
+        "source_item_ids": [
+          "source.127.fnv1a64-27c79849f8e03a06",
+          "source.177.fnv1a64-0f0dec49b5fb2af0",
+          "source.237.fnv1a64-19ec4c28d03aacea"
+        ],
+        "text": "Corrected claim: adding per-request state read (R_W+B·R_state,1)/β and compute B·F₁/Π both grow with B; if R_state,1/β ≥ F₁/Π there is no positive crossing, otherwise the crossing B* is larger than when state is ignored (pushed later); only adding attention-like compute to the compute term can move it earlier, and both terms added must be compared numerically."
+      },
+      {
+        "evidence_refs": [],
+        "item_id": "item.fact.revision_numbers",
+        "source_item_ids": [
+          "source.237.fnv1a64-19ec4c28d03aacea"
+        ],
+        "text": "Delivered revision's live numbers for 练习 1-3 defaults: read bound 70 GB ÷ 2.345 TB/s ≈ 29.85 ms (independent of B); B=1/16/64 batch bounds all 29.85 ms, none meeting 10 ms; per-output 29.85/1.87/0.47 ms; ideal throughput 33.5/536/2144 token/s; B*≈105.5; with the read volume halved the bound is ≈14.93 ms and at B=64 compute (18.11 ms) overtakes the read."
+      }
+    ],
+    "decisions": [
+      {
+        "evidence_refs": [],
+        "item_id": "item.decision.review_mode",
+        "source_item_ids": [
+          "source.127.fnv1a64-27c79849f8e03a06",
+          "source.210.fnv1a64-0d027c053819c5d8"
+        ],
+        "text": "Entered full-document review (presentation.author prepare/review), keeping the existing framework and the user feedback as task context."
+      },
+      {
+        "evidence_refs": [],
+        "item_id": "item.decision.keep_same_work",
+        "source_item_ids": [
+          "source.127.fnv1a64-27c79849f8e03a06"
+        ],
+        "text": "Continued editing the same delivered work (presentation-1790919265999499300-6, revision 1) instead of sampling a new presentation."
+      }
+    ],
+    "next_steps": [
+      {
+        "evidence_refs": [],
+        "item_id": "item.next_step.delivered",
+        "source_item_ids": [
+          "source.235.fnv1a64-009a337f6906df74",
+          "source.237.fnv1a64-19ec4c28d03aacea"
+        ],
+        "text": "The revision was delivered on the same work (replacing revision 1); no further action is required unless the user asks about the two remaining notes (exercise 1-4 figure values and the chart label spacing)."
+      }
+    ],
+    "open_obligations": [
+      {
+        "evidence_refs": [],
+        "item_id": "item.obligation.exercise14_data",
+        "source_item_ids": [
+          "source.237.fnv1a64-19ec4c28d03aacea"
+        ],
+        "text": "The other two measured levels for 练习 1-4 are not given in the text; they must be read off figures 1-13/1-14 — the page teaches the method without inventing numbers."
+      },
+      {
+        "evidence_refs": [],
+        "item_id": "item.obligation.chart_label",
+        "source_item_ids": [
+          "source.237.fnv1a64-19ec4c28d03aacea"
+        ],
+        "text": "The chart's top-left '毫秒' label sits very close to the top tick; labels were offset but remain crowded (the unit is also given in the caption)."
+      }
+    ],
+    "progress": [
+      {
+        "evidence_refs": [
+          {
+            "end_lid": "3.6",
+            "kind": "lid_range",
+            "start_lid": "3.6"
+          },
+          {
+            "end_lid": "3.6.3",
+            "kind": "lid_range",
+            "start_lid": "3.6.3"
+          },
+          {
+            "end_lid": "3.6.4",
+            "kind": "lid_range",
+            "start_lid": "3.6.4"
+          },
+          {
+            "end_lid": "3.6.5.2",
+            "kind": "lid_range",
+            "start_lid": "3.6.5.2"
+          }
+        ],
+        "item_id": "item.progress.section_read",
+        "source_item_ids": [
+          "source.3.fnv1a64-4cd727ee12f8705f",
+          "source.7.fnv1a64-d2374b024731c38d",
+          "source.8.fnv1a64-3937c2cceb8f737a",
+          "source.59.fnv1a64-f5fd467d92d4df72",
+          "source.62.fnv1a64-4efd418ff844f3e2",
+          "source.135.fnv1a64-96546f2c857edfeb",
+          "source.136.fnv1a64-52953f5b758fe428",
+          "source.148.fnv1a64-83ad61ccfaf04b79",
+          "source.149.fnv1a64-97b75f2ca4cd64f2",
+          "source.163.fnv1a64-e4c6aa6221c10691",
+          "source.169.fnv1a64-b7f3ad2dffc44496",
+          "source.170.fnv1a64-64a4d3e5562f72c8",
+          "source.172.fnv1a64-a8e74d1af018240a",
+          "source.173.fnv1a64-21c94aebed3e73e9",
+          "source.174.fnv1a64-3d07dc149768e2b7",
+          "source.175.fnv1a64-1da9a5189ad59a16",
+          "source.176.fnv1a64-11b03bba3d3801b3"
+        ],
+        "text": "Book section 3.6 and its subsections were read via book.text; accepted evidence covers LIDs 3.6, 3.6.1, 3.6.2, 3.6.2.2, 3.6.3, 3.6.3.51, 3.6.4, 3.6.4.17, 3.6.5.1, 3.6.5.2."
+      },
+      {
+        "evidence_refs": [
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_4809e659f1949707"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_39dceb5c41071c4e"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_06e868b57a0e35a7"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_e92b08e68fa3c989"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_752273ad9369a34a"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_940ee59a8798f28b"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_12c98e4619893958"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_e6d93fba327147fa"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_b9aaa99b53331311"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_9e5af27d1c59b46f"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_5cf927092cec1aa5"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_15d9c8d36857dbc1"
+          }
+        ],
+        "item_id": "item.progress.quotes_p1",
+        "source_item_ids": [
+          "source.9.fnv1a64-3a7c2265c365f22b",
+          "source.10.fnv1a64-aadc2306a516139f",
+          "source.11.fnv1a64-1a03e4ab8fb4143f",
+          "source.12.fnv1a64-62468d277c5d17c7",
+          "source.13.fnv1a64-3a81051a7617399d",
+          "source.14.fnv1a64-22f9053b48856796",
+          "source.15.fnv1a64-c0e0ee91206408e9",
+          "source.16.fnv1a64-ac9acd98168e48c3",
+          "source.17.fnv1a64-1a74aa0a5532fb54",
+          "source.18.fnv1a64-0184551b71a29a95",
+          "source.19.fnv1a64-976f6b202292ac8f",
+          "source.20.fnv1a64-c0e2e10f8a94ddbc",
+          "source.21.fnv1a64-1d40afbead2db131",
+          "source.22.fnv1a64-8243fa84dd6a2635"
+        ],
+        "text": "Passages of section 1.3 were bound for citation through source.present calls and their receipts."
+      },
+      {
+        "evidence_refs": [
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_ca74db768683aba3"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_b9240799f2a44359"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_58baa6337578efbc"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_06e867b57a0e33f4"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_5b06036ad0510adc"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_bf6bc66c3a065c3d"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_4809e459f19493a1"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_0dd0d8c23743cf45"
+          }
+        ],
+        "item_id": "item.progress.quotes_exercises",
+        "source_item_ids": [
+          "source.64.fnv1a64-e60d7d5227a2a311",
+          "source.67.fnv1a64-be300c33b544d0b8",
+          "source.68.fnv1a64-126347a4d2f776b6",
+          "source.69.fnv1a64-0a676a032428dd9d",
+          "source.70.fnv1a64-1630f227691b87b2",
+          "source.71.fnv1a64-c2736701ec7245c5",
+          "source.72.fnv1a64-eb71a13a5400b56c",
+          "source.73.fnv1a64-ed61e323033d1fc1",
+          "source.74.fnv1a64-d93a1f4388d47778"
+        ],
+        "text": "例题 1-1 and exercise-adjacent passages were bound via source.present; a goal.update recorded beginner-oriented requirements for the reworked page."
+      },
+      {
+        "evidence_refs": [
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_39dce45c41071069"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_e92b0ee68fa3d3bb"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_fcfef5910747430e"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_d56771fb61d43fdb"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_b45b1163b66c4fce"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_aff2dcee5fafb94f"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_c6cba1d7cf828799"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_440864def1e30716"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_471019e425ce99f8"
+          }
+        ],
+        "item_id": "item.progress.quotes_p2",
+        "source_item_ids": [
+          "source.75.fnv1a64-298893cd8151e0d3",
+          "source.76.fnv1a64-89bdb563d0a6dcdb",
+          "source.77.fnv1a64-3d58a06f4bb02d88",
+          "source.78.fnv1a64-5d5b78839e3e1b08",
+          "source.79.fnv1a64-cb51a0477cd46f8d",
+          "source.80.fnv1a64-a443904259bf44fe",
+          "source.81.fnv1a64-c3ebdbc9eb5cac84",
+          "source.82.fnv1a64-3570589ab9f8bb0d",
+          "source.83.fnv1a64-3051df4b65e8faf3",
+          "source.84.fnv1a64-8996b9b4053e694d"
+        ],
+        "text": "Further passage batches from section 1.3 were bound via source.present and its receipts."
+      },
+      {
+        "evidence_refs": [
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_ca74db768683aba3"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_eb023a967ed1007d"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_7e451376d673620d"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_af01060eac20bf2b"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_bd25cac2a54d6984"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_73c796087d112605"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_0dd0d7c23743cd92"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_96fa1d5fda2ed221"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_b03c5878a8c1374c"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_32a0b2003c76ac05"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_a82e7ae322d09f89"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_1587dd6ff0ac82c8"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_e52ffed3a61a01e1"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_b45b1263b66c5181"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_3e58b86d0cc23182"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_499737afec9580ca"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_b7294d720f0a3a83"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_aff2d8ee5fafb283"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_429335a1a10eeab4"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_440870def1e31b7a"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_d773018df26e183e"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_04bf41e7183fc452"
+          }
+        ],
+        "item_id": "item.progress.quotes_p3",
+        "source_item_ids": [
+          "source.177.fnv1a64-0f0dec49b5fb2af0",
+          "source.178.fnv1a64-8fcef580472c683d",
+          "source.179.fnv1a64-7c4e58fd936c7f70",
+          "source.180.fnv1a64-1d338b6e26ec638f",
+          "source.181.fnv1a64-28aec76cdb9370b4",
+          "source.182.fnv1a64-8c7b20fb0ebe0746",
+          "source.183.fnv1a64-fe29e125e3ad82e8",
+          "source.184.fnv1a64-68afd6a55a479c9d",
+          "source.185.fnv1a64-5a78869964282924",
+          "source.186.fnv1a64-d42637f089cc882f",
+          "source.188.fnv1a64-5daa53fe3e2069cd",
+          "source.189.fnv1a64-11f03cbbe9c4dcf8",
+          "source.190.fnv1a64-a9db15cc9a44ad58",
+          "source.191.fnv1a64-fdaed7c858f655f7",
+          "source.192.fnv1a64-abb83883cdf35d0c",
+          "source.193.fnv1a64-7f0569f7d6b5399f",
+          "source.194.fnv1a64-641698876c0794b0",
+          "source.195.fnv1a64-1b5ac3fbef053ff0",
+          "source.196.fnv1a64-c19e4796abb8a20c",
+          "source.197.fnv1a64-e911a85fed8a6f71",
+          "source.198.fnv1a64-4622487b8d1c9f18",
+          "source.199.fnv1a64-e5847e9f6e576427",
+          "source.200.fnv1a64-7b0c368d79686a71"
+        ],
+        "text": "A large batch of 1.3 passages (example, time bounds, interventions, batch reuse, turnpoint, arithmetic intensity, measured throughput, exercises 1-3/1-4, 1.3.4) was bound via source.present and its receipts."
+      },
+      {
+        "evidence_refs": [
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_e4119fe9e20bde4b"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_78023dcbba39aedf"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_e4e1de6b8c6fd754"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_d4be18bbf8a42ea4"
+          },
+          {
+            "kind": "source",
+            "source_ref_id": "source_ref_ebd6ff729376a131"
+          }
+        ],
+        "item_id": "item.progress.quotes_p4",
+        "source_item_ids": [
+          "source.202.fnv1a64-12cd8a930f6114d5",
+          "source.204.fnv1a64-02eb038480c04e12",
+          "source.205.fnv1a64-972931380abccc16",
+          "source.206.fnv1a64-7543ccc0c53fd12f",
+          "source.207.fnv1a64-4a5df51d5e1c6be7",
+          "source.208.fnv1a64-6f3879ca7d09704e"
+        ],
+        "text": "Additional 1.3.4 passages (TPOT definition, eager-mode setup, measured gap and its two sources) were bound via source.present and its receipts."
+      },
+      {
+        "evidence_refs": [],
+        "item_id": "item.progress.v1_page",
+        "source_item_ids": [
+          "source.23.fnv1a64-87fdcba4a05c4316",
+          "source.24.fnv1a64-383daefa06de6139",
+          "source.25.fnv1a64-df0820eb9d32cd4f",
+          "source.26.fnv1a64-a7ad006e2236d028",
+          "source.27.fnv1a64-5584fe5e89184b1a",
+          "source.28.fnv1a64-c65ec389d648c872",
+          "source.29.fnv1a64-91273089b368959f",
+          "source.30.fnv1a64-7c19dbfcc5940582",
+          "source.31.fnv1a64-0ebb5af9aeea06eb",
+          "source.32.fnv1a64-aacf4027f8e8df62",
+          "source.33.fnv1a64-661922103957a7ed",
+          "source.34.fnv1a64-3ef5d5bdb1b9991f",
+          "source.35.fnv1a64-62697001815d9ef4",
+          "source.36.fnv1a64-a54f4c4ee6a0832d",
+          "source.37.fnv1a64-64018f93b05ac1bc",
+          "source.38.fnv1a64-1c96e0ea6638e071",
+          "source.39.fnv1a64-40651208f4073ad7",
+          "source.40.fnv1a64-27c959c890fff075",
+          "source.41.fnv1a64-dcfb408d33ef9998",
+          "source.42.fnv1a64-1e3de94615b026fa",
+          "source.43.fnv1a64-b2ff16bc26b7b2af",
+          "source.44.fnv1a64-3d574a737b8dea49",
+          "source.45.fnv1a64-07a058cfbe32a5f5",
+          "source.46.fnv1a64-6aeaf65c07d22760",
+          "source.47.fnv1a64-0e2598289388050f",
+          "source.48.fnv1a64-1d0a6aa9323faef3",
+          "source.49.fnv1a64-f22b1a187b2bb585",
+          "source.50.fnv1a64-0d0ae2ec492c51e4",
+          "source.51.fnv1a64-49f6222f2cbb6166",
+          "source.52.fnv1a64-407a83aa1cb63d78"
+        ],
+        "text": "A first interactive presentation for 1.3 ('读取还是计算卡住了一步生成') was authored, previewed through several failed attempts, patched and delivered."
+      },
+      {
+        "evidence_refs": [],
+        "item_id": "item.progress.v2_page",
+        "source_item_ids": [
+          "source.85.fnv1a64-cc4f6bdcb5700139",
+          "source.86.fnv1a64-6ce36d050436d15e",
+          "source.87.fnv1a64-15192365eb6ce61c",
+          "source.88.fnv1a64-958f388f908e3e71",
+          "source.89.fnv1a64-4d12f1b5af9358cc",
+          "source.90.fnv1a64-b7485a77abefc435",
+          "source.91.fnv1a64-004a3c616d4c7a1a",
+          "source.92.fnv1a64-27aca1bc8f20754e",
+          "source.93.fnv1a64-eaa7469dc3be44b9",
+          "source.94.fnv1a64-587a67794177dab1",
+          "source.95.fnv1a64-edcd4a0475b6b83f",
+          "source.96.fnv1a64-8549996c35620b53",
+          "source.97.fnv1a64-020c7da415374fb9",
+          "source.98.fnv1a64-cf9d7176966bbbdf",
+          "source.99.fnv1a64-da2df159bca094a8",
+          "source.100.fnv1a64-7e7e90f6790f4152",
+          "source.101.fnv1a64-ac39f42635ac7e92",
+          "source.102.fnv1a64-89ab17e09bdbd492",
+          "source.103.fnv1a64-9c2aea918c19e032",
+          "source.104.fnv1a64-f3969888d6e66d09",
+          "source.105.fnv1a64-432b7dc7012304d7",
+          "source.106.fnv1a64-9f6a241b3c5bae48",
+          "source.107.fnv1a64-2e35a9436e48ef93",
+          "source.108.fnv1a64-63387a06924d4b3c",
+          "source.109.fnv1a64-6ff88f1bbe93087f",
+          "source.110.fnv1a64-0316d0624ef731fb",
+          "source.111.fnv1a64-54a30c175afef665",
+          "source.112.fnv1a64-bc02b95986151de1",
+          "source.113.fnv1a64-650f7cac4e513f2c",
+          "source.114.fnv1a64-739b5910206a7c6d",
+          "source.115.fnv1a64-7fc0b29edb20e73a",
+          "source.116.fnv1a64-f74016ac201ba25a",
+          "source.117.fnv1a64-492d23ddc01d79d8",
+          "source.118.fnv1a64-1469e61f7ea99fa6",
+          "source.119.fnv1a64-b3d42aa63c10dc33",
+          "source.120.fnv1a64-35be615bce33412d",
+          "source.121.fnv1a64-73f765f68d5c2711",
+          "source.122.fnv1a64-bfaa3309870ce7d8",
+          "source.123.fnv1a64-5be1c6c454c28ec8",
+          "source.124.fnv1a64-8156766914bc097c",
+          "source.125.fnv1a64-bc9f9d5fa1828792",
+          "source.126.fnv1a64-68dc98b3bf135457"
+        ],
+        "text": "After feedback that the first version assumed too much background, a beginner-oriented second version of the same page was authored, previewed, patched and delivered."
+      },
+      {
+        "evidence_refs": [],
+        "item_id": "item.progress.exploration1",
+        "source_item_ids": [
+          "source.2.fnv1a64-a39a02d9caee5f2a",
+          "source.4.fnv1a64-a3f1a024b8226e7f",
+          "source.5.fnv1a64-f20bc1755be44fb4",
+          "source.6.fnv1a64-919b169a4bac56bb",
+          "source.54.fnv1a64-607b0666ee1ae8e2",
+          "source.55.fnv1a64-125ca9715d46733b",
+          "source.56.fnv1a64-d53201fc5e0ee2c0",
+          "source.57.fnv1a64-00c17f16de434ef3",
+          "source.58.fnv1a64-98679099682be71f",
+          "source.60.fnv1a64-60cdabcbbd09913c",
+          "source.61.fnv1a64-b515e93904a28018",
+          "source.63.fnv1a64-5077ebcff90fd6e7"
+        ],
+        "text": "Initial exploration used book.text, book.context, book.structure and tool.search to locate section 1.3 and its subsections."
+      },
+      {
+        "evidence_refs": [],
+        "item_id": "item.progress.exploration2",
+        "source_item_ids": [
+          "source.128.fnv1a64-afff2183a6b2b1f2",
+          "source.129.fnv1a64-9c30920f4650f311",
+          "source.130.fnv1a64-5b401c3a34eb6cb8",
+          "source.131.fnv1a64-33d005f6ebf4b352",
+          "source.133.fnv1a64-e477ca4c928e61b8",
+          "source.134.fnv1a64-a39293fbfe10ec53",
+          "source.137.fnv1a64-f955bda070d86b47",
+          "source.139.fnv1a64-4169d6760ef4cea0",
+          "source.140.fnv1a64-997e48d52757b759",
+          "source.141.fnv1a64-b461e19a1e46ebe2",
+          "source.142.fnv1a64-97e8bc8d06e1bfa8",
+          "source.143.fnv1a64-aead29b041c49327",
+          "source.144.fnv1a64-be7c9321b8a0b6cd",
+          "source.145.fnv1a64-1ea2e6ad40384daf",
+          "source.146.fnv1a64-200cf2a20bc3555a",
+          "source.147.fnv1a64-9928c04770fcf9c5",
+          "source.150.fnv1a64-3b3747ffb5d5c873",
+          "source.151.fnv1a64-9b4698f4a3bac159",
+          "source.152.fnv1a64-4e81909420f24827",
+          "source.153.fnv1a64-f58c87794ce5a914",
+          "source.154.fnv1a64-8e4c4625ef20056a",
+          "source.155.fnv1a64-b9f2268e334611a1",
+          "source.156.fnv1a64-66abb3cd6783312d",
+          "source.157.fnv1a64-3d8ffdea92f0c979",
+          "source.158.fnv1a64-bf9058aaa3cec609",
+          "source.159.fnv1a64-1bfa29651a906690",
+          "source.160.fnv1a64-3b351fcf238cf239",
+          "source.161.fnv1a64-b96760cbe4d7e39e",
+          "source.162.fnv1a64-f039817fa8dad80b",
+          "source.168.fnv1a64-80e1241c11dad9dc",
+          "source.171.fnv1a64-d957166803343819"
+        ],
+        "text": "Further searches (练习 1-3, 练习 1-4, 1.3.4, 有效带宽, 实现开销, 模型漏项, 只改变上下文长度) plus context/text reads and synthesize calls gathered the remaining material; the earlier presentation read failed with TOOL_NOT_EXPOSED and a LID_PROVENANCE_REQUIRED error occurred for 3.6.5.2."
+      },
+      {
+        "evidence_refs": [],
+        "item_id": "item.progress.revision_page",
+        "source_item_ids": [
+          "source.209.fnv1a64-b43268d6255748c8",
+          "source.210.fnv1a64-0d027c053819c5d8",
+          "source.211.fnv1a64-96e6b48ec3de4ce7",
+          "source.212.fnv1a64-96b9a0ef931cc124",
+          "source.213.fnv1a64-a2f14e0740039b41",
+          "source.214.fnv1a64-90c93497a942ff38",
+          "source.215.fnv1a64-e1cfa90c51d15a54",
+          "source.216.fnv1a64-0e81dc2d7b7b463b",
+          "source.217.fnv1a64-b6a604cd90a891bd",
+          "source.218.fnv1a64-4b2d760d51ef1166",
+          "source.219.fnv1a64-385c7549037f9268",
+          "source.220.fnv1a64-760e392dbe0c876e",
+          "source.221.fnv1a64-e46e59e267602734",
+          "source.222.fnv1a64-5fbf750f1340bb38",
+          "source.223.fnv1a64-37555f58441b2b0e",
+          "source.224.fnv1a64-0964e8c5d69c027e",
+          "source.225.fnv1a64-0e12c7e015d07ab7",
+          "source.226.fnv1a64-4f7f50c9584b5d5d",
+          "source.227.fnv1a64-551a114b585681ee",
+          "source.228.fnv1a64-1822bdb9748ed3b6",
+          "source.229.fnv1a64-653a3d901be082a3",
+          "source.230.fnv1a64-2c7a5ff6027eb039",
+          "source.231.fnv1a64-ffe4d61e5e664be4",
+          "source.232.fnv1a64-794b7b57cc200137",
+          "source.233.fnv1a64-99ff83ad4da78c02",
+          "source.234.fnv1a64-25be5ceadbd42313",
+          "source.235.fnv1a64-009a337f6906df74",
+          "source.236.fnv1a64-3a097e8d66d79ef1",
+          "source.237.fnv1a64-19ec4c28d03aacea"
+        ],
+        "text": "The revision was prepared, written and delivered on the same work: content extended to 练习 1-3, 练习 1-4 and 1.3.4, the ②-5 claim corrected, and the 320px parameter↔result linkage reworked; previews and screenshots were checked at 320×420, 640×240 and 960×720."
+      }
+    ],
+    "source_coverage": [
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.1.fnv1a64-7e214e5f396f09ff",
+        "target_item_ids": [
+          "item.goal.revise"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.2.fnv1a64-a39a02d9caee5f2a",
+        "target_item_ids": [
+          "item.progress.exploration1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.3.fnv1a64-4cd727ee12f8705f",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.4.fnv1a64-a3f1a024b8226e7f",
+        "target_item_ids": [
+          "item.progress.exploration1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.5.fnv1a64-f20bc1755be44fb4",
+        "target_item_ids": [
+          "item.progress.exploration1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.6.fnv1a64-919b169a4bac56bb",
+        "target_item_ids": [
+          "item.progress.exploration1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.7.fnv1a64-d2374b024731c38d",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.8.fnv1a64-3937c2cceb8f737a",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.9.fnv1a64-3a7c2265c365f22b",
+        "target_item_ids": [
+          "item.progress.quotes_p1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.10.fnv1a64-aadc2306a516139f",
+        "target_item_ids": [
+          "item.progress.quotes_p1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.11.fnv1a64-1a03e4ab8fb4143f",
+        "target_item_ids": [
+          "item.progress.quotes_p1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.12.fnv1a64-62468d277c5d17c7",
+        "target_item_ids": [
+          "item.progress.quotes_p1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.13.fnv1a64-3a81051a7617399d",
+        "target_item_ids": [
+          "item.progress.quotes_p1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.14.fnv1a64-22f9053b48856796",
+        "target_item_ids": [
+          "item.progress.quotes_p1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.15.fnv1a64-c0e0ee91206408e9",
+        "target_item_ids": [
+          "item.progress.quotes_p1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.16.fnv1a64-ac9acd98168e48c3",
+        "target_item_ids": [
+          "item.progress.quotes_p1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.17.fnv1a64-1a74aa0a5532fb54",
+        "target_item_ids": [
+          "item.progress.quotes_p1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.18.fnv1a64-0184551b71a29a95",
+        "target_item_ids": [
+          "item.progress.quotes_p1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.19.fnv1a64-976f6b202292ac8f",
+        "target_item_ids": [
+          "item.progress.quotes_p1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.20.fnv1a64-c0e2e10f8a94ddbc",
+        "target_item_ids": [
+          "item.progress.quotes_p1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.21.fnv1a64-1d40afbead2db131",
+        "target_item_ids": [
+          "item.progress.quotes_p1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.22.fnv1a64-8243fa84dd6a2635",
+        "target_item_ids": [
+          "item.progress.quotes_p1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.23.fnv1a64-87fdcba4a05c4316",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.24.fnv1a64-383daefa06de6139",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.25.fnv1a64-df0820eb9d32cd4f",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.26.fnv1a64-a7ad006e2236d028",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.27.fnv1a64-5584fe5e89184b1a",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.28.fnv1a64-c65ec389d648c872",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.29.fnv1a64-91273089b368959f",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.30.fnv1a64-7c19dbfcc5940582",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.31.fnv1a64-0ebb5af9aeea06eb",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.32.fnv1a64-aacf4027f8e8df62",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.33.fnv1a64-661922103957a7ed",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.34.fnv1a64-3ef5d5bdb1b9991f",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.35.fnv1a64-62697001815d9ef4",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.36.fnv1a64-a54f4c4ee6a0832d",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.37.fnv1a64-64018f93b05ac1bc",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.38.fnv1a64-1c96e0ea6638e071",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.39.fnv1a64-40651208f4073ad7",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.40.fnv1a64-27c959c890fff075",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.41.fnv1a64-dcfb408d33ef9998",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.42.fnv1a64-1e3de94615b026fa",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.43.fnv1a64-b2ff16bc26b7b2af",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.44.fnv1a64-3d574a737b8dea49",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.45.fnv1a64-07a058cfbe32a5f5",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.46.fnv1a64-6aeaf65c07d22760",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.47.fnv1a64-0e2598289388050f",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.48.fnv1a64-1d0a6aa9323faef3",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.49.fnv1a64-f22b1a187b2bb585",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.50.fnv1a64-0d0ae2ec492c51e4",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.51.fnv1a64-49f6222f2cbb6166",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.52.fnv1a64-407a83aa1cb63d78",
+        "target_item_ids": [
+          "item.progress.v1_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.53.fnv1a64-d35bafd6642f2a43",
+        "target_item_ids": [
+          "item.goal.revise",
+          "item.constraint.beginner"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.54.fnv1a64-607b0666ee1ae8e2",
+        "target_item_ids": [
+          "item.progress.exploration1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.55.fnv1a64-125ca9715d46733b",
+        "target_item_ids": [
+          "item.progress.exploration1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.56.fnv1a64-d53201fc5e0ee2c0",
+        "target_item_ids": [
+          "item.progress.exploration1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.57.fnv1a64-00c17f16de434ef3",
+        "target_item_ids": [
+          "item.progress.exploration1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.58.fnv1a64-98679099682be71f",
+        "target_item_ids": [
+          "item.progress.exploration1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.59.fnv1a64-f5fd467d92d4df72",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.60.fnv1a64-60cdabcbbd09913c",
+        "target_item_ids": [
+          "item.progress.exploration1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.61.fnv1a64-b515e93904a28018",
+        "target_item_ids": [
+          "item.progress.exploration1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.62.fnv1a64-4efd418ff844f3e2",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.63.fnv1a64-5077ebcff90fd6e7",
+        "target_item_ids": [
+          "item.progress.exploration1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.64.fnv1a64-e60d7d5227a2a311",
+        "target_item_ids": [
+          "item.goal.revise",
+          "item.progress.quotes_exercises",
+          "item.fact.estimate",
+          "item.critical_example.example1_1"
+        ]
+      },
+      {
+        "disposition": "non_task",
+        "reason": "status_only",
+        "source_item_id": "source.65.fnv1a64-c8dc823282eaa642",
+        "target_item_ids": []
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.66.fnv1a64-fb04123c6247f683",
+        "target_item_ids": [
+          "item.goal.revise"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.67.fnv1a64-be300c33b544d0b8",
+        "target_item_ids": [
+          "item.progress.quotes_exercises"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.68.fnv1a64-126347a4d2f776b6",
+        "target_item_ids": [
+          "item.progress.quotes_exercises"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.69.fnv1a64-0a676a032428dd9d",
+        "target_item_ids": [
+          "item.progress.quotes_exercises"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.70.fnv1a64-1630f227691b87b2",
+        "target_item_ids": [
+          "item.progress.quotes_exercises"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.71.fnv1a64-c2736701ec7245c5",
+        "target_item_ids": [
+          "item.progress.quotes_exercises"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.72.fnv1a64-eb71a13a5400b56c",
+        "target_item_ids": [
+          "item.progress.quotes_exercises"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.73.fnv1a64-ed61e323033d1fc1",
+        "target_item_ids": [
+          "item.progress.quotes_exercises"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.74.fnv1a64-d93a1f4388d47778",
+        "target_item_ids": [
+          "item.progress.quotes_exercises"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.75.fnv1a64-298893cd8151e0d3",
+        "target_item_ids": [
+          "item.progress.quotes_p2",
+          "item.fact.estimate",
+          "item.fact.two_bounds",
+          "item.fact.interventions",
+          "item.fact.batch",
+          "item.fact.turnpoint",
+          "item.fact.arithmetic_intensity",
+          "item.fact.measured"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.76.fnv1a64-89bdb563d0a6dcdb",
+        "target_item_ids": [
+          "item.progress.quotes_p2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.77.fnv1a64-3d58a06f4bb02d88",
+        "target_item_ids": [
+          "item.progress.quotes_p2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.78.fnv1a64-5d5b78839e3e1b08",
+        "target_item_ids": [
+          "item.progress.quotes_p2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.79.fnv1a64-cb51a0477cd46f8d",
+        "target_item_ids": [
+          "item.progress.quotes_p2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.80.fnv1a64-a443904259bf44fe",
+        "target_item_ids": [
+          "item.progress.quotes_p2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.81.fnv1a64-c3ebdbc9eb5cac84",
+        "target_item_ids": [
+          "item.progress.quotes_p2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.82.fnv1a64-3570589ab9f8bb0d",
+        "target_item_ids": [
+          "item.progress.quotes_p2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.83.fnv1a64-3051df4b65e8faf3",
+        "target_item_ids": [
+          "item.progress.quotes_p2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.84.fnv1a64-8996b9b4053e694d",
+        "target_item_ids": [
+          "item.progress.quotes_p2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.85.fnv1a64-cc4f6bdcb5700139",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.86.fnv1a64-6ce36d050436d15e",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.87.fnv1a64-15192365eb6ce61c",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.88.fnv1a64-958f388f908e3e71",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.89.fnv1a64-4d12f1b5af9358cc",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.90.fnv1a64-b7485a77abefc435",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.91.fnv1a64-004a3c616d4c7a1a",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.92.fnv1a64-27aca1bc8f20754e",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.93.fnv1a64-eaa7469dc3be44b9",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.94.fnv1a64-587a67794177dab1",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.95.fnv1a64-edcd4a0475b6b83f",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.96.fnv1a64-8549996c35620b53",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.97.fnv1a64-020c7da415374fb9",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.98.fnv1a64-cf9d7176966bbbdf",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.99.fnv1a64-da2df159bca094a8",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.100.fnv1a64-7e7e90f6790f4152",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.101.fnv1a64-ac39f42635ac7e92",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.102.fnv1a64-89ab17e09bdbd492",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.103.fnv1a64-9c2aea918c19e032",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.104.fnv1a64-f3969888d6e66d09",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.105.fnv1a64-432b7dc7012304d7",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.106.fnv1a64-9f6a241b3c5bae48",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.107.fnv1a64-2e35a9436e48ef93",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.108.fnv1a64-63387a06924d4b3c",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.109.fnv1a64-6ff88f1bbe93087f",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.110.fnv1a64-0316d0624ef731fb",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.111.fnv1a64-54a30c175afef665",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.112.fnv1a64-bc02b95986151de1",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.113.fnv1a64-650f7cac4e513f2c",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.114.fnv1a64-739b5910206a7c6d",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.115.fnv1a64-7fc0b29edb20e73a",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.116.fnv1a64-f74016ac201ba25a",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.117.fnv1a64-492d23ddc01d79d8",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.118.fnv1a64-1469e61f7ea99fa6",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.119.fnv1a64-b3d42aa63c10dc33",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.120.fnv1a64-35be615bce33412d",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.121.fnv1a64-73f765f68d5c2711",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.122.fnv1a64-bfaa3309870ce7d8",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.123.fnv1a64-5be1c6c454c28ec8",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.124.fnv1a64-8156766914bc097c",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.125.fnv1a64-bc9f9d5fa1828792",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.126.fnv1a64-68dc98b3bf135457",
+        "target_item_ids": [
+          "item.progress.v2_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.127.fnv1a64-27c79849f8e03a06",
+        "target_item_ids": [
+          "item.goal.revise",
+          "item.fact.claim_correction",
+          "item.constraint.beginner",
+          "item.constraint.editing_existing",
+          "item.constraint.scope_expansion",
+          "item.constraint.correct_claim",
+          "item.constraint.narrow_viewport",
+          "item.constraint.preserve_basis",
+          "item.constraint.verify_string_read",
+          "item.decision.review_mode",
+          "item.decision.keep_same_work"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.128.fnv1a64-afff2183a6b2b1f2",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.129.fnv1a64-9c30920f4650f311",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.130.fnv1a64-5b401c3a34eb6cb8",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.131.fnv1a64-33d005f6ebf4b352",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "non_task",
+        "reason": "status_only",
+        "source_item_id": "source.132.fnv1a64-5f198b3ce699ee63",
+        "target_item_ids": []
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.133.fnv1a64-e477ca4c928e61b8",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.134.fnv1a64-a39293fbfe10ec53",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.135.fnv1a64-96546f2c857edfeb",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.136.fnv1a64-52953f5b758fe428",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.137.fnv1a64-f955bda070d86b47",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "non_task",
+        "reason": "status_only",
+        "source_item_id": "source.138.fnv1a64-89a2547b84ea4d12",
+        "target_item_ids": []
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.139.fnv1a64-4169d6760ef4cea0",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.140.fnv1a64-997e48d52757b759",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.141.fnv1a64-b461e19a1e46ebe2",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.142.fnv1a64-97e8bc8d06e1bfa8",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.143.fnv1a64-aead29b041c49327",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.144.fnv1a64-be7c9321b8a0b6cd",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.145.fnv1a64-1ea2e6ad40384daf",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.146.fnv1a64-200cf2a20bc3555a",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.147.fnv1a64-9928c04770fcf9c5",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.148.fnv1a64-83ad61ccfaf04b79",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.149.fnv1a64-97b75f2ca4cd64f2",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.150.fnv1a64-3b3747ffb5d5c873",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.151.fnv1a64-9b4698f4a3bac159",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.152.fnv1a64-4e81909420f24827",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.153.fnv1a64-f58c87794ce5a914",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.154.fnv1a64-8e4c4625ef20056a",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.155.fnv1a64-b9f2268e334611a1",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.156.fnv1a64-66abb3cd6783312d",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.157.fnv1a64-3d8ffdea92f0c979",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.158.fnv1a64-bf9058aaa3cec609",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.159.fnv1a64-1bfa29651a906690",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.160.fnv1a64-3b351fcf238cf239",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.161.fnv1a64-b96760cbe4d7e39e",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.162.fnv1a64-f039817fa8dad80b",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.163.fnv1a64-e4c6aa6221c10691",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.164.fnv1a64-824b32a33861fa18",
+        "target_item_ids": [
+          "item.fact.exercise13"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.165.fnv1a64-28586a540c2f3439",
+        "target_item_ids": [
+          "item.fact.exercise14"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.166.fnv1a64-98d877f75d3444f8",
+        "target_item_ids": [
+          "item.fact.exercise13"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.167.fnv1a64-7d241a4961fc835c",
+        "target_item_ids": [
+          "item.fact.exercise13"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.168.fnv1a64-80e1241c11dad9dc",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.169.fnv1a64-b7f3ad2dffc44496",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.170.fnv1a64-64a4d3e5562f72c8",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.171.fnv1a64-d957166803343819",
+        "target_item_ids": [
+          "item.progress.exploration2"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.172.fnv1a64-a8e74d1af018240a",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.173.fnv1a64-21c94aebed3e73e9",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.174.fnv1a64-3d07dc149768e2b7",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.175.fnv1a64-1da9a5189ad59a16",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.176.fnv1a64-11b03bba3d3801b3",
+        "target_item_ids": [
+          "item.progress.section_read"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.177.fnv1a64-0f0dec49b5fb2af0",
+        "target_item_ids": [
+          "item.progress.quotes_p3",
+          "item.fact.estimate",
+          "item.fact.two_bounds",
+          "item.fact.interventions",
+          "item.fact.batch",
+          "item.fact.turnpoint",
+          "item.fact.arithmetic_intensity",
+          "item.fact.measured",
+          "item.fact.exercise13",
+          "item.fact.exercise14",
+          "item.fact.134",
+          "item.fact.claim_correction",
+          "item.critical_example.example1_1"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.178.fnv1a64-8fcef580472c683d",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.179.fnv1a64-7c4e58fd936c7f70",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.180.fnv1a64-1d338b6e26ec638f",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.181.fnv1a64-28aec76cdb9370b4",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.182.fnv1a64-8c7b20fb0ebe0746",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.183.fnv1a64-fe29e125e3ad82e8",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.184.fnv1a64-68afd6a55a479c9d",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.185.fnv1a64-5a78869964282924",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.186.fnv1a64-d42637f089cc882f",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "non_task",
+        "reason": "status_only",
+        "source_item_id": "source.187.fnv1a64-2cafad4a5fab8801",
+        "target_item_ids": []
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.188.fnv1a64-5daa53fe3e2069cd",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.189.fnv1a64-11f03cbbe9c4dcf8",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.190.fnv1a64-a9db15cc9a44ad58",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.191.fnv1a64-fdaed7c858f655f7",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.192.fnv1a64-abb83883cdf35d0c",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.193.fnv1a64-7f0569f7d6b5399f",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.194.fnv1a64-641698876c0794b0",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.195.fnv1a64-1b5ac3fbef053ff0",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.196.fnv1a64-c19e4796abb8a20c",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.197.fnv1a64-e911a85fed8a6f71",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.198.fnv1a64-4622487b8d1c9f18",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.199.fnv1a64-e5847e9f6e576427",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.200.fnv1a64-7b0c368d79686a71",
+        "target_item_ids": [
+          "item.progress.quotes_p3"
+        ]
+      },
+      {
+        "disposition": "non_task",
+        "reason": "status_only",
+        "source_item_id": "source.201.fnv1a64-d5285f02e14ecf46",
+        "target_item_ids": []
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.202.fnv1a64-12cd8a930f6114d5",
+        "target_item_ids": [
+          "item.progress.quotes_p4",
+          "item.fact.134"
+        ]
+      },
+      {
+        "disposition": "non_task",
+        "reason": "status_only",
+        "source_item_id": "source.203.fnv1a64-f0a51c77e53f22b3",
+        "target_item_ids": []
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.204.fnv1a64-02eb038480c04e12",
+        "target_item_ids": [
+          "item.progress.quotes_p4",
+          "item.fact.134"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.205.fnv1a64-972931380abccc16",
+        "target_item_ids": [
+          "item.progress.quotes_p4",
+          "item.fact.134"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.206.fnv1a64-7543ccc0c53fd12f",
+        "target_item_ids": [
+          "item.progress.quotes_p4",
+          "item.fact.134"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.207.fnv1a64-4a5df51d5e1c6be7",
+        "target_item_ids": [
+          "item.progress.quotes_p4",
+          "item.fact.134"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.208.fnv1a64-6f3879ca7d09704e",
+        "target_item_ids": [
+          "item.progress.quotes_p4",
+          "item.fact.134"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.209.fnv1a64-b43268d6255748c8",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.210.fnv1a64-0d027c053819c5d8",
+        "target_item_ids": [
+          "item.progress.revision_page",
+          "item.decision.review_mode"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.211.fnv1a64-96e6b48ec3de4ce7",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.212.fnv1a64-96b9a0ef931cc124",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.213.fnv1a64-a2f14e0740039b41",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.214.fnv1a64-90c93497a942ff38",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.215.fnv1a64-e1cfa90c51d15a54",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.216.fnv1a64-0e81dc2d7b7b463b",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.217.fnv1a64-b6a604cd90a891bd",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.218.fnv1a64-4b2d760d51ef1166",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.219.fnv1a64-385c7549037f9268",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.220.fnv1a64-760e392dbe0c876e",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.221.fnv1a64-e46e59e267602734",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.222.fnv1a64-5fbf750f1340bb38",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.223.fnv1a64-37555f58441b2b0e",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.224.fnv1a64-0964e8c5d69c027e",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.225.fnv1a64-0e12c7e015d07ab7",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.226.fnv1a64-4f7f50c9584b5d5d",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.227.fnv1a64-551a114b585681ee",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.228.fnv1a64-1822bdb9748ed3b6",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.229.fnv1a64-653a3d901be082a3",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.230.fnv1a64-2c7a5ff6027eb039",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.231.fnv1a64-ffe4d61e5e664be4",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.232.fnv1a64-794b7b57cc200137",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.233.fnv1a64-99ff83ad4da78c02",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.234.fnv1a64-25be5ceadbd42313",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.235.fnv1a64-009a337f6906df74",
+        "target_item_ids": [
+          "item.progress.revision_page",
+          "item.next_step.delivered"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.236.fnv1a64-3a097e8d66d79ef1",
+        "target_item_ids": [
+          "item.progress.revision_page"
+        ]
+      },
+      {
+        "disposition": "compacted",
+        "source_item_id": "source.237.fnv1a64-19ec4c28d03aacea",
+        "target_item_ids": [
+          "item.progress.revision_page",
+          "item.fact.revision_numbers",
+          "item.fact.claim_correction",
+          "item.obligation.exercise14_data",
+          "item.obligation.chart_label",
+          "item.next_step.delivered"
+        ]
+      }
+    ],
+    "unresolved_ambiguities": [],
+    "user_constraints": [
+      {
+        "evidence_refs": [],
+        "item_id": "item.constraint.beginner",
+        "source_item_ids": [
+          "source.53.fnv1a64-d35bafd6642f2a43",
+          "source.127.fnv1a64-27c79849f8e03a06"
+        ],
+        "text": "Treat the reader as a beginner: give a complete mental model and logic chain with no hidden defaults."
+      },
+      {
+        "evidence_refs": [],
+        "item_id": "item.constraint.editing_existing",
+        "source_item_ids": [
+          "source.127.fnv1a64-27c79849f8e03a06"
+        ],
+        "text": "Revise the already-delivered version in place; do not re-sample a separate piece."
+      },
+      {
+        "evidence_refs": [],
+        "item_id": "item.constraint.scope_expansion",
+        "source_item_ids": [
+          "source.127.fnv1a64-27c79849f8e03a06"
+        ],
+        "text": "Complete the section scope from the source text: 练习 1-3 (effective bandwidth 70%, effective compute 50%, B=1/16/64, halved read volume, 10 ms judgement), 练习 1-4 (four measured ratios, context-length-only measurement design), and 1.3.4 (causal chain separating model missing terms from implementation overhead)."
+      },
+      {
+        "evidence_refs": [],
+        "item_id": "item.constraint.correct_claim",
+        "source_item_ids": [
+          "source.127.fnv1a64-27c79849f8e03a06"
+        ],
+        "text": "Correct the ②-5 statement: adding the previously ignored state term does not make the design turn compute-bound sooner — it delays or removes the crossing; any claim of the same kind must be fixed in text and readable content."
+      },
+      {
+        "evidence_refs": [],
+        "item_id": "item.constraint.narrow_viewport",
+        "source_item_ids": [
+          "source.127.fnv1a64-27c79849f8e03a06"
+        ],
+        "text": "At a 320px viewport the five parameters occupy several screens and results are off-screen; improve how parameters and their results are linked (presentation means left to the author)."
+      },
+      {
+        "evidence_refs": [],
+        "item_id": "item.constraint.preserve_basis",
+        "source_item_ids": [
+          "source.127.fnv1a64-27c79849f8e03a06"
+        ],
+        "text": "Keep distinct bases for book estimate, book measurement, and page-added derivation."
+      },
+      {
+        "evidence_refs": [],
+        "item_id": "item.constraint.verify_string_read",
+        "source_item_ids": [
+          "source.127.fnv1a64-27c79849f8e03a06"
+        ],
+        "text": "String-read in real reading order and verify complete content, units, calculations and narrow-screen rendering before delivering the exact revision; the key local experiment was already tried and need not be redone."
+      }
+    ]
+  },
+  "usage": {
+    "cache_creation_input_tokens": null,
+    "cached_input_tokens": 768,
+    "input_tokens": 54861,
+    "output_tokens": 47810,
+    "reasoning_output_tokens": 24791,
+    "total_tokens": 102671
+  }
+}

@@ -2,7 +2,25 @@
 
 面向一个读者的自有服务器。Linux 消费完整、已就绪的书籍工作目录，保留正文/PDF、读时 Agent、笔记、高亮、画像和聊天历史。预构建在现有 Windows/Codex 环境完成。
 
+应用账号和授权书库使用独立的 [MU4 多人候选入口](Linux多人阅读-MU4候选入口.md)；本文的单读者命令与 Basic Auth 配置保持原用途，多人上线仍须通过 MU10/MU11。
+
+多人构建、systemd/Nginx、IP HTTPS、停写迁入及回滚按 [MU11 发布运行单](Linux多人阅读-MU11发布运行单.md) 操作；当前隔离实机结果与开放门槛见 [MU11 记录](performance/linux-multi-reader-mu11-20261001.md)。
+
+2026-10-02 当前多人正式版本为 `ex13-jl-20261002`，已上线 EX12 / EX13 / JL、网络前端与选定 revision 2。实际路径、数据备份、聊天入口及剩余验收范围以 [本次发布记录](Linux上线-EX12-EX13-JL.md) 为准；下文保留单读者部署方法。
+
+旧资料迁入指定账号、停写备份和独立恢复根使用 [MU9 离线工具](Linux多人阅读-MU9迁移恢复.md)。维护未完成时 `maintenance.json` 阻止正常服务及管理工具启动；按同一 operation 续接。生产切换前仍须通过 MU10/MU11，旧程序只使用原独立根或显式单用户导出根。
+
 验收环境为 veLinux 2.2 CentOS Compat / CentOS Stream 9、x86_64、glibc 2.34、systemd 252。实际工具链：Node 24.20.0、pnpm 10.34.2、Rust/Cargo 1.98.1。结果与已知问题见 [LX7 验收](Linux阅读器-LX7验收.md)，前序证据见 [LX1](Linux阅读器-LX1验收.md)、[LX2–LX6](Linux阅读器-LX2-LX6进展.md)。
+
+## 服务器访问
+
+2026-09-30 提供的 Linux 服务器：`115.190.121.150`，SSH 登录用户：`root`。
+
+```bash
+ssh root@115.190.121.150
+```
+
+密码保存在本机 [服务器访问记录](Linux服务器访问.local.md)，该文件由 Git 忽略。本次仅登记访问信息，未连接服务器验证。
 
 ## 目录与依赖
 

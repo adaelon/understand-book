@@ -1,4 +1,10 @@
 import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "../../packages/core/src/build-execution-profile";
+import { readBuildRetrievalState } from "../../packages/core/src/automatic-build-retrieval";
+import { configuredBuildRetrievalRuntime } from "../../packages/core/src/build-retrieval-config";
+import { summarizeRetrievalUsage } from "../../packages/core/src/automatic-build-budget";
+import { isTeachingStage } from "../../packages/core/src/teaching-policy";
+import { acceptTeachingCandidate, closeTeachingStage, freezeTeachingTask, readTeachingTask, teachingTaskPath, teachingReviewFailures, reopenTeachingBuild, resumeTeachingCognitiveBudget } from "../../packages/core/src/teaching-build";
+import { readTeachingBuildInput } from "../../packages/core/src/build-orchestrator";
 import { validateAutomaticBuildProtocolDoctorBoundaryV3 } from "./codex-build-doctor";
 export { validateAutomaticBuildProtocolDoctorBoundaryV3 } from "./codex-build-doctor";
 import path from "node:path";
@@ -205,6 +211,7 @@ const MAX_AUTOMATIC_BUILD_EXECUTOR_AGENT_TEMPLATE_BYTES = 65_536;
 const MAX_AUTOMATIC_BUILD_EXECUTOR_BOUNDARY_ASSET_BYTES = 65_536;
 const MAX_DISPATCH_EXECUTOR_HANDOFF_BYTES = 262_144;
 const AUTOMATIC_BUILD_STAGES: AutomaticBuildStage[] = [
+  "formal_objects", "cognitive_materials", "teaching_publish",
   "pass1",
   "paper_metadata",
   "paper_lexicon",
@@ -230,6 +237,7 @@ export interface AutomaticBuildNextOptions extends AutomaticBuildTargetResolutio
   accepted_plan_budget_evidence?: AutomaticBuildPlanBudgetEvaluationV2;
   protocol?: AutomaticBuildClaimProtocol;
   executor_dispatches?: boolean;
+  held_work_unit_ids?: string[];
   build_plan?: BuildPlanV1;
 }
 
@@ -251,6 +259,9 @@ interface StageCommands {
 }
 
 const STAGE_COMMANDS: Record<AutomaticBuildStage, StageCommands> = {
+  formal_objects: { input: "teaching", write: "teaching", close: "teaching" },
+  cognitive_materials: { input: "teaching", write: "teaching", close: "teaching" },
+  teaching_publish: { input: "teaching", write: "teaching", close: "teaching" },
   pass1: { input: "emit-input.ts", write: "pass1-write.ts", close: "pass1-batch.ts" },
   paper_metadata: { input: "paper-metadata-input.ts", write: "paper-metadata-write.ts", close: "paper-metadata-batch.ts" },
   paper_lexicon: { input: "paper-lexicon-input.ts", write: "paper-lexicon-write.ts", close: "paper-lexicon-batch.ts" },
@@ -659,6 +670,7 @@ function stageArtifactPath(
   taskId: string,
 ): string {
   const buildRoot = path.join(target.workspace_dir, ".build");
+  if (isTeachingStage(stage)) throw new Error("teaching stages require generation-scoped artifacts");
   switch (stage) {
     case "pass1": return path.join(buildRoot, "pass1", `${taskId}.json`);
     case "paper_metadata": return path.join(buildRoot, "paper-metadata", `${taskId}.json`);
@@ -714,6 +726,14 @@ export function runAutomaticBuildStageWriter(
     generated_at: string;
   },
 ): AutomaticBuildWriterResult {
+  if (isTeachingStage(stage)) {
+    if (!generation) throw new Error("teaching writer requires a frozen generation task");
+    const task = readTeachingTask(target, generation.policy_generation_id, taskId, true);
+    if (task.descriptor.stage !== stage) throw new Error("teaching task stage mismatch");
+    return { artifact_path: acceptTeachingCandidate(target, task, JSON.parse(readFileSync(candidatePath, "utf8")), {
+      executor: generation.executor, attempt: generation.attempt, generated_at: generation.generated_at,
+    }) };
+  }
   const script = STAGE_COMMANDS[stage].write;
   if (!script) throw new Error(`stage ${stage} does not support write`);
   const generationStage = stage === "pass1" || stage === "profile_sidecar" ? stage : undefined;
@@ -844,6 +864,10 @@ export function renderAutomaticBuildTaskInput(
   options: { policy_generation_id?: string } = {},
 ): { stdout: string; stderr: string } {
   const productionGenerationId = options.policy_generation_id;
+  if (isTeachingStage(stage)) {
+    if (!productionGenerationId) throw new Error("teaching input requires a frozen generation task");
+    return { stdout: readTeachingTask(target, productionGenerationId, taskId).rendered_input, stderr: "" };
+  }
   if (productionGenerationId) {
     const generationTaskPath = stage === "pass1"
       ? pass1ShadowTaskPath(target, productionGenerationId, taskId)
@@ -1089,15 +1113,19 @@ function buildPlanBudgetEvaluation(
   plan: BuildPlanV1,
   preflight?: AutomaticBuildPreflightV2,
 ): AutomaticBuildPlanBudgetEvaluationV2 {
+  const model = actualUsageForBuildPlan(target, plan);
+  const retrieval = summarizeRetrievalUsage(readBuildRetrievalState(target.workspace_dir).calls.filter(c => c.plan_id === plan.plan_id));
+  const remainingModel = Math.max(preflight?.cost_scope.remaining.estimated_total_tokens_upper ?? 0,
+    plan.estimate.input_tokens.upper + plan.estimate.output_tokens.upper - model.exact_input_tokens - model.exact_output_tokens, 0);
   return evaluateAutomaticBuildPlanBudget({
     plan,
-    actual_usage: actualUsageForBuildPlan(target, plan),
-    ...(preflight ? {
-      current_forecast: {
-        estimated_total_tokens_upper: preflight.cost_scope.remaining.estimated_total_tokens_upper,
-        wall_clock_p95_minutes: preflight.wall_clock.predicted.remaining.p95_ms / 60_000,
-      },
-    } : {}),
+    actual_usage: { ...model, exact_input_tokens: model.exact_input_tokens + retrieval.known_input_tokens,
+      known_usage_coverage: retrieval.unknown_usage_calls ? 0 : model.known_usage_coverage },
+    current_forecast: {
+      estimated_total_tokens_upper: remainingModel + retrieval.reserved_input_tokens - retrieval.known_input_tokens,
+      wall_clock_p95_minutes: Math.max(preflight?.wall_clock.predicted.remaining.p95_ms ? preflight.wall_clock.predicted.remaining.p95_ms / 60000 : 0,
+        plan.estimate.wall_clock_minutes.p95 ?? 0) + retrieval.elapsed_ms / 60000,
+    },
   });
 }
 
@@ -1261,7 +1289,8 @@ export function automaticBuildPlan(
   const requestedWorkers = options.requested_workers ?? 1;
   const availableAgentSlots = options.available_agent_slots ?? requestedWorkers;
   const budget = options.budget ?? DEFAULT_AUTOMATIC_BUILD_BUDGET;
-  const snapshotRoute = routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, execution_profile: options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1 });
+  const snapshotRoute = routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, execution_profile: options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1,
+    retrieval: options.build_plan?.retrieval?.selection });
   if (snapshotRoute.status === "blocked") {
     return {
       version: "automatic_build_plan.v1",
@@ -1397,6 +1426,10 @@ function freezeAutomaticBuildGenerationTask(
     freezePass1ShadowTask(target, generationTask.task);
     return;
   }
+  if (generationTask.kind === "teaching") {
+    freezeTeachingTask(target, generationTask.task);
+    return;
+  }
   if (generationTask.kind === "profile_sidecar_discourse") {
     freezeProfileSidecarDiscourseShadowTask(target, generationTask.task);
     return;
@@ -1428,12 +1461,13 @@ function expandAction(
   executorDispatches = false,
   buildPlan?: BuildPlanV1,
   decisionSnapshot?: ReturnType<typeof buildAutomaticBuildSnapshot>,
+  heldWorkUnitIds: string[] = [],
 ) {
   if (!Number.isInteger(maxParallel) || maxParallel < 1) throw new Error("maxParallel must be a positive integer");
   const snapshotRoute = decisionSnapshot
     && canonicalAutomaticBuildJson(decisionSnapshot.target.target_ref) === canonicalAutomaticBuildJson(target.target_ref)
     ? { status: "ready" as const, value: decisionSnapshot }
-    : routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, execution_profile: executionProfile });
+    : routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, execution_profile: executionProfile, retrieval: buildPlan?.retrieval?.selection });
   if (snapshotRoute.status === "blocked") {
     return {
       snapshot: { target, stages: [] },
@@ -1770,6 +1804,7 @@ function expandAction(
           current_dispatch_plan: preflight.dispatch_plan,
           available_new_executor_slots: preflight.worker_plan.max_workers,
           created_at: leaseOptions.now,
+          held_work_unit_ids: heldWorkUnitIds,
         });
       } catch (error) {
         if (!(error instanceof AutomaticBuildLegacyPartialDispatchRunError)) throw error;
@@ -1827,7 +1862,7 @@ function expandAction(
       }
       try {
         for (const manifest of selectedDispatches) {
-          const manifestExtractor = automaticBuildExtractorForWorkUnitKind(action.stage, manifest.kind);
+          const manifestExtractor = automaticBuildExtractorForWorkUnitKind(action.stage, manifest.kind, manifest.target_ref.profile_id);
           const manifestPromptName = extractorPromptName(manifestExtractor);
           dispatchPrompts.set(manifest.dispatch_id, {
             prompt_name: manifestPromptName,
@@ -2127,7 +2162,15 @@ function expandAction(
     };
   }
   if (action.kind === "close_stage") {
-    if (action.stage !== "paper_reading_guide") {
+    if (isTeachingStage(action.stage)) {
+      const stageState = snapshot.stages.find(s => s.stage === action.stage)!;
+      const failures = teachingReviewFailures(target, stageState);
+      if (failures.length) return { snapshot, plan_budget: settledPlanBudget, action: {
+        kind: "needs_user" as const, reason: "quality_gate_failed", stage: action.stage,
+        message: `独立来源审阅未通过：${failures.join("；")}`,
+      } };
+    }
+    if (action.stage !== "paper_reading_guide" && !isTeachingStage(action.stage)) {
       const stageState = snapshot.stages.find((stage) => stage.stage === action.stage);
       if (!stageState) throw new Error(`quality gate stage is missing from snapshot: ${action.stage}`);
       const qualityReport = collectAutomaticBuildStageQuality(target, stageState, qualityProfile, executionProfile);
@@ -2180,6 +2223,27 @@ function expandAction(
   return { snapshot, plan_budget: settledPlanBudget, action };
 }
 
+/** Async authorized control call. The configured adapter is injected by the host, independently of Harness. */
+export async function automaticBuildNextWithPreparation(targetInput: string, rootDir: string, maxParallel = 5,
+  options: AutomaticBuildNextOptions & { retrieval_runtime?: import("../../packages/core/src/automatic-build-retrieval").BuildRetrievalRuntime;
+    signal?: AbortSignal } = {}) {
+  const plan = options.build_plan;
+  if (!plan?.retrieval) return automaticBuildNext(targetInput, rootDir, maxParallel, options);
+  const target = resolveAutomaticBuildTarget(targetInput, rootDir, { book_id: options.book_id });
+  const snapshot = routeAutomaticBuildSnapshot(target, { quality_profile: options.quality_profile,
+    execution_profile: options.execution_profile, retrieval: plan.retrieval.selection });
+  if (snapshot.status !== "ready") return automaticBuildNext(targetInput, rootDir, maxParallel, options);
+  const reachable = snapshot.value.stages.find(s => !s.closed && (s.retrieval_preparation || s.preparation_required));
+  if (!reachable || (reachable.stage !== "book_structure" && reachable.stage !== "formal_objects")) return automaticBuildNext(targetInput, rootDir, maxParallel, options);
+  const prepared = await prepareAutomaticBuildSnapshot(target, reachable.stage, {
+    quality_profile: options.quality_profile, execution_profile: options.execution_profile,
+    authorization: { plan, runtime: options.retrieval_runtime ?? configuredBuildRetrievalRuntime(plan), signal: options.signal },
+  });
+  if (prepared.status !== "ready") return { version: "automatic_build_next.v1", snapshot: { target, stages: [] },
+    action: prepared.status === "needs_user" ? prepared.action : automaticBuildRecoveryAction(prepared.recovery) };
+  return automaticBuildNext(targetInput, rootDir, maxParallel, options, prepared.value);
+}
+
 function valueArg(argv: string[], name: string): string | undefined {
   const index = argv.indexOf(name);
   return index >= 0 ? argv[index + 1] : undefined;
@@ -2225,6 +2289,7 @@ export function automaticBuildNext(
       protocol === AUTOMATIC_BUILD_EXECUTOR_DISPATCH_PROTOCOL_V1,
       options.build_plan,
       decisionSnapshot,
+      options.held_work_unit_ids,
     ),
   };
 }
@@ -2257,9 +2322,18 @@ export function runAutomaticBuildCloseStage(
     return verifyAutomaticBuildStageClose(target);
   }
 
+  if (isTeachingStage(stage)) {
+    const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfile });
+    const state = snapshot.stages.find(s => s.stage === stage);
+    if (!state) throw new Error("teaching stage is not reachable");
+    const publication = closeTeachingStage(readTeachingBuildInput(target), stage, state);
+    return { next: "replan", publication };
+  }
+
   const script = STAGE_COMMANDS[stage].close;
   if (!script) throw new Error(`stage ${stage} does not support close`);
-  const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfile });
+  const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfile,
+    ...(stage === "book_structure" ? { stage: "book_structure" as const } : {}) });
   const stageState = snapshot.stages.find((candidate) => candidate.stage === stage);
   if (!stageState) throw new Error(`quality stage is not reachable in the current snapshot: ${stage}`);
 
@@ -3099,7 +3173,7 @@ function resolveAutomaticBuildTargetFromArgs(
   return resolveAutomaticBuildTarget(targetInput, rootDir, { book_id: valueArg(argv, "--book-id") });
 }
 
-const argv = process.argv.slice(2);
+export async function runAutomaticBuildCli(argv = process.argv.slice(2)) {
 if (argv[0] === "legacy-plan") {
   const targetInput = argv[1];
   if (!targetInput) {
@@ -3171,7 +3245,7 @@ if (argv[0] === "legacy-plan") {
   const leaseTtlMs = Number(valueArg(argv, "--lease-ttl-ms") ?? String(DEFAULT_RESERVE_TTL_MS));
   const runTtlMs = valueArg(argv, "--run-ttl-ms");
   const qualityProfile = qualityProfileFromArgs(argv);
-  printAutomaticBuildJson(automaticBuildNext(targetInput, rootDir, maxParallel, {
+  printAutomaticBuildJson(await automaticBuildNextWithPreparation(targetInput, rootDir, maxParallel, {
     owner: valueArg(argv, "--owner"),
     now: valueArg(argv, "--now"),
     lease_ttl_ms: leaseTtlMs,
@@ -3264,10 +3338,24 @@ if (argv[0] === "legacy-plan") {
   }
   const rootDir = path.resolve(valueArg(argv, "--root") ?? process.cwd());
   const target = resolveAutomaticBuildTargetFromArgs(targetInput, rootDir, argv);
-  const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfileFromArgs(argv) });
+  const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfileFromArgs(argv),
+    ...(stageValue === "book_structure" ? { stage: "book_structure" as const } : {}) });
   const stageState = snapshot.stages.find((stage) => stage.stage === stageValue);
   if (!stageState) throw new Error(`quality stage is not reachable in the current snapshot: ${stageValue}`);
   printAutomaticBuildJson(collectAutomaticBuildStageQuality(target, stageState, qualityProfileFromArgs(argv)));
+} else if (argv[0] === "teaching-repair" || argv[0] === "teaching-resume-budget") {
+  const targetInput = argv[1];
+  if (!targetInput) throw new Error("teaching command requires a target");
+  const target = resolveAutomaticBuildTargetFromArgs(targetInput, path.resolve(valueArg(argv, "--root") ?? process.cwd()), argv);
+  const input = readTeachingBuildInput(target);
+  if (argv[0] === "teaching-repair") reopenTeachingBuild(input);
+  else {
+    const targetId = valueArg(argv, "--target-id");
+    const budgetFile = valueArg(argv, "--budget-json");
+    if (!targetId || !budgetFile) throw new Error("teaching-resume-budget requires --target-id and --budget-json");
+    resumeTeachingCognitiveBudget(input, targetId, JSON.parse(readFileSync(budgetFile, "utf8")));
+  }
+  printAutomaticBuildJson({ status: "prepared", next: "resume_existing_build_plan" });
 } else if (argv[0] === "remaining-work") {
   const targetInput = argv[1];
   if (!targetInput) {
@@ -3412,6 +3500,8 @@ if (argv[0] === "legacy-plan") {
         ? pass1ShadowTaskPath(target, leaseState.policy_generation_id, taskId!)
         : stageValue === "profile_sidecar"
           ? profileSidecarDiscourseShadowTaskPath(target, leaseState.policy_generation_id, taskId!)
+          : isTeachingStage(stageValue)
+            ? teachingTaskPath(target, leaseState.policy_generation_id, taskId!)
           : stageValue === "book_structure"
             ? bookStructureGenerationTaskPath(target, leaseState.policy_generation_id, taskId!)
             : undefined;
@@ -3422,7 +3512,20 @@ if (argv[0] === "legacy-plan") {
     }
   }
   let verifiedClose = false;
-  if (operation === "close" && stageValue === "paper_reading_guide") {
+  if (isTeachingStage(stageValue)) {
+    if (operation === "close") {
+      printAutomaticBuildJson(runAutomaticBuildCloseStage(targetInput, rootDir, stageValue, { book_id: target.book_id }));
+      verifiedClose = true;
+    } else if (operation === "input" && leaseRef && leaseToken) {
+      const result = runAutomaticBuildTaskInput(target, stageValue, taskId!, leaseRef, leaseToken);
+      process.stdout.write(result.stdout);
+    } else if (operation === "write" && productionGenerationId) {
+      printAutomaticBuildJson(runAutomaticBuildStageWriter(target, stageValue, taskId!, outputJson!, {
+        policy_generation_id: productionGenerationId, attempt: Number(valueArg(argv, "--attempt") ?? 1),
+        executor: valueArg(argv, "--executor") ?? "manual", generated_at: valueArg(argv, "--now") ?? new Date().toISOString(),
+      }));
+    } else throw new Error("teaching input/write requires an active frozen task lease");
+  } else if (operation === "close" && stageValue === "paper_reading_guide") {
     const verification = forwardStageScript(
       target,
       "verify-paper-reading-guide.ts",
@@ -3440,7 +3543,8 @@ if (argv[0] === "legacy-plan") {
     const script = operation === "close" ? spec.close : operation === "input" ? spec.input : spec.write;
     if (!script) throw new Error(`stage ${stageValue} does not support ${operation}`);
     if (operation === "close") {
-      const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfileFromArgs(argv) });
+      const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfileFromArgs(argv),
+        ...(stageValue === "book_structure" ? { stage: "book_structure" as const } : {}) });
       const stageState = snapshot.stages.find((stage) => stage.stage === stageValue);
       if (!stageState) throw new Error(`quality stage is not reachable in the current snapshot: ${stageValue}`);
       if (stageState.policy_set) {
@@ -3495,8 +3599,15 @@ if (argv[0] === "legacy-plan") {
     }
   }
   if (operation === "close" && verifiedClose) {
-    const metricsSnapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfileFromArgs(argv) });
+    const metricsSnapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfileFromArgs(argv),
+      ...(stageValue === "book_structure" ? { stage: "book_structure" as const } : {}) });
     const metricsStage = metricsSnapshot.stages.find((stage) => stage.stage === stageValue);
     writeAutomaticBuildStageMetricsSummary(target, stageValue, { work_units: metricsStage?.work_units ?? [] });
   }
+}
+}
+
+const automaticBuildModulePath = typeof __filename === "string" ? __filename : fileURLToPath(import.meta.url);
+if (process.argv[1] && path.resolve(process.argv[1]) === automaticBuildModulePath) {
+  void runAutomaticBuildCli().catch(error => { console.error(error); process.exitCode = 1; });
 }

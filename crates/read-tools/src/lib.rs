@@ -1447,6 +1447,12 @@ pub struct EvidenceRange {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SourceExcerpt {
+    pub text: String,
+    pub highlight: SourceTextRange,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ResolvedSource {
     pub label: String,
     pub heading_path: Vec<String>,
@@ -1455,6 +1461,7 @@ pub struct ResolvedSource {
     pub highlighted_quote: String,
     pub context_before: String,
     pub context_after: String,
+    pub excerpt: SourceExcerpt,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, TS)]
@@ -2501,7 +2508,7 @@ fn parse_paper_reading_mode(raw: Option<&str>) -> Result<PaperReadingMode, ToolE
 }
 
 fn load_optional_minimap_json<T: DeserializeOwned>(
-    path: &str,
+    path: &std::path::Path,
     label: &str,
     warnings: &mut Vec<String>,
 ) -> Option<T> {
@@ -2527,17 +2534,17 @@ fn load_optional_minimap_json<T: DeserializeOwned>(
 fn load_paper_minimap_artifacts(dir: &str) -> PaperMinimapArtifacts {
     let mut warnings = Vec::new();
     let source_manifest = load_optional_minimap_json(
-        &format!("{dir}/source_manifest.json"),
+        &std::path::Path::new(dir).join("source_manifest.json"),
         "source_manifest.json",
         &mut warnings,
     );
     let pdf_source_map = load_optional_minimap_json(
-        &format!("{dir}/pdf_source_map.json"),
+        &std::path::Path::new(dir).join("pdf_source_map.json"),
         "pdf_source_map.json",
         &mut warnings,
     );
     let pass2_audit = load_optional_minimap_json(
-        &format!("{dir}/pass2_audit.json"),
+        &std::path::Path::new(dir).join("pass2_audit.json"),
         "pass2_audit.json",
         &mut warnings,
     );
@@ -3242,20 +3249,20 @@ impl<'a> ReferentCatalog<'a> {
 impl Book {
     /// 从书目录(含 base.json + source.txt)加载。
     pub fn load(dir: &str) -> Result<Book, String> {
-        let base_s = std::fs::read_to_string(format!("{dir}/base.json"))
+        let base_s = std::fs::read_to_string(std::path::Path::new(dir).join("base.json"))
             .map_err(|e| format!("读 base.json 失败: {e}"))?;
         let base: ReadOnlyBase =
             serde_json::from_str(&base_s).map_err(|e| format!("解析 base.json 失败: {e}"))?;
-        let source = std::fs::read_to_string(format!("{dir}/source.txt"))
+        let source = std::fs::read_to_string(std::path::Path::new(dir).join("source.txt"))
             .map_err(|e| format!("读 source.txt 失败(原文旁路缺失,book.text 不可用): {e}"))?;
-        let formula_semantics_path = format!("{dir}/formula_semantics.json");
+        let formula_semantics_path = std::path::Path::new(dir).join("formula_semantics.json");
         let formula_semantics = match std::fs::read_to_string(&formula_semantics_path) {
             Ok(s) => parse_formula_semantics_sidecar(&s)
                 .map_err(|e| format!("解析 formula_semantics.json 失败: {e}"))?,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
             Err(e) => return Err(format!("读 formula_semantics.json 失败: {e}")),
         };
-        let discourse_index_path = format!("{dir}/discourse_index.json");
+        let discourse_index_path = std::path::Path::new(dir).join("discourse_index.json");
         let discourse_items = match std::fs::read_to_string(&discourse_index_path) {
             Ok(s) => {
                 let index: TechnicalLearningDiscourseIndex = serde_json::from_str(&s)
@@ -3265,19 +3272,19 @@ impl Book {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
             Err(e) => return Err(format!("读 discourse_index.json 失败: {e}")),
         };
-        let book_structure_path = format!("{dir}/book_structure.json");
+        let book_structure_path = std::path::Path::new(dir).join("book_structure.json");
         let book_structure = match std::fs::read_to_string(&book_structure_path) {
             Ok(s) => Some(parse_book_structure_sidecar(&s, &base)?),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
             Err(e) => return Err(format!("读 book_structure.json 失败: {e}")),
         };
-        let paper_metadata_path = format!("{dir}/paper_metadata.json");
+        let paper_metadata_path = std::path::Path::new(dir).join("paper_metadata.json");
         let paper_metadata = match std::fs::read_to_string(&paper_metadata_path) {
             Ok(s) => Some(parse_paper_metadata_sidecar(&s, &base)?),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
             Err(e) => return Err(format!("读 paper_metadata.json 失败: {e}")),
         };
-        let paper_lexicon_path = format!("{dir}/paper_lexicon.json");
+        let paper_lexicon_path = std::path::Path::new(dir).join("paper_lexicon.json");
         let paper_lexicon = match std::fs::read_to_string(&paper_lexicon_path) {
             Ok(s) => Some(parse_paper_lexicon_sidecar(&s, &base)?),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
@@ -3361,6 +3368,22 @@ impl Book {
     /// SHA-256 of the canonical `source.txt` bytes loaded into this Book.
     pub fn source_fingerprint(&self) -> &str {
         &self.source_fingerprint
+    }
+
+    /// Conservative admission charge, not an RSS measurement. Includes source, indexes,
+    /// and a serialization-based allowance for all parsed public structures.
+    pub fn resident_budget_bytes(&self) -> u64 {
+        let structures = serde_json::json!([
+            self.base, self.formula_semantics, self.discourse_index, self.book_structure,
+            self.paper_metadata, self.paper_lexicon
+        ]);
+        let parsed = serde_json::to_vec(&structures).map(|v| v.len() as u64).unwrap_or(u64::MAX / 16);
+        let indexes: usize = self.lid_idx.keys().chain(self.node_idx.keys()).map(|s| s.capacity() + 64).sum();
+        // Runtime minimap artifacts are deserialize-only; Debug includes all their strings/vectors.
+        let minimap = format!("{:?}", self.paper_minimap_artifacts).len() as u64;
+        (std::mem::size_of::<Self>() as u64)
+            .saturating_add((self.source_u16.capacity() * 2 + indexes) as u64)
+            .saturating_add(parsed.saturating_add(minimap).saturating_mul(8))
     }
 
     pub fn with_formula_semantics(mut self, formula_semantics: Vec<FormulaSemantics>) -> Book {
@@ -5802,7 +5825,7 @@ impl Book {
             .map(|heading| format!("{kind_label} · {heading}"))
             .unwrap_or_else(|| kind_label.to_string());
         let highlighted_quote = evidence_text.trim().to_string();
-        let (context_before, context_after) = self.source_context(
+        let (context_before, context_after, excerpt) = self.source_context(
             evidence,
             &leaves,
             start_index,
@@ -5818,6 +5841,7 @@ impl Book {
             highlighted_quote,
             context_before,
             context_after,
+            excerpt,
         })
     }
 
@@ -6601,7 +6625,7 @@ impl Book {
         start_index: usize,
         end_index: usize,
         highlighted_quote: &str,
-    ) -> Result<(String, String), ToolError> {
+    ) -> Result<(String, String, SourceExcerpt), ToolError> {
         let boundary = self
             .base
             .lid_nodes
@@ -6680,15 +6704,33 @@ impl Book {
             }
         }
 
-        let before = before.concat().trim().to_string();
-        let after = after.concat().trim().to_string();
-        Ok(limit_source_context(
+        // Slice the canonical interval once: leaf separators and markup are part
+        // of the excerpt. Keep complete boundary blocks for Markdown rendering.
+        let raw_start = if let Some(range) = evidence.ranges.first() {
+            self.node(&range.lid)?.span.start + range.range.start as usize
+        } else { self.node(&evidence.start_lid)?.span.start };
+        let raw_end = if let Some(range) = evidence.ranges.last() {
+            self.node(&range.lid)?.span.start + range.range.end as usize
+        } else { self.node(&evidence.end_lid)?.span.end };
+        let raw_quote = String::from_utf16_lossy(&self.source_u16[raw_start..raw_end]);
+        let quote_start = raw_start + raw_quote.chars().take_while(|c| c.is_whitespace()).map(char::len_utf16).sum::<usize>();
+        let quote_end = raw_start + raw_quote.trim_end().encode_utf16().count();
+        let window_start = leaves[left.map_or(0, |index| index + 1)].span.start.min(raw_start);
+        let window_end = leaves[right - 1].span.end.max(raw_end);
+        let before = String::from_utf16_lossy(&self.source_u16[window_start..quote_start]);
+        let after = String::from_utf16_lossy(&self.source_u16[quote_end..window_end]);
+        let excerpt = SourceExcerpt {
+            text: String::from_utf16_lossy(&self.source_u16[window_start..window_end]),
+            highlight: SourceTextRange { start: (quote_start - window_start) as u32, end: (quote_end - window_start) as u32 },
+        };
+        let (before, after) = limit_source_context(
             &before,
             &after,
             highlighted_quote,
             cjk,
             hard_max,
-        ))
+        );
+        Ok((before, after, excerpt))
     }
 
     /// book.manifest():确定性拓扑 + 每 LID 统计(无 LLM、无"推荐路径/认知深度" `[ADR-0014]`)。
@@ -7869,14 +7911,27 @@ fn take_source_units(text: &str, limit: usize, cjk: bool, from_end: bool) -> Str
             chars[..limit].iter().collect()
         }
     } else {
-        let words: Vec<_> = text.split_whitespace().collect();
-        if words.len() <= limit {
+        let mut starts = Vec::new();
+        let mut ends = Vec::new();
+        let mut in_word = false;
+        for (index, character) in text.char_indices() {
+            if character.is_whitespace() {
+                if in_word { ends.push(index); }
+                in_word = false;
+            } else if !in_word {
+                starts.push(index);
+                in_word = true;
+            }
+        }
+        if in_word { ends.push(text.len()); }
+        if starts.len() <= limit {
             return text.to_string();
         }
+        if limit == 0 { return String::new(); }
         if from_end {
-            words[words.len() - limit..].join(" ")
+            text[starts[starts.len() - limit]..].to_string()
         } else {
-            words[..limit].join(" ")
+            text[..ends[limit - 1]].to_string()
         }
     }
 }
@@ -8576,6 +8631,27 @@ mod tests {
         };
         assert!(err.contains("book_structure"));
         assert!(err.contains("不存在 LID"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn bsr5_chapter_projection_keeps_detailed_stops_outside_macro_route() {
+        let base = structure_base();
+        let dir = write_book_dir("ub-read-tools-bsr5-chapter-route", &base);
+        let mut sidecar = book_structure_json();
+        let mut detail = sidecar["key_stops"][0].clone();
+        detail["id"] = serde_json::json!("chapter:1#detail");
+        detail["reason"]["text"] = serde_json::json!("A distinct condition at the same source anchor.");
+        sidecar["key_stops"].as_array_mut().unwrap().push(detail);
+        std::fs::write(dir.join("book_structure.json"), sidecar.to_string()).unwrap();
+        let book = Book::load(dir.to_str().unwrap()).unwrap();
+        let chapter = book.structure(Some("1")).unwrap();
+        assert_eq!(chapter.key_stops.len(), 2);
+        assert!(chapter.key_stops.iter().any(|stop| stop.id == "chapter:1#detail"));
+        let guide = book.guide_path(Some("1")).unwrap();
+        assert_eq!(guide.segments[0].key_stops.len(), 1);
+        assert_eq!(guide.segments[0].key_stops[0].id, "ks:def");
+        assert_eq!(book.structure(Some("1.1")).unwrap().key_stops.len(), 2);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -10551,6 +10627,49 @@ mod tests {
             lid: lid.into(),
             range: SourceTextRange { start, end },
         }
+    }
+
+    #[test]
+    fn source_presentation_context_keeps_words_and_paragraph_separators() {
+        let book = source_presentation_book();
+        let evidence = EvidenceRange {
+            start_lid: "1.2.1".into(), end_lid: "1.2.1".into(),
+            ranges: vec![selected_source_range("1.2.1", 6, 14)],
+        };
+        let resolved = book.resolve_source(&evidence, "en", None).unwrap();
+        assert!(resolved.context_before.ends_with("Alpha "));
+        assert!(resolved.context_after.starts_with(" begins here."));
+        assert!(format!("{}{}{}", resolved.context_before, resolved.highlighted_quote, resolved.context_after)
+            .contains("Alpha evidence begins here.\nBeta evidence continues here."));
+        let excerpt = resolved.excerpt;
+        let text: Vec<_> = excerpt.text.encode_utf16().collect();
+        assert_eq!(String::from_utf16_lossy(&text[excerpt.highlight.start as usize..excerpt.highlight.end as usize]), "evidence");
+    }
+
+    #[test]
+    fn source_presentation_truncation_preserves_internal_whitespace() {
+        assert_eq!(take_source_units("one\n\ntwo\n\nthree", 2, false, false), "one\n\ntwo");
+        assert_eq!(take_source_units("one\n\ntwo\n\nthree", 2, false, true), "two\n\nthree");
+    }
+
+    #[test]
+    fn source_presentation_excerpt_keeps_complete_code_block_around_short_quote() {
+        let source = format!("```text\n{}target{}\n```\n", "prefix ".repeat(700), " suffix".repeat(700));
+        let mut base = sample_base();
+        base.lid_nodes.truncate(2);
+        base.lid_nodes[0].span = Span { start: 0, end: source.len() };
+        base.lid_nodes[0].children = vec!["1.1".into()];
+        base.lid_nodes[1].span = Span { start: 0, end: source.len() };
+        base.lid_nodes[1].kind = NodeKind::Code;
+        let start = source.find("target").unwrap() as u32;
+        let book = Book::new(base, &source);
+        let resolved = book.resolve_source(&EvidenceRange {
+            start_lid: "1.1".into(), end_lid: "1.1".into(),
+            ranges: vec![selected_source_range("1.1", start, start + 6)],
+        }, "en", None).unwrap();
+        assert_eq!(resolved.excerpt.text, source);
+        assert_eq!(resolved.excerpt.highlight, SourceTextRange { start, end: start + 6 });
+        assert!(resolved.context_before.split_whitespace().count() < 500);
     }
 
     #[test]

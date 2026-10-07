@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -7,6 +7,7 @@ import { detectBuildReadiness, readBuildWorkbenchSnapshot } from "../src/build-w
 import { buildHybridFoundation, writeHybridFoundationArtifacts } from "../src/hybrid-foundation";
 import { extractPdfTextGeometry } from "../src/pdf-geometry";
 import { runWorkbenchStage, workbenchStageCommand } from "../src/workbench-stage-runner";
+import { resolveAutomaticBuildTarget } from "../src/build-orchestrator";
 
 function asciiBytes(text: string): Uint8Array {
   return new TextEncoder().encode(text);
@@ -79,6 +80,21 @@ function workspace(markdown: string, pdfText: string) {
 }
 
 describe("PH17 Workbench deterministic stage runtime", () => {
+  it("U1 resolves paper attachments and completes the foundation after relocation", async () => {
+    const { dir } = workspace("Hello PDF\n", "Hello PDF");
+    await runWorkbenchStage({ book_dir: dir, job_id: "job_fixture", stage: "source_reconciliation", now: "2" });
+    const root = mkdtempSync(path.join(tmpdir(), "understand-book-paper-move-"));
+    const moved = path.join(root, ".understand-book", "paper-stage-fixture");
+    cpSync(dir, moved, { recursive: true });
+    writeFileSync(path.join(dir, "paper.md"), "changed external input");
+    writeFileSync(path.join(dir, "paper.pdf"), "changed external PDF");
+    expect((await runWorkbenchStage({ book_dir: moved, job_id: "job_fixture", stage: "hybrid_foundation", now: "3" })).status).toBe("done");
+    const target = resolveAutomaticBuildTarget(moved, root);
+    expect(readFileSync(target.source_path, "utf8")).toBe("Hello PDF\n");
+    const manifest = JSON.parse(readFileSync(path.join(moved, "source_manifest.json"), "utf8"));
+    expect(path.isAbsolute(manifest.original_pdf.path)).toBe(false);
+    expect(readFileSync(path.resolve(moved, manifest.original_pdf.path))).toEqual(Buffer.from(simplePdf("Hello PDF")));
+  });
   it("routes packaged projection stages through the compiled build sidecar", async () => {
     const { dir } = workspace("Hello PDF\n", "Hello PDF");
     await runWorkbenchStage({ book_dir: dir, job_id: "job_fixture", stage: "source_reconciliation", now: "2" });

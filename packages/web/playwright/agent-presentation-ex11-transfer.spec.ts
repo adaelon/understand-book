@@ -1,6 +1,7 @@
 import {test, expect} from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+const host='http://127.0.0.1:'+(process.env.PRESENTATION_TEST_PORT || '4175');
 
 // Selectors are taken from each untouched generated page; expectations come from
 // the frozen input and the shared Reader contract, not from its implementation.
@@ -17,9 +18,9 @@ test('EX11 transfer: real controls, exact saved scene and follow-up', async ({br
     records.push(record);
     page.on('pageerror', error => record.errors.push(error.message));
     try {
-      await page.request.post('http://127.0.0.1:4175/reset-scene');
+      await page.request.post(host+'/reset-scene');
       await page.route('**/api/**', async route => {
-        const response = await route.fetch({url:route.request().url().replace(/^.*\/api/, 'http://127.0.0.1:4175')});
+        const response = await route.fetch({url:route.request().url().replace(/^.*\/api/, host)});
         await route.fulfill({response});
       });
       await page.goto('/agent-presentation-visual.html');
@@ -30,9 +31,14 @@ test('EX11 transfer: real controls, exact saved scene and follow-up', async ({br
         : Array.isArray(value) ? value.map(stable)
         : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([k,v])=>[k,stable(v)])) : value;
       const snapshot = async () => stable(await frame.locator('body').evaluate(() => (window as any).presentationScene.snapshot()));
-      const seek = (step:number, progress:number) => frame.locator('body').evaluate(async (_, target) => {
-        await (window as any).presentationScene.seek({semantic_state:target.step, transition_progress:target.progress});
-      }, {step, progress});
+      const seek = async (step:number, progress:number) => {
+        await frame.locator('body').evaluate(async (_, target) => {
+          await (window as any).presentationScene.seek({semantic_state:target.step, transition_progress:target.progress});
+        }, {step, progress});
+        const actual=await snapshot();
+        expect(actual.semantic_state).toBe(step);
+        expect(actual.transition_progress).toBeCloseTo(progress,8);
+      };
       await expect(frame.locator(selectors.play)).toBeVisible();
       await page.getByRole('button', {name:'展开', exact:true}).click();
       record.initial = await snapshot();
@@ -82,8 +88,12 @@ test('EX11 transfer: real controls, exact saved scene and follow-up', async ({br
       await page.waitForTimeout(650);
       record.advanced = await snapshot();
       await frame.locator(selectors.play).click();
+      // A play() promise or queued frame callback must not restart the scene
+      // after the user pauses (including an offscreen pause while locating it).
+      await page.waitForTimeout(200);
       record.paused = await snapshot();
       expect(record.paused.playing).toBe(false);
+      expect(await frame.locator('video').evaluateAll(nodes=>nodes.every(n=>n.paused))).toBe(true);
       record.playbackAdvanced = record.paused.semantic_state + record.paused.transition_progress > 0;
       record.playbackGeometry = await frame.locator('video').evaluateAll(ns=>ns.map(n=>({time:n.currentTime,paused:n.paused,rect:n.getBoundingClientRect().toJSON(),viewport:{width:innerWidth,height:innerHeight}})));
       // Optional second demo is configured only for the mixed-process input.
@@ -95,9 +105,9 @@ test('EX11 transfer: real controls, exact saved scene and follow-up', async ({br
       record.savedSnapshot = await snapshot();
       record.savedText = await frame.locator(selectors.result).innerText();
       await frame.locator('body').evaluate(() => (window as any).presentation.commitState());
-      const fixture = await page.request.get('http://127.0.0.1:4175/fixture').then(r=>r.json());
+      const fixture = await page.request.get(host+'/fixture').then(r=>r.json());
       await expect.poll(async()=> {
-        const view = await page.request.post('http://127.0.0.1:4175/agent/presentation.read',{data:fixture}).then(r=>r.json());
+        const view = await page.request.post(host+'/agent/presentation.read',{data:fixture}).then(r=>r.json());
         record.savedState = view.restored_state;
         const normalize = (s:string) => s.replace(/\s+/g,'');
         return view.restored_state?.observed_result && normalize(view.restored_state.observed_result).includes(normalize(record.savedText));
@@ -107,7 +117,7 @@ test('EX11 transfer: real controls, exact saved scene and follow-up', async ({br
       }).filter(n=>n.width>0&&n.height>0));
       await frame.locator(selectors.result).scrollIntoViewIfNeeded();
       await page.screenshot({path:path.join(root,`reader-${viewport.width}.png`)});
-      await page.request.post('http://127.0.0.1:4175/reopen'); await page.reload();
+      await page.request.post(host+'/reopen'); await page.reload();
       await expect(frame.locator(selectors.play)).toBeVisible();
       await expect.poll(snapshot).toEqual(record.savedSnapshot);
       record.restoredSnapshot = await snapshot();
@@ -115,7 +125,7 @@ test('EX11 transfer: real controls, exact saved scene and follow-up', async ({br
       await page.getByRole('textbox',{name:'针对当前现场追问'}).fill('解释我保存的这一步和当前参数');
       await page.getByRole('button',{name:'发送追问',exact:true}).click();
       await expect(page.getByTestId('follow-up-status')).toHaveText('追问已完成');
-      const requests = await page.request.get('http://127.0.0.1:4175/requests').then(r=>r.json());
+      const requests = await page.request.get(host+'/requests').then(r=>r.json());
       record.followUp = requests.at(-1).filter((m:any)=>m.role==='User').at(-1).content;
       expect(record.followUp).toContain(JSON.stringify(record.savedState.values.page));
       expect(record.targets.every((n:any)=>n.width>=44&&n.height>=44)).toBe(true);

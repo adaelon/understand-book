@@ -389,6 +389,7 @@ pub struct ToolExposureState {
 }
 
 impl ToolExposureState {
+    pub(crate) fn activate_tutor(&mut self) { self.activated.insert("tutor.step".into()); }
     pub(crate) fn authorizes_reader_action(&self, handler: ToolHandlerId) -> bool {
         // Layout and minimap retain their existing guided-read discovery/reducer policy.
         if matches!(
@@ -491,7 +492,8 @@ impl ToolExposurePlan {
         context: &ToolExposureContext,
         state: &ToolExposureState,
     ) -> Self {
-        let direct_limit = if registry.registration("goal.update").is_some() {
+        let tutor_slot = usize::from(registry.registration("tutor.step").is_some() && state.activated.contains("tutor.step"));
+        let direct_limit = tutor_slot + if registry.registration("goal.update").is_some() {
             DEFAULT_DIRECT_TOOL_LIMIT
         } else {
             DEFAULT_DIRECT_TOOL_LIMIT - 1
@@ -500,7 +502,9 @@ impl ToolExposurePlan {
             .registrations()
             .iter()
             .map(|registration| {
-                let (disposition, reason) = classify(registration.handler, context);
+                let (disposition, reason) = if registration.handler == ToolHandlerId::TutorStep && tutor_slot == 1 {
+                    (ToolExposureDisposition::Direct, ToolExposureReason::RuntimeOwned)
+                } else { classify(registration.handler, context) };
                 ToolExposureEntry {
                     name: registration.spec.name.clone(),
                     disposition,
@@ -1258,6 +1262,7 @@ fn classify(
         Handler::PresentationAuthor => (Disposition::Deferred, Reason::CapabilityDeferred),
         Handler::ToolSearch => (Disposition::Direct, Reason::Discovery),
         Handler::GoalUpdate => (Disposition::Direct, Reason::RuntimeOwned),
+        Handler::TutorStep => (Disposition::Hidden, Reason::RuntimeOwned),
         Handler::Artifact(_) if !context.artifact.has_overlay() => {
             (Disposition::Hidden, Reason::ArtifactOverlayUnavailable)
         }
@@ -1349,7 +1354,7 @@ fn classify(
 fn direct_priority(handler: ToolHandlerId) -> usize {
     match handler {
         ToolHandlerId::ToolSearch => 0,
-        ToolHandlerId::GoalUpdate => 1,
+        ToolHandlerId::GoalUpdate | ToolHandlerId::TutorStep => 1,
         ToolHandlerId::Book(BookToolId::Text) => 1,
         ToolHandlerId::Book(BookToolId::Context) => 2,
         ToolHandlerId::Book(BookToolId::SearchText) => 3,

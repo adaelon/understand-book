@@ -306,13 +306,13 @@ describe("automatic build attempt policy", () => {
         expect(command.slice(commandBookIdIndex, commandBookIdIndex + 2)).toEqual(["--book-id", "stable-guide"]);
       }
       const bookIdIndex = task.input_command.indexOf("--book-id");
-      expect(task.input_command).toContain(path.resolve(source));
+      expect(task.input_command).toContain(path.join(workspace, "source.txt"));
 
       const resolved = resolveAutomaticBuildTarget(source, root, { book_id: task.input_command[bookIdIndex + 1] });
       expect(resolved).toMatchObject({
         book_id: "stable-guide",
         workspace_dir: path.resolve(workspace),
-        source_path: path.resolve(source),
+        source_path: path.join(workspace, "source.txt"),
       });
     } finally {
       if (previous === undefined) delete process.env.UNDERSTAND_BOOK_SIDECAR_SELF;

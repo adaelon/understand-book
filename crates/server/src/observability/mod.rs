@@ -101,7 +101,7 @@ impl ObservabilityRuntime {
         }
     }
 
-    fn disabled(error: Option<ConfigError>) -> Arc<Self> {
+    pub(crate) fn disabled(error: Option<ConfigError>) -> Arc<Self> {
         Arc::new(Self {
             config: None,
             queue: None,
@@ -775,6 +775,134 @@ mod tests {
         config
     }
 
+    // Exercise the real HTTP adapter and multi-user budget wrapper without a paid model call.
+    fn exercise_request_diagnostics(observability: &Arc<ObservabilityRuntime>) -> Vec<String> {
+        use runtime::provider_stream::ModelDelta;
+        use runtime::run_events::{ObservedAdapter, RunEvents};
+        use runtime::{AgentRequestPlan, CompletionRequest, Message, ModelAdapter, ProviderConfig, ProviderMode, ProviderRegistry};
+        use serde_json::{json, Value};
+        let mut roots = Vec::new();
+        for mode in [ProviderMode::Native, ProviderMode::ReAct] {
+            let provider = tiny_http::Server::http("127.0.0.1:0").unwrap();
+            let url = format!("http://{}", provider.server_addr());
+            let wire = std::thread::spawn(move || {
+                let mut bodies = Vec::new();
+                for _ in 0..4 {
+                    let mut request = provider.recv_timeout(Duration::from_secs(5)).unwrap().unwrap();
+                    let body: Value = serde_json::from_reader(request.as_reader()).unwrap();
+                    bodies.push(body);
+                    let content = json!({"sufficient":true,"answer":"ok","citations":[],"model_supplement":[]});
+                    let response = json!({"choices":[{"message":{"content":content.to_string()}}],
+                        "usage":{"prompt_tokens":1000,"completion_tokens":20,"prompt_cache_hit_tokens":800,"total_tokens":1020}});
+                    request.respond(tiny_http::Response::from_string(response.to_string())
+                        .with_header(tiny_http::Header::from_bytes("Content-Type", "application/json").unwrap())).unwrap();
+                }
+                bodies
+            });
+            let inner = ProviderRegistry::adapter_from_config(ProviderConfig {
+                mode, api_key: "CANARY_PRIVATE_KEY".into(), base_url: url, model: "observation-fixture".into(),
+            });
+            let limited = crate::service_limits::LimitedAdapter {
+                inner: inner.as_ref(),
+                resources: crate::service_limits::Resources::new(Arc::new(Default::default())),
+                owner: "canary".into(), cancellation: Default::default(),
+                usage: Mutex::new(Default::default()), stream: None, authorization: None,
+            };
+            let run = observability.start_run("observation-fixture", "observation-fixture").unwrap();
+            roots.push(run.inner.identity.root_span_id.clone());
+            let events = RunEvents::with_start(run.event_anchor(), Some(run.sink()));
+            let observed = ObservedAdapter {
+                inner: &limited, events: events.clone(), cancellation: Default::default(),
+                runtime_profile: limited.model_runtime_profile(),
+            };
+            let mut forwarded = Vec::new();
+            let mut messages = vec![Message::user("CANARY_PRIVATE_QUESTION")];
+            for _ in 0..2 {
+                let plan = AgentRequestPlan::for_ad_hoc(observed.model_runtime_profile(), &messages, &[]);
+                observed.chat_observed(&plan, &mut |delta| forwarded.push(delta)).unwrap();
+                messages.push(Message::user("CANARY_PRIVATE_FOLLOWUP"));
+            }
+            let completion = || CompletionRequest {
+                system: "CANARY_PRIVATE_SYSTEM".into(), user: "CANARY_PRIVATE_INPUT".into(),
+                output_token_limit: Some(100), reasoning_effort: None,
+            };
+            {
+                let _purpose = events.scope(None, "compaction");
+                observed.complete_structured_observed(completion(), &mut |delta| forwarded.push(delta)).unwrap();
+            }
+            {
+                let _purpose = events.scope(None, "query");
+                observed.complete_observed(completion(), &mut |delta| forwarded.push(delta)).unwrap();
+            }
+            assert!(!forwarded.iter().any(|delta| matches!(delta, ModelDelta::Request(_))));
+            let bodies = wire.join().unwrap();
+            let activities = events.activities();
+            for (activity, body) in activities.iter().zip(&bodies) {
+                assert_eq!(body["stream"], true);
+                assert_eq!(body["stream_options"]["include_usage"], true);
+                assert!(body["max_tokens"].is_number());
+                let diag = activity.request_diagnostics.as_ref().unwrap();
+                assert_eq!(diag.message_count as usize, body["messages"].as_array().unwrap().len());
+                assert_eq!(activity.usage.as_ref().unwrap().cached_input_tokens, Some(800));
+            }
+            let second = activities[1].request_diagnostics.as_ref().unwrap();
+            assert_eq!(second.previous_step_id, Some(activities[0].step_id));
+            assert_eq!(second.messages_append_only, Some(true));
+            assert_eq!(second.settings_changed, Some(false));
+            assert_eq!(activities[2].request_diagnostics.as_ref().unwrap().previous_step_id, None);
+            assert_eq!(activities[3].request_diagnostics.as_ref().unwrap().previous_step_id, None);
+            assert!(!serde_json::to_string(&activities).unwrap().contains("CANARY_PRIVATE"));
+            assert_eq!(limited.usage.lock().unwrap().known_total_tokens, 4080);
+            run.finish(None, false, PersistenceState::Unknown, None);
+        }
+        roots
+    }
+
+    #[test]
+    fn request_diagnostics_reach_export_with_usage_from_final_native_and_react_requests() {
+        let sent = Arc::new(Mutex::new(Vec::new()));
+        let runtime = ObservabilityRuntime::with_transport(config(), Box::new(RecordingTransport {
+            sent: sent.clone(), reject_root: false,
+        }));
+        exercise_request_diagnostics(&runtime);
+        runtime.shutdown();
+        let sent = sent.lock().unwrap();
+        let finished_models: Vec<_> = sent.iter().filter(|item| {
+            item.payload["extra"]["metadata"]["ub_observation"]["metadata"]["request_diagnostics"].is_object()
+        }).collect();
+        assert_eq!(finished_models.len(), 8);
+        for item in &finished_models {
+            assert_eq!(item.payload["extra"]["metadata"]["usage_metadata"]["input_token_details"]["cache_read"], 800);
+            assert_eq!(item.payload["extra"]["metadata"]["usage_metadata"]["input_tokens"], 1000);
+            assert_eq!(item.payload["outputs"], serde_json::json!({}));
+        }
+        assert!(!serde_json::to_string(&sent.iter().map(|item| &item.payload).collect::<Vec<_>>()).unwrap().contains("CANARY_PRIVATE"));
+        assert_eq!(runtime.status().dropped, 0);
+    }
+
+    #[test]
+    #[ignore = "manual Linux LangSmith connectivity check; use a dedicated canary project"]
+    fn live_request_diagnostics_canary() {
+        let runtime = ObservabilityRuntime::from_env();
+        assert!(runtime.status().enabled, "metadata observability must be configured");
+        let roots = exercise_request_diagnostics(&runtime);
+        let deadline = Instant::now() + Duration::from_secs(30);
+        while Instant::now() < deadline {
+            let status = runtime.status();
+            if status.sent >= 12 && status.queued == 0 && status.spool_pending == 0 { break; }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        runtime.shutdown();
+        let status = runtime.status();
+        assert_eq!(status.last_error_code, None);
+        assert_eq!(status.dropped, 0);
+        assert_eq!(status.queued, 0);
+        assert_eq!(status.spool_pending, 0);
+        assert!(status.sent >= 12);
+        println!("LANGSMITH_CANARY_ROOTS={}", serde_json::to_string(&roots).unwrap());
+        println!("LANGSMITH_CANARY_STATUS={}", serde_json::to_string(&status).unwrap());
+    }
+
     #[test]
     fn parent_create_is_confirmed_before_child_and_root_finish() {
         let sent = Arc::new(Mutex::new(Vec::new()));
@@ -804,6 +932,7 @@ mod tests {
                 usage_total_tokens: None,
                 usage: None,
                 model_first_text_ms: None,
+                request_diagnostics: None,
                 model_name: Some("configured-model".into()),
                 model_name_source: Some("configured".into()),
                 accepted_evidence_count: None,
@@ -856,6 +985,7 @@ mod tests {
                 usage_total_tokens: None,
                 usage: None,
                 model_first_text_ms: None,
+                request_diagnostics: None,
                 model_name: Some("configured-model".into()),
                 model_name_source: Some("configured".into()),
                 accepted_evidence_count: None,

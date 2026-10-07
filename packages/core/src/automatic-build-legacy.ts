@@ -15,7 +15,7 @@ import {
   validateAutomaticBuildPolicyMigrationReceipt,
   type AutomaticBuildPolicyMigrationReceiptV2,
 } from "./automatic-build-policy-generation";
-import type { SemanticBuildStage } from "./semantic-artifact";
+import { sameBuildContent, type SemanticBuildStage } from "./semantic-artifact";
 import {
   buildAutomaticBuildSnapshot,
   type AutomaticBuildStage,
@@ -137,7 +137,6 @@ function descriptorInputHashesFromMigrationReceipts(
       const receiptTarget = targetRef as Record<string, unknown>;
       if (receiptTarget.version !== target.target_ref.version
         || typeof receiptTarget.workspace_dir !== "string"
-        || path.resolve(receiptTarget.workspace_dir) !== path.resolve(target.target_ref.workspace_dir)
         || receiptTarget.book_id !== target.target_ref.book_id
         || receiptTarget.profile_id !== target.target_ref.profile_id
         || receiptTarget.input_fingerprint !== target.target_ref.input_fingerprint
@@ -335,10 +334,7 @@ export function readAutomaticBuildMigrationDecision(
   if (!existsSync(file)) return undefined;
   const value = JSON.parse(readFileSync(file, "utf8")) as AutomaticBuildMigrationDecisionV1;
   if (value.version !== "automatic_build_migration_decision.v1") throw new Error(`invalid migration decision: ${file}`);
-  if (path.resolve(value.target_ref.workspace_dir) !== path.resolve(target.target_ref.workspace_dir)
-    || value.target_ref.book_id !== target.target_ref.book_id
-    || value.target_ref.profile_id !== target.target_ref.profile_id
-    || value.target_ref.input_fingerprint !== target.target_ref.input_fingerprint) {
+  if (!sameBuildContent(value.target_ref, target.target_ref)) {
     throw new Error(`migration decision target mismatch: ${file}`);
   }
   return value;

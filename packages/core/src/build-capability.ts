@@ -74,7 +74,7 @@ const AUTOMATIC_STAGE_ORDER = (Object.keys(BUILD_STAGE_DAG) as BuildStageId[]).f
   (stage): stage is AutomaticBuildStage => stage !== "source_reconciliation" && stage !== "hybrid_foundation",
 );
 const EXPECTED_STANDARD_CLOSURES: Record<BuildContentProfile["id"], readonly AutomaticBuildStage[]> = {
-  technical_learning: ["pass1", "profile_sidecar", "pass2", "book_structure"],
+  technical_learning: ["pass1", "profile_sidecar", "pass2", "book_structure", "formal_objects", "cognitive_materials", "teaching_publish"],
   paper: [
     "pass1",
     "paper_metadata",
@@ -83,6 +83,7 @@ const EXPECTED_STANDARD_CLOSURES: Record<BuildContentProfile["id"], readonly Aut
     "pass2",
     "book_structure",
     "paper_reading_guide",
+    "formal_objects", "cognitive_materials", "teaching_publish",
   ],
 };
 
@@ -114,8 +115,8 @@ export const BUILD_CAPABILITY_REGISTRY: BuildCapabilityRegistry = deepFreeze({
     visibility: "public",
     supported_profiles: ["technical_learning", "paper"],
     profile_entry_stages: {
-      technical_learning: ["pass2", "book_structure"],
-      paper: ["paper_metadata", "paper_lexicon", "pass2", "paper_reading_guide"],
+      technical_learning: ["pass2", "book_structure", "teaching_publish"],
+      paper: ["paper_metadata", "paper_lexicon", "pass2", "paper_reading_guide", "teaching_publish"],
     },
     required_public_capabilities: ["foundation.lid"],
     validation_rules: ["current_build_stage_dag", "goal_agnostic_public_policy"],
@@ -227,6 +228,7 @@ export interface BuildPlanEstimateInputV1 {
 }
 
 export interface CompileBuildModeInput {
+  retrieval?: BuildPlanV1["retrieval"];
   mode: BuildMode;
   book_id: string;
   source_fingerprint: string;
@@ -451,7 +453,7 @@ export function compileBuildMode(
     && pass2Choice === "enabled"
     && !freshness.get("public.pass2")?.fresh;
   const invalidatedByPass2 = new Set<AutomaticBuildStage>(
-    pass2WillChange ? ["book_structure", "paper_reading_guide"] : [],
+    pass2WillChange ? ["book_structure", "paper_reading_guide", "formal_objects", "cognitive_materials", "teaching_publish"] : [],
   );
   const reusedPublic = publicStages.flatMap((stage) => {
     const artifact = `public.${stage}`;
@@ -534,6 +536,7 @@ export function compileBuildMode(
     excluded,
     estimate: input.estimate ?? unknownEstimate(estimateInput),
     budget: input.budget,
+    ...(input.retrieval ? { retrieval: input.retrieval } : {}),
     status: "draft",
     created_at: input.created_at,
   });
@@ -629,7 +632,7 @@ export function compileBuildModeV2(input: CompileBuildModeV2Input): BuildModeCom
     && pass2Choice === "enabled"
     && !freshness.get("public.pass2")?.fresh;
   const invalidatedByPass2 = new Set<AutomaticBuildStage>(
-    pass2WillChange ? ["book_structure", "paper_reading_guide"] : [],
+    pass2WillChange ? ["book_structure", "paper_reading_guide", "formal_objects", "cognitive_materials", "teaching_publish"] : [],
   );
   const reusedPublic = publicStages.flatMap((stage) => {
     const artifact = `public.${stage}`;
@@ -813,7 +816,7 @@ export function compileBuildModeV3(input: CompileBuildModeV3Input): BuildModeCom
     && pass2Choice === "enabled"
     && !freshness.get("public.pass2")?.fresh;
   const invalidatedByPass2 = new Set<AutomaticBuildStage>(
-    pass2WillChange ? ["book_structure", "paper_reading_guide"] : [],
+    pass2WillChange ? ["book_structure", "paper_reading_guide", "formal_objects", "cognitive_materials", "teaching_publish"] : [],
   );
   const reusedPublic = publicStages.flatMap((stage) => {
     const artifact = `public.${stage}`;

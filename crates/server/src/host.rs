@@ -1,7 +1,7 @@
 use crate::intent_build_store::IntentArtifactStore;
 use crate::{
-    agent_history_review_cursors, ensure_agent_history_for_book, load_agent_history, load_session,
-    mcp::VisitorSessions, prepare_selection_translation, route, route_book_asset_file,
+    agent_history_review_cursors, ensure_agent_history_for_book, load_session,
+    mcp::VisitorSessions, prepare_selection_translation, route,
     save_session, select_start_book, selection_manifest_value, AgentAssistantStatus, AppState,
     Reply, Req, SelectionTranslationRequest, SelectionTranslationResponse,
     SelectionTranslationWork, UnconfiguredAdapter, SELECTION_TRANSLATION_TIMEOUT,
@@ -39,22 +39,24 @@ const READ_LEDGER_POLL_MS: u64 = 25;
 
 fn flush_read_ledger_if_ready(
     state: &Arc<Mutex<AppState>>,
+    owner: &str,
     idle_for: Duration,
 ) -> Result<usize, read_tools::ToolError> {
     let mut guard = state
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if !guard.store.pending_reads_ready(idle_for) {
+    guard.user.check_owner(owner)?;
+    if !guard.user.store.pending_reads_ready(idle_for) {
         return Ok(0);
     }
-    guard.store.flush_pending_reads()
+    guard.user.store.flush_pending_reads()
 }
 
 fn force_flush_read_ledger(state: &Arc<Mutex<AppState>>) {
     let result = state
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .store
+        .user.store
         .flush_pending_reads();
     if let Err(error) = result {
         eprintln!(
@@ -70,13 +72,15 @@ fn spawn_read_ledger_worker(
     idle_for: Duration,
     poll_interval: Duration,
 ) -> JoinHandle<()> {
+    let owner = state.lock().unwrap_or_else(|e| e.into_inner()).user.user_id()
+        .expect("read ledger requires an explicit user").to_string();
     thread::spawn(move || {
         while !stop.load(Ordering::Acquire) {
             thread::sleep(poll_interval);
             if stop.load(Ordering::Acquire) {
                 break;
             }
-            if let Err(error) = flush_read_ledger_if_ready(&state, idle_for) {
+            if let Err(error) = flush_read_ledger_if_ready(&state, &owner, idle_for) {
                 eprintln!(
                     "read ledger background flush failed [{}]: {}",
                     error.error_code, error.message
@@ -149,10 +153,10 @@ fn route_selection_translation_request(
         let guard = state
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        if let Err(error) = selection_manifest_value(&guard.book_dir) {
+        if let Err(error) = selection_manifest_value(&guard.workspace.book_dir) {
             return crate::err_reply(&error);
         }
-        match prepare_selection_translation(&guard.book, request) {
+        match prepare_selection_translation(&guard.workspace.book, request) {
             Ok(work) => work,
             Err(error) => return crate::err_reply(&error),
         }
@@ -228,6 +232,7 @@ pub struct HistoricalBackfillRunOutcome {
 }
 
 struct ReviewCoordinator {
+    owner: String,
     state: Arc<Mutex<AppState>>,
     provider_config: Mutex<Option<ProviderConfig>>,
     factory: Arc<dyn ReviewExecutorFactory>,
@@ -345,7 +350,10 @@ impl ReviewCoordinator {
         factory: Arc<dyn ReviewExecutorFactory>,
         clock: Arc<dyn ReviewClock>,
     ) -> Self {
+        let owner = state.lock().unwrap_or_else(|e| e.into_inner()).user.user_id()
+            .expect("review requires an explicit user").to_string();
         Self {
+            owner,
             state,
             provider_config: Mutex::new(provider_config),
             factory,
@@ -404,6 +412,7 @@ impl ReviewCoordinator {
                 .state
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
+            if state.user.check_owner(&self.owner).is_err() { return; }
             max_unreviewed_turns(&state)
         };
         if unreviewed_turns == 0 {
@@ -431,6 +440,7 @@ impl ReviewCoordinator {
                 .state
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
+            state.user.check_owner(&self.owner)?;
             ready_review_summary(&state, now_ms)
         };
         let trigger = self
@@ -481,10 +491,11 @@ impl ReviewCoordinator {
     }
 
     fn ready_review_count(&self, now_ms: u64) -> usize {
-        self.state
+        let state = self.state
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .store
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if state.user.check_owner(&self.owner).is_err() { return 0; }
+        state.user.store
             .review_state()
             .review_jobs
             .iter()
@@ -497,9 +508,10 @@ impl ReviewCoordinator {
             .state
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let current_book_id = &state.book.base.book_id;
+        if state.user.check_owner(&self.owner).is_err() { return 0; }
+        let current_book_id = &state.workspace.book.base.book_id;
         state
-            .store
+            .user.store
             .historical_backfill_jobs()
             .iter()
             .filter(|job| {
@@ -531,9 +543,10 @@ impl ReviewCoordinator {
                 .state
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
-            let cursors = agent_history_review_cursors(&state.agent_history);
+        state.user.check_owner(&self.owner)?;
+            let cursors = agent_history_review_cursors(&state.user.agent_history);
             state
-                .store
+                .user.store
                 .reconcile_review_jobs(&cursors, &moment.timestamp)?;
         }
         let (sender, receiver) = mpsc::channel();
@@ -573,7 +586,8 @@ impl ReviewCoordinator {
             .state
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        state.store.record_review_error(ReviewErrorState {
+        state.user.check_owner(&self.owner)?;
+        state.user.store.record_review_error(ReviewErrorState {
             error_code: error_code.into(),
             message: message.into(),
             occurred_at: now_ms.to_string(),
@@ -599,8 +613,9 @@ impl ReviewCoordinator {
                 .state
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
+        state.user.check_owner(&self.owner)?;
             let Some(job_id) = state
-                .store
+                .user.store
                 .review_state()
                 .review_jobs
                 .iter()
@@ -609,19 +624,19 @@ impl ReviewCoordinator {
             else {
                 return Ok(None);
             };
-            let claimed = state.store.claim_review_job(&job_id, &moment.timestamp)?;
+            let claimed = state.user.store.claim_review_job(&job_id, &moment.timestamp)?;
             if config.is_none() {
                 let error = review_error(
                     "REVIEW_PROVIDER_UNCONFIGURED",
                     "review provider is not configured",
                 );
-                mark_review_retryable(&mut state.store, &claimed, &error, &moment)?;
+                mark_review_retryable(&mut state.user.store, &claimed, &error, &moment)?;
                 return Err(error);
             }
             let input = match copy_review_input(&state, &claimed) {
                 Ok(input) => input,
                 Err(error) => {
-                    mark_review_retryable(&mut state.store, &claimed, &error, &moment)?;
+                    mark_review_retryable(&mut state.user.store, &claimed, &error, &moment)?;
                     return Err(error);
                 }
             };
@@ -636,6 +651,7 @@ impl ReviewCoordinator {
             .state
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
+        state.user.check_owner(&self.owner)?;
         match execution {
             Ok(output) => {
                 let eligible_turn_ids: Vec<String> = input
@@ -643,21 +659,21 @@ impl ReviewCoordinator {
                     .iter()
                     .map(|turn| turn.turn_id.clone())
                     .collect();
-                if let Err(error) = state.store.commit_review_result(
+                if let Err(error) = state.user.store.commit_review_result(
                     &job_id,
                     &eligible_turn_ids,
                     &output.fact_candidates,
                     &output.intent_observations,
                     &moment.timestamp,
                 ) {
-                    mark_review_retryable(&mut state.store, &claimed, &error, &moment)?;
+                    mark_review_retryable(&mut state.user.store, &claimed, &error, &moment)?;
                     return Err(error);
                 }
                 Ok(Some(ReviewRunOutcome { job_id, output }))
             }
             Err(error) => {
                 let provider_error = review_provider_error(error);
-                mark_review_retryable(&mut state.store, &claimed, &provider_error, &moment)?;
+                mark_review_retryable(&mut state.user.store, &claimed, &provider_error, &moment)?;
                 Err(provider_error)
             }
         }
@@ -682,9 +698,10 @@ impl ReviewCoordinator {
                 .state
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
-            let current_book_id = state.book.base.book_id.clone();
+        state.user.check_owner(&self.owner)?;
+            let current_book_id = state.workspace.book.base.book_id.clone();
             let Some(selected) = state
-                .store
+                .user.store
                 .historical_backfill_jobs()
                 .iter()
                 .find(|job| {
@@ -701,7 +718,7 @@ impl ReviewCoordinator {
             };
             let running = if selected.status == HistoricalBackfillJobStatus::Queued {
                 state
-                    .store
+                    .user.store
                     .claim_historical_backfill_job(&selected.job_id, &moment.timestamp)?
             } else {
                 selected
@@ -711,14 +728,14 @@ impl ReviewCoordinator {
                     "HISTORICAL_BACKFILL_PROVIDER_UNCONFIGURED",
                     "historical backfill provider is not configured",
                 );
-                mark_historical_backfill_retryable(&mut state.store, &running, &error, &moment)?;
+                mark_historical_backfill_retryable(&mut state.user.store, &running, &error, &moment)?;
                 return Err(error);
             }
             let input = match copy_historical_backfill_input(&state, &running) {
                 Ok(input) => input,
                 Err(error) => {
                     mark_historical_backfill_retryable(
-                        &mut state.store,
+                        &mut state.user.store,
                         &running,
                         &error,
                         &moment,
@@ -737,12 +754,13 @@ impl ReviewCoordinator {
             .state
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        if !historical_backfill_job_is_running(&state.store, &job_id) {
+        state.user.check_owner(&self.owner)?;
+        if !historical_backfill_job_is_running(&state.user.store, &job_id) {
             return Ok(None);
         }
         match execution {
             Ok(output) => {
-                if let Err(error) = state.store.commit_historical_backfill_turn(
+                if let Err(error) = state.user.store.commit_historical_backfill_turn(
                     &job_id,
                     input.turn.user_turn_ordinal,
                     &input.turn.turn_id,
@@ -750,7 +768,7 @@ impl ReviewCoordinator {
                     &moment.timestamp,
                 ) {
                     mark_historical_backfill_retryable(
-                        &mut state.store,
+                        &mut state.user.store,
                         &running,
                         &error,
                         &moment,
@@ -766,7 +784,7 @@ impl ReviewCoordinator {
             Err(error) => {
                 let provider_error = historical_backfill_provider_error(error);
                 mark_historical_backfill_retryable(
-                    &mut state.store,
+                    &mut state.user.store,
                     &running,
                     &provider_error,
                     &moment,
@@ -794,13 +812,13 @@ impl ReviewMoment {
 
 fn max_unreviewed_turns(state: &AppState) -> u64 {
     state
-        .agent_history
+        .user.agent_history
         .sessions
         .iter()
         .filter_map(|session| {
             let latest = session.turns.last().map(|turn| turn.user_turn_ordinal)?;
             let watermark = state
-                .store
+                .user.store
                 .review_state()
                 .reviewed_through
                 .get(&session.id)
@@ -815,7 +833,7 @@ fn max_unreviewed_turns(state: &AppState) -> u64 {
 fn ready_review_summary(state: &AppState, now_ms: u64) -> (bool, bool) {
     let mut has_ready_job = false;
     let mut has_due_retry = false;
-    for job in &state.store.review_state().review_jobs {
+    for job in &state.user.store.review_state().review_jobs {
         if review_job_is_ready(job, now_ms) {
             has_ready_job = true;
             has_due_retry |= job.status == ReviewJobStatus::Retryable;
@@ -909,7 +927,7 @@ fn copy_historical_backfill_input(
             )
         })?;
     let session = state
-        .agent_history
+        .user.agent_history
         .sessions
         .iter()
         .find(|session| session.id == job.session_id && session.book_id == job.book_id)
@@ -933,7 +951,7 @@ fn copy_historical_backfill_input(
         job_id: job.job_id.clone(),
         session_id: job.session_id.clone(),
         book_id: job.book_id.clone(),
-        content_profile: crate::current_content_profile(&state.book).into(),
+        content_profile: crate::current_content_profile(&state.workspace.book).into(),
         turn: ReviewTurnInput {
             turn_id: turn.turn_id.clone(),
             user_turn_ordinal: turn.user_turn_ordinal,
@@ -957,7 +975,7 @@ fn copy_review_input(
     job: &memory::ReviewJob,
 ) -> Result<ReviewInput, read_tools::ToolError> {
     let session = state
-        .agent_history
+        .user.agent_history
         .sessions
         .iter()
         .find(|session| session.id == job.session_id && session.book_id == job.book_id)
@@ -1003,7 +1021,7 @@ fn copy_review_input(
         job_id: job.job_id.clone(),
         session_id: job.session_id.clone(),
         book_id: job.book_id.clone(),
-        content_profile: crate::current_content_profile(&state.book).into(),
+        content_profile: crate::current_content_profile(&state.workspace.book).into(),
         from_turn_exclusive: job.from_turn_exclusive,
         to_turn_inclusive: job.to_turn_inclusive,
         turns,
@@ -1044,14 +1062,14 @@ impl RunningServer {
             .state
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        state.library_root = Some(library_root);
+        state.services.library_root = Some(library_root);
     }
 
     pub fn library_root(&self) -> Option<PathBuf> {
         self.state
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .library_root
+            .services.library_root
             .clone()
     }
 
@@ -1061,7 +1079,7 @@ impl RunningServer {
             .state
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        state.adapter = if cfg!(target_os = "linux") && state.reader_only {
+        state.services.adapter = if cfg!(target_os = "linux") && state.services.reader_only {
             crate::host_lifecycle::ServiceAdapter::from_config(config, self.stop.clone())
         } else {
             ProviderRegistry::adapter_from_config(config)
@@ -1127,8 +1145,8 @@ fn route_paper_localization_request(
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         (
-            guard.book.paper_minimap(),
-            crate::paper_minimap_localization_cache_path(&guard.session_path),
+            guard.workspace.book.paper_minimap(),
+            guard.workspace.localization_cache_path(),
         )
     };
     crate::localize_paper_minimap(base, cache_path, adapter)
@@ -1165,6 +1183,9 @@ pub fn start_server(config: ServerHostConfig) -> Result<RunningServer, String> {
     let memory_path = MemoryStore::default_path();
     start_server_with_memory_path(config, memory_path)
 }
+
+// Multi-user requests use their own trusted boundary, never this local AppState.
+pub use crate::multi_user_host::{start as start_multi_user_server, MultiUserConfig};
 
 fn start_server_with_memory_path(
     config: ServerHostConfig,
@@ -1226,10 +1247,20 @@ fn start_server_with_memory_path(
             }
         })
         .unwrap_or_else(|| Box::new(UnconfiguredAdapter));
-    let mut agent_history = load_agent_history(&history_path)
+    let (mut agent_history, mut session_store) = crate::session_store::load_chat_storage(&history_path)
         .map_err(|error| format!("failed to load agent history: {}", error.message))?;
-    crate::agent_run::recover_pending(&mut agent_history, &history_path)
-        .map_err(|error| format!("failed to recover pending Agent runs: {}", error.message))?;
+    if let Some(store) = &mut session_store {
+        crate::session_runtime::recover(store, &mut agent_history, &Default::default())
+            .map_err(|e| e.message)?;
+    }
+    if session_store.is_none() {
+        crate::agent_run::recover_pending(&mut agent_history, &history_path)
+            .map_err(|error| format!("failed to recover pending Agent runs: {}", error.message))?;
+    } else if !agent_history.sessions.iter().any(|s| s.book_id == book.base.book_id) {
+        let session = crate::new_agent_session(&book.base.book_id, "server-start", agent_history.sessions.len());
+        session_store.as_mut().unwrap().create(&mut agent_history, session)
+            .map_err(|e| e.message)?;
+    }
     let messages =
         ensure_agent_history_for_book(&mut agent_history, &book.base.book_id, "server-start");
     let review_cursors = agent_history_review_cursors(&agent_history);
@@ -1260,25 +1291,31 @@ fn start_server_with_memory_path(
         .iter()
         .any(|job| job.status != ReviewJobStatus::Completed);
     let state = Arc::new(Mutex::new(AppState {
-        desktop_host: config.desktop_host,
-        reader_only: config.reader_only,
-        book_dir: PathBuf::from(&dir),
-        library_root: config.library_root.clone(),
-        book: book.into(),
-        reader,
-        store,
-        intent_store_root: IntentArtifactStore::default_root().ok(),
+        services: crate::service_state::ServiceState {
+            desktop_host: config.desktop_host,
+            reader_only: config.reader_only,
+            library_root: config.library_root.clone(),
+            adapter,
+        },
+        user: crate::user_runtime::UserRuntime::local(
+            store,
+            history_path,
+            agent_history,
+            IntentArtifactStore::default_root().ok(),
+        ),
+
         mcp_artifact_read_port: None,
-        adapter,
-        messages,
-        session_path,
-        history_path,
-        agent_history,
-        profile_context_cache: runtime::profile_context::ProfileContextCache::default(),
+
         visitor_sessions: VisitorSessions::default(),
-        workbench_loaded_revision: None,
-        active_agent_stream: None,
-    }));
+
+        workspace: crate::reader_workspace::ReaderWorkspace::local(PathBuf::from(&dir), book.into(), reader, messages, session_path),
+}));
+    {
+        let mut guard = state.lock().unwrap();
+        let AppState { workspace, user, .. } = &mut *guard;
+        user.session_store = session_store;
+        workspace.restore_chat(&mut user.agent_history, "server-start");
+    }
     let observability = crate::observability::ObservabilityRuntime::from_env();
     let run_coordinator = Arc::new(crate::agent_run::RunCoordinator::new(
         state.clone(),
@@ -1301,7 +1338,7 @@ fn start_server_with_memory_path(
         let guard = state
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        if !is_bootstrap_dir(&guard.book_dir) {
+        if !is_bootstrap_dir(&guard.workspace.book_dir) {
             let _ = save_session(&guard, Some(dir.as_str()));
         }
     }
@@ -1484,7 +1521,8 @@ fn start_server_with_memory_path(
                                 let guard = state
                                     .lock()
                                     .unwrap_or_else(|poisoned| poisoned.into_inner());
-                                route_book_asset_file(&guard.book_dir, &api_url)
+                                crate::book_cover::route_local(&guard, &api_url)
+                                    .or_else(|| crate::route_workspace_asset_file(&guard.workspace, &api_url))
                             };
                             if let Some(reply) = asset {
                                 let _ = request.respond(response_from_binary(reply));
@@ -1622,8 +1660,10 @@ fn is_api_url(url: &str) -> bool {
     let (path, _) = split_url(url);
     let path = path.strip_prefix("/api").unwrap_or(path);
     path.starts_with("/book/")
+        || path.starts_with("/books/")
         || path.starts_with("/reader/")
         || path.starts_with("/memory/")
+        || path.starts_with("/tutor/")
         || path.starts_with("/agent/")
         || path.starts_with("/profile/")
         || path.starts_with("/desktop/")
@@ -1944,10 +1984,10 @@ mod tests {
         let state = review_test_state("read-ledger-worker");
         let book_id = {
             let mut guard = state.lock().unwrap();
-            let book_id = guard.book.base.book_id.clone();
-            guard.store.enqueue_read(&book_id, "1.1", "t0").unwrap();
-            assert_eq!(guard.store.pending_read_count(), 1);
-            assert!(guard.store.read_lids(&book_id).is_empty());
+            let book_id = guard.workspace.book.base.book_id.clone();
+            guard.user.store.enqueue_read(&book_id, "1.1", "t0").unwrap();
+            assert_eq!(guard.user.store.pending_read_count(), 1);
+            assert!(guard.user.store.read_lids(&book_id).is_empty());
             book_id
         };
         let stop = Arc::new(AtomicBool::new(false));
@@ -1959,7 +1999,7 @@ mod tests {
         );
         let deadline = std::time::Instant::now() + Duration::from_secs(2);
         loop {
-            if state.lock().unwrap().store.pending_read_count() == 0 {
+            if state.lock().unwrap().user.store.pending_read_count() == 0 {
                 break;
             }
             assert!(std::time::Instant::now() < deadline, "worker did not flush");
@@ -1969,7 +2009,23 @@ mod tests {
         handle.join().unwrap();
 
         let guard = state.lock().unwrap();
-        assert_eq!(guard.store.read_lids(&book_id), vec!["1.1"]);
+        assert_eq!(guard.user.store.read_lids(&book_id), vec!["1.1"]);
+    }
+
+    #[test]
+    fn mu2_background_workers_reject_a_replaced_owner() {
+        let state = review_test_state("mu2-worker-owner");
+        let coordinator = ReviewCoordinator::new(state.clone(), Some(review_provider("fake")), Arc::new(ProviderReviewExecutorFactory));
+        let root = tempfile::tempdir().unwrap();
+        let writer = crate::control_store::ServiceWriter::acquire(root.path()).unwrap();
+        let other = crate::user_runtime::UserRuntime::open_service(&writer.paths("B").unwrap(), writer.clone(), "1").unwrap();
+        state.lock().unwrap().user = other;
+        assert_eq!(coordinator.run_one("1").err().unwrap().error_code, "USER_OWNER_MISMATCH");
+        assert_eq!(coordinator.run_one_backfill("1").unwrap_err().error_code, "USER_OWNER_MISMATCH");
+        state.lock().unwrap().user.store.enqueue_read("B-book", "1.1", "1").unwrap();
+        assert_eq!(flush_read_ledger_if_ready(&state, "local", Duration::ZERO).unwrap_err().error_code, "USER_OWNER_MISMATCH");
+        assert_eq!(state.lock().unwrap().user.store.pending_read_count(), 1);
+        assert!(state.lock().unwrap().user.store.read_lids("B-book").is_empty());
     }
 
     #[test]
@@ -1977,16 +2033,16 @@ mod tests {
         let state = review_test_state("read-ledger-shutdown");
         let book_id = {
             let mut guard = state.lock().unwrap();
-            let book_id = guard.book.base.book_id.clone();
-            guard.store.enqueue_read(&book_id, "1.1", "t0").unwrap();
+            let book_id = guard.workspace.book.base.book_id.clone();
+            guard.user.store.enqueue_read(&book_id, "1.1", "t0").unwrap();
             book_id
         };
 
         force_flush_read_ledger(&state);
 
         let guard = state.lock().unwrap();
-        assert_eq!(guard.store.pending_read_count(), 0);
-        assert_eq!(guard.store.read_lids(&book_id), vec!["1.1"]);
+        assert_eq!(guard.user.store.pending_read_count(), 0);
+        assert_eq!(guard.user.store.read_lids(&book_id), vec!["1.1"]);
     }
 
     #[test]
@@ -2000,12 +2056,12 @@ mod tests {
         .unwrap();
         let book_id = {
             let mut state = running.state.lock().unwrap();
-            let book_id = state.book.base.book_id.clone();
+            let book_id = state.workspace.book.base.book_id.clone();
             state
-                .store
+                .user.store
                 .enqueue_read(&book_id, "1", "lx6-final-touch")
                 .unwrap();
-            assert_eq!(state.store.pending_read_count(), 1);
+            assert_eq!(state.user.store.pending_read_count(), 1);
             book_id
         };
         running.shutdown();
@@ -2016,7 +2072,7 @@ mod tests {
     }
 
     #[test]
-    fn agent_history_load_failure_preserves_source_and_blocks_startup() {
+    fn jl7_startup_preserves_unreadable_old_history_and_creates_new_log() {
         let nonce = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -2037,19 +2093,18 @@ mod tests {
                 reader_only: false,
                 book_dir: None,
                 library_root: Some(root.join("library")),
-                addr: "not-a-valid-server-address".into(),
+                addr: "127.0.0.1:0".into(),
                 web_dist: root.join("web-dist"),
             },
             memory_path,
         );
-        let error = result.err().expect("history failure must block startup");
-
-        assert!(error.contains("stage=decode"), "{error}");
-        assert!(
-            error.contains(&history_path.display().to_string()),
-            "{error}"
-        );
-        assert!(!error.contains("failed to bind"), "{error}");
+        let running = result.unwrap();
+        {
+            let state = running.state.lock().unwrap();
+            assert!(state.user.session_store.is_some());
+            assert_eq!(state.user.agent_history.sessions.len(), 1);
+        }
+        running.shutdown();
         assert_eq!(std::fs::read(&history_path).unwrap(), source);
         assert!(!history_path.with_extension("replace.tmp").exists());
         assert!(!history_path.with_extension("replace.bak").exists());
@@ -2087,6 +2142,10 @@ mod tests {
                 updated_at: "0".into(),
                 turns: (1..=turns_per_session)
                     .map(|ordinal| AgentChatTurn {
+                        domain: Default::default(),
+                        admission_input: None,
+                        published_book_ref: None,
+                        teaching_ref: None,
                         goal_ref: None,
                         presentation_follow_up: None,
                         turn_id: format!("turn-review-{index}-{ordinal}"),
@@ -2112,33 +2171,34 @@ mod tests {
             })
             .collect();
         Arc::new(Mutex::new(AppState {
-            desktop_host: false,
-            reader_only: false,
-            book_dir: PathBuf::from(dir),
-            library_root: None,
-            book: book.into(),
-            reader,
-            store,
-            intent_store_root: None,
-            mcp_artifact_read_port: None,
-            adapter: Box::new(UnconfiguredAdapter),
-            messages: new_session(),
-            session_path: None,
-            history_path: None,
-            agent_history: AgentHistory {
-                active_by_book: BTreeMap::from([(
-                    "__desktop_bootstrap__".into(),
-                    "review-session-0".into(),
-                )]),
-                sessions,
-                pending_memory_ops: BTreeMap::new(),
-                pending_governance_mutations: BTreeMap::new(),
+            services: crate::service_state::ServiceState {
+                desktop_host: false,
+                reader_only: false,
+                library_root: None,
+                adapter: Box::new(UnconfiguredAdapter),
             },
-            profile_context_cache: runtime::profile_context::ProfileContextCache::default(),
+            user: crate::user_runtime::UserRuntime::local(
+                store,
+                None,
+                AgentHistory {
+                    active_by_book: BTreeMap::from([(
+                        "__desktop_bootstrap__".into(),
+                        "review-session-0".into(),
+                    )]),
+                    sessions,
+                    pending_memory_ops: BTreeMap::new(),
+                    pending_governance_mutations: BTreeMap::new(),
+                    pending_confirmations: BTreeMap::new(),
+                },
+                None,
+            ),
+
+            mcp_artifact_read_port: None,
+
             visitor_sessions: VisitorSessions::default(),
-            workbench_loaded_revision: None,
-            active_agent_stream: None,
-        }))
+
+        workspace: crate::reader_workspace::ReaderWorkspace::local(PathBuf::from(dir), book.into(), reader, new_session(), None),
+}))
     }
 
     fn translation_host_state(name: &str) -> Arc<Mutex<AppState>> {
@@ -2166,25 +2226,25 @@ mod tests {
         let reader = Reader::new(&book, DEFAULT_RADIUS);
         let store = MemoryStore::open(dir.join("memory.json")).unwrap();
         Arc::new(Mutex::new(AppState {
-            desktop_host: false,
-            reader_only: false,
-            book_dir: dir,
-            library_root: None,
-            book: book.into(),
-            reader,
-            store,
-            intent_store_root: None,
+            services: crate::service_state::ServiceState {
+                desktop_host: false,
+                reader_only: false,
+                library_root: None,
+                adapter: Box::new(UnconfiguredAdapter),
+            },
+            user: crate::user_runtime::UserRuntime::local(
+                store,
+                None,
+                AgentHistory::default(),
+                None,
+            ),
+
             mcp_artifact_read_port: None,
-            adapter: Box::new(UnconfiguredAdapter),
-            messages: new_session(),
-            session_path: None,
-            history_path: None,
-            agent_history: AgentHistory::default(),
-            profile_context_cache: runtime::profile_context::ProfileContextCache::default(),
+
             visitor_sessions: VisitorSessions::default(),
-            workbench_loaded_revision: None,
-            active_agent_stream: None,
-        }))
+
+        workspace: crate::reader_workspace::ReaderWorkspace::local(dir, book.into(), reader, new_session(), None),
+}))
     }
 
     fn translation_request_body() -> &'static str {
@@ -2340,7 +2400,7 @@ mod tests {
             .contains("TRANSLATION_PROVIDER_FAILED"));
 
         let missing_map_state = translation_host_state("missing-map");
-        let map_dir = missing_map_state.lock().unwrap().book_dir.clone();
+        let map_dir = missing_map_state.lock().unwrap().workspace.book_dir.clone();
         std::fs::remove_file(map_dir.join("pdf_selection_map").join("manifest.json")).unwrap();
         let unavailable = route_selection_translation_request(
             &missing_map_state,
@@ -2383,9 +2443,9 @@ mod tests {
         let state = review_test_state("paper-localization-lock");
         {
             let mut guard = state.lock().unwrap();
-            guard.book = (Book::load(&PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            guard.workspace.book = (Book::load(&PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("../../.understand-book/understanding-transformer-from-the-perspective-of-associative-memory").to_string_lossy()).unwrap()).into();
-            guard.session_path = None;
+            guard.workspace.session_path = None;
         }
         let called = Arc::new(AtomicBool::new(false));
         let response =
@@ -2432,6 +2492,7 @@ mod tests {
     #[test]
     fn api_paths_are_not_static_fallback_candidates() {
         assert!(is_api_url("/api/book/manifest"));
+        assert!(is_api_url("/api/books/book/publications/pub/assets/image.png"));
         assert!(is_api_url("/api/profile/manifest"));
         assert!(is_api_url("/build_intent/status"));
         assert!(is_api_url("/api/build_intent/artifacts"));
@@ -2486,6 +2547,8 @@ mod tests {
         };
         assert_eq!(local_reply.status, 200);
 
+        // A foreground write during the model wait must survive the later review commit.
+        state.lock().unwrap().user.store.mark_read("foreground-book", "1.1", "t1").unwrap();
         coordinator.set_provider_config(review_provider("model-b"));
         let (ready_tx, ready_rx) = mpsc::channel();
         let second = {
@@ -2515,15 +2578,16 @@ mod tests {
         assert_eq!(observed.models, vec!["model-a", "model-b"]);
         drop(observed);
         let state = state.lock().unwrap();
+        assert_eq!(state.user.store.read_lids("foreground-book"), vec!["1.1"]);
         assert!(state
-            .store
+            .user.store
             .review_state()
             .review_jobs
             .iter()
             .all(|job| job.status == ReviewJobStatus::Completed));
-        assert_eq!(state.store.review_state().reviewed_through.len(), 2);
-        assert!(state.store.review_state().last_error.is_none());
-        assert_eq!(state.store.profile_facts().len(), 2);
+        assert_eq!(state.user.store.review_state().reviewed_through.len(), 2);
+        assert!(state.user.store.review_state().last_error.is_none());
+        assert_eq!(state.user.store.profile_facts().len(), 2);
     }
 
     #[test]
@@ -2531,9 +2595,9 @@ mod tests {
         let state = review_test_state_with("historical-backfill-turns", 1, 2);
         let job_id = {
             let mut state = state.lock().unwrap();
-            let book_id = state.book.base.book_id.clone();
+            let book_id = state.workspace.book.base.book_id.clone();
             state
-                .store
+                .user.store
                 .start_historical_backfill_job(
                     HistoricalBackfillRange {
                         session_id: "review-session-0".into(),
@@ -2565,17 +2629,17 @@ mod tests {
         assert_eq!(first.output.fact_candidates.len(), 1);
         {
             let state = state.lock().unwrap();
-            let job = &state.store.historical_backfill_jobs()[0];
+            let job = &state.user.store.historical_backfill_jobs()[0];
             assert_eq!(job.status, HistoricalBackfillJobStatus::Running);
             assert_eq!(job.processed_through, 1);
-            assert_eq!(state.store.profile_facts().len(), 1);
-            assert_eq!(state.store.profile_facts()[0].status, FactStatus::Pending);
+            assert_eq!(state.user.store.profile_facts().len(), 1);
+            assert_eq!(state.user.store.profile_facts()[0].status, FactStatus::Pending);
             assert_eq!(
-                state.store.profile_facts()[0].capture,
+                state.user.store.profile_facts()[0].capture,
                 ProfileFactCapture::HistoricalBackfill
             );
             assert_eq!(
-                state.store.profile_facts()[0].source,
+                state.user.store.profile_facts()[0].source,
                 FactSource::UserStated
             );
         }
@@ -2583,12 +2647,12 @@ mod tests {
         let second = coordinator.run_one_backfill("20").unwrap().unwrap();
         assert_eq!(second.turn_ordinal, 2);
         let state = state.lock().unwrap();
-        let job = &state.store.historical_backfill_jobs()[0];
+        let job = &state.user.store.historical_backfill_jobs()[0];
         assert_eq!(job.status, HistoricalBackfillJobStatus::Completed);
         assert_eq!(job.processed_through, 2);
-        assert_eq!(state.store.profile_facts().len(), 2);
+        assert_eq!(state.user.store.profile_facts().len(), 2);
         assert!(state
-            .store
+            .user.store
             .profile_facts()
             .iter()
             .all(|fact| fact.status == FactStatus::Pending));
@@ -2599,9 +2663,9 @@ mod tests {
         let state = review_test_state_with("historical-backfill-cancel", 1, 1);
         let job_id = {
             let mut state = state.lock().unwrap();
-            let book_id = state.book.base.book_id.clone();
+            let book_id = state.workspace.book.base.book_id.clone();
             state
-                .store
+                .user.store
                 .start_historical_backfill_job(
                     HistoricalBackfillRange {
                         session_id: "review-session-0".into(),
@@ -2638,7 +2702,7 @@ mod tests {
         {
             let mut state = state.lock().unwrap();
             state
-                .store
+                .user.store
                 .cancel_historical_backfill_job(&job_id, "cancel")
                 .unwrap();
         }
@@ -2651,14 +2715,14 @@ mod tests {
         assert!(running.join().unwrap().unwrap().is_none());
         let state = state.lock().unwrap();
         assert_eq!(
-            state.store.historical_backfill_jobs()[0].status,
+            state.user.store.historical_backfill_jobs()[0].status,
             HistoricalBackfillJobStatus::Cancelled
         );
         assert_eq!(
-            state.store.historical_backfill_jobs()[0].processed_through,
+            state.user.store.historical_backfill_jobs()[0].processed_through,
             0
         );
-        assert!(state.store.profile_facts().is_empty());
+        assert!(state.user.store.profile_facts().is_empty());
     }
 
     #[test]
@@ -2666,9 +2730,9 @@ mod tests {
         let state = review_test_state_with("historical-backfill-unconfigured", 1, 1);
         {
             let mut state = state.lock().unwrap();
-            let book_id = state.book.base.book_id.clone();
+            let book_id = state.workspace.book.base.book_id.clone();
             state
-                .store
+                .user.store
                 .start_historical_backfill_job(
                     HistoricalBackfillRange {
                         session_id: "review-session-0".into(),
@@ -2695,7 +2759,7 @@ mod tests {
         );
         assert_eq!(calls.load(Ordering::SeqCst), 0);
         let state = state.lock().unwrap();
-        let job = &state.store.historical_backfill_jobs()[0];
+        let job = &state.user.store.historical_backfill_jobs()[0];
         assert_eq!(job.status, HistoricalBackfillJobStatus::Retryable);
         assert_eq!(job.processed_through, 0);
         assert_eq!(
@@ -2728,9 +2792,9 @@ mod tests {
         assert_eq!(coordinator.scheduler_tick().unwrap(), 1);
         assert_eq!(calls.load(Ordering::SeqCst), 1);
         let state = state.lock().unwrap();
-        assert_eq!(state.store.review_state().reviewed_through.len(), 1);
+        assert_eq!(state.user.store.review_state().reviewed_through.len(), 1);
         assert_eq!(
-            state.store.review_state().reviewed_through["review-session-0"],
+            state.user.store.review_state().reviewed_through["review-session-0"],
             1
         );
     }
@@ -2754,7 +2818,7 @@ mod tests {
         assert_eq!(coordinator.scheduler_tick().unwrap(), 1);
         assert_eq!(calls.load(Ordering::SeqCst), 1);
         assert_eq!(
-            state.lock().unwrap().store.review_state().reviewed_through["review-session-0"],
+            state.lock().unwrap().user.store.review_state().reviewed_through["review-session-0"],
             8
         );
     }
@@ -2780,13 +2844,13 @@ mod tests {
         );
         {
             let state = state.lock().unwrap();
-            let job = &state.store.review_state().review_jobs[0];
+            let job = &state.user.store.review_state().review_jobs[0];
             assert_eq!(job.status, ReviewJobStatus::Retryable);
             assert_eq!(job.attempts, 1);
             assert_eq!(job.next_attempt_at.as_deref(), Some("1000"));
             assert_eq!(
                 state
-                    .store
+                    .user.store
                     .review_state()
                     .last_error
                     .as_ref()
@@ -2806,7 +2870,7 @@ mod tests {
             "REVIEW_EXECUTOR_FAILED"
         );
         let state = state.lock().unwrap();
-        let job = &state.store.review_state().review_jobs[0];
+        let job = &state.user.store.review_state().review_jobs[0];
         assert_eq!(job.attempts, 2);
         assert_eq!(job.next_attempt_at.as_deref(), Some("3000"));
         assert_eq!(calls.load(Ordering::SeqCst), 2);
@@ -2819,13 +2883,13 @@ mod tests {
         let state = review_test_state_with(name, 1, 1);
         {
             let mut state = state.lock().unwrap();
-            let job_id = state.store.review_state().review_jobs[0].job_id.clone();
-            state.store.claim_review_job(&job_id, "10").unwrap();
-            state.store = MemoryStore::open(&memory_path).unwrap();
-            let cursors = crate::agent_history_review_cursors(&state.agent_history);
-            state.store.resume_review_jobs(&cursors, "20").unwrap();
+            let job_id = state.user.store.review_state().review_jobs[0].job_id.clone();
+            state.user.store.claim_review_job(&job_id, "10").unwrap();
+            state.user.store = MemoryStore::open(&memory_path).unwrap();
+            let cursors = crate::agent_history_review_cursors(&state.user.agent_history);
+            state.user.store.resume_review_jobs(&cursors, "20").unwrap();
             assert_eq!(
-                state.store.review_state().review_jobs[0].status,
+                state.user.store.review_state().review_jobs[0].status,
                 ReviewJobStatus::Queued
             );
         }
@@ -2851,14 +2915,14 @@ mod tests {
         assert_eq!(coordinator.scheduler_tick().unwrap(), 0);
 
         let state = state.lock().unwrap();
-        let job = &state.store.review_state().review_jobs[0];
+        let job = &state.user.store.review_state().review_jobs[0];
         assert_eq!(job.status, ReviewJobStatus::Completed);
         assert_eq!(job.attempts, 2);
         assert_eq!(
-            state.store.review_state().reviewed_through["review-session-0"],
+            state.user.store.review_state().reviewed_through["review-session-0"],
             1
         );
-        assert_eq!(state.store.profile_facts().len(), 1);
+        assert_eq!(state.user.store.profile_facts().len(), 1);
         let reopened = MemoryStore::open(memory_path).unwrap();
         assert_eq!(reopened.profile_facts().len(), 1);
         assert_eq!(
@@ -2894,14 +2958,15 @@ mod tests {
         assert_eq!(status, ReviewDrainStatus::TimedOut);
         {
             let mut state = state.lock().unwrap();
-            let book_id = state.book.base.book_id.clone();
+            let book_id = state.workspace.book.base.book_id.clone();
             let request = crate::profile_snapshot_request(
                 &state,
+                &state.workspace.book,
                 &book_id,
-                crate::current_content_profile(&state.book),
+                crate::current_content_profile(&state.workspace.book),
                 "42",
             );
-            let snapshot = state.store.project_reader_profile_snapshot(&request);
+            let snapshot = state.user.store.project_reader_profile_snapshot(&request);
             assert_eq!(snapshot.profile_status, ProfileStatus::Stale);
             assert_eq!(snapshot.pending_context.len(), 1);
             assert_eq!(snapshot.pending_context[0].turn_id, "turn-review-0-1");
@@ -2929,7 +2994,7 @@ mod tests {
                     .len(),
                 1
             );
-            let lid = state.reader.viewport().anchor_lid;
+            let lid = state.workspace.reader.viewport().anchor_lid;
             let body = serde_json::json!({ "lid": lid }).to_string();
             let navigation = route(
                 &mut state,
@@ -2950,15 +3015,16 @@ mod tests {
         }
         assert!(coordinator.run_one("43").unwrap().is_none());
         let state = state.lock().unwrap();
-        assert!(state.store.review_state().last_error.is_none());
+        assert!(state.user.store.review_state().last_error.is_none());
         assert_eq!(
-            state.store.review_state().review_jobs[0].status,
+            state.user.store.review_state().review_jobs[0].status,
             ReviewJobStatus::Completed
         );
         let request = crate::profile_snapshot_request(
             &state,
-            &state.book.base.book_id,
-            crate::current_content_profile(&state.book),
+                &state.workspace.book,
+            &state.workspace.book.base.book_id,
+            crate::current_content_profile(&state.workspace.book),
             "43",
         );
         assert_eq!(request.profile_status, ProfileStatus::Current);
@@ -2972,8 +3038,8 @@ mod tests {
             let mut state = state.lock().unwrap();
             let empty_path = std::env::temp_dir().join("ub-review-host-boundary-gap-empty.json");
             let _ = std::fs::remove_file(&empty_path);
-            state.store = MemoryStore::open(empty_path).unwrap();
-            assert!(state.store.review_state().review_jobs.is_empty());
+            state.user.store = MemoryStore::open(empty_path).unwrap();
+            assert!(state.user.store.review_state().review_jobs.is_empty());
         }
         let clock = Arc::new(FakeClock::default());
         clock.set(77);
@@ -2994,13 +3060,13 @@ mod tests {
         assert_eq!(status, ReviewDrainStatus::Drained);
         assert_eq!(calls.load(Ordering::SeqCst), 1);
         let state = state.lock().unwrap();
-        assert_eq!(state.store.review_state().review_jobs.len(), 1);
+        assert_eq!(state.user.store.review_state().review_jobs.len(), 1);
         assert_eq!(
-            state.store.review_state().review_jobs[0].status,
+            state.user.store.review_state().review_jobs[0].status,
             ReviewJobStatus::Completed
         );
         assert_eq!(
-            state.store.review_state().reviewed_through["review-session-0"],
+            state.user.store.review_state().reviewed_through["review-session-0"],
             1
         );
     }

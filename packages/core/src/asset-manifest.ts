@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { unzipSync } from "fflate";
+import { extractEpubCover } from "./epub-cover";
 import type { LidNode } from "./generated/LidNode";
 import type { SourceBlock, SourceImageRef } from "./segment";
 
@@ -27,6 +28,7 @@ export interface AssetManifest {
   version: "asset_manifest.v1";
   book_id: string;
   images: ImageAssetManifestEntry[];
+  cover?: { stored_path: string; mime: string };
 }
 
 interface BuildAssetManifestInput {
@@ -175,6 +177,12 @@ export function buildAssetManifest(input: BuildAssetManifestInput): AssetManifes
   const isEpub = /\.epub$/i.test(input.book_path);
   const epubFiles = isEpub ? unzipSync(new Uint8Array(readFileSync(input.book_path))) : null;
   const images: ImageAssetManifestEntry[] = [];
+  const extractedCover = epubFiles ? extractEpubCover(epubFiles) : null;
+  const cover = extractedCover ? { stored_path: `assets/cover${extractedCover.extension}`, mime: extractedCover.mime } : undefined;
+  if (cover && extractedCover) {
+    mkdirSync(path.join(input.output_dir, "assets"), { recursive: true });
+    writeFileSync(path.join(input.output_dir, cover.stored_path), extractedCover.bytes);
+  }
 
   for (const block of input.source_blocks) {
     if (block.assetKind !== "image" || !block.image || !block.span) continue;
@@ -215,5 +223,6 @@ export function buildAssetManifest(input: BuildAssetManifestInput): AssetManifes
     version: "asset_manifest.v1",
     book_id: input.book_id,
     images,
+    ...(cover ? { cover } : {}),
   };
 }

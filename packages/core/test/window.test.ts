@@ -31,6 +31,9 @@ describe("estimateTokens(确定性近似)", () => {
     expect(estimateTokens("abcd")).toBe(1); // ceil(4*0.25)
     expect(estimateTokens("中a")).toBe(2); // ceil(1 + 0.25)
     expect(estimateTokens("")).toBe(0);
+    expect(estimateTokens("🙂🚀🧭🙂")).toBe(1);
+    expect(estimateTokens("界🙂abc")).toBe(2);
+    expect(estimateTokens("㿿一鿿ꀀ")).toBe(3);
   });
 });
 

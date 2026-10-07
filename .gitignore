@@ -1,6 +1,7 @@
 # Secrets — agent LLM backend key. NEVER commit.
 .env
 .env.*.local
+/docs/Linux服务器访问.local.md
 
 # Local Claude settings (machine-specific)
 .claude/settings.local.json
@@ -13,6 +14,7 @@
 node_modules/
 **/node_modules/
 dist/
+packages/web/dist-multi/
 .pnpm-store/
 apps/desktop/src-tauri/resources/web-dist/*
 !apps/desktop/src-tauri/resources/web-dist/.gitkeep

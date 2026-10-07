@@ -25,7 +25,7 @@ pub const DEFAULT_WIDTH: usize = 20;
 pub const DEFAULT_RADIUS: usize = DEFAULT_WIDTH;
 
 /// 视口(符 V3 §4.2 `{anchor_lid, visible_lids}`)。headless 下 = 叶序滑动窗口。
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Viewport {
     pub anchor_lid: String,
     pub top_lid: String,
@@ -57,7 +57,7 @@ pub struct NoteEffect {
 }
 
 /// reader.state() 只读会话态(供 agent 中途接入 / 人手动操作后 re-sync `[ADR-0015]`)。
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReaderState {
     pub viewport: Viewport,
     pub open_panels: Vec<String>,
@@ -724,6 +724,7 @@ pub fn project_paper_minimap_lens(
 
 /// 命令优先阅读器(headless,有状态会话态)。不拥有 Book/MemoryStore(调用方注入),
 /// 标注不归 reader 持有(归记忆层),reader 只持视口/选区会话态。
+#[derive(Clone)]
 pub struct Reader {
     revision: u64,
     /// 全书叶 LID,按物化路径序(lid_nodes 已是排序数组 `[ADR-0008]`)。
@@ -744,6 +745,16 @@ pub struct Reader {
     paper_minimap_effects: HashMap<String, PaperMinimapEffect>,
     paper_minimap_proposal_seq: u64,
     paper_minimap_effect_seq: u64,
+}
+
+/// Durable scene only; unaccepted proposals and execution state are not restored.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReaderCheckpoint {
+    pub top_lid: String,
+    pub width: usize,
+    pub selection: Option<String>,
+    pub layout: ReaderLayoutState,
+    pub paper_minimap: ReaderPaperMinimapState,
 }
 
 fn region_key(region: &LayoutRegion) -> String {
@@ -1641,6 +1652,22 @@ fn apply_layout_action_to_state(
 }
 
 impl Reader {
+    pub fn checkpoint(&self) -> ReaderCheckpoint {
+        ReaderCheckpoint {
+            top_lid: self.viewport().top_lid, width: self.width,
+            selection: self.selection.clone(), layout: self.layout.clone(),
+            paper_minimap: self.paper_minimap.clone(),
+        }
+    }
+
+    pub fn from_checkpoint(book: &Book, saved: &ReaderCheckpoint) -> Reader {
+        let mut reader = Self::new(book, saved.width);
+        reader.restore_top_lid(book, &saved.top_lid);
+        reader.selection = saved.selection.clone();
+        reader.layout = saved.layout.clone();
+        reader.paper_minimap = saved.paper_minimap.clone();
+        reader
+    }
     /// 建阅读器:算叶序、锚点落书首(idx 0)。
     pub fn new(book: &Book, width: usize) -> Reader {
         let leaf_lids = book
@@ -1787,8 +1814,19 @@ impl Reader {
     /// `range=Some(s,e)`:段内自由高亮——按 **UTF-16 偏移**切该段子串作 content + 存 range `[ADR-0031]`;
     /// 越界 → `INVALID_RANGE` 不降级。`range=None`:整段高亮(向后兼容 / agent 走此路)。
     /// 返回的 highlight_id = 记忆层 mem_id;`layer`:人默认 `long_term`、agent 提议态 `session` `[ADR-0030]`。
-    pub fn highlight(
-        &mut self,
+    pub fn highlight(&mut self, book: &Book, store: &mut MemoryStore, lid: &str, range: Option<(u32, u32)>, source_session_id: Option<String>, layer: &str, now: &str) -> Result<HighlightEffect, ToolError> {
+        let effect = Self::save_highlight(book, store, lid, range, source_session_id, layer, now)?;
+        self.select_annotation(lid);
+        Ok(effect)
+    }
+
+    /// Apply only the reading-scene part after a private annotation was saved.
+    pub fn select_annotation(&mut self, lid: &str) {
+        self.revision += 1;
+        self.selection = Some(lid.into());
+    }
+
+    pub fn save_highlight(
         book: &Book,
         store: &mut MemoryStore,
         lid: &str,
@@ -1839,8 +1877,6 @@ impl Reader {
             },
             now,
         )?;
-        self.revision += 1;
-        self.selection = Some(lid.to_string());
         Ok(HighlightEffect {
             ok: true,
             highlight_id: saved.mem_id,
@@ -1850,8 +1886,13 @@ impl Reader {
     /// `reader.note(lid, text)`:薄入口,持久化**委托 memory.save**(type=note,content=text)。
     /// 返回的 note_id = 记忆层 mem_id(标注单源=记忆层)。
     /// `layer`:人默认 `long_term`、agent 提议态传 `session`(同 highlight `[ADR-0030]`)。
-    pub fn note(
-        &mut self,
+    pub fn note(&mut self, book: &Book, store: &mut MemoryStore, lid: &str, text: &str, layer: &str, now: &str) -> Result<NoteEffect, ToolError> {
+        let effect = Self::save_note(book, store, lid, text, layer, now)?;
+        self.select_annotation(lid);
+        Ok(effect)
+    }
+
+    pub fn save_note(
         book: &Book,
         store: &mut MemoryStore,
         lid: &str,
@@ -1891,8 +1932,6 @@ impl Reader {
                 to_layer: "long_term".into(),
             })?;
         }
-        self.revision += 1;
-        self.selection = Some(lid.to_string());
         Ok(NoteEffect {
             ok: true,
             note_id: record.mem_id,

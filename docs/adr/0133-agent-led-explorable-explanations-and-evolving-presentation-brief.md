@@ -4,6 +4,8 @@
 
 本 ADR 细化 [ADR-0130](0130-agent-rich-presentation-and-read-time-authoring.md)，复用 RP1–RP7 的制作、运行与交付机制；RP8 仍是正式教学接入。实施合同见[切片方案](../切片方案-Agent自主表达设计与PresentationBrief.md)。
 
+2026-10-02 后续决策：[ADR-0154](0154-presentation-global-framework-and-staged-authoring.md) 接受复杂演示的全局框架、局部试做与按阶段指导。运行内框架承担当前制作的交接；本 ADR 的持久 Brief 仍为条件性工作。后续指导改进按 [EX12](../切片方案-演示页全局框架与分阶段制作.md) 推进，既有实验结果保留。
+
 ## 背景
 
 用户希望只表达当前问题和困惑，由 Agent 选择能使关键关系可见、可操作的表示，并依据实际观察修改方法。Ciechanowski 式可探索解释是体验方向。现有 RP 已有制作、预览、后续采样和交付闭环；详细工程验收请求包含布局、控件、参数名及恢复字段，能够证明给定设计后的实现能力，尚不能证明自然短请求下的自主设计表现。

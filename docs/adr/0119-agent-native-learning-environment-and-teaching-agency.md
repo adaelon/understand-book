@@ -10,4 +10,4 @@ Status: Accepted, 2026-09-07. Extends ADR-0007 and ADR-0113; guides the teaching
 
 **命门**: 系统提供和维护真实状态、对象语义、可发现的操作能力与执行反馈；Agent 结合用户目标、已观察状态和可用素材决定具体教学动作。环境由 TeachingMap、LearningMemory、Reader 与交互状态的既有权威来源构成，事实与判断分开，不复制为新的可编辑真相；既有来源、学习证据及用户控制的所有权保持成立。
 **何时回头**: 真实交互证明某类选择需要明确策略支持时，限定补充该策略。
-**展开**: [grill.md Q90/Q91/Q94/Q95](../grill.md)、[领域术语](../../CONTEXT.md)。每回合自动提供稳定环境说明与精简当前现场，相关资产和历史细节按需读取；表现判断必须取得实际呈现、帮助条件与用户回应。环境分别表达阅读可用与正式学习就绪，正式 TutorLoop 须满足 [ADR-0120](0120-whole-source-prebuild-gate-for-formal-learning.md) 的整份材料预构建要求；自动观察的具体字段、体积预算，以及能力发现、动作与反馈接口继续 Grill。
+**展开**: [grill.md Q90/Q91/Q94/Q95](../grill.md)、[领域术语](../../CONTEXT.md)。每回合自动提供稳定环境说明与精简当前现场，相关资产和历史细节按需读取；表现判断必须取得实际呈现、帮助条件与用户回应。环境分别表达阅读可用与正式学习就绪，正式 TutorLoop 须满足 [ADR-0120](0120-whole-source-prebuild-gate-for-formal-learning.md) 的整份材料预构建要求。2026-09-29 的 [ADR-0141](0141-global-tutor-control-and-session-ownership.md)、[ADR-0143](0143-teaching-trace-assessment-and-learning-evidence.md) 及 [Tutor 切片方案](../切片方案-Tutor全局模式与教学闭环.md) 已收敛控制、观察、交付与反馈合同，沿现有 Resident 实施，字段与具体预算由 T7/T12 固定。

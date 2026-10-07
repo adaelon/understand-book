@@ -80,7 +80,7 @@ describe("IP8 explicit legacy full-build compatibility", () => {
       pass2: "disabled",
     });
 
-    expect(result.plan.public_stage_closure).toEqual(["pass1", "profile_sidecar", "book_structure"]);
+    expect(result.plan.public_stage_closure).toEqual(["pass1", "profile_sidecar", "book_structure", "formal_objects", "cognitive_materials", "teaching_publish"]);
     expect(result.plan.excluded).toContainEqual({
       artifact: "public.pass2",
       reason: "disabled by the confirmed standard_deep plan",

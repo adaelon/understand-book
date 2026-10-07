@@ -159,8 +159,8 @@ onBeforeUnmount(() => {
   max-height: min(520px, calc(100vh - 24px));
   overflow: hidden;
   border: 1px solid var(--hairline);
-  border-radius: 8px;
-  background: #fff;
+  border-radius: 12px;
+  background: var(--reader-card);
   box-shadow: 0 16px 42px rgba(29, 34, 39, 0.18);
   color: var(--ink);
 }
@@ -172,7 +172,7 @@ onBeforeUnmount(() => {
   gap: 0.75rem;
   padding: 0.45rem 0.55rem 0.45rem 0.8rem;
   border-bottom: 1px solid var(--hairline);
-  background: #f7f8f6;
+  background: var(--surface-soft);
 }
 .pdf-translation-head strong {
   font-size: 0.86rem;
@@ -213,7 +213,7 @@ onBeforeUnmount(() => {
 .pdf-translation-head button:hover,
 .pdf-translation-actions button:hover {
   border-color: var(--hairline);
-  background: #edf1ec;
+  background: var(--reader-coral-soft);
 }
 .pdf-translation-state {
   display: flex;

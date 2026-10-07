@@ -62,11 +62,38 @@ export function bookStructureRelationEntries(candidate: BookStructureCandidate):
   const unitsFor = (lids: string[]) => [...new Set(lids.flatMap(lid => candidate.spine?.some(unit => unit.lid === lid) ? [lid]
     : Object.entries(candidate.reference_scope?.evidence_by_unit ?? {}).filter(([, evidence]) => evidence.includes(lid)).map(([unit]) => unit)))].sort();
   return [
-    ...(candidate.spine ?? []).map(unit => ({ id: `unit:${unit.lid}`, kind: "unit" as const, name: unit.lid,
+    ...(candidate.spine ?? []).map(unit => ({ id: `unit:${unit.lid}`, kind: "unit" as const, name: candidate.unit_titles?.[unit.lid] ?? "未命名单元",
       summary: unit.summary, unit_lids: [unit.lid], key_stops: unit.key_stop_ids.map(id => stops.get(id)!) })),
     ...(candidate.throughlines ?? []).map(line => ({ id: `throughline:${line.id}`, kind: "throughline" as const, name: line.name,
       summary: line.summary, unit_lids: unitsFor(line.lids), key_stops: line.key_stop_ids.map(id => stops.get(id)!), throughline: line })),
   ];
+}
+
+// Unit summaries are immutable here; dependency additions and new themes commute.
+// Only edits to an existing theme require ordering. A selected theme pair may
+// merge, so reserve both themes' possible aliases for all subsequent pairs.
+export function bookStructureRelationPredecessors(pairs: string[][]): number[][] {
+  const aliases = new Map<string, Set<string>>();
+  const lastWriter = new Map<string, number>();
+  const predecessors: number[][] = [];
+  for (const [ordinal, pair] of pairs.entries()) {
+    const themes = pair.filter(id => id.startsWith("throughline:"));
+    const resources = new Set(themes.flatMap(id => [...(aliases.get(id) ?? [id])]));
+    const ancestors = new Set<number>();
+    for (const resource of resources) {
+      const previous = lastWriter.get(resource);
+      if (previous !== undefined) {
+        ancestors.add(previous);
+        for (const ancestor of predecessors[previous]) ancestors.add(ancestor);
+      }
+    }
+    predecessors.push([...ancestors].sort((a, b) => a - b));
+    for (const resource of resources) {
+      aliases.set(resource, resources);
+      lastWriter.set(resource, ordinal);
+    }
+  }
+  return predecessors;
 }
 
 function scopeFor(entries: BookStructureRelationEntry[], base: BookStructureReferenceScope): BookStructureReferenceScope {

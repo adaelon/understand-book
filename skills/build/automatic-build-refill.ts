@@ -29,11 +29,14 @@ export class AutomaticBuildRefillRequestError extends Error {
 }
 
 /** One control operation: consume terminals, release ownership, count capacity, then step. */
-export function automaticBuildRefill(value: unknown, engine: {
+interface RefillEngine {
   validateStep: (request: unknown) => AutomaticBuildStepRequestV1;
   maxParallel: (invocationRef: string) => number;
-  step: (request: AutomaticBuildStepRequestV1) => AutomaticBuildStepResponseV1;
-}): AutomaticBuildRefillResponseV1 {
+  step: (request: AutomaticBuildStepRequestV1, liveHandoffRefs?: string[]) => AutomaticBuildStepResponseV1 | Promise<AutomaticBuildStepResponseV1>;
+}
+export function automaticBuildRefill(value: unknown, engine: RefillEngine & { step: (...args: Parameters<RefillEngine["step"]>) => AutomaticBuildStepResponseV1 }): AutomaticBuildRefillResponseV1;
+export function automaticBuildRefill(value: unknown, engine: RefillEngine): AutomaticBuildRefillResponseV1 | Promise<AutomaticBuildRefillResponseV1>;
+export function automaticBuildRefill(value: unknown, engine: RefillEngine): AutomaticBuildRefillResponseV1 | Promise<AutomaticBuildRefillResponseV1> {
   let parsed: z.infer<typeof control>;
   let request: AutomaticBuildStepRequestV1;
   try {
@@ -53,7 +56,9 @@ export function automaticBuildRefill(value: unknown, engine: {
   }
   const capacity = Math.min(capacity_limit, engine.maxParallel(request.invocation_ref));
   const available = Math.max(0, capacity - Object.keys(live_by_slot).length) as 0 | 1 | 2 | 3;
-  const step = engine.step({ ...request, available_agent_slots: available });
+  const result = engine.step({ ...request, available_agent_slots: available },
+    Object.values(live_by_slot).map(child => child.opaque_handoff_ref));
+  const finish = (step: AutomaticBuildStepResponseV1): AutomaticBuildRefillResponseV1 => {
   const ready: AutomaticBuildRefillResponseV1["ready_executors"] = [];
   const selected = new Set<string>();
   if (step.action.kind === "SPAWN_EXECUTORS") {
@@ -67,4 +72,6 @@ export function automaticBuildRefill(value: unknown, engine: {
   }
   return { version: "automatic_build_refill.v1", live_by_slot, completed_refs: [...completed],
     available_agent_slots: available, step, ready_executors: ready };
+  };
+  return result instanceof Promise ? result.then(finish) : finish(result);
 }

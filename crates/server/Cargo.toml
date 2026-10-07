@@ -6,12 +6,16 @@ publish = false
 default-run = "server"
 
 [dependencies]
+argon2 = "0.5.3"
+rand_core = { version = "0.6", features = ["getrandom"] }
+sha2 = "0.10"
 artifact-tools = { path = "../artifact-tools" }
 base-schema = { path = "../base-schema" }
 book-tool-contracts = { path = "../book-tool-contracts" }
 read-tools = { path = "../read-tools" }
 reader = { path = "../reader" }
 memory = { path = "../memory" }
+rusqlite = { version = "0.40.2", features = ["bundled", "backup"] }
 runtime = { path = "../runtime" }
 base64 = "0.22"
 httpdate = "1.0.3"

@@ -21,6 +21,7 @@ pub enum ToolHandlerId {
     Artifact(ArtifactToolId),
     ToolSearch,
     GoalUpdate,
+    TutorStep,
     SourcePresent,
     PresentationAuthor,
     ProfileManifest,
@@ -41,13 +42,14 @@ pub enum ToolHandlerId {
 }
 
 impl ToolHandlerId {
-    pub const ALL: [ToolHandlerId; 33] = [
+    pub const ALL: [ToolHandlerId; 34] = [
         ToolHandlerId::Book(BookToolId::Query),
         ToolHandlerId::Book(BookToolId::Synthesize),
         ToolHandlerId::Book(BookToolId::SearchText),
         ToolHandlerId::Book(BookToolId::Text),
         ToolHandlerId::ToolSearch,
         ToolHandlerId::GoalUpdate,
+        ToolHandlerId::TutorStep,
         ToolHandlerId::Artifact(ArtifactToolId::List),
         ToolHandlerId::Artifact(ArtifactToolId::Search),
         ToolHandlerId::Artifact(ArtifactToolId::Read),
@@ -86,6 +88,7 @@ impl ToolHandlerId {
             ToolHandlerId::Artifact(id) => artifact_aliases(id).resident,
             ToolHandlerId::ToolSearch => "tool.search",
             ToolHandlerId::GoalUpdate => "goal.update",
+            ToolHandlerId::TutorStep => "tutor.step",
             ToolHandlerId::PresentationAuthor => "presentation.author",
             ToolHandlerId::SourcePresent => "source.present",
             ToolHandlerId::ProfileManifest => "profile.manifest",
@@ -467,6 +470,7 @@ impl ToolRegistration {
             "source.present" => "整理来源",
             "presentation.author" => "制作与预览内容",
             "tool.search" => "查找可用工具",
+            "tutor.step" => "选择教学动作",
             "goal.update" => "更新当前任务",
             "reader.note" => "保存笔记",
             "reader.highlight" => "添加高亮",
@@ -516,6 +520,11 @@ pub struct ToolRegistry {
 }
 
 impl ToolRegistry {
+    pub(crate) fn without_tutor(mut self) -> Self {
+        self.registrations.retain(|r| r.handler != ToolHandlerId::TutorStep);
+        self.by_name = self.registrations.iter().enumerate().map(|(i, r)| (r.spec.name.clone(), i)).collect();
+        self
+    }
     pub(crate) fn without_goal_update(mut self) -> Self {
         self.registrations.retain(|registration| registration.handler != ToolHandlerId::GoalUpdate);
         self.by_name = self.registrations.iter().enumerate().map(|(index, registration)| (registration.spec.name.clone(), index)).collect();
@@ -726,7 +735,7 @@ fn registration_for(spec: ToolSpec, handler: ToolHandlerId) -> ToolRegistration 
             ResultPolicy::ToolDiscovery,
             Parallelism::SequentialOnly,
         ),
-        Handler::GoalUpdate => (
+        Handler::GoalUpdate | Handler::TutorStep => (
             ToolValidatorId::JsonSchema,
             ResultPolicy::MemoryReceipt,
             Parallelism::SequentialOnly,
@@ -865,6 +874,7 @@ fn capability_migration(handler: ToolHandlerId) -> CapabilityMigration {
             migration(vec![Legacy::ArtifactRead], vec![Capability::ArtifactRead])
         }
         Handler::ToolSearch => migration(vec![Legacy::Discovery], vec![Capability::Discovery]),
+        Handler::TutorStep => migration(vec![Legacy::MemoryWrite], vec![Capability::MemoryWrite]),
         Handler::GoalUpdate => migration(vec![], vec![Capability::GoalManagement]),
         Handler::PresentationAuthor => migration(
             vec![Legacy::SourcePresentation],
@@ -1103,6 +1113,7 @@ fn routing_shape(handler: ToolHandlerId) -> RoutingShape {
             all_profiles(),
             Cost::Low,
         ),
+        Handler::TutorStep => shape(vec![Scope::Document], vec![Operation::Explain], Effect::MemoryWrite, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
         Handler::GoalUpdate => shape(
             vec![Scope::Document],
             vec![Operation::Explain],
@@ -1357,6 +1368,7 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
             "Discover a deferred Resident capability that is absent from the current sampled tool surface.",
             "Do not use when visible tools can complete the task or to execute a matched tool in the same sampling.",
         ),
+        Handler::TutorStep => ("Read teaching materials and learning evidence, assess a formal response against its frozen contract, and select one grounded move.", "Do not invent grades or mastery, alter frozen criteria, or advance a paused learning session."),
         Handler::GoalUpdate => (
             "Revise the current task interpretation or working focus when it actually changes.",
             "Do not claim a page was delivered or replace a user requirement with a method choice.",
@@ -1882,6 +1894,7 @@ mod tests {
                 &["reader_write"],
             ),
             ("reader.state", &["reader_read"], &["reader_read"]),
+            ("tutor.step", &["memory_write"], &["memory_write"]),
         ];
 
         assert_eq!(cases.len() + 1, ToolHandlerId::ALL.len());

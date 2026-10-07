@@ -1,13 +1,58 @@
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import * as os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AutomaticBuildDispatchSettledError } from "../src/automatic-build-dispatch-runtime";
 import { automaticBuildDriverFailureResponse, runAutomaticBuildDriverCommand } from "../../../skills/build/automatic-build-driver";
+import { resolveAutomaticBuildExecutorRegistryRoot } from "../src/automatic-build-executor-session";
 
-afterEach(() => vi.unstubAllEnvs());
+vi.mock("node:os", async importOriginal => {
+  const actual = await importOriginal<typeof import("node:os")>();
+  return { ...actual, homedir: vi.fn(actual.homedir) };
+});
+
+afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 describe("build driver failure boundary", () => {
+  it("shares durable control storage with the executor when the OS temp directory changes", () => {
+    const directory = mkdtempSync(path.join(tmpdir(), "build-driver-persistent-"));
+    const userDirectory = path.join(directory, "user");
+    vi.mocked(os.homedir).mockReturnValue(userDirectory);
+    vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", undefined);
+    vi.stubEnv("TEMP", path.join(directory, "temp-before"));
+    vi.stubEnv("TMP", path.join(directory, "temp-before"));
+    vi.stubEnv("TMPDIR", path.join(directory, "temp-before"));
+    const response = automaticBuildDriverFailureResponse(new Error("control storage test"));
+    if (response.version !== "automatic_build_step.v1" || response.action.kind !== "NEEDS_USER") {
+      throw new Error("expected bounded diagnostic");
+    }
+    vi.stubEnv("TEMP", path.join(directory, "temp-after"));
+    vi.stubEnv("TMP", path.join(directory, "temp-after"));
+    vi.stubEnv("TMPDIR", path.join(directory, "temp-after"));
+    const registry = resolveAutomaticBuildExecutorRegistryRoot();
+    expect(registry).toBe(path.join(userDirectory, ".understand-book", "automatic-build-driver-v1"));
+    expect(existsSync(path.join(registry, "diagnostics", `${response.action.request_id}.json`))).toBe(true);
+  });
+
+  it.each(["automatic_build_step_request.v1", "automatic_build_refill_request.v1"])(
+    "identifies a missing invocation for %s without exposing workspace input", version => {
+      const registry = mkdtempSync(path.join(tmpdir(), "build-driver-missing-invocation-"));
+      vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", registry);
+      let response: unknown;
+      try {
+        runAutomaticBuildDriverCommand({ version, invocation_ref: `abinv1_${"b".repeat(64)}`,
+          ...(version === "automatic_build_step_request.v1" ? { available_agent_slots: 3 }
+            : { capacity_limit: 3, live_by_slot: {}, completed_refs: [], terminal_children: [] }) });
+      } catch (error) { response = automaticBuildDriverFailureResponse(error); }
+      expect(response).toMatchObject({ version: "automatic_build_step.v1", action: {
+        kind: "NEEDS_USER", reason: "build_engine_failed", choices: [],
+        projection: { category: "internal", code: "invocation_record_missing" },
+      } });
+      expect(JSON.stringify(response)).not.toContain(registry);
+      expect(JSON.stringify(response)).toContain("confirmed plan");
+    });
+
   it.each([{ capacity_limit: "3" }, { open_call_correction: "double-serialized" }])(
     "rejects malformed refill control before reading invocation state: %j", (invalid) => {
       const directory = mkdtempSync(path.join(tmpdir(), "build-refill-request-"));

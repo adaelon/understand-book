@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest";
 import { createReadingContinuity } from "./useReadingContinuity";
 
 describe("reading continuity", () => {
+  it("returns to the original annotation surface and record in the same scene", () => {
+    const continuity = createReadingContinuity();
+    const point = { contextKey: 'A:workspace:2:publication', turnId: '', origin: 'notes' as const, memId: 'note-new', anchor: null };
+    continuity.push(point);
+    expect(continuity.peek(point.contextKey)).toEqual(point);
+    expect(continuity.pop(point.contextKey)).toEqual(point);
+    continuity.push(point);
+    continuity.invalidateContext('B:workspace:2:publication');
+    expect(continuity.peek(point.contextKey)).toBeNull();
+  });
   it("keeps a bounded LIFO stack per current context", () => {
     const continuity = createReadingContinuity(2);
     continuity.push({ contextKey: "a", turnId: "1", anchor: null });

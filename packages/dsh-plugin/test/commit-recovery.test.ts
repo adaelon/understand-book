@@ -59,7 +59,8 @@ for (const mode of ["lost-response", "crash-after-commit"] as const) test(`${mod
     assert.equal(pass1Generations, 1, "accepted work must not be regenerated");
     const dir = path.join(config.driverRoot, "dsh-observations", inv.invocation_ref);
     const observations = readdirSync(dir).map(f => JSON.parse(readFileSync(path.join(dir, f), "utf8")));
-    assert.equal(observations.length, 4);
+    // Pass1 + profile + two structure tasks + objects + read/finish + two reviews.
+    assert.equal(observations.length, 9);
     assert.deepEqual(h.ctx.agents.list(), [h.parent]);
     assert.equal(JSON.stringify([interrupted, completed]).includes("PRIVATE-"), false);
     console.log(JSON.stringify({ mode, root, pass1Generations, observations: observations.length, outcome: "DONE" }));

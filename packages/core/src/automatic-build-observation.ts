@@ -12,6 +12,7 @@ export interface AutomaticBuildRemainingWorkV1 {
   reserved: number;
   running: number;
   terminal: number;
+  retrieval?: { records: number; documents: number; queries: number; calls: number | null };
 }
 
 export type ExecutorSlotIdleReason =
@@ -76,6 +77,12 @@ export function observeAutomaticBuildRemainingWork(
         aggregate[activity] += 1;
       }
       aggregates.set(key, aggregate);
+    }
+    if (stage.retrieval_remaining) {
+      const key = `${stage.stage}\u0000formal_object_set`;
+      const aggregate = aggregates.get(key) ?? { stage: stage.stage, kind: "formal_object_set" as const,
+        pending: 0, reserved: 0, running: 0, terminal: 0 };
+      aggregates.set(key, { ...aggregate, retrieval: stage.retrieval_remaining });
     }
   }
   return [...aggregates.values()].sort((left, right) => (

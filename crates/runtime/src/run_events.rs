@@ -1,4 +1,5 @@
 //! Execution facts shared by live observers and durable summaries. No model text or arguments.
+use crate::request_diagnostics::{RequestDiagnostics, RequestTracker};
 use crate::{
     provider_stream::ModelUsage, AdapterError, AgentRequestPlan, AssistantTurn, CompletionRequest,
     ModelAdapter, ParsedResponse,
@@ -37,6 +38,9 @@ pub struct RunActivity {
     pub usage: Option<ModelUsage>,
     /// Milliseconds from this model activity's start to its first non-empty text delta.
     pub model_first_text_ms: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub request_diagnostics: Option<RequestDiagnostics>,
     pub model_name: Option<String>,
     pub model_name_source: Option<String>,
     pub accepted_evidence_count: Option<u32>,
@@ -72,6 +76,7 @@ struct State {
     activities: Vec<RunActivity>,
     parent: Option<u32>,
     purpose: &'static str,
+    requests: RequestTracker,
     answer_first_patch_ms: Option<f64>,
 }
 #[derive(Clone)]
@@ -100,6 +105,7 @@ impl RunEvents {
                 activities: Vec::new(),
                 parent: None,
                 purpose: "outer",
+                requests: RequestTracker::default(),
                 answer_first_patch_ms: None,
             })),
             sink,
@@ -209,6 +215,7 @@ impl RunEvents {
             usage_total_tokens: None,
             usage: None,
             model_first_text_ms: None,
+            request_diagnostics: None,
             model_name: None,
             model_name_source: None,
             accepted_evidence_count: None,
@@ -245,6 +252,7 @@ impl RunEvents {
         status: ActivityStatus,
         usage: Option<ModelUsage>,
         first_text_elapsed_ms: Option<f64>,
+        diagnostics: Option<RequestDiagnostics>,
         error: Option<String>,
     ) {
         activity.status = status;
@@ -253,6 +261,7 @@ impl RunEvents {
             .map(|start| (self.start.elapsed().as_secs_f64() * 1000.0 - start).max(0.0));
         activity.usage_total_tokens = usage.as_ref().and_then(|usage| usage.total_tokens);
         activity.usage = usage;
+        activity.request_diagnostics = diagnostics;
         activity.model_first_text_ms = activity
             .started_ms
             .zip(first_text_elapsed_ms)
@@ -261,12 +270,20 @@ impl RunEvents {
         self.state.lock().unwrap().activities[(activity.step_id - 1) as usize] = activity.clone();
         self.publish(activity);
     }
+    fn observe_request(&self, step_id: u32, body: Arc<serde_json::Value>) -> RequestDiagnostics {
+        let mut state = self.state.lock().unwrap();
+        let purpose = state.activities[(step_id - 1) as usize].name.clone();
+        state.requests.observe(&purpose, step_id, body)
+    }
     fn model<T>(
         &self,
         cancellation: &crate::run_context::CancellationToken,
         model_name: String,
-        call: impl FnOnce() -> Result<T, AdapterError>,
-        observation: impl FnOnce(Option<&T>) -> (Option<ModelUsage>, Option<f64>),
+        call: impl FnOnce(u32) -> Result<T, AdapterError>,
+        observation: impl FnOnce(
+            Option<&T>,
+        )
+            -> (Option<ModelUsage>, Option<f64>, Option<RequestDiagnostics>),
     ) -> Result<T, AdapterError> {
         cancellation
             .check()
@@ -285,7 +302,7 @@ impl RunEvents {
         activity.model_name = Some(model_name);
         activity.model_name_source = Some("configured".into());
         self.state.lock().unwrap().activities[(activity.step_id - 1) as usize] = activity.clone();
-        let result = call();
+        let result = call(activity.step_id);
         let status = if cancellation.is_cancelled() {
             ActivityStatus::Cancelled
         } else if result.is_ok() {
@@ -293,12 +310,13 @@ impl RunEvents {
         } else {
             ActivityStatus::Failed
         };
-        let (usage, first_text_elapsed_ms) = observation(result.as_ref().ok());
+        let (usage, first_text_elapsed_ms, diagnostics) = observation(result.as_ref().ok());
         self.finish_model(
             activity,
             status,
             usage,
             first_text_elapsed_ms,
+            diagnostics,
             result.as_ref().err().map(|_| "PROVIDER_ERROR".into()),
         );
         result
@@ -338,9 +356,17 @@ impl ModelAdapter for ObservedAdapter<'_> {
         observer: &mut dyn crate::provider_stream::ModelObserver,
     ) -> Result<ParsedResponse, AdapterError> {
         let usage = std::cell::RefCell::new(None);
+        let diagnostics = std::cell::RefCell::new(None);
+        let step_id = std::cell::Cell::new(0);
         let first_text_elapsed_ms = std::cell::Cell::new(None);
         let mut forward = |delta: crate::provider_stream::ModelDelta| {
             match &delta {
+                crate::provider_stream::ModelDelta::Request(body) => {
+                    diagnostics.replace(Some(
+                        self.events.observe_request(step_id.get(), body.clone()),
+                    ));
+                    return;
+                }
                 crate::provider_stream::ModelDelta::Usage(snapshot) => {
                     usage.replace(Some(snapshot.clone()));
                 }
@@ -357,8 +383,17 @@ impl ModelAdapter for ObservedAdapter<'_> {
         self.events.model(
             &self.cancellation,
             self.runtime_profile.matched_model.clone(),
-            || self.inner.complete_observed(req, &mut forward),
-            |_value| (usage.borrow().clone(), first_text_elapsed_ms.get()),
+            |id| {
+                step_id.set(id);
+                self.inner.complete_observed(req, &mut forward)
+            },
+            |_value| {
+                (
+                    usage.borrow().clone(),
+                    first_text_elapsed_ms.get(),
+                    diagnostics.borrow().clone(),
+                )
+            },
         )
     }
 
@@ -368,9 +403,17 @@ impl ModelAdapter for ObservedAdapter<'_> {
         observer: &mut dyn crate::provider_stream::ModelObserver,
     ) -> Result<serde_json::Value, AdapterError> {
         let usage = std::cell::RefCell::new(None);
+        let diagnostics = std::cell::RefCell::new(None);
+        let step_id = std::cell::Cell::new(0);
         let first_text_elapsed_ms = std::cell::Cell::new(None);
         let mut forward = |delta: crate::provider_stream::ModelDelta| {
             match &delta {
+                crate::provider_stream::ModelDelta::Request(body) => {
+                    diagnostics.replace(Some(
+                        self.events.observe_request(step_id.get(), body.clone()),
+                    ));
+                    return;
+                }
                 crate::provider_stream::ModelDelta::Usage(snapshot) => {
                     usage.replace(Some(snapshot.clone()));
                 }
@@ -387,8 +430,17 @@ impl ModelAdapter for ObservedAdapter<'_> {
         self.events.model(
             &self.cancellation,
             self.runtime_profile.matched_model.clone(),
-            || self.inner.complete_structured_observed(req, &mut forward),
-            |_value| (usage.borrow().clone(), first_text_elapsed_ms.get()),
+            |id| {
+                step_id.set(id);
+                self.inner.complete_structured_observed(req, &mut forward)
+            },
+            |_value| {
+                (
+                    usage.borrow().clone(),
+                    first_text_elapsed_ms.get(),
+                    diagnostics.borrow().clone(),
+                )
+            },
         )
     }
 
@@ -398,9 +450,17 @@ impl ModelAdapter for ObservedAdapter<'_> {
         observer: &mut dyn crate::provider_stream::ModelObserver,
     ) -> Result<AssistantTurn, AdapterError> {
         let usage = std::cell::RefCell::new(None);
+        let diagnostics = std::cell::RefCell::new(None);
+        let step_id = std::cell::Cell::new(0);
         let first_text_elapsed_ms = std::cell::Cell::new(None);
         let mut forward = |delta: crate::provider_stream::ModelDelta| {
             match &delta {
+                crate::provider_stream::ModelDelta::Request(body) => {
+                    diagnostics.replace(Some(
+                        self.events.observe_request(step_id.get(), body.clone()),
+                    ));
+                    return;
+                }
                 crate::provider_stream::ModelDelta::Usage(snapshot) => {
                     usage.replace(Some(snapshot.clone()));
                 }
@@ -417,7 +477,10 @@ impl ModelAdapter for ObservedAdapter<'_> {
         self.events.model(
             &self.cancellation,
             self.runtime_profile.matched_model.clone(),
-            || self.inner.chat_observed(req, &mut forward),
+            |id| {
+                step_id.set(id);
+                self.inner.chat_observed(req, &mut forward)
+            },
             |value| {
                 let usage = usage.borrow().clone().or_else(|| {
                     value.and_then(|turn| {
@@ -427,7 +490,11 @@ impl ModelAdapter for ObservedAdapter<'_> {
                         })
                     })
                 });
-                (usage, first_text_elapsed_ms.get())
+                (
+                    usage,
+                    first_text_elapsed_ms.get(),
+                    diagnostics.borrow().clone(),
+                )
             },
         )
     }
@@ -520,7 +587,7 @@ mod tests {
                 .model(
                     &Default::default(),
                     "test-model".into(),
-                    || {
+                    |_| {
                         wait.recv().unwrap();
                         Ok(7u32)
                     },
@@ -530,6 +597,7 @@ mod tests {
                                 total_tokens: Some(total_tokens),
                                 ..Default::default()
                             }),
+                            None,
                             None,
                         )
                     },

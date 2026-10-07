@@ -32,6 +32,7 @@ import {
   type AutomaticBuildStagePolicySetV3,
 } from "./automatic-build-policy-generation";
 import type { ModelInputSliceCoverageV1 } from "./model-input-slice";
+import type { BookStructureLeafCoverageManifestV1 } from "./book-structure";
 
 export const AUTOMATIC_BUILD_QUALITY_GOLDSET = {
   version: "automatic_build_quality_goldset.v1" as const,
@@ -48,6 +49,9 @@ interface QualityFloorV1 {
 
 const QUALITY_FLOORS: Record<ExtractionQualityProfile, Record<QualityStage, QualityFloorV1>> = {
   full: {
+    formal_objects: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
+    cognitive_materials: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
+    teaching_publish: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
     pass1: { min_eligible_unit_coverage: 0.8, max_low_information_rate: 0.1 },
     paper_metadata: { min_eligible_unit_coverage: 0.5, max_low_information_rate: 0.1 },
     paper_lexicon: { min_eligible_unit_coverage: 0.5, max_low_information_rate: 0.1 },
@@ -56,6 +60,9 @@ const QUALITY_FLOORS: Record<ExtractionQualityProfile, Record<QualityStage, Qual
     book_structure: { min_eligible_unit_coverage: 1, max_low_information_rate: 0.05 },
   },
   balanced: {
+    formal_objects: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
+    cognitive_materials: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
+    teaching_publish: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
     pass1: { min_eligible_unit_coverage: 0.6, max_low_information_rate: 0.2 },
     paper_metadata: { min_eligible_unit_coverage: 0.5, max_low_information_rate: 0.2 },
     paper_lexicon: { min_eligible_unit_coverage: 0.4, max_low_information_rate: 0.2 },
@@ -64,6 +71,9 @@ const QUALITY_FLOORS: Record<ExtractionQualityProfile, Record<QualityStage, Qual
     book_structure: { min_eligible_unit_coverage: 0.9, max_low_information_rate: 0.1 },
   },
   sparse: {
+    formal_objects: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
+    cognitive_materials: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
+    teaching_publish: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
     pass1: { min_eligible_unit_coverage: 0.4, max_low_information_rate: 0.35 },
     paper_metadata: { min_eligible_unit_coverage: 0.25, max_low_information_rate: 0.35 },
     paper_lexicon: { min_eligible_unit_coverage: 0.25, max_low_information_rate: 0.35 },
@@ -137,6 +147,10 @@ export interface AutomaticBuildStageQualityReductionParentV2 {
 }
 
 export interface AutomaticBuildStageQualityRoutingEvidenceV2 {
+  book_structure_discovery?: import("./book-structure-discovery").BookStructureDiscoveryProgress;
+  book_structure_coverage?: BookStructureLeafCoverageManifestV1[];
+  book_structure_publication?: "pending" | "ready" | "published";
+  book_structure_organization?: ReturnType<typeof import("./book-structure-organization").routeStructureOrganization>["progress"];
   book_structure_assembly?: { local_work_unit_ids: string[]; selection_work_unit_ids: string[]; relation_work_unit_ids: string[] };
   policy_set: AutomaticBuildStagePolicySetV3;
   coverage: ModelInputSliceCoverageV1[];
@@ -145,6 +159,10 @@ export interface AutomaticBuildStageQualityRoutingEvidenceV2 {
 }
 
 export interface AutomaticBuildStageQualityReportV2 {
+  book_structure_discovery?: AutomaticBuildStageQualityRoutingEvidenceV2["book_structure_discovery"];
+  book_structure_organization?: AutomaticBuildStageQualityRoutingEvidenceV2["book_structure_organization"];
+  book_structure_publication?: AutomaticBuildStageQualityRoutingEvidenceV2["book_structure_publication"];
+  book_structure_leaf_coverage?: { chapters: number; expected: number; covered: number; gaps: number; overlaps: number };
   version: "automatic_build_stage_quality_report.v2";
   target_ref: BuildTargetRefV2;
   stage: QualityStage;
@@ -270,6 +288,8 @@ function artifactItems(stage: QualityStage, descriptor: WorkUnitDescriptor, payl
       ? ["new_throughlines", "extend_throughlines", "merge_throughlines", "add_dependencies"].flatMap(key => Array.isArray(value[key]) ? value[key] as unknown[] : [])
       : descriptor.kind === "structure_stitch_fragment"
       ? Array.isArray(value.spine) ? value.spine : []
+      : descriptor.kind === "structure_fragment"
+      ? ["summary_fragments", "candidate_key_stops"].flatMap(key => Array.isArray(value[key]) ? value[key] as unknown[] : [])
       : Object.keys(output).length ? [output] : [];
   }
   const emitted = items.length;
@@ -277,6 +297,7 @@ function artifactItems(stage: QualityStage, descriptor: WorkUnitDescriptor, payl
   return {
     grounded: descriptor.kind === "structure_relation_delta"
       ? ["new_throughlines", "extend_throughlines", "merge_throughlines", "add_dependencies"].every(key => Array.isArray(value[key]))
+      : descriptor.kind === "structure_fragment" ? Array.isArray(value.summary_fragments) && Array.isArray(value.candidate_key_stops)
       : stage === "pass2" ? emitted >= expected : emitted > 0,
     emitted_items: emitted,
     low_information_items: lowInformationItems(items),
@@ -290,6 +311,8 @@ export function automaticBuildStageArtifactPath(
 ): string {
   const buildRoot = path.join(target.workspace_dir, ".build");
   switch (stage) {
+    case "formal_objects": case "cognitive_materials": case "teaching_publish":
+      throw new Error("teaching artifacts require generation-scoped paths");
     case "pass1": return path.join(buildRoot, "pass1", `${workUnitId}.json`);
     case "paper_metadata": return path.join(buildRoot, "paper-metadata", `${workUnitId}.json`);
     case "paper_lexicon": return path.join(buildRoot, "paper-lexicon", `${workUnitId}.json`);
@@ -613,8 +636,47 @@ export function evaluateAutomaticBuildStageQualityV2(input: {
       coverageInvalid = true;
     }
   }
+  // BookStructure fragments cover semantic leaves, rather than UTF-16 source
+  // slices. Check the router's existing exact leaf cover against the descriptors.
+  const leafCoverageByParent = new Map<string, BookStructureLeafCoverageManifestV1>();
+  if (input.stage === "book_structure") {
+    for (const coverage of input.routing.book_structure_coverage ?? []) {
+      if (leafCoverageByParent.has(coverage.parent_unit_lid)) coverageInvalid = true;
+      leafCoverageByParent.set(coverage.parent_unit_lid, coverage);
+      let cursor = 0;
+      const leafLids = new Set<string>();
+      const rangeIds = new Set<string>();
+      for (const range of [...coverage.core_ranges].sort((left, right) => left.start_ordinal - right.start_ordinal)) {
+        const descriptor = descriptorsById.get(range.work_unit_id);
+        const basis = descriptor?.input_basis;
+        if (rangeIds.has(range.work_unit_id)
+          || !validCoverageCount(range.start_ordinal) || !validCoverageCount(range.end_ordinal_exclusive)
+          || range.start_ordinal !== cursor || range.end_ordinal_exclusive <= range.start_ordinal
+          || range.leaf_lids.length !== range.end_ordinal_exclusive - range.start_ordinal
+          || basis?.kind !== "semantic_projection" || basis.projection_kind !== "book_structure"
+          || basis.core_range?.start_ordinal !== range.start_ordinal
+          || basis.core_range?.end_ordinal_exclusive !== range.end_ordinal_exclusive
+          || (descriptor?.kind !== "structure_unit" && descriptor?.aggregation?.parent_lid !== coverage.parent_unit_lid)
+          || range.leaf_lids.some(lid => !descriptor?.evidence_lids.includes(lid) || leafLids.has(lid))) {
+          coverageInvalid = true;
+        }
+        rangeIds.add(range.work_unit_id);
+        range.leaf_lids.forEach(lid => leafLids.add(lid));
+        cursor = range.end_ordinal_exclusive;
+      }
+      if (coverage.version !== "book_structure_leaf_coverage.v1" || !coverage.parent_unit_lid
+        || !validCoverageCount(coverage.expected_leaf_count) || coverage.expected_leaf_count < 1
+        || cursor !== coverage.expected_leaf_count || leafLids.size !== coverage.expected_leaf_count
+        || coverage.covered_leaf_count !== coverage.expected_leaf_count
+        || coverage.gap_count !== 0 || coverage.core_overlap_count !== 0) {
+        coverageInvalid = true;
+      }
+    }
+  }
   for (const parentLid of reductionParentIds) {
-    if (!coverageByParent.has(parentLid)) coverageInvalid = true;
+    if (input.stage === "book_structure"
+      ? !leafCoverageByParent.has(parentLid)
+      : !coverageByParent.has(parentLid)) coverageInvalid = true;
   }
   if (coverageInvalid) pushViolation(integrityViolations, "source_slice_coverage_invalid");
   const orderedCoverage = [...coverageByParent.values()]
@@ -653,9 +715,11 @@ export function evaluateAutomaticBuildStageQualityV2(input: {
   const seenReductionParents = new Set<string>();
   let missingOrDuplicateParents = 0;
   let reductionClosureStale = false;
+  const reductionEvidenceByFinal = new Map<string, Set<string>>();
   const dependencyClosureFresh = (finalId: string, expectedFragments: Set<string>): boolean => {
     const pending = [finalId];
     const visited = new Set<string>();
+    const evidence = new Set<string>();
     let fresh = true;
     while (pending.length) {
       const currentId = pending.pop()!;
@@ -667,12 +731,14 @@ export function evaluateAutomaticBuildStageQualityV2(input: {
         fresh = false;
         continue;
       }
+      descriptor.evidence_lids.forEach(lid => evidence.add(lid));
       for (const dependency of descriptor.dependencies) {
         const childArtifact = freshArtifacts.get(dependency.artifact);
         if (!childArtifact || childArtifact.artifact_hash !== dependency.sha256) fresh = false;
         pending.push(dependency.artifact);
       }
     }
+    reductionEvidenceByFinal.set(finalId, evidence);
     return fresh && [...expectedFragments].every((fragmentId) => visited.has(fragmentId));
   };
   for (const parent of input.routing.reduction_parents) {
@@ -685,7 +751,9 @@ export function evaluateAutomaticBuildStageQualityV2(input: {
     const parentFinals = new Set(parent.final_work_unit_ids);
     parent.fragment_work_unit_ids.forEach((id) => fragmentIds.add(id));
     parent.final_work_unit_ids.forEach((id) => finalIds.add(id));
-    const contributors = contributorsByParent.get(parent.parent_lid) ?? [];
+    const contributors = input.stage === "book_structure"
+      ? input.routing.public_contributors.filter(contributor => parentFinals.has(contributor.work_unit_id))
+      : contributorsByParent.get(parent.parent_lid) ?? [];
     if (!parent.fragment_work_unit_ids.length
       || parentFragments.size !== parent.fragment_work_unit_ids.length
       || parent.final_work_unit_ids.length !== 1
@@ -742,11 +810,17 @@ export function evaluateAutomaticBuildStageQualityV2(input: {
   let eligibleClosureInvalid = false;
   for (const contributor of input.routing.public_contributors) {
     const descriptor = descriptorsById.get(contributor.work_unit_id);
+    // Source ownership spans all leaves; a final reducer's delivered references
+    // can be narrower. Its fresh dependency closure carries the original source.
+    const evidence = input.stage === "book_structure" && descriptor?.kind === "structure_reduce"
+      ? reductionEvidenceByFinal.get(contributor.work_unit_id) ?? new Set(descriptor.evidence_lids)
+      : new Set(descriptor?.evidence_lids);
     if (!descriptor
       || !freshArtifacts.has(contributor.work_unit_id)
       || (descriptor.aggregation !== undefined && descriptor.aggregation.role !== "final"
-        && !(descriptor.kind === "structure_stitch_fragment" && assembly?.local_work_unit_ids.includes(contributor.work_unit_id)))
-      || contributor.parent_lids.some((parentLid) => !descriptor.evidence_lids.includes(parentLid))) {
+        && !(descriptor.kind === "structure_stitch_fragment" && assembly?.local_work_unit_ids.includes(contributor.work_unit_id))
+        && !(descriptor.kind === "structure_fragment" && input.routing.book_structure_organization))
+      || contributor.parent_lids.some((parentLid) => !evidence.has(parentLid))) {
       eligibleClosureInvalid = true;
     }
   }
@@ -804,6 +878,15 @@ export function evaluateAutomaticBuildStageQualityV2(input: {
       ? "legacy_policy_unknown" as const
       : "v3_policy_generation_bound" as const;
   const core = {
+    ...(input.routing.book_structure_coverage ? { book_structure_leaf_coverage: {
+      chapters: input.routing.book_structure_coverage.length,
+      expected: input.routing.book_structure_coverage.reduce((n, c) => n + c.expected_leaf_count, 0),
+      covered: input.routing.book_structure_coverage.reduce((n, c) => n + c.covered_leaf_count, 0),
+      gaps: input.routing.book_structure_coverage.reduce((n, c) => n + c.gap_count, 0),
+      overlaps: input.routing.book_structure_coverage.reduce((n, c) => n + c.core_overlap_count, 0),
+    } } : {}),
+    ...(input.routing.book_structure_organization ? { book_structure_organization: input.routing.book_structure_organization } : {}),
+    ...(input.routing.book_structure_discovery ? { book_structure_discovery: input.routing.book_structure_discovery } : {}),
     version: "automatic_build_stage_quality_report.v2" as const,
     target_ref: input.target_ref,
     stage: input.stage,
@@ -855,7 +938,11 @@ export function evaluateAutomaticBuildStageQualityV2(input: {
         ? "passed" as const
         : "quality_below_floor" as const,
   };
-  return { ...core, digest: sha256(core) };
+  // Publication is an observation, not a quality prerequisite: ready -> published
+  // must not change the evidence identity checked across the atomic close.
+  return { ...core, digest: sha256(core),
+    ...(input.routing.book_structure_publication ? { book_structure_publication: input.routing.book_structure_publication } : {}) };
+
 }
 
 export function collectAutomaticBuildStageQuality(

@@ -37,6 +37,7 @@ import {
   type WorkUnitDescriptorV4,
 } from "./stage-work-unit";
 import { estimateTokens } from "./window";
+import type { StructureOutline } from "./book-structure-planning";
 
 export type BookStructureSpineRole = "setup" | "foundation" | "method" | "application" | "case" | "synthesis";
 export type BookStructureKeyStopType =
@@ -85,6 +86,8 @@ export interface BookStructureSidecar {
 }
 
 export interface BookStructureCandidate {
+  /** Canonical display labels supplied by Core; LIDs remain source identities. */
+  unit_titles?: Record<string, string>;
   /** Writer-owned provenance carried into the next reduction, not model output. */
   reference_scope?: BookStructureReferenceScope;
   context_units?: BookStructureSpineUnit[];
@@ -115,6 +118,7 @@ export interface BookStructureProfileRules {
 }
 
 export interface BookStructureUnitSource {
+  title?: string;
   job_id: string;
   unit_lid: string;
   unit_kind: LidNode["kind"];
@@ -321,6 +325,8 @@ export type BookStructureFragmentShardKindV1 =
   | "pass2_edge";
 
 export interface BookStructureFragmentInputV1 {
+  discovery?: { outline: StructureOutline; section_lid: string; section_title: string };
+  title?: string;
   version: "book_structure_fragment_input.v1";
   work_unit_id: string;
   parent_job_id: string;
@@ -345,7 +351,7 @@ export interface BookStructureFragmentObservationV1 {
   version: typeof BOOK_STRUCTURE_FRAGMENT_SCHEMA_VERSION_V1;
   parent_unit_lid: string;
   summary_fragments: AnchoredText[];
-  candidate_key_stops: BookStructureKeyStop[];
+  candidate_key_stops: Array<BookStructureKeyStop & { meaning?: string; conditions?: string[]; aliases?: string[] }>;
   role_hints: BookStructureSpineRole[];
   dependency_hints: string[];
   evidence_lids: string[];
@@ -536,6 +542,7 @@ export type BookStructureStitchReductionRouteResultV2 =
   | { status: "blocked"; recovery: BookStructureRoutingRecoveryV1 };
 
 export interface BookStructureUnitCard {
+  title?: string;
   unit_lid: string;
   role: BookStructureSpineRole;
   summary: AnchoredText;
@@ -756,7 +763,7 @@ export function evaluateBookStructureExecution(input: {
   contract: Pick<BookStructureExecutionContractV2, "semantic_prompt" | "policy_fingerprint">;
   rendered_input: string;
   transport_profile: ExecutorTransportProfile;
-  budget: typeof BOOK_STRUCTURE_EXECUTION_BUDGET_V2;
+  budget: { [K in keyof typeof BOOK_STRUCTURE_EXECUTION_BUDGET_V2]: number };
 }) {
   const estimatedPromptTokens = estimateTokens(input.contract.semantic_prompt);
   const estimatedRenderedTokens = estimateTokens(input.rendered_input);
@@ -830,9 +837,13 @@ export function proofBoundBookStructureDescriptor(input: {
   expected_output_items?: number;
   transport_profile: ExecutorTransportProfile;
 }): WorkUnitDescriptorV4 {
-  const scope = JSON.parse(input.rendered_input).reference_scope as BookStructureReferenceScope;
+  const packet = JSON.parse(input.rendered_input);
+  const scope = packet.reference_scope as BookStructureReferenceScope;
   const deliveredLids = [...new Set([
     ...bookStructureScopeLids(scope),
+    // Heading leaves are delivered and owned for coverage, while reference_scope
+    // excludes them from the evidence that can support a semantic candidate.
+    ...(packet.discovery ? packet.core_leaf_lids as string[] : []),
     ...input.evidence_lids.filter(lid => lid === "stitch"),
   ])];
   return createWorkUnitDescriptorV4({
@@ -895,6 +906,15 @@ function titlePathOf(lid: string): string[] {
   const out: string[] = [];
   for (let i = 1; i < parts.length; i++) out.push(parts.slice(0, i).join("."));
   return out;
+}
+
+/** Read the unit's own heading, never a descendant section's heading or LID number. */
+export function bookStructureCanonicalTitle(unit: LidNode, byLid: ReadonlyMap<string, LidNode>, source: string): string {
+  // The canonical tree stores Markdown headings as paragraph leaves.
+  const heading = unit.children.map(lid => byLid.get(lid)).find(node => node && !node.children.length
+    && /^#{1,6}\s/u.test(source.slice(node.span.start, node.span.end).trim()));
+  const firstLine = source.slice((heading ?? unit).span.start, (heading ?? unit).span.end).split(/\r?\n/u)[0].trim();
+  return firstLine.replace(/^#{1,6}\s+/u, "").replace(/\s+#+\s*$/u, "").trim() || "未命名单元";
 }
 
 function graphNodeLids(node: GraphNode): string[] {
@@ -1008,6 +1028,7 @@ function bookStructureAuxiliaryItems(
 }
 
 function bookStructureFragmentInput(input: {
+  discovery?: BookStructureFragmentInputV1["discovery"];
   source: BookStructureUnitSource;
   work_unit_id: string;
   fragment_ordinal: number;
@@ -1044,11 +1065,13 @@ function bookStructureFragmentInput(input: {
   }
   return {
     version: "book_structure_fragment_input.v1",
+    ...(input.discovery ? { discovery: input.discovery } : {}),
     work_unit_id: input.work_unit_id,
     parent_job_id: input.source.job_id,
     parent_unit_lid: input.source.unit_lid,
     unit_kind: input.source.unit_kind,
     title_path: [...input.source.title_path],
+    ...(input.source.title ? { title: input.source.title } : {}),
     ...(input.source.profile_rules ? { profile_rules: input.source.profile_rules } : {}),
     shard_kind: input.shard_kind,
     fragment_ordinal: input.fragment_ordinal,
@@ -1082,7 +1105,7 @@ function createBookStructureFragmentWorkUnit(input: {
   packet: BookStructureFragmentInputV1;
   contract: BookStructureExecutionContractV2;
   transport_profile: ExecutorTransportProfile;
-  budget: typeof BOOK_STRUCTURE_EXECUTION_BUDGET_V2;
+  budget: { [K in keyof typeof BOOK_STRUCTURE_EXECUTION_BUDGET_V2]: number };
   evidence_lids: string[];
 }): { status: "ready"; work_unit: BookStructureRoutedWorkUnitV2 } | {
   status: "blocked";
@@ -1192,13 +1215,14 @@ function coverageManifest(
 }
 
 export function routeBookStructureUnitWorkUnitsV2(input: {
+  discovery?: { outline: StructureOutline; section_by_leaf: Record<string, { lid: string; title: string }> };
   target: BuildTargetRefV2;
   source: BookStructureUnitSource;
   lid_nodes: LidNode[];
   source_fingerprint: string;
   contracts: BookStructureExecutionContractsV2;
   transport_profile?: ExecutorTransportProfile;
-  budget?: typeof BOOK_STRUCTURE_EXECUTION_BUDGET_V2;
+  budget?: { [K in keyof typeof BOOK_STRUCTURE_EXECUTION_BUDGET_V2]: number };
 }): BookStructureUnitRouteResultV2 {
   const transportProfile = input.transport_profile ?? CODEX_EXECUTOR_TRANSPORT_PROFILE_V2;
   const budget = input.budget ?? BOOK_STRUCTURE_EXECUTION_BUDGET_V2;
@@ -1230,7 +1254,7 @@ export function routeBookStructureUnitWorkUnitsV2(input: {
     transport_profile: transportProfile,
     budget,
   });
-  if (wholeEvaluation.status === "within_limit") {
+  if (!input.discovery && wholeEvaluation.status === "within_limit") {
     const evidenceLids = [source.unit_lid, ...source.leaf_lids];
     const descriptor = proofBoundBookStructureDescriptor({
       target: input.target,
@@ -1286,8 +1310,17 @@ export function routeBookStructureUnitWorkUnitsV2(input: {
   let fragmentOrdinal = 0;
   let start = 0;
   while (start < source.leaf_lids.length) {
+    const section = input.discovery?.section_by_leaf[source.leaf_lids[start]];
+    const discovery = input.discovery && section ? { outline: {
+      chapters: input.discovery.outline.chapters.filter(c => c.unit_lid === source.unit_lid),
+      themes: input.discovery.outline.themes.filter(t => t.unit_lids.includes(source.unit_lid)),
+    }, section_lid: section.lid, section_title: section.title } : undefined;
+    // Natural sections own contiguous core ranges. Oversized sections use the
+    // same bounded leaf packing and auxiliary shards as the existing router.
+    let sectionEnd = start + 1;
+    while (sectionEnd < source.leaf_lids.length && (!section || input.discovery!.section_by_leaf[source.leaf_lids[sectionEnd]]?.lid === section.lid)) sectionEnd++;
     let low = start + 1;
-    let high = source.leaf_lids.length;
+    let high = sectionEnd;
     let best: { end: number; work_unit: BookStructureRoutedWorkUnitV2 } | undefined;
     while (low <= high) {
       const end = Math.floor((low + high) / 2);
@@ -1297,6 +1330,7 @@ export function routeBookStructureUnitWorkUnitsV2(input: {
       ));
       const workUnitId = fragmentWorkUnitId(source.unit_lid, fragmentOrdinal, "leaf_core");
       const packet = bookStructureFragmentInput({
+        discovery,
         source,
         work_unit_id: workUnitId,
         fragment_ordinal: fragmentOrdinal,
@@ -1333,6 +1367,7 @@ export function routeBookStructureUnitWorkUnitsV2(input: {
     const coreRange = { start_ordinal: start, end_ordinal_exclusive: start + 1 };
     const coreId = fragmentWorkUnitId(source.unit_lid, fragmentOrdinal, "leaf_core");
     const corePacket = bookStructureFragmentInput({
+      discovery,
       source,
       work_unit_id: coreId,
       fragment_ordinal: fragmentOrdinal,
@@ -1382,6 +1417,7 @@ export function routeBookStructureUnitWorkUnitsV2(input: {
           const group = items.slice(itemStart, itemEnd);
           const workUnitId = fragmentWorkUnitId(source.unit_lid, fragmentOrdinal, kind);
           const packet = bookStructureFragmentInput({
+            discovery,
             source,
             work_unit_id: workUnitId,
             fragment_ordinal: fragmentOrdinal,
@@ -1409,6 +1445,7 @@ export function routeBookStructureUnitWorkUnitsV2(input: {
           const item = items[itemStart];
           const workUnitId = fragmentWorkUnitId(source.unit_lid, fragmentOrdinal, kind);
           const packet = bookStructureFragmentInput({
+            discovery,
             source,
             work_unit_id: workUnitId,
             fragment_ordinal: fragmentOrdinal,
@@ -2277,6 +2314,7 @@ export function buildBookStructureUnitSources(input: {
       unit_lid: unit.lid,
       unit_kind: unit.kind,
       title_path: titlePathOf(unit.lid),
+      title: bookStructureCanonicalTitle(unit, byLid, input.source),
       ...(profileRules ? { profile_rules: profileRules } : {}),
       leaf_lids: leafLids,
       excerpts: leafLids.map((lid) => {
@@ -2329,7 +2367,11 @@ export function buildBookStructureStitchPacket(
   return {
     job_id: "stitch",
     ...(profileRules ? { profile_rules: profileRules } : {}),
-    unit_cards: unitArtifacts.map((artifact) => artifact.output.unit_card),
+    unit_cards: unitArtifacts.map((artifact) => {
+      const card = artifact.output.unit_card;
+      const title = unitSources.find(source => source.unit_lid === card.unit_lid)?.title;
+      return title ? { ...card, title } : card;
+    }),
     long_range_edges: edges,
     evidence_excerpts: excerpts,
   };

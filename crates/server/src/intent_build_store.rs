@@ -8,10 +8,8 @@ use read_tools::ToolError;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
-use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 
 pub const INTENT_BUILD_INVALID: &str = "INTENT_BUILD_INVALID";
 pub const INTENT_BUILD_CONFLICT: &str = "INTENT_BUILD_CONFLICT";
@@ -29,7 +27,6 @@ const V3_ACCEPTED_FILE: &str = "accepted.v3.json";
 const LEGACY_INDEX_FILE: &str = "index.json";
 const LEGACY_INTENT_FILE: &str = "intent.json";
 const LEGACY_ACCEPTED_FILE: &str = "accepted.json";
-static WRITE_NONCE: AtomicU64 = AtomicU64::new(1);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -2173,81 +2170,17 @@ fn write_json_atomically<T: Serialize>(path: &Path, value: &T) -> Result<(), Too
     let mut body = serde_json::to_vec_pretty(value)
         .map_err(|_| store_corrupt("reader-private intent JSON cannot be serialized"))?;
     body.push(b'\n');
-    let temporary = sibling_transaction_path(path, "tmp")?;
-    let backup = sibling_transaction_path(path, "bak")?;
-    let write_result = (|| -> Result<(), std::io::Error> {
-        let mut file = OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(&temporary)?;
-        file.write_all(&body)?;
-        file.sync_all()
-    })();
-    if let Err(error) = write_result {
-        let _ = std::fs::remove_file(&temporary);
-        return Err(private_storage_error(format!(
-            "reader-private temporary file cannot be written: {error}"
-        )));
-    }
-    if let Err(error) = ReaderPrivateStorageGate::secure_file(&temporary) {
-        let _ = std::fs::remove_file(&temporary);
-        return Err(error);
-    }
-
-    let had_original = path.exists();
-    if had_original {
-        let metadata = std::fs::symlink_metadata(path).map_err(|error| {
-            private_storage_error(format!(
-                "reader-private target cannot be inspected: {error}"
-            ))
-        })?;
-        if metadata.file_type().is_symlink() || !metadata.is_file() {
-            let _ = std::fs::remove_file(&temporary);
-            return Err(private_storage_error(
-                "reader-private target must be a real file",
-            ));
-        }
-        std::fs::rename(path, &backup).map_err(|error| {
-            let _ = std::fs::remove_file(&temporary);
-            private_storage_error(format!(
-                "reader-private target cannot be backed up: {error}"
-            ))
-        })?;
-    }
-    if let Err(error) = std::fs::rename(&temporary, path) {
-        if had_original {
-            let _ = std::fs::rename(&backup, path);
-        }
-        let _ = std::fs::remove_file(&temporary);
-        return Err(private_storage_error(format!(
-            "reader-private snapshot cannot be committed: {error}"
-        )));
-    }
-    if let Err(error) = ReaderPrivateStorageGate::secure_file(path) {
-        if had_original {
-            let _ = std::fs::remove_file(path);
-            let _ = std::fs::rename(&backup, path);
-        }
-        return Err(error);
-    }
-    if had_original {
-        std::fs::remove_file(&backup).map_err(|error| {
-            private_storage_error(format!("reader-private backup cannot be removed: {error}"))
-        })?;
-    }
+    let parent = path.parent().ok_or_else(|| private_storage_error("private file has no parent"))?;
+    let mut temporary = tempfile::NamedTempFile::new_in(parent)
+        .map_err(|e| private_storage_error(e.to_string()))?;
+    temporary.write_all(&body).map_err(|e| private_storage_error(e.to_string()))?;
+    ReaderPrivateStorageGate::secure_file(temporary.path())?;
+    temporary.as_file().sync_all().map_err(|e| private_storage_error(e.to_string()))?;
+    // Replace in one operation. Renaming the old file away first leaves an
+    // unrecoverable missing index after a crash (the former backup had a random name).
+    temporary.persist(path).map_err(|e| private_storage_error(e.to_string()))?;
+    ReaderPrivateStorageGate::sync_parent(path).map_err(|e| private_storage_error(e.to_string()))?;
     Ok(())
-}
-
-fn sibling_transaction_path(path: &Path, suffix: &str) -> Result<PathBuf, ToolError> {
-    let parent = path
-        .parent()
-        .ok_or_else(|| private_storage_error("reader-private file has no parent"))?;
-    let name = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .ok_or_else(|| private_storage_error("reader-private file name is invalid"))?;
-    let nonce = WRITE_NONCE.fetch_add(1, Ordering::Relaxed);
-    Ok(parent.join(format!(".{name}.{}.{}.{suffix}", std::process::id(), nonce)))
 }
 
 fn remove_private_path(path: &Path) -> Result<(), ToolError> {
@@ -2350,6 +2283,23 @@ mod tests {
             "ub-intent-store-{name}-{}-{nonce}",
             std::process::id()
         ))
+    }
+
+    #[test]
+    fn mu2_same_intent_ids_are_isolated_and_replacements_keep_valid_json() {
+        let root = tempfile::tempdir().unwrap();
+        let mut users = crate::user_registry::UserRegistry::open(root.path()).unwrap();
+        for id in ["A", "B"] {
+            users.create_user(id).unwrap();
+            let handle = users.get(id, "1").unwrap(); let user = handle.lock().unwrap();
+            let store = user.intent_store().unwrap();
+            store.write_intent(&intent("book-legacy", "intent-legacy", 1, id)).unwrap();
+            store.write_intent(&intent("book-legacy", "intent-legacy", 2, &format!("{id}-updated"))).unwrap();
+        }
+        for id in ["A", "B"] {
+            let handle = users.get(id, "2").unwrap(); let user = handle.lock().unwrap();
+            assert_eq!(user.intent_store().unwrap().read_intent("book-legacy", "intent-legacy").unwrap()["user_goal"], format!("{id}-updated"));
+        }
     }
 
     fn intent(book_id: &str, intent_id: &str, revision: u64, goal: &str) -> serde_json::Value {

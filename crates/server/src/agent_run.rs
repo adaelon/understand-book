@@ -21,17 +21,68 @@ impl AppStatePort for Arc<Mutex<AppState>> {
     }
 }
 
+/// Private authority only; independent of the local or network Reader host.
+pub(crate) trait UserStatePort {
+    fn check_access(&self) -> Result<(), ToolError> { Ok(()) }
+    fn with_user<R>(&self, operation: impl FnOnce(&mut crate::user_runtime::UserRuntime) -> R) -> R;
+}
+impl<P: AppStatePort> UserStatePort for P {
+    fn with_user<R>(&self, operation: impl FnOnce(&mut crate::user_runtime::UserRuntime) -> R) -> R {
+        self.with_app(|state| operation(&mut state.user))
+    }
+}
+pub(crate) struct NetworkUserPort {
+    pub user: crate::user_registry::UserHandle,
+    pub access: Arc<crate::authorization::Authorization>,
+    pub owner: String,
+    pub publication: crate::published_library::PublishedBookRef,
+}
+impl UserStatePort for NetworkUserPort {
+    fn check_access(&self) -> Result<(), ToolError> {
+        self.access.library.lock().unwrap().authorize(&self.owner, &self.publication).map_err(|_|crate::authorization::missing())
+    }
+    fn with_user<R>(&self, operation: impl FnOnce(&mut crate::user_runtime::UserRuntime) -> R) -> R {
+        operation(&mut self.user.lock().unwrap())
+    }
+}
+
 pub(crate) struct RuntimeStatePort<'a, P> {
     pub port: &'a P,
     pub turn_ref: &'a AgentTurnRef,
+    pub scope: &'a crate::run_scope::RunScope,
     pub previewed: std::collections::HashMap<String, std::collections::HashSet<String>>,
     pub animations: std::collections::HashMap<String, crate::presentation_animation::RenderedAnimation>,
     pub plots: std::collections::HashMap<String, crate::presentation_plot::PlotAsset>,
 }
+impl<P: AppStatePort> RuntimeStatePort<'_, P> {
+    pub(crate) fn with_private<R>(&self, operation: impl FnOnce(&PrivateBookContext<'_>) -> Result<R, ToolError>) -> Result<R, ToolError> {
+        self.port.with_app(|state| {
+            self.scope.check_owner(state)?;
+            operation(&self.scope.private_context(state))
+        })
+    }
+}
 impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
+    fn tutor_assessment_input(&mut self, action: &str) -> Result<Value, ToolError> {
+        self.with_private(|state| teaching::assessment_input(state, self.turn_ref, action))
+    }
+    fn tutor_assessment_accept(&mut self, action: &str, items: Value) -> Result<Value, ToolError> {
+        self.with_private(|state| teaching::assessment_accept(state, self.turn_ref, action, items))
+    }
+    fn tutor_active(&mut self) -> Result<bool, ToolError> {
+        self.with_private(|state| teaching::turn_active(state, &self.turn_ref.turn_id))
+    }
+    fn tutor_step(&mut self, request: Value, evidence: &[SourceBinding], ranges: &[EvidenceRange]) -> Result<Value, ToolError> {
+        self.with_private(|state| teaching::step(state, self.turn_ref, request, evidence, ranges))
+    }
     fn persist_goal(&mut self, goal: &runtime::goal::ResidentGoal) -> Result<(), ToolError> {
         self.port.with_app(|state| {
-            let mut candidate = state.agent_history.clone();
+            self.scope.check_owner(state)?;
+            if state.user.session_store.is_some() {
+                return crate::session_runtime::append(&mut state.user, self.turn_ref,
+                    &crate::multi_user_host::now().to_string(), crate::session_event::EventBody::GoalUpdated { goal: goal.clone() });
+            }
+            let mut candidate = state.user.agent_history.clone();
             let session = candidate.sessions.iter_mut().find(|s| s.id == self.turn_ref.session_id)
                 .ok_or_else(|| agent_history_internal("Goal session disappeared"))?;
             let stored = session.goals.iter_mut().find(|g| g.id == goal.id)
@@ -52,32 +103,60 @@ impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
     ) -> Result<runtime::presentation_author::AuthorResult, ToolError> {
         self.author(request, bindings, messages, cancellation)
     }
-    fn with_state<R>(&mut self, operation: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> R {
+    fn submit_private<R>(&mut self, operation: impl FnOnce(&mut MemoryStore) -> R) -> Result<R, ToolError> {
         self.port.with_app(|state| {
-            let before = state.reader.revision();
-            let result = operation(&mut state.store, &mut state.reader);
-            if state.reader.revision() != before {
-                if let Some(stream) = state.active_agent_stream.as_ref().and_then(|s| s.upgrade()) {
-                    stream.reader_changed(reader_state_response(&state.book, &state.reader));
-                }
-            }
-            result
+            self.scope.check_owner(state)?;
+            Ok(operation(&mut state.user.store))
         })
     }
+    fn read_live_reader<R>(&mut self, operation: impl FnOnce(&Reader) -> R) -> Result<R, ToolError> {
+        self.port.with_app(|state| {
+            self.scope.check_workspace(state)?;
+            Ok(operation(&state.workspace.reader))
+        })
+    }
+    fn apply_reader<R>(&mut self, operation: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> Result<R, ToolError> {
+        self.port.with_app(|state| {
+            self.scope.check_workspace(state)?;
+            let before = state.workspace.reader.revision();
+            let result = operation(&mut state.user.store, &mut state.workspace.reader);
+            if state.workspace.reader.revision() != before {
+                if let Some(stream) = state.workspace.active_agent_stream.as_ref().and_then(|s| s.upgrade()) {
+                    stream.reader_changed(reader_state_response(&self.scope.book, &state.workspace.reader));
+                }
+            }
+            Ok(result)
+        })
+    }
+    fn reader_input(&mut self, _: &Book, _: &str) -> runtime::run_context::ReaderInputSnapshot {
+        self.scope.reader_input.clone()
+    }
+
 }
 
 pub(crate) struct RunCheckpointSink<'a, P> {
     pub port: &'a P,
     pub turn_ref: &'a AgentTurnRef,
 }
-impl<P: AppStatePort> CompactionCheckpointSink for RunCheckpointSink<'_, P> {
+impl<P: UserStatePort> CompactionCheckpointSink for RunCheckpointSink<'_, P> {
+    fn persist_progress(&mut self, messages: &[Message], activities: &[runtime::run_events::RunActivity]) -> Result<(), ToolError> {
+        self.port.with_user(|user| crate::session_runtime::progress(user, self.turn_ref, messages, activities))
+    }
+    fn persist_effects(&mut self, effects: &[AgentEffect]) -> Result<(), ToolError> {
+        self.port.with_user(|user| session_runtime::deliver_effects(user, self.turn_ref, effects))
+    }
+    fn prepare_persisted_messages(&mut self, messages: &mut [Message]) {
+        self.port.with_user(|user| {
+            if user.session_store.is_some() { crate::session_runtime::clean(messages); }
+        });
+    }
     fn install(
         &mut self,
         checkpoint: &CompactionCheckpoint,
         messages: &[Message],
     ) -> Result<(), CompactionError> {
-        self.port.with_app(|state| {
-            let active = state
+        self.port.with_user(|user| {
+            let active = user
                 .agent_history
                 .sessions
                 .iter()
@@ -95,9 +174,13 @@ impl<P: AppStatePort> CompactionCheckpointSink for RunCheckpointSink<'_, P> {
                     message: "run is no longer pending".into(),
                 });
             }
+            if user.session_store.is_some() {
+                return crate::session_runtime::checkpoint(user, self.turn_ref, checkpoint, messages)
+                    .map_err(|e| CompactionError { error_code: "COMPACTION_FAILED".into(), message: e.message });
+            }
             ServerAgentCompactionCheckpointSink {
-                history_path: &state.history_path,
-                agent_history: &mut state.agent_history,
+                history_path: &user.history_path,
+                agent_history: &mut user.agent_history,
                 session_id: &self.turn_ref.session_id,
             }
             .install(checkpoint, messages)
@@ -106,18 +189,20 @@ impl<P: AppStatePort> CompactionCheckpointSink for RunCheckpointSink<'_, P> {
 }
 
 pub(crate) struct PreparedAgentChat {
+    pub tutor: Option<Value>,
     pub goal: Option<runtime::goal::ResidentGoal>,
-    pub book: Arc<Book>,
+    pub scope: crate::run_scope::RunScope,
     pub turn_ref: AgentTurnRef,
     pub message: String,
     pub agent_message: String,
-    pub initial_evidence: Vec<EvidenceRange>,
     pub messages: Vec<Message>,
     pub now: String,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AgentRunSummary {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) usage: Option<crate::service_limits::RunUsage>,
     pub effects: Vec<runtime::orchestrator::AgentEffect>,
     pub trace: Vec<runtime::orchestrator::TraceStep>,
     #[serde(default)]
@@ -158,42 +243,36 @@ pub(crate) fn execute_prepared(
     execute_observed(port, adapter, prepared, cancellation, None, None)
 }
 
-fn execute_observed(
-    port: &impl AppStatePort,
+/// Shared model/cancellation/history-redaction envelope for local and network Runs.
+pub(crate) struct FinishedRun {
+    pub result: Result<OuterOutcome, ToolError>,
+    pub cancelled: bool,
+    pub summary: AgentRunSummary,
+    pub messages: Vec<Message>,
+}
+pub(crate) fn execute_model(
     adapter: &dyn ModelAdapter,
-    mut prepared: PreparedAgentChat,
+    prepared: &PreparedAgentChat,
     cancellation: CancellationToken,
     stream: Option<&Arc<RunStream>>,
-    observability: Option<&Arc<crate::observability::ObservabilityRuntime>>,
-) -> ExecutionReport {
-    runtime::presentation_author::redact_history(&mut prepared.messages);
-    runtime::tool_exposure::redact_history(&mut prepared.messages);
+    event_sink: Option<Arc<dyn RunEventSink>>,
+    event_anchor: std::time::Instant,
+    run: impl FnOnce(&dyn ModelAdapter, &PreparedAgentChat, &mut RunContext) -> Result<OuterOutcome, ToolError>,
+) -> FinishedRun {
+    let mut messages = prepared.messages.clone();
+    runtime::presentation_author::redact_history(&mut messages);
+    runtime::tool_exposure::redact_history(&mut messages);
     let mut context = RunContext::new(
-        std::mem::take(&mut prepared.messages),
+        messages,
         OuterConfig::default(),
-        adapter.model_runtime_profile(),
+        prepared.scope.provider_binding.clone(),
     );
+    context.tutor = prepared.tutor.clone();
     context.goal = prepared.goal.clone();
     context.current_user_message = Some(prepared.message.clone());
     context.cancellation = cancellation.clone();
-    let observation_run = observability.and_then(|runtime| {
-        runtime.start_run(&prepared.book.base.book_id, &prepared.turn_ref.session_id)
-    });
-    let observation_sink = observation_run.as_ref().map(|run| run.sink());
-    let event_sink: Option<Arc<dyn RunEventSink>> = match (stream, observation_sink) {
-        (Some(stream), Some(observation)) => Some(Arc::new(RunEventFanout {
-            stream: stream.clone(),
-            observation,
-        })),
-        (Some(stream), None) => Some(stream.clone()),
-        (None, Some(observation)) => Some(observation),
-        (None, None) => None,
-    };
     context.events = runtime::run_events::RunEvents::with_start(
-        observation_run
-            .as_ref()
-            .map(|run| run.event_anchor())
-            .unwrap_or_else(std::time::Instant::now),
+        event_anchor,
         event_sink,
     );
     adapter.set_run_cancellation(cancellation.clone());
@@ -207,7 +286,7 @@ fn execute_observed(
         inner: &observed,
         cancellation: cancellation.clone(),
     };
-    let result = run_precommitted_agent_chat(port, &adapter, &prepared, &mut context);
+    let result = run(&adapter, prepared, &mut context);
     runtime::presentation_author::redact_history(&mut context.messages);
     runtime::tool_exposure::redact_history(&mut context.messages);
     let cancelled = cancellation.is_cancelled();
@@ -220,12 +299,14 @@ fn execute_observed(
     let last_seq = stream.map(|s| s.snapshot().last_seq + 2);
     let summary = match &result {
         Ok(outcome) => AgentRunSummary {
+            usage: None,
             effects: outcome.effects.clone(),
             trace: outcome.trace.clone(),
             activities: Some(context.events.activities()),
             last_seq,
         },
         Err(_) => AgentRunSummary {
+            usage: None,
             effects: runtime::orchestrator::run_effects(context.effects, &context.navigation),
             trace: context.trace,
             activities: Some(context.events.activities()),
@@ -251,11 +332,48 @@ fn execute_observed(
         if let Some(current_user) = messages
             .iter()
             .rposition(|message| message.role == runtime::Role::User)
+            .filter(|index| *index >= prepared.messages.len())
         {
             messages.truncate(current_user + 1);
+        } else {
+            // Pre-turn compaction can fail before this question is appended.
+            // Keep the last completed answer and retain the accepted question.
+            messages = prepared.messages.clone();
+            messages.push(Message::user(prepared.agent_message.clone()));
+            runtime::presentation_author::redact_history(&mut messages);
+            runtime::tool_exposure::redact_history(&mut messages);
         }
         messages
     };
+    FinishedRun { result, cancelled, summary, messages: persisted_messages }
+}
+
+fn execute_observed(
+    port: &impl AppStatePort,
+    adapter: &dyn ModelAdapter,
+    prepared: PreparedAgentChat,
+    cancellation: CancellationToken,
+    stream: Option<&Arc<RunStream>>,
+    observability: Option<&Arc<crate::observability::ObservabilityRuntime>>,
+) -> ExecutionReport {
+    let observation_run = observability.and_then(|runtime| {
+        runtime.start_run(&prepared.scope.book.base.book_id, &prepared.turn_ref.session_id)
+    });
+    let observation_sink = observation_run.as_ref().map(|run| run.sink());
+    let event_sink: Option<Arc<dyn RunEventSink>> = match (stream, observation_sink) {
+        (Some(stream), Some(observation)) => Some(Arc::new(RunEventFanout {
+            stream: stream.clone(),
+            observation,
+        })),
+        (Some(stream), None) => Some(stream.clone()),
+        (None, Some(observation)) => Some(observation),
+        (None, None) => None,
+    };
+    let FinishedRun { result, cancelled, summary, messages: persisted_messages } = execute_model(
+        adapter, &prepared, cancellation, stream, event_sink,
+        observation_run.as_ref().map(|r| r.event_anchor()).unwrap_or_else(std::time::Instant::now),
+        |adapter, prepared, context| run_precommitted_agent_chat(port, adapter, prepared, context),
+    );
     let observation_outcome = result.as_ref().ok().cloned();
     let observation_error_code = result
         .as_ref()
@@ -268,7 +386,7 @@ fn execute_observed(
                 .map(|_| "ANSWER_DELIVERY_FAILED".into())
         });
     let report = port.with_app(|state| {
-        if summary
+        if prepared.scope.check_workspace(state).is_ok() && summary
             .effects
             .iter()
             .any(|effect| matches!(effect, runtime::orchestrator::AgentEffect::Goto { .. }))
@@ -304,7 +422,7 @@ fn execute_observed(
             return ExecutionReport {
                 reply: err_reply(&error),
                 unsaved: Some(UnsavedRun {
-                    book_id: prepared.book.base.book_id.clone(),
+                    book_id: prepared.scope.book.base.book_id.clone(),
                     session_id: prepared.turn_ref.session_id.clone(),
                     turn_id: prepared.turn_ref.turn_id.clone(),
                     summary,
@@ -317,14 +435,15 @@ fn execute_observed(
                 }),
             };
         }
-        if state
-            .agent_history
-            .active_by_book
-            .get(&prepared.book.base.book_id)
-            == Some(&prepared.turn_ref.session_id)
-            && state.book.base.book_id == prepared.book.base.book_id
+        if let Err(error) = teaching::record_delivery(&prepared.scope.private_context(state), &prepared.turn_ref, &prepared.now) {
+            return ExecutionReport::saved(err_reply(&error));
+        }
+        if let Err(error) = session_runtime::link_teaching(&mut state.user, &prepared.turn_ref, &prepared.now) {
+            return ExecutionReport::saved(err_reply(&error));
+        }
+        if prepared.scope.check_workspace(state).is_ok()
         {
-            state.messages = persisted_messages;
+            state.workspace.messages = persisted_messages;
         }
         if let Err(error) = reconcile_agent_history_review_jobs(state, &prepared.now) {
             return ExecutionReport::saved(err_reply(&error));
@@ -349,9 +468,9 @@ fn execute_observed(
     report
 }
 
-struct RunEventFanout {
-    stream: Arc<RunStream>,
-    observation: Arc<dyn RunEventSink>,
+pub(crate) struct RunEventFanout {
+    pub(crate) stream: Arc<RunStream>,
+    pub(crate) observation: Arc<dyn RunEventSink>,
 }
 
 impl RunEventSink for RunEventFanout {
@@ -400,6 +519,7 @@ pub struct RunCoordinator {
     host_stop: Arc<AtomicBool>,
     unsaved: Mutex<Option<UnsavedRun>>,
     unsaved_stream: Mutex<Option<Arc<RunStream>>>,
+    unsaved_book: Mutex<Option<Arc<Book>>>,
     observability: Arc<crate::observability::ObservabilityRuntime>,
 }
 
@@ -416,6 +536,7 @@ impl RunCoordinator {
             host_stop,
             unsaved: Mutex::new(None),
             unsaved_stream: Mutex::new(None),
+            unsaved_book: Mutex::new(None),
             observability,
         }
     }
@@ -434,12 +555,12 @@ impl RunCoordinator {
             .with_app(|state| prepare_agent_chat(state, body, now))?;
         let cancellation = CancellationToken::with_host_stop(self.host_stop.clone());
         let stream = RunStream::new(RunDescriptor {
-            book_id: prepared.book.base.book_id.clone(),
+            book_id: prepared.scope.book.base.book_id.clone(),
             session_id: prepared.turn_ref.session_id.clone(),
             turn_id: prepared.turn_ref.turn_id.clone(),
         });
         self.state
-            .with_app(|state| state.active_agent_stream = Some(Arc::downgrade(&stream)));
+            .with_app(|state| state.workspace.active_agent_stream = Some(Arc::downgrade(&stream)));
         slot.active = Some(ActiveRun {
             turn_ref: prepared.turn_ref.clone(),
             cancellation: cancellation.clone(),
@@ -457,6 +578,7 @@ impl RunCoordinator {
     ) -> Reply {
         let _running = RunGuard(self);
         let descriptor = stream.snapshot().descriptor;
+        let original_book = prepared.scope.book.clone();
         let result = execute_observed(
             &self.state,
             adapter,
@@ -466,18 +588,19 @@ impl RunCoordinator {
             Some(&self.observability),
         );
         if let Some(unsaved) = result.unsaved {
+            *self.unsaved_book.lock().unwrap() = Some(original_book.clone());
             stream.finish(None, Some(json!(unsaved.error)));
             *self.unsaved.lock().unwrap() = Some(unsaved);
             *self.unsaved_stream.lock().unwrap() = Some(stream);
         } else {
             let view = self.state.with_app(|state| {
                 state
-                    .agent_history
+                    .user.agent_history
                     .sessions
                     .iter()
                     .find(|s| s.id == descriptor.session_id)
                     .and_then(|s| s.turns.iter().find(|t| t.turn_id == descriptor.turn_id))
-                    .map(|turn| json!(turn_view(&state.book, turn)))
+                    .map(|turn| json!(turn_view(&original_book, turn)))
             });
             stream.finish(view, None);
         }
@@ -544,10 +667,10 @@ impl RunCoordinator {
         }
         self.state.with_app(|state| {
             state
-                .agent_history
+                .user.agent_history
                 .sessions
                 .iter()
-                .filter(|s| s.book_id == state.book.base.book_id)
+                .filter(|s| s.book_id == state.workspace.book.base.book_id)
                 .find_map(|session| {
                     session
                         .turns
@@ -588,7 +711,7 @@ impl RunCoordinator {
                                 reader_state: None,
                                 effects: Vec::new(),
                                 draft: None,
-                                final_view: Some(json!(turn_view(&state.book, turn))),
+                                final_view: Some(json!(turn_view(&state.workspace.book, turn))),
                                 error: None,
                             })
                         })
@@ -704,6 +827,10 @@ pub(crate) fn recover_pending(
     history: &mut AgentHistory,
     path: &Option<PathBuf>,
 ) -> Result<(), ToolError> {
+    recover_pending_except(history, path, &std::collections::BTreeSet::new())
+}
+
+pub(crate) fn recover_pending_except(history: &mut AgentHistory, path: &Option<PathBuf>, admitted: &std::collections::BTreeSet<String>) -> Result<(), ToolError> {
     let mut candidate = history.clone();
     let mut changed = false;
     for turn in candidate
@@ -711,7 +838,7 @@ pub(crate) fn recover_pending(
         .iter_mut()
         .flat_map(|session| &mut session.turns)
     {
-        if turn.status == AgentAssistantStatus::PendingAssistant {
+        if turn.status == AgentAssistantStatus::PendingAssistant && !admitted.contains(&turn.turn_id) {
             turn.status = AgentAssistantStatus::Failed;
             turn.error = Some(AgentTurnError {
                 error_code: "INTERRUPTED".into(),

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>目录跟随验证</title></head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { createApp, h, nextTick, ref } from 'vue';
+    import LeftRail from '../../src/components/LeftRail.vue';
+    import ReaderWorkspace from '../../src/components/ReaderWorkspace.vue';
+    import '../../src/style.css';
+
+    const anchor = ref('25.1');
+    const search = ref('');
+    const count = ref(60);
+    const workspace = ref(null);
+    window.outlineFixture = {
+      async anchor(lid) { anchor.value = lid; await nextTick(); await nextTick(); },
+      async count(value) { count.value = value; await nextTick(); },
+      async open() { await workspace.value.toggleOutline(); },
+    };
+    createApp({
+      setup: () => () => h('div', { class: 'app' }, [
+        h('header', { class: 'topbar' }, '目录跟随验证'),
+        h(ReaderWorkspace, {
+          ref: workspace,
+          logical: { contextKey: 'outline-fixture', revision: 1, activePreset: 'technical_read', openSlots: ['technical.structure_map', 'technical.agent'], focusedSlot: null },
+        }, { default: () => [
+          h(LeftRail, {
+            outlineItems: Array.from({ length: count.value }, (_, i) => ({ lid: String(i + 1), title: `第 ${i + 1} 章 阅读目录`, depth: 0, kind: 'chapter' })),
+            anchorLid: anchor.value, selectedLid: null, progressPct: 42, leafCount: 600,
+            debugOpen: false, gotoInput: '', searchQuery: search.value,
+            'onUpdate:searchQuery': value => { search.value = value; },
+            onGoto: lid => { anchor.value = `${lid}.1`; },
+          }),
+          h('div', { class: 'resize-handle resize-handle-left' }),
+          h('main', { class: 'reader-pane' }, [h('div', { style: 'height: 4000px' }, '阅读正文')]),
+          h('div', { class: 'resize-handle resize-handle-right' }),
+          h('aside', { class: 'right-rail' }),
+        ] }),
+      ]),
+    }).mount('#app');
+  </script>
+</body>
+</html>

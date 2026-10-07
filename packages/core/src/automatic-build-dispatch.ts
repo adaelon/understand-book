@@ -31,6 +31,9 @@ export interface AutomaticBuildDispatchLimitsV1 {
 }
 
 export const AUTOMATIC_BUILD_DISPATCH_LIMITS: Record<WorkUnitKind, AutomaticBuildDispatchLimitsV1> = {
+  formal_object_set: { max_units: 1, max_input_tokens: 6000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
+  cognitive_step: { max_units: 1, max_input_tokens: 6000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
+  teaching_source_review: { max_units: 1, max_input_tokens: 6000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   pass1_window: { max_units: 4, max_input_tokens: 50_000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   pass1_source_slice: { max_units: 4, max_input_tokens: 50_000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   pass1_lid_stitch: { max_units: 4, max_input_tokens: 50_000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
@@ -44,6 +47,12 @@ export const AUTOMATIC_BUILD_DISPATCH_LIMITS: Record<WorkUnitKind, AutomaticBuil
   discourse_paragraph_group: { max_units: 1, max_input_tokens: OTHER_KIND_MAX_INPUT_TOKENS, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   formula_context_group: { max_units: 1, max_input_tokens: OTHER_KIND_MAX_INPUT_TOKENS, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   pass2_candidate_batch: { max_units: 1, max_input_tokens: OTHER_KIND_MAX_INPUT_TOKENS, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
+  structure_outline: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
+  structure_chapter: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
+  structure_chapter_selection: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
+  structure_theme_plan: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
+  structure_theme: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
+  structure_theme_reconcile: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_unit: { max_units: 1, max_input_tokens: BOOK_STRUCTURE_MAX_INPUT_TOKENS, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_fragment: { max_units: 1, max_input_tokens: BOOK_STRUCTURE_MAX_INPUT_TOKENS, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_reduce: { max_units: 1, max_input_tokens: BOOK_STRUCTURE_MAX_INPUT_TOKENS, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },

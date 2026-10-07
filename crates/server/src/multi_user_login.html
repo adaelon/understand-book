@@ -1,0 +1,5 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Understand Book · 登录</title><link rel="stylesheet" href="/auth.css"><script type="module" src="/auth.js"></script></head>
+<body><main><p class="eyebrow">UNDERSTAND BOOK</p><h1>回到你的阅读</h1><p>使用管理员为你创建的账号登录。</p>
+<form id="login"><label>账号<input name="username" autocomplete="username" required maxlength="128"></label><label>密码<input name="password" type="password" autocomplete="current-password" required maxlength="1024"></label><button>登录</button></form>
+<p id="notice" role="status" aria-live="polite"></p><section id="library" hidden><div class="account"><p id="identity"></p><button id="logout" type="button">退出登录</button></div><h2>你的书库</h2><ul id="books"></ul><p id="empty" hidden>暂时没有可阅读的材料，请联系管理员授权。</p></section></main></body></html>

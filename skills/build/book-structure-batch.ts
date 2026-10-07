@@ -56,6 +56,7 @@ if (productionPolicyContractsJson) {
     throw new Error("production BookStructure target does not match its resolved output workspace");
   }
   const snapshot = buildAutomaticBuildSnapshot(target, {
+    stage: "book_structure",
     quality_profile: productionQualityProfile as ExtractionQualityProfile,
   });
   const stage = snapshot.stages.find((candidate) => candidate.stage === "book_structure");
@@ -75,8 +76,15 @@ if (productionPolicyContractsJson) {
   }
   const contributors = stage.quality_routing?.public_contributors ?? [];
   const contributorIds = new Set(contributors.map((contributor) => contributor.contributor_id));
+  const contributorWorkIds = new Set(contributors.map((contributor) => contributor.work_unit_id));
   for (const source of ctx.unitSources) {
-    if (!contributorIds.has(`book-structure-unit:${source.unit_lid}`)) {
+    const coverage = stage.quality_routing?.book_structure_coverage?.find(c => c.parent_unit_lid === source.unit_lid);
+    const completeDiscovery = target.profile_id === "technical_learning" && coverage
+      && coverage.expected_leaf_count === source.leaf_lids.length
+      && coverage.covered_leaf_count === coverage.expected_leaf_count
+      && coverage.gap_count === 0 && coverage.core_overlap_count === 0
+      && coverage.core_ranges.every(r => contributorWorkIds.has(r.work_unit_id));
+    if (!completeDiscovery && !contributorIds.has(`book-structure-unit:${source.unit_lid}`)) {
       throw new Error(`production BookStructure generation is missing unit contributor: ${source.unit_lid}`);
     }
   }

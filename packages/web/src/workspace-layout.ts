@@ -32,6 +32,7 @@ export interface WorkspaceLogicalState {
 export interface WorkspaceViewport {
   containerWidth: number;
   containerHeight: number;
+  layoutHeight?: number;
   visualWidth: number;
   visualHeight: number;
   offsetTop: number;
@@ -124,7 +125,8 @@ export function resolveWorkspace(
   const inputPriority = measurable
     && interaction.inputFocused
     && visualHeight <= WORKSPACE_LIMITS.inputPriorityMaxHeight
-    && containerHeight - visualHeight >= WORKSPACE_LIMITS.keyboardHeightLoss;
+    && Math.abs(viewport.scale - 1) < 0.01
+    && (viewport.layoutHeight ?? containerHeight) - visualHeight >= WORKSPACE_LIMITS.keyboardHeightLoss;
   if (inputPriority) foreground = "assistant";
 
   if (!measurable || interaction.expanded || preference === "focus" || inputPriority) {

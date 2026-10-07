@@ -15,6 +15,10 @@ mod profile;
 mod projection;
 mod reading_state;
 mod review;
+pub mod learning;
+pub mod teaching;
+pub mod assessment;
+pub mod learning_evidence;
 
 pub use backfill::{
     HistoricalBackfillClearOutcome, HistoricalBackfillCommitOutcome, HistoricalBackfillJob,
@@ -454,7 +458,7 @@ fn persist_document_atomically(
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
-    std::fs::create_dir_all(parent).map_err(|e| internal(format!("建 memory 目录失败: {e}")))?;
+    ReaderPrivateStorageGate::create_dir_all(parent).map_err(|e| internal(format!("建 memory 目录失败: {e}")))?;
     let serialized = serde_json::to_string_pretty(document)
         .map_err(|e| internal(format!("序列化 memory 失败: {e}")))?;
     let temporary = atomic_temporary_path(path);
@@ -494,6 +498,7 @@ fn persist_document_atomically(
             return Err(internal(format!("备份旧 memory 失败: {error}")));
         }
     }
+    ReaderPrivateStorageGate::sync_parent(path).map_err(|e| internal(e.to_string()))?;
     if let Err(error) = std::fs::rename(&temporary, path) {
         if had_original {
             let _ = std::fs::rename(&backup, path);
@@ -501,6 +506,7 @@ fn persist_document_atomically(
         let _ = std::fs::remove_file(&temporary);
         return Err(internal(format!("切换 memory 快照失败: {error}")));
     }
+    ReaderPrivateStorageGate::sync_parent(path).map_err(|e| internal(e.to_string()))?;
     if had_original {
         let _ = std::fs::remove_file(backup);
     }
@@ -518,6 +524,8 @@ struct PendingReadTouch {
 
 pub struct MemoryStore {
     path: PathBuf,
+    learning_path: PathBuf,
+    writer_lease: Option<std::sync::Arc<dyn Send + Sync>>,
     document: MemoryDocument,
     storage: MemoryStorage,
     pending_reads: BTreeMap<(String, String), PendingReadTouch>,
@@ -576,6 +584,8 @@ impl MemoryStore {
             MemoryDocument::empty()
         };
         Ok(MemoryStore {
+            learning_path: path.with_file_name("learning.db"),
+            writer_lease: None,
             path,
             document,
             storage: MemoryStorage::Available { private: false },
@@ -596,14 +606,28 @@ impl MemoryStore {
         Ok(store)
     }
 
+    pub fn open_private_with_learning(path: PathBuf, learning_path: PathBuf) -> Result<Self, ToolError> {
+        let mut store = Self::open_private(path)?;
+        store.learning_path = learning_path;
+        Ok(store)
+    }
+
+    /// Keep the host's write-root lock alive through all private database connections.
+    pub fn retain_writer_lease(&mut self, lease: std::sync::Arc<dyn Send + Sync>) {
+        self.writer_lease = Some(lease);
+    }
+
     /// Fail-closed empty projection used when the production permission gate cannot open safely.
     pub fn unavailable(
         path: impl Into<PathBuf>,
         error: ToolError,
         occurred_at: impl Into<String>,
     ) -> MemoryStore {
+        let path = path.into();
         MemoryStore {
-            path: path.into(),
+            learning_path: path.with_file_name("learning.db"),
+            writer_lease: None,
+            path,
             document: MemoryDocument::empty(),
             storage: MemoryStorage::Unavailable(ReaderPrivateStorageDiagnostic {
                 error_code: error.error_code,
@@ -635,6 +659,13 @@ impl MemoryStore {
             MemoryStorage::Available { .. } => Ok(()),
             MemoryStorage::Unavailable(diagnostic) => Err(diagnostic.tool_error()),
         }
+    }
+
+    pub fn learning_store(&self) -> Result<learning::LearningStore, ToolError> {
+        self.ensure_storage_available()?;
+        let mut learning = learning::LearningStore::open(&self.learning_path, self.private_storage_enabled())?;
+        learning.writer_lease = self.writer_lease.clone();
+        Ok(learning)
     }
 
     pub fn document_revision(&self) -> u64 {

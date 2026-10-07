@@ -763,6 +763,7 @@ export function selectAutomaticBuildDispatchHandoff(
     current_dispatch_plan: AutomaticBuildExecutorDispatchPlanV1;
     available_new_executor_slots: number;
     created_at: string;
+    held_work_unit_ids?: string[];
   },
 ): {
   persisted_plan: AutomaticBuildPersistedDispatchPlanV1;
@@ -789,7 +790,26 @@ export function selectAutomaticBuildDispatchHandoff(
   );
   const state = dispatchPlanRuntimeState(target, persistedPlan, input.created_at, currentPending);
   const totalCapacity = Math.min(3, state.active_dispatch_ids.length + input.available_new_executor_slots);
-  const selectedIds = new Set(selectAutomaticBuildDispatchRefill(persistedPlan.dispatch_plan, {
+  const dispatchRunId = automaticBuildDispatchRunId(persistedPlan.created_at);
+  const held = new Set(input.held_work_unit_ids ?? []);
+  const selectableDispatches = persistedPlan.dispatch_plan.dispatches.filter(dispatch => {
+    if (state.active_dispatch_ids.includes(dispatch.dispatch_id)
+      || state.completed_dispatch_ids.includes(dispatch.dispatch_id)) return true;
+    if (dispatch.ordered_work_unit_ids.some(id => held.has(id))) return false;
+    if (existsSync(automaticBuildDispatchManifestPath(target, dispatch.stage, dispatch.dispatch_id, dispatchRunId))) return true;
+    // A changed ready-work set creates a new plan/run. Its unpublished manifests
+    // must not spend a free executor slot on work leased by an older run.
+    return !dispatch.ordered_work_unit_ids.some(workUnitId => {
+      const binding = dispatch.task_bindings?.[workUnitId];
+      return inspectAutomaticBuildTaskClaim(target, dispatch.stage, workUnitId, {
+        now: input.created_at,
+        ...(binding ? { binding, policy_generation: "v3_only" as const } : {}),
+      }).status === "already_leased";
+    });
+  });
+  const selectedIds = new Set(selectAutomaticBuildDispatchRefill({
+    ...persistedPlan.dispatch_plan, dispatches: selectableDispatches,
+  }, {
     ...state,
     available_agent_slots: totalCapacity,
   }));

@@ -1,0 +1,6 @@
+{
+  "instance": "reader",
+  "worker": "/opt/understand-book/releases/MU11_RELEASE/target/release/presentation_worker",
+  "python_root": "/opt/understand-book/tools/render-runtime",
+  "browser": "/usr/lib64/chromium-browser/chromium-browser"
+}

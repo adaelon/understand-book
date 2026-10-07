@@ -1,7 +1,7 @@
 /** Source-only Engine executable for L1 integration tests. */
 import { readFileSync, existsSync, writeFileSync, appendFileSync } from "node:fs";
 import { runBuildExecutorMcpServer } from "../../../skills/build/build-executor-mcp.ts";
-import { runAutomaticBuildDriverCommand } from "../../../skills/build/automatic-build-driver.ts";
+import { runAutomaticBuildDriverCommandWithPreparation } from "../../../skills/build/automatic-build-driver.ts";
 const argv = process.argv.slice(2);
 let dropCommitMarker: string | undefined;
 let trace: string | undefined;
@@ -29,7 +29,7 @@ if (operation === "executor.mcp" && dropCommitMarker && !existsSync(dropCommitMa
 }
 if (operation === "executor.mcp") runBuildExecutorMcpServer(args);
 else if (operation === "build.step") {
-  const result = runAutomaticBuildDriverCommand(JSON.parse(readFileSync(0, "utf8"))) as any;
+  const result = await runAutomaticBuildDriverCommandWithPreparation(JSON.parse(readFileSync(0, "utf8"))) as any;
   if (trace && result.action) appendFileSync(trace, JSON.stringify({ kind: result.action.kind, request_id: result.action.request_id }) + "\n");
   process.stdout.write(JSON.stringify(result));
 }

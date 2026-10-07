@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { BookOpen, ExternalLink, Undo2, X } from "@lucide/vue";
-import { api } from "../api";
+import { api as sharedApi } from "../api";
+import { bindSceneApi, network } from '../network-context';
+const api = bindSceneApi(sharedApi);
 import type {
   AgentAnswerPart,
   AgentEffect,
@@ -25,17 +27,28 @@ import type {
 import type { PdfAnnotationLocation } from "../pdf-annotation-projection";
 import { rangeToMarkdown } from "../selection";
 import AgentActivities from "./AgentActivities.vue";
+import TutorActivities from "./TutorActivities.vue";
 import AgentPresentation from "./AgentPresentation.vue";
+import { sourceChipLabel } from "../source-chip.js";
+import SourceExcerpt from './SourceExcerpt.vue';
+import PresentationSceneCard from './PresentationSceneCard.vue';
+import { presentationKey, type PresentationWorkspace } from '../presentation-workspace';
+import type { PresentationFollowUp } from '../generated/PresentationFollowUp';
+import type { PresentationRef } from '../generated/PresentationRef';
 import type { RunActivity } from "../agent-run-state";
 import ProfileMemoryPanel from "./ProfileMemoryPanel.vue";
 import QueryAuditPanel from "./QueryAuditPanel.vue";
 import IntentArtifactPanel from "./IntentArtifactPanel.vue";
+import SessionRecap from './SessionRecap.vue';
+import { targetPublication, type RecapTarget } from '../session-recap';
 
 type ContextTab = "agent" | "artifacts" | "profile" | "trace" | "formula" | "notes";
 
 type AskDraft = AskQuote;
 type DisplayQuestionQuote = AskDraft | AgentQuestionQuoteView;
 interface ChatTurn {
+  teachingRef?: string | null;
+  presentationFollowUp?: PresentationFollowUp | null;
   turnId: string | null;
   user: string;
   outcome: OuterOutcome | null;
@@ -116,6 +129,7 @@ const props = defineProps<{
   requestedTabRevision?: number;
 }>();
 const emit = defineEmits<{
+  (e: 'recap-publication', target: RecapTarget): void;
   (e: "presentation-follow-up", message: string, receipt: import("../generated/PresentationFollowUp").PresentationFollowUp): void;
   (e: "update:agentInput", value: string): void;
   (e: "send-agent"): void;
@@ -135,8 +149,9 @@ const emit = defineEmits<{
   (e: "keep-effect", turnIndex: number, effectIndex: number, effect: AgentEffect): void;
   (e: "save-answer-selection", turn: ChatTurn, text: string): void;
   (e: "place-note", note: MemoryRecord): void;
+  (e: "edit-note" | "delete-note" | "modify-highlight" | "delete-highlight", record: MemoryRecord): void;
   (e: "goto", lid: string): void;
-  (e: "focus-source", source: { lid: string; quote: string | null }): void;
+  (e: "focus-source", source: { lid: string; quote: string | null; memId?: string }): void;
   (e: "refresh-profile"): void;
   (e: "mutate-profile", action: ProfileGovernanceActionRequest): void;
   (e: "confirm-sensitive-profile"): void;
@@ -151,7 +166,120 @@ const emit = defineEmits<{
 }>();
 
 const activeTab = ref<ContextTab>("agent");
+const workspace = defineModel<PresentationWorkspace | null>('presentationWorkspace', { default: null });
+const workspaceVisible = computed(() => !!workspace.value && !workspace.value.suspended);
+const workspaceKey = computed(() => workspace.value ? presentationKey(workspace.value.turnId, workspace.value.reference) : '');
+const sceneBound = ref(true);
+const discussionOpen = ref(false);
+const split = ref(63);
+const workspaceTools = ref<HTMLElement>();
+const workspaceTop = ref(60);
+let toolbarObserver: ResizeObserver | undefined;
+watch(workspaceVisible, async visible => {
+  toolbarObserver?.disconnect();
+  if (!visible) return;
+  await nextTick();
+  if (!workspaceTools.value) return;
+  toolbarObserver = new ResizeObserver(() => {
+    workspaceTop.value = (workspaceTools.value?.getBoundingClientRect().bottom ?? 44) + 4;
+  });
+  toolbarObserver.observe(workspaceTools.value);
+});
+onBeforeUnmount(() => toolbarObserver?.disconnect());
+const presentationInstances = new Map<string, InstanceType<typeof AgentPresentation>>();
+const loadedPresentations = ref(new Set<string>());
+let loadedSession = props.activeChatSessionId;
+watch(() => [props.chat, props.activeChatSessionId, workspace.value] as const, () => {
+  if (loadedSession !== props.activeChatSessionId) {
+    workspace.value = null; loadedPresentations.value.clear(); presentationInstances.clear(); loadedSession = props.activeChatSessionId;
+  }
+  if (workspace.value) return;
+  for (const turn of props.chat) for (const part of turn.outcome ? answerParts(turn.outcome) : []) {
+    if (part.kind === 'presentation' && turn.turnId) loadedPresentations.value.add(presentationKey(turn.turnId, part));
+  }
+}, { immediate: true, deep: true });
+function selectPresentation(turnId: string, reference: PresentationRef, open = true) {
+  loadedPresentations.value.add(presentationKey(turnId, reference));
+  workspace.value = open ? { turnId, reference } : null;
+  sceneBound.value = true;
+  if (open) void scrollToTurn(turnId);
+}
+function submitMessage() {
+  if (workspaceVisible.value && sceneBound.value) {
+    discussionOpen.value = true;
+    followTranscript.value = true;
+    void presentationInstances.get(workspaceKey.value)?.followUp();
+  } else emit('send-agent');
+}
+function presentationSent(message: string, receipt: PresentationFollowUp) {
+  followTranscript.value = true;
+  discussionOpen.value = true;
+  emit('presentation-follow-up', message, receipt);
+}
+async function locateScene(receipt: PresentationFollowUp, restore = false) {
+  selectPresentation(receipt.turn_id, receipt.reference);
+  await nextTick();
+  if (restore) await presentationInstances.get(workspaceKey.value)?.restore(receipt);
+}
 const historyOpen = ref(false);
+const recapOpen = ref(false);
+const recapButton = ref<HTMLButtonElement>();
+const chatMenuOpen = ref(false);
+const chatActions = ref<HTMLElement | null>(null);
+const chatMenuButton = ref<HTMLButtonElement | null>(null);
+function focusChatAction(button: HTMLButtonElement | null | undefined) {
+  (button?.getClientRects().length ? button : chatMenuButton.value)?.focus({ preventScroll: true });
+}
+function dismissChatMenu(event: PointerEvent) {
+  if (event.target instanceof Node && !chatActions.value?.contains(event.target)) chatMenuOpen.value = false;
+}
+watch(historyOpen, (open, previous) => {
+  if (previous && !open) void nextTick(() => focusChatAction(chatActions.value?.querySelector('.history-button')));
+});
+const recapPresentation = ref<{ turnId: string; reference: PresentationRef } | null>(null);
+function closeRecap() {
+  recapOpen.value = false;
+  void nextTick(() => focusChatAction(recapButton.value));
+}
+watch(() => props.activeChatSessionId, () => { recapOpen.value = false; recapPresentation.value = null; });
+async function openRecapTarget(target: RecapTarget) {
+  if (target.session_id !== props.activeChatSessionId) throw new Error('对话已切换，请重新打开回顾');
+  if (target.kind === 'turn') {
+    activeTab.value = 'agent'; followTranscript.value = false;
+    if (!await scrollToTurn(target.turn_id)) throw new Error('该回合当前不可用，请刷新对话');
+    return;
+  }
+  // Recheck current availability while preserving the panel's factual cutoff.
+  const current = await api.sessionRecap(target.session_id, target.through_seq);
+  const item = target.kind === 'source'
+    ? current.sources.find(s => s.source_ref_id === target.source.source_ref_id && s.evidence[0].turn_id === target.turn_id)
+    : current.effects.find(e => e.effect_id === target.effect.effect_id && e.evidence[0].turn_id === target.turn_id);
+  if (!item || item.unavailable_reason) throw new Error(item?.unavailable_reason ?? '原记录当前不可用');
+  const publication = targetPublication(target), active = network.value.workspace?.published_book_ref;
+  if (network.value.enabled && publication && (publication.book_id !== active?.book_id || publication.publication_id !== active?.publication_id)) {
+    emit('recap-publication', target); return;
+  }
+  if (target.kind === 'source') {
+    const turn = props.chat.find(t => t.turnId === target.turn_id);
+    if (!turn) throw new Error('关联回合当前不可用，请刷新对话');
+    await openAgentSources(turn, [target.source.source_ref_id], { currentTarget: recapButton.value ?? null }, true);
+  } else if (target.effect.effect.kind === 'presentation') {
+    const reference = target.effect.effect.reference;
+    await api.presentationRead(target.session_id, target.turn_id, reference);
+    if (!props.chat.some(t => t.turnId === target.turn_id && t.outcome && answerParts(t.outcome).some(p => p.kind === 'presentation' && presentationKey(target.turn_id, p) === presentationKey(target.turn_id, reference)))) {
+      recapPresentation.value = { turnId: target.turn_id, reference };
+    }
+    selectPresentation(target.turn_id, reference);
+  } else if (target.effect.object_id && ['Note', 'Highlight'].includes(target.effect.effect.effect.kind)) {
+    const records = await api.recall();
+    const record = records.find(r => r.mem_id === target.effect.object_id);
+    if (!record?.anchor.lid) throw new Error('原成果当前不可用');
+    emit('focus-source', { lid: record.anchor.lid, quote: leadingQuote(record.content), memId: record.mem_id });
+  } else {
+    activeTab.value = 'agent'; followTranscript.value = false;
+    if (!await scrollToTurn(target.turn_id)) throw new Error('操作记录当前不可用');
+  }
+}
 const fullscreenButton = ref<HTMLButtonElement | null>(null);
 const notesExpanded = ref(false);
 const transcriptRef = ref<HTMLElement | null>(null);
@@ -180,6 +308,28 @@ function goalStopLabel(reason: string | null | undefined): string {
 }
 const activityToolCount = computed(() => latestActivities.value.filter(a => a.kind === "tool").length);
 const agentInputRef = ref<HTMLTextAreaElement | null>(null);
+let inputResizeObserver: ResizeObserver | undefined;
+let inputWidth = 0;
+function resizeAgentInput() {
+  const input = agentInputRef.value;
+  if (!input) return;
+  if (!window.matchMedia('(max-width: 1023px)').matches) { input.style.height = ''; return; }
+  if (!input.clientWidth) return;
+  input.style.height = '0px';
+  input.style.height = `${Math.min(120, Math.max(44, input.scrollHeight + 2))}px`;
+}
+onMounted(() => {
+  document.addEventListener('pointerdown', dismissChatMenu);
+  inputResizeObserver = new ResizeObserver(entries => {
+    const width = entries[0]?.contentRect.width ?? 0;
+    if (width === inputWidth) return;
+    inputWidth = width;
+    resizeAgentInput();
+  });
+  if (agentInputRef.value) inputResizeObserver.observe(agentInputRef.value);
+  resizeAgentInput();
+});
+watch(() => [props.agentInput, activeTab.value, props.fullscreen], () => resizeAgentInput(), { flush: 'post' });
 const tabs: { id: ContextTab; label: string }[] = [
   { id: "agent", label: "问答" },
   { id: "artifacts", label: "成果" },
@@ -209,12 +359,16 @@ watch(() => props.askDraft, async (draft) => {
   agentInputRef.value?.focus();
 });
 
-async function scrollTranscriptToBottom() {
+async function scrollTranscriptToLatest() {
   await nextTick();
   const el = transcriptRef.value;
   if (!el || !followTranscript.value) return;
   el.scrollTop = el.scrollHeight;
 }
+watch(() => props.activeChatSessionId, () => {
+  followTranscript.value = true;
+  void scrollTranscriptToLatest();
+});
 watch(
   () => {
     const last = props.chat[props.chat.length - 1];
@@ -226,13 +380,14 @@ watch(
       props.askDraft ? 1 : 0,
     ].join(":");
   },
-  () => { void scrollTranscriptToBottom(); },
+  () => { void scrollTranscriptToLatest(); },
   { flush: "post" },
 );
 
 const answerSelection = ref<{ x: number; y: number; text: string; turn: ChatTurn } | null>(null);
 
 interface AgentSourcePopupState {
+  fromRecap: boolean;
   turnId: string;
   sourceRefIds: string[];
   activeSourceRefId: string;
@@ -250,13 +405,18 @@ let sourceRequestSequence = 0;
 let agentSourceAnchor: HTMLElement | null = null;
 const SOURCE_POPUP_MARGIN = 12;
 const SOURCE_POPUP_GAP = 8;
-const SOURCE_POPUP_WIDTH = 420;
+const SOURCE_POPUP_WIDTH = 620;
 const SOURCE_POPUP_INITIAL_HEIGHT = 240;
 const SOURCE_POPUP_BOTTOM_SHEET_MAX_WIDTH = 700;
 const activeAgentSource = computed(() => {
   const popup = agentSourcePopup.value;
   return popup?.sources.find((source) => source.source_ref_id === popup.activeSourceRefId) ?? null;
 });
+function sourceTabLabel(source: SourcePopupView) {
+  const turn = props.chat.find(turn => turn.turnId === agentSourcePopup.value?.turnId);
+  const sources = turn?.outcome?.answer_view?.sources ?? turn?.draft?.view?.sources ?? agentSourcePopup.value?.sources ?? [];
+  return sourceChipLabel(sources, source.source_ref_id);
+}
 const agentSourcePopupStyle = computed(() => {
   const popup = agentSourcePopup.value;
   return popup ? { left: `${popup.left}px`, top: `${popup.top}px` } : {};
@@ -300,8 +460,7 @@ function incompleteNotice(outcome: OuterOutcome): string | null {
 
 function sourceButtonLabel(outcome: OuterOutcome, sourceRefIds: string[]): string {
   if (sourceRefIds.length !== 1) return `${sourceRefIds.length} 个来源`;
-  return outcome.answer_view?.sources.find((source) => source.source_ref_id === sourceRefIds[0])?.label
-    ?? "查看来源";
+  return sourceChipLabel(outcome.answer_view?.sources ?? [], sourceRefIds[0]);
 }
 
 function markdownPartClass(parts: AgentAnswerPart[], index: number): Record<string, boolean> {
@@ -385,25 +544,32 @@ function onAgentSourceViewportResize() {
 
 window.addEventListener("resize", onAgentSourceViewportResize);
 function onFullscreenKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && chatMenuOpen.value) {
+    event.preventDefault(); chatMenuOpen.value = false; chatMenuButton.value?.focus(); return;
+  }
+  if (event.key === 'Escape' && recapOpen.value) { event.preventDefault(); closeRecap(); return; }
   if (event.key !== "Escape" || !props.fullscreen) return;
   if (document.querySelector(".agent-presentation.expanded")) return;
   event.preventDefault();
   if (agentSourcePopup.value) { closeAgentSourcePopup(); return; }
   if (historyOpen.value) { historyOpen.value = false; return; }
   emit("toggle-fullscreen");
-  void nextTick(() => fullscreenButton.value?.focus({ preventScroll: true }));
+  void nextTick(() => focusChatAction(fullscreenButton.value));
 }
 window.addEventListener("keydown", onFullscreenKeydown);
 onBeforeUnmount(() => {
+  inputResizeObserver?.disconnect();
+  document.removeEventListener('pointerdown', dismissChatMenu);
   window.removeEventListener("resize", onAgentSourceViewportResize);
   window.removeEventListener("keydown", onFullscreenKeydown);
 });
 
-async function openAgentSources(turn: ChatTurn, sourceRefIds: string[], event: { currentTarget: EventTarget | null }) {
+async function openAgentSources(turn: Pick<ChatTurn, 'turnId'>, sourceRefIds: string[], event: { currentTarget: EventTarget | null }, fromRecap = false) {
   if (!turn.turnId || sourceRefIds.length === 0) return;
   agentSourceAnchor = event.currentTarget as HTMLElement | null;
   const requestSequence = ++sourceRequestSequence;
   agentSourcePopup.value = {
+    fromRecap,
     turnId: turn.turnId,
     sourceRefIds: [...sourceRefIds],
     activeSourceRefId: sourceRefIds[0],
@@ -460,15 +626,27 @@ async function openActiveAgentSourceInReader() {
 
 function onAgentInputKeydown(event: KeyboardEvent) {
   if (event.isComposing || event.keyCode === 229) return;
-  if (event.ctrlKey && event.key === "Enter") emit("send-agent");
+  if (event.ctrlKey && event.key === "Enter") submitMessage();
 }
 
-defineExpose({ scrollToTurn });
+const notesPanel = ref<HTMLElement | null>(null);
+async function showMemory(memId: string): Promise<boolean> {
+  activeTab.value = 'notes';
+  await nextTick();
+  const card = Array.from(notesPanel.value?.querySelectorAll<HTMLElement>('[data-mem-id]') ?? [])
+    .find(el => el.dataset.memId === memId);
+  if (!card) return false;
+  if (card instanceof HTMLDetailsElement) card.open = true;
+  card.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+  card.focus({ preventScroll: true });
+  return true;
+}
+defineExpose({ scrollToTurn, showMemory, openRecapTarget });
 
 watch(() => props.activeChatSessionId, closeAgentSourcePopup);
 watch(() => props.chat, () => {
   const popup = agentSourcePopup.value;
-  if (!popup) return;
+  if (!popup || popup.fromRecap) return;
   const turn = props.chat.find(turn => turn.turnId === popup.turnId);
   const view = turn?.pending ? turn.draft?.view : turn?.outcome?.answer_view;
   if (!view?.parts.some(part => part.kind === 'presentation') && !popup.sourceRefIds.every(id => view?.sources.some(source => source.source_ref_id === id))) closeAgentSourcePopup();
@@ -642,7 +820,12 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 </script>
 
 <template>
-  <aside class="right-rail" :class="{ fullscreen: props.fullscreen }">
+  <aside class="right-rail" :class="{ fullscreen: props.fullscreen, 'presentation-workspace': workspaceVisible, 'discussion-open': discussionOpen }" :style="{ '--presentation-split': `${split}%`, '--presentation-top': `${workspaceTop}px` }">
+    <div v-if="workspaceVisible" ref="workspaceTools" class="workspace-tools">
+      <label class="workspace-split">演示宽度 <input v-model="split" type="range" min="40" max="72" aria-label="演示宽度" /></label>
+      <button class="discussion-toggle" @click="discussionOpen = !discussionOpen">{{ discussionOpen ? '收起讨论' : '展开讨论' }}</button>
+      <slot name="tutor-control" />
+    </div>
     <div v-if="!props.fullscreen" class="context-tabs" role="tablist" aria-label="辅助阅读功能">
       <button
         v-for="tab in tabs"
@@ -672,7 +855,11 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           <p class="rail-kicker">阅读助手</p>
           <h3>问这本书</h3>
         </div>
-        <div class="chat-actions">
+        <div ref="chatActions" class="chat-actions" :class="{ 'menu-open': chatMenuOpen }">
+          <button class="new-chat" title="新对话" :disabled="props.historyLoading || !!props.historyError" @click="emit('new-chat')">新建</button>
+          <button ref="chatMenuButton" class="chat-menu-toggle" type="button" aria-label="问答操作" :aria-expanded="chatMenuOpen" aria-controls="chat-secondary-actions" @click="chatMenuOpen = !chatMenuOpen">操作</button>
+          <div id="chat-secondary-actions" class="chat-secondary-actions" @click="($event.target as HTMLElement).closest('button') && (chatMenuOpen = false)">
+          <button ref="recapButton" class="recap-button" :disabled="!props.activeChatSessionId || props.historyLoading || !!props.historyError" @click="recapOpen = true">本次阅读回顾</button>
           <button
             ref="fullscreenButton"
             type="button"
@@ -682,13 +869,22 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             @click="emit('toggle-fullscreen')"
           >{{ props.fullscreen ? '退出全屏' : '全屏' }}</button>
           <button class="history-button" title="打开对话历史" :disabled="props.historyLoading || !!props.historyError" @click="historyOpen = true">
-            历史
+            本书历史
             <span>{{ props.chatSessions.length }}</span>
           </button>
-          <button class="new-chat" title="新对话" :disabled="props.historyLoading || !!props.historyError" @click="emit('new-chat')">新建</button>
+          <slot v-if="props.fullscreen" name="tutor-control" />
+          </div>
         </div>
       </div>
 
+      <SessionRecap v-if="recapOpen" :session-id="props.activeChatSessionId" :navigate="openRecapTarget" @close="closeRecap" />
+      <AgentPresentation v-if="recapPresentation" :session-id="props.activeChatSessionId" :turn-id="recapPresentation.turnId"
+        :toolbar-target="workspaceVisible && workspaceKey === presentationKey(recapPresentation.turnId, recapPresentation.reference) ? workspaceTools : undefined"
+        :ref="instance => { if (instance && recapPresentation) presentationInstances.set(presentationKey(recapPresentation.turnId, recapPresentation.reference), instance as InstanceType<typeof AgentPresentation>); }"
+        :reference="recapPresentation.reference" :workspace="workspaceVisible && workspaceKey === presentationKey(recapPresentation.turnId, recapPresentation.reference)"
+        :busy="props.sending || props.historyLoading || !!props.historyError" @follow-up="presentationSent"
+        @source="(id, anchor) => openAgentSources({ turnId: recapPresentation!.turnId }, [id], { currentTarget: anchor }, true)"
+        @expand="selectPresentation(recapPresentation.turnId, recapPresentation.reference, $event)" />
       <div ref="transcriptRef" class="transcript" @scroll="trackTranscriptScroll">
         <p v-if="props.historyLoading" role="status">正在恢复对话，可以先阅读正文。</p>
         <div v-else-if="props.historyError" role="alert">
@@ -703,6 +899,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             <blockquote>{{ turn.questionQuote.quote }}</blockquote>
           </div>
           <p class="u-msg">{{ turn.user }}</p>
+          <PresentationSceneCard v-if="turn.presentationFollowUp" :receipt="turn.presentationFollowUp" @locate="locateScene(turn.presentationFollowUp)" @restore="locateScene(turn.presentationFollowUp, true)" />
           <AgentActivities v-if="turn.activities?.length" :activities="turn.activities" />
           <p v-if="turn.runStatus" class="run-status" role="status">{{ turn.runStatus }}</p>
           <p v-if="turn.pending && !turn.runStatus" class="pending">正在接收运行...</p>
@@ -714,7 +911,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
               <template v-if="part.kind === 'markdown'">
                 <div v-for="(block, bi) in draftMarkdownBlocks(part.text)" :key="bi" v-memo="[block]" class="answer-markdown" v-html="block"></div>
               </template>
-              <button v-else-if="part.kind === 'sources'" type="button" class="agent-source-button draft-source" @click.stop="openAgentSources(turn, part.source_ref_ids, $event)">{{ part.source_ref_ids.map(id => turn.draft?.view?.sources.find(s => s.source_ref_id === id)?.label).filter(Boolean).join(' · ') }}</button>
+              <button v-else-if="part.kind === 'sources'" type="button" class="agent-source-button draft-source" @click.stop="openAgentSources(turn, part.source_ref_ids, $event)">{{ part.source_ref_ids.length === 1 ? sourceChipLabel(turn.draft.view.sources, part.source_ref_ids[0]) : `${part.source_ref_ids.length} 个来源` }}</button>
             </template>
           </div>
           <p v-if="!turn.pending && turn.error" class="incomplete">{{ turn.error }}</p>
@@ -738,13 +935,23 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
                   <BookOpen :size="14" aria-hidden="true" />
                   <span>{{ sourceButtonLabel(turn.outcome, part.source_ref_ids) }}</span>
                 </button>
-                <AgentPresentation v-else-if="part.kind === 'presentation' && turn.turnId"
-                  :session-id="props.activeChatSessionId" :turn-id="turn.turnId" :reference="part"
-                  :busy="props.sending" @follow-up="(message, receipt) => emit('presentation-follow-up', message, receipt)"
+                <template v-else-if="part.kind === 'presentation' && turn.turnId">
+                <button v-if="workspaceVisible" class="presentation-reference" @click="selectPresentation(turn.turnId, part)">打开演示 · 版本 {{ part.revision }}</button>
+                <AgentPresentation v-if="loadedPresentations.has(presentationKey(turn.turnId, part))"
+                  :toolbar-target="workspaceVisible && workspaceKey === presentationKey(turn.turnId, part) ? workspaceTools : undefined"
+                  v-show="!workspaceVisible || workspaceKey === presentationKey(turn.turnId, part)"
+                  :ref="instance => { if (instance) presentationInstances.set(presentationKey(turn.turnId!, part), instance as InstanceType<typeof AgentPresentation>); else presentationInstances.delete(presentationKey(turn.turnId!, part)); }"
+                  :session-id="props.activeChatSessionId" :turn-id="turn.turnId" :reference="part" :teaching="!!turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step')"
+                  :workspace="workspaceVisible && workspaceKey === presentationKey(turn.turnId, part)"
+                  :shared-question="props.agentInput" @update:shared-question="emit('update:agentInput', $event)"
+                  @expand="selectPresentation(turn.turnId!, part, $event)"
+                  :busy="props.sending || props.historyLoading || !!props.historyError" @follow-up="presentationSent"
                   @source="(id, anchor) => openAgentSources(turn, [id], { currentTarget: anchor })" />
+                </template>
               </template>
             </div>
             <p v-else class="ans-text">暂无回答。</p>
+            <TutorActivities v-if="turn.turnId && !turn.pending && (turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step'))" :session-id="props.activeChatSessionId" :turn-id="turn.turnId" />
             <p v-if="incompleteNotice(turn.outcome)" class="incomplete">
               未完成: {{ incompleteNotice(turn.outcome) }}
             </p>
@@ -755,6 +962,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
                 <span class="prop-label">{{ turn.effectLabels?.[ei] ?? props.effLabel(eff) }}</span>
                 <template v-if="props.effState(ti, ei)">
                   <span class="done">{{ props.effState(ti, ei) }}</span>
+                  <button v-if="props.effState(ti, ei) === '已保留' && (eff.kind === 'Note' || eff.kind === 'Highlight')"
+                    class="undo" @click="emit('undo-effect', ti, ei, eff)">撤销保留</button>
                 </template>
                 <template v-else>
                   <button v-if="props.isGoto(eff)" @click="emit('undo-effect', ti, ei, eff)">返回原位置</button>
@@ -826,10 +1035,21 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 
           </div>
         </div>
-        <p v-if="props.chat.length === 0 && !props.historyLoading && !props.historyError" class="empty">可以在这里提问、查看工具轨迹，并把有用内容保存成笔记。</p>
+        <div v-if="props.chat.length === 0 && !props.historyLoading && !props.historyError" class="empty">
+          <template v-if="props.chatSessions.length">
+            <p>当前对话为空，本书有 {{ props.chatSessions.length }} 段已保存的历史对话。</p>
+            <button type="button" class="history-button empty-history-button" @click="historyOpen = true">查看本书的 {{ props.chatSessions.length }} 段历史对话</button>
+          </template>
+          <p v-else>本书还没有保存的对话。可以在这里提问；其他材料的对话可在对应材料的“本书历史”中查看。</p>
+        </div>
       </div>
 
       <div class="agent-input">
+        <div v-if="workspaceVisible || openGoals.length || props.runConnection === 'reconnecting' || targetGoal || props.askDraft" class="agent-input-context">
+        <div v-if="workspaceVisible" class="scene-binding">
+          <span>{{ sceneBound ? `发送时绑定当前现场 · 版本 ${workspace?.reference.revision}` : '普通聊天' }}</span>
+          <button @click="sceneBound = !sceneBound">{{ sceneBound ? '移除现场绑定' : '绑定当前演示' }}</button>
+        </div>
         <div v-if="openGoals.length" class="goal-list" aria-label="当前任务">
           <div v-for="goal in openGoals" :key="goal.id" class="goal-card">
             <strong>当前任务 · {{ goal.interpretation }}</strong>
@@ -855,9 +1075,12 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           </div>
           <blockquote>{{ props.askDraft.quote }}</blockquote>
         </div>
+        </div>
+        <div class="agent-compose-row">
         <textarea
           ref="agentInputRef"
           data-workspace-input="agent"
+          :disabled="network.enabled && (props.historyLoading || !!props.historyError)"
           :value="props.agentInput"
           rows="3"
           :placeholder="props.askDraft ? '围绕引用来源提问...' : '从当前阅读位置提问...'"
@@ -865,9 +1088,10 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           @keydown="onAgentInputKeydown"
         />
         <button v-if="props.canStop" class="stop-agent" @click="emit('stop-agent')">停止</button>
-        <button :disabled="props.sending || props.historyLoading || !!props.historyError || !props.agentInput.trim()" @click="emit('send-agent')">
+        <button :disabled="props.sending || props.historyLoading || !!props.historyError || !props.agentInput.trim()" @click="submitMessage">
           {{ props.sending ? "..." : "发送" }}
         </button>
+        </div>
       </div>
     </section>
 
@@ -960,7 +1184,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       <p v-else class="empty panel-empty">在阅读区选择公式后查看预构建剖面。</p>
     </section>
 
-    <section id="reader-panel-notes" v-show="activeTab === 'notes'" class="tab-panel context-panel" role="tabpanel" aria-labelledby="reader-tab-notes">
+    <section ref="notesPanel" id="reader-panel-notes" v-show="activeTab === 'notes'" class="tab-panel context-panel" role="tabpanel" aria-labelledby="reader-tab-notes">
       <div class="panel-head">
         <p class="rail-kicker">全部笔记</p>
         <h3>{{ noteCount }} 条</h3>
@@ -975,6 +1199,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           :key="note.mem_id"
           class="memory-card note-memory-card"
           :data-mem-id="note.mem_id"
+          tabindex="-1"
           :open="notesExpanded"
         >
           <summary class="memory-meta note-memory-summary">
@@ -987,7 +1212,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             <button
               v-if="canFocusNoteSource(note)"
               class="note-source-button"
-              @click.prevent.stop="emit('focus-source', { lid: noteSourceLid(note)!, quote: leadingQuote(note.content) })"
+              @click.prevent.stop="emit('focus-source', { lid: noteSourceLid(note)!, quote: leadingQuote(note.content), memId: note.mem_id })"
             >
               {{ noteSourceLabel(note) }}
             </button>
@@ -996,6 +1221,10 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             <div class="note-preview md" v-html="props.renderMarkdown(notePreviewMarkdown(note))"></div>
           </summary>
           <div class="md" v-html="props.renderMarkdown(note.content)"></div>
+          <div class="note-actions">
+            <button @click="emit('edit-note', note)">编辑</button>
+            <button @click="emit('delete-note', note)">删除</button>
+          </div>
           <button
             v-if="notePlacementActionLabel(note)"
             type="button"
@@ -1007,7 +1236,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             {{ notePlacementActionLabel(note) }}
           </button>
         </details>
-        <article v-for="hl in props.contextHighlights" :key="hl.mem_id" class="memory-card highlight-card">
+        <article v-for="hl in props.contextHighlights" :key="hl.mem_id" class="memory-card highlight-card" :data-mem-id="hl.mem_id" tabindex="-1">
           <div class="memory-meta">
             <span class="memory-kind-with-location">
               高亮
@@ -1018,6 +1247,10 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             <code>{{ hl.anchor.lid }}</code>
           </div>
           <p>{{ excerpt(hl) }}</p>
+          <div class="note-actions">
+            <button @click="emit('modify-highlight', hl)">编辑</button>
+            <button @click="emit('delete-highlight', hl)">删除</button>
+          </div>
         </article>
       </div>
       <p v-else class="empty panel-empty">暂无笔记或高亮。</p>
@@ -1106,7 +1339,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           <header class="source-popup-head">
             <div>
               <span class="source-popup-kicker">回答来源</span>
-              <strong>{{ activeAgentSource?.label ?? "正在载入来源" }}</strong>
+              <strong>{{ activeAgentSource?.heading_path?.join(' / ') || activeAgentSource?.label || "正在载入来源" }}</strong>
             </div>
             <button type="button" title="关闭来源" aria-label="关闭来源" @click="closeAgentSourcePopup">
               <X :size="16" aria-hidden="true" />
@@ -1123,7 +1356,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
               :class="{ active: source.source_ref_id === agentSourcePopup.activeSourceRefId }"
               @click="selectAgentSource(source.source_ref_id)"
             >
-              {{ source.label }}
+              {{ sourceTabLabel(source) }}
             </button>
           </div>
 
@@ -1132,9 +1365,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             <p v-else-if="agentSourcePopup.error" class="source-error">{{ agentSourcePopup.error }}</p>
             <template v-else-if="activeAgentSource">
               <p v-if="activeAgentSource.stale" class="source-stale">该来源已失效，以下为回答生成时保存的内容。</p>
-              <blockquote class="source-context">
-                <span class="source-context-before">{{ activeAgentSource.context_before }}</span><mark class="source-highlight">{{ activeAgentSource.highlighted_quote }}</mark><span class="source-context-after">{{ activeAgentSource.context_after }}</span>
-              </blockquote>
+              <SourceExcerpt :source="activeAgentSource" />
             </template>
           </div>
 
@@ -1160,7 +1391,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .right-rail {
   min-width: 0;
   border-left: 1px solid var(--hairline);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--reader-card);
   backdrop-filter: saturate(160%) blur(18px);
   -webkit-backdrop-filter: saturate(160%) blur(18px);
   display: flex;
@@ -1173,12 +1404,32 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+.presentation-workspace::before { content: ''; position: fixed; inset: 0; z-index: 89; background: var(--canvas); }
+.presentation-workspace .agent-panel { position: fixed; z-index: 90; top: var(--presentation-top); bottom: 12px; right: 12px; width: calc(100% - var(--presentation-split) - 24px); background: var(--canvas); border: 1px solid var(--hairline); border-radius: 12px; }
+.presentation-workspace :deep(.agent-presentation.expanded) { inset: var(--presentation-top) auto 12px 12px; width: calc(var(--presentation-split) - 12px); max-height: none; }
+.workspace-tools { position: fixed; z-index: 92; inset: 4px 12px auto; min-height: 36px; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px 8px; background: var(--canvas); }
+.workspace-tools :deep(.presentation-toolbar) { order: -1; padding: 2px 0; }
+.workspace-split { display: flex; align-items: center; gap: 8px; }
+.workspace-split { font-size: 12px; }
+.workspace-split input { width: 80px; }
+.discussion-toggle { display: none; }
+.scene-binding { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; font-size: .82rem; background: var(--surface); }
+.presentation-workspace .agent-head { display: none; }
+@media (max-width: 700px) {
+  .workspace-split { display: none; }
+  .discussion-toggle { display: block; min-height: 44px; }
+  .presentation-workspace .agent-panel { right: 8px; left: 8px; width: auto; bottom: 8px; }
+  .presentation-workspace :deep(.agent-presentation.expanded) { inset: var(--presentation-top) 8px 8px; width: auto; }
+  .presentation-workspace.discussion-open :deep(.agent-presentation.expanded) { visibility: hidden; }
+  .presentation-workspace:not(.discussion-open) .agent-input { visibility: hidden; }
+  .workspace-tools :deep(.presentation-toolbar) { flex-basis: 100%; }
+}
 .right-rail.fullscreen {
   position: fixed;
-  inset: 0;
+  inset: var(--app-input-viewport-top, 0px) 0 auto;
   z-index: 70;
   width: 100%;
-  height: 100dvh;
+  height: var(--app-input-viewport-height, 100dvh);
   max-height: none;
   border: 0;
   background: var(--canvas);
@@ -1223,20 +1474,22 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 0;
-  padding: 0.75rem 0.75rem 0;
+  gap: 0.2rem;
+  padding: 0.55rem;
+  border-bottom: 1px solid var(--hairline-soft);
+  background: var(--surface-soft);
 }
 .tab {
   position: relative;
   min-height: 40px;
   border: 0;
   border-bottom: 2px solid transparent;
-  border-radius: 0;
+  border-radius: 6px;
   color: var(--steel);
   background: transparent;
   padding: 0.55rem 0.25rem;
   font-size: 0.82rem;
-  transition: color 160ms ease, border-color 160ms ease, transform 160ms ease;
+  transition: color var(--motion-fast) var(--motion-ease), border-color var(--motion-tab) var(--motion-ease);
 }
 .tab-badge {
   position: absolute;
@@ -1255,8 +1508,9 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   font-variant-numeric: tabular-nums;
 }
 .tab.active {
-  color: var(--ink);
-  border-bottom-color: var(--ink);
+  color: var(--brand-green-deep);
+  border-bottom-color: var(--reader-coral);
+  background: var(--reader-card);
 }
 .tab-panel {
   flex: 1;
@@ -1289,10 +1543,15 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   overflow: hidden;
 }
 .chat-actions {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 0.4rem;
 }
+.chat-secondary-actions { display: contents; }
+.chat-menu-toggle { display: none; }
+.chat-actions > .new-chat { order: 1; }
 .chat-actions button,
 .history-card-actions button,
 .history-goto {
@@ -1303,6 +1562,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   cursor: default;
 }
 .history-button,
+.recap-button,
 .new-chat,
 .history-open {
   min-height: 40px;
@@ -1798,8 +2058,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 }
 .agent-source-popup {
   position: fixed;
-  width: min(420px, calc(100vw - 24px));
-  max-height: min(620px, calc(100vh - 24px));
+  width: min(620px, calc(100vw - 24px));
+  max-height: min(760px, calc(100dvh - 24px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1887,20 +2147,6 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   color: var(--charcoal);
   padding: 0.48rem 0.58rem;
 }
-.source-context {
-  margin: 0;
-  color: var(--charcoal);
-  font-size: 0.88rem;
-  line-height: 1.72;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.source-highlight {
-  border-radius: 3px;
-  background: rgba(255, 210, 71, 0.48);
-  color: inherit;
-  padding: 0.06rem 0.08rem;
-}
 .source-popup-actions {
   display: flex;
   justify-content: flex-end;
@@ -1959,6 +2205,31 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .agent-input textarea {
   width: 100%;
   resize: vertical;
+}
+.agent-compose-row { display: flex; flex-direction: column; gap: 0.5rem; }
+.agent-input-context { display: grid; gap: 0.5rem; }
+@media (max-width: 1023px) {
+  .right-rail .agent-head { flex: 0 0 auto; min-height: 52px; padding: 4px 12px; align-items: center; flex-wrap: nowrap; }
+  .agent-head .rail-kicker { display: none; }
+  .agent-head h3 { white-space: nowrap; }
+  .chat-actions { position: relative; flex-wrap: nowrap; }
+  .chat-actions > .new-chat { order: 0; }
+  .chat-menu-toggle { display: block; min-height: 44px; }
+  .chat-secondary-actions { display: none; }
+  .menu-open .chat-secondary-actions {
+    display: flex; flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 0.4rem;
+    position: absolute; z-index: 20; top: calc(100% + 4px); right: 0;
+    width: min(260px, calc(100vw - 24px)); max-height: calc(var(--app-input-viewport-height, 100dvh) - 80px);
+    overflow-y: auto; padding: 8px; border: 1px solid var(--hairline); border-radius: 12px;
+    background: var(--canvas); box-shadow: 0 8px 24px #0002;
+  }
+  .chat-secondary-actions button { min-height: 44px; }
+  .right-rail .agent-input { flex: 0 0 auto; padding: 8px max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+  .agent-compose-row { flex-direction: row; align-items: flex-end; }
+  .agent-compose-row > button { flex: 0 0 auto; min-width: 44px; min-height: 44px; }
+  .agent-input textarea { flex: 1; min-width: 0; min-height: 44px; max-height: min(120px, calc(var(--app-input-viewport-height, 100dvh) * .3)); resize: none; font-size: 16px; }
+  .agent-input-context { max-height: min(160px, calc(var(--app-input-viewport-height, 100dvh) * .25)); overflow-y: auto; }
+  .transcript { min-height: 0; padding: 8px 12px; }
 }
 .formula-meaning {
   margin: 0 0 0.75rem;

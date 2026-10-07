@@ -131,9 +131,7 @@ fn chat(running: &RunningServer, message: &str) -> JoinHandle<(u16, Value)> {
 
 fn finish_missing_page(provider: &Provider, first: ProviderStep) {
     first.answer("页面尚未交付。");
-    for _ in 1..12 {
-        provider.next().answer("页面尚未交付。");
-    }
+    provider.next().answer("页面尚未交付。");
 }
 
 #[test]
@@ -144,6 +142,7 @@ fn goal_completion_requires_a_mounted_delivery_owned_by_the_goal() {
     use runtime::presentation::PresentationRef;
     let mut goal = ResidentGoal::new("g".into(), "t1".into(), "做一张页面".into());
     goal.requirements = vec![GoalRequirement { id: "page".into(), description: "交付页面".into(), basis_turn_id: "t1".into(), verification: GoalVerification::PresentationDelivery }];
+    goal.working.items = serde_json::from_value(json!([{"id":"page","description":"Make and deliver the page","status":"completed"}])).unwrap();
     let reference = PresentationRef { presentation_id: "p1".into(), revision: 1 };
     let other = PresentationRef { presentation_id: "p2".into(), revision: 1 };
     let mut outcome: OuterOutcome = serde_json::from_value(json!({
@@ -179,8 +178,8 @@ fn resident_goals_persist_continue_select_and_cancel_without_resurrection() {
     assert!(request.request.to_string().contains("agent.resident_goal"));
     finish_missing_page(&provider, request);
     assert_eq!(first.join().unwrap().0, 200);
-    let path = running.state.lock().unwrap().history_path.clone();
-    let history = load_agent_history(&path).unwrap();
+    let path = running.state.lock().unwrap().user.history_path.clone();
+    let history = crate::session_store::load_chat_storage(&path).unwrap().0;
     let goal_id = history.sessions[0].goals[0].id.clone();
     assert_eq!(history.sessions[0].goals[0].status, runtime::goal::GoalStatus::Open);
     assert_eq!(history.sessions[0].turns[0].goal_ref.as_ref().unwrap().id, goal_id);
@@ -192,14 +191,14 @@ fn resident_goals_persist_continue_select_and_cancel_without_resurrection() {
     let second = chat(&running, "继续");
     finish_missing_page(&provider, provider.next());
     assert_eq!(second.join().unwrap().0, 200);
-    let history = load_agent_history(&path).unwrap();
+    let history = crate::session_store::load_chat_storage(&path).unwrap().0;
     assert_eq!(history.sessions[0].goals.len(), 1);
     assert_eq!(history.sessions[0].turns[1].goal_ref.as_ref().unwrap().id, goal_id);
 
     let short = chat(&running, "做一个交互网页");
     finish_missing_page(&provider, provider.next());
     assert_eq!(short.join().unwrap().0, 200);
-    let short_history = load_agent_history(&path).unwrap();
+    let short_history = crate::session_store::load_chat_storage(&path).unwrap().0;
     assert!(short_history.sessions[0].turns[2].run_summary.as_ref().unwrap().trace.is_empty());
     let (status, ambiguous) = http(&running.url, "POST", "/agent/chat", json!({"message":"继续"}));
     assert_eq!(status, 400);
@@ -208,7 +207,7 @@ fn resident_goals_persist_continue_select_and_cancel_without_resurrection() {
     let url = running.url.clone();
     let cancel = thread::spawn(move || http(&url, "POST", "/agent/goals/cancel", json!({"goal_id":goal_id})));
     assert_eq!(cancel.join().unwrap().0, 200);
-    let history = load_agent_history(&path).unwrap();
+    let history = crate::session_store::load_chat_storage(&path).unwrap().0;
     assert_eq!(history.sessions[0].goals[0].status, runtime::goal::GoalStatus::Cancelled);
     assert_eq!(history.sessions[0].goals[1].status, runtime::goal::GoalStatus::Open);
     assert_eq!(history.sessions[0].turns.len(), 3, "cancel must not add a chat turn");
@@ -216,7 +215,7 @@ fn resident_goals_persist_continue_select_and_cancel_without_resurrection() {
     let url = running.url.clone();
     let cancel_second = thread::spawn(move || http(&url, "POST", "/agent/goals/cancel", json!({"goal_id":second_id})));
     assert_eq!(cancel_second.join().unwrap().0, 200);
-    assert_eq!(load_agent_history(&path).unwrap().sessions[0].turns.len(), 3);
+    assert_eq!(crate::session_store::load_chat_storage(&path).unwrap().0.sessions[0].turns.len(), 3);
     let (status, missing) = http(&running.url, "POST", "/agent/chat", json!({"message":"继续"}));
     assert_eq!(status, 400);
     assert_eq!(missing["error_code"], "GOAL_NOT_FOUND");
@@ -230,14 +229,14 @@ fn resident_goal_cannot_be_cancelled_while_its_run_is_pending() {
     running.set_provider_config(provider.config.clone());
     let worker = chat(&running, "解释一个术语");
     let pending = provider.next();
-    let path = running.state.lock().unwrap().history_path.clone();
-    let goal_id = load_agent_history(&path).unwrap().sessions[0].goals[0].id.clone();
+    let path = running.state.lock().unwrap().user.history_path.clone();
+    let goal_id = crate::session_store::load_chat_storage(&path).unwrap().0.sessions[0].goals[0].id.clone();
     let (status, response) = http(&running.url, "POST", "/agent/goals/cancel", json!({"goal_id":goal_id}));
     assert_eq!(status, 409);
     assert_eq!(response["error_code"], "AGENT_RUN_BUSY");
     pending.answer("这里是解释。");
     assert_eq!(worker.join().unwrap().0, 200);
-    let history = load_agent_history(&path).unwrap();
+    let history = crate::session_store::load_chat_storage(&path).unwrap().0;
     assert_eq!(history.sessions[0].goals[0].status, runtime::goal::GoalStatus::Completed);
     assert_eq!(history.sessions[0].turns.len(), 1);
     running.shutdown();
@@ -250,21 +249,42 @@ fn resident_goal_update_is_saved_while_run_is_pending() {
     running.set_provider_config(provider.config.clone());
     let worker = chat(&running, "把这一章做成富文本演示");
     let first = provider.next();
-    let turn_id = running.state.lock().unwrap().agent_history.sessions[0].turns[0].turn_id.clone();
     assert!(first.request.to_string().contains("goal.update"));
     first.tool("goal.update", json!({
-        "operation":"refine", "interpretation":"Show the chapter as a rich page",
-        "requirements":[{"id":"page","description":"Deliver the chapter overview page","basis_turn_id":turn_id,"verification":"presentation_delivery"}]
+        "operation":"working", "focus":"Finish the full chapter", "next_move":"expand and review",
+        "items":[
+            {"id":"prototype","description":"Key relationship prototype","status":"completed"},
+            {"id":"remaining","description":"Remaining chapter and exercises","status":"in_progress"}
+        ]
     }));
     let second = provider.next();
-    let path = running.state.lock().unwrap().history_path.clone();
-    let saved = load_agent_history(&path).unwrap();
+    let path = running.state.lock().unwrap().user.history_path.clone();
+    let saved = crate::session_store::load_chat_storage(&path).unwrap().0;
     assert_eq!(saved.sessions[0].turns[0].status, AgentAssistantStatus::PendingAssistant);
     assert_eq!(saved.sessions[0].goals[0].requirements[0].verification, runtime::goal::GoalVerification::PresentationDelivery);
+    let goal = saved.sessions[0].goals[0].clone();
+    assert_eq!(goal.working.items.len(), 2);
+    assert_eq!(goal.working.items[1].status, runtime::goal::GoalWorkItemStatus::InProgress);
+    assert!(second.request.to_string().contains("Remaining chapter and exercises"));
     assert!(second.request.to_string().contains("presentation delivery still required"));
-    second.answer("页面尚未交付。");
-    for _ in 2..12 { provider.next().answer("页面尚未交付。"); }
+    finish_missing_page(&provider, second);
     assert_eq!(worker.join().unwrap().0, 200);
+    let final_saved = crate::session_store::load_chat_storage(&path).unwrap().0;
+    assert_eq!(final_saved.sessions[0].goals[0].working, goal.working);
+    assert_eq!(final_saved.sessions[0].goals[0].status, runtime::goal::GoalStatus::Open);
+    let visible = http(&running.url, "GET", "/agent/history", Value::Null).1;
+    assert_eq!(visible["current"]["goals"][0]["working"], serde_json::to_value(&goal.working).unwrap());
+    // A new run in the same chat reads the durable plan, without another planning call.
+    let continuation = chat(&running, "继续");
+    let resumed = provider.next();
+    assert!(resumed.request.to_string().contains("Remaining chapter and exercises"));
+    assert!(resumed.request.to_string().contains("presentation delivery still required"));
+    finish_missing_page(&provider, resumed);
+    assert_eq!(continuation.join().unwrap().0, 200);
+    let resumed_saved = crate::session_store::load_chat_storage(&path).unwrap().0;
+    assert_eq!(resumed_saved.sessions[0].goals[0].id, goal.id);
+    assert_eq!(resumed_saved.sessions[0].goals[0].working, goal.working);
+    assert_eq!(resumed_saved.sessions[0].goals[0].requirements, goal.requirements);
     running.shutdown();
 }
 
@@ -276,14 +296,14 @@ fn resident_completed_goal_edit_creates_related_goal_and_replace_supersedes_open
     let first = chat(&running, "解释一个术语");
     provider.next().answer("第一版已完成。");
     assert_eq!(first.join().unwrap().0, 200);
-    let original = running.state.lock().unwrap().agent_history.sessions[0].goals[0].id.clone();
-    assert_eq!(running.state.lock().unwrap().agent_history.sessions[0].goals[0].status, runtime::goal::GoalStatus::Completed);
+    let original = running.state.lock().unwrap().user.agent_history.sessions[0].goals[0].id.clone();
+    assert_eq!(running.state.lock().unwrap().user.agent_history.sessions[0].goals[0].status, runtime::goal::GoalStatus::Completed);
     let url = running.url.clone();
     let selected = original.clone();
     let edit = thread::spawn(move || http(&url, "POST", "/agent/chat", json!({"message":"修改这个回答，做成网页","goal_id":selected})));
-    for _ in 0..12 { provider.next().answer("页面尚未交付。"); }
+    finish_missing_page(&provider, provider.next());
     assert_eq!(edit.join().unwrap().0, 200);
-    let goals = running.state.lock().unwrap().agent_history.sessions[0].goals.clone();
+    let goals = running.state.lock().unwrap().user.agent_history.sessions[0].goals.clone();
     assert_eq!(goals.len(), 2);
     assert_eq!(goals[1].related_goal_id.as_deref(), Some(original.as_str()));
     assert_eq!(goals[1].status, runtime::goal::GoalStatus::Open, "{:?}", goals[1]);
@@ -293,7 +313,7 @@ fn resident_completed_goal_edit_creates_related_goal_and_replace_supersedes_open
     let replace = thread::spawn(move || http(&url, "POST", "/agent/chat", json!({"message":"换成解释术语","goal_id":edit_id,"goal_action":"replace"})));
     provider.next().answer("改为解释术语。");
     assert_eq!(replace.join().unwrap().0, 200);
-    let goals = running.state.lock().unwrap().agent_history.sessions[0].goals.clone();
+    let goals = running.state.lock().unwrap().user.agent_history.sessions[0].goals.clone();
     assert_eq!(goals[1].status, runtime::goal::GoalStatus::Superseded);
     assert_eq!(goals[2].status, runtime::goal::GoalStatus::Completed);
     running.shutdown();
@@ -313,13 +333,124 @@ fn observability_status_endpoint_exposes_only_safe_runtime_state() {
 }
 
 #[test]
+fn local_user_survives_service_changes_book_switch_and_restart() {
+    let (running, root) = fixture("mu1a-owner");
+    let original_book = running.state.lock().unwrap().workspace.book_dir.clone();
+    let history_path = root.join("memory/agent-history.json");
+    let note = http(&running.url, "POST", "/reader/note", json!({
+        "lid":"1.1", "text":"MU1a persistent note"
+    }));
+    assert_eq!(note.0, 200, "{note:?}");
+    let original_session = http(&running.url, "POST", "/agent/new", json!({}));
+    assert_eq!(original_session.0, 200);
+    let selected = original_session.1["history"]["active_session_id"].clone();
+    let enabled = http(&running.url, "POST", "/tutor/mutate", json!({
+        "operation_id":"mu1a-enable", "expected_revision":0,
+        "action":{"kind":"set_enabled", "enabled":true}
+    }));
+    assert_eq!(enabled.0, 200, "{enabled:?}");
+
+    let library = root.join("changed-library");
+    running.set_library_root(library.clone());
+    running.set_provider_config(ProviderConfig::from_values(
+        "native", "unused-local-test-key", "http://127.0.0.1:9", "mu1a-test"
+    ).unwrap());
+    assert_eq!(running.library_root(), Some(library.clone()));
+    let other = crate::tests::write_multi_leaf_book("mu1a-other", "mu1a-other", 3);
+    for book in [other, original_book.clone()] {
+        let reply = http(&running.url, "POST", "/book/open", json!({"dir":book}));
+        assert_eq!(reply.0, 200, "{reply:?}");
+        let state = running.state.lock().unwrap();
+        assert_eq!(state.user.user_id(), Some(crate::user_runtime::LOCAL_USER_ID));
+        assert_eq!(state.user.history_path.as_ref(), Some(&history_path));
+        assert_eq!(state.user.presentation_root().unwrap(), history_path.with_extension("presentations"));
+        assert_eq!(state.user.learning_store().unwrap().state().unwrap().control.revision, 1);
+        assert_eq!(state.user.store.recall(&memory::RecallQuery {
+            text: Some("MU1a persistent note".into()), ..Default::default()
+        }).len(), 1);
+    }
+    assert_eq!(http(&running.url, "GET", "/agent/history", Value::Null).1["active_session_id"], selected);
+    running.shutdown();
+
+    let mut config = ServerHostConfig::desktop(library, root.join("dist"));
+    config.book_dir = Some(original_book);
+    let reopened = start_server_with_memory_path(config, root.join("memory/memory.json")).unwrap();
+    assert_eq!(http(&reopened.url, "GET", "/agent/history", Value::Null).1["active_session_id"], selected);
+    let state = reopened.state.lock().unwrap();
+    assert_eq!(state.user.store.recall(&memory::RecallQuery {
+        text: Some("MU1a persistent note".into()), ..Default::default()
+    }).len(), 1);
+    let control = state.user.learning_store().unwrap().state().unwrap().control;
+    assert!(control.enabled);
+    assert_eq!(control.revision, 1);
+    drop(state);
+    reopened.shutdown();
+}
+
+#[test]
+fn mu1c_old_run_cannot_touch_replaced_workspace_but_saves_original_note_and_answer() {
+    let provider = Provider::new();
+    let (running, _) = fixture("mu1c-stale");
+    running.set_provider_config(provider.config.clone());
+    let worker = chat(&running, "请读取当前阅读状态，在 1.1 保存笔记并高亮，跳到 1.30");
+    let first = provider.next();
+    let (old_book, old_chat, turn_id) = {
+        let state = running.state.lock().unwrap();
+        (state.workspace.book.base.book_id.clone(), state.workspace.selected_chat.clone().unwrap(),
+            state.user.agent_history.sessions[0].turns[0].turn_id.clone())
+    };
+    let other = crate::tests::write_multi_leaf_book("mu1c-new", "mu1c-new", 30);
+    // MU1 keeps the public Host switch/busy boundary. Exercise the future
+    // workspace replacement under the same short lock while the model waits.
+    {
+        let mut state = running.state.lock().unwrap();
+        let reply = crate::route_open_book(&mut state, &json!({"dir":other}).to_string(), "later");
+        assert_eq!(reply.status, 200, "{}", reply.body);
+    }
+    let before = http(&running.url, "POST", "/reader/state", json!({})).1;
+    first.finish(json!({"role":"assistant","content":null,"tool_calls":[
+        {"id":"stale-read","type":"function","function":{"name":"reader.state","arguments":"{}"}},
+        {"id":"stale-goto","type":"function","function":{"name":"reader.gotoLid","arguments":json!({"lid":"1.30"}).to_string()}},
+        {"id":"original-note","type":"function","function":{"name":"reader.note","arguments":json!({"lid":"1.1","text":"old Run private note"}).to_string()}},
+        {"id":"original-highlight","type":"function","function":{"name":"reader.highlight","arguments":json!({"lid":"1.1"}).to_string()}}
+    ]}));
+    let step = provider.next();
+    let request = step.request.to_string();
+    assert!(request.contains("WORKSPACE_STALE"));
+    assert!(request.contains("not_applied"));
+    assert!(request.contains("reader_effect"));
+    assert!(!request.contains("mu1c-new"));
+    step.answer("原问题已处理。");
+    let reply = worker.join().unwrap();
+    assert_eq!(reply.0, 200, "{reply:?}");
+    assert!(reply.1["effects"].as_array().unwrap().is_empty());
+    assert_eq!(http(&running.url, "POST", "/reader/state", json!({})).1, before);
+    let state = running.state.lock().unwrap();
+    let notes = state.user.store.recall(&memory::RecallQuery { book_id:Some(old_book.clone()), text:Some("old Run private note".into()), ..Default::default() });
+    assert_eq!(notes.len(), 1);
+    assert_eq!(state.user.store.recall(&memory::RecallQuery {book_id:Some(old_book), mem_type:Some("highlight".into()), ..Default::default()}).len(), 1);
+    assert_eq!(state.workspace.book.base.book_id, "mu1c-new");
+    assert!(!state.workspace.messages.iter().any(|m| m.content.as_deref() == Some("原问题已处理。")));
+    let history = crate::session_store::load_chat_storage(&state.user.history_path).unwrap().0;
+    let session = history.sessions.iter().find(|s| s.id == old_chat).unwrap();
+    let turn = session.turns.iter().find(|t| t.turn_id == turn_id).unwrap();
+    assert_eq!(turn.status, AgentAssistantStatus::Completed);
+    assert!(session.messages.iter().any(|m| m.content.as_deref() == Some("原问题已处理。")));
+    drop(state);
+    running.shutdown();
+}
+
+#[test]
 fn resident_model_wait_releases_state_and_preserves_concurrent_reader_memory_and_history() {
     let provider = Provider::new();
-    let (running, root) = fixture("concurrent");
+    let (running, _root) = fixture("concurrent");
     running.set_provider_config(provider.config.clone());
     let worker = chat(&running, "解释这段文字");
     let step = provider.next();
-    let path = root.join("memory/agent-history.json");
+    let path = {
+        let state = running.state.lock().unwrap();
+        state.user.session_store.as_ref().unwrap().paths.session(state.workspace.selected_chat.as_deref().unwrap())
+    };
     let pending = std::fs::read(&path).unwrap();
     let history = http(&running.url, "GET", "/agent/history", Value::Null);
     assert_eq!(
@@ -358,7 +489,7 @@ fn resident_model_wait_releases_state_and_preserves_concurrent_reader_memory_and
         .state
         .lock()
         .unwrap()
-        .reader
+        .workspace.reader
         .state()
         .viewport
         .anchor_lid;
@@ -370,10 +501,10 @@ fn resident_model_wait_releases_state_and_preserves_concurrent_reader_memory_and
         "manual navigation is not an Agent effect"
     );
     let state = running.state.lock().unwrap();
-    assert_eq!(state.reader.state().viewport.anchor_lid, manual_anchor);
+    assert_eq!(state.workspace.reader.state().viewport.anchor_lid, manual_anchor);
     assert!(
         state
-            .store
+            .user.store
             .recall(&memory::RecallQuery {
                 text: Some("manual note".into()),
                 ..Default::default()
@@ -381,7 +512,7 @@ fn resident_model_wait_releases_state_and_preserves_concurrent_reader_memory_and
             .len()
             > 0
     );
-    let history = load_agent_history(&state.history_path).unwrap();
+    let history = crate::session_store::load_chat_storage(&state.user.history_path).unwrap().0;
     assert_eq!(
         history.sessions[0].turns[0].status,
         AgentAssistantStatus::Completed
@@ -405,7 +536,7 @@ fn resident_cancel_keeps_completed_note_and_blocks_returned_tools_and_later_samp
         .tool("reader.note", json!({"lid":"1.1","text":"agent note"}));
     let step = provider.next();
     assert!(step.request.to_string().contains("agent note"));
-    let turn_id = running.state.lock().unwrap().agent_history.sessions[0].turns[0]
+    let turn_id = running.state.lock().unwrap().user.agent_history.sessions[0].turns[0]
         .turn_id
         .clone();
     let stream = running.run_coordinator.stream(&turn_id).unwrap();
@@ -443,7 +574,7 @@ fn resident_cancel_keeps_completed_note_and_blocks_returned_tools_and_later_samp
     assert_eq!(reply.1["error_code"], "AGENT_RUN_CANCELLED");
     assert!(provider.steps.try_recv().is_err());
     let state = running.state.lock().unwrap();
-    let history = load_agent_history(&state.history_path).unwrap();
+    let history = crate::session_store::load_chat_storage(&state.user.history_path).unwrap().0;
     let turn = &history.sessions[0].turns[0];
     assert_eq!(turn.status, AgentAssistantStatus::Cancelled);
     let summary = turn.run_summary.as_ref().unwrap();
@@ -463,7 +594,7 @@ fn resident_cancel_keeps_completed_note_and_blocks_returned_tools_and_later_samp
     ));
     assert!(
         state
-            .store
+            .user.store
             .recall(&memory::RecallQuery {
                 text: Some("agent note".into()),
                 ..Default::default()
@@ -472,13 +603,13 @@ fn resident_cancel_keeps_completed_note_and_blocks_returned_tools_and_later_samp
             > 0
     );
     assert!(state
-        .store
+        .user.store
         .recall(&memory::RecallQuery {
             mem_type: Some("highlight".into()),
             ..Default::default()
         })
         .is_empty());
-    let input = copy_review_input(&state, &state.store.review_state().review_jobs[0]).unwrap();
+    let input = copy_review_input(&state, &state.user.store.review_state().review_jobs[0]).unwrap();
     assert_eq!(input.turns[0].assistant_status, ReviewTurnStatus::Cancelled);
     assert!(input.turns[0].assistant_answer.is_none());
     drop(state);
@@ -500,7 +631,7 @@ fn resident_profile_judgment_wait_is_outside_state_and_cancel_prevents_apply() {
         http(&running.url, "POST", "/reader/goto", json!({"lid":"1.30"})).0,
         200
     );
-    let revision = running.state.lock().unwrap().store.projection_revision();
+    let revision = running.state.lock().unwrap().user.store.projection_revision();
     running.run_coordinator.cancel();
     step.answer(r#"{"intent":"remember","scope":"book","applicability_kind":"any","payload":{"kind":"explanation_preference","key":"detail","value":"detailed"}}"#);
     assert_eq!(
@@ -508,7 +639,7 @@ fn resident_profile_judgment_wait_is_outside_state_and_cancel_prevents_apply() {
         "AGENT_RUN_CANCELLED"
     );
     assert_eq!(
-        running.state.lock().unwrap().store.projection_revision(),
+        running.state.lock().unwrap().user.store.projection_revision(),
         revision
     );
     assert!(provider.steps.try_recv().is_err());
@@ -545,14 +676,13 @@ fn resident_context_boundary_waits_for_exit_without_holding_state() {
     assert_eq!(boundary.join().unwrap().0, 200);
     let state = running.state.lock().unwrap();
     let original = state
-        .agent_history
+        .user.agent_history
         .sessions
         .iter()
         .find(|session| Some(session.id.as_str()) == original.as_str())
         .unwrap();
     assert_eq!(original.turns[0].status, AgentAssistantStatus::Cancelled);
-    assert!(state
-        .messages
+    assert!(state.workspace.messages
         .iter()
         .all(|message| message.role == runtime::Role::System));
     drop(state);
@@ -566,10 +696,14 @@ fn resident_commit_failure_keeps_pending_and_startup_recovers_interrupted() {
     running.set_provider_config(provider.config.clone());
     let worker = chat(&running, "解释这段文字");
     let step = provider.next();
-    let path = running.state.lock().unwrap().history_path.clone();
-    let blocked = root.join("blocked");
-    std::fs::write(&blocked, "not a directory").unwrap();
-    running.state.lock().unwrap().history_path = Some(blocked.join("agent-history.json"));
+    let path = running.state.lock().unwrap().user.history_path.clone();
+    {
+        let mut state = running.state.lock().unwrap();
+        let id = state.workspace.selected_chat.clone().unwrap();
+        let log = state.user.session_store.as_mut().unwrap().logs.get_mut(&id).unwrap();
+        log.fail_write = Some(false);
+        log.fail_terminal_only = true;
+    }
     step.answer("无法持久化的答案。");
     assert_eq!(worker.join().unwrap().0, 500);
     let unsaved = running
@@ -580,7 +714,7 @@ fn resident_commit_failure_keeps_pending_and_startup_recovers_interrupted() {
         unsaved.outcome.unwrap().answer.as_deref(),
         Some("无法持久化的答案。")
     );
-    let history = load_agent_history(&path).unwrap();
+    let history = crate::session_store::load_chat_storage(&path).unwrap().0;
     assert_eq!(
         history.sessions[0].turns[0].status,
         AgentAssistantStatus::PendingAssistant
@@ -589,7 +723,7 @@ fn resident_commit_failure_keeps_pending_and_startup_recovers_interrupted() {
     assert_eq!(history.sessions[0].goals.len(), 1);
     assert_eq!(history.sessions[0].goals[0].status, runtime::goal::GoalStatus::Open);
     assert!(history.sessions[0].goals[0].result_refs.is_empty());
-    running.state.lock().unwrap().history_path = path.clone();
+    running.state.lock().unwrap().user.history_path = path.clone();
     running.shutdown();
     let mut config = ServerHostConfig::desktop(root.join("library"), root.join("dist"));
     config.book_dir = Some(crate::tests::write_multi_leaf_book(
@@ -598,7 +732,7 @@ fn resident_commit_failure_keeps_pending_and_startup_recovers_interrupted() {
         30,
     ));
     let restarted = start_server_with_memory_path(config, root.join("memory/memory.json")).unwrap();
-    let history = load_agent_history(&path).unwrap();
+    let history = crate::session_store::load_chat_storage(&path).unwrap().0;
     assert_eq!(
         history.sessions[0].turns[0].status,
         AgentAssistantStatus::Failed
@@ -617,7 +751,7 @@ fn resident_commit_failure_keeps_pending_and_startup_recovers_interrupted() {
     let resumed = chat(&restarted, "继续");
     provider.next().answer("继续后的答案。");
     assert_eq!(resumed.join().unwrap().0, 200);
-    let history = load_agent_history(&path).unwrap();
+    let history = crate::session_store::load_chat_storage(&path).unwrap().0;
     assert_eq!(history.sessions[0].turns[1].goal_ref.as_ref().unwrap().id, original_goal_id);
     assert_eq!(history.sessions[0].goals[0].status, runtime::goal::GoalStatus::Completed);
     restarted.shutdown();
@@ -628,13 +762,17 @@ fn resident_precommit_failure_releases_slot_without_calling_provider() {
     let provider = Provider::new();
     let (running, root) = fixture("precommit-failure");
     running.set_provider_config(provider.config.clone());
-    let path = running.state.lock().unwrap().history_path.clone();
     let blocked = root.join("blocked");
     std::fs::write(&blocked, "not a directory").unwrap();
-    running.state.lock().unwrap().history_path = Some(blocked.join("agent-history.json"));
-    assert_eq!(chat(&running, "解释这段").join().unwrap().0, 500);
+    let id = running.state.lock().unwrap().workspace.selected_chat.clone().unwrap();
+    let original = {
+        let mut state = running.state.lock().unwrap();
+        let log = state.user.session_store.as_mut().unwrap().logs.get_mut(&id).unwrap();
+        std::mem::replace(&mut log.path, blocked.join("session.jsonl"))
+    };
+    assert_eq!(chat(&running, "解释这段").join().unwrap().0, 403);
     assert!(provider.steps.try_recv().is_err());
-    running.state.lock().unwrap().history_path = path;
+    running.state.lock().unwrap().user.session_store.as_mut().unwrap().logs.get_mut(&id).unwrap().path = original;
     let worker = chat(&running, "再次解释这段");
     provider.next().answer("完成。");
     assert_eq!(worker.join().unwrap().0, 200);
@@ -669,7 +807,7 @@ fn resident_nested_synthesis_and_local_source_repair_release_state() {
     assert_eq!(reply.1["trace"][1]["tool"], "book.synthesize");
     {
         let state = running.state.lock().unwrap();
-        let activities = state.agent_history.sessions[0].turns[0]
+        let activities = state.user.agent_history.sessions[0].turns[0]
             .run_summary
             .as_ref()
             .unwrap()
@@ -714,13 +852,13 @@ fn resident_failure_retains_already_completed_actions() {
         "PROVIDER_EMPTY_RESPONSE"
     );
     let state = running.state.lock().unwrap();
-    let history = load_agent_history(&state.history_path).unwrap();
+    let history = crate::session_store::load_chat_storage(&state.user.history_path).unwrap().0;
     let turn = &history.sessions[0].turns[0];
     assert_eq!(turn.status, AgentAssistantStatus::Failed);
     assert_eq!(turn.run_summary.as_ref().unwrap().effects.len(), 1);
-    assert_eq!(crate::turn_view(&state.book, turn).effect_labels.len(), 1);
+    assert_eq!(crate::turn_view(&state.workspace.book, turn).effect_labels.len(), 1);
     assert!(!state
-        .store
+        .user.store
         .recall(&memory::RecallQuery {
             text: Some("kept after failure".into()),
             ..Default::default()
@@ -792,7 +930,7 @@ fn resident_stream_can_finish_after_sixty_seconds() {
     assert!(response.get("error_code").is_none(), "{response}");
     let state = running.state.lock().unwrap();
     assert_eq!(
-        state.agent_history.sessions[0].turns[0].status,
+        state.user.agent_history.sessions[0].turns[0].status,
         AgentAssistantStatus::Completed
     );
     drop(state);
@@ -825,15 +963,14 @@ fn resident_failure_keeps_question_but_drops_run_local_tool_transcript_before_re
 
     {
         let state = running.state.lock().unwrap();
-        assert!(state
-            .messages
+        assert!(state.workspace.messages
             .iter()
             .any(|message| message.role == runtime::Role::User
                 && message.content.as_deref() == Some("请制作一个交互页面")));
-        assert!(state.messages.iter().all(|message| {
+        assert!(state.workspace.messages.iter().all(|message| {
             message.role != runtime::Role::Assistant && message.role != runtime::Role::Tool
         }));
-        let history = load_agent_history(&state.history_path).unwrap();
+        let history = crate::session_store::load_chat_storage(&state.user.history_path).unwrap().0;
         assert_eq!(
             history.sessions[0].turns[0].status,
             AgentAssistantStatus::Failed
@@ -855,10 +992,11 @@ fn resident_failure_keeps_question_but_drops_run_local_tool_transcript_before_re
     assert!(!projected.contains("tool_search_result.v2"));
     assert!(!projected.contains("call-test"));
     request.answer("已重新开始。");
-    for _ in 1..12 { provider.next().answer("页面尚未交付。"); }
+    provider.next().answer("页面尚未交付。");
     let reply = retry.join().unwrap();
     assert_eq!(reply.0, 200);
-    assert_eq!(reply.1["warning"], "TURN_LIMIT_EXCEEDED");
+    assert_eq!(reply.1["warning"], "AGENT_NO_PROGRESS");
+    assert_eq!(reply.1["incomplete"], true);
     running.shutdown();
 }
 
@@ -901,13 +1039,13 @@ fn resident_select_delete_and_book_open_share_the_stop_boundary() {
         let state = running.state.lock().unwrap();
         if operation == "delete" {
             assert!(!state
-                .agent_history
+                .user.agent_history
                 .sessions
                 .iter()
                 .any(|session| Some(session.id.as_str()) == current.as_str()));
         } else {
             let turn = &state
-                .agent_history
+                .user.agent_history
                 .sessions
                 .iter()
                 .find(|session| Some(session.id.as_str()) == current.as_str())
@@ -915,8 +1053,7 @@ fn resident_select_delete_and_book_open_share_the_stop_boundary() {
                 .turns[0];
             assert_eq!(turn.status, AgentAssistantStatus::Cancelled);
         }
-        assert!(state
-            .messages
+        assert!(state.workspace.messages
             .iter()
             .all(|message| message.role == runtime::Role::System));
         drop(state);
@@ -932,7 +1069,7 @@ fn resident_shutdown_cancels_and_persists_before_host_exit() {
     let worker = chat(&running, "解释这段文字");
     let step = provider.next();
     let coordinator = running.run_coordinator.clone();
-    let path = running.state.lock().unwrap().history_path.clone();
+    let path = running.state.lock().unwrap().user.history_path.clone();
     let shutdown = thread::spawn(move || running.shutdown());
     coordinator.wait_until_cancelling();
     step.answer("停止后不交付此候选。");
@@ -942,7 +1079,7 @@ fn resident_shutdown_cancels_and_persists_before_host_exit() {
     );
     shutdown.join().unwrap();
     assert_eq!(
-        load_agent_history(&path).unwrap().sessions[0].turns[0].status,
+        crate::session_store::load_chat_storage(&path).unwrap().0.sessions[0].turns[0].status,
         AgentAssistantStatus::Cancelled
     );
     assert!(coordinator.cancel().is_none());
@@ -969,7 +1106,7 @@ fn resident_cancel_closes_unexecuted_batch_receipts_and_can_continue_session() {
     );
     {
         let state = running.state.lock().unwrap();
-        let session = &state.agent_history.sessions[0];
+        let session = &state.user.agent_history.sessions[0];
         let receipt = session
             .messages
             .iter()
@@ -991,7 +1128,7 @@ fn resident_cancel_closes_unexecuted_batch_receipts_and_can_continue_session() {
             .iter()
             .any(|step| step.tool == "reader.note"));
         assert!(state
-            .store
+            .user.store
             .recall(&memory::RecallQuery {
                 text: Some("must not be saved".into()),
                 ..Default::default()
@@ -1046,7 +1183,7 @@ fn resident_commit_preserves_deletion_of_another_session_during_model_wait() {
     step.answer("完成解释。");
     assert_eq!(worker.join().unwrap().0, 200);
     let state = running.state.lock().unwrap();
-    let history = load_agent_history(&state.history_path).unwrap();
+    let history = crate::session_store::load_chat_storage(&state.user.history_path).unwrap().0;
     assert_eq!(history.sessions.len(), 1);
     assert_eq!(Some(history.sessions[0].id.as_str()), current.as_str());
     assert_eq!(
@@ -1186,7 +1323,7 @@ fn resident_sse_streams_before_model_finishes_and_reconnect_never_dispatches() {
 fn resident_run_api_cancel_and_persistence_failure_have_distinct_terminal_events() {
     for failure in [false, true] {
         let provider = Provider::new();
-        let (running, root) = fixture(if failure { "sse-unsaved" } else { "sse-cancel" });
+        let (running, _root) = fixture(if failure { "sse-unsaved" } else { "sse-cancel" });
         running.set_provider_config(provider.config.clone());
         let accepted = http(
             &running.url,
@@ -1198,11 +1335,13 @@ fn resident_run_api_cancel_and_persistence_failure_have_distinct_terminal_events
         let step = provider.next();
         let mut observer = subscribe(&running.url, id, "", "");
         next_event(&mut observer);
-        let original = running.state.lock().unwrap().history_path.clone();
+        let original = running.state.lock().unwrap().user.history_path.clone();
         if failure {
-            let blocked = root.join("blocked");
-            std::fs::write(&blocked, "file").unwrap();
-            running.state.lock().unwrap().history_path = Some(blocked.join("history.json"));
+            let mut state = running.state.lock().unwrap();
+            let chat = state.workspace.selected_chat.clone().unwrap();
+            let log = state.user.session_store.as_mut().unwrap().logs.get_mut(&chat).unwrap();
+            log.fail_write = Some(false);
+            log.fail_terminal_only = true;
         } else {
             let cancelled = http(
                 &running.url,
@@ -1237,7 +1376,7 @@ fn resident_run_api_cancel_and_persistence_failure_have_distinct_terminal_events
             json!({}),
         );
         assert_eq!(again.1["last_seq"], snapshot.last_seq);
-        running.state.lock().unwrap().history_path = original;
+        running.state.lock().unwrap().user.history_path = original;
         running.shutdown();
     }
 }

@@ -1,11 +1,15 @@
+import { network, sceneKey } from './network-context';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
 import { api, agentRunEventsUrl, ApiError } from "./api";
 import { initialRun, interruptRun, reduceRun, type RunDescriptor, type RunEvent, type RunSnapshot } from "./agent-run-state";
 
-const events = ["reader.changed", "effect.created","answer.patch","run.snapshot", "run.started", "model.started", "model.finished", "tool.started", "tool.finished", "run.cancelling", "run.finalizing", "run.completed", "run.failed", "run.cancelled", "run.persistence_failed"];
+const events = ["run.resource", "reader.changed", "effect.created","answer.patch","run.snapshot", "run.started", "model.started", "model.finished", "tool.started", "tool.finished", "run.cancelling", "run.finalizing", "run.completed", "run.failed", "run.cancelled", "run.persistence_failed"];
 export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
   const snapshot = shallowRef<RunSnapshot | null>(null);
   const connection = ref("closed");
+  let disposed = false;
+  let cursor: string | undefined;
+  let observedScene = sceneKey();
   let source: EventSource | null = null;
   let queued: RunSnapshot | null = null;
   let frame: number | null = null;
@@ -57,12 +61,13 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
 
   function openSource(descriptor: RunDescriptor, generation: number) {
     if (source || generation !== observationGeneration || !active.value) return;
-    const current = new EventSource(agentRunEventsUrl(descriptor.turn_id));
+    const current = new EventSource(agentRunEventsUrl(descriptor.turn_id, cursor));
     source = current;
     current.onopen = () => { if (source === current) connection.value = "connected"; };
-    current.onerror = () => { if (source === current) connection.value = "reconnecting"; };
+    current.onerror = () => { if (source === current) { connection.value = "reconnecting"; scheduleReconcile(); } };
     for (const name of events) current.addEventListener(name, (message) => {
-      if (source !== current || !snapshot.value) return;
+      if (source !== current || !snapshot.value || (network.value.enabled && observedScene !== sceneKey())) return;
+      cursor = (message as MessageEvent).lastEventId || cursor;
       const event = JSON.parse((message as MessageEvent).data) as RunEvent;
       if (event.type === "answer.patch") {
         queued = reduceRun(queued ?? snapshot.value, event);
@@ -87,7 +92,8 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
         if (generation !== observationGeneration || !sameDescriptor(snapshot.value?.descriptor, descriptor)) return;
         flushDraft();
         const installed = snapshot.value;
-        if (!installed || recovered.last_seq < installed.last_seq) return;
+        if (!installed || (!network.value.enabled && recovered.last_seq < installed.last_seq)) return;
+        if (network.value.enabled && recovered.persistence_state === "pending") { snapshot.value = { ...installed, descriptor: recovered.descriptor }; openSource(descriptor, generation); return; }
         if (installed.persistence_state !== "pending" && recovered.persistence_state === "pending") return;
         install(recovered);
         if (recovered.persistence_state === "pending") openSource(descriptor, generation);
@@ -126,6 +132,7 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
   }
 
   function observe(descriptor: RunDescriptor) {
+    if (disposed) return;
     if (sameDescriptor(snapshot.value?.descriptor, descriptor) && snapshot.value?.persistence_state === "pending") {
       openSource(descriptor, observationGeneration);
       scheduleReconcile();
@@ -134,6 +141,7 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
     close();
     observationGeneration += 1;
     terminalNotified = false;
+    cursor = undefined; observedScene = sceneKey();
     snapshot.value = initialRun(descriptor);
     connection.value = "checking";
     const generation = observationGeneration;
@@ -145,7 +153,7 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
     if (!current || !active.value) return;
     const next = await api.agentRunCancel(current.descriptor.turn_id);
     flushDraft();
-    if (snapshot.value?.descriptor.turn_id === next.descriptor.turn_id && next.last_seq >= snapshot.value.last_seq) install(next);
+    if (snapshot.value?.descriptor.turn_id === next.descriptor.turn_id && (network.value.enabled || next.last_seq >= snapshot.value.last_seq)) install(next);
   }
   function forget() { close(); snapshot.value = null; terminalNotified = false; }
   const recoverVisible = () => {
@@ -158,6 +166,7 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
     window.addEventListener("online", recoverVisible);
   });
   onBeforeUnmount(() => {
+    disposed = true;
     document.removeEventListener("visibilitychange", recoverVisible);
     window.removeEventListener("pageshow", recoverVisible);
     window.removeEventListener("online", recoverVisible);

@@ -9,6 +9,7 @@ export interface BookStructureReferenceScope {
 }
 
 export function bookStructureReferenceScope(input: BookStructureGenerationInputV1): BookStructureReferenceScope {
+  if ("phase" in input) return input.reference_scope;
   if ("entries" in input) return input.reference_scope;
   const byUnit: Record<string, string[]> = {};
   const dependencyUnits = new Set<string>();
@@ -37,7 +38,8 @@ export function bookStructureReferenceScope(input: BookStructureGenerationInputV
   let global = false;
   if ("leaf_lids" in input || "core_leaf_lids" in input) {
     const unit = "unit_lid" in input ? input.unit_lid : input.parent_unit_lid;
-    add(unit, input.excerpts.filter(excerpt => excerpt.text.trim()).map(excerpt => excerpt.lid));
+    add(unit, input.excerpts.filter(excerpt => excerpt.text.trim()
+      && (!("discovery" in input) || !input.discovery || !/^#{1,6}\s/u.test(excerpt.text.trim()))).map(excerpt => excerpt.lid));
   } else if ("unit_cards" in input) {
     global = true;
     for (const card of [...input.unit_cards, ...(input.context_unit_cards ?? [])]) addCard(card);

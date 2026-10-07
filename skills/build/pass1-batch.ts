@@ -3,7 +3,7 @@
 // 图不完整),`--allow-partial` 显式兜底。本脚本零 LLM,是续建 loop 的末步(全 done 后收口)。
 //   tsx pass1-batch.ts <book.md|epub> [--book-id <id>] [--allow-partial]
 //     [--content-profile technical_learning] [--formula-candidates <p>] [--discourse-candidates <p>] [--pass2-output <p>]
-import { readFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, mkdirSync, existsSync, copyFileSync } from "node:fs";
 import { mergeAndGate, type Pass1Output } from "../../packages/core/src/merge";
 import { projectCatalog } from "../../packages/core/src/catalog";
 import { AssetManifestZ, FormulaSemanticsSidecarZ, Pass2BuildAuditSidecarZ, ReadOnlyBaseZ, SourceManifestZ, TechnicalLearningDiscourseIndexZ } from "../../packages/core/src/zod";
@@ -235,14 +235,26 @@ const sampledRate = sampledLeaves.size ? sampledAnchored / sampledLeaves.size : 
 // 固化小基座 + zod 校验(bookId 已在头部派生)
 const profileHeader = buildReproducibleProfileArtifactHeader({ book_id: bookId, content_profile: parsedProfile.contentProfile.id });
 const profileMetadata = buildProfileMetadata(profileHeader);
+const existingManifestPath = path.join(outputDir, "source_manifest.json");
+const isWorkspaceSource = path.resolve(book) === path.join(outputDir, "source.txt")
+  || path.resolve(book) === path.join(outputDir, "source.epub");
+const existingManifest = isWorkspaceSource && existsSync(existingManifestPath)
+  ? SourceManifestZ.parse(JSON.parse(readFileSync(existingManifestPath, "utf8"))) : null;
 const sourceManifest = preserveFoundationPath
   ? null
-  : buildSourceManifest({
+  : existingManifest && !("version" in existingManifest) ? existingManifest : buildSourceManifest({
       book_id: bookId,
       source_path: book,
+      snapshot_path: /\.epub$/i.test(book) ? "source.epub" : undefined,
       original_pdf_path: originalPdfPath,
       pdf_source_map_path: pdfSourceMapPath,
     });
+if (sourceManifest && !existingManifest) {
+  for (const attachment of sourceManifest.attachments) {
+    attachment.path = "original.pdf";
+    if (attachment.pdf_source_map.path) attachment.pdf_source_map.path = "pdf_source_map.json";
+  }
+}
 if (sourceManifest) SourceManifestZ.parse(sourceManifest);
 const formulaSidecar = formulaCandidatesPath
   ? buildFormulaSemanticsSidecar(
@@ -288,7 +300,18 @@ const base = { book_id: bookId, lid_nodes: lidNodes, graph_nodes: nodes, graph_e
 ReadOnlyBaseZ.parse(base); // 产出前自检(字段失配抛错)
 const dir = `.understand-book/${bookId}`;
 mkdirSync(dir, { recursive: true });
-const assetManifest = buildAssetManifest({
+// Bundle explicitly supplied attachments once; later closes preserve this manifest.
+if (!existingManifest) {
+  for (const [input, relative] of [[originalPdfPath, "original.pdf"], [pdfSourceMapPath, "pdf_source_map.json"]]) {
+    if (input && path.resolve(input) !== path.join(outputDir, relative!)) copyFileSync(input, path.join(outputDir, relative!));
+  }
+}
+if (/\.epub$/i.test(book) && path.resolve(book) !== path.join(outputDir, "source.epub")) {
+  copyFileSync(book, path.join(outputDir, "source.epub"));
+}
+const assetManifestPath = path.join(outputDir, "asset_manifest.json");
+const assetManifest = isWorkspaceSource && existsSync(assetManifestPath)
+  ? AssetManifestZ.parse(JSON.parse(readFileSync(assetManifestPath, "utf8"))) : buildAssetManifest({
   book_id: bookId,
   book_path: book,
   output_dir: dir,

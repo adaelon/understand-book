@@ -1,0 +1,38 @@
+@import '@fontsource-variable/noto-serif-sc';
+@import '@fontsource-variable/noto-sans-sc';
+
+:root {
+  --reader-font: 'Noto Serif SC Variable', serif;
+  --reader-size: 19px;
+  --reader-leading: 1.85;
+  --reader-cjk-spacing: 0.015em;
+  --reader-measure: 36em;
+  --reader-paragraph-gap: 1.2em;
+}
+.reader-pane .prose, .source-preview-text.md {
+  font-family: var(--reader-font);
+  font-size: var(--reader-size);
+  line-height: var(--reader-leading);
+  letter-spacing: normal;
+  overflow-wrap: anywhere;
+  line-break: strict;
+}
+.reader-pane .prose {
+  width: min(var(--reader-measure), calc(100% - 72px));
+}
+.reader-pane { overflow-anchor: none; }
+.reader-cjk { letter-spacing: var(--reader-cjk-spacing); }
+.reader-pane .prose p { margin-bottom: var(--reader-paragraph-gap); }
+.reader-pane .prose p:is(.heading-chapter, .heading-section, .heading-markdown) {
+  font-family: var(--reader-font); font-weight: 600; line-height: 1.4;
+}
+.reader-pane .prose p:is(.heading-chapter, .heading-markdown-1) { font-size: 1.685em; margin: 0 0 1em; }
+.reader-pane .prose p:is(.heading-section, .heading-markdown-2) { font-size: 1.265em; margin: 1.8em 0 0.8em; }
+.reader-pane .prose :is(code, pre), .source-preview-text.md :is(code, pre) {
+  font-family: var(--mono); letter-spacing: normal; line-height: 1.6;
+}
+.reader-pane .prose .katex, .source-preview-text.md .katex { letter-spacing: normal; overflow-wrap: normal; line-break: auto; }
+.reader-pane .prose [data-reader-selection-ignore] { font-family: var(--sans); font-size: 0.875rem; line-height: 1.6; letter-spacing: normal; }
+@media (max-width: 1023px) {
+  .reader-pane .prose { width: min(var(--reader-measure), calc(100% - 40px)); }
+}

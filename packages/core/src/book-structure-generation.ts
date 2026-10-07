@@ -1,7 +1,12 @@
+import { isDeepStrictEqual } from "node:util";
+import { renderStructureOrganizationInput, acceptStructureOrganizationAction, type StructureOrganizationInput, type StructureOrganizationAcceptance } from "./book-structure-organization";
+import { readAutomaticBuildTaskStage } from "./build-orchestrator";
 import { createHash } from "node:crypto";
+import { relocateGenerationTask } from "./semantic-artifact";
 import { renderBookStructureRelationInput, validateBookStructureRelationSelection, type BookStructureRelationSelectionInput, type BookStructureRelationSelection } from "./book-structure-relation-routing";
 import { validateBookStructureRelationDelta, type BookStructureRelationInput, type BookStructureRelationDelta } from "./book-structure-relations";
 import { bookStructureReferenceScope } from "./book-structure-evidence";
+import { collectStructureCandidates, type StructureCandidateContribution, type StructureCandidateCatalog } from "./book-structure-candidates";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { AutomaticBuildTarget, BuildTargetRefV2 } from "./build-orchestrator";
@@ -47,6 +52,7 @@ import {
 } from "./stage-work-unit";
 
 export type BookStructureGenerationInputV1 =
+  | StructureOrganizationInput
   | BookStructureRelationSelectionInput
   | BookStructureRelationInput
   | BookStructureUnitSource
@@ -57,6 +63,7 @@ export type BookStructureGenerationInputV1 =
   | BookStructureStitchReductionInputV1;
 
 export type BookStructureGenerationOutputRoleV1 =
+  | "organization_action"
   | "relation_selection"
   | "relation_delta"
   | "unit_artifact"
@@ -78,6 +85,7 @@ export interface BookStructureGenerationTaskV1 {
 }
 
 export type BookStructureGenerationPayloadV1 =
+  | StructureOrganizationAcceptance
   | BookStructureRelationSelection
   | BookStructureRelationDelta
   | BookStructureUnitArtifact
@@ -152,6 +160,7 @@ function normalizeRange(
 export function renderBookStructureGenerationTaskInput(
   task: Pick<BookStructureGenerationTaskV1, "descriptor" | "input">,
 ): string {
+  if ("version" in task.input && task.input.version === "book_structure_organization_input.v1") return renderStructureOrganizationInput(task.input);
   switch (task.descriptor.kind) {
     case "structure_relation_select":
     case "structure_relation_delta":
@@ -286,6 +295,12 @@ export function freezeBookStructureGenerationTask(
     task.policy_generation_id,
     task.descriptor.work_unit_id,
   );
+  if (task.output_role === "organization_action" && existsSync(file)) {
+    const old = readBookStructureGenerationTask(target, task.policy_generation_id, task.descriptor.work_unit_id)!;
+    if (!isDeepStrictEqual(old.descriptor, task.descriptor) || renderBookStructureGenerationTaskInput(old) !== renderBookStructureGenerationTaskInput(task))
+      throw new Error("BookStructure frozen organization input changed");
+    return file;
+  }
   const bytes = JSON.stringify(task, null, 2) + "\n";
   mkdirSync(path.dirname(file), { recursive: true });
   try {
@@ -294,7 +309,7 @@ export function freezeBookStructureGenerationTask(
     const code = error && typeof error === "object" && "code" in error
       ? String(error.code)
       : "";
-    if (code !== "EEXIST" || readFileSync(file, "utf8") !== bytes) throw error;
+    if (code !== "EEXIST" || JSON.stringify(readBookStructureGenerationTask(target, task.policy_generation_id, task.descriptor.work_unit_id), null, 2) + "\n" !== bytes) throw error;
   }
   return file;
 }
@@ -308,7 +323,7 @@ export function readBookStructureGenerationTask(
   if (!existsSync(file)) return undefined;
   return validateBookStructureGenerationTask(
     target,
-    JSON.parse(readFileSync(file, "utf8")) as BookStructureGenerationTaskV1,
+    relocateGenerationTask(JSON.parse(readFileSync(file, "utf8")) as BookStructureGenerationTaskV1, target.target_ref),
   );
 }
 
@@ -435,9 +450,10 @@ function keyStop(
   value: unknown,
   allowed: ReadonlySet<string>,
   field: string,
+  discovery = false,
 ) {
   const record = recordValue(value, field);
-  exactKeys(record, ["id", "lid", "type", "reason"], ["title"], field);
+  exactKeys(record, ["id", "lid", "type", "reason", ...(discovery ? ["meaning", "conditions"] : [])], ["title", ...(discovery ? ["aliases"] : [])], field);
   const lid = candidateBoundedString(record.lid, field + ".lid", 256);
   if (!allowed.has(lid)) {
     failCandidateValidation(
@@ -464,6 +480,9 @@ function keyStop(
       ? {}
       : { title: candidateBoundedString(record.title, field + ".title", 1_024) }),
     reason: anchoredText(record.reason, allowed, field + ".reason"),
+    ...(discovery ? { meaning: candidateBoundedString(record.meaning, field + ".meaning", 8192),
+      conditions: stringArray(record.conditions, field + ".conditions"),
+      ...(record.aliases === undefined ? {} : { aliases: stringArray(record.aliases, field + ".aliases") }) } : {}),
   };
 }
 
@@ -538,6 +557,7 @@ function validateObservation(
 ): BookStructureFragmentObservationV1 {
   const scope = bookStructureReferenceScope(task.input);
   const allowed = new Set(scope.evidence_by_unit[task.parent_unit_lid] ?? []);
+  const discovery = "discovery" in task.input && Boolean(task.input.discovery);
   const record = recordValue(value, "BookStructure fragment observation");
   exactKeys(record, [
     "version",
@@ -579,15 +599,19 @@ function validateObservation(
     }
     return value;
   });
+  const stops = record.candidate_key_stops.map((item, index) => keyStop(item, allowed, "candidate_key_stops[" + index + "]", discovery));
+  if (discovery && new Set(stops.map(s => s.id)).size !== stops.length) throw new Error("duplicate discovery candidate ID");
+  const coreHasBody = "core_leaf_lids" in task.input
+    ? task.input.core_leaf_lids.some(lid => allowed.has(lid))
+    : allowed.size > 0;
+  if (discovery && coreHasBody && !record.summary_fragments.length) throw new Error("discovery body needs a grounded overview");
   return {
     version: BOOK_STRUCTURE_FRAGMENT_SCHEMA_VERSION_V1,
     parent_unit_lid: task.parent_unit_lid,
     summary_fragments: record.summary_fragments.map((item, index) => (
       anchoredText(item, allowed, "summary_fragments[" + index + "]")
     )),
-    candidate_key_stops: record.candidate_key_stops.map((item, index) => (
-      keyStop(item, allowed, "candidate_key_stops[" + index + "]")
-    )),
+    candidate_key_stops: stops,
     role_hints: [...new Set(roleHints)],
     dependency_hints: assertEvidence(
       stringArray(record.dependency_hints, "dependency_hints"),
@@ -611,7 +635,7 @@ function validateCandidate(
   const allowed = new Set(Object.values(scope.evidence_by_unit).flat());
   const unitIds = new Set(scope.unit_lids);
   const record = recordValue(value, "BookStructure stitch candidate");
-  exactKeys(record, [], ["spine", "throughlines", "key_stops", ...(stored ? ["reference_scope", "context_units"] : [])], "/");
+  exactKeys(record, [], ["spine", "throughlines", "key_stops", ...(stored ? ["reference_scope", "context_units", "unit_titles"] : [])], "/");
   const spineInput = record.spine ?? [];
   const throughlineInput = record.throughlines ?? [];
   const keyStopInput = record.key_stops ?? [];
@@ -725,7 +749,12 @@ function validateCandidate(
     ...keyStops.flatMap(stop => [stop.lid, ...stop.reason.evidence_lids]),
     ...contextUnits.flatMap(unit => unit.summary.evidence_lids),
   ]);
-  return { spine, throughlines, key_stops: keyStops, context_units: contextUnits, reference_scope: {
+  const titles = "unit_cards" in task.input
+    ? Object.fromEntries([...task.input.unit_cards, ...(task.input.context_unit_cards ?? [])].filter(card => card.title).map(card => [card.unit_lid, card.title!]))
+    : "children" in task.input && !("parent_unit_lid" in task.input)
+      ? Object.assign({}, ...task.input.children.map(child => child.payload.unit_titles ?? {})) : {};
+  return { spine, throughlines, key_stops: keyStops, context_units: contextUnits,
+    ...(Object.keys(titles).length ? { unit_titles: titles } : {}), reference_scope: {
     ...scope,
     evidence_by_unit: Object.fromEntries(Object.entries(scope.evidence_by_unit)
       .map(([unit, lids]) => [unit, lids.filter(lid => cited.has(lid))])),
@@ -736,6 +765,7 @@ function payloadForCandidate(
   task: BookStructureGenerationTaskV1,
   candidate: unknown,
 ): BookStructureGenerationPayloadV1 {
+  if (task.output_role === "organization_action") return acceptStructureOrganizationAction(task.input as StructureOrganizationInput, candidate);
   if (task.output_role === "relation_selection") return validateBookStructureRelationSelection(candidate, task.input as BookStructureRelationSelectionInput);
   if (task.output_role === "relation_delta") return validateBookStructureRelationDelta(candidate, task.input as BookStructureRelationInput);
   if (task.output_role === "unit_observation") {
@@ -759,6 +789,12 @@ function validateStoredPayload(
   task: BookStructureGenerationTaskV1,
   payload: unknown,
 ): BookStructureGenerationPayloadV1 {
+  if (task.output_role === "organization_action") {
+    const action = recordValue(payload, "BookStructure action");
+    exactKeys(action, ["version", "accepted_action"]);
+    if (action.version !== "book_structure_action.v1") throw new Error("unsupported BookStructure action");
+    return acceptStructureOrganizationAction(task.input as StructureOrganizationInput, action.accepted_action);
+  }
   if (task.output_role === "relation_selection") return validateBookStructureRelationSelection(payload, task.input as BookStructureRelationSelectionInput);
   if (task.output_role === "relation_delta") return validateBookStructureRelationDelta(payload, task.input as BookStructureRelationInput);
   if (task.output_role === "unit_observation") {
@@ -795,7 +831,15 @@ export function writeBookStructureGenerationCandidate(input: {
   candidate: unknown;
   provenance: SemanticArtifactProvenanceV2;
 }): SemanticArtifactEnvelopeV3<BookStructureGenerationPayloadV1> {
-  const task = validateBookStructureGenerationTask(input.target, input.task);
+  let task = validateBookStructureGenerationTask(input.target, input.task);
+  if (task.output_role === "organization_action" || ("discovery" in task.input && task.input.discovery)) {
+    const stage = readAutomaticBuildTaskStage(input.target, { stage: "book_structure", work_unit_id: task.descriptor.work_unit_id,
+      ...(task.output_role === "unit_observation" ? { parent_lid: task.parent_unit_lid } : {}) }, task.descriptor.policy_fingerprint.quality_profile, "phase" in task.input ? { retrieval: task.input.retrieval_selection } : {});
+    const current = stage?.generation_tasks?.[task.descriptor.work_unit_id];
+    if (current?.kind !== "book_structure" || !isDeepStrictEqual(current.task.descriptor, task.descriptor))
+      throw new Error("policy_generation_conflict: BookStructure current input changed");
+    task = current.task;
+  }
   const payload = payloadForCandidate(task, input.candidate);
   const envelope = buildSemanticArtifactEnvelopeV3({
     target: task.target_ref,
@@ -840,4 +884,21 @@ export function readBookStructureGenerationArtifact(
   }
   const payload = validateStoredPayload(task, inspected.payload);
   return { ...(value as SemanticArtifactEnvelopeV3<BookStructureGenerationPayloadV1>), payload };
+}
+
+/** Reuse current tasks supplied by the router; historical task files alone are not freshness evidence. */
+export function readStructureCandidateCatalog(target: AutomaticBuildTarget,
+  currentTasks: BookStructureGenerationTaskV1[], sections: string[] = []): StructureCandidateCatalog {
+  const contributions: StructureCandidateContribution[] = currentTasks.map(task => {
+    if (task.output_role !== "unit_artifact" && task.output_role !== "unit_observation") throw new Error("candidate reuse requires a unit card or fragment contribution");
+    const accepted = readBookStructureGenerationArtifact(target, task);
+    if (!accepted) throw new Error(`missing accepted candidate contribution: ${task.descriptor.work_unit_id}`);
+    const payload = accepted.payload;
+    const stops = task.output_role === "unit_artifact"
+      ? (payload as BookStructureUnitArtifact).output.unit_card.candidate_key_stops
+      : (payload as BookStructureFragmentObservationV1).candidate_key_stops;
+    return { contribution_ref: task.descriptor.work_unit_id, unit_lid: task.parent_unit_lid,
+      stops, reference_scope: bookStructureReferenceScope(task.input) };
+  });
+  return collectStructureCandidates(contributions, sections);
 }

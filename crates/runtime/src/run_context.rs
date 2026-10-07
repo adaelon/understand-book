@@ -213,6 +213,16 @@ mod tests {
 
 /// An operation must be deterministic: model calls run after this borrow ends.
 pub trait ResidentStatePort {
+    fn tutor_assessment_input(&mut self, _action: &str) -> Result<serde_json::Value, read_tools::ToolError> {
+        Err(memory::teaching::invalid("Assessment unavailable"))
+    }
+    fn tutor_assessment_accept(&mut self, _action: &str, _items: serde_json::Value) -> Result<serde_json::Value, read_tools::ToolError> {
+        Err(memory::teaching::invalid("Assessment unavailable"))
+    }
+    fn tutor_active(&mut self) -> Result<bool, read_tools::ToolError> { Ok(true) }
+    fn tutor_step(&mut self, _request: serde_json::Value, _evidence: &[crate::orchestrator::SourceBinding], _ranges: &[read_tools::EvidenceRange]) -> Result<serde_json::Value, read_tools::ToolError> {
+        Err(memory::teaching::invalid("Teaching context unavailable"))
+    }
     fn persist_goal(&mut self, _goal: &crate::goal::ResidentGoal) -> Result<(), read_tools::ToolError> {
         Ok(())
     }
@@ -226,7 +236,11 @@ pub trait ResidentStatePort {
         Err(crate::presentation_author::unavailable())
     }
 
-    fn with_state<R>(&mut self, operation: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> R;
+    fn submit_private<R>(&mut self, operation: impl FnOnce(&mut MemoryStore) -> R) -> Result<R, read_tools::ToolError>;
+    fn read_live_reader<R>(&mut self, operation: impl FnOnce(&Reader) -> R) -> Result<R, read_tools::ToolError>;
+    fn apply_reader<R>(&mut self, operation: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> Result<R, read_tools::ToolError>;
+    fn reader_input(&mut self, book: &read_tools::Book, question: &str) -> ReaderInputSnapshot;
+
 }
 
 pub struct BorrowedResidentState<'a> {
@@ -234,15 +248,32 @@ pub struct BorrowedResidentState<'a> {
     pub reader: &'a mut Reader,
 }
 
-impl ResidentStatePort for BorrowedResidentState<'_> {
-    fn with_state<R>(&mut self, operation: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> R {
-        operation(self.store, self.reader)
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ReaderInputSnapshot {
+    pub state: reader::ReaderState,
+    pub minimap_context: Option<crate::context_fragment::ContextFragment>,
+}
+
+impl ReaderInputSnapshot {
+    pub fn capture(book: &read_tools::Book, reader: &Reader, question: &str) -> Self {
+        Self { state: reader.state(), minimap_context: crate::orchestrator::paper_minimap_context_fragment(book, reader, question) }
     }
 }
 
+impl ResidentStatePort for BorrowedResidentState<'_> {
+    fn submit_private<R>(&mut self, operation: impl FnOnce(&mut MemoryStore) -> R) -> Result<R, read_tools::ToolError> { Ok(operation(self.store)) }
+    fn read_live_reader<R>(&mut self, operation: impl FnOnce(&Reader) -> R) -> Result<R, read_tools::ToolError> { Ok(operation(self.reader)) }
+    fn apply_reader<R>(&mut self, operation: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> Result<R, read_tools::ToolError> { Ok(operation(self.store, self.reader)) }
+    fn reader_input(&mut self, book: &read_tools::Book, question: &str) -> ReaderInputSnapshot { ReaderInputSnapshot::capture(book, self.reader, question) }
+}
+
 pub struct RunContext {
+    pub tutor: Option<serde_json::Value>,
+    pub tutor_resolved: bool,
     pub goal: Option<crate::goal::ResidentGoal>,
     pub current_user_message: Option<String>,
+    pub(crate) presentation_authoring: Option<crate::presentation_author::PresentationAuthoringContext>,
+    pub(crate) presentation_authoring_finished: bool,
     pub(crate) presentation_candidates: std::collections::BTreeSet<String>,
     pub(crate) presentation_images: Vec<crate::presentation_author::PreviewImage>,
     pub(crate) pending_previews: std::collections::BTreeSet<String>,
@@ -271,6 +302,8 @@ impl RunContext {
     /// Close the provider protocol for the unexecuted suffix of a cancelled tool batch.
     /// These are cancellation receipts, not executed tools or activity records.
     pub fn close_cancelled_tool_calls(&mut self) {
+        self.presentation_authoring = None;
+        self.presentation_authoring_finished = true;
         let start = self
             .messages
             .iter()
@@ -305,8 +338,12 @@ impl RunContext {
         runtime_profile: ModelRuntimeProfile,
     ) -> Self {
         Self {
+            tutor: None,
+            tutor_resolved: false,
             goal: None,
             current_user_message: None,
+            presentation_authoring: None,
+            presentation_authoring_finished: false,
             presentation_candidates: Default::default(),
             presentation_images: Vec::new(),
             pending_previews: Default::default(),

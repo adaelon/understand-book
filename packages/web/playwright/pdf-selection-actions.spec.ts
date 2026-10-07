@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { readFileSync } from 'node:fs';
 
 type ResolveStatus = "resolved" | "partial" | "unresolved";
 
@@ -314,7 +315,7 @@ async function installApiFixture(
       });
     }
     if (path === "/api/agent/history") return json(route, history);
-    if (path === "/api/agent/chat") {
+    if (path === "/api/agent/runs") {
       calls.agent.push(body ?? {});
       return json(route, {
         answer: "fixture answer",
@@ -350,6 +351,77 @@ async function selectFixtureText(page: Page, start: number, end: number) {
   }, { start, end });
 }
 
+test('RE6 zoom, fit and container changes keep real PDF text, canvas and highlights aligned', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const calls = await installApiFixture(page, 'resolved');
+  await page.goto('/');
+  const list = page.locator('.pdf-page-list');
+  const text = page.locator('.pdf-text-layer span').first();
+  await expect(text).toHaveText(/Selectable PDF fixture/);
+  for (const factor of ['1.5', '2', '1']) {
+    await page.getByLabel('PDF 缩放倍率（相对适宽）').selectOption(factor);
+    await expect(list).toHaveAttribute('aria-busy', 'false');
+    await expect(text).toHaveText(/Selectable PDF fixture/);
+    await text.scrollIntoViewIfNeeded();
+    await dragBetweenTextOffsets(page, 'Selectable PDF fixture text for explicit actions.', 0, 10, true);
+    await expect(page.locator('.pdf-selection-toolbar')).toBeVisible();
+    expect(await page.evaluate(() => getSelection()?.toString())).toBe('Selectable');
+    await page.locator('.pdf-selection-toolbar').getByTitle('高亮').click();
+    await expect.poll(() => calls.highlights.length).toBeGreaterThan(0);
+    await expect(page.locator('.pdf-user-highlight').first()).toBeVisible();
+    const geometry = await page.locator('.pdf-page-shell').first().evaluate(el => {
+      const canvas = el.querySelector('canvas')!.getBoundingClientRect();
+      const layer = el.querySelector('.pdf-text-layer')!.getBoundingClientRect();
+      return { width: Math.abs(canvas.width - layer.width), height: Math.abs(canvas.height - layer.height), left: Math.abs(canvas.left - layer.left), top: Math.abs(canvas.top - layer.top) };
+    });
+    for (const delta of Object.values(geometry)) expect(delta).toBeLessThanOrEqual(1);
+  }
+  await page.getByRole('button', { name: '适合栏宽', exact: true }).click();
+  await expect(page.getByLabel('PDF 缩放倍率（相对适宽）')).toHaveValue('1');
+  const before = await page.locator('.pdf-user-highlight').first().getAttribute('style');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(list).toHaveAttribute('aria-busy', 'false');
+  await expect(text).toHaveText(/Selectable PDF fixture/);
+  expect(await page.locator('.pdf-user-highlight').first().getAttribute('style')).toBe(before);
+  await selectFixtureText(page, 0, 10);
+  await expect(page.locator('.pdf-selection-toolbar')).toBeVisible();
+  await page.screenshot({ path: '../../docs/performance/reader-re5-re6/pdf-selection-mobile.png' });
+});
+
+test('RE6 licensed two-column formula PDF keeps original typography and column geometry', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const pdf = readFileSync('../core/test/fixtures/hybrid-foundation-goldset/v1/licensed-two-column-formula/paper.pdf');
+  await installApiFixture(page, 'resolved', 0, pdf);
+  await page.goto('/');
+  const left = page.locator('.pdf-text-layer span').filter({ hasText: /^Left Formula$/ });
+  const right = page.locator('.pdf-text-layer span').filter({ hasText: /^Right Formula$/ });
+  await expect(left).toBeVisible(); await expect(right).toBeVisible();
+  const positions = () => page.locator('.pdf-page-shell').first().evaluate(el => {
+    const box = el.getBoundingClientRect();
+    return [...el.querySelectorAll('.pdf-text-layer span')].filter(node => /^(Left Formula|Right Formula|Alpha beta|Lambda mu)/.test(node.textContent ?? '')).map(node => {
+      const rect = node.getBoundingClientRect();
+      return { text: node.textContent, x: (rect.left - box.left) / box.width, y: (rect.top - box.top) / box.height, width: rect.width / box.width, height: rect.height / box.height };
+    });
+  });
+  const before = await positions(); expect(before).toHaveLength(4);
+  await page.getByRole('button', { name: '阅读设置', exact: true }).click();
+  await expect(page.locator('.reader-typography-panel')).toContainText('PDF 原版保留原始排版');
+  await page.getByLabel('字号', { exact: true }).fill('22');
+  await page.getByLabel('字体', { exact: true }).selectOption('sans');
+  await page.getByRole('button', { name: '关闭阅读设置', exact: true }).click();
+  expect(await positions()).toEqual(before);
+  await page.getByLabel('PDF 缩放倍率（相对适宽）').selectOption('1.5');
+  await expect(page.locator('.pdf-page-list')).toHaveAttribute('aria-busy', 'false');
+  const after = await positions(); expect(after).toHaveLength(before.length);
+  for (let i = 0; i < before.length; i++) {
+    expect(after[i].text).toBe(before[i].text);
+    for (const key of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(after[i][key] - before[i][key])).toBeLessThan(0.003);
+  }
+  await page.getByRole('button', { name: '适合栏宽', exact: true }).click();
+  await expect(page.locator('.pdf-page-list')).toHaveAttribute('aria-busy', 'false');
+  await page.screenshot({ path: '../../docs/performance/reader-re5-re6/pdf-two-column.png' });
+});
+
 async function dragPastTextEnd(page: Page, text: string) {
   const span = page.locator(".pdf-text-layer span").filter({ hasText: text }).first();
   await expect(span).toHaveText(text);
@@ -363,10 +435,11 @@ async function dragPastTextEnd(page: Page, text: string) {
   await page.mouse.up();
 }
 
-async function dragBetweenTextOffsets(page: Page, text: string, start: number, end: number) {
+async function dragBetweenTextOffsets(page: Page, text: string, start: number, end: number, alignStart = false) {
   const span = page.locator(".pdf-text-layer span").filter({ hasText: text }).first();
   await expect(span).toHaveText(text);
   await span.scrollIntoViewIfNeeded();
+  if (alignStart) await span.evaluate(el => { el.closest('.pdf-page-list')!.scrollLeft = 0; });
   const points = await span.evaluate((element, offsets) => {
     const node = element.firstChild;
     if (!(node instanceof Text)) throw new Error("PDF text span has no text node");
@@ -425,7 +498,7 @@ test("resolved real PDF selection performs three explicit actions and sends stru
   await expect(page.locator(".ask-draft")).toContainText("Selectable");
   expect(calls.agent).toHaveLength(0);
   await page.locator(".agent-input textarea").fill("What does this mean?");
-  await page.locator(".agent-input > button").click();
+  await page.locator(".agent-compose-row > button").click();
   await expect.poll(() => calls.agent.length).toBe(1);
   expect(calls.agent[0]).toMatchObject({
     message: "What does this mean?",
@@ -489,7 +562,7 @@ for (const resolutionBasis of ["exact", "recovered"] as const) {
       toolbar = page.locator(".pdf-selection-toolbar");
       await toolbar.locator("button").nth(2).click();
       await page.locator(".agent-input textarea").fill(`Explain ${resolutionBasis} selection`);
-      await page.locator(".agent-input > button").click();
+      await page.locator(".agent-compose-row > button").click();
       await expect.poll(() => calls.agent.length).toBe(1);
       expect(calls.agent[0]).toMatchObject({
         question_quote: {

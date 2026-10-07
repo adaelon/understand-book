@@ -20,6 +20,7 @@ describe("viewport environment", () => {
     })).toEqual({
       containerWidth: 390,
       containerHeight: 844,
+      layoutHeight: window.innerHeight,
       visualWidth: 390,
       visualHeight: 390,
       offsetTop: 210,

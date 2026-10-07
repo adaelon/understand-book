@@ -1,9 +1,7 @@
 // PB5-3 共享:把书路径载成续建各 CLI 需要的确定性派生(source/lidNodes/byLid/windows)。
-// 零落盘、零 LLM —— LID 树 / 窗口都是用时重算的派生([ADR-0012] 不物化派生)。
-import { readFileSync } from "node:fs";
-import { segment, type SourceBlock } from "../../packages/core/src/segment";
-import { markdownToBlocks } from "../../packages/core/src/md-adapter";
-import { epubToSource } from "../../packages/core/src/epub-adapter";
+// 零落盘、零 LLM；旧 EPUB 的规范正文从已有 base.json 恢复 LID，窗口按当前规则计算。
+import type { SourceBlock } from "../../packages/core/src/segment";
+import { loadBookSource } from "../../packages/core/src/book-source";
 import { splitWindows, type Window } from "../../packages/core/src/window";
 import type { LidNode } from "../../packages/core/src/generated/LidNode";
 
@@ -15,13 +13,9 @@ export interface LoadedBook {
   windows: Window[];
 }
 
-/** 载书并重算 LID 树 + 窗口(确定性)。epub 走 epubToSource,其余按 md 处理。 */
+/** 载入来源快照及其结构，确定性计算窗口。 */
 export function loadBookWindows(book: string): LoadedBook {
-  let source: string;
-  let blocks: SourceBlock[];
-  if (/\.epub$/i.test(book)) ({ source, blocks } = epubToSource(new Uint8Array(readFileSync(book))));
-  else { source = readFileSync(book, "utf8"); blocks = markdownToBlocks(source); }
-  const lidNodes = segment(blocks);
+  const { source, blocks, lidNodes } = loadBookSource(book);
   const byLid = new Map(lidNodes.map((n) => [n.lid, n]));
   const windows = splitWindows(lidNodes, source);
   return { source, blocks, lidNodes, byLid, windows };

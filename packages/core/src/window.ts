@@ -33,7 +33,15 @@ export interface Window {
 /** 确定性近似 token 估算:CJK 表意文字按 1,其余按 0.25(~4 char/token),向上取整。 */
 export function estimateTokens(text: string): number {
   let t = 0;
-  for (const ch of text) t += /[一-鿿]/.test(ch) ? 1 : 0.25;
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    t += code >= 0x4e00 && code <= 0x9fff ? 1 : 0.25;
+    // The existing estimate counts a supplementary character once.
+    if (code >= 0xd800 && code <= 0xdbff && index + 1 < text.length) {
+      const next = text.charCodeAt(index + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) index += 1;
+    }
+  }
   return Math.ceil(t);
 }
 

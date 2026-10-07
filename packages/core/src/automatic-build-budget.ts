@@ -1,5 +1,41 @@
 import { createHash } from "node:crypto";
 import { validateBuildPlanV1, type BuildPlanV1 } from "./build-intent";
+import type { EmbeddingCall } from "./embedding-provider";
+
+export interface AutomaticBuildRetrievalUsage {
+  documents: number; queries: number; calls: number; reserved_input_tokens: number;
+  known_input_tokens: number; unknown_usage_calls: number; elapsed_ms: number;
+}
+export interface AutomaticBuildRetrievalCall extends EmbeddingCall {
+  reserved_input_tokens: number;
+}
+export function summarizeRetrievalUsage(calls: AutomaticBuildRetrievalCall[]): AutomaticBuildRetrievalUsage {
+  return calls.reduce((sum, call) => ({
+    documents: sum.documents + (call.role === "document" ? call.records : 0),
+    queries: sum.queries + (call.role === "query" ? call.records : 0), calls: sum.calls + 1,
+    reserved_input_tokens: sum.reserved_input_tokens + Math.max(call.reserved_input_tokens, call.usage?.input_tokens ?? 0),
+    known_input_tokens: sum.known_input_tokens + (call.usage?.input_tokens ?? 0),
+    unknown_usage_calls: sum.unknown_usage_calls + (call.usage?.input_tokens === undefined ? 1 : 0),
+    elapsed_ms: sum.elapsed_ms + call.elapsed_ms,
+  }), { documents: 0, queries: 0, calls: 0, reserved_input_tokens: 0, known_input_tokens: 0, unknown_usage_calls: 0, elapsed_ms: 0 });
+}
+/** Reservations enforce ceilings even when a failed adapter cannot report usage. */
+export function retrievalBudgetViolation(plan: BuildPlanV1, used: AutomaticBuildRetrievalUsage,
+  next: { documents: number; queries: number; calls: number; input_tokens: number },
+  model_tokens = 0, elapsed_ms = used.elapsed_ms): string | undefined {
+  const budget = plan.retrieval?.budget;
+  if (!budget) return "retrieval budget is missing";
+  for (const [field, limit] of [["documents", budget.max_documents], ["queries", budget.max_queries], ["calls", budget.max_calls]] as const)
+    if (used[field] + next[field] > limit) return `retrieval max_${field} exceeded`;
+  const tokens = used.reserved_input_tokens + next.input_tokens;
+  if (budget.max_input_tokens !== undefined && tokens > budget.max_input_tokens) return "retrieval max_input_tokens exceeded";
+  if (plan.budget.max_total_tokens !== undefined
+    && Math.max(model_tokens + tokens, plan.estimate.input_tokens.upper + plan.estimate.output_tokens.upper + tokens) > plan.budget.max_total_tokens)
+    return "build plan max_total_tokens exceeded";
+  if (plan.budget.max_wall_clock_minutes !== undefined
+    && elapsed_ms / 60000 + (plan.estimate.wall_clock_minutes.p95 ?? 0) >= plan.budget.max_wall_clock_minutes)
+    return "build plan max_wall_clock_minutes exceeded";
+}
 import type { AutomaticBuildStage, BuildTargetRefV2 } from "./build-orchestrator";
 import type {
   AutomaticBuildTaskPolicyBinding,

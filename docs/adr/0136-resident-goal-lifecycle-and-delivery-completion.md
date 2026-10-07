@@ -1,6 +1,6 @@
 # ADR-0136 Resident Goal 生命周期与交付完成判断
 
-状态：已接受，2026-09-25；G0–G3 已实施，G4–G6 待实施。实施见 [Goal 切片方案](../切片方案-Resident-Goal目标维持与交付闭环.md)，验证见 [G0–G3 记录](../performance/resident-goal-g0-g3-20260925.md)。
+状态：已接受，2026-09-25；G0–G5 已完成工程实现，G6 章节自然请求已交付，其余自然场景与发布验收未完成。实施见 [Goal 切片方案](../切片方案-Resident-Goal目标维持与交付闭环.md)，验证见 [G0–G3 记录](../performance/resident-goal-g0-g3-20260925.md)与 [G4–G6 记录](../performance/resident-goal-g4-g6-20260925.md)。2026-10-02 接受的工作计划扩展见 [ADR-0155](0155-goal-work-plan-and-version-centered-presentation-context.md)，尚未实施。
 
 Resident 已有证据账本、预算提示和富呈现交付合同，但一次真实的章节演示请求在发现制作能力后，连续检索与修引用耗尽十二轮，未调用制作工具便退回文字。Goal 将用户任务与一次 Run 分离，使目标、实际结果和剩余缺口共同参与决策与结束判断。TutorSession、TutorLoop 等教学会话设计尚未实现，不构成本方案的运行依赖。
 

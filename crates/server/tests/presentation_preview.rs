@@ -26,6 +26,76 @@ fn host() -> BrowserPreview {
 
 #[test]
 #[ignore = "requires a real installed Chromium/Edge browser"]
+fn ex12_host_source_buttons_meet_touch_contract() {
+    let html = format!("<style>{}</style><p>正文 <button data-source-ref='ref'>[1]</button></p>",
+        include_str!("../../../packages/web/src/presentation.css"));
+    for (_, viewport) in REQUIRED_PREVIEW_ENVIRONMENTS {
+        let mut input = request(&html, vec![]);
+        input.viewport = Some(viewport);
+        let report = host().preview(&input,&CancellationToken::default()).unwrap();
+        assert!(report.errors.is_empty());
+        assert!(report.observations[0].issues.is_empty(), "{viewport:?}: {:?}", report.observations[0].issues);
+    }
+}
+
+#[test]
+#[ignore = "requires a real installed Chromium/Edge browser"]
+fn ex12_scroll_observes_document_positions_without_changing_controls() {
+    use base64::Engine;
+    for (_, viewport) in REQUIRED_PREVIEW_ENVIRONMENTS {
+        let mut input = request(include_str!("fixtures/presentation-scroll.html"), vec![
+            PreviewAction::Scroll { y: 950 },
+            PreviewAction::Scroll { y: u32::MAX },
+            PreviewAction::Scroll { y: 0 },
+        ]);
+        input.viewport = Some(viewport);
+        let report = host().preview(&input, &CancellationToken::default()).unwrap();
+        assert!(report.errors.is_empty(), "{:?}", report.errors);
+        assert_eq!(report.candidate_id, input.candidate_id);
+        assert_eq!(report.environment, viewport);
+        for (index, observation) in report.observations.iter().enumerate() {
+            assert!(observation.issues.is_empty(), "{:?}", observation.issues);
+            let y = [0.0, 950.0, 2700.0 - f64::from(viewport.height), 0.0][index];
+            assert_eq!(observation.scroll.y, y);
+            assert_eq!(observation.scroll.viewport_height, viewport.height);
+            assert_eq!(observation.scroll.viewport_width, viewport.width);
+            assert_eq!(observation.layout["cssLayoutViewport"]["pageY"].as_f64(), Some(y));
+            let region = ["start", "middle", "end", "start"][index];
+            let element = observation.dom["elements"].as_array().unwrap().iter().find(|e| e["id"] == region).unwrap();
+            let document_y = [0.0, 900.0, 1800.0, 0.0][index];
+            assert_eq!(element["y"].as_f64(), Some(document_y - y));
+            let controls = observation.dom["controls"].as_array().unwrap();
+            assert_eq!(controls.iter().find(|e| e["id"] == "change").unwrap()["text"], "0");
+            assert_eq!(controls.iter().find(|e| e["id"] == "parameter").unwrap()["value"], "3");
+            let png = base64::engine::general_purpose::STANDARD.decode(&observation.screenshot_png_base64).unwrap();
+            let mut decoder = png::Decoder::new(std::io::Cursor::new(&png)).read_info().unwrap();
+            let mut pixels = vec![0; decoder.output_buffer_size()];
+            let info = decoder.next_frame(&mut pixels).unwrap();
+            assert_eq!((info.width, info.height), (viewport.width, viewport.height));
+            let channels = info.color_type.samples();
+            let offset = ((viewport.height / 2 * info.width + viewport.width - 30) as usize) * channels;
+            let expected = [[220,80,80], [80,180,100], [80,120,220], [220,80,80]][index];
+            assert_eq!(&pixels[offset..offset+3], &expected);
+            if let Some(dir) = std::env::var_os("EX12_EVIDENCE_DIR") {
+                let dir = std::path::PathBuf::from(dir);
+                std::fs::create_dir_all(&dir).unwrap();
+                std::fs::write(dir.join(format!("{}-{index}.png", report.environment_name)), png).unwrap();
+            }
+        }
+        assert!(report.observations[1].dom["visible_text"].as_str().unwrap().contains("MIDDLE"), "{}", report.observations[1].dom);
+        assert!(!report.observations[1].dom["visible_text"].as_str().unwrap().contains("START"));
+        assert!(report.observations[2].dom["visible_text"].as_str().unwrap().contains("END"));
+        assert!(matches!(report.observations[2].action, Some(PreviewAction::Scroll { y: u32::MAX })));
+        if let Some(dir) = std::env::var_os("EX12_EVIDENCE_DIR") {
+            let mut value = serde_json::to_value(&report).unwrap();
+            for o in value["observations"].as_array_mut().unwrap() { o.as_object_mut().unwrap().remove("screenshot_png_base64"); }
+            std::fs::write(std::path::PathBuf::from(dir).join(format!("{}.json", report.environment_name)), serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires a real installed Chromium/Edge browser"]
 fn selected_result_rejects_unreadable_regions_and_running_scene() {
     for (html, selector, message) in [
         ("<p>test</p>", "#missing", "matched 0"),

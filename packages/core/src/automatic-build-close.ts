@@ -39,6 +39,7 @@ const CLOSE_STAGES: AutomaticBuildPublicationStage[] = [
   "profile_sidecar",
   "pass2",
   "book_structure",
+  "formal_objects", "cognitive_materials", "teaching_publish",
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -54,6 +55,9 @@ function boundedString(value: unknown, maxBytes = 512): value is string {
 }
 
 const PUBLICATION_PATH_ALLOWLIST: Record<AutomaticBuildPublicationStage, ReadonlySet<string>> = {
+  formal_objects: new Set(["formal_objects.json"]),
+  cognitive_materials: new Set(["cognitive_materials.json"]),
+  teaching_publish: new Set(["teaching_readiness.json"]),
   pass1: new Set([
     "asset_manifest.json",
     "base.json",
@@ -297,7 +301,8 @@ function validatePublicationPaths(
   stage: AutomaticBuildPublicationStage,
 ): void {
   const allowed = PUBLICATION_PATH_ALLOWLIST[stage];
-  if (receipt.artifacts.some((artifact) => !allowed.has(artifact.path))) {
+  if (receipt.artifacts.some((artifact) => !allowed.has(artifact.path)
+    && !(stage === "teaching_publish" && /^teaching\/versions\/[a-f0-9-]+\/map\.json$/u.test(artifact.path)))) {
     throw new Error("publication receipt contains an artifact outside the stage allowlist");
   }
 }
@@ -318,8 +323,11 @@ export function automaticBuildStageCloseResultPath(
   target: AutomaticBuildTarget,
   stage: AutomaticBuildPublicationStage,
   transactionId: string,
+  freshnessDigest: string,
 ): string {
+  // Publication bytes survive a move; the validation receipt belongs to this build location.
   if (!SHA256.test(transactionId)) throw new Error("close result transaction_id must be a lowercase SHA-256 digest");
+  if (!SHA256.test(freshnessDigest)) throw new Error("close result freshness_digest must be a lowercase SHA-256 digest");
   return path.join(
     target.workspace_dir,
     ".build",
@@ -327,7 +335,8 @@ export function automaticBuildStageCloseResultPath(
     "v2",
     "close",
     stage,
-    `${transactionId}.json`,
+    transactionId,
+    `${freshnessDigest}.json`,
   );
 }
 
@@ -345,6 +354,7 @@ export function writeAutomaticBuildStageCloseResult(
     target,
     validated.stage,
     validated.publication.transaction_id,
+    validated.postcondition.freshness_digest,
   );
   mkdirSync(path.dirname(file), { recursive: true });
   if (existsSync(file)) {
@@ -366,7 +376,9 @@ export function closeAutomaticBuildStage(input: {
   quality_profile: ExtractionQualityProfile;
   run_batch: () => AutomaticBuildStageBatchExecutionV1;
 }): AutomaticBuildStageCloseOutcomeV1 {
-  const preSnapshot = buildAutomaticBuildSnapshot(input.target, { quality_profile: input.quality_profile });
+  const snapshotOptions = { quality_profile: input.quality_profile,
+    ...(input.stage === "book_structure" ? { stage: "book_structure" as const } : {}) };
+  const preSnapshot = buildAutomaticBuildSnapshot(input.target, snapshotOptions);
   const preStage = stageState(preSnapshot.stages, input.stage);
   const preQuality = collectAutomaticBuildStageQuality(input.target, preStage, input.quality_profile);
   if (preQuality.gate_status !== "passed") {
@@ -402,7 +414,7 @@ export function closeAutomaticBuildStage(input: {
     );
   }
 
-  const postRoute = routeAutomaticBuildSnapshot(input.target, { quality_profile: input.quality_profile });
+  const postRoute = routeAutomaticBuildSnapshot(input.target, snapshotOptions);
   if (postRoute.status === "blocked") {
     return closeRecovery(
       input.target,
