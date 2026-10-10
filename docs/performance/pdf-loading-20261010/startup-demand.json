@@ -1,0 +1,14 @@
+[
+  {
+    "chunk": 65536,
+    "pagesPrepared": 5,
+    "bytes": 11720214,
+    "calls": 58
+  },
+  {
+    "chunk": 262144,
+    "pagesPrepared": 2,
+    "bytes": 8902166,
+    "calls": 6
+  }
+]

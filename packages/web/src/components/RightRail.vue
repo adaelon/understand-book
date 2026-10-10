@@ -1042,6 +1042,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
     </div>
 
     <section id="reader-panel-agent" v-show="activeTab === 'agent'" class="tab-panel agent-panel" role="tabpanel" :aria-labelledby="props.fullscreen ? undefined : 'reader-tab-agent'" :aria-label="props.fullscreen ? '问这本书' : undefined">
+      <slot name="learning-goal" />
       <button v-if="openGoals.length" ref="taskSummaryButton" class="task-summary-toggle" type="button" :aria-expanded="taskDetailsOpen" aria-controls="reader-task-details" @click="openTaskDetails">
         <span class="task-summary-status">{{ taskSummary }}</span>
         <span class="task-summary-title">{{ openGoals.length === 1 ? openGoals[0].interpretation : '查看未完成任务' }}</span>
@@ -1255,7 +1256,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           :value="props.agentInput"
           rows="1"
           aria-label="围绕当前阅读内容提问"
-          :placeholder="props.askDraft ? '围绕引用来源提问...' : '从当前阅读位置提问...'"
+          :placeholder="props.askDraft ? '围绕引用来源提问...' : !props.chat.length ? '这次想弄懂什么？输入目标或第一个问题…' : '从当前阅读位置提问...'"
           @input="emit('update:agentInput', ($event.target as HTMLTextAreaElement).value)"
           @focus="composeExpanded = true"
           @keydown="onAgentInputKeydown"

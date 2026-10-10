@@ -331,17 +331,27 @@ pub(crate) fn freeze_prepare(
             occurred_at: now.into(),
         });
     }
-    let view = state.user.learning_store()?.state()?;
-    let reference_context = request["teaching_ref"]
-        .as_str()
-        .map(|id| json!({"status":"reference","event_id":id}));
+    let mut view = state.user.learning_store()?.state()?;
+    // The first question supplies the starting intent. Merely opening a book or
+    // enabling the switch never invents a goal or sends a synthetic question.
+    if view.control.enabled && view.control.current_tutor_session_id.is_none() {
+        if let Some(message) = request["message"].as_str().filter(|s| !s.trim().is_empty()) {
+            view = state.user.learning_store()?.mutate(&TutorMutation {
+                operation_id: format!("first-question:{}", turn.session_id),
+                expected_revision: view.control.revision,
+                action: TutorAction::Start { user_intent:message.into(), explicit_constraints:vec![],
+                    material_scope:vec![TutorMaterial { source_id:state.book.base.book_id.clone(), scope_refs:vec![], role:TutorMaterialRole::Primary }],
+                    default_teaching_intent:None },
+            }, now)?;
+        }
+    }
     let Some(session) = view
         .control
         .current_tutor_session_id
         .as_ref()
         .and_then(|id| view.sessions.get(id))
     else {
-        return Ok(FrozenTeachingPreparation { context: reference_context, events });
+        return prepare_observation(state, turn, request, now, events);
     };
     if !view.control.enabled
         || session.status != TutorSessionStatus::Active
@@ -350,11 +360,11 @@ pub(crate) fn freeze_prepare(
             .iter()
             .any(|m| m.source_id == state.book.base.book_id)
     {
-        return Ok(FrozenTeachingPreparation { context: reference_context, events });
+        return prepare_observation(state, turn, request, now, events);
     }
     let ready = crate::tutor_api::tutor_source_readiness(&state.book, &state.book_dir);
     if ready["status"] != "ready" {
-        return Ok(FrozenTeachingPreparation { context: Some(json!({"status":"preparing","reason":ready["reason"]})), events });
+        return prepare_observation(state, turn, request, now, events);
     }
     let binding = TeachingBinding {
         tutor_session_id: session.id.clone(),
@@ -424,6 +434,33 @@ pub(crate) fn freeze_prepare(
     Ok(FrozenTeachingPreparation { context: Some(context), events })
 }
 
+/// Ordinary use has an observation scope, not a persisted/active TutorSession.
+fn prepare_observation(state: &PrivateBookContext<'_>, turn: &AgentTurnRef, request: &Value, now: &str,
+    mut events: Vec<TeachingEvent>) -> Result<FrozenTeachingPreparation, ToolError> {
+    let binding = TeachingBinding {
+        tutor_session_id:format!("observation:{}",state.book.base.book_id), session_revision:0, control_revision:0,
+        source_id:state.book.base.book_id.clone(), source_revision:state.book.source_fingerprint().into(), map_revision:None,
+        chat_session_id:turn.session_id.clone(), turn_id:turn.turn_id.clone(),
+    };
+    let ready = crate::tutor_api::tutor_source_readiness(&state.book,&state.book_dir);
+    let assets = accepted_assets(state,&ready);
+    let objects = active_objects(&assets);
+    events.push(TeachingEvent { event_id:format!("assets:{}",turn.turn_id), binding:binding.clone(),kind:TeachingFact::TurnBound,
+        causal_refs:vec![],payload:assets,occurred_at:now.into() });
+    events.extend(usage_facts(state,&binding,request,now)?);
+    let mut recent = state.user.learning_store()?.teaching_recent(&binding.tutor_session_id,8)?;
+    for fact in events.iter().filter(|e| e.kind == TeachingFact::UsageObserved) { recent.insert(0,fact.clone()); }
+    recent.truncate(8);
+    let mut learner = learner_context(state,&binding,&objects,&[],None)?;
+    learner["current_request"] = request["message"].clone();
+    learner["recent_facts"] = json!(recent.iter().map(trace_summary).collect::<Vec<_>>());
+    let context = json!({"status":"observing","binding":binding,"learner_context":learner,"readiness":ready["status"],
+        "reason":ready["reason"],"reference":request["teaching_ref"]});
+    events.push(TeachingEvent { event_id:format!("binding:{}",turn.turn_id),binding,kind:TeachingFact::TurnBound,
+        causal_refs:vec![],payload:context.clone(),occurred_at:now.into() });
+    Ok(FrozenTeachingPreparation { context:Some(context),events })
+}
+
 /// Reference the existing private owners. Reading snapshots retain their original
 /// count/time; they do not claim a source revision the reading ledger never stored.
 fn usage_facts(state: &PrivateBookContext<'_>, binding: &TeachingBinding, request: &Value, now: &str) -> Result<Vec<TeachingEvent>, ToolError> {
@@ -491,7 +528,9 @@ pub(crate) fn step(
         None => return Err(invalid("本轮教学素材尚未就绪或教学未开启")),
     };
     let binding = &bind.binding;
-    if request["operation"] != "trace" && !current(state, binding)? {
+    let observation_operation = matches!(request["operation"].as_str(),Some("trace"|"understanding"))
+        || (request["operation"] == "evidence" && request["nature"] == "hypothesis");
+    if !observation_operation && !current(state, binding)? {
         return Err(invalid(
             "教学已暂停或切换，请完成普通请求并停止自动教学推进",
         ));
@@ -520,7 +559,7 @@ pub(crate) fn step(
             check_activity_source(state, binding)?;
             if let Some(id) = request["event_id"].as_str() {
                 let fact = event(state, id)?;
-                if fact.binding.tutor_session_id != binding.tutor_session_id || fact.binding.source_id != binding.source_id
+                if (fact.binding.tutor_session_id != binding.tutor_session_id && bind.payload["status"] != "observing") || fact.binding.source_id != binding.source_id
                     || matches!(
                         fact.kind,
                         TeachingFact::MoveSelected

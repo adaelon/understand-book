@@ -28,6 +28,7 @@ export function useTutorControl() {
     : readinessError.value ? 'Tutor 已开启 · 就绪状态读取失败'
     : !readiness.value ? 'Tutor 已开启 · 正在读取学习状态'
     : current.value && !current.value.material_scope.some(material => material.source_id === readiness.value?.source_id) ? 'Tutor 已开启 · 当前书籍不属于本次学习'
+    : !current.value && readiness.value.status === 'ready' ? 'Tutor 已开启 · 输入第一个问题即可开始'
     : readiness.value.status === 'ready' ? 'Tutor 已开启 · 可以开始或继续学习' : 'Tutor 已开启 · 学习基础准备中');
   async function load() {
     void loadReadiness();

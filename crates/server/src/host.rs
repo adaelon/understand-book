@@ -796,13 +796,13 @@ impl ReviewCoordinator {
 }
 
 #[derive(Clone)]
-struct ReviewMoment {
+pub(crate) struct ReviewMoment {
     millis: u64,
     timestamp: String,
 }
 
 impl ReviewMoment {
-    fn from_millis(millis: u64) -> Self {
+    pub(crate) fn from_millis(millis: u64) -> Self {
         Self {
             millis,
             timestamp: millis.to_string(),
@@ -861,7 +861,7 @@ fn retry_delay_ms(attempts: u32) -> u64 {
         .min(REVIEW_RETRY_MAX_MS)
 }
 
-fn mark_review_retryable(
+pub(crate) fn mark_review_retryable(
     store: &mut MemoryStore,
     job: &memory::ReviewJob,
     error: &read_tools::ToolError,
@@ -974,8 +974,15 @@ fn copy_review_input(
     state: &AppState,
     job: &memory::ReviewJob,
 ) -> Result<ReviewInput, read_tools::ToolError> {
-    let session = state
-        .user.agent_history
+    copy_user_review_input(&state.user, job, crate::current_content_profile(&state.workspace.book))
+}
+
+pub(crate) fn copy_user_review_input(
+    user: &crate::user_runtime::UserRuntime,
+    job: &memory::ReviewJob,
+    content_profile: &str,
+) -> Result<ReviewInput, read_tools::ToolError> {
+    let session = user.agent_history
         .sessions
         .iter()
         .find(|session| session.id == job.session_id && session.book_id == job.book_id)
@@ -1021,7 +1028,7 @@ fn copy_review_input(
         job_id: job.job_id.clone(),
         session_id: job.session_id.clone(),
         book_id: job.book_id.clone(),
-        content_profile: crate::current_content_profile(&state.workspace.book).into(),
+        content_profile: content_profile.into(),
         from_turn_exclusive: job.from_turn_exclusive,
         to_turn_inclusive: job.to_turn_inclusive,
         turns,

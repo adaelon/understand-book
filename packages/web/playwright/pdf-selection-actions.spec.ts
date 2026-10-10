@@ -3,14 +3,15 @@ import { readFileSync } from 'node:fs';
 
 type ResolveStatus = "resolved" | "partial" | "unresolved";
 
-function pdfFixture(content = "BT /F1 20 Tf 72 700 Td (Selectable PDF fixture text for explicit actions.) Tj ET"): Buffer {
+function pdfFixture(content = "BT /F1 20 Tf 72 700 Td (Selectable PDF fixture text for explicit actions.) Tj ET", pageCount = 1): Buffer {
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    `<< /Type /Pages /Kids [${Array.from({length:pageCount}, (_, index) => `${index === 0 ? 3 : index + 5} 0 R`).join(' ')}] /Count ${pageCount} >>`,
     "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
     "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
     `<< /Length ${Buffer.byteLength(content, "ascii")} >>\nstream\n${content}\nendstream`,
   ];
+  for (let i = 1; i < pageCount; i++) objects.push(objects[2]);
   let body = "%PDF-1.4\n";
   const offsets = [0];
   objects.forEach((object, index) => {
@@ -100,6 +101,7 @@ async function installApiFixture(
   resolveDelayMs = 0,
   pdf = pdfFixture(),
   resolutionBasis?: "exact" | "recovered",
+  mappedPageCount = 1,
 ) {
   const calls = {
     highlights: [] as Record<string, unknown>[],
@@ -209,7 +211,10 @@ async function installApiFixture(
         },
       });
     }
-    if (path === "/api/book/pdf_source_map") return json(route, sourceMap);
+    if (path === "/api/book/pdf_source_map") return json(route, {
+      ...sourceMap,
+      pages: Array.from({ length: mappedPageCount }, (_, pageIndex) => ({ ...sourceMap.pages[0], pageIndex, page_label: String(pageIndex + 1) })),
+    });
     if (path === "/api/profile/manifest") {
       return json(route, {
         ...profile,
@@ -351,6 +356,39 @@ async function selectFixtureText(page: Page, start: number, end: number) {
   }, { start, end });
 }
 
+test('prepares one neighbouring PDF page and follows forward and backward navigation', async ({ page }) => {
+  await page.setViewportSize({width:1440,height:900});
+  await installApiFixture(page, 'resolved', 0, pdfFixture(undefined, 8), undefined, 8);
+  await page.goto('/');
+  const pages = page.locator('.pdf-page-shell');
+  await expect(pages.nth(1)).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('canvas[data-render-generation]')).toHaveCount(2);
+  await pages.nth(4).evaluate(el => el.scrollIntoView({block:'start'}));
+  await expect(pages.nth(4)).toHaveAttribute('aria-busy', 'false');
+  await expect(pages.nth(5)).toHaveAttribute('aria-busy', 'false');
+  await expect(pages.nth(6)).toHaveAttribute('aria-busy', 'true');
+  await pages.nth(3).evaluate(el => el.scrollIntoView({block:'start'}));
+  await expect(pages.nth(3)).toHaveAttribute('aria-busy', 'false');
+  await expect(pages.nth(2)).toHaveAttribute('aria-busy', 'false');
+  expect(await page.locator('canvas[data-render-generation]').count()).toBeLessThanOrEqual(5);
+});
+
+test('a failed neighbouring page does not disable native selection or highlighting on the completed page', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const calls = await installApiFixture(page, 'resolved', 0, pdfFixture(), undefined, 2);
+  await page.goto('/');
+  const first = page.locator('.pdf-page-shell').first();
+  const second = page.locator('.pdf-page-shell').nth(1);
+  await expect(first).toHaveAttribute('aria-busy', 'false');
+  await expect(second.locator('.pdf-page-error')).toHaveText(/Invalid page request/);
+  await expect(second).toHaveClass(/geometry-pending/);
+  await dragBetweenTextOffsets(page, 'Selectable PDF fixture text for explicit actions.', 0, 10, true);
+  expect(await page.evaluate(() => getSelection()?.toString())).toBe('Selectable');
+  await page.locator('.pdf-selection-toolbar').getByTitle('高亮').click();
+  await expect.poll(() => calls.highlights.length).toBe(1);
+  await expect(first.locator('.pdf-user-highlight')).toBeVisible();
+});
+
 test('RE6 zoom, fit and container changes keep real PDF text, canvas and highlights aligned', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const calls = await installApiFixture(page, 'resolved');
@@ -360,7 +398,7 @@ test('RE6 zoom, fit and container changes keep real PDF text, canvas and highlig
   await expect(text).toHaveText(/Selectable PDF fixture/);
   for (const factor of ['1.5', '2', '1']) {
     await page.getByLabel('PDF 缩放倍率（相对适宽）').selectOption(factor);
-    await expect(list).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('.pdf-page-shell').first()).toHaveAttribute('aria-busy', 'false');
     await expect(text).toHaveText(/Selectable PDF fixture/);
     await text.scrollIntoViewIfNeeded();
     await dragBetweenTextOffsets(page, 'Selectable PDF fixture text for explicit actions.', 0, 10, true);
@@ -380,7 +418,7 @@ test('RE6 zoom, fit and container changes keep real PDF text, canvas and highlig
   await expect(page.getByLabel('PDF 缩放倍率（相对适宽）')).toHaveValue('1');
   const before = await page.locator('.pdf-user-highlight').first().getAttribute('style');
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(list).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('.pdf-page-shell').first()).toHaveAttribute('aria-busy', 'false');
   await expect(text).toHaveText(/Selectable PDF fixture/);
   expect(await page.locator('.pdf-user-highlight').first().getAttribute('style')).toBe(before);
   await selectFixtureText(page, 0, 10);
@@ -411,14 +449,14 @@ test('RE6 licensed two-column formula PDF keeps original typography and column g
   await page.getByRole('button', { name: '关闭阅读设置', exact: true }).click();
   expect(await positions()).toEqual(before);
   await page.getByLabel('PDF 缩放倍率（相对适宽）').selectOption('1.5');
-  await expect(page.locator('.pdf-page-list')).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('.pdf-page-shell').first()).toHaveAttribute('aria-busy', 'false');
   const after = await positions(); expect(after).toHaveLength(before.length);
   for (let i = 0; i < before.length; i++) {
     expect(after[i].text).toBe(before[i].text);
     for (const key of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(after[i][key] - before[i][key])).toBeLessThan(0.003);
   }
   await page.getByRole('button', { name: '适合栏宽', exact: true }).click();
-  await expect(page.locator('.pdf-page-list')).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('.pdf-page-shell').first()).toHaveAttribute('aria-busy', 'false');
   await page.screenshot({ path: '../../docs/performance/reader-re5-re6/pdf-two-column.png' });
 });
 

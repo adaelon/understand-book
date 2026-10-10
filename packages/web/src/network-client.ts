@@ -84,7 +84,8 @@ export async function workspaceRead<T = unknown>(action: string, body: Record<st
   });
 }
 const readActions = new Set(['reader/state', 'profile/manifest', 'profile/memory', 'memory/recall',
-  'reader/paper_minimap.state', 'reader/pdf_selection.resolve', 'reader/pdf_ranges.project', 'agent/source.resolve']);
+  'reader/paper_minimap.state', 'reader/pdf_selection.resolve', 'reader/pdf_ranges.project', 'agent/source.resolve',
+  'reader/selection.translate']);
 
 interface Admission extends RunDescriptor {
   dispatch_state: string; persistence_state: string; snapshot?: RunSnapshot;

@@ -1,17 +1,10 @@
 function (config) {
   const send = message => parent.postMessage({ channel: config.channel, ...message }, "*");
-  let revision = 0;
   let observer;
-  let last = "";
   let stateReader;
   let stateRestorer;
   let restoring = true;
   let commitTimer;
-  let pendingFocus;
-  let pendingRevision = 0;
-  let acceptedBody;
-  let pendingBody;
-  let masks = [];
   let hostGeneration;
   let editing = false;
   let zoom = 1;
@@ -39,94 +32,17 @@ function (config) {
       }
       return;
     }
-    if (event.data.kind === "accepted" && event.data.revision === revision) {
-      observer?.disconnect();
-      clearMasks();
-      acceptedBody = pendingBody;
-      pendingBody = undefined;
-      pendingRevision = 0;
-      document.documentElement.removeAttribute("data-presentation-pending");
-      if (pendingFocus?.isConnected && document.hasFocus() && document.activeElement === document.body) {
-        pendingFocus.focus({ preventScroll: true });
-      }
-      pendingFocus = undefined;
-      const captures = Array.from(pendingCaptures);
-      pendingCaptures.clear();
-      captures.forEach(capture);
-      observer?.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
-    }
     if (event.data.kind === "theme") {
       if (Number.isInteger(event.data.generation)) hostGeneration = event.data.generation;
       for (const [name, value] of Object.entries(event.data.values)) document.documentElement.style.setProperty(name, value);
     }
     if (event.data.kind === "snapshot") capture(event.data.request_id);
   });
-  function clearMasks() {
-    for (const { node, style, ariaHidden, overlay } of masks) {
-      for (const [name, value] of Object.entries(style)) node.style[name] = value;
-      if (ariaHidden === null) node.removeAttribute("aria-hidden");
-      else node.setAttribute("aria-hidden", ariaHidden);
-      overlay.remove();
-    }
-    masks = [];
-  }
-  function maskUnaccepted() {
-    if (!acceptedBody) return;
-    const changed = [];
-    const add = (node, old) => {
-      if (node instanceof Element && old instanceof Element && !changed.some(item => item.node.contains(node))) {
-        for (let i = changed.length - 1; i >= 0; i--) if (node.contains(changed[i].node)) changed.splice(i, 1);
-        changed.push({ node, old });
-      }
-    };
-    const compare = (old, node, parent, oldParent) => {
-      if (!old || !node || old.nodeType !== node.nodeType || old.nodeName !== node.nodeName) {
-        add(parent, oldParent); return;
-      }
-      if (node.nodeType === Node.TEXT_NODE) {
-        if (old.textContent !== node.textContent) add(parent, oldParent);
-        return;
-      }
-      if (!(node instanceof Element)) return;
-      if (["alt", "title", "aria-label", "data-source-ref"].some(name => old.getAttribute(name) !== node.getAttribute(name))
-          || old.childNodes.length !== node.childNodes.length) {
-        add(node, old); return;
-      }
-      for (let i = 0; i < node.childNodes.length; i++) compare(old.childNodes[i], node.childNodes[i], node, old);
-    };
-    compare(acceptedBody, document.body, null, null);
-    for (const { node, old } of changed) {
-      const rect = node.getBoundingClientRect();
-      const overlay = document.createElement("div");
-      overlay.setAttribute("data-presentation-mask", "");
-      overlay.setAttribute("data-accepted-text", old.textContent?.trim().slice(0, 16000) ?? "");
-      const shadow = overlay.attachShadow({ mode: "closed" });
-      document.querySelectorAll("style").forEach(style => shadow.appendChild(style.cloneNode(true)));
-      const copy = old.cloneNode(true);
-      copy.querySelectorAll?.("script").forEach(script => script.remove());
-      shadow.appendChild(copy);
-      Object.assign(overlay.style, { position: "absolute", left: `${rect.left + scrollX}px`, top: `${rect.top + scrollY}px`,
-        width: `${rect.width}px`, height: `${rect.height}px`, margin: "0", zIndex: "2147483647",
-        pointerEvents: "none", opacity: "1" });
-      overlay.style.overflow = "hidden";
-      const style = Object.fromEntries(["opacity", "width", "height", "overflow", "boxSizing"].map(name => [name, node.style[name]]));
-      const ariaHidden = node.getAttribute("aria-hidden");
-      node.setAttribute("aria-hidden", "true");
-      node.style.opacity = "0";
-      node.style.width = `${rect.width}px`;
-      node.style.height = `${rect.height}px`;
-      node.style.boxSizing = "border-box";
-      node.style.overflow = "hidden";
-      (node === document.body ? document.documentElement : document.body).appendChild(overlay);
-      masks.push({ node, style, ariaHidden, overlay });
-    }
-  }
-  function observe() {
+  // The host owns source labels and actions; ordinary page rendering stays local.
+  function normalizeSources() {
     observer.disconnect();
-    clearMasks();
     const refs = [];
     document.querySelectorAll("[data-source-ref]").forEach(node => {
-      if (node.closest("[data-presentation-mask]")) return;
       const id = node.getAttribute("data-source-ref");
       refs.push(id);
       const source = config.sources.find(source => source.source_ref_id === id);
@@ -135,35 +51,13 @@ function (config) {
       node.setAttribute("aria-label", source ? `${node.textContent}：${source.label}` : "来源不可用");
       if (node instanceof HTMLButtonElement) node.disabled = !source;
     });
-    const copy = document.body.cloneNode(true);
-    copy.querySelectorAll("script, style, [data-source-ref], [data-presentation-mask]").forEach(node => node.remove());
-    const extras = Array.from(copy.querySelectorAll("[alt], [title], [aria-label], input, textarea, select"))
-      .map(node => [node.getAttribute("alt"), node.getAttribute("title"), node.getAttribute("aria-label"), node.value].filter(Boolean).join(" "));
-    const text = [copy.textContent, ...extras].join("\n").trim();
-    const signature = JSON.stringify([text, refs]);
-    if (signature !== last) {
-      last = signature;
-      if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) {
-        pendingFocus = document.activeElement;
-      }
-      pendingRevision = ++revision;
-      pendingBody = document.body.cloneNode(true);
-      send({ kind: "observe", revision, text, source_ref_ids: refs });
-    }
-    if (pendingRevision) maskUnaccepted();
     observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
-    return { text, source_ref_ids: refs };
+    return refs;
   }
   function capture(request_id) {
     if (restoring || !observer) { pendingCaptures.add(request_id); return; }
-    const observation = observe();
-    // Read the result only after the exact observed revision is accepted.
-    if (pendingRevision) {
-      pendingCaptures.add(request_id);
-      return;
-    }
+    const sourceRefs = normalizeSources();
     const controls = Array.from(document.querySelectorAll("input, textarea, select"))
-      .filter(node => !node.closest("[data-presentation-mask]"))
       .map((node, index) => ({
       key: node.id || node.name || `control-${index}`, type: node.type,
       value: node instanceof HTMLSelectElement && node.multiple ? Array.from(node.selectedOptions, option => option.value) : node.value,
@@ -174,12 +68,12 @@ function (config) {
     send({ kind: "state", request_id, state: {
       values: { controls, page: custom.values ?? null },
       visible_step: custom.visible_step ?? document.querySelector("[data-presentation-step]")?.getAttribute("data-presentation-step") ?? null,
-      observed_result: visibleText(document.body).trim(), source_ref_ids: observation.source_ref_ids,
+      observed_result: visibleText(document.body).trim(), source_ref_ids: sourceRefs,
     } });
   }
   function visibleText(node) {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent;
-    if (!(node instanceof Element) || node.matches("script, style, [data-source-ref], [data-presentation-mask]")) return "";
+    if (!(node instanceof Element) || node.matches("script, style, [data-source-ref]")) return "";
     const style = getComputedStyle(node);
     if (style.display === "none" || style.visibility === "hidden") return "";
     const label = [node.getAttribute("alt"), node.getAttribute("aria-label")].filter(Boolean).join(" ");
@@ -203,7 +97,7 @@ function (config) {
     if (!node) return;
     event.preventDefault();
     const id = node.getAttribute("data-source-ref");
-    if (!pendingRevision && config.sources.some(source => source.source_ref_id === id)) send({ kind: "source", source_ref_id: id });
+    if (config.sources.some(source => source.source_ref_id === id)) send({ kind: "source", source_ref_id: id });
   }, true);
   document.addEventListener("submit", event => event.preventDefault(), true);
   document.addEventListener("DOMContentLoaded", () => {
@@ -229,9 +123,7 @@ function (config) {
       }
     }
     restoring = false;
-    observer = new MutationObserver(observe);
-    document.addEventListener("input", observe);
-    document.addEventListener("change", observe);
+    observer = new MutationObserver(normalizeSources);
     document.addEventListener("change", scheduleCommit);
     document.addEventListener("focusin", event => publishEditing(isEditingTarget(event.target)));
     document.addEventListener("focusout", () => queueMicrotask(() => publishEditing(isEditingTarget(document.activeElement))));
@@ -241,7 +133,11 @@ function (config) {
       if (!(event.target instanceof Element) || event.target.closest("[data-source-ref], a")) return;
       if (event.target.closest("button, summary, [role=button], [data-presentation-step]")) scheduleCommit();
     });
-    observe();
+    normalizeSources();
+    send({ kind: "ready" });
+    const captures = Array.from(pendingCaptures);
+    pendingCaptures.clear();
+    captures.forEach(capture);
     } catch {
       restoring = true;
       send({ kind: "error" });

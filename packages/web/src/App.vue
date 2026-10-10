@@ -137,6 +137,7 @@ import {
 } from "./surface-selection";
 import TopBar from "./components/TopBar.vue";
 import TutorControl from './components/TutorControl.vue';
+import ConversationLearningGoal from './components/ConversationLearningGoal.vue';
 import TutorPanel from './components/TutorPanel.vue';
 import { useTutorControl } from './useTutorControl';
 import BuildWorkbenchPane from "./components/BuildWorkbenchPane.vue";
@@ -3321,6 +3322,7 @@ async function finishResidentRun(snapshot: RunSnapshot) {
   submittedRunDrafts.delete(snapshot.descriptor.turn_id);
   window.dispatchEvent(new Event("tutor-state-changed"));
   await refreshProfileSurface(true);
+  void tutor.load();
 }
 
 
@@ -3607,7 +3609,7 @@ async function tutorAction(action: import("./generated/TutorAction").TutorAction
   await tutor.act(action);
   window.dispatchEvent(new Event("tutor-state-changed"));
   if (tutor.error.value || tutor.pending.value) return;
-  if (action.kind === "start" || action.kind === "resume" || (action.kind === "set_enabled" && action.enabled)) {
+  if (action.kind === "start" || action.kind === "resume") {
     try {
       const result = await api.tutorStart();
       await tutor.load();
@@ -3619,6 +3621,13 @@ async function tutorAction(action: import("./generated/TutorAction").TutorAction
       } else if (result.reason) banner.value = result.reason;
     } catch (failure) { banner.value = `教学未开始：${failure instanceof Error ? failure.message : String(failure)}`; }
   }
+}
+async function setConversationLearningGoal(intent: string) {
+  const sourceId = tutor.readiness.value?.source_id;
+  if (!sourceId || sending.value) return;
+  await tutor.act({ kind: 'start', user_intent: intent, explicit_constraints: [],
+    material_scope: [{ source_id: sourceId, scope_refs: [], role: 'primary' }], default_teaching_intent: null });
+  window.dispatchEvent(new Event('tutor-state-changed'));
 }
 function onTutorResponse(event: Event) {
   const detail = (event as CustomEvent<{ eventId: string; text: string }>).detail;
@@ -4779,6 +4788,13 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @open-artifacts="openIntentArtifacts"
         @artifact-cited="recordIntentUsage('artifact_cited', $event)"
       >
+        <template #learning-goal>
+          <ConversationLearningGoal
+            :session="tutor.current.value?.material_scope.some(m => m.source_id === tutor.readiness.value?.source_id) ? tutor.current.value : null"
+            :enabled="!!tutor.state.value?.control.enabled" :busy="tutor.busy.value || sending" :available="!!tutor.state.value && !tutor.pending.value"
+            :error="tutor.error.value" @enable="tutorAction({ kind: 'set_enabled', enabled: true })" @goal="setConversationLearningGoal"
+            @resume="tutor.current.value && tutorAction({ kind: 'resume', session_id: tutor.current.value.id })" />
+        </template>
         <template #tutor-control>
           <TutorControl :enabled="!!tutor.state.value?.control.enabled" :label="tutor.label.value" :busy="tutor.busy.value" :unavailable="!tutor.state.value || !!tutor.pending.value" :error="tutor.error.value" @toggle="tutorAction({ kind: 'set_enabled', enabled: !tutor.state.value?.control.enabled })" @manage="tutorPanelOpen = true" />
         </template>

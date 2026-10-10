@@ -5538,7 +5538,7 @@ fn run_context_inner(
         .resolve(COMPACTION_CONSUMPTION_WRAPPER);
     let tool_permissions = ToolPermissions::default();
     context.tool_exposure_state = ToolExposureState::default();
-    if context.tutor.as_ref().is_some_and(|t| t["status"] == "active" || t["status"] == "reference") { context.tool_exposure_state.activate_tutor(); }
+    if context.tutor.as_ref().is_some_and(|t| t["status"] == "active" || t["status"] == "reference" || t["status"] == "observing") { context.tool_exposure_state.activate_tutor(); }
     let experimental = book.experimental_read_access().is_some();
     let mut artifact_tools = ArtifactToolSession::new(
         if experimental {

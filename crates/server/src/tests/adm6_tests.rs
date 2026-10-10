@@ -27,6 +27,77 @@ fn respond(request: tiny_http::Request, message: Value, tokens: u32) {
 }
 
 #[test]
+fn multi_user_review_real_transport_is_billed_and_durable() {
+    let fake = tiny_http::Server::http("127.0.0.1:0").unwrap();
+    let url = format!("http://{}",fake.server_addr().to_ip().unwrap());
+    let mut f = Fixture::new();
+    super::adm5_tests::seed(&mut f,&url,10_000_000);
+    f.access.runs.configure(ProviderConfig::from_values("native","fixture-key",url.clone(),"fixture-model").unwrap()).unwrap();
+    let w = f.create(&f.a,&f.x,"page");
+    let mut w = f.action(&f.a,&w,"page","chat/new",json!({}));
+    // Eight unreviewed turns make the interrupted job eligible immediately.
+    for ordinal in 0..8 {
+        let mut input = Fixture::stamp(&w,"page");
+        input["client_request_id"] = json!(format!("review-transport-{ordinal}"));
+        input["session_id"] = w["selected_chat"].clone();
+        input["message"] = json!("Explain the source briefly.");
+        admit(&f,&w,&input);
+        let access = f.access.clone();
+        let worker = std::thread::spawn(move || access.runs.run_one(&access));
+        respond(fake.recv_timeout(Duration::from_secs(15)).unwrap().unwrap(),json!({"role":"assistant","content":"We can start with your question."}),10);
+        worker.join().unwrap().unwrap();
+        w = f.get(&f.a,&w);
+    }
+    assert_eq!(f.access.users.lock().unwrap().pending_review_owners().unwrap(),std::collections::VecDeque::from(["A".to_string()]));
+    let mut backlog = std::collections::VecDeque::new();
+    crate::multi_user_review::remember_pending(&f.access, &mut backlog);
+    f.access.users.lock().unwrap().evict_idle(std::time::Instant::now()+crate::user_registry::USER_IDLE_TTL+Duration::from_secs(1)).unwrap();
+    assert!(f.access.users.lock().unwrap().loaded_users().is_empty());
+    // Persist an interrupted attempt, then release the entire old service.
+    {
+        let owner = backlog.pop_front().unwrap();
+        let handle = f.access.users.lock().unwrap().load_for_review(&owner, "1000").unwrap();
+        let mut user = handle.lock().unwrap();
+        let job = user.store.review_state().review_jobs[0].job_id.clone();
+        user.store.claim_review_job(&job, "1000").unwrap();
+    }
+    let paths = f.access.users.lock().unwrap().paths("A").unwrap();
+    let Fixture { root, access, control, .. } = f;
+    drop(access);
+    drop(control);
+    let access = std::sync::Arc::new(crate::authorization::Authorization::new(
+        crate::user_registry::UserRegistry::open(root.path()).unwrap(),
+    ).unwrap());
+    assert!(access.users.lock().unwrap().loaded_users().is_empty(), "restart must not depend on a login");
+    access.runs.configure(ProviderConfig::from_values("native", "fixture-key", url, "fixture-model").unwrap()).unwrap();
+    let control = crate::control_store::ControlStore::open(access.users.lock().unwrap().writer()).unwrap();
+    let server = crate::multi_user_host::start_with_access(
+        "127.0.0.1:0".parse().unwrap(),
+        std::sync::Arc::new(crate::multi_user_host::Site::new("https://reader.example").unwrap()),
+        access.clone(),
+    ).unwrap();
+    // Invalid extractor output is charged, retained for retry, then recovered.
+    respond(fake.recv_timeout(Duration::from_secs(15)).unwrap().unwrap(),json!({"role":"assistant","content":"{\"candidate_facts\":\"invalid\"}"}),10);
+    respond(fake.recv_timeout(Duration::from_secs(15)).unwrap().unwrap(),json!({"role":"assistant","content":json!({"candidate_facts":[],"intent_observations":[]}).to_string()}),10);
+    // Wait for commit before shutdown, which intentionally cancels in-flight I/O.
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    while std::time::Instant::now() < deadline {
+        if access.users.lock().unwrap().loaded_users().iter().any(|user| {
+            user.lock().unwrap().store.review_state().review_jobs.iter()
+                .any(|job| job.status == memory::ReviewJobStatus::Completed)
+        }) { break; }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    server.shutdown();
+    let charges: i64 = control.connection.query_row("SELECT count(*) FROM model_call_charges WHERE user_id='A' AND purpose='memory_review' AND task_ref IS NOT NULL AND state='settled'",[],|r|r.get(0)).unwrap();
+    assert_eq!(charges,2);
+    assert!(access.users.lock().unwrap().pending_review_owners().unwrap().is_empty());
+    let persisted: Value = serde_json::from_slice(&std::fs::read(paths.memory).unwrap()).unwrap();
+    assert_eq!(persisted["review_state"]["review_jobs"][0]["status"],"completed");
+    assert_eq!(persisted["review_state"]["review_jobs"][0]["attempts"],3);
+}
+
+#[test]
 fn adm6_real_run_preserves_note_goal_and_explicit_continue_uses_new_call() {
     for fail_save in [false, true] {
         let fake = tiny_http::Server::http("127.0.0.1:0").unwrap();

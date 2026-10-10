@@ -1,7 +1,6 @@
 :root { color-scheme: light dark; --canvas: #faf9f5; --ink: #252523; --surface: #efe9de; --line: #e6dfd8; --accent: #a9583e; }
 * { box-sizing: border-box; }
 body { margin: 0; padding: 12px; background: var(--canvas); color: var(--ink); font: 16px/1.65 system-ui, "Microsoft YaHei", sans-serif; overflow-wrap: anywhere; }
-html[data-presentation-pending] body { visibility: hidden !important; }
 h1, h2, h3 { line-height: 1.3; margin: 0 0 .6em; }
 h1 { font-size: 1.45em; } h2 { font-size: 1.2em; }
 p { margin: .65em 0; }

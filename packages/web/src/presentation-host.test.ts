@@ -6,6 +6,7 @@ describe("MU7 frame channel", () => {
     const source = {} as Window;
     const event = { source, origin: "null", data: { channel: "current", kind: "source", source_ref_id: "source-1" } } as MessageEvent;
     expect(acceptsPresentationMessage(event, source, "current")).toBe(true);
+    expect(acceptsPresentationMessage({ ...event, data: { channel: "current", kind: "ready" } } as MessageEvent, source, "current")).toBe(true);
     expect(acceptsPresentationMessage(event, {} as Window, "current")).toBe(false);
     expect(acceptsPresentationMessage(event, source, "old")).toBe(false);
     expect(acceptsPresentationMessage({ ...event, origin: "https://reader.example" } as MessageEvent, source, "current")).toBe(false);

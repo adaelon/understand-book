@@ -398,7 +398,11 @@ async function clickPdfRegion(page: Page, bbox: [number, number, number, number]
 async function openNotes(page: Page) {
   const mobile = page.locator('.workspace-mobile-nav').getByRole('button', { name: '笔记', exact: true });
   if (await mobile.isVisible()) await mobile.click();
-  else await page.locator('button.tab').filter({ hasText: '笔记' }).click();
+  else {
+    const notes = page.getByRole('tab', { name: '笔记', exact: true });
+    if (!await notes.isVisible()) await page.getByRole('button', { name: '阅读工具', exact: true }).click();
+    await notes.click();
+  }
 }
 
 async function startNotePlacementFromList(page: Page, memId: string) {
@@ -746,13 +750,13 @@ for (const width of [1440, 390]) {
     const pdf = page.locator('.pdf-reader-pane');
     await expect(page.locator('.pdf-text-layer span').first()).toHaveText(/First placement/);
     await page.getByLabel('PDF 缩放倍率（相对适宽）').selectOption('2');
-    await expect(page.locator('.pdf-page-list')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('.pdf-page-shell').first()).toHaveAttribute('aria-busy', 'false');
     await page.locator('.pdf-page-list').evaluate(el => { el.scrollTop = 200; });
     const before = await pdf.evaluate((el: any) => el.__vueParentComponent.exposed.captureReadingAnchor());
     await page.getByRole('button', { name: 'Markdown', exact: true }).click();
     await expect(page.locator('.reader-pane')).toBeVisible();
     await page.getByRole('button', { name: 'PDF', exact: true }).click();
-    await expect(page.locator('.pdf-page-list')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('.pdf-page-shell').first()).toHaveAttribute('aria-busy', 'false');
     await expect(page.getByLabel('PDF 缩放倍率（相对适宽）')).toHaveValue('2');
     await expect.poll(async () => {
       const after = await pdf.evaluate((el: any) => el.__vueParentComponent.exposed.captureReadingAnchor());

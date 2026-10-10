@@ -85,6 +85,8 @@ pub mod account_allowance;
 mod allowance_admin;
 pub mod model_rates;
 mod model_spend_store;
+mod selection_translation;
+mod pdf_bytes;
 mod charge_admin;
 mod admin_api;
 mod beta_invites;
@@ -101,6 +103,7 @@ mod book_cover;
 pub mod auth;
 pub mod authorization;
 pub mod multi_user_host;
+mod multi_user_review;
 mod pending_confirmation;
 pub mod agent_run;
 mod run_admission;
@@ -10361,6 +10364,9 @@ fn execute_selection_translation_with_adapter(
     let value = adapter
         .complete_structured(selection_translation_prompt(work))
         .map_err(|error| {
+            if let Some(reason) = error.spend_stop {
+                return reason.tool_error();
+            }
             selection_translation_error(
                 "TRANSLATION_PROVIDER_FAILED",
                 "provider",
@@ -12808,6 +12814,7 @@ mod tests {
     mod mu2_tests;
     mod mu3_tests;
     mod mu4_tests;
+    mod pdf_service_tests;
     mod mu5_tests;
     mod mu6_tests;
     mod session_management_tests;

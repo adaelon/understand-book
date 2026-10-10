@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1.3 用几个数字估算一次模型执行 · 六屏慢读版</title>
+<style>
+*{box-sizing:border-box}
+:root{--canvas:#ffffff;--ink:#2a2723;--surface:#f5f2ec;--line:#dcd5c8;--accent:#b45309}
+html,body{margin:0}
+body{max-width:780px;margin:0 auto;padding:22px 16px 44px;background:var(--canvas);color:var(--ink);font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;font-size:15.5px}
+.kicker{font-size:13px;color:#8a7f6d;margin:0 0 4px}
+h1{font-size:25px;line-height:1.35;margin:0 0 8px}
+.lede{font-size:15px;color:#4a453e;margin:0 0 20px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin:0 0 16px}
+h2{font-size:18.5px;line-height:1.45;margin:0 0 10px;display:flex;gap:8px}
+h2 .num{color:var(--accent);font-size:14px;font-weight:700;flex:0 0 auto}
+h3{font-size:15.5px;margin:0 0 3px}
+p{margin:0 0 9px}
+.g{font-size:13.5px;color:#6b6357;line-height:1.65;display:block}
+.mini{border-left:3px solid var(--accent);padding:2px 0 2px 11px;margin:0 0 12px}
+.mini.two{border-left-color:#56504a}
+.eq{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin:10px 0;overflow-x:auto;white-space:nowrap}
+.rowbtns{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+.btn{min-height:44px;padding:0 15px;border-radius:22px;border:1px solid var(--line);background:#fff;color:var(--ink);font-size:14.5px;font-family:inherit;cursor:pointer}
+.btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.reveal{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.hidden{display:none}
+.analogy{background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:14px;margin:8px 0 0}
+.ctl{margin:10px 0}
+.ctl .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:14px}
+.ctl .val{font-variant-numeric:tabular-nums;font-weight:700;color:var(--accent)}
+input[type=range]{width:100%;height:44px;margin:0;accent-color:var(--accent);background:transparent}
+.readouts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:8px 0 12px}
+.ro{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.ro .lb{font-size:13px;color:#6b6357;font-weight:600;display:block;margin:0 0 2px}
+.ro .v{font-size:22px;font-weight:750;font-variant-numeric:tabular-nums;line-height:1.25}
+.ro .u{font-size:13.5px;font-weight:600;color:#6b6357;margin-left:3px}
+.bar{margin:12px 0}
+.bar .top{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;color:#5d564c}
+.bar .track{background:#e7e1d4;border-radius:9px;height:18px;overflow:hidden;margin:5px 0 3px}
+.bar .fill{height:100%;width:0;min-width:2px;border-radius:9px;background:var(--accent);transition:width .18s ease}
+.bar .fill.two{background:#56504a}
+.axis{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;color:#8a7f6d}
+.verdict{border-left:3px solid var(--accent);padding-left:11px;font-weight:650;margin:14px 0 8px}
+.chartwrap{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 8px 4px;margin:12px 0 6px}
+.chartwrap svg{display:block;width:100%;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:#5d564c;margin:4px 0 10px}
+.legend i{display:inline-block;width:16px;height:6px;border-radius:3px;vertical-align:middle;margin-right:5px}
+.srcrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.src{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:0 13px;border-radius:22px;border:1px solid var(--line);background:#fff;color:#6b6357;font-size:13px;font-family:inherit;cursor:pointer}
+ol.take{list-style:none;padding:0;margin:0 0 14px}
+ol.take li{position:relative;padding-left:18px;margin:0 0 8px;font-size:15px}
+ol.take li:before{content:"·";position:absolute;left:5px;top:0;color:var(--accent);font-weight:800}
+.gloss{margin:6px 0 0}
+.gloss .row{display:grid;grid-template-columns:minmax(80px,auto) 1fr;gap:10px;padding:6px 0;border-top:1px dashed var(--line);font-size:14px}
+.gloss .row span{color:#4a453e}
+@media (max-width:430px){.gloss .row{grid-template-columns:1fr;gap:0}}
+footer{font-size:13px;color:#8a7f6d;border-top:1px dashed var(--line);padding-top:10px;margin-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <p class="kicker">第 1 章 · 1.3 用几个数字估算一次模型执行</p>
+  <h1>生成一个 token，时间花在哪？</h1>
+  <p class="lede">一屏只回答一个问题，一屏只出现三五个数字。每个符号第一次露面时，下面都跟一句人话解释。</p>
+</header>
+
+<section class="card">
+  <h2><span class="num">一</span><span>先猜一注</span></h2>
+  <p>一台 H100：算力 989.4 TFLOP/s，显存带宽 3.35 TB/s。模型 70B 参数，每个参数按 1 字节存。要生成下一个字，你觉得先卡在哪一项？</p>
+  <p class="g">TFLOP/s 是加速器每秒能做的浮点运算次数；TB/s 是显存每秒能送出的字节数。</p>
+  <div class="rowbtns" id="guessRow">
+    <button class="btn" data-guess="c" aria-pressed="false">算力不够</button>
+    <button class="btn" data-guess="b" aria-pressed="false">带宽不够</button>
+  </div>
+  <div class="reveal hidden" id="guessOut">
+    <p id="guessOpen"></p>
+    <p class="verdict">搬运 20.90 ms　对　计算 0.1415 ms——相差约 148 倍，先卡在搬运。</p>
+    <p>算力那边只用掉 0.1415 ms，而这些权重从显存搬过来要 20.90 ms。所以只把算力翻倍，这一步不会变快。</p>
+    <p class="analogy">打个比方：厨房每秒能炒 989 份菜，食材却只有一部每秒送 3.35 层的升降机——锅再快，也得等食材。</p>
+  </div>
+  <div class="srcrow">
+    <button class="src" data-source-ref="source_ref_8838fc6691b979bf">依据：例题的机器与模型设定</button>
+    <button class="src" data-source-ref="source_ref_51573ae729ee1f96">依据：两项时间相差约 148 倍</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2><span class="num">二</span><span>这笔账只有两行</span></h2>
+  <div class="mini">
+    <h3>要搬多少</h3>
+    <p>每个参数占 1 字节，70×10⁹ 个参数约 <b>70 GB</b>。每生成一个字，都要把这些权重从显存里再搬一遍。</p>
+  </div>
+  <div class="mini two">
+    <h3>要算多少</h3>
+    <p>每个权重参与一次乘法、一次加法，所以每步约 2 × 70×10⁹ = <b>140 GFLOPs</b>。</p>
+  </div>
+  <p>把「量」除以硬件的「速度」，就是这条链上的两段时间：</p>
+  <div class="eq">搬运 70 GB ÷ 3.35 TB/s = 20.90 ms　|　计算 140 GFLOPs ÷ 989.4 TFLOP/s = 0.1415 ms</div>
+  <p>搬运和计算可以同时进行（分块流水），所以这两段时间不必相加——<b>谁长，这一步就卡在谁身上</b>，这一步的下界就是较长的那一项。</p>
+  <div class="srcrow">
+    <button class="src" data-source-ref="source_ref_5ec8a636881257d6">依据：权重约 70 GB</button>
+    <button class="src" data-source-ref="source_ref_1626841a706b9ce3">依据：运算量 ≈ 2N</button>
+    <button class="src" data-source-ref="source_ref_cd3c2f6c8417bfb1">依据：两项时间下界</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2><span class="num">三</span><span>自己动手改一改</span></h2>
+  <p class="g" style="margin-bottom:8px">四个滑块，四个读数，两条横条。读数下面那行小字，就是每个符号的意思。</p>
+  <div class="rowbtns">
+    <button class="btn" data-preset="base" aria-pressed="true">例题基准</button>
+    <button class="btn" data-preset="pi2" aria-pressed="false">算力 ×2</button>
+    <button class="btn" data-preset="beta2" aria-pressed="false">带宽 ×2</button>
+    <button class="btn" data-preset="half" aria-pressed="false">权重减半</button>
+  </div>
+  <div class="ctl">
+    <div class="top"><label for="sN"><b>参数量 N</b></label><span class="val" id="vN">70 ×10⁹</span></div>
+    <input id="sN" type="range" min="10" max="200" step="5" value="70" aria-label="参数量，单位十亿">
+  </div>
+  <div class="ctl">
+    <div class="top"><label for="sBw"><b>每个参数占 b_W</b></label><span class="val" id="vBw">1 字节</span></div>
+    <input id="sBw" type="range" min="0.5" max="2" step="0.5" value="1" aria-label="每个参数占的字节数">
+  </div>
+  <div class="ctl">
+    <div class="top"><label for="sPi"><b>算力 Π</b></label><span class="val" id="vPi">989.4 TFLOP/s</span></div>
+    <input id="sPi" type="range" min="100" max="2000" step="0.1" value="989.4" aria-label="矩阵算力，单位 TFLOP/s">
+  </div>
+  <div class="ctl">
+    <div class="top"><label for="sBeta"><b>显存带宽 β</b></label><span class="val" id="vBeta">3.35 TB/s</span></div>
+    <input id="sBeta" type="range" min="0.5" max="10" step="0.05" value="3.35" aria-label="显存带宽，单位 TB/s">
+  </div>
+
+  <div class="readouts">
+    <div class="ro">
+      <span class="lb">要搬的权重 R_W = b_W · N</span>
+      <span class="v" id="oRw">70.0</span><span class="u">GB</span>
+      <span class="g">这一步要从显存搬过去的字节数</span>
+    </div>
+    <div class="ro">
+      <span class="lb">要算的量 F ≈ 2N</span>
+      <span class="v" id="oF">140</span><span class="u">GFLOPs</span>
+      <span class="g">一次乘法加一次加法，按 2 次运算计</span>
+    </div>
+    <div class="ro">
+      <span class="lb">搬运下界 R_W ÷ β</span>
+      <span class="v" id="oTr">20.90</span><span class="u">ms</span>
+      <span class="g">β 是显存每秒能送出的字节数</span>
+    </div>
+    <div class="ro">
+      <span class="lb">计算下界 F ÷ Π</span>
+      <span class="v" id="oTc">0.1415</span><span class="u">ms</span>
+      <span class="g">Π 是加速器每秒能做的运算次数</span>
+    </div>
+  </div>
+
+  <div class="bar">
+    <div class="top"><span>搬运 R_W ÷ β　<b id="valRead">20.90 ms</b></span><span id="tagRead">长的那项 → 决定本步</span></div>
+    <div class="track"><div class="fill" id="barRead"></div></div>
+  </div>
+  <div class="bar">
+    <div class="top"><span>计算 F ÷ Π　<b id="valComp">0.1415 ms</b></span><span id="tagComp">短的那项</span></div>
+    <div class="track"><div class="fill two" id="barComp"></div></div>
+  </div>
+  <div class="axis"><span>0</span><span>两条横条同一刻度：0 → <b id="axisMax">20.90</b> ms</span></div>
+  <div class="axis" style="margin-top:4px"><span id="axisNote">计算那条只占 0.7%，细线不是 0</span></div>
+
+  <p class="verdict" id="verdict">本步 ≥ 20.90 ms：卡在搬运——它比另一项长 148 倍。</p>
+  <p class="g" id="hint">试着只把「算力 Π」拉大：计算那一项会变短，本步读数却不动——因为长的那一项还压在搬运上。</p>
+
+  <div class="srcrow">
+    <button class="src" data-source-ref="source_ref_03224bb23c05eb92">依据：R_W 与 F 的定义</button>
+    <button class="src" data-source-ref="source_ref_73fbc8780770170d">依据：算力 / 带宽 / 权重三种变化</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2><span class="num">四</span><span>凑成一批：产量涨了，等待没降</span></h2>
+  <p>把 B 个请求凑成一批，它们共用一次权重读取，B 个答案一起算出来。B 就是批内请求数。</p>
+  <div class="rowbtns" id="batchRow">
+    <button class="btn" data-b="1" aria-pressed="false">B = 1</button>
+    <button class="btn" data-b="8" aria-pressed="true">B = 8</button>
+    <button class="btn" data-b="64" aria-pressed="false">B = 64</button>
+    <button class="btn" data-b="148" aria-pressed="false">B = 148</button>
+  </div>
+  <div class="bar">
+    <div class="top"><span>单请求等待：整批执行时间　<b id="valWait">20.90 ms</b></span><span>一个人要等的时间</span></div>
+    <div class="track"><div class="fill" id="barWait"></div></div>
+  </div>
+  <div class="bar">
+    <div class="top"><span>每输出分摊：整批时间 ÷ B　<b id="valPer">2.610</b></span><span>产量口径</span></div>
+    <div class="track"><div class="fill two" id="barPer"></div></div>
+  </div>
+  <div class="axis"><span>0</span><span>同一刻度：0 → <b id="bAxisMax">20.90</b> ms</span></div>
+  <p class="verdict" id="bVerdict">B = 8：整批下界 20.90 ms，8 个输出分摊每个约 2.61 ms，理想产量约 383 token/s。</p>
+  <p class="g" id="bHint">每个请求仍要等整批算完——分摊值不是任何一个人的等待。</p>
+
+  <div class="chartwrap"><div id="chart"></div></div>
+  <div class="legend">
+    <span><i style="background:#b45309"></i>搬运 R_W ÷ β（每批固定）</span>
+    <span><i style="background:#56504a"></i>计算 2BN ÷ Π（随 B 上升）</span>
+  </div>
+  <p class="g">横轴是批内请求数 B（1–300）。橙线每批固定，深灰线随 B 线性上升，两线在 <b id="bStarCap">B* ≈ 147.7</b> 处相交——那里计算才追上搬运；在这之前，加请求几乎不花额外时间。</p>
+  <p>这张图只比较「搬权重」和「算矩阵」。实际情况更早到顶：70B 权重已经占掉 73.73 GB 显存，一张 H100 只剩约 6.27 GB 留给各请求自己的上下文（KV：每条请求记住前文所需的中间数据），装不下 148 条请求的 KV。</p>
+  <div class="srcrow">
+    <button class="src" data-source-ref="source_ref_5d2441fdfab85871">依据：B=8 的整批复用</button>
+    <button class="src" data-source-ref="source_ref_5690fb1b8ecce2f5">依据：转折点与显存余量</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2><span class="num">五</span><span>拿实测对一下账</span></h2>
+  <p>这一段换了一套设定：Qwen3-8B（BF16）跑在 RTX PRO 6000 上，显存带宽 1.792 TB/s。它的数字和上一屏的 H100 + 70B 不能互相搬用。</p>
+  <p>batch = 1 时，读取权重和上下文的下界是 <b>8.62 ms</b>。下面三颗按钮是同一件事的三种测法：</p>
+  <div class="rowbtns" id="benchRow">
+    <button class="btn" data-m="client" aria-pressed="true">客户端逐步记录日志</button>
+    <button class="btn" data-m="nolog" aria-pressed="false">关闭逐步日志</button>
+    <button class="btn" data-m="event" aria-pressed="false">只按加速器事件计时</button>
+  </div>
+  <div class="bar">
+    <div class="top"><span>实测：<span id="benchLabel">客户端逐步记录日志</span>　<b id="benchVal">26.5 ms</b></span><span id="mbuTag">MBU ≈ 33%</span></div>
+    <div class="track"><div class="fill" id="barMeas"></div></div>
+  </div>
+  <div class="bar">
+    <div class="top"><span>硬件下界　<b>8.62 ms</b></span><span>读取权重与上下文</span></div>
+    <div class="track"><div class="fill two" id="barLower"></div></div>
+  </div>
+  <div class="axis"><span>0</span><span>同一刻度：0 → <b id="benchMax">26.5</b> ms</span></div>
+  <p class="verdict" id="benchVerdict">MBU ≈ 33%：实际只用到硬件极限的三分之一。</p>
+  <p>MBU = 下界 ÷ 实测，也就是「实际有多接近硬件极限」。余下的时间没花在搬运和计算上——客户端逐步记录日志占用了主机时间。</p>
+  <p>差距只有两种来源：模型漏项（要修模型，下界会上移）和实现开销（要修软件，可以省掉）。分清它们只有一招：每次只改一个条件，再测一遍。顺序是——先算硬件下界，再问模型漏了什么，最后问实现多花了什么。</p>
+  <p class="g">同一批并发从 1 加到 64 时，整批吞吐约提高 31 倍，单请求的输出间隔却从约 26.5 ms 增到 40.5 ms——和第四屏说的是同一件事。</p>
+  <div class="srcrow">
+    <button class="src" data-source-ref="source_ref_fad7038c65d039aa">依据：实测环境与配置</button>
+    <button class="src" data-source-ref="source_ref_fbe7389fc3ac7008">依据：并发下的吞吐与间隔</button>
+    <button class="src" data-source-ref="source_ref_2ebbc2c044467eef">依据：差距的两类来源与排查顺序</button>
+    <button class="src" data-source-ref="source_ref_021ef9830c4c2eb1">依据：补入各请求状态读写量</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2><span class="num">六</span><span>带走三句话</span></h2>
+  <ol class="take">
+    <li>瓶颈常常在搬运，不在算力：20.90 ms 对 0.1415 ms，差约 148 倍——所以只把算力翻倍，这一步不会变快。</li>
+    <li>凑批换的是吞吐，不是等待：每个输出分摊的时间可以很小，单个请求仍要等整批算完；本例 B* ≈ 148 还要看显存装不装得下上下文。</li>
+    <li>实测低于下界时按固定顺序排查：先算硬件下界 → 再查模型漏项 → 最后查实现开销，每次只改一个条件。</li>
+  </ol>
+  <div class="gloss">
+    <div class="row"><b>token</b><span>模型一次生成的一个字或词。</span></div>
+    <div class="row"><b>权重</b><span>模型学到的参数，占显存的大头。</span></div>
+    <div class="row"><b>显存带宽 β</b><span>显存每秒能送出的字节数（H100 是 3.35 TB/s）。</span></div>
+    <div class="row"><b>算力 Π</b><span>加速器每秒能做的浮点运算次数（H100 是 989.4 TFLOP/s）。</span></div>
+    <div class="row"><b>batch</b><span>同时处理的一批请求，它们共享一次权重读取。</span></div>
+    <div class="row"><b>KV</b><span>每条请求自己记住前文所需的中间数据，很占显存。</span></div>
+    <div class="row"><b>MBU</b><span>实测有多接近硬件下界：下界 ÷ 实测。</span></div>
+  </div>
+  <div class="srcrow">
+    <button class="src" data-source-ref="source_ref_2ebbc2c044467eef">依据：本节给出的判据</button>
+  </div>
+</section>
+
+<footer>读数都由本页按「量 ÷ 速度」即时算出；滑块范围、预设与图表刻度是本页设定。第五屏是另一套机器与模型，数字不要与前三屏互相搬用。</footer>
+
+<script>
+(function(){
+  var S={N:70,bW:1,PI:989.4,beta:3.35,B:8};
+  var LOWER=8.62;
+  var BENCH={client:{label:'客户端逐步记录日志',v:26.5},nolog:{label:'关闭逐步日志',v:12.1},event:{label:'只按加速器事件计时',v:10.7}};
+  var $=function(id){return document.getElementById(id);};
+  function fmtT(v){ return v>=1 ? v.toFixed(2) : v.toFixed(4); }
+  function fmtQ(v){ return v>=100 ? String(Math.round(v)) : (Math.round(v*10)/10).toFixed(1); }
+  function fmtRate(v){ return v>=100 ? String(Math.round(v)) : v.toFixed(1); }
+  function tRead(){ return S.bW*S.N/S.beta; }
+  function tComp(){ return 2*S.N/S.PI; }
+
+  function renderCalc(){
+    var Rw=S.bW*S.N, F=2*S.N, tR=tRead(), tC=tComp();
+    var tS=Math.max(tR,tC), tMin=Math.min(tR,tC);
+    $('oRw').textContent=fmtQ(Rw);
+    $('oF').textContent=fmtQ(F);
+    $('oTr').textContent=fmtT(tR);
+    $('oTc').textContent=fmtT(tC);
+    $('valRead').textContent=fmtT(tR)+' ms';
+    $('valComp').textContent=fmtT(tC)+' ms';
+    $('barRead').style.width=(tR/tS*100).toFixed(2)+'%';
+    $('barComp').style.width=(tC/tS*100).toFixed(2)+'%';
+    $('axisMax').textContent=fmtT(tS);
+    $('axisNote').textContent='较短那条只占 '+(tMin/tS*100).toFixed(1)+'%，细线不是 0';
+    var readWins=tR>=tC;
+    $('tagRead').textContent=readWins?'长的那项 → 决定本步':'短的那项';
+    $('tagComp').textContent=readWins?'短的那项':'长的那项 → 决定本步';
+    var ratio=Math.round(tS/tMin);
+    if(ratio<=1){
+      $('verdict').textContent='本步 ≥ '+fmtT(tS)+' ms：两项一样长，正好打平。';
+      $('hint').textContent='两项此刻正好相等，这就是「谁长听谁」的分界点。';
+    }else{
+      $('verdict').textContent='本步 ≥ '+fmtT(tS)+' ms：卡在'+(readWins?'搬运':'计算')+'——它比另一项长 '+ratio+' 倍。';
+      $('hint').textContent=readWins
+        ?'试着只把「算力 Π」拉大：计算那一项会变短，本步读数却不动——因为长的那一项还压在搬运上。'
+        :'试着只把「显存带宽 β」拉大：搬运那一项会变短，本步读数却不动——因为长的那一项在计算上。';
+    }
+    $('vN').textContent=S.N+' ×10⁹';
+    $('vBw').textContent=String(S.bW)+' 字节';
+    $('vPi').textContent=S.PI.toFixed(1)+' TFLOP/s';
+    $('vBeta').textContent=S.beta.toFixed(2)+' TB/s';
+  }
+
+  function renderBatch(){
+    var B=S.B, tR=tRead(), tC=B*tComp(), tS=Math.max(tR,tC);
+    $('valWait').textContent=fmtT(tS)+' ms';
+    $('valPer').textContent=fmtT(tS/B)+' ms';
+    $('barWait').style.width='100%';
+    $('barPer').style.width=(100/B).toFixed(2)+'%';
+    $('bAxisMax').textContent=fmtT(tS);
+    var tput=B/tS*1000;
+    var head='B = '+B+'：整批下界 '+fmtT(tS)+' ms，'+B+' 个输出分摊下来每个约 '+fmtT(tS/B)+' ms，理想产量约 '+fmtRate(tput)+' token/s。';
+    var tail;
+    if(B===1){ tail='现在整批就是一个人，分摊值等于他的等待。'; }
+    else if(tC>tR){ tail='计算这一项已经超过搬运（B* 就在附近），继续加请求只会近似按比例拉长整批时间，而每个人的等待仍在变长。'; }
+    else { tail='但每个请求仍要等整批算完——分摊值不是任何一个人的等待。'; }
+    $('bVerdict').textContent=head+tail;
+    $('bHint').textContent = (B===1)
+      ? '把 B 调大试试：分摊那一项会变短，而上面那条（每个人要等的时间）几乎不动。'
+      : '上面那条才是单个用户等的时间，下面那条只是产量口径。';
+    drawChart();
+  }
+
+  function drawChart(){
+    var W=560,H=210,padL=44,padR=16,padT=16,padB=30;
+    var Bmax=300, rW=S.bW*S.N/S.beta, cMax=2*Bmax*S.N/S.PI;
+    var bStar=S.bW*S.PI/(2*S.beta);
+    var ymax=Math.max(rW,cMax)*1.12;
+    function X(b){ return padL+(b-1)/(Bmax-1)*(W-padL-padR); }
+    function Y(t){ return H-padB-(t/ymax)*(H-padT-padB); }
+    var step=Math.max(1,Math.ceil(ymax/4/5)*5);
+    var svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="权重读取下界与矩阵计算下界随批内请求数变化的相交图">';
+    for(var t=0;t<=ymax;t+=step){
+      svg+='<line x1="'+padL+'" y1="'+Y(t).toFixed(1)+'" x2="'+(W-padR)+'" y2="'+Y(t).toFixed(1)+'" stroke="#e7e1d4" stroke-width="1"/>';
+      svg+='<text x="'+(padL-6)+'" y="'+(Y(t)+4).toFixed(1)+'" font-size="11" fill="#8a7f6d" text-anchor="end">'+t+'</text>';
+    }
+    svg+='<text x="'+(padL-6)+'" y="'+(padT-2)+'" font-size="11" fill="#8a7f6d" text-anchor="end">ms</text>';
+    [1,100,200,300].forEach(function(b){
+      svg+='<text x="'+X(b).toFixed(1)+'" y="'+(H-padB+16)+'" font-size="11" fill="#8a7f6d" text-anchor="middle">'+b+'</text>';
+    });
+    svg+='<text x="'+((W-padR+padL)/2).toFixed(1)+'" y="'+(H-2)+'" font-size="11" fill="#8a7f6d" text-anchor="middle">批内请求数 B</text>';
+    svg+='<line x1="'+padL+'" y1="'+Y(0).toFixed(1)+'" x2="'+(W-padR)+'" y2="'+Y(0).toFixed(1)+'" stroke="#c9c2b4" stroke-width="1.2"/>';
+    svg+='<line x1="'+padL+'" y1="'+Y(0).toFixed(1)+'" x2="'+padL+'" y2="'+padT+'" stroke="#c9c2b4" stroke-width="1.2"/>';
+    svg+='<line x1="'+X(1)+'" y1="'+Y(rW).toFixed(1)+'" x2="'+X(Bmax)+'" y2="'+Y(rW).toFixed(1)+'" stroke="#b45309" stroke-width="2.6"/>';
+    svg+='<polyline fill="none" stroke="#56504a" stroke-width="2.6" points="'+X(1)+','+Y(tComp()).toFixed(1)+' '+X(Bmax)+','+Y(cMax).toFixed(1)+'"/>';
+    if(bStar<=Bmax){
+      svg+='<line x1="'+X(bStar).toFixed(1)+'" y1="'+Y(0).toFixed(1)+'" x2="'+X(bStar).toFixed(1)+'" y2="'+Y(rW).toFixed(1)+'" stroke="#2a2723" stroke-width="1.4" stroke-dasharray="5 4"/>';
+      svg+='<circle cx="'+X(bStar).toFixed(1)+'" cy="'+Y(rW).toFixed(1)+'" r="5" fill="#2a2723"/>';
+      svg+='<text x="'+(X(bStar)+7).toFixed(1)+'" y="'+(Y(rW)-10).toFixed(1)+'" font-size="12" fill="#2a2723">两线相交 B* ≈ '+bStar.toFixed(1)+'</text>';
+    }else{
+      svg+='<text x="'+(W-padR)+'" y="'+(padT+12)+'" font-size="12" fill="#2a2723" text-anchor="end">本参数下 B* ≈ '+bStar.toFixed(1)+'（已超出图的 1–300 范围）</text>';
+    }
+    svg+='<text x="'+X(Bmax)+'" y="'+(Y(rW)-8).toFixed(1)+'" font-size="11.5" fill="#b45309" text-anchor="end">搬运下界</text>';
+    svg+='<text x="'+X(Bmax)+'" y="'+(Y(cMax)-8).toFixed(1)+'" font-size="11.5" fill="#56504a" text-anchor="end">计算下界</text>';
+    svg+='</svg>';
+    $('chart').innerHTML=svg;
+    $('bStarCap').textContent='B* ≈ '+bStar.toFixed(1);
+  }
+
+  function renderBench(key){
+    var m=BENCH[key], tput=0;
+    $('benchLabel').textContent=m.label;
+    $('benchVal').textContent=m.v.toFixed(1)+' ms';
+    $('barMeas').style.width='100%';
+    $('barLower').style.width=(LOWER/m.v*100).toFixed(2)+'%';
+    $('benchMax').textContent=m.v.toFixed(1);
+    var mbu=Math.round(LOWER/m.v*100);
+    $('mbuTag').textContent='MBU ≈ '+mbu+'%';
+    var txt;
+    if(key==='client'){ txt='MBU ≈ 33%：实际只用到硬件极限的三分之一。'; }
+    else if(key==='nolog'){ txt='MBU ≈ 71%：只关掉逐步日志这一个条件，26.5 → 12.1 ms。'; }
+    else { txt='MBU ≈ 81%：只按加速器事件计时，10.7 ms，离下界只差约两成。'; }
+    $('benchVerdict').textContent=txt;
+    $('barLower').style.background='#56504a';
+  }
+
+  var keys=['sN','sBw','sPi','sBeta'];
+  keys.forEach(function(id,k){
+    $(id).addEventListener('input',function(){
+      var v=parseFloat(this.value);
+      if(k===0){S.N=v;} else if(k===1){S.bW=v;} else if(k===2){S.PI=v;} else {S.beta=v;}
+      renderCalc(); renderBatch();
+    });
+  });
+  var P={
+    base:{N:70,bW:1,PI:989.4,beta:3.35},
+    pi2:{N:70,bW:1,PI:1978.8,beta:3.35},
+    beta2:{N:70,bW:1,PI:989.4,beta:6.7},
+    half:{N:70,bW:0.5,PI:989.4,beta:3.35}
+  };
+  Array.prototype.forEach.call(document.querySelectorAll('[data-preset]'),function(b){
+    b.addEventListener('click',function(){
+      var p=P[this.getAttribute('data-preset')];
+      S.N=p.N; S.bW=p.bW; S.PI=p.PI; S.beta=p.beta;
+      $('sN').value=S.N; $('sBw').value=S.bW; $('sPi').value=S.PI; $('sBeta').value=S.beta;
+      renderCalc(); renderBatch();
+      Array.prototype.forEach.call(document.querySelectorAll('[data-preset]'),function(x){
+        x.setAttribute('aria-pressed', x===b?'true':'false');
+      });
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-guess]'),function(b){
+    b.addEventListener('click',function(){
+      var right=this.getAttribute('data-guess')==='b';
+      $('guessOpen').textContent = right
+        ? '猜对了方向。真正的时间账是：'
+        : '989.4 这个数确实更大，但大的是「每秒能做多少次」，不是「这一步要做多少」。真正的时间账是：';
+      $('guessOut').classList.remove('hidden');
+      Array.prototype.forEach.call(document.querySelectorAll('[data-guess]'),function(x){
+        x.setAttribute('aria-pressed', x===b?'true':'false');
+      });
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-b]'),function(b){
+    b.addEventListener('click',function(){
+      S.B=parseInt(this.getAttribute('data-b'),10);
+      renderBatch();
+      Array.prototype.forEach.call(document.querySelectorAll('[data-b]'),function(x){
+        x.setAttribute('aria-pressed', x===b?'true':'false');
+      });
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-m]'),function(b){
+    b.addEventListener('click',function(){
+      renderBench(this.getAttribute('data-m'));
+      Array.prototype.forEach.call(document.querySelectorAll('[data-m]'),function(x){
+        x.setAttribute('aria-pressed', x===b?'true':'false');
+      });
+    });
+  });
+  renderCalc(); renderBatch(); renderBench('client');
+})();
+</script>
+</body>
+</html>

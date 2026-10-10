@@ -144,6 +144,7 @@ fn mu3_default_change_keeps_old_run_history_and_capacity_pins() {
     let charge = p.manifest.resident_bytes;
     let mut state = state_named("mu3-old-run");
     let private = tempfile::tempdir().unwrap();
+    state.user.store = memory::MemoryStore::open(private.path().join("memory.json")).unwrap();
     state.user.history_path = Some(private.path().join("history.json"));
     state.workspace.bind_publication(p);
     let prepared = prepare_agent_chat(&mut state, r#"{"message":"你好"}"#, "now")

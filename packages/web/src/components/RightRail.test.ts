@@ -33,6 +33,14 @@ const baseProps = {
   gotoBack: () => "1.1",
 };
 
+it('puts the first-question learning entry in the conversation', () => {
+  const wrapper = mount(RightRail, { props: baseProps, shallow: true,
+    slots: { 'learning-goal': '<p>这次想弄懂什么？</p>' } });
+  expect(wrapper.get('#reader-panel-agent').text()).toContain('这次想弄懂什么？');
+  expect(wrapper.get('textarea[data-workspace-input="agent"]').attributes('placeholder')).toContain('想弄懂什么');
+  wrapper.unmount();
+});
+
 describe("RightRail history visibility", () => {
   it('ADM8 exposes allowance from a stop while retaining partial answers and requiring an explicit click', async () => {
     installIdentity({ user_id: 'A', csrf_token: 'a' });

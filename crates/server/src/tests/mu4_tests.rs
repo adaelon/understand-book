@@ -10,6 +10,94 @@ use crate::{
 
 const PASSWORD: &str = "fixture-only-password";
 const ORIGIN: &str = "https://reader.example";
+
+#[test]
+fn multi_user_review_consumes_idle_jobs_without_holding_user_lock() {
+    let f = Fixture::unseeded();
+    let user = f.access.users.lock().unwrap().get("A", "1000").unwrap();
+    {
+        let mut user = user.lock().unwrap();
+        let mut session = new_agent_session(&f.reference.book_id,"1000",1);
+        session.turns.push(serde_json::from_value(json!({"turn_id":"review-A","user_turn_ordinal":1,"user":"A-private-question",
+            "status":"completed","published_book_ref":f.reference,"question_anchor_lid":null,"question_quote":null})).unwrap());
+        user.agent_history.sessions.push(session);
+        let cursors = agent_history_review_cursors(&user.agent_history);
+        user.store.reconcile_review_jobs(&cursors, "1000").unwrap();
+    }
+    let mut backlog = std::collections::VecDeque::new();
+    crate::multi_user_review::remember_pending(&f.access, &mut backlog);
+    crate::multi_user_review::remember_pending(&f.access, &mut backlog);
+    assert_eq!(backlog, std::collections::VecDeque::from(["A".to_string()]), "new work enters recovery exactly once");
+    struct ReviewProvider {
+        user: crate::user_registry::UserHandle,
+        attempts: Arc<std::sync::atomic::AtomicUsize>,
+        billed: Mutex<bool>,
+        purpose: Mutex<String>,
+    }
+    impl ModelAdapter for ReviewProvider {
+        fn set_spend_context(&self, scope: runtime::model_spend::ChargeScope, port: Option<Arc<dyn runtime::model_spend::ModelSpendPort>>) {
+            assert!(matches!(scope,runtime::model_spend::ChargeScope::ReaderTask { user_id, task_ref } if user_id == "A" && task_ref.starts_with("memory-review:")));
+            *self.billed.lock().unwrap() = port.is_some();
+        }
+        fn set_model_purpose(&self, purpose: &str) { *self.purpose.lock().unwrap() = purpose.into(); }
+        fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> { unreachable!() }
+        fn chat(&self, _: &runtime::AgentRequestPlan) -> Result<runtime::AssistantTurn, AdapterError> { unreachable!() }
+        fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+            assert!(self.user.try_lock().is_ok(), "review must release the private user lock during model I/O");
+            assert!(*self.billed.lock().unwrap());
+            assert_eq!(*self.purpose.lock().unwrap(),"memory_review");
+            if self.attempts.fetch_add(1,std::sync::atomic::Ordering::SeqCst) == 0 {
+                return Err(AdapterError { message:"temporary provider failure".into(),spend_stop:None });
+            }
+            let input: Value = serde_json::from_str(&request.user).unwrap();
+            let turn = &input["review_input"]["turns"][0];
+            assert_eq!(turn["user"], "A-private-question");
+            Ok(json!({"candidate_facts":[{"source":"user_stated","scope":"book","payload":{"kind":"goal","key":"goal","value":"A-private-question"},"evidence":[{"turn_id":turn["turn_id"],"user_quote":"A-private-question"}]}],"intent_observations":[]}))
+        }
+    }
+    let handle = user.clone();
+    let attempts = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    f.access.runs.configure_fake(move || Box::new(ReviewProvider { user:handle.clone(),attempts:attempts.clone(),billed:Mutex::new(false),purpose:Mutex::new(String::new()) }));
+    let cancel = runtime::run_context::CancellationToken::default();
+    assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, 1_001_000), 0, "idle debounce");
+    assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, 1_061_000), 0);
+    assert_eq!(user.lock().unwrap().store.review_state().review_jobs[0].status, memory::ReviewJobStatus::Retryable);
+    assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, 1_061_500), 0,"retry delay");
+    assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, 1_062_001), 1);
+    assert_eq!(user.lock().unwrap().store.review_state().review_jobs[0].status, memory::ReviewJobStatus::Completed);
+    assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, 1_100_000), 0, "no duplicate extraction");
+    let other = f.access.users.lock().unwrap().get("B", "1100").unwrap();
+    assert!(other.lock().unwrap().store.profile_facts().is_empty());
+}
+
+#[test]
+fn mu4_selection_translation_reaches_the_configured_service() {
+    let f = Fixture::unseeded();
+    let source = tempfile::tempdir().unwrap();
+    let mut state = state_named("mu4-translation");
+    state.workspace.book_dir = source.path().into();
+    attach_paper_profile(&mut state);
+    write_note_pdf_route_artifacts(&mut state);
+    let path = source.path().join("source_manifest.json");
+    let mut manifest: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    manifest["original_pdf"]["sha256"] = json!(sha256_hex(&std::fs::read(source.path().join("paper.pdf")).unwrap()));
+    std::fs::write(path, manifest.to_string()).unwrap();
+    std::fs::write(source.path().join("alignment_report.json"), r#"{"config_hash":"cfg-a"}"#).unwrap();
+    std::fs::create_dir_all(source.path().join(".build/source-reconciliation")).unwrap();
+    std::fs::write(source.path().join(".build/source-reconciliation/report.json"), json!({"book_id":state.workspace.book.base.book_id,"unresolved":[]}).to_string()).unwrap();
+    let reference = f.access.library.lock().unwrap().publish(source.path()).unwrap().reference;
+    f.access.library.lock().unwrap().grant("A", &reference).unwrap();
+    let a = f.login("A");
+    let w = f.call(Some(&a), "POST", "/api/workspaces", json!({"published_book_ref":reference,"attachment_id":"page"}));
+    assert_eq!(w.status, 200, "{}", body(&w));
+    let w: Value = serde_json::from_slice(&w.body).unwrap();
+    let input = json!({"attachment_id":"page","generation":w["generation"],"expected_revision":w["revision"],
+        "status":"resolved","raw_quote":"PDF","resolved_quote":"PDF","ranges":[{"lid":"1.1","range":{"start":0,"end":3}}]});
+    let url = format!("/api/workspaces/{}/reader/selection.translate", w["workspace_id"].as_str().unwrap());
+    let reply = f.call(Some(&a), "POST", &url, input);
+    assert_eq!(serde_json::from_slice::<Value>(&reply.body).unwrap()["error_code"], "TRANSLATION_PROVIDER_UNCONFIGURED");
+}
+
 struct Fixture {
     _root: tempfile::TempDir,
     access: Arc<Authorization>,
@@ -18,6 +106,11 @@ struct Fixture {
 }
 impl Fixture {
     fn new() -> Self {
+        let mut fixture = Self::unseeded();
+        fixture.seed_private();
+        fixture
+    }
+    fn unseeded() -> Self {
         let root = tempfile::tempdir().unwrap();
         let registry = UserRegistry::open(root.path()).unwrap();
         let mut control = ControlStore::open(registry.writer()).unwrap();
@@ -54,13 +147,12 @@ impl Fixture {
             .unwrap()
             .grant("A", &reference)
             .unwrap();
-        let mut fixture = Self {
+        let fixture = Self {
             _root: root,
             access,
             control,
             reference,
         };
-        fixture.seed_private();
         fixture
     }
     fn seed_private(&mut self) {
@@ -512,7 +604,7 @@ fn mu4_private_objects_are_owner_scoped_at_real_host() {
 
 #[test]
 fn mu4_resources_authorize_before_head_range_conditionals_cache_and_revoke() {
-    let f = Fixture::new();
+    let f = Fixture::unseeded();
     let a = f.login("A");
     let b = f.login("B");
     let site = Site::new(ORIGIN).unwrap();
@@ -816,7 +908,7 @@ fn mu4_same_legacy_ids_and_delivered_presentation_stay_in_user_root() {
 
 #[test]
 fn mu4_pdf_real_host_is_bound_and_private_storage_failure_is_sanitized() {
-    let f = Fixture::new();
+    let f = Fixture::unseeded();
     let source = tempfile::tempdir().unwrap();
     let mut state = state_named("mu4-pdf");
     state.workspace.book_dir = source.path().into();
@@ -866,6 +958,24 @@ fn mu4_pdf_real_host_is_bound_and_private_storage_failure_is_sanitized() {
     let mut bytes = Vec::new();
     std::io::Read::read_to_end(&mut response.into_reader(), &mut bytes).unwrap();
     assert!(bytes.starts_with(b"%PDF"));
+    for (range, status, content_range, expected) in [
+        ("bytes=0-31", 206, "bytes 0-31/98304", &pdf_bytes[..32]),
+        ("bytes=98300-", 206, "bytes 98300-98303/98304", &pdf_bytes[98300..]),
+        ("bytes=-4", 206, "bytes 98300-98303/98304", &pdf_bytes[98300..]),
+        ("bytes=98304-", 416, "bytes */98304", &pdf_bytes[..0]),
+    ] {
+        let response = ureq::get(&format!("{}{path}", server.url))
+            .set("Host", "reader.example")
+            .set("Cookie", &format!("{COOKIE}={a}"))
+            .set("Range", range).call();
+        let response = match response { Ok(r) | Err(ureq::Error::Status(_, r)) => r, Err(e) => panic!("{e}") };
+        assert_eq!(response.status(), status);
+        assert_eq!(response.header("Content-Range"), Some(content_range));
+        assert_eq!(response.header("Accept-Ranges"), Some("bytes"));
+        let mut received = Vec::new();
+        response.into_reader().read_to_end(&mut received).unwrap();
+        assert_eq!(received, expected);
+    }
     for method in ["HEAD", "GET"] {
         assert_eq!(
             http(&server.url, method, &path, Some(&b), None, None).status(),

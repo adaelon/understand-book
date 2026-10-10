@@ -204,6 +204,16 @@ fn jl3_queued_input_keeps_committed_reference() {
 
 #[test]
 fn jl3_accepted_append_size_does_not_repeat_old_messages_or_other_chats() {
+    // Understanding observation now contributes a fixed frozen context. Compare
+    // equal admissions with and without a large history, rather than its old byte cap.
+    let baseline_delta = {
+        let (f,w,input,_) = setup();
+        let paths = crate::session_store::SessionPaths::from_history(&jsonl_path(&f));
+        let path = paths.session(input["session_id"].as_str().unwrap());
+        let before = std::fs::metadata(&path).unwrap().len();
+        assert_eq!(admit(&f,&w,&input).0,202);
+        std::fs::metadata(&path).unwrap().len() - before
+    };
     let (f,w,input,_)=setup();
     {
         let handle=f.access.users.lock().unwrap().get("A","now").unwrap();
@@ -227,7 +237,7 @@ fn jl3_accepted_append_size_does_not_repeat_old_messages_or_other_chats() {
     assert_eq!(admit(&f,&w,&input).0,202);
     let after=std::fs::read(&chat_path).unwrap();
     assert!(after.starts_with(&before));
-    assert!(after.len()-before.len()<16_000);
+    assert!((after.len()-before.len()) as u64 <= baseline_delta + 1024);
     assert!(!std::str::from_utf8(&after[before.len()..]).unwrap().contains("OLD_HISTORY_MARKER"));
     assert_eq!(std::fs::read(paths.session("unrelated-chat")).unwrap(),other);
 }

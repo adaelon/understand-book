@@ -54,7 +54,6 @@ let requestId = 0;
 let pendingSnapshot: { id: number; resolve: (state: PresentationState) => void; reject: (error: Error) => void } | undefined;
 let generation = 0;
 let frameChannel = crypto.randomUUID();
-let observedRevision = 0;
 let themeObserver: MutationObserver | undefined;
 let visibilityObserver: IntersectionObserver | undefined;
 let hostVisible = true;
@@ -66,7 +65,7 @@ watch([() => props.sessionId, () => props.turnId, () => props.reference.presenta
   frameChannel = crypto.randomUUID();
   pendingSnapshot?.reject(new Error("内容已切换，请重新追问。")); pendingSnapshot = undefined;
   saveNotice.value = "";
-  view.value = undefined; documentText.value = ""; error.value = ""; ready.value = false; observedRevision = 0;
+  view.value = undefined; documentText.value = ""; error.value = ""; ready.value = false;
   try {
     const result = await api.presentationRead(props.sessionId, props.turnId, props.reference);
     if (current !== generation) return;
@@ -103,7 +102,7 @@ function onFrameLoad() {
 }
 async function retry() {
   if (!view.value) return;
-  generation++; frameChannel = crypto.randomUUID(); observedRevision = 0; ready.value = false; error.value = "";
+  generation++; frameChannel = crypto.randomUUID(); ready.value = false; error.value = "";
   documentText.value = "";
   await nextTick();
   documentText.value = presentationDocument(view.value, frameChannel);
@@ -141,19 +140,11 @@ async function receive(event: MessageEvent) {
   if (message.kind === "source" && view.value?.sources.some(source => source.source_ref_id === message.source_ref_id) && root.value && ready.value) {
     emit("source", message.source_ref_id, root.value); return;
   }
-  if (message.kind !== "observe" || !Number.isInteger(message.revision) || message.revision <= observedRevision
-      || typeof message.text !== "string" || !Array.isArray(message.source_ref_ids)) return;
-  const current = generation;
-  observedRevision = message.revision;
-  try {
-    const result = await api.presentationObserve(props.sessionId, props.turnId, props.reference, message.text, message.source_ref_ids);
-    if (current !== generation || observedRevision !== message.revision || error.value) return;
-    if (!result.accepted) throw new Error("rejected");
+  if (message.kind === "ready") {
     ready.value = true;
-    frame.value?.contentWindow?.postMessage({ channel: frameChannel, kind: "accepted", revision: message.revision }, "*");
     theme();
     sendZoom();
-  } catch { if (current === generation && observedRevision === message.revision) error.value = "此内容的文字或来源无法显示，请重新生成。"; }
+  }
 }
 function saveState(state: PresentationState) {
   const current = generation;

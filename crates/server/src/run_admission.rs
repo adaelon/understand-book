@@ -42,6 +42,7 @@ pub(crate) struct ProviderBinding {
 struct RunProvider {
     binding: ProviderBinding,
     make: Arc<dyn Fn() -> Box<dyn ModelAdapter + Send> + Send + Sync>,
+    make_task: Arc<dyn Fn() -> Box<dyn ModelAdapter + Send> + Send + Sync>,
 }
 
 /// Only the necessary request/scene/provider metadata; credentials and temporary candidates are absent.
@@ -233,11 +234,21 @@ impl RunAdmissions {
             model: config.model.clone(),
             profile,
         };
+        let task_config = config.clone();
         *self.provider.lock().unwrap() = Some(RunProvider {
             binding,
             make: Arc::new(move || ProviderRegistry::adapter_from_config(config.clone())),
+            make_task: Arc::new(move || ProviderRegistry::adapter_from_config_with_timeout(
+                task_config.clone(), crate::SELECTION_TRANSLATION_TIMEOUT,
+            )),
         });
         Ok(())
+    }
+    pub(crate) fn task_adapter(&self) -> Result<Box<dyn ModelAdapter + Send>, ToolError> {
+        let make = self.provider.lock().unwrap().as_ref()
+            .map(|provider| provider.make_task.clone())
+            .ok_or_else(|| fault("TRANSLATION_PROVIDER_UNCONFIGURED", "provider"))?;
+        Ok(make())
     }
     #[cfg(test)]
     pub(crate) fn configure_fake(
@@ -245,6 +256,7 @@ impl RunAdmissions {
         make: impl Fn() -> Box<dyn ModelAdapter + Send> + Send + Sync + 'static,
     ) {
         let profile = make().model_runtime_profile();
+        let make = Arc::new(make);
         *self.provider.lock().unwrap() = Some(RunProvider {
             binding: ProviderBinding {
                 mode: "fixture".into(),
@@ -252,7 +264,8 @@ impl RunAdmissions {
                 model: "fixture".into(),
                 profile,
             },
-            make: Arc::new(make),
+            make: make.clone(),
+            make_task: make,
         });
     }
     fn point(&self, _point: &'static str) -> Result<(), ToolError> {

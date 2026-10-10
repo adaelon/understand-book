@@ -64,7 +64,7 @@ beforeEach(() => {
   api.openBook.mockImplementation(async () => { book = "second"; return { ok: true, book_id: book }; });
 });
 
-it('sends the real start request with optional teaching assets unavailable', async () => {
+it('enables continuous teaching without inventing a goal or sending a synthetic question', async () => {
   api.tutorState.mockResolvedValue({ control: { enabled: false, revision: 0, current_tutor_session_id: null }, sessions: {} });
   api.tutorMutate.mockResolvedValue({ control: { enabled: true, revision: 1, current_tutor_session_id: null }, sessions: {} });
   api.tutorStart.mockResolvedValue({ started: true, message: '请从原文开始学习' });
@@ -74,8 +74,8 @@ it('sends the real start request with optional teaching assets unavailable', asy
   await flushPromises();
   w.findComponent({ name: 'TutorControl' }).vm.$emit('toggle');
   await flushPromises();
-  expect(api.tutorStart).toHaveBeenCalledOnce();
-  expect(api.agentRunCreate).toHaveBeenCalledWith('请从原文开始学习', expect.anything());
+  expect(api.tutorStart).not.toHaveBeenCalled();
+  expect(api.agentRunCreate).not.toHaveBeenCalled();
 });
 afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount());

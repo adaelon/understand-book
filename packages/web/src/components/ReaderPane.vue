@@ -706,8 +706,6 @@ watch(
             <p v-if="props.imageAsset(item.segment.lid)?.warning" class="image-warning">
               {{ props.imageAsset(item.segment.lid)?.warning }}
             </p>
-            <figcaption>原文</figcaption>
-            <pre class="asset-source" v-html="renderBody(item.segment)"></pre>
           </figure>
 
         </section>

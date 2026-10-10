@@ -5,6 +5,22 @@ import UnderstandingSpace from './UnderstandingSpace.vue';
 
 afterEach(() => vi.unstubAllGlobals());
 
+it('refreshes newly recorded understanding after a chat turn and stops listening on unmount', async () => {
+  vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} });
+  const fetch = vi.fn(async () => Response.json({ rows: [], interpretations: [], stale: false, next: null }));
+  vi.stubGlobal('fetch', fetch);
+  const w = mount(UnderstandingSpace);
+  await flushPromises();
+  expect(fetch).toHaveBeenCalledTimes(1);
+  window.dispatchEvent(new Event('tutor-state-changed'));
+  await flushPromises();
+  expect(fetch).toHaveBeenCalledTimes(2);
+  w.unmount();
+  window.dispatchEvent(new Event('tutor-state-changed'));
+  await flushPromises();
+  expect(fetch).toHaveBeenCalledTimes(2);
+});
+
 it('shows source-only hypotheses and corrections without inventing an attempt or object', async () => {
   vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} });
   let corrected = false;

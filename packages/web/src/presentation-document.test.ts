@@ -32,7 +32,7 @@ describe("presentation document", () => {
     expect(output).toContain("window.count = 2;");
     expect(output).toContain('"initialState":{"count":2}');
     expect(doc.head.firstElementChild?.getAttribute("content")).toContain("connect-src 'none'");
-    expect(doc.documentElement.hasAttribute("data-presentation-pending")).toBe(true);
+    expect(doc.documentElement.hasAttribute("data-presentation-pending")).toBe(false);
   });
   it("loads a managed library from the saved version once before business code", () => {
     const saved = view();

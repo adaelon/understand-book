@@ -163,8 +163,8 @@ impl LearningStore {
         if let Some(id) = &evidence.supersedes {
             let previous = self.evidence(id)?;
             if previous.nature != evidence.nature || previous.source_id != evidence.source_id
-                || previous.source_revision != evidence.source_revision || previous.session_id != evidence.session_id
-                || (evidence.nature == EvidenceNature::Performance && (previous.action_ref != evidence.action_ref
+                || previous.source_revision != evidence.source_revision
+                || (evidence.nature == EvidenceNature::Performance && (previous.session_id != evidence.session_id || previous.action_ref != evidence.action_ref
                     || previous.object_id != evidence.object_id))
             {
                 return Err(invalid("替代解释必须属于同一次对象表现"));

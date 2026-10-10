@@ -120,7 +120,8 @@ pub(crate) struct HttpReply {
     pub body: Vec<u8>,
     pub content_type: String,
     pub cookie: Option<String>,
-    waiting: Option<SyncWait>,
+    extra_headers: Vec<(String, String)>,
+    waiting: Option<PendingReply>,
     observation: Option<(
         Arc<crate::agent_stream::RunStream>,
         authorization::AuthorizedObservation,
@@ -134,6 +135,7 @@ impl HttpReply {
             body: value.to_string().into_bytes(),
             content_type: "application/json; charset=utf-8".into(),
             cookie: None,
+            extra_headers: vec![],
             observation: None,
             waiting: None,
         }
@@ -151,6 +153,7 @@ impl HttpReply {
                 body: reply.body.into_bytes(),
                 content_type: "application/json; charset=utf-8".into(),
                 cookie: None,
+                extra_headers: vec![],
                 observation: None,
                 waiting: None,
             }
@@ -240,6 +243,35 @@ pub(crate) fn start_with_access(
     {
         let (access, stop) = (access.clone(), stop.clone());
         handles.push(thread::spawn(move || {
+            let cancellation = runtime::run_context::CancellationToken::with_host_stop(stop.clone());
+            let mut backlog = access.users.lock().unwrap().pending_review_owners().unwrap_or_else(|e| {
+                eprintln!("Memory review recovery: {}",e.error_code); Default::default()
+            });
+            while !stop.load(Ordering::Acquire) {
+                crate::multi_user_review::remember_pending(&access, &mut backlog);
+                let now_ms = time::OffsetDateTime::now_utc().unix_timestamp_nanos() / 1_000_000;
+                let recovering = backlog.pop_front().map(|owner| {
+                    let handle = access.users.lock().unwrap().load_for_review(&owner,&now_ms.to_string());
+                    (owner,handle)
+                });
+                crate::multi_user_review::tick(&access, &cancellation, now_ms as u64);
+                if let Some((owner,handle)) = recovering {
+                    match handle {
+                        Ok(handle) => if handle.lock().unwrap().store.review_state().review_jobs.iter().any(|j| j.status != memory::ReviewJobStatus::Completed) { backlog.push_back(owner); },
+                        Err(e) if e.error_code == "USER_RUNTIME_CAPACITY" => backlog.push_back(owner),
+                        Err(e) => eprintln!("Memory review recovery: {}",e.error_code),
+                    }
+                }
+                for _ in 0..10 {
+                    if stop.load(Ordering::Acquire) { break; }
+                    thread::sleep(Duration::from_millis(100));
+                }
+            }
+        }));
+    }
+    {
+        let (access, stop) = (access.clone(), stop.clone());
+        handles.push(thread::spawn(move || {
             let mut last = std::time::Instant::now();
             while !stop.load(Ordering::Acquire) {
                 thread::sleep(Duration::from_millis(100));
@@ -306,6 +338,7 @@ pub(crate) fn start_with_access(
                 }
                 if let Some(wait) = reply.waiting {
                     let access = access.clone();
+                    let stop = stop.clone();
                     let mut handles = waiters.lock().unwrap();
                     let mut pending = Vec::new();
                     for handle in handles.drain(..) {
@@ -317,7 +350,17 @@ pub(crate) fn start_with_access(
                     }
                     *handles = pending;
                     handles.push(thread::spawn(move || {
-                        respond(request, wait_for_turn(&access, &wait));
+                        let reply = match wait {
+                            PendingReply::Turn(wait) => wait_for_turn(&access, &wait),
+                            PendingReply::Translation(task) => match task.execute(
+                                &access,
+                                runtime::run_context::CancellationToken::with_host_stop(stop),
+                            ) {
+                                Ok(value) => HttpReply::json(value),
+                                Err(error) => HttpReply::error(error),
+                            },
+                        };
+                        respond(request, reply);
                     }));
                     continue;
                 }
@@ -337,9 +380,11 @@ pub(crate) fn start_with_access(
 fn respond(request: tiny_http::Request, reply: HttpReply) {
     let mut response = Response::from_data(reply.body).with_status_code(reply.status);
     if reply.content_type == "application/pdf" {
-        // PDF bytes are already buffered. Keep their known Content-Length so the
-        // HTTPS proxy can serve byte ranges and PDF.js can render before EOF.
+        // Both complete and bounded PDF responses have a known Content-Length.
         response = response.with_chunked_threshold(usize::MAX);
+    }
+    for (key, value) in reply.extra_headers {
+        response.add_header(Header::from_bytes(key, value).unwrap());
     }
     for (key, value) in [
                     ("Content-Type", reply.content_type.as_str()), ("Cache-Control", "no-store"),
@@ -389,6 +434,7 @@ pub(crate) fn dispatch(
                     body: body.as_bytes().to_vec(),
                     content_type: content_type.into(),
                     cookie: None,
+                    extra_headers: vec![],
                     observation: None,
                     waiting: None,
                 });
@@ -556,10 +602,27 @@ pub(crate) fn dispatch(
                 if !authorization::book_leaf_allowed(&leaf) {
                     return Err(authorization::missing());
                 }
-                // HEAD is authorized first, then handled explicitly. Range is supported by returning
-                // the complete representation (200); conditional requests never bypass authorization.
+                // Conditional and range requests never bypass material authorization.
                 if !matches!(method, "GET" | "HEAD") {
                     return Err(method_error());
+                }
+                if matches!(leaf.as_str(), "pdf/original" | "original.pdf") {
+                    // No validators are emitted, so an If-Range request gets the full representation.
+                    let range = if method == "GET" && headers.get("If-Range").is_none() {
+                        headers.get("Range")
+                    } else {
+                        None
+                    };
+                    let pdf = library.pdf(context.user_id(), &reference, range)
+                        .map_err(|_| authorization::missing())?;
+                    let mut extra_headers = vec![("Accept-Ranges".into(), "bytes".into())];
+                    if let Some(value) = pdf.content_range {
+                        extra_headers.push(("Content-Range".into(), value));
+                    }
+                    return Ok(HttpReply {
+                        status: pdf.status, body: pdf.body, content_type: "application/pdf".into(),
+                        cookie: None, extra_headers, observation: None, waiting: None,
+                    });
                 }
                 let reply = if leaf.starts_with("assets/")
                     || matches!(leaf.as_str(), "pdf/original" | "original.pdf")
@@ -580,6 +643,7 @@ pub(crate) fn dispatch(
                         body: asset.body,
                         content_type: asset.content_type,
                         cookie: None,
+                        extra_headers: vec![],
                         observation: None,
                         waiting: None,
                     }
@@ -639,6 +703,14 @@ pub(crate) fn dispatch(
                         &now.to_string(),
                         action == "agent/chat",
                     );
+                }
+                if action == "reader/selection.translate" {
+                    let task = crate::selection_translation::PreparedTranslation::prepare(
+                        access, context, &id, &input,
+                    )?;
+                    let mut reply = HttpReply::json(Value::Null);
+                    reply.waiting = Some(PendingReply::Translation(task));
+                    return Ok(reply);
                 }
                 access.workspace(&context, &id)?;
                 let mut user = context.user.lock().unwrap();
@@ -786,6 +858,7 @@ pub(crate) fn dispatch(
                         body: vec![],
                         content_type: "text/event-stream".into(),
                         cookie: None,
+                        extra_headers: vec![],
                         waiting: None,
                         observation: Some((stream, permit, cursor)),
                     });
@@ -897,15 +970,19 @@ fn admit_reply(
         return Ok(reply);
     };
     let mut reply = HttpReply::json(accepted);
-    reply.waiting = Some(SyncWait {
+    reply.waiting = Some(PendingReply::Turn(SyncWait {
         context: authorization::AuthorizedContext {
             principal: context.principal.clone(),
             user: context.user.clone(),
         },
         turn,
         _permit: permit,
-    });
+    }));
     Ok(reply)
+}
+enum PendingReply {
+    Turn(SyncWait),
+    Translation(crate::selection_translation::PreparedTranslation),
 }
 struct SyncWait {
     context: authorization::AuthorizedContext,

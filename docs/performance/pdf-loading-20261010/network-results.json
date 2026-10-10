@@ -1,0 +1,330 @@
+{
+  "method": "Chromium CDP network throttling; cold PDF data; warmed engine; original PDF unchanged",
+  "identicalTextGeometryAndPixels": true,
+  "results": [
+    {
+      "profile": {
+        "name": "10Mbps-180ms",
+        "bytesPerSecond": 1250000,
+        "latency": 180
+      },
+      "repeat": 0,
+      "chunk": 65536,
+      "pages": [
+        {
+          "number": 1,
+          "canvasMs": 13909.400000000373,
+          "readyMs": 13975.799999998882,
+          "pageMs": 13456.599999999627,
+          "bytes": 8508950,
+          "calls": 43
+        },
+        {
+          "number": 4,
+          "canvasMs": 19649.799999998882,
+          "readyMs": 19675.5,
+          "pageMs": 5689.700000001118,
+          "bytes": 11720214,
+          "calls": 58
+        }
+      ]
+    },
+    {
+      "profile": {
+        "name": "10Mbps-180ms",
+        "bytesPerSecond": 1250000,
+        "latency": 180
+      },
+      "repeat": 0,
+      "chunk": 262144,
+      "pages": [
+        {
+          "number": 1,
+          "canvasMs": 11934.300000000745,
+          "readyMs": 12047.699999999255,
+          "pageMs": 11210.699999999255,
+          "bytes": 8902166,
+          "calls": 6
+        },
+        {
+          "number": 4,
+          "canvasMs": 17468.300000000745,
+          "readyMs": 17495.400000000373,
+          "pageMs": 5434.5,
+          "bytes": 12310038,
+          "calls": 12
+        }
+      ]
+    },
+    {
+      "profile": {
+        "name": "10Mbps-180ms",
+        "bytesPerSecond": 1250000,
+        "latency": 180
+      },
+      "repeat": 1,
+      "chunk": 262144,
+      "pages": [
+        {
+          "number": 1,
+          "canvasMs": 10994.5,
+          "readyMs": 11053.099999999627,
+          "pageMs": 10234.200000001118,
+          "bytes": 8902166,
+          "calls": 6
+        },
+        {
+          "number": 4,
+          "canvasMs": 16145.5,
+          "readyMs": 16170.89999999851,
+          "pageMs": 5108.89999999851,
+          "bytes": 12310038,
+          "calls": 12
+        }
+      ]
+    },
+    {
+      "profile": {
+        "name": "10Mbps-180ms",
+        "bytesPerSecond": 1250000,
+        "latency": 180
+      },
+      "repeat": 1,
+      "chunk": 65536,
+      "pages": [
+        {
+          "number": 1,
+          "canvasMs": 13729.10000000149,
+          "readyMs": 13784.200000001118,
+          "pageMs": 13266.900000000373,
+          "bytes": 8508950,
+          "calls": 43
+        },
+        {
+          "number": 4,
+          "canvasMs": 18962.900000000373,
+          "readyMs": 18983.5,
+          "pageMs": 5190.5999999996275,
+          "bytes": 11720214,
+          "calls": 58
+        }
+      ]
+    },
+    {
+      "profile": {
+        "name": "10Mbps-180ms",
+        "bytesPerSecond": 1250000,
+        "latency": 180
+      },
+      "repeat": 2,
+      "chunk": 65536,
+      "pages": [
+        {
+          "number": 1,
+          "canvasMs": 13190.699999999255,
+          "readyMs": 13247.199999999255,
+          "pageMs": 12746.699999999255,
+          "bytes": 8508950,
+          "calls": 43
+        },
+        {
+          "number": 4,
+          "canvasMs": 18599,
+          "readyMs": 18619.900000000373,
+          "pageMs": 5364.5,
+          "bytes": 11720214,
+          "calls": 58
+        }
+      ]
+    },
+    {
+      "profile": {
+        "name": "10Mbps-180ms",
+        "bytesPerSecond": 1250000,
+        "latency": 180
+      },
+      "repeat": 2,
+      "chunk": 262144,
+      "pages": [
+        {
+          "number": 1,
+          "canvasMs": 10580.199999999255,
+          "readyMs": 10635.400000000373,
+          "pageMs": 9803.400000000373,
+          "bytes": 8902166,
+          "calls": 6
+        },
+        {
+          "number": 4,
+          "canvasMs": 15660.5,
+          "readyMs": 15684.5,
+          "pageMs": 5040.9000000003725,
+          "bytes": 12310038,
+          "calls": 12
+        }
+      ]
+    },
+    {
+      "profile": {
+        "name": "40Mbps-40ms",
+        "bytesPerSecond": 5000000,
+        "latency": 40
+      },
+      "repeat": 0,
+      "chunk": 65536,
+      "pages": [
+        {
+          "number": 1,
+          "canvasMs": 5549,
+          "readyMs": 5607.199999999255,
+          "pageMs": 5442.199999999255,
+          "bytes": 8508950,
+          "calls": 43
+        },
+        {
+          "number": 4,
+          "canvasMs": 8731.199999999255,
+          "readyMs": 8778.599999999627,
+          "pageMs": 3162.4000000003725,
+          "bytes": 11720214,
+          "calls": 58
+        }
+      ]
+    },
+    {
+      "profile": {
+        "name": "40Mbps-40ms",
+        "bytesPerSecond": 5000000,
+        "latency": 40
+      },
+      "repeat": 0,
+      "chunk": 262144,
+      "pages": [
+        {
+          "number": 1,
+          "canvasMs": 4699,
+          "readyMs": 4761.89999999851,
+          "pageMs": 4496,
+          "bytes": 8902166,
+          "calls": 6
+        },
+        {
+          "number": 4,
+          "canvasMs": 8040.199999999255,
+          "readyMs": 8064.799999998882,
+          "pageMs": 3293,
+          "bytes": 12310038,
+          "calls": 12
+        }
+      ]
+    },
+    {
+      "profile": {
+        "name": "40Mbps-40ms",
+        "bytesPerSecond": 5000000,
+        "latency": 40
+      },
+      "repeat": 1,
+      "chunk": 262144,
+      "pages": [
+        {
+          "number": 1,
+          "canvasMs": 4670.4000000003725,
+          "readyMs": 4727.5999999996275,
+          "pageMs": 4464.5999999996275,
+          "bytes": 8902166,
+          "calls": 6
+        },
+        {
+          "number": 4,
+          "canvasMs": 7326.0999999996275,
+          "readyMs": 7347.700000001118,
+          "pageMs": 2611.2000000011176,
+          "bytes": 12310038,
+          "calls": 12
+        }
+      ]
+    },
+    {
+      "profile": {
+        "name": "40Mbps-40ms",
+        "bytesPerSecond": 5000000,
+        "latency": 40
+      },
+      "repeat": 1,
+      "chunk": 65536,
+      "pages": [
+        {
+          "number": 1,
+          "canvasMs": 5634.199999999255,
+          "readyMs": 5698.5,
+          "pageMs": 5545.200000001118,
+          "bytes": 8508950,
+          "calls": 43
+        },
+        {
+          "number": 4,
+          "canvasMs": 8508.89999999851,
+          "readyMs": 8530.89999999851,
+          "pageMs": 2822.699999999255,
+          "bytes": 11720214,
+          "calls": 58
+        }
+      ]
+    },
+    {
+      "profile": {
+        "name": "40Mbps-40ms",
+        "bytesPerSecond": 5000000,
+        "latency": 40
+      },
+      "repeat": 2,
+      "chunk": 65536,
+      "pages": [
+        {
+          "number": 1,
+          "canvasMs": 5574.5999999996275,
+          "readyMs": 5633.300000000745,
+          "pageMs": 5484.60000000149,
+          "bytes": 8508950,
+          "calls": 43
+        },
+        {
+          "number": 4,
+          "canvasMs": 8306.699999999255,
+          "readyMs": 8330,
+          "pageMs": 2688.199999999255,
+          "bytes": 11720214,
+          "calls": 58
+        }
+      ]
+    },
+    {
+      "profile": {
+        "name": "40Mbps-40ms",
+        "bytesPerSecond": 5000000,
+        "latency": 40
+      },
+      "repeat": 2,
+      "chunk": 262144,
+      "pages": [
+        {
+          "number": 1,
+          "canvasMs": 4477.199999999255,
+          "readyMs": 4532.699999999255,
+          "pageMs": 4288.4000000003725,
+          "bytes": 8902166,
+          "calls": 6
+        },
+        {
+          "number": 4,
+          "canvasMs": 7227.0999999996275,
+          "readyMs": 7252.699999999255,
+          "pageMs": 2710.300000000745,
+          "bytes": 12310038,
+          "calls": 12
+        }
+      ]
+    }
+  ]
+}

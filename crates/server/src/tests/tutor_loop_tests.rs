@@ -5,6 +5,55 @@ use runtime::presentation::*;
 fn fixture() -> (tempfile::TempDir, AppState) {
     fixture_with_assets(true)
 }
+
+#[test]
+fn tutor_ordinary_chat_records_understanding_without_enabling_teaching() {
+    let (_root, mut state) = fixture_with_assets(false);
+    let private = tempfile::tempdir().unwrap();
+    state.user.store = MemoryStore::open(private.path().join("memory.json")).unwrap();
+    let original = source_move(&state);
+    let run = prepare_agent_chat(&mut state, r#"{"message":"Why total time? I do not understand the denominator."}"#, "now").unwrap_or_else(|r|panic!("{}",r.body));
+    let context = run.tutor.as_ref().expect("ordinary questions must receive understanding context");
+    assert_eq!(context["status"], "observing");
+    let fact = format!("usage:{}:user:{}",context["binding"]["tutor_session_id"].as_str().unwrap(),run.turn_ref.turn_id);
+    let request = json!({"operation":"evidence","nature":"hypothesis","operation_id":"ordinary","target":original["move"]["target"],
+        "fact_refs":[fact],"interpretation":"The denominator connection is unclear.","teaching_implication":"Explain the total elapsed time first."});
+    assert!(teaching::step(&state.private_context(),&run.turn_ref,original.clone(),&[],&[range()]).is_err(), "observation cannot select a teaching move");
+    let adapter = ChatStubAdapter::scripted(vec![call("book.text",json!({"lid":"1.1","end_lid":"1.1"})),call("tutor.step",request),answer("Use total time.")]);
+    let result = agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)), &adapter, run, Default::default());
+    assert_eq!(result.reply.status,200,"{}",result.reply.body);
+    let store = state.user.learning_store().unwrap();
+    assert_eq!(store.evidence("interpretation:ordinary").unwrap().learner_quote,"Why total time? I do not understand the denominator.");
+    assert!(!store.state().unwrap().control.enabled);
+    assert!(store.state().unwrap().sessions.is_empty());
+    drop(store);
+    // The interpretation survives reopening and can be revised after explicit teaching starts.
+    state.user.store = MemoryStore::open(private.path().join("memory.json")).unwrap();
+    json_post(&mut state,"/tutor/mutate",json!({"operation_id":"ordinary-on","expected_revision":0,"action":{"kind":"set_enabled","enabled":true}}));
+    post(&mut state,"/agent/new","{}");
+    let run = prepare_agent_chat(&mut state,r#"{"message":"I understand the denominator now; explain the conditions."}"#,"now").unwrap_or_else(|r|panic!("{}",r.body));
+    let context = run.tutor.as_ref().unwrap();
+    assert_eq!(context["learner_context"]["interpretations"][0]["evidence_ref"],"interpretation:ordinary");
+    let fact = format!("usage:{}:user:{}",context["binding"]["tutor_session_id"].as_str().unwrap(),run.turn_ref.turn_id);
+    let changed = json!({"operation":"evidence","nature":"hypothesis","operation_id":"ordinary-revised","target":original["move"]["target"],
+        "fact_refs":[fact],"supersedes":"interpretation:ordinary","interpretation":"The question is now about validity conditions.","teaching_implication":"Explain positive total time."});
+    let accepted = teaching::step(&state.private_context(),&run.turn_ref,changed,&[],&[range()]).unwrap();
+    assert_eq!(accepted["evidence_ref"],"interpretation:ordinary-revised");
+    assert!(state.user.learning_store().unwrap().evidence_is_superseded("interpretation:ordinary").unwrap());
+}
+
+#[test]
+fn tutor_first_question_becomes_starting_intent_when_enabled() {
+    let (_root, mut state) = fixture_with_assets(false);
+    let private = tempfile::tempdir().unwrap();
+    state.user.store = MemoryStore::open(private.path().join("memory.json")).unwrap();
+    json_post(&mut state,"/tutor/mutate",json!({"operation_id":"enable","expected_revision":0,"action":{"kind":"set_enabled","enabled":true}}));
+    let run = prepare_agent_chat(&mut state, r#"{"message":"Help me understand average speed."}"#, "now").unwrap_or_else(|r|panic!("{}",r.body));
+    let context = run.tutor.unwrap();
+    assert_eq!(context["status"],"active");
+    assert_eq!(context["user_intent"],"Help me understand average speed.");
+    assert_eq!(state.user.learning_store().unwrap().state().unwrap().sessions.len(),1);
+}
 fn fixture_with_assets(published: bool) -> (tempfile::TempDir, AppState) {
     let root = tempfile::tempdir().unwrap();
     let mut state = state_named(&format!(
@@ -998,7 +1047,7 @@ fn tutor_t16_source_only_resident_delivers_and_continues_after_reopen() {
     assert!(!binding.payload["learner_context"]["recent_facts"].as_array().unwrap().is_empty());
     let revision = state.user.learning_store().unwrap().state().unwrap().control.revision;
     json_post(&mut state, "/tutor/mutate", json!({"operation_id":"off","expected_revision":revision,"action":{"kind":"set_enabled","enabled":false}}));
-    assert!(prepare(&mut state).tutor.is_none());
+    assert_eq!(prepare(&mut state).tutor.unwrap()["status"], "observing");
     assert!(teaching::reference_context(&state.private_context(), &rows[0].event_id).is_ok());
 }
 
@@ -1204,7 +1253,7 @@ fn tutor_t18_publications_add_materials_without_rebinding_prior_activities() {
     let session_id = session_before.control.current_tutor_session_id.clone().unwrap();
     json_post(&mut state, "/tutor/mutate", json!({"operation_id":"t18-pause","expected_revision":session_before.control.revision,"action":{"kind":"pause","session_id":session_id}}));
     let paused = prepare(&mut state);
-    assert!(paused.tutor.is_none());
+    assert_eq!(paused.tutor.as_ref().unwrap()["status"], "observing");
     finish(&mut state, &paused.turn_ref, &outcome(None));
     let original_book = state.workspace.book.clone();
     let mut other = sample_base(); other.book_id = "other-book".into();
@@ -1403,7 +1452,7 @@ fn tutor_resident_reads_sources_then_adapts_next_turn_and_stops_when_disabled() 
         "Ordinary explanation.",
     )]));
     let prepared = prepare(&mut state);
-    assert!(prepared.tutor.is_none());
+    assert_eq!(prepared.tutor.as_ref().unwrap()["status"], "observing");
     let report = agent_run::execute_prepared(
         &agent_run::BorrowedAppPort(RefCell::new(&mut state)),
         &ChatStubAdapter::scripted(vec![answer("Ordinary explanation.")]),
@@ -1508,7 +1557,7 @@ fn tutor_ordinary_reply_keeps_help_facts_and_unready_never_exposes_formal_moves(
     assert_eq!(prepare(&mut state).tutor.unwrap()["status"], "active");
     std::fs::remove_file(root.path().join("book_structure.json")).unwrap();
     let unready = prepare(&mut state);
-    assert_eq!(unready.tutor.unwrap()["status"], "preparing");
+    assert_eq!(unready.tutor.unwrap()["status"], "observing");
     assert!(teaching::step(&state.private_context(),
         &unready.turn_ref,
         json!({"operation":"material","object_id":"speed"}),

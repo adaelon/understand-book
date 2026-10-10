@@ -688,6 +688,22 @@ impl PublishedLibrary {
         }))
     }
     /// MU4 calls this after authenticating owner, before HEAD/Range/conditional handling.
+    pub(crate) fn pdf(
+        &self,
+        owner: &str,
+        reference: &PublishedBookRef,
+        range: Option<&str>,
+    ) -> Result<crate::pdf_bytes::PdfBytes, ToolError> {
+        self.authorize(owner, reference)?;
+        let (directory, manifest) = self.record(reference)?;
+        if !manifest.files.contains_key("original.pdf") {
+            return Err(unavailable());
+        }
+        let file = directory.join("original.pdf");
+        regular_file(&file)?;
+        crate::pdf_bytes::read(&file, range).map_err(|_| unavailable())
+    }
+
     pub fn asset(
         &self,
         owner: &str,

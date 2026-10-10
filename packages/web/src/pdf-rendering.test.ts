@@ -7,6 +7,18 @@ import {
 } from "./pdf-rendering";
 
 describe("PDF render residency", () => {
+  it('renders visible pages and one neighbour while retaining the five-page cache budget', () => {
+    const candidates = Array.from({ length: 12 }, (_, pageIndex) => ({
+      pageIndex, cssWidth: 600, cssHeight: 800, distance: Math.abs(pageIndex - 5),
+      visible: pageIndex === 5 || pageIndex === 6,
+    }));
+    const forward = planPdfRenderResidency(candidates, 1, { direction: 1 });
+    expect(forward.pages).toHaveLength(5);
+    expect(forward.visiblePages.map(page => page.pageIndex)).toEqual([5, 6]);
+    expect(forward.prefetchPage?.pageIndex).toBe(7);
+    const backward = planPdfRenderResidency(candidates, 1, { direction: -1 });
+    expect(backward.prefetchPage?.pageIndex).toBe(4);
+  });
   it("keeps only the five nearest pages and caps their combined backing pixels", () => {
     const plan = planPdfRenderResidency(
       Array.from({ length: 30 }, (_, pageIndex) => ({

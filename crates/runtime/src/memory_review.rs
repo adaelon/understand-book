@@ -153,8 +153,13 @@ struct ProviderReviewExecutor {
 
 impl ReviewExecutor for ProviderReviewExecutor {
     fn execute(&mut self, input: &ReviewInput) -> Result<ReviewExecutionOutput, AdapterError> {
+        execute_review(self.adapter.as_ref(), input)
+    }
+}
+
+pub fn execute_review(adapter: &dyn ModelAdapter, input: &ReviewInput) -> Result<ReviewExecutionOutput, AdapterError> {
         validate_input(input)?;
-        let value = self.adapter.complete_structured(CompletionRequest {
+        let value = adapter.complete_structured(CompletionRequest {
             output_token_limit: None,
             reasoning_effort: None,
             system: REVIEW_EXTRACTOR_SYSTEM.into(),
@@ -166,7 +171,6 @@ impl ReviewExecutor for ProviderReviewExecutor {
             )?,
         })?;
         parse_review_output(value, input)
-    }
 }
 
 #[derive(Debug, Deserialize)]

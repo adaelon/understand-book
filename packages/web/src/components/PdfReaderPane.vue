@@ -105,6 +105,7 @@ const canvasEls = new Map<number, HTMLCanvasElement>();
 const textLayerEls = new Map<number, HTMLElement>();
 const textLayerTasks = new Map<number, PdfTextLayer>();
 const pageRenderTasks = new Map<number, PdfRenderTask>();
+const pendingPageRenders = new Map<number, Promise<void>>();
 const renderStates = ref<Record<number, PageRenderState>>({});
 const annotationSurface = ref<AnnotationSurface | null>(null);
 const noteMarkersVisible = ref(true);
@@ -112,13 +113,13 @@ const zoom = ref(props.initialReadingAnchor?.sourceKey === `${props.sourceMap?.b
 let initialReadingAnchor = props.initialReadingAnchor ?? null;
 const notePlacementCandidate = ref<{ entry: PdfSourceMapEntry; region: PdfRegion } | null>(null);
 const notePlacementFeedback = ref<string | null>(null);
-const geometryReady = ref(false);
 let notePlacementFeedbackTimer: number | null = null;
 let loadingTask: ReturnType<typeof pdfjsLib.getDocument> | null = null;
 let pdfRequests: AbortController | null = null;
 let observer: IntersectionObserver | null = null;
 let resizeObserver: ResizeObserver | null = null;
 let renderToken = 0;
+let renderPlanRequest = 0;
 let documentRequest = 0;
 let renderFrame: number | null = null;
 let viewportFrame: number | null = null;
@@ -127,6 +128,8 @@ let selectionRequestSequence = 0;
 let containerWidth = 0;
 let containerHeight = 0;
 let containerDpr = 0;
+let renderScrollTop = 0;
+let renderDirection: 1 | -1 = 1;
 const renderIdentities = new Map<number, string>();
 
 const activeNoteMarker = computed(() => {
@@ -298,14 +301,12 @@ async function reconcileContainerGeometry() {
   containerDpr = dpr;
   if (width <= 0 || height <= 0) {
     renderToken += 1;
-    geometryReady.value = false;
     await resetRenderedPages();
     return;
   }
   if (widthChanged || dprChanged) {
     renderToken += 1;
     const token = renderToken;
-    geometryReady.value = false;
     emit("selection-cancel");
     await resetRenderedPages();
     if (token !== renderToken) return;
@@ -612,6 +613,9 @@ function setRenderState(pageIndex: number, patch: Partial<PageRenderState>) {
 }
 
 async function resetRenderedPages() {
+  // Disable each page immediately, before waiting for cancelled canvas work.
+  renderStates.value = {};
+  pendingPageRenders.clear();
   const pageTasks = [...pageRenderTasks.values()];
   pageRenderTasks.clear();
   for (const task of pageTasks) task.cancel();
@@ -632,6 +636,7 @@ async function resetRenderedPages() {
 }
 
 function releaseRenderedPage(pageIndex: number) {
+  pendingPageRenders.delete(pageIndex);
   pageRenderTasks.get(pageIndex)?.cancel();
   pageRenderTasks.delete(pageIndex);
   textLayerTasks.get(pageIndex)?.cancel();
@@ -653,12 +658,13 @@ function releaseRenderedPage(pageIndex: number) {
 
 async function loadPdfDocument() {
   renderToken += 1;
+  renderScrollTop = 0;
+  renderDirection = 1;
   // Container changes invalidate geometry, not an in-flight source document.
   const request = ++documentRequest;
   pdfRequests?.abort();
   const requests = new AbortController();
   pdfRequests = requests;
-  geometryReady.value = false;
   pdfDoc.value = null;
   pdfError.value = null;
   pdfLoading.value = true;
@@ -683,6 +689,7 @@ async function loadPdfDocument() {
       return;
     }
     pdfDoc.value = doc;
+    pdfLoading.value = false;
     await nextTick();
     const initial = initialReadingAnchor;
     initialReadingAnchor = null;
@@ -717,6 +724,8 @@ function currentRenderPlan() {
   }
   const rootRect = root.getBoundingClientRect();
   const center = rootRect.top + rootRect.height / 2;
+  if (root.scrollTop !== renderScrollTop) renderDirection = root.scrollTop > renderScrollTop ? 1 : -1;
+  renderScrollTop = root.scrollTop;
   return planPdfRenderResidency(pages.flatMap((page) => {
     const element = pageEls.get(page.pageIndex);
     if (!element || element.clientWidth <= 0 || element.clientHeight <= 0) return [];
@@ -729,8 +738,9 @@ function currentRenderPlan() {
       cssWidth: element.clientWidth,
       cssHeight: element.clientHeight,
       distance,
+      visible: rect.height > 0 && rect.bottom > rootRect.top && rect.top < rootRect.bottom,
     }];
-  }), window.devicePixelRatio || 1);
+  }), window.devicePixelRatio || 1, { direction: renderDirection });
 }
 
 async function renderPage(
@@ -739,7 +749,7 @@ async function renderPage(
   planPage: PdfRenderPlanPage,
   rasterScale: number,
 ) {
-  if (!pdfDoc.value) return;
+  if (!pdfDoc.value || token !== renderToken) return;
   const identity = pdfRenderIdentity({
     source: renderSourceIdentity(),
     pageIndex: pageInfo.pageIndex,
@@ -809,7 +819,6 @@ async function setZoom(next: number) {
   zoom.value = clamped;
   renderToken += 1;
   const token = renderToken;
-  geometryReady.value = false;
   await resetRenderedPages();
   if (token !== renderToken) return;
   await nextTick();
@@ -874,22 +883,33 @@ function observePages() {
 
 async function reconcileRenderedPages() {
   const token = renderToken;
+  const request = ++renderPlanRequest;
   const plan = currentRenderPlan();
   const keep = new Set(plan.pages.map((page) => page.pageIndex));
+  const visible = new Set(plan.visiblePages.map(page => page.pageIndex));
+  const visibleNeedsRendering = plan.visiblePages.some(page => !renderStates.value[page.pageIndex]?.rendered);
   for (const pageIndex of [...renderIdentities.keys()]) {
-    if (!keep.has(pageIndex)) releaseRenderedPage(pageIndex);
+    if (!keep.has(pageIndex)
+      || (visibleNeedsRendering && !visible.has(pageIndex) && renderStates.value[pageIndex]?.rendering)) {
+      releaseRenderedPage(pageIndex);
+    }
   }
   if (!plan.pages.length) {
-    geometryReady.value = false;
     return;
   }
   const pages = new Map((props.sourceMap?.pages ?? []).map((page) => [page.pageIndex, page]));
-  for (const planned of plan.pages) {
+  const work = [...plan.visiblePages, ...(plan.prefetchPage ? [plan.prefetchPage] : [])];
+  for (const planned of work) {
+    if (request !== renderPlanRequest || token !== renderToken) return;
     const page = pages.get(planned.pageIndex);
-    if (page) await renderPage(page, token, planned, plan.rasterScale);
-  }
-  if (token === renderToken) {
-    geometryReady.value = plan.pages.every((page) => renderStates.value[page.pageIndex]?.rendered);
+    if (!page) continue;
+    // Repeated scroll/observer callbacks must await visible work before starting a neighbour.
+    const pending = pendingPageRenders.get(page.pageIndex)
+      ?? renderPage(page, token, planned, plan.rasterScale);
+    pendingPageRenders.set(page.pageIndex, pending);
+    try { await pending; } finally {
+      if (pendingPageRenders.get(page.pageIndex) === pending) pendingPageRenders.delete(page.pageIndex);
+    }
   }
 }
 
@@ -1198,8 +1218,7 @@ onBeforeUnmount(() => {
     <div
       ref="pageList"
       class="pdf-page-list"
-      :class="{ 'is-zoomed': zoom > 1, 'geometry-pending': !geometryReady }"
-      :aria-busy="!geometryReady"
+      :class="{ 'is-zoomed': zoom > 1 }"
       @scroll.passive="onViewportScroll"
       @wheel.passive="onViewportIntent"
       @pointerdown="onViewportIntent"
@@ -1210,7 +1229,8 @@ onBeforeUnmount(() => {
         :key="page.pageIndex"
         :ref="(el) => setPageRef(page.pageIndex, el)"
         class="pdf-page-shell"
-        :class="{ active: page.pageIndex === activePageIndex }"
+        :class="{ active: page.pageIndex === activePageIndex, 'geometry-pending': !renderStates[page.pageIndex]?.rendered }"
+        :aria-busy="!renderStates[page.pageIndex]?.rendered"
         :data-page-index="page.pageIndex"
         :style="pageShellStyle(page)"
         @pointermove="onPagePointerMove(page.pageIndex, $event)"
@@ -1442,8 +1462,8 @@ onBeforeUnmount(() => {
 .pdf-page-list.is-zoomed {
   justify-items: start;
 }
-.pdf-page-list.geometry-pending .pdf-text-layer,
-.pdf-page-list.geometry-pending .pdf-user-annotation-layer {
+.pdf-page-shell.geometry-pending .pdf-text-layer,
+.pdf-page-shell.geometry-pending .pdf-user-annotation-layer {
   pointer-events: none;
   user-select: none;
 }

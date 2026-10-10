@@ -833,6 +833,8 @@ Agent 可理解、可观察、可行动并获得真实反馈的学习现场，�
 ## 理解假设
 根据相关使用事实，对用户当前如何理解、可能卡在哪里及何种教学支持值得采用形成的可修正解释，保留依据、适用范围和修订关系。它由 LearningMemory 持有并通过用户理解空间参与教学，保持暂定判断身份，不等同已确认画像事实、题目评分或对象级能力证明。状态:NEW（[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)，T17 已实现）。
 
+普通阅读对话同样可以形成和修订理解假设，不以开启主动教学或创建教学会话为前提；主动教学控制仍决定系统是否选择连续教学动作。状态：BOUNDARY_CHANGE，2026-10-10，见 [ADR-0161](docs/adr/0161-conversation-first-learning-and-multi-user-memory.md)。
+
 ## LearnerContext
 `TutorLoop` 在读者回合开始时冻结的有界私人上下文，组合相关稳定画像、有效 TutorSession 的意图与约束、当前焦点与教法、实际使用事实、已提供的帮助及当前适用的理解假设，并按可用性补充进度、正式对象证据与新鲜度状态。它供同一回合分析新增事实并选择教学动作，不写入对话历史或形成独立持久真相；未知保持未知，阅读位置、内容展示、画像偏好和交互意图不构成理解证明。状态:BOUNDARY_CHANGE（[ADR-0143](docs/adr/0143-teaching-trace-assessment-and-learning-evidence.md)、[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)，T16 来源教学与 T17 持续观察、理解修订和反馈适配已实现）。
 
@@ -850,6 +852,8 @@ ResidentGoal 内由 Agent 维护、随实际观察修订的工作安排，用工
 
 ## 会话学习意图
 用户希望在 TutorSession 中完成的事及其明确约束，允许最初表达模糊，与 Agent 当前采用的暂定学习目标及参考材料范围分别表达。改变最终目标、要求达到的能力深度或新增持续学习任务，由用户表达或接受方向变更；局部教学焦点与参考材料调整不覆写它，也不等同于支配本回合交互方式的 `ResolvedInteractionIntent`。状态:NEW(见 `grill.md` Q93)。
+
+主动教学已开启而尚无当前会话时，用户的首个问题即可作为初始学习意图；目标在对话中可见、可调整，无须先进入会话管理。暂停和结束仍由用户明确恢复。状态：BOUNDARY_CHANGE，2026-10-10，见 [ADR-0161](docs/adr/0161-conversation-first-learning-and-multi-user-memory.md)。
 
 ## 暂定学习目标
 Agent 基于当前材料、相关历史与会话学习意图采用的当前学习焦点，可随实际回应细化，用于组织起步及接下来的教学动作。它保留 Agent 解释的身份，不覆写用户已表达的会话学习意图，不是已确认的长期目标或能力证据，完整画像与细化目标不成为开始学习的前置条件。状态:NEW(见 `grill.md` Q92/Q93)。

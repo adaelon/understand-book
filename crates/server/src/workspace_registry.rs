@@ -407,6 +407,28 @@ impl WorkspaceRegistry {
         Ok(result)
     }
 
+    pub(crate) fn prepare_translation(
+        &mut self,
+        context: &AuthorizedContext,
+        user: &UserRuntime,
+        library: &Mutex<PublishedLibrary>,
+        id: &str,
+        input: &Value,
+    ) -> Result<(crate::SelectionTranslationWork, PublishedBookRef), ToolError> {
+        let scene = self.scene(context.user_id(), id, user, library)?;
+        let scene = scene.lock().unwrap();
+        let stamp = serde_json::from_value(input.clone()).map_err(|_| invalid())?;
+        scene.check_attachment(&stamp)?;
+        let mut command = input.clone();
+        for key in ["attachment_id", "generation", "expected_revision"] {
+            command.as_object_mut().ok_or_else(invalid)?.remove(key);
+        }
+        let request = serde_json::from_value(command).map_err(|_| invalid())?;
+        crate::selection_manifest_value(&scene.workspace.book_dir)?;
+        let work = crate::prepare_selection_translation(&scene.workspace.book, request)?;
+        Ok((work, scene.workspace.publication.as_ref().ok_or_else(missing)?.reference.clone()))
+    }
+
     pub(crate) fn request(
         &mut self,
         context: &AuthorizedContext,

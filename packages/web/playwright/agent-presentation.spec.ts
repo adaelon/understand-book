@@ -132,7 +132,7 @@ test('compact mobile toolbar remains reachable when switching to discussion', as
   await page.screenshot({ path: info.outputPath('mobile-workspace.png') });
 });
 
-test("validation and save notices keep the same frame position and load", async ({ page }) => {
+test("delayed save notices keep the same frame position and load", async ({ page }) => {
   await page.setViewportSize({ width: 640, height: 680 });
   await page.goto("/agent-presentation-visual.html");
   const frame = page.frameLocator(".agent-presentation iframe");
@@ -144,9 +144,9 @@ test("validation and save notices keep the same frame position and load", async 
   let entered!: () => void;
   const gate = new Promise<void>(resolve => { release = resolve; });
   const pending = new Promise<void>(resolve => { entered = resolve; });
-  await page.route("**/api/agent/presentation.observe", async route => {
+  await page.route("**/api/agent/presentation.state.save", async route => {
     entered(); await gate;
-    const response = await route.fetch({ url: "http://127.0.0.1:4175/agent/presentation.observe" });
+    const response = await route.fetch({ url: "http://127.0.0.1:4175/agent/presentation.state.save" });
     await route.fulfill({ response });
   }, { times: 1 });
   await frame.locator("#complete").click();
@@ -165,15 +165,28 @@ test("validation and save notices keep the same frame position and load", async 
   expect(await iframe.getAttribute("data-load-count")).toBe(loads);
 });
 
-for (const [button, notice] of [["invalid", "文字或来源无法显示"], ["locator", "文字或来源无法显示"], ["crash", "运行出错"]]) {
-  test(`dynamic ${button} is not published`, async ({ page }) => {
+for (const button of ["invalid", "locator"]) {
+  test(`dynamic ${button} fails saving while the presentation stays usable`, async ({ page }) => {
     await page.goto("/agent-presentation-visual.html");
     const frame = page.frameLocator(".agent-presentation iframe");
     await expect(frame.locator("#result")).toBeVisible();
     await frame.locator("summary").click();
     await frame.locator(`#${button}`).click();
-    await expect(page.getByRole("alert")).toContainText(notice);
-    await expect(page.locator(".agent-presentation iframe")).toHaveCount(0);
-    await expect(page.locator(".agent-presentation")).not.toContainText("内部位置 1.1");
+    await expect(page.locator('.presentation-save-notice')).toContainText('现场保存失败');
+    await expect(frame.locator('#result')).toBeVisible();
+    if (button === 'invalid') await expect(frame.locator('[data-source-ref="unknown"]')).toBeDisabled();
+    await frame.locator('#complete').click();
+    await expect(frame.locator('#result')).toHaveText('1');
+    await expect(frame.locator('#result')).toHaveCSS('opacity', '1');
   });
 }
+
+test('script failure still reports an error', async ({ page }) => {
+  await page.goto('/agent-presentation-visual.html');
+  const frame = page.frameLocator('iframe');
+  await expect(frame.locator('#result')).toBeVisible();
+  await frame.locator('summary').click();
+  await frame.locator('#crash').click();
+  await expect(page.getByRole('alert')).toContainText('运行出错');
+  await expect(page.locator('.agent-presentation iframe')).toHaveCount(0);
+});

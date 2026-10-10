@@ -55,7 +55,9 @@ async function retry() {
   try { await api.tutorFeedbackDisplayed(failedFeedback); failedFeedback = null; error.value = ''; }
   catch (e) { error.value = `反馈展示记录未保存：${String(e)}`; }
 }
+function onUnderstandingChanged() { if (!pending && !busy.value) void load(); }
 onMounted(() => {
+  window.addEventListener('tutor-state-changed', onUnderstandingChanged);
   observer = new IntersectionObserver(entries => {
     const entry = entries.find(e => e.isIntersecting);
     const action = (entry?.target as HTMLElement | undefined)?.dataset.feedbackRef;
@@ -63,7 +65,7 @@ onMounted(() => {
   });
   void load();
 });
-onBeforeUnmount(() => observer?.disconnect());
+onBeforeUnmount(() => { observer?.disconnect(); window.removeEventListener('tutor-state-changed', onUnderstandingChanged); });
 </script>
 <template>
   <section aria-label="我的理解" class="understanding-space">

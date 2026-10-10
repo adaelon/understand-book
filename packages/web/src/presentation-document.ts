@@ -56,6 +56,5 @@ export function presentationDocument(view: PresentationView, channel = crypto.ra
   const data = JSON.stringify({ channel, sources: view.sources, initialState: view.initial_state, restoredState: view.restored_state }).replaceAll("<", "\\u003c");
   script.textContent = `${sourceChipScript.replace('export function', 'function')}\n(${bridge.trim()})(${data});\n${mediaLifecycle.replaceAll("\"agent-presentation\"", JSON.stringify(channel))}`;
   doc.head.prepend(policy, style, script);
-  doc.documentElement.setAttribute("data-presentation-pending", "");
   return "<!doctype html>" + doc.documentElement.outerHTML;
 }

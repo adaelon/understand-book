@@ -1,6 +1,7 @@
 import { PDFDataRangeTransport, type getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
-const CHUNK_SIZE = 64 * 1024;
+// 256 KiB reduces dependency round trips without the overfetch of MiB-sized chunks.
+const CHUNK_SIZE = 256 * 1024;
 
 // Start with a bounded request: PDF.js's URL loader otherwise starts a full GET
 // before discovering range support, filling a slow connection even when aborted.
