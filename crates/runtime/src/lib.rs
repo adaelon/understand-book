@@ -27,6 +27,7 @@ pub mod memory_intent;
 pub mod memory_policy;
 pub mod memory_review;
 pub mod model_runtime;
+pub mod model_spend;
 pub mod observation;
 pub mod orchestrator;
 pub mod presentation;
@@ -41,6 +42,7 @@ pub mod run_events;
 pub mod semantic_release;
 pub mod tool_exposure;
 pub mod tool_registry;
+mod tool_schema;
 pub mod tool_result;
 
 pub use auto_compaction::{
@@ -63,7 +65,7 @@ pub use model_runtime::{
 pub type EvidenceSet = BTreeMap<String, String>;
 
 /// LLM 合一轮的归一化产出(ModelAdapter 出)`[ADR-0016]`。lid 待确定性校验。
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ParsedResponse {
     pub sufficient: bool,
     pub answer: Option<String>,
@@ -71,20 +73,20 @@ pub struct ParsedResponse {
     pub model_supplement: Vec<Supplement>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RawCitation {
     pub lid: String,
     pub text: String,
     pub role: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Supplement {
     pub text: String,
 }
 
 /// 喂给后端的请求(provider 无关)。
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct CompletionRequest {
     pub output_token_limit: Option<u32>,
     pub reasoning_effort: Option<String>,
@@ -95,6 +97,20 @@ pub struct CompletionRequest {
 #[derive(Debug)]
 pub struct AdapterError {
     pub message: String,
+    pub spend_stop: Option<model_spend::SpendStop>,
+}
+
+impl From<model_spend::SpendStop> for AdapterError {
+    fn from(reason: model_spend::SpendStop) -> Self {
+        Self { message: reason.code().into(), spend_stop: Some(reason) }
+    }
+}
+impl AdapterError {
+    pub fn into_tool_error(self) -> ToolError {
+        self.spend_stop.map(model_spend::SpendStop::tool_error).unwrap_or(ToolError {
+            error_code: "PROVIDER_ERROR".into(), category: "provider".into(), message: self.message,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -109,6 +125,7 @@ impl ProviderMode {
             "" | "native" | "openai" | "openai-native" => Ok(ProviderMode::Native),
             "react" | "react-adapter" | "openai-react" => Ok(ProviderMode::ReAct),
             other => Err(AdapterError {
+                spend_stop: None,
                 message: format!("未知 UNDERSTAND_BOOK_PROVIDER={other};支持 native / react"),
             }),
         }
@@ -143,19 +160,23 @@ impl ProviderConfig {
         let model = model.into().trim().to_string();
         if api_key.is_empty() {
             return Err(AdapterError {
+                spend_stop: None,
                 message: "Provider API Key 不能为空".into(),
             });
         }
         if model.is_empty() {
             return Err(AdapterError {
+                spend_stop: None,
                 message: "Provider Model 不能为空".into(),
             });
         }
         let parsed = url::Url::parse(&base_url).map_err(|error| AdapterError {
+            spend_stop: None,
             message: format!("Provider Base URL 非法:{error}"),
         })?;
         if !matches!(parsed.scheme(), "http" | "https") || parsed.host_str().is_none() {
             return Err(AdapterError {
+                spend_stop: None,
                 message: "Provider Base URL 必须是带主机名的 http/https URL".into(),
             });
         }
@@ -173,6 +194,7 @@ impl ProviderConfig {
     {
         let required = |k: &str, get: &mut F| {
             get(k).ok_or_else(|| AdapterError {
+                spend_stop: None,
                 message: format!("缺少环境变量 {k}(填 .env 或 export)"),
             })
         };
@@ -288,7 +310,7 @@ pub struct ToolCall {
 }
 
 /// 暴露给模型的工具规格(name + 描述 + JSON-Schema 参数)`[ADR-0026]`。
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ToolSpec {
     pub name: String,
     pub description: String,
@@ -296,7 +318,7 @@ pub struct ToolSpec {
 }
 
 /// 外层 chat 回合的归一化产出 `[ADR-0026]`:文本(终答)或工具调用,二选一/可并存;usage 供停机口径。
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct AssistantTurn {
     pub provider_continuation: Option<ProviderContinuation>,
     pub text: Option<String>,
@@ -307,6 +329,8 @@ pub struct AssistantTurn {
 /// loop 与后端之间的薄层 `[ADR-0016/0026]`;loop 控制 provider 无关,只经此触模型。
 /// `complete` = 内层 query 合一轮(JSON 契约);`chat` = 外层多轮 tool-calling。
 pub trait ModelAdapter {
+    fn set_spend_context(&self, _scope: model_spend::ChargeScope, _port: Option<std::sync::Arc<dyn model_spend::ModelSpendPort>>) {}
+    fn set_model_purpose(&self, _purpose: &str) {}
     fn stream_text_is_structured(&self) -> bool {
         false
     }
@@ -349,6 +373,7 @@ pub trait ModelAdapter {
     ) -> Result<serde_json::Value, AdapterError> {
         let response = self.complete(req)?;
         let answer = response.answer.ok_or_else(|| AdapterError {
+            spend_stop: None,
             message: "结构化模型响应缺 answer".into(),
         })?;
         structured_json_from_content(&answer)
@@ -904,11 +929,7 @@ fn resolver_judgment(
 ) -> Result<ResolverJudgment, ToolError> {
     let value = adapter
         .complete_structured(resolver_prompt(request, groups))
-        .map_err(|error| ToolError {
-            error_code: "PROVIDER_ERROR".into(),
-            category: "provider".into(),
-            message: error.message,
-        })?;
+        .map_err(AdapterError::into_tool_error)?;
     serde_json::from_value(value).map_err(|error| ToolError {
         error_code: "QUERY_RESOLVER_PROTOCOL_ERROR".into(),
         category: "provider".into(),
@@ -1492,11 +1513,7 @@ fn assess_query_support(
 ) -> Result<ModelSupportResponse, ToolError> {
     let value = adapter
         .complete_structured(support_prompt(request, resolved, evidence))
-        .map_err(|error| ToolError {
-            error_code: "PROVIDER_ERROR".into(),
-            category: "provider".into(),
-            message: error.message,
-        })?;
+        .map_err(AdapterError::into_tool_error)?;
     serde_json::from_value(value).map_err(|error| ToolError {
         error_code: "QUERY_SUPPORT_PROTOCOL_ERROR".into(),
         category: "provider".into(),
@@ -2187,11 +2204,7 @@ pub fn synthesize(
                 &discourse_hints(book, &ev),
                 &[],
             ))
-            .map_err(|e| ToolError {
-                error_code: "PROVIDER_ERROR".into(),
-                category: "provider".into(),
-                message: e.message,
-            })?;
+            .map_err(AdapterError::into_tool_error)?;
         let valid = valid_citations(&resp, &ev);
         return Ok(synth_response(
             resp,
@@ -2237,11 +2250,7 @@ pub fn synthesize(
                 &discourse_hints(book, batch),
                 &[],
             ))
-            .map_err(|e| ToolError {
-                error_code: "PROVIDER_ERROR".into(),
-                category: "provider".into(),
-                message: e.message,
-            })?;
+            .map_err(AdapterError::into_tool_error)?;
         for c in valid_citations(&resp, batch) {
             if !cited_lids.iter().any(|l: &String| l == &c.lid) {
                 cited_lids.push(c.lid);
@@ -2273,11 +2282,7 @@ pub fn synthesize(
             &discourse_hints(book, &merge_ev),
             &partials,
         ))
-        .map_err(|e| ToolError {
-            error_code: "PROVIDER_ERROR".into(),
-            category: "provider".into(),
-            message: e.message,
-        })?;
+        .map_err(AdapterError::into_tool_error)?;
     let valid = valid_citations(&resp, &merge_ev);
     Ok(synth_response(
         resp,
@@ -2535,11 +2540,7 @@ pub fn book_guide(
             &ev,
             &transcript_tail,
         ))
-        .map_err(|e| ToolError {
-            error_code: "PROVIDER_ERROR".into(),
-            category: "provider".into(),
-            message: e.message,
-        })?;
+        .map_err(AdapterError::into_tool_error)?;
     let valid = valid_citations(&resp, &ev);
 
     Ok(BookGuideResponse {
@@ -2592,7 +2593,9 @@ pub struct NativeAdapter {
     runtime_profile: ModelRuntimeProfile,
     request_timeout: Option<std::time::Duration>,
     cancellation: std::cell::RefCell<Option<crate::run_context::CancellationToken>>,
-
+    spend: std::cell::RefCell<Option<std::sync::Arc<dyn model_spend::ModelSpendPort>>>,
+    spend_scope: std::cell::RefCell<Option<model_spend::ChargeScope>>,
+    spend_purpose: std::cell::RefCell<String>,
 }
 
 impl NativeAdapter {
@@ -2629,6 +2632,9 @@ impl NativeAdapter {
             runtime_profile: resolved_profile,
             request_timeout,
             cancellation: Default::default(),
+            spend: Default::default(),
+            spend_scope: Default::default(),
+            spend_purpose: Default::default(),
         }
     }
 
@@ -2643,42 +2649,74 @@ impl NativeAdapter {
         &self,
         mut body: serde_json::Value,
         observer: &mut dyn provider_stream::ModelObserver,
+        entry: &str,
     ) -> Result<serde_json::Value, AdapterError> {
         body["stream"] = serde_json::json!(true);
         body["stream_options"] = serde_json::json!({"include_usage": true});
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
         let body = std::sync::Arc::new(body);
         observer.observe(provider_stream::ModelDelta::Request(body.clone()));
+        let port = self.spend.borrow().clone();
+        let scope = self.spend_scope.borrow().clone();
+        if port.is_some() && scope.as_ref().is_none_or(|s| !s.valid()) {
+            return Err(model_spend::SpendStop::MissingScope.into());
+        }
+        let logical_call_id = uuid::Uuid::now_v7().to_string();
         let mut retried = false;
-        let resp = loop {
+        loop {
             if let Some(cancellation) = self.cancellation.borrow().as_ref() {
                 cancellation.check().map_err(|error| AdapterError {
+                    spend_stop: None,
                     message: error.message,
                 })?;
             }
+            let identity = model_spend::SendIdentity {
+                call_id: uuid::Uuid::now_v7().to_string(), logical_call_id: logical_call_id.clone(),
+                attempt: if retried { 2 } else { 1 }, scope: scope.clone(),
+                purpose: if self.spend_purpose.borrow().is_empty() { entry.into() } else { self.spend_purpose.borrow().clone() }, model: self.model.clone(), provider: self.base_url.clone(),
+            };
+            let stop = AdapterError::from;
+            if let Some(port) = &port { port.before_send(&identity, &body).map_err(stop)?; }
+            let report = |outcome: model_spend::SendOutcome| -> Result<(), AdapterError> {
+                if let Some(port) = &port { port.after_send(&identity, &outcome).map_err(stop)?; }
+                Ok(())
+            };
             match self.send_chat_completions_once(&url, &body) {
-                Ok(resp) => break resp,
+                Ok(resp) => {
+                    let mut usage = None;
+                    let result = provider_stream::read_response(resp, &self.cancellation.borrow().clone().unwrap_or_default(), &mut |delta: provider_stream::ModelDelta| {
+                        if let provider_stream::ModelDelta::Usage(ref snapshot) = delta { usage = Some(snapshot.clone()); }
+                        observer.observe(delta);
+                    });
+                    report(model_spend::SendOutcome { evidence: model_spend::SendEvidence::Response, usage, succeeded: result.is_ok() })?;
+                    return result;
+                }
                 Err(e) if !retried && is_retriable_chat_completion_error(&e) => {
+                    report(model_spend::SendOutcome { evidence: send_error_evidence(&e), usage: None, succeeded: false })?;
                     retried = true;
                     std::thread::sleep(chat_completion_retry_delay());
                 }
                 Err(e) => {
+                    // Error responses can carry billable usage; preserve it before formatting.
+                    if let ureq::Error::Status(status, response) = e {
+                        let text = response.into_string().unwrap_or_else(|e|e.to_string());
+                        let usage = serde_json::from_str(&text).ok().and_then(|v|provider_stream::model_usage(&v));
+                        report(model_spend::SendOutcome { evidence: model_spend::SendEvidence::Response, usage, succeeded: false })?;
+                        return Err(AdapterError { spend_stop: None, message: format!("HTTP 请求失败: status code {status}; {}", truncate_provider_error_body(&text)) });
+                    }
+                    report(model_spend::SendOutcome { evidence: send_error_evidence(&e), usage: None, succeeded: false })?;
                     let prefix = if retried {
                         "HTTP 请求失败(重试一次后仍失败)"
                     } else {
                         "HTTP 请求失败"
                     };
                     return Err(AdapterError {
+                        spend_stop: None,
                         message: adapter_http_error_message(prefix, e),
                     });
                 }
             }
-        };
-        provider_stream::read_response(
-            resp,
-            &self.cancellation.borrow().clone().unwrap_or_default(),
-            observer,
-        )
+        }
     }
 
     fn send_chat_completions_once(
@@ -2698,6 +2736,13 @@ impl NativeAdapter {
 }
 
 const PROVIDER_ERROR_BODY_LIMIT: usize = 4096;
+
+fn send_error_evidence(error: &ureq::Error) -> model_spend::SendEvidence {
+    match error {
+        ureq::Error::Transport(t) if matches!(t.kind(),ureq::ErrorKind::Dns | ureq::ErrorKind::ConnectionFailed | ureq::ErrorKind::ProxyConnect) => model_spend::SendEvidence::NotSent,
+        _ => model_spend::SendEvidence::OutcomeUnknown,
+    }
+}
 
 fn adapter_http_error_message(prefix: &str, err: ureq::Error) -> String {
     match err {
@@ -2902,6 +2947,7 @@ fn response_message_content(v: &serde_json::Value) -> Result<&str, AdapterError>
     v["choices"][0]["message"]["content"]
         .as_str()
         .ok_or_else(|| AdapterError {
+            spend_stop: None,
             message: format!("响应缺 choices[0].message.content: {v}"),
         })
 }
@@ -2909,9 +2955,11 @@ fn response_message_content(v: &serde_json::Value) -> Result<&str, AdapterError>
 fn parsed_response_from_content(content: &str) -> Result<ParsedResponse, AdapterError> {
     // S9:抽不到平衡 JSON 对象(空响应 / 纯散文)→ 显式报错,不静默成功(守禁宽松降级 `[ADR-0015]`)。
     let json = extract_json_object(content).ok_or_else(|| AdapterError {
+        spend_stop: None,
         message: format!("模型输出抽不到合法 JSON 对象;原文={content}"),
     })?;
     let out: LlmOut = serde_json::from_str(json).map_err(|e| AdapterError {
+        spend_stop: None,
         message: format!("模型输出非合法 JSON: {e};原文={content}"),
     })?;
     Ok(ParsedResponse {
@@ -2936,9 +2984,11 @@ fn parsed_response_from_content(content: &str) -> Result<ParsedResponse, Adapter
 
 fn structured_json_from_content(content: &str) -> Result<serde_json::Value, AdapterError> {
     let json = extract_json_object(content).ok_or_else(|| AdapterError {
+        spend_stop: None,
         message: format!("模型输出抽不到合法 JSON 对象;原文={content}"),
     })?;
     serde_json::from_str(json).map_err(|e| AdapterError {
+        spend_stop: None,
         message: format!("模型输出非合法 JSON: {e};原文={content}"),
     })
 }
@@ -2967,9 +3017,11 @@ struct ReActCall {
 
 pub fn parse_react_assistant_turn(content: &str) -> Result<AssistantTurn, AdapterError> {
     let json = extract_json_object(content).ok_or_else(|| AdapterError {
+        spend_stop: None,
         message: format!("ReAct 输出抽不到合法 JSON 对象;原文={content}"),
     })?;
     let mut out: ReActOut = serde_json::from_str(json).map_err(|e| AdapterError {
+        spend_stop: None,
         message: format!("ReAct 输出非合法 JSON: {e};原文={content}"),
     })?;
     if let Some(call) = out.tool_call.take() {
@@ -2979,6 +3031,7 @@ pub fn parse_react_assistant_turn(content: &str) -> Result<AssistantTurn, Adapte
     for (idx, c) in out.tool_calls.into_iter().enumerate() {
         let Some(name) = c.name.filter(|name| !name.trim().is_empty()) else {
             return Err(AdapterError {
+                spend_stop: None,
                 message: format!("ReAct tool_calls[{idx}] 缺 name"),
             });
         };
@@ -2986,6 +3039,7 @@ pub fn parse_react_assistant_turn(content: &str) -> Result<AssistantTurn, Adapte
             serde_json::Value::Null => "{}".to_string(),
             serde_json::Value::String(s) => s,
             v => serde_json::to_string(&v).map_err(|e| AdapterError {
+                spend_stop: None,
                 message: format!("ReAct tool_calls[{idx}].arguments 序列化失败: {e}"),
             })?,
         };
@@ -2997,6 +3051,7 @@ pub fn parse_react_assistant_turn(content: &str) -> Result<AssistantTurn, Adapte
     }
     if calls.is_empty() && out.final_text.as_deref().unwrap_or("").trim().is_empty() {
         return Err(AdapterError {
+            spend_stop: None,
             message: "ReAct 输出既无 final/answer,也无 tool_calls".into(),
         });
     }
@@ -3183,6 +3238,11 @@ impl ReActAdapter {
 }
 
 impl ModelAdapter for NativeAdapter {
+    fn set_spend_context(&self, scope: model_spend::ChargeScope, port: Option<std::sync::Arc<dyn model_spend::ModelSpendPort>>) {
+        *self.spend_scope.borrow_mut() = Some(scope);
+        *self.spend.borrow_mut() = port;
+    }
+    fn set_model_purpose(&self, purpose: &str) { *self.spend_purpose.borrow_mut() = purpose.into(); }
     fn set_run_cancellation(&self, cancellation: crate::run_context::CancellationToken) {
         *self.cancellation.borrow_mut() = Some(cancellation);
     }
@@ -3209,7 +3269,7 @@ impl ModelAdapter for NativeAdapter {
             "temperature": 0,
         });
         apply_completion_limits(&mut body, &req);
-        let v = self.post_chat_completions(body, observer)?;
+        let v = self.post_chat_completions(body, observer, "complete")?;
         parsed_response_from_content(response_message_content(&v)?)
     }
 
@@ -3234,7 +3294,7 @@ impl ModelAdapter for NativeAdapter {
             "temperature": 0,
         });
         apply_completion_limits(&mut body, &req);
-        let response = self.post_chat_completions(body, observer)?;
+        let response = self.post_chat_completions(body, observer, "structured")?;
         structured_json_from_content(response_message_content(&response)?)
     }
 
@@ -3248,7 +3308,7 @@ impl ModelAdapter for NativeAdapter {
         observer: &mut dyn provider_stream::ModelObserver,
     ) -> Result<AssistantTurn, AdapterError> {
         let (body, provider_to_internal) = native_chat_request_projection(&self.model, request);
-        let v = self.post_chat_completions(body, observer)?;
+        let v = self.post_chat_completions(body, observer, "chat")?;
         let msg = &v["choices"][0]["message"];
         let text = msg["content"]
             .as_str()
@@ -3361,6 +3421,8 @@ fn native_chat_request_projection(
 }
 
 impl ModelAdapter for ReActAdapter {
+    fn set_spend_context(&self, scope: model_spend::ChargeScope, port: Option<std::sync::Arc<dyn model_spend::ModelSpendPort>>) { self.native.set_spend_context(scope, port); }
+    fn set_model_purpose(&self, purpose: &str) { self.native.set_model_purpose(purpose); }
     fn stream_text_is_structured(&self) -> bool {
         true
     }
@@ -3389,7 +3451,7 @@ impl ModelAdapter for ReActAdapter {
             "temperature": 0,
         });
         apply_completion_limits(&mut body, &req);
-        let v = self.native.post_chat_completions(body, observer)?;
+        let v = self.native.post_chat_completions(body, observer, "complete")?;
         parsed_response_from_content(response_message_content(&v)?)
     }
 
@@ -3416,7 +3478,7 @@ impl ModelAdapter for ReActAdapter {
         observer: &mut dyn provider_stream::ModelObserver,
     ) -> Result<AssistantTurn, AdapterError> {
         let body = react_chat_request_projection(&self.native.model, request);
-        let v = self.native.post_chat_completions(body, observer)?;
+        let v = self.native.post_chat_completions(body, observer, "chat")?;
         {
             let mut turn = parse_react_assistant_turn(response_message_content(&v)?)?;
             turn.usage_total_tokens = v["usage"]["total_tokens"].as_u64().map(|v| v as u32);
@@ -3838,6 +3900,7 @@ mod tests {
     impl ModelAdapter for StructuredResolverAdapter {
         fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "structured resolver must not use unstructured complete".into(),
             })
         }
@@ -3851,6 +3914,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "structured resolver script exhausted".into(),
                 })
         }
@@ -3872,6 +3936,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "fake 脚本耗尽".into(),
                 })
         }
@@ -3895,6 +3960,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "recording fake 脚本耗尽".into(),
                 })
         }

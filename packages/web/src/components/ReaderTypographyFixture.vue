@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import ReaderPane, { type Segment } from './ReaderPane.vue';
 import ReaderTypographyPanel from './ReaderTypographyPanel.vue';
 import { useReaderTypography } from '../useReaderTypography';
-import { renderInlineMarkdown, renderMarkdown, renderFormulaSource } from '../md';
+import { renderInlineMarkdown, renderMarkdown, renderFormulaSource, renderTableSource } from '../md';
 import { network, installIdentity, readerPreferenceOwner, sceneKey } from '../network-context';
 import type { MemoryRecord } from '../api';
 import { textPositionTop, type ScrollAnchor } from '../reader-text-anchor';
@@ -20,11 +20,27 @@ const segments = ref<Segment[]>([
   { lid: '1.5', kind: 'image', text: '![示例](data:image/svg+xml,example)', formula: null, imageAsset: null },
   { lid: '1.6', kind: 'paragraph', text: text.repeat(10), formula: null, imageAsset: null },
 ]);
+if (new URLSearchParams(location.search).has('tables')) {
+  segments.value = [
+    { lid: '1', kind: 'chapter', text: '状态由谁持有', formula: null, imageAsset: null },
+    { lid: '1.4', kind: 'table', text: [
+      '| 状态 | 主要归属 | 为什么需要这样区分 |',
+      '| 已发布材料与语义成果 | 书籍及其发布版本 | 多个阅读任务能够使用同一份内容，旧引用仍指向原材料 |',
+      '| 阅读位置与窗口现场 | 一个读者的阅读现场 | 两个窗口能够各自阅读和导航 |',
+      '| 对话与聊天目标 | 对应聊天 | 追问和任务结果需要回到原会话 |',
+      '| 笔记与稳定画像 | 读者的私人数据 | 信息可以持续使用，并保留用户归属 |',
+      '| 教学会话与学习事实 | 读者的学习状态 | 学习过程可以跨多次交互延续 |',
+      '| 当前消息 证据和执行进展 | 一次 Run | 运行中的信息需要与当时的输入和动作保持关联 |',
+    ].join('\n'), formula: null, imageAsset: null },
+    { lid: '1.7', kind: 'table', text: '| 方法 Method | 证据 Evidence |\n| --- | --- |\n| **阅读** | 原文与来源 |', formula: null, imageAsset: null },
+  ];
+}
 const notes = ref<MemoryRecord[]>(location.search.includes('annotations') ? [{ mem_id: 'fixture-note', type: 'note', layer: 'long_term', book_id: 'fixture', anchor: { lid: '1.1' }, content: '长段的批注内容' }, { mem_id: 'fixture-later-note', type: 'note', layer: 'long_term', book_id: 'fixture', anchor: { lid: '1.1' }, content: '同段后面的引用', selection_context: { status: 'resolved', raw_quote: '阅读不是', resolved_quote: '阅读不是', ranges: [{ lid: '1.1', range: { start: text.length * 25, end: text.length * 25 + 4 } }] } }] : []);
-function render(seg: Segment) { return seg.kind === 'formula' ? renderFormulaSource(seg.text) : seg.kind === 'code' || seg.kind === 'table' ? seg.text.replace(/&/g, '&amp;').replace(/</g, '&lt;') : renderInlineMarkdown(seg.text); }
+function render(seg: Segment) { return seg.kind === 'table' ? renderTableSource(seg.text) : seg.kind === 'formula' ? renderFormulaSource(seg.text) : seg.kind === 'code' ? seg.text.replace(/&/g, '&amp;').replace(/</g, '&lt;') : renderInlineMarkdown(seg.text); }
 const image = { status: 'external', original_src: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="160"><rect width="600" height="160" fill="#f4e4d4"/><circle cx="200" cy="80" r="55" fill="#cc785c"/><path d="M310 125L400 30L490 125Z" fill="#5db8a6"/></svg>'), alt: '几何示意', url_path: null } as unknown as NonNullable<Segment['imageAsset']>;
 let saved: ScrollAnchor | null = null;
 Object.assign(window, { reFixture: {
+  source: (lid: string) => segments.value.find(s => s.lid === lid)?.text,
   capture: () => saved = reader.value!.captureScrollAnchor(segments.value.map(s => s.lid)),
   saved: () => saved,
   savedTop: () => {

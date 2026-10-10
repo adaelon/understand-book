@@ -1190,11 +1190,15 @@ export interface UnderstandingRow {
   independent_support: number; assisted_support: number; revised_support: number; partial: number; difficulty: number; uncertain: number;
   evidence_refs: string[]; evidence_count: number;
 }
-export interface UnderstandingView { rows: UnderstandingRow[]; next: number | null; stale: boolean; evidence_watermark: number; projection_watermark: number | null }
+export interface UnderstandingView { rows: UnderstandingRow[]; interpretations?: LearningEvidenceView[]; next: number | null; stale: boolean; evidence_watermark: number; projection_watermark: number | null }
 export interface LearningEvidenceView {
   evidence_id: string; label: string; capability: string; prompt: string; learner_quote: string; interpretation: string;
   correction: string | null; status: string; assistance_count: number; attempt: number; feedback_hidden: boolean;
   assessment_ref?: string | null;
+  nature?: 'hypothesis' | 'performance';
+  teaching_implication?: string;
+  fact_refs?: string[];
+  object_id?: string | null;
   source_quotes: { reason?: string; quote?: string; response_quote?: string; sources?: { quote: string }[] }[] | null;
 }
 export interface AgentChatMeta {
@@ -1229,6 +1233,7 @@ export class ApiError extends Error {
     public errorCode: string,
     public category: string,
     message: string,
+    public details?: { request_id?: string; expires_at?: number; resend_after?: number },
   ) {
     super(message);
     this.name = "ApiError";
@@ -1474,7 +1479,8 @@ export const api = {
   tutorDisplay: (delivery_ref: string, scene?: import("./generated/PresentationFollowUp").PresentationFollowUp) => http("POST", "/tutor/display", { delivery_ref, scene }),
   tutorAction: (request: { operation_id: string; delivery_ref: string; action: string; response?: string | null; scene?: import("./generated/PresentationFollowUp").PresentationFollowUp }) => http<{ event_id: string; assessment: string; help: { event_id: string; text: string } | null }>("POST", "/tutor/action", request),
   tutorHelpDisplayed: (help_ref: string) => http("POST", "/tutor/help-displayed", { help_ref }),
-  tutorReadiness: () => http<{ status: 'preparing' | 'ready' | 'stale'; source_id: string; teaching_map_revision: string | null; limitations: string[]; reason: string }>('GET', '/tutor/readiness'),
+  tutorReadiness: () => http<{ status: 'preparing' | 'ready'; source_id: string; source_revision: string; limitations: string[]; reason: string;
+    teaching_assets: { status: 'preparing' | 'ready' | 'stale'; teaching_map_revision: string | null; limitations: string[]; reason: string } }>('GET', '/tutor/readiness'),
   tutorMutate: (request: import('./generated/TutorMutation').TutorMutation) => http<import('./generated/TutorState').TutorState>('POST', '/tutor/mutate', request),
   presentationRead: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, saved_state?: import("./generated/PresentationFollowUp").PresentationFollowUp) =>
     http<import("./generated/PresentationView").PresentationView>("POST", "/agent/presentation.read", { session_id, turn_id, reference, saved_state }),

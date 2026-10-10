@@ -18,7 +18,7 @@ import type {
 } from "./build-orchestrator";
 import {
   isAutomaticBuildFailureDiagnosticV3,
-  isAutomaticBuildCorrectableCandidateFailure,
+  automaticBuildCandidateCorrection,
   legacyAutomaticBuildFailureDiagnostic,
   validateAutomaticBuildFailureDiagnostic,
   type AutomaticBuildFailureDiagnosticV2,
@@ -730,8 +730,11 @@ export function readAutomaticBuildCandidateRetryFeedback(
     if (!previous.result) continue;
     if (previous.result.outcome !== "failure") return undefined;
     const diagnostic = failureDiagnosticFromEvent(previous.result);
-    if (!diagnostic || !isAutomaticBuildCorrectableCandidateFailure(diagnostic)) return undefined;
-    return { code: diagnostic.code, json_pointer: diagnostic.json_pointer!, expected: diagnostic.expected! };
+      const correction = diagnostic ? automaticBuildCandidateCorrection(diagnostic) : undefined;
+      if (!correction || stage !== "formal_objects") return correction;
+      return { ...correction,
+        expected: `${correction.expected} Keep each composite's component_keys nonempty and each relation's participants at least two local object keys with roles. Fit output_contract.transport token and byte limits including the request envelope; do not clear these arrays to shorten output.`,
+      };
   }
   return undefined;
 }

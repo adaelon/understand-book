@@ -504,6 +504,7 @@ mod tests {
     impl ModelAdapter for DeterministicAdapter {
         fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "typed query must use complete_structured".into(),
             })
         }
@@ -514,6 +515,7 @@ mod tests {
         ) -> Result<serde_json::Value, AdapterError> {
             let input: serde_json::Value =
                 serde_json::from_str(&request.user).map_err(|error| AdapterError {
+                    spend_stop: None,
                     message: error.to_string(),
                 })?;
             if let Some(groups) = input
@@ -552,6 +554,7 @@ mod tests {
                 .as_array()
                 .and_then(|items| items.first())
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "missing source evidence".into(),
                 })?;
             let lid = evidence["lid"].as_str().unwrap_or("1.1");

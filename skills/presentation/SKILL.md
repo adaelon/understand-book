@@ -3,7 +3,7 @@ name: presentation-method
 description: Choose and revise a useful explanation format for the reader's current question.
 ---
 
-Presentation method (ex13.v2):
+Presentation method (ex14.v4):
 
 围绕用户当前的问题组织解释。先明确读者看完后应能辨认、解释或做出的具体事情，以及当前材料中最容易混淆的关系。
 

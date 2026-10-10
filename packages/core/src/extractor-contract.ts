@@ -506,15 +506,47 @@ export function requiredRecoveryForAutomaticBuildFailure(
   }
 }
 
-/** A writer supplied a concrete candidate field correction, not a policy diagnosis. */
+/** Candidate corrections keep the accepted schema and evidence requirements. */
 export function isAutomaticBuildCorrectableCandidateFailure(
   diagnostic: AutomaticBuildFailureDiagnosticV2,
 ): boolean {
-  return isAutomaticBuildFailureDiagnosticV3(diagnostic)
-    && diagnostic.phase === "artifact_writer"
-    && diagnostic.category === "schema"
-    && diagnostic.code === "schema_invalid"
-    && Boolean(diagnostic.json_pointer && diagnostic.expected);
+  return automaticBuildCandidateCorrection(diagnostic) !== undefined;
+}
+
+export function automaticBuildCandidateCorrection(diagnostic: AutomaticBuildFailureDiagnosticV2):
+  { code: string; json_pointer: string; expected: string } | undefined {
+  if (!isAutomaticBuildFailureDiagnosticV3(diagnostic)) return;
+  if (diagnostic.phase === "generation" && diagnostic.category === "transport"
+    && diagnostic.code === "candidate_request_too_large") {
+    return { code: diagnostic.code, json_pointer: "/", expected: diagnostic.expected
+      ?? "Shorten the candidate to fit output_contract.transport token AND byte limits, including the request envelope. Preserve required fields, source coverage and evidence; reduce verbosity and duplicate text." };
+  }
+  if (diagnostic.phase !== "artifact_writer" || diagnostic.category !== "schema") return;
+  // Persisted BookStructure role errors pointed at a nonexistent singular field.
+  // Keep the unchanged role rule, but correct the actual array rather than adding that field.
+  if (diagnostic.code === "schema_invalid" && diagnostic.json_pointer === "/role_hint"
+    && (diagnostic.expected === "setup | foundation | method | application | case | synthesis"
+      || diagnostic.expected === "non-empty UTF-8 string no larger than 64 bytes")) {
+    return { code: diagnostic.code, json_pointer: "/role_hints",
+      expected: "role_hints is an array; each item must be setup | foundation | method | application | case | synthesis. Remove any top-level role_hint field." };
+  }
+  if (diagnostic.code === "schema_invalid" && diagnostic.json_pointer && diagnostic.expected) {
+    return { code: diagnostic.code, json_pointer: diagnostic.json_pointer, expected: diagnostic.expected };
+  }
+  // Persisted Tutor failures used this generic code before field diagnostics were emitted.
+  // Only known, unchanged Tutor field rules admit a same-scope correction.
+  if (diagnostic.code === "semantic_output_invalid") {
+    if (diagnostic.expected === "composite object requires components") return {
+      code: diagnostic.code, json_pointer: "/objects", expected: "Every composite object requires at least one component_keys entry referencing a local object. Preserve source-grounded meaning and evidence.",
+    };
+    if (diagnostic.expected === "learnable relation requires participants and roles") return {
+      code: diagnostic.code, json_pointer: "/objects", expected: "Every relation requires at least two participants, each with a local object_key and role. Preserve source-grounded meaning and evidence.",
+    };
+    const range = diagnostic.expected?.match(/^alignment source range invalid or too large: lid=.+; source_length_utf16=(\d+); require 0 <= start < end <= source_length/u);
+    if (range) return { code: diagnostic.code, json_pointer: "/end",
+      expected: `Read range requires 0 <= start < end <= source_length_utf16=${range[1]} and end - start <= 2000. Use the actual paragraph length rather than the maximum span as end.`,
+    };
+  }
 }
 
 export function isAutomaticBuildTransientProviderFailure(
@@ -1058,7 +1090,11 @@ function fail(input: Omit<ExtractorContractDiagnosticV1, "version">): never {
 function parseSchema(schema: ZodTypeAny, input: unknown): unknown {
   const parsed = schema.safeParse(input);
   if (parsed.success) return parsed.data;
-  let issue = parsed.error.issues[0];
+  throwExtractorSchemaError(parsed.error, input);
+}
+
+export function throwExtractorSchemaError(error: z.ZodError, input: unknown): never {
+  let issue = error.issues[0];
   if (issue.code === "invalid_union") {
     issue = issue.unionErrors.flatMap((error) => error.issues).sort((left, right) => right.path.length - left.path.length)[0] ?? issue;
   }

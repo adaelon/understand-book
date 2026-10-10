@@ -73,6 +73,7 @@ import {
 } from "./helpers/model-input-routability-fixture";
 
 import * as buildOrchestrator from "../src/build-orchestrator";
+import * as buildProgress from "../src/automatic-build-progress";
 
 declare global {
   interface ImportMeta {
@@ -768,6 +769,7 @@ function exhaustFirstPublicTask(
     json_pointer: "/discourse_items/0/local_summary",
     expected: "string length <= 200",
   }),
+  workUnitIndex = 0,
 ): void {
   const plan = automaticBuildPlan(value.source, value.root, {
     requested_workers: 1,
@@ -777,7 +779,7 @@ function exhaustFirstPublicTask(
   if (!plan.preflight) throw new Error("expected retry-boundary preflight");
   const target = resolveAutomaticBuildTarget(value.source, value.root);
   const stage = plan.snapshot.stages.find((candidate) => candidate.stage === "pass1");
-  const descriptor = stage?.work_units?.[0];
+  const descriptor = stage?.work_units?.[workUnitIndex];
   const binding = descriptor ? stage?.task_bindings?.[descriptor.work_unit_id] : undefined;
   if (!descriptor || descriptor.version !== "automatic_build_work_unit.v3" || !binding) {
     throw new Error("expected a proof-bound synthetic Pass1 work unit");
@@ -802,6 +804,9 @@ function exhaustFirstPublicTask(
       const candidatePath = path.join(path.dirname(claim.lease_ref), "candidate.json");
       writeFileSync(candidatePath, JSON.stringify({ type: "application" }));
       submitAutomaticBuildCandidate(target, claim.lease_ref, claim.lease.token, candidatePath, () => {
+        if (failureDiagnostic.code === "semantic_output_invalid") {
+          throw Object.assign(new Error("persisted teaching writer rejection"), { failure_diagnostic: failureDiagnostic });
+        }
         throw new ExtractorContractError({
           version: "automatic_build_extractor_diagnostic.v1", code: failureDiagnostic.code,
           json_pointer: failureDiagnostic.json_pointer!, expected: failureDiagnostic.expected!, actual: "application",
@@ -864,6 +869,46 @@ async function exhaustedRetryBoundary(
 afterEach(async () => { await yieldToRunner(); });
 
 describe("S0 deterministic automatic-build driver protocol", () => {
+  it("keeps the root response limited to 64 KiB independently of refill stdin capacity", async () => {
+    const driver = expectedDriver(), value = fixture("root-response-capacity");
+    vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", path.join(value.root, "registry"));
+    const invocation = await createInvocation(driver, value);
+    const project = buildProgress.projectAutomaticBuildProgress;
+    const progress = vi.spyOn(buildProgress, "projectAutomaticBuildProgress").mockImplementation(input => {
+      const result = project(input);
+      return { ...result, stages: Array.from({ length: 1000 }, () => result.stages[0]!) };
+    });
+    try {
+      await expect(Promise.resolve().then(() => driver.automaticBuildStep({
+        version: "automatic_build_step_request.v1", invocation_ref: invocation.invocation_ref,
+        available_agent_slots: 0,
+      }))).rejects.toThrow("automatic build root response violates its boundary contract");
+    } finally { progress.mockRestore(); vi.unstubAllEnvs(); }
+  });
+
+  it.each(["structure_execution_budget_exceeded", "structure_preparation_incomplete", "quality_gate_failed"])(
+    "preserves the distinct %s boundary and bounded recovery diagnostics", async reason => {
+      const driver = expectedDriver(), value = fixture(`structure-boundary-${reason}`);
+      vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", path.join(value.root, "registry"));
+      const invocation = await createInvocation(driver, value);
+      const violations = [{ code: "stage_limit", actual: 22867, limit: 20000 }];
+      const action = { kind: "needs_user" as const, reason, stage: "book_structure" as const,
+        message: "PRIVATE_STRUCTURE_DIAGNOSTIC", violations } as ReturnType<typeof buildOrchestrator.nextPlannedAutomaticBuildAction>;
+      const next = vi.spyOn(buildOrchestrator, "nextPlannedAutomaticBuildAction").mockReturnValue(action);
+      try {
+        const response = await driver.automaticBuildStep({ version: "automatic_build_step_request.v1",
+          invocation_ref: invocation.invocation_ref, available_agent_slots: 1 });
+        expect(response.action).toMatchObject({ kind: "NEEDS_USER", reason,
+          projection: { category: reason, stage: "book_structure", violations }, choices: [{ choice_id: "retry_current" }] });
+        expect(JSON.stringify(response)).not.toContain("PRIVATE_STRUCTURE_DIAGNOSTIC");
+        if (response.action.kind !== "NEEDS_USER") throw Error("expected boundary");
+        if (reason === "structure_execution_budget_exceeded") expect(response.action.message).toContain("single-task execution budget");
+        const again = await driver.automaticBuildStep({ version: "automatic_build_step_request.v1",
+          invocation_ref: invocation.invocation_ref, available_agent_slots: 1,
+          decision: { request_id: response.action.request_id, choice_id: "retry_current" } });
+        expect(again.action).toMatchObject({ kind: "NEEDS_USER", reason });
+      } finally { next.mockRestore(); vi.unstubAllEnvs(); }
+    });
   it("persists explicit V2 Codex selection and rejects mixed record versions and incomplete DSH configuration", async () => {
     const driver = expectedDriver();
     const value = fixture("execution-profile-v2");
@@ -1154,6 +1199,44 @@ describe("S0 deterministic automatic-build driver protocol", () => {
     expect(recovered.action.executors.find(x => x.dispatch_slot_ref === a!.dispatch_slot_ref)!.opaque_handoff_ref)
       .not.toBe(a!.opaque_handoff_ref);
     expect(recovered.action.executors).toContainEqual(b);
+  }, 30_000);
+
+  it.each(["before_open", "after_open"] as const)("recovers terminal children interrupted %s before generation while preserving a live sibling", async (phase) => {
+    const driver = expectedDriver();
+    const value = fixture("terminal-before-generation", { body: `# Guide\n\n${Array.from({ length: 900 }, (_, i) =>
+      `Paragraph ${i + 1} contains stable evidence for the current V4 submit fixture.`).join("\n\n")}` });
+    const invocation = await createInvocation(driver, value, { max_parallel: 3 });
+    const first = await driver.automaticBuildStep({ version: "automatic_build_step_request.v1",
+      invocation_ref: invocation.invocation_ref, available_agent_slots: 3 });
+    if (first.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected three launches");
+    const [a, b, c] = first.action.executors;
+    expect(first.action.executors).toHaveLength(3);
+    if (phase === "after_open") {
+      expect(openAutomaticBuildExecutorSessionV3(a!.opaque_handoff_ref).action.kind).toBe("DELIVER_INPUT");
+      expect(openAutomaticBuildExecutorSessionV3(b!.opaque_handoff_ref).action.kind).toBe("DELIVER_INPUT");
+    }
+    startV3GenerationForHandoff(c!.opaque_handoff_ref, new Date().toISOString());
+    const target = resolveAutomaticBuildTarget(value.source, value.root);
+    const before = taskTreeBytes(target);
+    const refill = { version: "automatic_build_refill_request.v1", invocation_ref: invocation.invocation_ref,
+      capacity_limit: 3, live_by_slot: Object.fromEntries(first.action.executors.map((launch, i) =>
+        [launch.dispatch_slot_ref!, { child: `child-${i}`, opaque_handoff_ref: launch.opaque_handoff_ref }])),
+      completed_refs: [], terminal_children: ["child-0", "child-1"] };
+    const recovered = await driver.runAutomaticBuildDriverCommand(refill) as import("../../../skills/build/automatic-build-refill").AutomaticBuildRefillResponseV1;
+    expect(recovered.ready_executors).toHaveLength(2);
+    expect(recovered.live_by_slot).toEqual({ [c!.dispatch_slot_ref!]: { child: "child-2", opaque_handoff_ref: c!.opaque_handoff_ref } });
+    for (const old of [a!, b!]) {
+      const replacement = recovered.ready_executors.find(x => x.dispatch_slot_ref === old.dispatch_slot_ref)!;
+      expect(replacement.opaque_handoff_ref).not.toBe(old.opaque_handoff_ref);
+    }
+    expect(taskTreeBytes(target)).toEqual(before);
+    const repeated = await driver.runAutomaticBuildDriverCommand({ ...refill, live_by_slot: recovered.live_by_slot,
+      completed_refs: recovered.completed_refs, terminal_children: [] }) as import("../../../skills/build/automatic-build-refill").AutomaticBuildRefillResponseV1;
+    expect(repeated.ready_executors).toEqual(recovered.ready_executors);
+    for (const replacement of recovered.ready_executors) {
+      expect(startV3GenerationForHandoff(replacement.opaque_handoff_ref, new Date().toISOString()).action)
+        .toMatchObject({ kind: "GENERATE", semantic_attempt: 1 });
+    }
   }, 30_000);
 
   it("L1 refills the released slot while sibling children have not opened yet", async () => {
@@ -1760,25 +1843,57 @@ describe("S0 deterministic automatic-build driver protocol", () => {
     }
   }, 30_000);
 
-  it("authorizes candidate correction from an old publish-policy request without rewriting failures", async () => {
+  it.each([
+    { hasOperatorFailure: false, sameCode: false },
+    { hasOperatorFailure: true, sameCode: false },
+    { hasOperatorFailure: true, sameCode: true },
+  ])("projects mixed candidate failures without hiding a real operator fix: %j", async ({ hasOperatorFailure, sameCode }) => {
+    const value = fixture("mixed-candidate-recovery", { body: `# Guide\n\n${Array.from({ length: 160 }, (_, i) => `Paragraph ${i} contains source evidence for a mixed failure recovery.`).join("\n\n")}` });
+    const priorRoot = process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
+    process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = path.join(value.root, "driver-registry");
+    try {
+      const plan = automaticBuildPlan(value.source, value.root, { requested_workers: 1, available_agent_slots: 1, build_plan: value.buildPlan });
+      const count = plan.snapshot.stages.find(stage => stage.stage === "pass1")!.work_units!.length;
+      expect(count).toBeGreaterThan(1);
+      for (let index = 0; index < count; index++) {
+        const diagnostic = createAutomaticBuildFailureDiagnosticV3(index === 0 && !sameCode
+          ? { category: "transport", code: "candidate_request_too_large", phase: "generation" }
+          : { category: "schema", code: "semantic_output_invalid", phase: "artifact_writer",
+            expected: hasOperatorFailure && index > 0 ? "unrecognized semantic failure" : "composite object requires components" });
+        exhaustFirstPublicTask(value, diagnostic, index);
+      }
+      const driver = expectedDriver(), invocation = await createInvocation(driver, value, { created_at: "2026-08-10T02:08:10.000Z" });
+      const response = await driver.automaticBuildStep({ version: "automatic_build_step_request.v1", invocation_ref: invocation.invocation_ref, available_agent_slots: 1 });
+      expect(response.action).toMatchObject({ kind: "NEEDS_USER", reason: "retry_exhausted", projection: {
+        code: "multiple_failure_causes", work_unit_count: count,
+        required_recovery: hasOperatorFailure ? "forward_fix" : "confirm_candidate_retry",
+      } });
+    } finally {
+      if (priorRoot === undefined) delete process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
+      else process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = priorRoot;
+    }
+  }, 30_000);
+
+  it.each(["field", "teaching", "transport"] as const)("authorizes %s candidate correction from an old recovery request without rewriting failures", async kind => {
     const value = fixture("candidate-correction");
     const priorRoot = process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
     process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = path.join(value.root, "driver-registry");
     try {
       const driver = expectedDriver();
+      const diagnostic = createAutomaticBuildFailureDiagnosticV3(kind === "transport"
+        ? { category: "transport", code: "candidate_request_too_large", phase: "generation" }
+        : kind === "teaching" ? { category: "schema", code: "semantic_output_invalid", phase: "artifact_writer", expected: "composite object requires components" }
+        : { category: "schema", code: "schema_invalid", phase: "artifact_writer", json_pointer: "/unit_card/candidate_key_stops/4/type", expected: "definition | example | claim" });
       const { invocation, retryDecision, target } = await exhaustedRetryBoundary(driver, value,
         "2026-08-10T02:08:10.000Z", {
-          failure_diagnostic: createAutomaticBuildFailureDiagnosticV3({
-            category: "schema", code: "schema_invalid", phase: "artifact_writer",
-            json_pointer: "/unit_card/candidate_key_stops/4/type", expected: "definition | example | claim",
-          }),
-          expected_projection: { category: "schema", code: "schema_invalid", phase: "artifact_writer",
+          failure_diagnostic: diagnostic,
+          expected_projection: { category: diagnostic.category, code: diagnostic.code, phase: diagnostic.phase,
             required_recovery: "confirm_candidate_retry" },
         });
       const requestPath = path.join(value.root, "driver-registry", "requests", `${retryDecision.request_id}.json`);
       const oldRequest = JSON.parse(readFileSync(requestPath, "utf8"));
-      oldRequest.projection.required_recovery = "publish_new_policy_scope";
-      for (const boundary of oldRequest.retry_boundaries) boundary.required_recovery = "publish_new_policy";
+      oldRequest.projection.required_recovery = kind === "transport" ? "recover_executor" : "publish_new_policy_scope";
+      for (const boundary of oldRequest.retry_boundaries) boundary.required_recovery = kind === "transport" ? "operator_fix" : "publish_new_policy";
       oldRequest.request_id = `abreq1_${createHash("sha256").update(canonicalAutomaticBuildJson({
         version: "automatic_build_decision_request_identity.v1",
         invocation_ref: oldRequest.invocation_ref, reason: oldRequest.reason,

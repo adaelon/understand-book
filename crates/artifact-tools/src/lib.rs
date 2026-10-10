@@ -1,7 +1,7 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use schemars::{gen::SchemaGenerator, JsonSchema};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt;
@@ -136,7 +136,19 @@ pub fn artifact_list_input_schema() -> Value {
 }
 
 pub fn artifact_read_input_schema() -> Value {
-    schema_value::<ArtifactReadInput>()
+    let mut schema = schema_value::<ArtifactReadInput>();
+    schema["not"] = json!({"required":["record_refs","cursor"],"properties":{"record_refs":{"type":"array"},"cursor":{"type":"string"}}});
+    schema["properties"]["field_paths"]["items"] = json!({
+        "type":"string", "maxLength":256, "pattern":"^/(?:[^~]|~[01])*$",
+        "description":"JSON Pointer such as /title or /meaning/text; escape ~ as ~0 and / in a key as ~1."
+    });
+    schema["properties"]["record_refs"]["description"] = json!("Opaque refs returned by artifact.search; mutually exclusive with cursor. Their count must not exceed limit.");
+    schema["properties"]["cursor"]["description"] = json!("Read continuation; omit record_refs when using cursor.");
+    schema["allOf"] = json!([
+        {"if":{"required":["limit"],"properties":{"limit":{"enum":[1]}}},"then":{"properties":{"record_refs":{"maxItems":1}}}},
+        {"if":{"required":["limit"],"properties":{"limit":{"enum":[2]}}},"then":{"properties":{"record_refs":{"maxItems":2}}}}
+    ]);
+    schema
 }
 
 pub fn validate_artifact_list_input(value: Value) -> Result<ArtifactListInput, ArtifactToolError> {

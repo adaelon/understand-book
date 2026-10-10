@@ -271,7 +271,7 @@ pub enum PaperMinimapAvailabilityStatus {
     Unavailable,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum PaperRegionKind {
@@ -339,7 +339,7 @@ pub enum PaperMinimapRelation {
     Contrasts,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum PaperArgumentSlot {
@@ -789,7 +789,7 @@ pub enum UiSlotKind {
     Questions,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum LayoutRegion {
@@ -828,7 +828,7 @@ pub struct UiSlotSpec {
     pub default_region: LayoutRegion,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum LayoutSizeKind {
@@ -837,7 +837,7 @@ pub enum LayoutSizeKind {
     Percent,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct LayoutSize {
     pub kind: LayoutSizeKind,
@@ -933,7 +933,7 @@ pub struct ReaderLayoutState {
     pub slot_order: HashMap<String, Vec<String>>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum ReaderLayoutAction {

@@ -8,6 +8,7 @@ import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "
 import { BookStructureContributionCoverageError, materializeBookStructureContributions } from "./book-structure-materialization";
 import { buildReproducibleProfileArtifactHeader } from "./profile-artifact";
 import { hasCommittedAutomaticBuildPublication } from "./automatic-build-publication";
+import { readAcceptedBookStructureClose } from "./automatic-build-close";
 import { applyBookStructureRelationDeltas, type AcceptedBookStructureRelationDelta, type BookStructureRelationDelta } from "./book-structure-relations";
 import { bookStructureRelationContracts, routeBookStructureRelationSelections, bookStructureSelectedPairs, bookStructureRelationPredecessors, routeBookStructureRelationDelta,
   type BookStructureRelationRoutedWorkUnit, type BookStructureRelationSelection } from "./book-structure-relation-routing";
@@ -266,10 +267,14 @@ export type AutomaticBuildGenerationTaskV1 =
   | { kind: "book_structure"; task: BookStructureGenerationTaskV1 };
 
 export interface AutomaticBuildStageState {
+  object_alignment?: { total_objects: number; resolved_objects: number; remaining_objects: number };
+  published_freshness_digest?: string;
   retrieval_preparation?: TeachingRetrievalRequest;
   retrieval_remaining?: { records: number; documents: number; queries: number; calls: number | null };
   teaching_blocked?: string;
+  teaching_preparation_violations?: Array<{ code: string; actual: number; limit: number }>;
   structure_blocked?: string;
+  structure_budget_blocked?: ReturnType<typeof routeStructureOrganization>["budget_blocked"];
   book_structure_materialized?: BookStructureStitchArtifact;
   book_structure_progress?: { discovery?: BookStructureDiscoveryProgress; organization?: ReturnType<typeof routeStructureOrganization>["progress"]; local: { done: number; total: number }; selection: { done: number; total: number }; relation: { done: number; total: number }; publication: "pending" | "ready" | "published" };
   stage: AutomaticBuildStage;
@@ -289,6 +294,8 @@ export interface AutomaticBuildSnapshot {
   stages: AutomaticBuildStageState[];
 }
 export interface AutomaticBuildSnapshotOptions {
+  /** Accepted public dependencies selected by the plan, independent of producer upgrades. */
+  reuse?: BuildPlanV1["reuse"];
   /** Observe one extraction stage from its public dependencies, without routing the whole build. */
   stage?: Exclude<SemanticBuildStage, "formal_objects" | "cognitive_materials" | "teaching_publish">;
   quality_profile?: ExtractionQualityProfile;
@@ -332,7 +339,7 @@ export function inspectAutomaticBuildStageFreshness(
               automaticBuildExtractionPolicy(state.stage, profile, qualityProfile),
             ),
           }];
-    const freshnessDigest = state.closed
+    const freshnessDigest = state.closed && state.published_freshness_digest ? state.published_freshness_digest : state.closed
       ? createHash("sha256").update(canonicalBuildJson({
           version: state.policy_set
             ? "automatic_build_stage_freshness_identity.v3"
@@ -668,7 +675,8 @@ function assertAutomaticBuildShadowInputRoutable(input: {
 
 export type AutomaticBuildAction =
   | { kind: "needs_user"; reason: "preparation_required" | "retrieval_provider_failed" | "retrieval_cancelled" | "build_plan_budget_changed" | "build_plan_retrieval_drift"; stage: AutomaticBuildStage; message: string }
-  | { kind: "needs_user"; reason: "teaching_preparation_incomplete" | "structure_preparation_incomplete"; stage: AutomaticBuildStage; message: string }
+  | { kind: "needs_user"; reason: "teaching_preparation_incomplete" | "structure_preparation_incomplete" | "structure_execution_budget_exceeded";
+      stage: AutomaticBuildStage; message: string; violations?: Array<{ code: string; actual: number; limit: number }> }
   | {
       kind: "extract";
       stage: AutomaticBuildStage;
@@ -2498,6 +2506,7 @@ function routeBookStructureProductionStage(input: {
   if (discovery) Object.assign(progress, { discovery: discoveryProgress });
   return { ...(organization?.preparation ? { retrieval_preparation: organization.preparation, retrieval_remaining: organization.remaining } : {}),
     ...(organization?.blocked ? { structure_blocked: organization.blocked } : {}),
+    ...(organization?.budget_blocked ? { structure_budget_blocked: organization.budget_blocked } : {}),
     book_structure_materialized: stitchArtifact, book_structure_progress: progress, preparation_required: !input.prepare && migrations.required, ...stageStateV3({
     stage: "book_structure",
     closed,
@@ -2980,7 +2989,14 @@ function buildAutomaticBuildSnapshotInternal(
     pass2Audit,
     contentProfile: profile,
   });
-  const structureState = routeBookStructureProductionStage({
+  const selectedStructure = options.reuse?.find(item => item.artifact === "public.book_structure");
+  const acceptedStructure = selectedStructure && !focus
+    ? readAcceptedBookStructureClose(target, qualityProfile) : undefined;
+  const structureState: AutomaticBuildStageState = acceptedStructure
+    && acceptedStructure.publication.receipt_digest === selectedStructure!.freshness_digest
+    ? { stage: "book_structure", closed: true, pending_tasks: [],
+        published_freshness_digest: acceptedStructure.publication.receipt_digest }
+    : routeBookStructureProductionStage({
     execution_profile: options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1,
     prepare: prepareStage === "book_structure",
     retrieval: options.retrieval,
@@ -3013,7 +3029,7 @@ export function readAutomaticBuildTaskStage(target: AutomaticBuildTarget,
   focus: { stage: SemanticBuildStage; work_unit_id: string; parent_lid?: string },
   quality_profile: ExtractionQualityProfile, options: AutomaticBuildSnapshotOptions = {}) {
   if (["formal_objects", "cognitive_materials", "teaching_publish"].includes(focus.stage)) {
-    return buildAutomaticBuildSnapshotInternal(target, { ...options, quality_profile }).stages.find(s => s.stage === focus.stage);
+    return routeTeachingBuildStages({ ...readTeachingBuildInput(target), retrieval: options.retrieval }).find(s => s.stage === focus.stage);
   }
   return buildAutomaticBuildSnapshotInternal(target, { ...options, quality_profile }, undefined, focus).stages
     .find(stage => stage.stage === focus.stage);
@@ -3076,7 +3092,7 @@ export function prepareAutomaticBuildSnapshot(target: AutomaticBuildTarget, stag
 async function prepareAuthorizedSnapshot(target: AutomaticBuildTarget, stage: SemanticBuildStage,
   options: AutomaticBuildSnapshotOptions & { authorization: AutomaticBuildRetrievalAuthorization }): Promise<AutomaticBuildAsyncPreparationResult> {
   const { authorization, ...snapshotOptions } = options;
-  const routeOptions = { ...snapshotOptions, retrieval: authorization.runtime.selection };
+  const routeOptions = { ...snapshotOptions, reuse: authorization.plan.reuse, retrieval: authorization.runtime.selection };
   let routed = routeAutomaticBuildSnapshot(target, routeOptions);
   if (routed.status === "blocked") return routed;
   const gate = nextPlannedAutomaticBuildAction(routed.value, authorization.plan, 1, options);
@@ -3276,8 +3292,15 @@ export function nextAutomaticBuildAction(snapshot: AutomaticBuildSnapshot, maxPa
     if (stage.closed) continue;
     if (stage.retrieval_preparation) return { kind: "needs_user", reason: "preparation_required", stage: stage.stage,
       message: "candidate retrieval requires authorized preparation" };
-    if (stage.structure_blocked) return { kind: "needs_user", reason: "structure_preparation_incomplete", stage: stage.stage, message: stage.structure_blocked };
-    if (stage.teaching_blocked) return { kind: "needs_user", reason: "teaching_preparation_incomplete", stage: stage.stage, message: stage.teaching_blocked };
+    if (stage.structure_blocked) return { kind: "needs_user",
+      reason: stage.structure_budget_blocked ? "structure_execution_budget_exceeded" : "structure_preparation_incomplete",
+      stage: stage.stage, message: stage.structure_blocked,
+      ...(stage.structure_budget_blocked?.reasons.some(code => code === "stage_limit" || code === "context_limit")
+        ? { violations: [{ code: "execution_body_limit", actual: stage.structure_budget_blocked.estimated_rendered_tokens,
+          limit: stage.structure_budget_blocked.effective_body_limit_tokens }] } : {}),
+    };
+    if (stage.teaching_blocked) return { kind: "needs_user", reason: "teaching_preparation_incomplete", stage: stage.stage, message: stage.teaching_blocked,
+      ...(stage.teaching_preparation_violations ? { violations: stage.teaching_preparation_violations } : {}) };
     if (stage.pending_tasks.length) {
       const firstWorkUnit = stage.pending_work_units?.[0];
       const extractor = stage.stage === "paper_reading_guide"

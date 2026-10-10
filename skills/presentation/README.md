@@ -1,6 +1,12 @@
 # Presentation guidance assets
 
-`SKILL.md` is the only common explanation body (ex13.v1). `phases/global.md`, `local.md` and `review.md` add the current responsibility. `engineering.md` keeps source, version, resource, actual-preview and delivery contracts. `capabilities.md` is the short directory. `references/` contains selected technical contracts; `examples/` is not automatically injected.
+`SKILL.md` is the only common explanation body (ex14.v4). `phases/global.md`, `local.md` and `review.md` add the current responsibility. `engineering.md` keeps source, version, resource, actual-preview and delivery contracts. `capabilities.md` is the short directory. `references/` contains selected technical contracts; `examples/` is not automatically injected.
+
+EX14.2 adds checks at the positions where an explanation's relationships occur, followed by rechecking the revised candidate. The selected continuous-scene reference explains fresh-page prerequisites, the four-action reachability boundary and last-action readings. Its B snapshot (ex14.v1, A + checking guidance) remains in `docs/performance/presentation-critical-moments-ex14/checks/`.
+
+EX14.3 adds three short local paragraphs: choose identity cues, transformations, comparisons, emphasis and boundaries when the current obstacle needs them; preserve mathematical conditions, consistent labels and units, readable Chinese layout and the scope of small static revisions. Historical C (ex14.v2) and its payloads remain in `docs/performance/presentation-critical-moments-ex14/visual/`.
+
+After EX14.1-M passed, media B (ex14.v3) adds limited four-frame screening and reachable page checks to the selected Manim reference. Media C (ex14.v4) also retains the local visual methods and adds fixed-runner-tested Transform/TransformMatchingTex, displayed-group ValueTracker updates, initialized first-frame layout, and separate Chinese Text / MathTex grouping. B/C full text, exact actual requests, compatibility fixtures and offline token measurement are in `docs/performance/presentation-critical-moments-ex14/media-guidance/`. Historical A/B/C stay unchanged. Global/review bodies, engineering, tool limits and existing media position/restoration contracts remain intact. Natural-model benefits, N3 behavioral comparison, adoption and full Reader acceptance await EX14.4/5.
 
 EX13.3 separates user requirements, revisable Goal work items and explanation design. Version ex13.v1 keeps progress in `working.items`, design in `framework`, and checks the actual work against requirements and source material before delivery. Small revisions may use a short plan; completed items never establish delivery eligibility or content completeness.
 

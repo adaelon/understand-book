@@ -29,7 +29,7 @@ async function host(context: BrowserContext, lostResponse = false) {
 }
 async function login(page: Page, owner = 'A') {
   await page.goto('https://localhost:4189/');
-  await page.getByLabel('账号', { exact: true }).fill(owner);
+  await page.getByLabel('邮箱或账号', { exact: true }).fill(owner);
   await page.getByLabel('密码', { exact: true }).fill('fixture-only-password');
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.getByRole('heading', { name: '选择阅读材料' })).toBeVisible();
@@ -207,7 +207,7 @@ test('full Reader account switch clears draft and original question survives a l
   await page.locator('textarea[data-workspace-input="agent"]').fill('A private unsent draft');
   await logout(page);
   await expect(page.locator('.workspace-shell')).toHaveCount(0);
-  await page.getByLabel('账号', { exact: true }).fill('B');
+  await page.getByLabel('邮箱或账号', { exact: true }).fill('B');
   await page.getByLabel('密码', { exact: true }).fill('fixture-only-password');
   await page.getByRole('button', { name: '登录', exact: true }).click(); await open(page);
   await expect(page.locator('textarea[data-workspace-input="agent"]')).toHaveValue('');
@@ -287,7 +287,7 @@ test('a copied tab forks the live workspace and a late PDF cannot appear for B',
     const count = seen.pdfRequests(); seen.holdPdf();
     await page.reload(); await expect.poll(seen.pdfRequests).toBeGreaterThan(count);
     await logout(page);
-    await page.getByLabel('账号', { exact: true }).fill('B');
+    await page.getByLabel('邮箱或账号', { exact: true }).fill('B');
     await page.getByLabel('密码', { exact: true }).fill('fixture-only-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();
     await expect(page.getByRole('heading', { name: '选择阅读材料' })).toBeVisible();

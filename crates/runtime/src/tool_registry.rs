@@ -1598,16 +1598,21 @@ fn has_duplicates<T: PartialEq>(values: &[T]) -> bool {
 
 fn validate_schema(schema: &Value, value: &Value, path: &str) -> Result<(), ToolArgumentError> {
     let fail = |message: String| ToolArgumentError { message };
-    if let Some(expected) = schema.get("type").and_then(Value::as_str) {
-        let valid = match expected {
+    if schema == &Value::Bool(false) { return Err(fail(format!("{path} is not allowed"))); }
+    if let Some(expected) = schema.get("type") {
+        let matches_type = |expected: &str| match expected {
             "object" => value.is_object(),
             "array" => value.is_array(),
             "string" => value.is_string(),
             "integer" => value.is_i64() || value.is_u64(),
             "number" => value.is_number(),
             "boolean" => value.is_boolean(),
+            "null" => value.is_null(),
             _ => true,
         };
+        let valid = expected.as_str().map(matches_type).unwrap_or_else(|| {
+            expected.as_array().is_some_and(|types| types.iter().filter_map(Value::as_str).any(matches_type))
+        });
         if !valid {
             return Err(fail(format!("{path} must be a JSON {expected}")));
         }
@@ -1704,8 +1709,52 @@ fn validate_schema(schema: &Value, value: &Value, path: &str) -> Result<(), Tool
             return Err(fail(format!("{path} must be at most {maximum}")));
         }
     }
+    if let (Some(maximum),Some(number))=(schema.get("exclusiveMaximum").and_then(Value::as_f64),value.as_f64()) {
+        if number >= maximum { return Err(fail(format!("{path} must be less than {maximum}"))); }
+    }
+    if let Some(item_schema)=schema.get("contains") {
+        if let Some(items)=value.as_array() {
+            if !items.iter().any(|item| validate_schema(item_schema,item,path).is_ok()) {
+                return Err(fail(format!("{path} must contain a matching item")));
+            }
+        }
+    }
+    if let Some(branches)=schema.get("allOf").and_then(Value::as_array) {
+        for branch in branches { validate_schema(branch,value,path)?; }
+    }
+    if let Some(condition)=schema.get("if") {
+        let branch=if validate_schema(condition,value,path).is_ok() { "then" } else { "else" };
+        if let Some(branch)=schema.get(branch) { validate_schema(branch,value,path)?; }
+    }
+    if let Some(forbidden)=schema.get("not") {
+        if validate_schema(forbidden,value,path).is_ok() {
+            return Err(fail(format!("{path} contains a forbidden parameter combination: {forbidden}")));
+        }
+    }
+    for keyword in ["anyOf","oneOf"] {
+        if let Some(branches)=schema.get(keyword).and_then(Value::as_array) {
+            let results: Vec<_>=branches.iter().map(|branch| validate_schema(branch,value,path)).collect();
+            let matches=results.iter().filter(|result| result.is_ok()).count();
+            if matches==0 || (keyword=="oneOf" && matches!=1) {
+                // Prefer the selected operation's error over unrelated discriminator errors.
+                let relevant=branches.iter().zip(&results).find(|(branch,_)| {
+                    ["operation","kind","scope","action"].iter().any(|tag| {
+                        branch["properties"][*tag]["enum"].as_array()
+                            .is_some_and(|values| value.get(*tag).is_some_and(|actual| values.contains(actual)))
+                    })
+                });
+                if let Some((_,Err(error)))=relevant { return Err(error.clone()); }
+                let errors=results.iter().filter_map(|r| r.as_ref().err()).map(|e| e.message.as_str()).collect::<Vec<_>>().join("; ");
+                return Err(fail(format!("{path} must satisfy {keyword} ({matches} matching variants): {errors}")));
+            }
+        }
+    }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "tool_contract_tests.rs"]
+mod contract_tests;
 
 #[cfg(test)]
 mod tests {

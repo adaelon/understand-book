@@ -1,4 +1,5 @@
-//! Execution facts shared by live observers and durable summaries. No model text or arguments.
+//! Execution facts shared by live observers and durable summaries.
+//! Optional content callbacks are separate from public activities and require sink opt-in.
 use crate::request_diagnostics::{RequestDiagnostics, RequestTracker};
 use crate::{
     provider_stream::ModelUsage, AdapterError, AgentRequestPlan, AssistantTurn, CompletionRequest,
@@ -63,6 +64,9 @@ pub struct EvidenceObservation {
 
 pub trait RunEventSink: Send + Sync {
     fn emit(&self, event: RuntimeEvent);
+    fn captures_content(&self) -> bool { false }
+    fn activity_input(&self, _step_id: u32, _input: serde_json::Value) {}
+    fn activity_output(&self, _step_id: u32, _output: serde_json::Value) {}
     fn answer_patch(&self, _patch: crate::answer_stream::AnswerPatch) {}
     fn answer_first_patch(&self, _elapsed_ms: f64) {}
     fn evidence_accepted(&self, _observation: EvidenceObservation) {}
@@ -91,6 +95,16 @@ impl Default for RunEvents {
     }
 }
 impl RunEvents {
+    pub fn input(&self, step_id: u32, input: impl FnOnce() -> serde_json::Value) {
+        if let Some(sink) = self.sink.as_ref().filter(|sink| sink.captures_content()) {
+            sink.activity_input(step_id, input());
+        }
+    }
+    pub fn output(&self, step_id: u32, output: impl FnOnce() -> serde_json::Value) {
+        if let Some(sink) = self.sink.as_ref().filter(|sink| sink.captures_content()) {
+            sink.activity_output(step_id, output());
+        }
+    }
     pub fn new(sink: Option<Arc<dyn RunEventSink>>) -> Self {
         Self::with_start(Instant::now(), sink)
     }
@@ -271,11 +285,12 @@ impl RunEvents {
         self.publish(activity);
     }
     fn observe_request(&self, step_id: u32, body: Arc<serde_json::Value>) -> RequestDiagnostics {
+        self.input(step_id, || (*body).clone());
         let mut state = self.state.lock().unwrap();
         let purpose = state.activities[(step_id - 1) as usize].name.clone();
         state.requests.observe(&purpose, step_id, body)
     }
-    fn model<T>(
+    fn model<T: Serialize>(
         &self,
         cancellation: &crate::run_context::CancellationToken,
         model_name: String,
@@ -287,7 +302,7 @@ impl RunEvents {
     ) -> Result<T, AdapterError> {
         cancellation
             .check()
-            .map_err(|e| AdapterError { message: e.message })?;
+            .map_err(|e| AdapterError { spend_stop: None, message: e.message })?;
         let purpose = self.state.lock().unwrap().purpose;
         let label = match purpose {
             "query" => "判断检索证据",
@@ -296,6 +311,7 @@ impl RunEvents {
             "profile" => "处理阅读偏好",
             "compaction" => "整理对话上下文",
             "repair" => "整理回答来源",
+            "tutor_assessment" => "核对学习证据",
             _ => "生成回答",
         };
         let mut activity = self.begin("model", purpose, label, true);
@@ -303,6 +319,10 @@ impl RunEvents {
         activity.model_name_source = Some("configured".into());
         self.state.lock().unwrap().activities[(activity.step_id - 1) as usize] = activity.clone();
         let result = call(activity.step_id);
+        self.output(activity.step_id, || match &result {
+            Ok(value) => serde_json::json!({"parsed":value}),
+            Err(error) => serde_json::json!({"error":error.message}),
+        });
         let status = if cancellation.is_cancelled() {
             ActivityStatus::Cancelled
         } else if result.is_ok() {
@@ -317,7 +337,7 @@ impl RunEvents {
             usage,
             first_text_elapsed_ms,
             diagnostics,
-            result.as_ref().err().map(|_| "PROVIDER_ERROR".into()),
+            result.as_ref().err().map(|error| error.spend_stop.map(|reason| reason.code()).unwrap_or("PROVIDER_ERROR").into()),
         );
         result
     }
@@ -347,6 +367,8 @@ pub struct ObservedAdapter<'a> {
     pub runtime_profile: crate::ModelRuntimeProfile,
 }
 impl ModelAdapter for ObservedAdapter<'_> {
+    fn set_spend_context(&self, scope: crate::model_spend::ChargeScope, port: Option<std::sync::Arc<dyn crate::model_spend::ModelSpendPort>>) { self.inner.set_spend_context(scope,port); }
+    fn set_model_purpose(&self, purpose: &str) { self.inner.set_model_purpose(purpose); }
     fn stream_text_is_structured(&self) -> bool {
         self.inner.stream_text_is_structured()
     }
@@ -367,6 +389,10 @@ impl ModelAdapter for ObservedAdapter<'_> {
                     ));
                     return;
                 }
+                crate::provider_stream::ModelDelta::Response(body) => {
+                    self.events.output(step_id.get(), || serde_json::json!({"response":body.as_ref()}));
+                    return;
+                }
                 crate::provider_stream::ModelDelta::Usage(snapshot) => {
                     usage.replace(Some(snapshot.clone()));
                 }
@@ -385,6 +411,8 @@ impl ModelAdapter for ObservedAdapter<'_> {
             self.runtime_profile.matched_model.clone(),
             |id| {
                 step_id.set(id);
+                self.events.input(id, || serde_json::to_value(&req).unwrap());
+                self.inner.set_model_purpose(self.events.state.lock().unwrap().purpose);
                 self.inner.complete_observed(req, &mut forward)
             },
             |_value| {
@@ -414,6 +442,10 @@ impl ModelAdapter for ObservedAdapter<'_> {
                     ));
                     return;
                 }
+                crate::provider_stream::ModelDelta::Response(body) => {
+                    self.events.output(step_id.get(), || serde_json::json!({"response":body.as_ref()}));
+                    return;
+                }
                 crate::provider_stream::ModelDelta::Usage(snapshot) => {
                     usage.replace(Some(snapshot.clone()));
                 }
@@ -432,6 +464,8 @@ impl ModelAdapter for ObservedAdapter<'_> {
             self.runtime_profile.matched_model.clone(),
             |id| {
                 step_id.set(id);
+                self.events.input(id, || serde_json::to_value(&req).unwrap());
+                self.inner.set_model_purpose(self.events.state.lock().unwrap().purpose);
                 self.inner.complete_structured_observed(req, &mut forward)
             },
             |_value| {
@@ -461,6 +495,10 @@ impl ModelAdapter for ObservedAdapter<'_> {
                     ));
                     return;
                 }
+                crate::provider_stream::ModelDelta::Response(body) => {
+                    self.events.output(step_id.get(), || serde_json::json!({"response":body.as_ref()}));
+                    return;
+                }
                 crate::provider_stream::ModelDelta::Usage(snapshot) => {
                     usage.replace(Some(snapshot.clone()));
                 }
@@ -479,6 +517,8 @@ impl ModelAdapter for ObservedAdapter<'_> {
             self.runtime_profile.matched_model.clone(),
             |id| {
                 step_id.set(id);
+                self.events.input(id, || serde_json::json!({"instructions":req.instructions,"messages":req.input,"tools":req.tools}));
+                self.inner.set_model_purpose(self.events.state.lock().unwrap().purpose);
                 self.inner.chat_observed(req, &mut forward)
             },
             |value| {
@@ -709,6 +749,7 @@ mod tests {
                 ..Default::default()
             }));
             Err(AdapterError {
+                spend_stop: None,
                 message: "truncated".into(),
             })
         }

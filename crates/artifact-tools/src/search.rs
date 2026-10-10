@@ -27,6 +27,7 @@ const SCORE_COVERAGE_SCALE: u64 = 1_000;
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct ArtifactSearchInput {
+    #[schemars(length(min = 1, max = 512))]
     pub query: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(length(min = 1, max = 50))]

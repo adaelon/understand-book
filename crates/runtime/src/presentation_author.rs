@@ -233,7 +233,7 @@ pub fn spec() -> ToolSpec {
         },"required":["operation"],"additionalProperties":false}),
     };
     tool.parameters["properties"].as_object_mut().unwrap().extend(source_properties.as_object().unwrap().clone());
-    tool
+    crate::tool_schema::complete_spec(tool)
 }
 
 pub fn bindings_for(
@@ -381,7 +381,7 @@ mod tests {
     fn selected_result_preview_accepts_selector() {
         let request = r##"{"operation":"preview","candidate_id":"c","read_selector":"#result"}"##;
         assert!(serde_json::from_str::<AuthorRequest>(request).is_ok());
-        assert_eq!(spec().parameters["properties"]["read_selector"]["type"], "string");
+        assert_eq!(spec().parameters["properties"]["read_selector"]["type"], json!(["string", "null"]));
     }
 
     #[test]

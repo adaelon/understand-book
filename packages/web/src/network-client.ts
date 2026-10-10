@@ -15,7 +15,8 @@ export async function networkFetch<T>(method: string, path: string, body?: unkno
   if (!res.ok) {
     if (res.status === 401 && identity && key === sceneKey()) forgetNetwork();
     const message = value.error_code === 'WORKSPACE_STALE' ? '阅读连接已失效，请重试恢复连接' : value.message ?? '请求未完成';
-    throw new ApiError(res.status, value.error_code ?? `HTTP_${res.status}`, value.category ?? (res.status === 409 ? 'conflict' : 'unavailable'), message);
+    throw new ApiError(res.status, value.error_code ?? `HTTP_${res.status}`, value.category ?? (res.status === 409 ? 'conflict' : 'unavailable'), message,
+      typeof value.request_id === 'string' ? { request_id: value.request_id, expires_at: value.expires_at, resend_after: value.resend_after } : undefined);
   }
   return value;
 }
@@ -61,7 +62,8 @@ export function workspaceAction<T = unknown>(action: string, body: Record<string
     const value = await networkFetch<NetworkWorkspace & { result?: T }>('POST', `/workspaces/${w.workspace_id}/${action}`, {
       ...body, attachment_id: n.attachment, generation: latest.generation, expected_revision: latest.revision,
     });
-    if (value.workspace_id) installWorkspace(value);
+    if (value.workspace_id) installWorkspace(value, n.attachment, n.linked,
+      action === 'chat/new' || action === 'chat/select' ? 'chat' : undefined);
     return value as T;
   });
   writes = result;
@@ -191,7 +193,7 @@ export async function networkRequest<T>(method: 'GET' | 'POST', path: string, bo
     value = { root: '', books: result.books.map(b => ({ name: b.published_book_ref.book_id, book_id: b.published_book_ref.book_id, dir: JSON.stringify(b.published_book_ref), route: 'reader', cover: b.cover })) };
   } else if (path.startsWith('/book/')) value = await networkFetch(method, publishedUrl(path.slice(6)), body);
   else if (path === '/tutor/state' || path === '/tutor/mutate') value = await networkFetch(method, path, body);
-  else if (path === '/tutor/readiness') value = await networkFetch('GET', publishedUrl('teaching_readiness'));
+  else if (path === '/tutor/readiness') value = await networkFetch('GET', publishedUrl('tutor_readiness'));
   else if (path.startsWith('/agent/presentation.read') || path.startsWith('/agent/presentation.observe')) {
     if (input.saved_state) await workspaceAction('presentation/restore', { saved_state: input.saved_state });
     const result = await workspaceAction<{ result: unknown }>(path.endsWith("observe") ? "presentation/observe" : "presentation/read", input);

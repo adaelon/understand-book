@@ -1,12 +1,12 @@
 import { computed, ref } from 'vue';
 import { api as sharedApi, ApiError } from './api';
-import { bindSceneApi } from './network-context';
+import { bindSceneApi, readerKey } from './network-context';
 import type { TutorState } from './generated/TutorState';
 import type { TutorAction } from './generated/TutorAction';
 import type { TutorMutation } from './generated/TutorMutation';
 
 export function useTutorControl() {
-  const api = bindSceneApi(sharedApi);
+  const api = bindSceneApi(sharedApi, readerKey);
   const state = ref<TutorState | null>(null);
   const busy = ref(false);
   const error = ref('');
@@ -19,13 +19,16 @@ export function useTutorControl() {
     readiness.value = null;
     readinessError.value = '';
     try { const result = await api.tutorReadiness(); if (request === readinessRequest) readiness.value = result; }
-    catch { if (request === readinessRequest) readinessError.value = '教学材料状态读取失败，请重试'; }
+    catch { if (request === readinessRequest) readinessError.value = '学习就绪状态读取失败，请重试'; }
   }
   const current = computed(() => state.value?.sessions[state.value.control.current_tutor_session_id ?? ''] ?? null);
   const label = computed(() => !state.value ? 'Tutor 状态未加载' : !state.value.control.enabled ? 'Tutor 已关闭'
     : current.value?.status === 'ended' ? 'Tutor 已开启 · 本次学习已结束'
     : current.value?.status === 'paused' ? 'Tutor 已开启 · 学习已暂停'
-    : readiness.value?.status === 'ready' ? 'Tutor 已开启 · 教学材料已就绪' : 'Tutor 已开启 · 教学准备中');
+    : readinessError.value ? 'Tutor 已开启 · 就绪状态读取失败'
+    : !readiness.value ? 'Tutor 已开启 · 正在读取学习状态'
+    : current.value && !current.value.material_scope.some(material => material.source_id === readiness.value?.source_id) ? 'Tutor 已开启 · 当前书籍不属于本次学习'
+    : readiness.value.status === 'ready' ? 'Tutor 已开启 · 可以开始或继续学习' : 'Tutor 已开启 · 学习基础准备中');
   async function load() {
     void loadReadiness();
     busy.value = true;

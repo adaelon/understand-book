@@ -16,7 +16,7 @@ export interface RunSnapshot {
   persistence_state: "pending" | "saved" | "failed";
   activities: RunActivity[];
   final_view: AgentChatTurn | null;
-  error: { error_code: string; category: string; message: string } | null;
+  error: import('./account-allowance').SpendError | null;
 }
 export interface RunEvent { observation_epoch?: string; live_buffer_reset?: boolean; turn_id: string; seq: number; elapsed_ms: number; type: string; payload: unknown }
 export function initialRun(descriptor: RunDescriptor): RunSnapshot {

@@ -2,14 +2,37 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import App from './App.vue';
 import BookCover from './components/BookCover.vue';
+import LoadingAnimation from './components/LoadingAnimation.vue';
+import AccountAllowance from './components/AccountAllowance.vue';
+import AccountSettings from './components/AccountSettings.vue';
+import AccountAccess from './components/AccountAccess.vue';
+import { takeAccountLink, type AccountView } from './account-forms';
 import AgentPresentation from './components/AgentPresentation.vue';
 import SourceExcerpt from './components/SourceExcerpt.vue';
 import { api } from './api';
 import { invalidateLinkedWindows, isLinkedReaderChange } from './network-presentation';
-import { network, installIdentity, installWorkspace, forgetNetwork, sceneKey, type ChatDraft, type NetworkIdentity, type NetworkWorkspace, type PublishedBookRef } from './network-context';
+import { network, installIdentity, installWorkspace, forgetNetwork, sceneKey, readerKey, type ChatDraft, type NetworkIdentity, type NetworkWorkspace, type PublishedBookRef } from './network-context';
 import { networkFetch, recoverWorkspaceBinding, recoverSubmissions, pendingSubmissions, retrySubmission, type PendingSubmission } from './network-client';
 import { targetPublication, type RecapTarget } from './session-recap';
 const username = ref(''), password = ref(''), error = ref(''), busy = ref(false), checking = ref(true);
+const accountLink = takeAccountLink();
+const accountView = ref<AccountView | null>(accountLink.view), resetToken = ref(accountLink.token);
+accountLink.token = '';
+function showAccount(view: AccountView | null) {
+  accountView.value = view; password.value = ''; resetToken.value = '';
+  const url = new URL(location.href); url.hash = '';
+  if (view) url.searchParams.set('account', view); else url.searchParams.delete('account');
+  history.replaceState(history.state, '', url);
+}
+function accountLogin(email?: string, notice?: string) {
+  showAccount(null); if (email) username.value = email; error.value = notice ?? '';
+  checking.value = false;
+}
+function passwordChanged() {
+  forgetNetwork(); books.value = []; pending.value = 0; settingsOpen.value = false;
+  accountLogin(undefined, '密码已更新，请使用新密码重新登录。');
+  channel?.postMessage('changed');
+}
 type CatalogBook = { published_book_ref: PublishedBookRef; is_default?: boolean; cover?: import('./api').BookCoverSource | null };
 const books = ref<CatalogBook[]>([]);
 function bookLabel(book: CatalogBook) {
@@ -18,7 +41,10 @@ function bookLabel(book: CatalogBook) {
   return `${book.published_book_ref.book_id} · 版本 ${versions.indexOf(book) + 1}${book.is_default ? '（默认）' : ''}`;
 }
 const key = computed(sceneKey);
+const appKey = computed(readerKey);
 const chatDraft = ref<ChatDraft | null>(null);
+const allowanceOpen = ref(false), settingsOpen = ref(false);
+watch([() => network.value.epoch, () => network.value.identity?.user_id, () => network.value.identity?.csrf_token], () => { allowanceOpen.value = false; settingsOpen.value = false; }, { flush: 'sync' });
 // A transport generation changes on reattachment; the user's unsent question does not.
 watch(() => {
   const n = network.value, w = n.workspace;
@@ -105,6 +131,7 @@ async function retryOriginal(key: string) {
   catch (failure) { error.value = failure instanceof Error ? failure.message : String(failure); }
 }
 async function checkIdentity() {
+  if (accountView.value) { checking.value = false; return; }
   if (identityCheck) return identityCheck;
   identityCheck = (async () => {
     try {
@@ -114,6 +141,7 @@ async function checkIdentity() {
       else if (identity.user_id !== network.value.identity.user_id || identity.csrf_token !== network.value.identity.csrf_token) {
         forgetNetwork(); books.value = []; installIdentity(identity); await catalog();
       }
+      else { network.value = { ...network.value, identity }; }
       if (!linkedRequested) await restore();
       suspended.value = false;
       if (network.value.workspace && network.value.linked) {
@@ -163,7 +191,13 @@ async function openBook(reference: PublishedBookRef) {
 }
 function pendingChanged() { pendingItems.value = pendingSubmissions(); pending.value = pendingItems.value.length; }
 function onVisible() { if (document.visibilityState !== 'hidden') void checkIdentity(); }
-function onAccountChange() { forgetNetwork(); books.value = []; pending.value = 0; void checkIdentity(); }
+async function onAccountChange(event: MessageEvent) {
+  if (event.data === 'profile-changed') { void checkIdentity(); return; }
+  const previous = identityCheck;
+  forgetNetwork(); books.value = []; pending.value = 0;
+  if (previous) await previous;
+  void checkIdentity();
+}
 onMounted(() => {
   void checkIdentity();
   window.addEventListener('pagehide', pageHide);
@@ -182,21 +216,25 @@ onBeforeUnmount(() => {
 });
 </script>
 <template>
-  <main v-if="!network.identity" class="network-login">
+  <AccountAccess v-if="accountView" :key="accountView" :view="accountView" :token="resetToken" @login="accountLogin" @reset="passwordChanged" @forgot="showAccount('forgot-password')" />
+  <main v-else-if="checking && !network.workspace" class="network-loading"><LoadingAnimation /></main>
+  <main v-else-if="!network.identity" class="network-login">
     <h1>回到你的阅读</h1>
-    <p v-if="checking">正在恢复登录…</p>
-    <form v-else @submit.prevent="login">
-      <label>账号<input v-model="username" autocomplete="username" required></label>
+    <form @submit.prevent="login">
+      <label>邮箱或账号<input v-model="username" autocomplete="username" required></label>
       <label>密码<input v-model="password" type="password" autocomplete="current-password" required></label>
       <button :disabled="busy">登录</button>
     </form>
+    <p><button :disabled="busy" @click="showAccount('register')">注册账号</button> <button :disabled="busy" @click="showAccount('forgot-password')">忘记密码</button></p>
     <p role="status">{{ error }}</p>
   </main>
   <div v-else class="network-shell">
     <details v-if="network.linked" class="network-account network-linked-account">
       <summary>账号</summary>
       <div class="network-account-menu">
-        <span>{{ network.identity.user_id }}</span>
+        <span>{{ network.identity.email || network.identity.user_id }}</span>
+        <button @click="settingsOpen = true">个人设置</button> <button @click="allowanceOpen = true">使用额度</button>
+        <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a>
         <button @click="logout">退出登录</button>
       </div>
     </details>
@@ -206,13 +244,15 @@ onBeforeUnmount(() => {
       <span v-if="error" role="alert">{{ error }}</span>
     </div>
     <AgentPresentation v-if="!suspended && network.linked && linkedPresentation && network.workspace" :key="key" :session-id="linkedPresentation.session_id" :turn-id="linkedPresentation.turn_id" :reference="linkedPresentation.reference" @follow-up="followUp" @source="showLinkedSource" />
-    <p v-else-if="openingRecap" role="status">正在打开原发布…</p>
-    <App v-else-if="!suspended && network.workspace" :key="key" v-model:chat-draft="chatDraft" :recap-target="recapTarget" @recap-consumed="recapTarget = null" @recap-publication="openRecapPublication">
+    <main v-else-if="openingRecap" class="network-loading"><LoadingAnimation /></main>
+    <App v-else-if="!suspended && network.workspace" :key="appKey" v-model:chat-draft="chatDraft" :recap-target="recapTarget" @show-allowance="allowanceOpen = true" @recap-consumed="recapTarget = null" @recap-publication="openRecapPublication">
       <template #account>
         <details class="network-account">
           <summary>账号</summary>
           <div class="network-account-menu">
-            <span>{{ network.identity.user_id }}</span>
+            <span>{{ network.identity.email || network.identity.user_id }}</span>
+            <button @click="settingsOpen = true">个人设置</button> <button @click="allowanceOpen = true">使用额度</button>
+            <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a>
             <span v-if="network.identity.capabilities?.presentation.authoring === false">演示制作暂不可用</span>
             <button @click="logout">退出登录</button>
           </div>
@@ -223,7 +263,7 @@ onBeforeUnmount(() => {
     <main v-else class="network-library">
       <header class="network-library-head">
         <div><p class="network-library-kicker">你的书架</p><h1>选择阅读材料</h1></div>
-        <p>{{ network.identity.user_id }} <button @click="logout">退出登录</button></p>
+        <p><span class="account-email">{{ network.identity.email || network.identity.user_id }}</span> <button @click="settingsOpen = true">个人设置</button> <button @click="allowanceOpen = true">使用额度</button> <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a> <button @click="logout">退出登录</button></p>
       </header>
       <div class="network-library-grid">
         <button v-for="book in books" :key="book.published_book_ref.publication_id" class="network-book-card" :disabled="busy" @click="openBook(book.published_book_ref)">
@@ -231,8 +271,10 @@ onBeforeUnmount(() => {
           <strong>{{ bookLabel(book) }}</strong>
         </button>
       </div>
-      <p v-if="!books.length">暂无获授权的材料。</p>
+      <p v-if="!books.length">账号已创建，等待管理员开通材料。</p>
     </main>
+    <AccountSettings v-if="settingsOpen" @close="settingsOpen = false" @bound="channel?.postMessage('profile-changed')" @password-changed="passwordChanged" />
+    <AccountAllowance v-if="allowanceOpen" :key="key" @close="allowanceOpen = false" />
     <aside v-if="linkedSource" class="network-source" aria-label="演示来源">
       <strong>{{ linkedSource.heading_path?.join(' / ') || linkedSource.label }}</strong>
       <SourceExcerpt :source="linkedSource" />
@@ -243,11 +285,13 @@ onBeforeUnmount(() => {
   </div>
 </template>
 <style scoped>
+.network-loading { flex: 1; min-height: 0; display: grid; place-items: center; background: var(--reader-canvas); }
 .network-login { max-width: 32rem; margin: 12vh auto; padding: 1.5rem; }
 .network-library { flex: 1; min-height: 0; overflow: auto; width: 100%; padding: clamp(20px, 5vw, 64px); box-sizing: border-box; }
 .network-library-head { max-width: 1100px; margin: 0 auto 32px; display: flex; justify-content: space-between; align-items: center; gap: 20px; }
 .network-library-head h1 { margin: 6px 0 0; font-size: clamp(24px, 3vw, 32px); }
-.network-library-head > p { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.network-library-head > p { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 13px; min-width: 0; max-width: 100%; }
+.account-email { overflow-wrap: anywhere; min-width: 0; max-width: 100%; }
 .network-library-kicker { margin: 0; color: var(--muted); font-size: 13px; }
 .network-library-grid { max-width: 1100px; margin: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 28px 24px; }
 .network-book-card { display: flex; flex-direction: column; align-items: stretch; border: 0; border-radius: 8px; padding: 8px !important; min-width: 0; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
@@ -270,6 +314,7 @@ input, button { font: inherit; padding: .6rem; }
 .network-linked-account { position: fixed; right: .6rem; bottom: .4rem; z-index: 100; background: var(--canvas); }
 .network-account summary { cursor: pointer; padding: .4rem .6rem; }
 .network-account-menu { position: absolute; right: 0; top: 100%; z-index: 100; display: grid; gap: .6rem; min-width: 12rem; padding: 1rem; background: var(--canvas); border: 1px solid var(--line); border-radius: .6rem; box-shadow: 0 8px 24px #0002; }
+.network-account-menu { max-width: calc(100vw - 2rem); box-sizing: border-box; overflow-wrap: anywhere; }
 @media (max-width: 1023px) { .network-account-menu { position: static; } }
 .network-source { position: fixed; bottom: 1rem; right: 1rem; width: min(620px, calc(100vw - 2rem)); box-sizing: border-box; max-height: calc(100dvh - 2rem); overflow: auto; padding: 1rem; z-index: 110; background: var(--canvas); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 12px 40px #0003; }
 .network-source > strong { display: block; margin-bottom: 12px; }

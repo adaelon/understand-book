@@ -8,7 +8,7 @@ impl ModelAdapter for ContinuationAdapter {
     fn model_runtime_profile(&self) -> runtime::ModelRuntimeProfile { self.0.profile.clone() }
     fn set_run_cancellation(&self, token: CancellationToken) { self.0.inner.set_run_cancellation(token); }
     fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, runtime::AdapterError> {
-        Err(runtime::AdapterError { message: "EX13.6 uses only recorded chat and structured requests".into() })
+        Err(runtime::AdapterError { spend_stop: None, message: "EX13.6 uses only recorded chat and structured requests".into() })
     }
     fn complete_structured(&self, req: CompletionRequest) -> Result<Value, runtime::AdapterError> {
         self.complete_structured_observed(req, &mut runtime::provider_stream::ignore)

@@ -12,9 +12,58 @@ pub struct TeachingBinding {
     pub control_revision: u32,
     pub source_id: String,
     pub source_revision: String,
-    pub map_revision: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub map_revision: Option<String>,
     pub chat_session_id: String,
     pub turn_id: String,
+}
+
+/// A source-grounded focus; formal object identity is optional.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct TeachingTarget {
+    pub learning_focus: String,
+    pub expected_performance: String,
+    pub capability: String,
+    pub source_bindings: Vec<TeachingSourceBinding>,
+    #[serde(default)]
+    pub object_refs: Vec<TeachingObjectRevision>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct TeachingSourceBinding {
+    pub source_id: String,
+    pub source_revision: String,
+    pub start_lid: String,
+    pub end_lid: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct TeachingObjectRevision {
+    pub source_id: String,
+    pub object_id: String,
+    pub object_revision: u64,
+}
+
+impl TeachingTarget {
+    /// Storage validates identity. The turn owner checks these ranges against actual reads.
+    pub fn validate(&self, binding: &TeachingBinding) -> Result<(), ToolError> {
+        if [&self.learning_focus, &self.expected_performance, &self.capability]
+            .iter().any(|s| s.trim().is_empty()) || self.source_bindings.is_empty()
+            || self.source_bindings.iter().any(|source| {
+                source.source_id.trim().is_empty() || source.source_revision.trim().is_empty()
+                    || source.source_id != binding.source_id || source.source_revision != binding.source_revision
+                    || source.start_lid.trim().is_empty() || source.end_lid.trim().is_empty()
+            })
+            || self.object_refs.iter().any(|object| object.source_id != binding.source_id
+                || object.object_id.trim().is_empty() || object.object_revision == 0)
+        {
+            return Err(invalid("教学目标缺少焦点、期望表现或确切来源/对象版本"));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -27,6 +76,7 @@ pub enum TeachingFact {
     LearnerAction,
     HelpDelivered,
     HelpDisplayed,
+    UsageObserved,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -64,7 +114,7 @@ impl LearningStore {
         session: &str,
         limit: u32,
     ) -> Result<Vec<TeachingEvent>, ToolError> {
-        let mut query = self.connection.prepare("SELECT event FROM teaching_trace WHERE session_id=? AND json_extract(event,'$.kind') IN ('message_delivered','learner_action','help_displayed') ORDER BY seq DESC LIMIT ?").map_err(storage)?;
+        let mut query = self.connection.prepare("SELECT event FROM teaching_trace WHERE session_id=? AND json_extract(event,'$.kind') IN ('message_delivered','learner_action','help_displayed','usage_observed') ORDER BY seq DESC LIMIT ?").map_err(storage)?;
         let rows = query
             .query_map(params![session, limit.min(20)], |r| r.get::<_, String>(0))
             .map_err(storage)?;
@@ -135,6 +185,16 @@ impl LearningStore {
         if event.event_id.trim().is_empty() {
             return Err(invalid("缺少教学事件身份"));
         }
+        if event.binding.map_revision.as_ref().is_some_and(|s| s.trim().is_empty()) {
+            return Err(invalid("缺少地图应省略引用，不能保存空地图版本"));
+        }
+        if let Some(target) = event.payload.get("move").and_then(|m| m.get("target")).filter(|t| !t.is_null()) {
+            let target: TeachingTarget = serde_json::from_value(target.clone()).map_err(|e| invalid(e.to_string()))?;
+            target.validate(&event.binding)?;
+            if event.payload["move"]["capability"] != target.capability {
+                return Err(invalid("教学动作与目标能力不一致"));
+            }
+        }
         let transaction = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -201,7 +261,7 @@ mod tests {
                 control_revision: 1,
                 source_id: "book".into(),
                 source_revision: "old".into(),
-                map_revision: "v1".into(),
+                map_revision: Some("v1".into()),
                 chat_session_id: "chat1".into(),
                 turn_id: "turn1".into(),
             },
@@ -229,5 +289,63 @@ mod tests {
         let store = LearningStore::open(&path, false).unwrap();
         assert_eq!(store.teaching_event("delivery").unwrap(), first);
         assert_eq!(store.teaching_events("tutor", 0, 100).unwrap().len(), 1);
+    }
+}
+
+#[cfg(test)]
+mod t15_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn teaching_t15_targets_and_optional_maps_survive_reopen_and_preserve_legacy_json() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("learning.db");
+        let mut store = LearningStore::open(&path, false).unwrap();
+        let old = json!({"event_id":"old","binding":{"tutor_session_id":"session","session_revision":1,
+            "control_revision":1,"source_id":"book","source_revision":"source-v1","map_revision":"map-v1",
+            "chat_session_id":"chat","turn_id":"turn"},"kind":"message_delivered","causal_refs":[],
+            "payload":{"move":{"object_ids":["speed"],"capability":"explanation"},"object_versions":[{"ref":{"source_id":"book","object_id":"speed"},"object_revision":3}]},"occurred_at":"now"});
+        // Insert the pre-T15 JSON itself, so reopening tests real historical bytes.
+        store.connection.execute("INSERT INTO teaching_trace(event_id,session_id,event) VALUES ('old','session',?)", [old.to_string()]).unwrap();
+        let legacy = store.teaching_event("old").unwrap();
+        assert_eq!(serde_json::to_value(&legacy).unwrap(), old);
+        let target = json!({"learning_focus":"理解平均速度","expected_performance":"解释总路程与总时间的关系",
+            "capability":"explanation","source_bindings":[{"source_id":"book","source_revision":"source-v1","start_lid":"1.1","end_lid":"1.2"}],"object_refs":[]});
+        for (id, map) in [("without-map", None), ("with-map", Some("map-v2".to_string()))] {
+            let mut event = legacy.clone();
+            event.event_id = id.into();
+            event.binding.map_revision = map;
+            event.payload = json!({"move":{"capability":"explanation","target":target}});
+            if id == "with-map" {
+                event.payload["move"]["target"]["object_refs"] = json!([{"source_id":"book","object_id":"speed","object_revision":4}]);
+            }
+            store.append_teaching(&event).unwrap();
+        }
+        drop(store);
+        let mut store = LearningStore::open(&path, false).unwrap();
+        let no_map = store.teaching_event("without-map").unwrap();
+        assert_eq!(no_map.binding.map_revision, None);
+        assert!(serde_json::to_value(&no_map.binding).unwrap().get("map_revision").is_none());
+        assert_eq!(no_map.payload["move"]["target"], target);
+        let mapped = store.teaching_event("with-map").unwrap();
+        assert_eq!(mapped.binding.map_revision.as_deref(), Some("map-v2"));
+        assert_eq!(mapped.payload["move"]["target"]["object_refs"][0]["object_revision"], 4);
+        assert_eq!(serde_json::to_value(store.teaching_event("old").unwrap()).unwrap(), old);
+        let raw: String = store.connection.query_row("SELECT event FROM teaching_trace WHERE event_id='old'", [], |r| r.get(0)).unwrap();
+        assert_eq!(raw, old.to_string());
+        let mut invalid_event = no_map.clone();
+        invalid_event.event_id = "invalid".into();
+        invalid_event.binding.map_revision = Some("".into());
+        assert!(store.append_teaching(&invalid_event).is_err());
+        invalid_event.binding.map_revision = None;
+        invalid_event.payload["move"]["target"]["source_bindings"] = json!([]);
+        assert!(store.append_teaching(&invalid_event).is_err());
+        invalid_event.payload["move"]["target"] = target;
+        invalid_event.payload["move"]["target"]["source_bindings"][0]["source_revision"] = json!("old-source");
+        assert!(store.append_teaching(&invalid_event).is_err());
+        invalid_event.payload["move"]["target"] = no_map.payload["move"]["target"].clone();
+        invalid_event.payload["move"]["capability"] = json!("prediction");
+        assert!(store.append_teaching(&invalid_event).is_err());
     }
 }

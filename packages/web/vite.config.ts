@@ -8,7 +8,15 @@ const backend = process.env.UNDERSTAND_BOOK_ADDR
   : "http://127.0.0.1:8787";
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), {
+    name: "reader-startup-styles",
+    apply: "build",
+    transformIndexHtml: {
+      order: "post",
+      handler: html => html.replace(/<link\b[^>]*rel="stylesheet"[^>]*>/g,
+        tag => tag.replace('rel="stylesheet"', 'rel="preload" as="style" data-app-styles')),
+    },
+  }],
   test: {
     exclude: [...configDefaults.exclude, "playwright/**"],
   },

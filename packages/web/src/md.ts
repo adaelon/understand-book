@@ -111,6 +111,64 @@ export function renderInlineMarkdown(src: string | null | undefined): string {
   return restoreInlineSuperscripts(md.renderInline(normalizeInlineMath(extracted.src)), extracted.superscripts);
 }
 
+function renderHtmlTableContent(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) return renderInlineMarkdown(node.textContent);
+  if (!(node instanceof Element)) return "";
+  const tag = node.tagName.toLowerCase();
+  if (tag === "script" || tag === "style") return "";
+  if (tag === "br") return "<br>";
+  if (tag === "code") return `<code>${escapeHtml(node.textContent ?? "")}</code>`;
+  const body = Array.from(node.childNodes).map(renderHtmlTableContent).join("");
+  if (["strong", "b", "em", "i", "sup", "sub"].includes(tag)) return `<${tag}>${body}</${tag}>`;
+  if (tag === "a") {
+    const href = node.getAttribute("href") ?? "";
+    if (href && md.validateLink(href)) return `<a href="${escapeHtml(md.normalizeLink(href))}">${body}</a>`;
+  }
+  return body;
+}
+
+function renderHtmlTableStructure(node: Element): string {
+  const tag = node.tagName.toLowerCase();
+  if (tag === "td" || tag === "th") {
+    const spans = ["colspan", "rowspan"].map((name) => {
+      const value = Number(node.getAttribute(name));
+      return Number.isInteger(value) && value > 1 ? ` ${name}="${value}"` : "";
+    }).join("");
+    const align = (node as HTMLElement).style.textAlign || node.getAttribute("align");
+    const alignment = align && ["left", "center", "right"].includes(align) ? ` style="text-align:${align}"` : "";
+    return `<${tag}${spans}${alignment}>${Array.from(node.childNodes).map(renderHtmlTableContent).join("")}</${tag}>`;
+  }
+  if (tag === "caption") return `<caption>${Array.from(node.childNodes).map(renderHtmlTableContent).join("")}</caption>`;
+  if (["table", "thead", "tbody", "tfoot", "tr"].includes(tag)) {
+    return `<${tag}>${Array.from(node.children).map(renderHtmlTableStructure).join("")}</${tag}>`;
+  }
+  return "";
+}
+
+/** Display a table asset without changing its canonical text or source offsets. */
+export function renderTableSource(src: string): string {
+  const text = src.trim();
+  if (/^<table(?:\s|>)/i.test(text)) {
+    const table = new DOMParser().parseFromString(text, "text/html").querySelector("table");
+    if (table) return renderHtmlTableStructure(table);
+  }
+
+  const markdown = renderMarkdown(src);
+  if (/^\s*<table>/.test(markdown)) return markdown;
+
+  // EPUB's canonical serialization has pipe rows but no header separator or th/td metadata.
+  // Keep every row as data, and its cell text literal, rather than inventing a header or Markdown.
+  const lines = text.split(/\r?\n/).map((line) => line.trim());
+  if (lines.every((line) => line.startsWith("|") && line.endsWith("|") && line.length > 1)) {
+    const rows = lines.map((line) => {
+      const cells = line.slice(1, -1).split("|").map((cell) => `<td>${escapeHtml(cell.trim())}</td>`).join("");
+      return `<tr>${cells}</tr>`;
+    }).join("");
+    return `<table><tbody>${rows}</tbody></table>`;
+  }
+  return `<pre class="table-source-fallback">${escapeHtml(src)}</pre>`;
+}
+
 /** Formula LID 可来自段内 $...$，也可来自独占块的 $$...$$ 或多行 $...$。 */
 export function isDisplayFormulaSource(src: string): boolean {
   const text = src.trim();

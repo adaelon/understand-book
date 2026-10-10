@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from './api';
-import { network, installIdentity, installWorkspace, forgetNetwork, bindSceneApi, type NetworkWorkspace } from './network-context';
+import { network, installIdentity, installWorkspace, forgetNetwork, bindSceneApi, readerKey, type NetworkWorkspace } from './network-context';
 import { networkFetch, recoverSubmissions, pendingSubmissions, workspaceAction, retrySubmission, recoverWorkspaceBinding } from './network-client';
 import { readReaderSurfacePreference, writeReaderSurfacePreference } from './reader-surface';
 const scene = { workspace_id: 'w', generation: 2, revision: 3, selected_chat: 'chat', published_book_ref: { book_id: 'b', publication_id: 'p' }, reader: {} } as NetworkWorkspace;
@@ -9,6 +9,36 @@ const json = (value: unknown, status = 200) => new Response(JSON.stringify(value
 beforeEach(() => { sessionStorage.clear(); localStorage.clear(); installIdentity({ user_id: 'A', csrf_token: 'csrf-A' }); installWorkspace(scene); });
 afterEach(() => { vi.unstubAllGlobals(); network.value = { ...network.value, enabled: false }; });
 describe('MU8 authorized browser context', () => {
+  it('preserves reader commands across a chat change while rejecting old responses and old chat commands', async () => {
+    const reader = bindSceneApi(api, readerKey), chat = bindSceneApi(api);
+    const initialReader = readerKey();
+    let release!: (value: Response) => void;
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.endsWith('/library')) return new Promise<Response>(resolve => { release = resolve; });
+      if (url.endsWith('/chat/new')) return json({ ...scene, generation: 3, selected_chat: 'new' });
+      if (url.endsWith('/memory/recall')) return json({ result: [] });
+      return json(scene);
+    }));
+    const oldResponse = networkFetch('GET', '/library');
+    const rejected = expect(oldResponse).rejects.toMatchObject({ errorCode: 'CLIENT_CONTEXT_STALE' });
+    await workspaceAction('chat/new');
+    expect(readerKey()).toBe(initialReader);
+    release(json({ stale: true })); await rejected;
+    expect(() => chat.recall()).toThrow('阅读现场已切换');
+    expect(await reader.recall()).toEqual([]);
+    // Revision-only updates must not undo the preserved Reader identity.
+    installWorkspace({ ...network.value.workspace!, revision: 6 });
+    expect(readerKey()).toBe(initialReader);
+    installWorkspace({ ...network.value.workspace!, generation: 4 });
+    expect(() => reader.recall()).toThrow('阅读现场已切换');
+  });
+
+  it('reads Tutor admission from the selected publication independently of teaching completeness', async () => {
+    const fetch = vi.fn(async () => json({ status: 'ready', teaching_assets: { status: 'preparing' } }));
+    vi.stubGlobal('fetch', fetch);
+    expect(await api.tutorReadiness()).toMatchObject({ status: 'ready', teaching_assets: { status: 'preparing' } });
+    expect(fetch.mock.calls[0]).toEqual(['/api/books/b/publications/p/tutor_readiness', expect.objectContaining({ method: 'GET' })]);
+  });
   it('reattaches an evicted workspace before installing its new generation, then history reads succeed', async () => {
     const requests: string[] = [];
     let attached = false;

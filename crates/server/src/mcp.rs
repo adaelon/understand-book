@@ -805,6 +805,7 @@ mod tests {
 
         fn chat(&self, _request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "not used".into(),
             })
         }
@@ -827,6 +828,7 @@ mod tests {
 
         fn chat(&self, _request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "not used".into(),
             })
         }

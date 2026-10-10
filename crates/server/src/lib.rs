@@ -81,6 +81,19 @@ pub mod service_state;
 pub mod user_runtime;
 pub mod user_storage_paths;
 pub mod control_store;
+pub mod account_allowance;
+mod allowance_admin;
+pub mod model_rates;
+mod model_spend_store;
+mod charge_admin;
+mod admin_api;
+mod beta_invites;
+mod account_mail;
+mod account_registration;
+mod account_email;
+mod account_password;
+mod admin_store;
+mod admin_usage;
 pub mod reader_maintenance;
 pub mod user_registry;
 pub mod published_library;
@@ -12637,6 +12650,7 @@ pub struct UnconfiguredAdapter;
 impl ModelAdapter for UnconfiguredAdapter {
     fn complete(&self, _req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
         Err(AdapterError {
+            spend_stop: None,
             message:
                 "未配置 LLM 后端:缺 .env(OPENCODE_API_KEY / OPENCODE_BASE_URL / FLUID_LLM_MODEL)"
                     .into(),
@@ -12644,6 +12658,7 @@ impl ModelAdapter for UnconfiguredAdapter {
     }
     fn chat(&self, _: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
         Err(AdapterError {
+            spend_stop: None,
             message:
                 "未配置 LLM 后端:缺 .env(OPENCODE_API_KEY / OPENCODE_BASE_URL / FLUID_LLM_MODEL)"
                     .into(),
@@ -12779,6 +12794,17 @@ pub fn load_session(path: &Option<PathBuf>) -> Option<SessionState> {
 
 #[cfg(test)]
 mod tests {
+    mod adm10_tests;
+    mod adm2_tests;
+    mod inv2_tests;
+    mod inv5_tests;
+    mod inv6_tests;
+    mod inv7_tests;
+    mod adm3_tests;
+    mod adm5_tests;
+    mod adm6_tests;
+    mod adm7_tests;
+    mod adm9_tests;
     mod mu2_tests;
     mod mu3_tests;
     mod mu4_tests;
@@ -13445,6 +13471,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "chat 脚本耗尽".into(),
                 })
         }
@@ -13471,6 +13498,7 @@ mod tests {
     impl ModelAdapter for CompactionDraftAdapter {
         fn complete(&self, _req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "checkpoint generation requires structured completion".into(),
             })
         }
@@ -13480,12 +13508,14 @@ mod tests {
             _req: CompletionRequest,
         ) -> Result<serde_json::Value, AdapterError> {
             self.output.borrow_mut().take().ok_or_else(|| AdapterError {
+                spend_stop: None,
                 message: "checkpoint draft exhausted".into(),
             })
         }
 
         fn chat(&self, _request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "checkpoint generation must not use agent chat".into(),
             })
         }
@@ -13508,6 +13538,7 @@ mod tests {
             );
             *self.observed_pending.lock().unwrap() = true;
             Err(AdapterError {
+                spend_stop: None,
                 message: "provider failed after observing precommit".into(),
             })
         }
@@ -13516,6 +13547,7 @@ mod tests {
     impl ModelAdapter for MemoryFlowAdapter {
         fn complete(&self, _req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "memory flow uses complete_structured".into(),
             })
         }
@@ -13529,6 +13561,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "structured script exhausted".into(),
                 })
         }
@@ -23194,6 +23227,7 @@ Version 1.2 and bare 1.1 stay unchanged.
     impl ModelAdapter for TranslationStructuredAdapter {
         fn complete(&self, _req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "translation uses complete_structured".into(),
             })
         }
@@ -23208,6 +23242,7 @@ Version 1.2 and bare 1.1 stay unchanged.
 
         fn chat(&self, _request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "translation does not use chat".into(),
             })
         }

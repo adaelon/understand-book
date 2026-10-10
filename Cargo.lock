@@ -1857,6 +1857,7 @@ version = "0.0.0"
 dependencies = [
  "read-tools",
  "rusqlite",
+ "schemars 0.8.22",
  "serde",
  "serde_json",
  "tempfile",
@@ -2528,6 +2529,7 @@ version = "0.0.0"
 dependencies = [
  "base-schema",
  "book-tool-contracts",
+ "schemars 0.8.22",
  "serde",
  "serde_json",
  "ts-rs",
@@ -2542,6 +2544,7 @@ dependencies = [
  "base-schema",
  "memory",
  "read-tools",
+ "schemars 0.8.22",
  "serde",
  "serde_json",
  "ts-rs",
@@ -2715,6 +2718,7 @@ dependencies = [
  "ts-rs",
  "ureq",
  "url",
+ "uuid",
 ]
 
 [[package]]

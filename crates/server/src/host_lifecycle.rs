@@ -38,6 +38,7 @@ impl ServiceAdapter {
     fn check_running(&self) -> Result<(), AdapterError> {
         if self.stop.load(Ordering::Acquire) {
             Err(AdapterError {
+                spend_stop: None,
                 message: "Reader service is stopping".into(),
             })
         } else {

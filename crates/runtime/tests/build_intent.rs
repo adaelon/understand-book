@@ -26,6 +26,7 @@ impl StructuredAdapter {
     fn failure(message: &str) -> Self {
         Self {
             outputs: RefCell::new(VecDeque::from([Err(AdapterError {
+                spend_stop: None,
                 message: message.into(),
             })])),
             requests: RefCell::new(Vec::new()),
@@ -36,6 +37,7 @@ impl StructuredAdapter {
 impl ModelAdapter for StructuredAdapter {
     fn complete(&self, _req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
         Err(AdapterError {
+            spend_stop: None,
             message: "build intent must use structured completion".into(),
         })
     }
@@ -50,6 +52,7 @@ impl ModelAdapter for StructuredAdapter {
 
     fn chat(&self, _request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
         Err(AdapterError {
+            spend_stop: None,
             message: "build intent must not use chat".into(),
         })
     }

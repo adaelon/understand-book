@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import RightRail from "./RightRail.vue";
 import { api } from '../api';
+import { renderMarkdown } from '../md';
 import { network, installIdentity, installWorkspace } from '../network-context';
 import type { RecapTarget, SessionRecap } from '../session-recap';
 
@@ -31,6 +32,95 @@ const baseProps = {
   effectSecondaryLabel: () => "undo",
   gotoBack: () => "1.1",
 };
+
+describe("RightRail history visibility", () => {
+  it('ADM8 exposes allowance from a stop while retaining partial answers and requiring an explicit click', async () => {
+    installIdentity({ user_id: 'A', csrf_token: 'a' });
+    const wrapper = mount(RightRail, { props: { ...baseProps, chat: [{ turnId: 'stopped', user: '问题', pending: false,
+      error: 'raw error', spendStop: { code: 'ALLOWANCE_INSUFFICIENT', message: '本期额度不足。本次已完成内容已保存。' },
+      questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+      outcome: { answer: '已完成的部分回答', effects: [], trace: [], memory_updates: [], turns: 1, tokens_spent: 0, incomplete: true,
+        profile_usage: { snapshot_revision: 0, injected_fact_ids: [], claimed_used_fact_ids: [], influences: [] } } as never,
+    }] } });
+    try {
+      expect(wrapper.text()).toContain('已完成的部分回答');
+      expect(wrapper.text()).not.toContain('raw error');
+      expect(wrapper.emitted('continue-goal')).toBeUndefined();
+      await wrapper.findAll('button').find(button => button.text() === '查看使用额度')!.trigger('click');
+      expect(wrapper.emitted('show-allowance')).toHaveLength(1);
+    } finally { wrapper.unmount(); network.value = { ...network.value, identity: null, enabled: false }; }
+  });
+  const emptySession = (id: string) => ({
+    id, title: "New chat", created_at: "t0", updated_at: "t0", turn_count: 0, turns: [],
+  });
+  const savedSession = (id: string) => ({
+    ...emptySession(id), title: "已有问题", turn_count: 1,
+    turns: [{ user: "已有问题", question_source_label: null, question_quote: null }],
+  });
+
+  it.each([
+    { name: "first-open empty session", sessions: [emptySession("chat-1")], count: 0 },
+    { name: "repeated new empty sessions", sessions: [emptySession("chat-1"), emptySession("chat-2"), emptySession("chat-3")], count: 0 },
+    { name: "saved conversation alongside empty sessions", sessions: [emptySession("chat-1"), savedSession("saved"), emptySession("old-empty")], count: 1 },
+  ])("shows only conversations with questions: $name", async ({ sessions, count }) => {
+    const wrapper = mount(RightRail, { props: { ...baseProps, chatSessions: sessions } });
+    try {
+      expect(wrapper.get(".chat-actions .history-button span").text()).toBe(String(count));
+      if (count === 0) {
+        expect(wrapper.get(".transcript .empty").text()).toContain("本书还没有保存的对话");
+        expect(wrapper.find(".empty-history-button").exists()).toBe(false);
+      } else {
+        expect(wrapper.get(".transcript .empty").text()).toContain("本书有 1 段已保存的历史对话");
+        expect(wrapper.get(".empty-history-button").text()).toContain("1 段历史对话");
+      }
+      await wrapper.get(".chat-actions .history-button").trigger("click");
+      expect(document.body.querySelectorAll(".history-card")).toHaveLength(count);
+      expect(document.body.querySelector(".history-card.active")).toBeNull();
+      if (count === 0) {
+        expect(document.body.querySelector(".history-list")?.textContent).toContain("暂无保存的对话历史");
+      } else {
+        expect(document.body.querySelector(".history-card h4")?.textContent).toBe("已有问题");
+        (document.body.querySelector(".history-open") as HTMLButtonElement).click();
+        expect(wrapper.emitted("select-chat")).toEqual([["saved"]]);
+      }
+    } finally { wrapper.unmount(); }
+  });
+
+  it.each(["pending", "failed", "cancelled"])("keeps the current conversation with a %s answer", async (status) => {
+    const wrapper = mount(RightRail, { props: {
+      ...baseProps, chatSessions: [savedSession("chat-1"), emptySession("old-empty")],
+      chat: [{ turnId: "turn-1", user: "已有问题", pending: status === "pending", outcome: null,
+        error: status === "failed" ? "回答失败" : undefined,
+        runStatus: status === "cancelled" ? "已停止" : undefined,
+        questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] }],
+    } });
+    try {
+      expect(wrapper.get(".chat-actions .history-button span").text()).toBe("1");
+      expect(wrapper.find(".empty-history-button").exists()).toBe(false);
+      await wrapper.get(".chat-actions .history-button").trigger("click");
+      expect(document.body.querySelectorAll(".history-card")).toHaveLength(1);
+      expect(document.body.querySelector(".history-card.active .active-badge")?.textContent).toBe("当前");
+      expect((document.body.querySelector(".history-open") as HTMLButtonElement).disabled).toBe(true);
+    } finally { wrapper.unmount(); }
+  });
+
+  it("updates the open history list when a question is saved and when the last conversation is deleted", async () => {
+    const wrapper = mount(RightRail, { props: { ...baseProps, chatSessions: [emptySession("chat-1")] } });
+    try {
+      await wrapper.get(".chat-actions .history-button").trigger("click");
+      expect(document.body.querySelectorAll(".history-card")).toHaveLength(0);
+      await wrapper.setProps({ chatSessions: [savedSession("chat-1"), emptySession("chat-2")], activeChatSessionId: "chat-2" });
+      expect(wrapper.get(".chat-actions .history-button span").text()).toBe("1");
+      expect(wrapper.get(".empty-history-button").text()).toContain("1 段历史对话");
+      expect(document.body.querySelectorAll(".history-card")).toHaveLength(1);
+      await wrapper.setProps({ chatSessions: [emptySession("chat-2")] });
+      expect(wrapper.get(".chat-actions .history-button span").text()).toBe("0");
+      expect(wrapper.find(".empty-history-button").exists()).toBe(false);
+      expect(document.body.querySelectorAll(".history-card")).toHaveLength(0);
+      expect(document.body.querySelector(".history-list")?.textContent).toContain("暂无保存的对话历史");
+    } finally { wrapper.unmount(); }
+  });
+});
 
 describe("RightRail history recovery", () => {
   it('shows oldest turns first while effect and trace actions retain their original turn indexes', async () => {
@@ -307,6 +397,80 @@ function sourceOutcome(stale = false) {
 }
 
 describe("RightRail agent sources", () => {
+  it.each(["completed", "draft"])("keeps a %s table intact when sources occur inside cells", async (state) => {
+    const view = {
+      parts: [
+        { kind: "markdown" as const, text: "| 字段 | 说明 | 依据 |\n| --- | --- | --- |\n| msg | 问题 | 书中解释 " },
+        { kind: "sources" as const, source_ref_ids: ["source_ref_a"] },
+        { kind: "markdown" as const, text: " |\n| quote | 选区 | 另一处解释 " },
+        { kind: "sources" as const, source_ref_ids: ["source_ref_a", "source_ref_b"] },
+        { kind: "markdown" as const, text: " |\n| user | 身份 | 见下方说明 |" },
+      ],
+      sources: [
+        { source_ref_id: "source_ref_a", label: "正文 · Methods" },
+        { source_ref_id: "source_ref_b", label: "正文 · Results" },
+      ],
+    };
+    const outcome = { ...sourceOutcome(), answer_view: view };
+    const turn = {
+      turnId: "turn-table", user: "question", pending: state === "draft",
+      outcome: state === "completed" ? outcome : null,
+      draft: state === "draft" ? { message_id: 1, revision: 1, operation: "replace", view } : null,
+      questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+    };
+    const wrapper = mount(RightRail, { props: { ...baseProps, renderMarkdown, chat: [turn] } });
+    try {
+      const answer = wrapper.get(state === "draft" ? ".answer-draft" : ".a-msg .ans-text");
+      expect(answer.findAll("tbody tr")).toHaveLength(3);
+      expect(answer.findAll("tbody td")).toHaveLength(9);
+      expect(answer.findAll("tbody td .agent-source-button")).toHaveLength(2);
+      expect(answer.findAll("p").some(p => p.text().includes("| quote |"))).toBe(false);
+      expect(answer.findAll("tbody td .agent-source-button")[1].text()).toContain("2 个来源");
+      if (state === "draft") {
+        const updatedView = {
+          ...view,
+          parts: [...view.parts.slice(0, -1), { kind: "markdown" as const, text: " |\n| user | 身份 | 见下方说明 |\n| goal | 目标 | 已保存 |" }],
+        };
+        await wrapper.setProps({ chat: [{ ...turn, draft: { message_id: 1, revision: 2, operation: "replace", view: updatedView } }] });
+        expect(wrapper.get(".answer-draft").findAll("tbody tr")).toHaveLength(4);
+      }
+      const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        return new Response(JSON.stringify({
+          source_ref_id: body.source_ref_id, label: "正文 · Methods", highlighted_quote: "evidence",
+          context_before: "", context_after: "", stale: false, can_open_in_reader: true,
+        }), { status: 200 });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      await wrapper.findAll("tbody td .agent-source-button")[1].trigger("click");
+      await flushPromises();
+      expect(fetchMock.mock.calls.map(([, init]) => JSON.parse(String(init?.body)).source_ref_id)).toEqual([
+        "source_ref_a", "source_ref_b",
+      ]);
+    } finally { wrapper.unmount(); }
+  });
+
+  it.each(["after the closing pipe", "on the next line"])("keeps a table source $0 inside its preceding row", (position) => {
+    const parts = [
+      { kind: "markdown" as const, text: `| 字段 | 依据 |\n| --- | --- |\n| msg | 问题 |${position === "on the next line" ? "\n" : ""}` },
+      { kind: "sources" as const, source_ref_ids: ["source_ref_a"] },
+      { kind: "markdown" as const, text: "\n| quote | 选区 |" },
+    ];
+    const wrapper = mount(RightRail, { props: {
+      ...baseProps, renderMarkdown,
+      chat: [{
+        turnId: "turn-table", user: "question", pending: false,
+        outcome: { ...sourceOutcome(), answer_view: { parts, sources: [{ source_ref_id: "source_ref_a", label: "正文 · Methods" }] } },
+        questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+      }],
+    } });
+    try {
+      const answer = wrapper.get(".a-msg .ans-text");
+      expect(answer.findAll("tbody tr")).toHaveLength(2);
+      expect(answer.findAll("tbody td .agent-source-button")).toHaveLength(1);
+    } finally { wrapper.unmount(); }
+  });
+
   it("shows context shortage only for an actual context-budget warning", () => {
     const deliveryFailure = {
       ...sourceOutcome(),
@@ -692,13 +856,17 @@ describe("RightRail AskQuote", () => {
   });
 
   it("exposes every auxiliary surface as a labelled keyboard-operable tab", async () => {
-    const wrapper = mount(RightRail, { props: baseProps });
-    const tabs = wrapper.findAll('.context-tabs > [role="tab"]');
+    const wrapper = mount(RightRail, { attachTo: document.body, props: baseProps });
+    const tabs = wrapper.findAll('.context-tabs [role="tab"]');
     expect(tabs.map((tab) => tab.text().trim())).toEqual(["问答", "成果", "画像", "轨迹", "公式", "笔记"]);
     expect(tabs[0].attributes("aria-selected")).toBe("true");
+    expect(wrapper.get('.secondary-tabs').isVisible()).toBe(false);
+    await wrapper.get('[aria-label="阅读工具"]').trigger('click');
+    expect(wrapper.get('.secondary-tabs').isVisible()).toBe(true);
     await tabs[4].trigger("click");
     expect(tabs[4].attributes("aria-selected")).toBe("true");
     expect(wrapper.get("#reader-panel-formula").attributes("role")).toBe("tabpanel");
+    wrapper.unmount();
   });
 
   it("keeps profile updates quiet, undoable, and exposes usage only on demand", async () => {
@@ -965,6 +1133,53 @@ describe("Resident activities", () => {
 });
 
 describe("RightRail Resident task controls", () => {
+  it("keeps running tasks collapsed and exposes only the stop action beside the draft", async () => {
+    const wrapper = mount(RightRail, { props: { ...baseProps, sending: true, canStop: true, agentInput: "下个问题",
+      chatGoals: [{ id: "goal-running", revision: 1, interpretation: "制作全书主线演示",
+        requirements: [{ id: "page", description: "交付演示", basis_turn_id: "t1", verification: "presentation_delivery" as const }],
+        working: { focus: "制作页面", open_questions: [], next_move: "交付", items: [] },
+        result_refs: [], status: "open" as const, last_stop_reason: null }] } });
+    try {
+      expect(wrapper.findAll(".agent-compose-row > button")).toHaveLength(1);
+      expect(wrapper.get(".agent-compose-row > button").text()).toBe("停止");
+      expect(wrapper.find(".goal-card").exists()).toBe(false);
+      expect(wrapper.get(".task-summary-toggle").text()).toContain("正在执行");
+      expect(wrapper.text()).not.toContain("等待继续");
+      expect(wrapper.text()).not.toContain("页面交付待确认");
+      await wrapper.get(".task-summary-toggle").trigger("click");
+      expect(wrapper.get(".goal-card").text()).toContain("交付演示");
+      expect(wrapper.get(".goal-card").text()).toContain("正在执行");
+    } finally { wrapper.unmount(); }
+  });
+
+  it("preserves drafts and older reading while task details open and close", async () => {
+    const wrapper = mount(RightRail, { props: { ...baseProps, agentInput: "保留这份草稿", chatGoals: [{
+      id: "goal-saved", revision: 1, interpretation: "解释关系", requirements: [],
+      working: { focus: "", open_questions: [], next_move: "", items: [] },
+      result_refs: [], status: "open" as const, last_stop_reason: null }] } });
+    try {
+      const transcript = wrapper.get(".transcript").element as HTMLElement;
+      transcript.scrollTop = 80;
+      await wrapper.get(".task-summary-toggle").trigger("click");
+      expect(wrapper.get(".goal-card").text()).toContain("尚未完成");
+      await wrapper.get('[aria-label="关闭任务详情"]').trigger("click");
+      expect(wrapper.find(".goal-card").exists()).toBe(false);
+      expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("保留这份草稿");
+      expect(transcript.scrollTop).toBe(80);
+    } finally { wrapper.unmount(); }
+  });
+
+  it("does not send another turn through Ctrl+Enter while a run is active", async () => {
+    const wrapper = mount(RightRail, { props: { ...baseProps, sending: true, canStop: true, agentInput: "先写草稿" } });
+    try {
+      await wrapper.get("textarea").trigger("keydown", { key: "Enter", ctrlKey: true });
+      expect(wrapper.emitted("send-agent")).toBeUndefined();
+      await wrapper.get(".stop-agent").trigger("click");
+      expect(wrapper.emitted("stop-agent")).toHaveLength(1);
+      expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("先写草稿");
+    } finally { wrapper.unmount(); }
+  });
+
   it("does not leave a completed task notice in the input area", () => {
     const wrapper = mount(RightRail, { props: { ...baseProps, chatGoals: [{
       id: "goal-1", revision: 2, interpretation: "解释术语", requirements: [],
@@ -981,10 +1196,13 @@ describe("RightRail Resident task controls", () => {
       working: { focus: "核对交付", open_questions: [], next_move: "交付页面", items: [{ id: "page", description: "制作页面", status: "completed" as const }] },
       result_refs: ["answer:t1"], status: "open" as const, last_stop_reason: "TURN_LIMIT_EXCEEDED",
     }] } });
-    expect(wrapper.find(".goal-card").text()).toContain("页面交付待确认");
+    await wrapper.get('.task-summary-toggle').trigger('click');
+    expect(wrapper.find(".goal-card").text()).toContain("交付要求：交付演示");
     expect(wrapper.find(".goal-card").text()).toContain("本次达到运行上限");
     await wrapper.findAll(".goal-actions button")[0]!.trigger("click");
+    await wrapper.get('.task-summary-toggle').trigger('click');
     await wrapper.findAll(".goal-actions button")[1]!.trigger("click");
+    await wrapper.get('.task-summary-toggle').trigger('click');
     await wrapper.findAll(".goal-actions button")[2]!.trigger("click");
     expect(wrapper.emitted("continue-goal")?.[0]).toEqual(["goal-1"]);
     expect(wrapper.emitted("target-goal")?.[0]).toEqual(["goal-1"]);

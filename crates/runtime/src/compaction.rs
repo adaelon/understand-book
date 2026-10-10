@@ -1089,7 +1089,10 @@ fn call_generator(
                 system: system.to_string(),
                 user: user.clone(),
             })
-            .map_err(|error| CompactionError::generation(error.message))?;
+            .map_err(|error| match error.spend_stop {
+                Some(reason) => CompactionError { error_code: reason.code().into(), message: reason.message().into() },
+                None => CompactionError::generation(error.message),
+            })?;
         let checked = serde_json::from_value::<CompactionDraft>(value).map_err(|error| {
             CompactionError::generation(format!("compaction draft schema mismatch: {error}"))
         }).and_then(|draft| {
@@ -1803,6 +1806,7 @@ mod tests {
     impl ModelAdapter for ScriptedCompactor {
         fn complete(&self, _req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "compaction must use structured completion".into(),
             })
         }
@@ -1816,12 +1820,14 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "compaction script exhausted".into(),
                 })
         }
 
         fn chat(&self, _request: &crate::AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "compaction must not call chat or expose tools".into(),
             })
         }
@@ -1834,6 +1840,7 @@ mod tests {
     impl ModelAdapter for RequestDrivenCompactor {
         fn complete(&self, _req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "compaction must use structured completion".into(),
             })
         }
@@ -1846,11 +1853,13 @@ mod tests {
             let request =
                 serde_json::from_str::<RecordedCompactionInput>(&req.user).map_err(|error| {
                     AdapterError {
+                        spend_stop: None,
                         message: error.to_string(),
                     }
                 })?;
             serde_json::to_value(covering_sources(&request.eligible_items, "merged state")).map_err(|error| {
                 AdapterError {
+                    spend_stop: None,
                     message: error.to_string(),
                 }
             })
@@ -1858,6 +1867,7 @@ mod tests {
 
         fn chat(&self, _request: &crate::AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "compaction must not call chat or expose tools".into(),
             })
         }

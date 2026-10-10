@@ -26,6 +26,7 @@ struct Probe {
 impl ModelAdapter for Probe {
     fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
         Err(AdapterError {
+            spend_stop: None,
             message: "fixture".into(),
         })
     }
@@ -57,6 +58,7 @@ impl ModelAdapter for Probe {
         }
         if self.note && !self.finish_note {
             return Err(AdapterError {
+                spend_stop: None,
                 message: "fixture exit".into(),
             });
         }
@@ -986,7 +988,7 @@ fn teaching_partial_receipt(jsonl: bool) {
             control_revision: state.control.revision,
             source_id: f.x.book_id.clone(),
             source_revision: publication.book.source_fingerprint().into(),
-            map_revision: "v1".into(),
+            map_revision: Some("v1".into()),
             chat_session_id: "original-chat".into(),
             turn_id: "original-turn".into(),
         };
@@ -1248,6 +1250,49 @@ fn mu6a_disabled_or_revoked_queued_requests_do_not_start_provider() {
 }
 
 #[test]
+fn adm2_disable_cancels_queued_work_across_reenable_and_restart() {
+    let (mut f, w, input, probe) = setup();
+    f.control.set_reader_admin("B", true).unwrap();
+    assert_eq!(admit(&f, &w, &input).0, 202);
+    let receipt = f.ok(&f.b,"POST","/api/admin/users/A/status",json!({"operation_id":"disable-A","disabled":true}));
+    assert_eq!(receipt["cancel_requested_runs"],1);
+    assert_eq!(row(&f,"key")["cancel"],true);
+    f.ok(&f.b,"POST","/api/admin/users/A/status",json!({"operation_id":"enable-A","disabled":false}));
+    let f = reopen(f,&probe);
+    assert_eq!(row(&f,"key")["stage"],"settled");
+    assert!(!f.access.runs.run_one(&f.access).unwrap());
+    assert_eq!(probe.calls.load(Ordering::SeqCst),0);
+    let handle=f.access.users.lock().unwrap().get_for_recovery("A","now").unwrap();
+    let user=handle.lock().unwrap();
+    assert_eq!(user.agent_history.sessions[0].turns[0].status,AgentAssistantStatus::Cancelled);
+}
+
+#[test]
+fn adm2_disable_active_run_preserves_effects_and_uses_existing_cancel_save() {
+    let (mut f,w,mut input,_) = setup();
+    f.control.set_reader_admin("B",true).unwrap();
+    let probe=Probe { block:Some(Arc::new((Mutex::new(false),Condvar::new()))),note:true,..Default::default() };
+    configure(&f,&probe);
+    input["message"]=json!("请在 1.1 保存笔记");
+    assert_eq!(admit(&f,&w,&input).0,202);
+    let access=f.access.clone();
+    let worker=std::thread::spawn(move || access.runs.run_one(&access));
+    wait_calls(&probe,2);
+    let reply=f.call(&f.b,"POST","/api/admin/users/A/status",json!({"operation_id":"disable-active","disabled":true}));
+    release(&probe);
+    worker.join().unwrap().unwrap();
+    assert_eq!(reply.0,200,"{}",reply.1);
+    assert_eq!(row(&f,"key")["stage"],"settled");
+    assert_eq!(row(&f,"key")["unsaved"],false);
+    assert_eq!(f.call(&f.a,"GET","/api/auth/me",json!({})).0,401);
+    assert_eq!(probe.calls.load(Ordering::SeqCst),2);
+    let handle=f.access.users.lock().unwrap().get_for_recovery("A","now").unwrap();
+    let user=handle.lock().unwrap();
+    assert_eq!(user.agent_history.sessions[0].turns[0].status,AgentAssistantStatus::Cancelled);
+    assert!(!user.store.recall(&memory::RecallQuery { text:Some("mu6 durable note".into()),..Default::default() }).is_empty());
+}
+
+#[test]
 fn mu6b_unsaved_restart_reports_interruption_and_old_pending_stays_archived() {
     let (f, w, input, _) = setup();
     let probe = Probe {
@@ -1293,9 +1338,10 @@ fn mu6b_unsaved_restart_reports_interruption_and_old_pending_stays_archived() {
 
 #[test]
 fn mu6a_real_provider_transport_and_request_key_lookup_survive_lost_accept_response() {
-    let (f, w, mut input, _) = setup();
+    let (mut f, w, mut input, _) = setup();
     let fake = tiny_http::Server::http("127.0.0.1:0").unwrap();
     let address = fake.server_addr().to_ip().unwrap();
+    super::adm5_tests::seed(&mut f, &format!("http://{address}"), 1_000_000);
     let provider = std::thread::spawn(move || {
         let mut request = fake.recv_timeout(Duration::from_secs(10)).unwrap().unwrap();
         let mut text = String::new();

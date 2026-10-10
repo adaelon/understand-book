@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-pub const CONTROL_SCHEMA_VERSION: i64 = 4;
+pub const CONTROL_SCHEMA_VERSION: i64 = 9;
 const APPLICATION_ID: i64 = 0x55424d55;
 
 pub struct ServiceWriter {
@@ -139,6 +139,16 @@ impl ControlStore {
                 .map_err(|_| storage())?;
             tx.execute_batch(include_str!("control_schema.sql"))
                 .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("admin_schema.sql"))
+                .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("receipt_corrections.sql"))
+                .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("charge_settlement.sql"))
+                .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("usage_schema.sql"))
+                .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("account_registration.sql"))
+                .map_err(|_| storage())?;
             tx.pragma_update(None, "application_id", APPLICATION_ID)
                 .map_err(|_| storage())?;
             tx.pragma_update(None, "user_version", CONTROL_SCHEMA_VERSION)
@@ -157,7 +167,44 @@ impl ControlStore {
         if (1..=3).contains(&version) {
             let tx = connection.transaction().map_err(|_| storage())?;
             tx.execute_batch(include_str!("run_admission_schema.sql")).map_err(|_| storage())?;
-            tx.pragma_update(None, "user_version", CONTROL_SCHEMA_VERSION).map_err(|_| storage())?;
+            tx.pragma_update(None, "user_version", 4).map_err(|_| storage())?;
+            tx.commit().map_err(|_| storage())?;
+        }
+        if (1..=4).contains(&version) {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0 CHECK(is_admin IN (0,1));")
+                .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("admin_schema.sql")).map_err(|_| storage())?;
+            tx.pragma_update(None, "user_version", 5).map_err(|_| storage())?;
+            tx.commit().map_err(|_| storage())?;
+        }
+        if (1..=5).contains(&version) {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch(include_str!("receipt_corrections.sql")).map_err(|_| storage())?;
+            tx.pragma_update(None, "user_version", 6).map_err(|_| storage())?;
+            tx.commit().map_err(|_| storage())?;
+        }
+        if (1..=6).contains(&version) {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch(include_str!("charge_settlement.sql")).map_err(|_| storage())?;
+            tx.pragma_update(None, "user_version", 7).map_err(|_| storage())?;
+            tx.commit().map_err(|_| storage())?;
+        }
+        if (1..=7).contains(&version) {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch(include_str!("usage_schema.sql")).map_err(|_| storage())?;
+            tx.pragma_update(None, "user_version", 8).map_err(|_| storage())?;
+            tx.commit().map_err(|_| storage())?;
+        }
+        if (1..=8).contains(&version) {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch(
+                "ALTER TABLE users ADD COLUMN email TEXT CHECK(email IS NULL OR (email=lower(trim(email)) AND length(email)>0));
+                 ALTER TABLE users ADD COLUMN email_verified_at INTEGER CHECK((email IS NULL) = (email_verified_at IS NULL));",
+            ).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("account_registration.sql"))
+                .map_err(|_| storage())?;
+            tx.pragma_update(None, "user_version", 9).map_err(|_| storage())?;
             tx.commit().map_err(|_| storage())?;
         }
         memory::ReaderPrivateStorageGate::secure_file(&writer.root.join("control.sqlite"))?;
@@ -202,6 +249,14 @@ impl ControlStore {
         self.writer.paths(owner)
     }
 }
+
+#[cfg(test)]
+#[path = "admin_schema_tests.rs"]
+mod admin_schema_tests;
+
+#[cfg(test)]
+#[path = "account_registration_schema_tests.rs"]
+mod account_registration_schema_tests;
 
 #[cfg(test)]
 mod tests {

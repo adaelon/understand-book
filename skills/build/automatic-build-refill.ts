@@ -32,7 +32,7 @@ export class AutomaticBuildRefillRequestError extends Error {
 interface RefillEngine {
   validateStep: (request: unknown) => AutomaticBuildStepRequestV1;
   maxParallel: (invocationRef: string) => number;
-  step: (request: AutomaticBuildStepRequestV1, liveHandoffRefs?: string[]) => AutomaticBuildStepResponseV1 | Promise<AutomaticBuildStepResponseV1>;
+  step: (request: AutomaticBuildStepRequestV1, liveHandoffRefs?: string[], completedHandoffRefs?: string[]) => AutomaticBuildStepResponseV1 | Promise<AutomaticBuildStepResponseV1>;
 }
 export function automaticBuildRefill(value: unknown, engine: RefillEngine & { step: (...args: Parameters<RefillEngine["step"]>) => AutomaticBuildStepResponseV1 }): AutomaticBuildRefillResponseV1;
 export function automaticBuildRefill(value: unknown, engine: RefillEngine): AutomaticBuildRefillResponseV1 | Promise<AutomaticBuildRefillResponseV1>;
@@ -57,7 +57,7 @@ export function automaticBuildRefill(value: unknown, engine: RefillEngine): Auto
   const capacity = Math.min(capacity_limit, engine.maxParallel(request.invocation_ref));
   const available = Math.max(0, capacity - Object.keys(live_by_slot).length) as 0 | 1 | 2 | 3;
   const result = engine.step({ ...request, available_agent_slots: available },
-    Object.values(live_by_slot).map(child => child.opaque_handoff_ref));
+    Object.values(live_by_slot).map(child => child.opaque_handoff_ref), [...completed]);
   const finish = (step: AutomaticBuildStepResponseV1): AutomaticBuildRefillResponseV1 => {
   const ready: AutomaticBuildRefillResponseV1["ready_executors"] = [];
   const selected = new Set<string>();

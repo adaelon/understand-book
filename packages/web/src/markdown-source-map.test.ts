@@ -21,6 +21,16 @@ function selectText(node: Node, start: number, end: number): Range {
 }
 
 describe("Markdown DOM/source mapping", () => {
+  it("keeps literal HTML table source selectable when it is displayed as text", () => {
+    const source = '<table><tr><td><strong>same</strong></td></tr></table>';
+    const root = rendered(source);
+    const selection = document.createRange(); selection.selectNodeContents(root);
+    const map = createMarkdownDomSourceMap(source, root);
+    expect(root.querySelector('table')).toBeNull();
+    expect(map.semanticText).toBe(source);
+    expect(map.sourceRangesForRange(selection)).toEqual([{ start: 0, end: source.length }]);
+  });
+
   it("maps a selection after emphasis to canonical source offsets", () => {
     const source = "**bold** tail";
     const root = rendered(source);

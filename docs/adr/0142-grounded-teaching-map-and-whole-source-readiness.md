@@ -2,6 +2,8 @@
 
 状态：已接受，2026-09-29；T3–T5 的小材料构建已实现，验证范围与输入大小限制见 [实现记录](../performance/tutor-t3-t5-20260929.md)；大材料扩展由 [T5A](../切片方案-Tutor全局模式与教学闭环.md#t5a-大材料教学预构建) 实施，当前实施中，前四项代码已实现，真实长材料验收待完成，进度见 [T5A 记录](../performance/tutor-t5a-20260929.md)。补全 [ADR-0120](0120-whole-source-prebuild-gate-for-formal-learning.md) 的必需资产与验收边界，继承 [ADR-0093](0093-intent-confirmed-progressive-prebuild-and-reader-private-goal-artifacts.md) 的构建范围与预算所有权。
 
+2026-10-09 更新：§3 中以四类资产齐全作为 Tutor 启动条件的部分由 [ADR-0158](0158-book-structure-ready-tutor-and-optional-teaching-assets.md) 替代；下述该项准入表述保留为历史依据。对象身份、来源质量、整份 TeachingMap 的覆盖与发布合同继续有效；教学预构建完成不再决定 Tutor 是否可用。
+
 ## §1 正式对象与关系身份
 
 **决策**：语义确认后赋予对象与可学习关系稳定身份。

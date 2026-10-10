@@ -61,6 +61,54 @@ import { zipSync, strToU8 } from "fflate";
 import { claimAutomaticBuildTask, readAutomaticBuildLease } from "../src/automatic-build-lease";
 import { structureProductionResponse } from "./helpers/book-structure-production";
 import { confirmedStandardBuildPlan } from "./helpers/confirmed-build-plan";
+import { readAcceptedBookStructureClose } from "../src/automatic-build-close";
+
+it("reuses an accepted BookStructure publication for Tutor after its generation route changes", () => {
+  const root = tempDir();
+  const { workspace } = writeTechnicalLearningWorkspace(root, "published-tutor");
+  const target = resolveAutomaticBuildTarget(workspace, root);
+  closeV3Pass1(target);
+  closeV3ProfileSidecar(target);
+  for (let round = 0; round < 24; round++) {
+    const state = buildAutomaticBuildSnapshot(target).stages.find(s => s.stage === "book_structure")!;
+    if (!state.pending_tasks.length) break;
+    for (const id of state.pending_tasks) {
+      const generation = state.generation_tasks![id];
+      if (generation.kind !== "book_structure") throw new Error("expected structure task");
+      freezeBookStructureGenerationTask(target, generation.task);
+      writeBookStructureGenerationCandidate({ target, task: generation.task,
+        candidate: structureProductionResponse(generation.task),
+        provenance: { executor: "published-tutor-fixture", attempt: 1, generated_at: "2026-10-01T00:00:00Z" } });
+    }
+  }
+  expect(runAutomaticBuildCloseStage(workspace, root, "book_structure")).toMatchObject({ status: "closed" });
+  const file = path.join(workspace, "book_structure.json");
+  const published = readFileSync(file, "utf8");
+  // The installed workspace uses the original close-receipt layout.
+  const closeDirectory = path.join(workspace, ".build/automatic-build/v2/close/book_structure");
+  const transaction = fs.readdirSync(closeDirectory, { withFileTypes: true }).find(item => item.isDirectory())!.name;
+  const closeFile = path.join(closeDirectory, transaction, fs.readdirSync(path.join(closeDirectory, transaction))[0]);
+  fs.renameSync(closeFile, path.join(closeDirectory, transaction + ".json"));
+  const artifacts = path.join(workspace, ".build/automatic-build/v3/artifacts/book_structure");
+  fs.renameSync(artifacts, artifacts + "-previous");
+  const prepared = prepareExplicitLegacyBuildPlan(workspace, root, { pass2: "disabled" });
+  expect(prepared.plan.reuse.map(item => item.artifact)).toContain("public.book_structure");
+  expect(prepared.plan.create).toEqual(["public.formal_objects", "public.cognitive_materials", "public.teaching_publish"]);
+  const planned = automaticBuildPlan(workspace, root, { build_plan: prepared.plan });
+  expect(planned.next_action).toMatchObject({ kind: "extract", stage: "formal_objects" });
+  const formal = planned.snapshot.stages.find(s => s.stage === "formal_objects")!;
+  expect(readAutomaticBuildTaskStage(target, { stage: "formal_objects", work_unit_id: formal.pending_tasks[0] }, "full")?.pending_tasks)
+    .toEqual(formal.pending_tasks);
+  expect(readFileSync(file, "utf8")).toBe(published);
+  writeFileSync(file, published + "\n");
+  expect(automaticBuildPlan(workspace, root, { build_plan: prepared.plan }).next_action)
+    .toMatchObject({ kind: "needs_user", reason: "build_plan_freshness_drift" });
+  writeFileSync(file, published);
+  writeFileSync(target.source_path, readFileSync(target.source_path, "utf8") + "\nNew source paragraph.\n");
+  expect(readAcceptedBookStructureClose(resolveAutomaticBuildTarget(workspace, root))).toBeUndefined();
+  expect(automaticBuildPlan(workspace, root, { build_plan: prepared.plan }).next_action)
+    .toMatchObject({ kind: "needs_user" });
+}, 60000);
 
 const mutationCount = vi.hoisted(() => ({ active: false, count: 0 }));
 vi.mock("node:fs", async (original) => {

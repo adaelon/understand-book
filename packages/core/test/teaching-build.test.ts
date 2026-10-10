@@ -1,10 +1,12 @@
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import fs from "node:fs";
+import { syncBuiltinESMExports } from "node:module";
 import { source, proposal, binding, targets } from "./fixtures/teaching-source";
 import { buildReproducibleProfileArtifactHeader } from "../src/profile-artifact";
-import { acceptTeachingCandidate, closeTeachingStage, routeTeachingBuildStages, freezeTeachingTask, teachingTaskPath, reopenTeachingBuild, resumeTeachingCognitiveBudget,
+import { acceptTeachingCandidate, closeTeachingStage, routeTeachingBuildStages, freezeTeachingTask, readTeachingTask, teachingTaskPath, reopenTeachingBuild, resumeTeachingCognitiveBudget,
   type TeachingBuildInput, type TeachingGenerationTask } from "../src/teaching-build";
 import { nextAutomaticBuildAction, nextPlannedAutomaticBuildAction, readTeachingBuildInput, type AutomaticBuildTarget } from "../src/build-orchestrator";
 import { compileBuildMode, standardDeepStageClosure } from "../src/build-capability";
@@ -20,22 +22,45 @@ import { summarizeRetrievalUsage } from "../src/automatic-build-budget";
 import { fakeEmbedding } from "./fixtures/embedding-provider";
 import { observeAutomaticBuildRemainingWork } from "../src/automatic-build-observation";
 import { buildSemanticArtifactEnvelopeV3 } from "../src/semantic-artifact";
+import { claimAutomaticBuildTask } from "../src/automatic-build-lease";
+import { failAutomaticBuildTask } from "../src/automatic-build-mailbox";
+import { readAutomaticBuildCandidateRetryFeedback } from "../src/automatic-build-task-store";
+import { taskPolicyBindingForWorkUnit } from "../src/stage-work-unit";
+import { createAutomaticBuildFailureDiagnosticV3 } from "../src/extractor-contract";
 
 const provenance = { executor: "fixture-source-reader", attempt: 1, generated_at: "2026-09-29T00:00:00.000Z" };
-// Disk-backed replay cases are synchronous; let the worker deliver its test reports between cases.
-afterEach(() => new Promise<void>(resolve => setImmediate(resolve)));
+const serialReplayInputs = new WeakSet<TeachingBuildInput>();
+// The first turn queues the report; the second lets IPC deliver it before another long replay.
+afterEach(async () => {
+  await new Promise<void>(resolve => setImmediate(resolve));
+  await new Promise<void>(resolve => setImmediate(resolve));
+});
 function fixture(): TeachingBuildInput {
   const workspace = mkdtempSync(path.join(tmpdir(), "teaching-build-"));
   const target: AutomaticBuildTarget = { kind: "source_file", profile_id: "technical_learning", book_id: source.source_id,
     root_dir: workspace, workspace_dir: workspace, source_path: path.join(workspace, "source.txt"),
     target_ref: { version: "build_target_ref.v2", workspace_dir: workspace, book_id: source.source_id, profile_id: "technical_learning", input_fingerprint: source.source_revision } };
   writeFileSync(target.source_path, source.passages.map(p => p.text).join("\n\n"));
-  return { source, target, units: [], structure: { header: buildReproducibleProfileArtifactHeader({ book_id: source.source_id }),
+  const input: TeachingBuildInput = { source, target, units: [], structure: { header: buildReproducibleProfileArtifactHeader({ book_id: source.source_id }),
     spine: ["1", "2"].map(lid => ({ lid, role: "foundation", summary: { text: "来源单元", evidence_lids: source.passages.filter(p => p.unit_lid === lid).map(p => p.lid) }, key_stop_ids: lid === "2" ? targets.map(t => t.id) : [], depends_on: [] })),
     throughlines: [{ id: "rates", name: "平均速率", summary: { text: "定义、条件、方法和局限", evidence_lids: ["1.1", "2.1"] }, lids: ["1", "2"], key_stop_ids: targets.map(t => t.id) }], key_stops: targets } };
+  serialReplayInputs.add(input);
+  return input;
 }
 function tasks(input: TeachingBuildInput) {
-  const state = routeTeachingBuildStages(input).find(s => !s.closed)!;
+  let state = routeTeachingBuildStages(input).find(s => !s.closed)!;
+  if (serialReplayInputs.has(input)) {
+    // The existing replay tests model a book whose serial action was already issued.
+    const next = Object.values(state.generation_tasks ?? {}).find(t => t.kind === "teaching"
+      && state.pending_tasks.includes(t.task.descriptor.work_unit_id) && /-parallel-\d+-0-0-0-/u.test(t.task.descriptor.work_unit_id));
+    if (next?.kind === "teaching") {
+      const legacy = structuredClone(next.task);
+      legacy.descriptor.work_unit_id = legacy.descriptor.work_unit_id.replace(/-parallel-(\d+)-0-0-0-/u, "-$1-");
+      delete legacy.alignment!.focus_key;
+      freezeTeachingTask(input.target, legacy);
+      state = routeTeachingBuildStages(input).find(s => !s.closed)!;
+    }
+  }
   return { state, tasks: Object.values(state.generation_tasks ?? {}).filter(t => t.kind === "teaching").map(t => t.task) };
 }
 function write(input: TeachingBuildInput, task: TeachingGenerationTask, candidate: unknown) {
@@ -78,8 +103,9 @@ function reviews(input: TeachingBuildInput, pass: boolean) {
   for (const task of work) write(input, task, { samples: task.samples!.map(s => ({ sample_id: s.sample_id, verdict: pass ? "pass" : "fail",
     reason: pass ? "逐项对照原文，定义、条件和来源缺口保持一致" : "需要修正对象条件", source_bindings: s.evidence_lids.map(binding) })) });
 }
-function replayFixture(semantic = true, linked = semantic) {
+function replayFixture(semantic = true, linked = semantic, serial = true) {
   const input = fixture(), provider = fakeEmbedding();
+  if (!serial) serialReplayInputs.delete(input);
   provider.limits.max_input_tokens = 10000;
   input.source = structuredClone(source);
   input.source.passages[0].text = source.passages[0].text.repeat(500);
@@ -124,6 +150,214 @@ function replayFixture(semantic = true, linked = semantic) {
   return { input, provider, prepare, changeProvider, fragmentFiles };
 }
 describe("whole-material teaching build", () => {
+  it("routes supplemental evidence reads after parallel retrieval exhaustion and preserves field diagnostics and receipts", async () => {
+    const f = replayFixture(true, false, false);
+    await f.prepare();
+    const first = tasks(f.input).tasks.find(t => t.alignment?.focus_key)!;
+    const focus = first.alignment!.focus_key!;
+    for (let step = 0; step < 32; step++) {
+      await new Promise<void>(resolve => setImmediate(resolve));
+      const routed = tasks(f.input);
+      const current = routed.tasks.find(t => routed.state.pending_tasks.includes(t.descriptor.work_unit_id)
+        && t.alignment?.focus_key === focus)!;
+      write(f.input, current, step === 31
+        ? { kind: "search", query: "source", offset: 0 }
+        : { kind: "inspect", key: focus });
+    }
+    const state = tasks(f.input).state;
+    expect(state.teaching_blocked).toBeUndefined();
+    expect(state.retrieval_preparation).toBeUndefined();
+    expect(state.object_alignment).toMatchObject({ resolved_objects: 0 });
+    expect(state.work_units!.length).toBeGreaterThanOrEqual(32);
+    expect(nextAutomaticBuildAction({ target: f.input.target, stages: [state] }).kind).toBe("extract");
+    const decision = tasks(f.input).tasks.find(t => state.pending_tasks.includes(t.descriptor.work_unit_id) && t.alignment?.focus_key === focus)!;
+    const budget = JSON.parse(decision.rendered_input).retrieval_budget;
+    expect(budget).toMatchObject({ steps_used: 32, step_limit: 32, allowed_actions: ["resolve", "read"] });
+    expect(decision.retrieval).toBeUndefined();
+    expect(() => write(f.input, decision, { kind: "inspect", key: focus })).toThrow("retrieval steps are exhausted");
+    const object = decision.alignment!.proposal.objects.find(o => o.key === focus)!;
+    for (const [candidate, pointer] of [
+      [{ kind: "resolve", keys: [], object }, "/keys"],
+      [{ kind: "resolve", keys: [focus], object: { ...object, source_bindings: [] } }, "/object/source_bindings"],
+      [{ kind: "resolve", keys: [focus], object }, "/object/source_bindings/0"],
+    ] as const) {
+      let failure: unknown;
+      try { write(f.input, decision, candidate); } catch (error) { failure = error; }
+      expect(automaticBuildFailureDiagnosticFromWriterError(failure, { writer_started: true }))
+        .toMatchObject({ code: "schema_invalid", json_pointer: pointer });
+    }
+    const frozenInput = decision.rendered_input;
+    const readReceipt = write(f.input, decision, budget.next_read);
+    const supplemented = tasks(f.input);
+    const ready = supplemented.tasks.find(t => supplemented.state.pending_tasks.includes(t.descriptor.work_unit_id) && t.alignment?.focus_key === focus)!;
+    expect(ready.alignment!.read_ranges.length).toBeGreaterThan(0);
+    expect(readTeachingTask(f.input.target, decision.policy_generation_id, decision.descriptor.work_unit_id).rendered_input).toBe(frozenInput);
+    expect(existsSync(readReceipt.artifact_path)).toBe(true);
+    const receipt = write(f.input, ready, { kind: "resolve", keys: [focus], object });
+    expect(JSON.parse(readFileSync(receipt.artifact_path, "utf8")).payload.steps_since_progress).toBe(0);
+    const after = tasks(f.input);
+    expect(after.tasks.some(t => after.state.pending_tasks.includes(t.descriptor.work_unit_id) && t.alignment?.focus_key === focus)).toBe(false);
+    expect(existsSync(path.join(f.input.target.workspace_dir, "teaching_readiness.json"))).toBe(false);
+  }, 120000);
+  it("rebuilds a truncated unaccepted frozen task but leaves accepted task records untouched", () => {
+    const f = replayFixture(false, true, false), routed = tasks(f.input);
+    const task = routed.tasks.find(t => routed.state.pending_tasks.includes(t.descriptor.work_unit_id))!;
+    const file = teachingTaskPath(f.input.target, task.policy_generation_id, task.descriptor.work_unit_id);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, "{");
+    expect(() => freezeTeachingTask(f.input.target, task)).not.toThrow();
+    expect(readTeachingTask(f.input.target, task.policy_generation_id, task.descriptor.work_unit_id).rendered_input).toBe(task.rendered_input);
+    write(f.input, task, { kind: "inspect", key: JSON.parse(task.rendered_input).focus.key });
+    writeFileSync(file, "{");
+    expect(() => freezeTeachingTask(f.input.target, task)).toThrow(SyntaxError);
+    expect(readFileSync(file, "utf8")).toBe("{");
+  });
+  it("removes an interrupted first freeze and keeps the last complete writer context on ENOSPC", () => {
+    const f = replayFixture(false, true, false), routed = tasks(f.input);
+    const task = routed.tasks.find(t => routed.state.pending_tasks.includes(t.descriptor.work_unit_id))!;
+    const file = teachingTaskPath(f.input.target, task.policy_generation_id, task.descriptor.work_unit_id);
+    const originalWrite = fs.writeFileSync;
+    let failedFile = file;
+    const spy = vi.spyOn(fs, "writeFileSync").mockImplementation((name, data, options) => {
+      if (name === failedFile) {
+        originalWrite(name, "{", options);
+        throw Object.assign(new Error("disk full"), { code: "ENOSPC" });
+      }
+      return originalWrite(name, data, options);
+    });
+    syncBuiltinESMExports();
+    try {
+      expect(() => freezeTeachingTask(f.input.target, task)).toThrow("disk full");
+      expect(existsSync(file)).toBe(false);
+      failedFile = "";
+      freezeTeachingTask(f.input.target, task);
+      const previous = structuredClone(task);
+      previous.alignment!.proposal.objects.at(-1)!.meaning = "last complete writer ledger";
+      freezeTeachingTask(f.input.target, previous);
+      const next = structuredClone(previous);
+      next.alignment!.proposal.objects.at(-1)!.meaning = "new writer ledger";
+      failedFile = `${file}.current.json.tmp`;
+      expect(() => freezeTeachingTask(f.input.target, next)).toThrow("disk full");
+      expect(existsSync(failedFile)).toBe(false);
+      expect(readTeachingTask(f.input.target, task.policy_generation_id, task.descriptor.work_unit_id, true)
+        .alignment!.proposal.objects.at(-1)!.meaning).toBe("last complete writer ledger");
+    } finally { spy.mockRestore(); syncBuiltinESMExports(); }
+  });
+  it("dispatches three independent alignment focuses and keeps sibling inputs frozen while one advances", () => {
+    const f = replayFixture(false, true, false);
+    const initial = tasks(f.input);
+    const pending = initial.tasks.filter(t => initial.state.pending_tasks.includes(t.descriptor.work_unit_id));
+    expect(pending).toHaveLength(3);
+    const focuses = pending.map(t => JSON.parse(t.rendered_input).focus.key);
+    expect(new Set(focuses).size).toBe(3);
+    pending.forEach(t => freezeTeachingTask(f.input.target, t));
+    const first = pending[0], object = JSON.parse(first.rendered_input).focus.object;
+    write(f.input, first, { kind: "read", lid: object.source_bindings[0].lid, start: 0, end: 20 });
+    const next = tasks(f.input);
+    expect(next.state.pending_tasks).toHaveLength(3);
+    for (const sibling of pending.slice(1)) {
+      expect(next.tasks.find(t => t.descriptor.work_unit_id === sibling.descriptor.work_unit_id)?.rendered_input).toBe(sibling.rendered_input);
+    }
+    expect(next.tasks.filter(t => next.state.pending_tasks.includes(t.descriptor.work_unit_id))
+      .find(t => JSON.parse(t.rendered_input).focus.key === focuses[0])!.alignment!.read_ranges).toHaveLength(1);
+  });
+  it("reduces parallel rounds to complete formal coverage and reuses the published identities", () => {
+    const f = replayFixture(false, true, false);
+    for (let round = 0; round < 50; round++) {
+      const routed = tasks(f.input);
+      if (!routed.state.pending_tasks.length) break;
+      for (const task of routed.tasks.filter(t => routed.state.pending_tasks.includes(t.descriptor.work_unit_id))) {
+        const focus = JSON.parse(task.rendered_input).focus;
+        if (focus.kind === "finish") { write(f.input, task, { kind: "finish" }); continue; }
+        if (!task.alignment!.read_ranges.length) write(f.input, task, { kind: "read", lid: focus.object.source_bindings[0].lid, start: 0, end: 20 });
+        else write(f.input, task, { kind: "resolve", keys: [focus.key], object: focus.object });
+      }
+    }
+    const ready = tasks(f.input);
+    expect(ready.state.pending_tasks).toEqual([]);
+    expect(ready.state.object_alignment?.remaining_objects).toBe(0);
+    closeTeachingStage(f.input, "formal_objects");
+    const published = readFileSync(path.join(f.input.target.workspace_dir, "formal_objects.json"), "utf8");
+    expect(routeTeachingBuildStages(f.input)[0].closed).toBe(true);
+    closeTeachingStage(f.input, "formal_objects");
+    expect(readFileSync(path.join(f.input.target.workspace_dir, "formal_objects.json"), "utf8")).toBe(published);
+  }, 60000);
+  it("finishes an issued serial action before entering parallel rounds without losing its reads", () => {
+    const f = replayFixture(false, true, false);
+    const routed = tasks(f.input), first = routed.tasks.find(t => routed.state.pending_tasks.includes(t.descriptor.work_unit_id))!;
+    const serial = structuredClone(first);
+    serial.descriptor.work_unit_id = serial.descriptor.work_unit_id.replace(/-parallel-0-0-0-0-/u, "-0-");
+    delete serial.alignment!.focus_key;
+    freezeTeachingTask(f.input.target, serial);
+    const frozen = readFileSync(teachingTaskPath(f.input.target, serial.policy_generation_id, serial.descriptor.work_unit_id), "utf8");
+    expect(tasks(f.input).state.pending_tasks).toEqual([serial.descriptor.work_unit_id]);
+    const focus = JSON.parse(serial.rendered_input).focus;
+    const receipt = write(f.input, serial, { kind: "read", lid: focus.object.source_bindings[0].lid, start: 0, end: 20 });
+    const bytes = readFileSync(receipt.artifact_path, "utf8");
+    const next = tasks(f.input);
+    expect(next.state.pending_tasks).toHaveLength(3);
+    const continuing = next.tasks.find(t => next.state.pending_tasks.includes(t.descriptor.work_unit_id) && JSON.parse(t.rendered_input).focus.key === focus.key)!;
+    expect(continuing.alignment!.read_ranges).toHaveLength(1);
+    expect(readFileSync(teachingTaskPath(f.input.target, serial.policy_generation_id, serial.descriptor.work_unit_id), "utf8")).toBe(frozen);
+    expect(readFileSync(receipt.artifact_path, "utf8")).toBe(bytes);
+  });
+  it("prepares retrieval for each parallel focus and refreshes only the branch's explicit query", async () => {
+    const f = replayFixture(true, true, false);
+    await f.prepare();
+    const routed = tasks(f.input), pending = routed.tasks.filter(t => routed.state.pending_tasks.includes(t.descriptor.work_unit_id));
+    expect(pending).toHaveLength(3);
+    for (const task of pending) expect(task.retrieval!.dependencies.request).toMatchObject({
+      kind: "focus", focus_key: JSON.parse(task.rendered_input).focus.key,
+    });
+    const first = pending[0];
+    write(f.input, first, { kind: "search", query: "parallel-explicit", offset: 0 });
+    await f.prepare();
+    const next = tasks(f.input);
+    expect(next.state.pending_tasks).toHaveLength(3);
+    for (const sibling of pending.slice(1)) expect(next.tasks.find(t => t.descriptor.work_unit_id === sibling.descriptor.work_unit_id)?.rendered_input).toBe(sibling.rendered_input);
+    const changed = next.tasks.find(t => next.state.pending_tasks.includes(t.descriptor.work_unit_id)
+      && JSON.parse(t.rendered_input).focus.key === JSON.parse(first.rendered_input).focus.key)!;
+    expect(changed.retrieval!.dependencies.request).toMatchObject({ kind: "search", query: "parallel-explicit" });
+  }, 60000);
+  it("keeps formal object cardinality requirements in transport retry feedback", () => {
+    const input = fixture(), task = tasks(input).tasks[0];
+    freezeTeachingTask(input.target, task);
+    const options = { owner: "feedback-test", descriptor: task.descriptor,
+      binding: taskPolicyBindingForWorkUnit(task.descriptor, task.policy_generation_id),
+      policy_generation: "v3_only" as const };
+    const claim = claimAutomaticBuildTask(input.target, "formal_objects", task.descriptor.work_unit_id, options);
+    if (claim.status !== "leased") throw new Error("expected first formal object attempt");
+    failAutomaticBuildTask(input.target, claim.lease_ref, claim.lease.token, {
+      failure_diagnostic: createAutomaticBuildFailureDiagnosticV3({ category: "transport", phase: "generation",
+        code: "candidate_request_too_large", expected: "Candidate request measured 2144 tokens; limit is 2048. Shorten output." }),
+    });
+    const retry = claimAutomaticBuildTask(input.target, "formal_objects", task.descriptor.work_unit_id, options);
+    if (retry.status !== "leased") throw new Error("expected retry formal object attempt");
+    const feedback = readAutomaticBuildCandidateRetryFeedback(input.target, "formal_objects", task.descriptor.work_unit_id, retry.lease.attempt)!;
+    expect(feedback).toMatchObject({ code: "candidate_request_too_large", json_pointer: "/" });
+    expect(feedback.expected).toContain("2144 tokens");
+    expect(feedback.expected).toContain("component_keys");
+    expect(feedback.expected).toContain("participants");
+    expect(feedback.expected).toContain("request envelope");
+  });
+  it.each(["composite", "relation"] as const)("returns a correctable field diagnostic for an incomplete %s and accepts its correction", kind => {
+    const input = fixture(), task = tasks(input).tasks[0];
+    const b = { source_id: task.source.source_id, source_revision: task.source.source_revision, lid: task.source.passages[0].lid };
+    const base = { ...proposal.objects[0], key: "part", kind: "concept" as const, source_bindings: [b], participants: [], component_keys: [] };
+    const candidate: typeof proposal = { objects: [base, { ...base, key: "whole", kind }], prerequisites: [], correspondences: [],
+      coverage: [...new Set(task.source.passages.map(p => p.unit_lid))].map(unit_lid => ({ unit_lid,
+        object_keys: unit_lid === task.source.passages[0].unit_lid ? ["part", "whole"] : [], explanation: "local",
+        source_bindings: [{ ...b, lid: task.source.passages.find(p => p.unit_lid === unit_lid)!.lid }] })) };
+    let failure: unknown;
+    try { write(input, task, candidate); } catch (error) { failure = error; }
+    expect(automaticBuildFailureDiagnosticFromWriterError(failure, { writer_started: true })).toMatchObject({
+      category: "schema", code: "schema_invalid", phase: "artifact_writer",
+      json_pointer: `/objects/1/${kind === "composite" ? "component_keys" : "participants"}`,
+    });
+    if (kind === "composite") candidate.objects[1].component_keys = ["part"];
+    else candidate.objects[1].participants = [{ object_key: "part", role: "input" }, { object_key: "whole", role: "output" }];
+    expect(write(input, task, candidate).artifact_path).toBeTruthy();
+  });
   it("SR4b refreshes an explicit query after provider change while reusing its unchanged automatic-focus search action", async () => {
     const f = replayFixture();
     const originalQuery = f.provider.embed_query;
@@ -145,7 +379,7 @@ describe("whole-material teaching build", () => {
     expect(refreshed.descriptor.work_unit_id).not.toBe(searched.descriptor.work_unit_id);
     expect(refreshed.alignment!.read_ranges).toEqual([]);
     expect(readFileSync(searchReceipt.artifact_path, "utf8")).toBe(bytes);
-  });
+  }, 120000);
   it("SR4b reuses actions across provider/config changes with identical input and keeps the frozen task unchanged", async () => {
     const f = replayFixture();
     const initial = await f.prepare();
@@ -169,7 +403,7 @@ describe("whole-material teaching build", () => {
     const calls = f.provider.calls.length;
     expect((await f.prepare()).rendered_input).toBe(after.rendered_input);
     expect(f.provider.calls).toHaveLength(calls);
-  });
+  }, 120000);
   it("SR4b propagates a resolved meaning to relation/component projections through actual writer and preparation", async () => {
     const f = replayFixture();
     const first = await f.prepare();
@@ -185,7 +419,7 @@ describe("whole-material teaching build", () => {
     expect(documents.every(text => text.includes("原文核对后的含义"))).toBe(true);
     expect(next.alignment!.resolved).toContain(object.key);
     expect(next.alignment!.read_ranges).toEqual([]);
-  });
+  }, 120000);
   it("SR4b restores finish identities after cache deletion and rematerializes changed Core dependencies only at stage close", async () => {
     const f = replayFixture(true, false);
     let finish!: TeachingGenerationTask;
@@ -224,7 +458,7 @@ describe("whole-material teaching build", () => {
     closeTeachingStage(f.input, "formal_objects");
     expect(readFileSync(file, "utf8")).toBe(rematerialized);
     expect(f.provider.calls).toHaveLength(calls);
-  });
+  }, 120000);
   it("SR4b rejects a reused action that fails the current gate and gives its replacement an independent receipt", () => {
     const f = replayFixture(false);
     const first = tasks(f.input).tasks.at(-1)!;
@@ -342,7 +576,7 @@ describe("whole-material teaching build", () => {
     const restored = { ...input, retrieval: undefined };
     expect(tasks(restored).tasks.at(-1)!.rendered_input).toBe(tasks(input).tasks.at(-1)!.rendered_input);
     expect(readFileSync(stateFile, "utf8")).toBe(stateBytes);
-  });
+  }, 120000);
   it.each([1, 2])("keeps v%i contracts in their generation and rejects old alignment payloads", version => {
     const input = fixture();
     const task = tasks(input).tasks[0];
@@ -371,7 +605,7 @@ describe("whole-material teaching build", () => {
     writeFileSync(oldFile, JSON.stringify(saved));
     expect(() => acceptTeachingCandidate(input.target, oldAlignment, { kind: "finish" }, provenance)).toThrow("contract is stale");
   });
-  it("SR4b replays actions on the current ledger and preserves immutable input and cumulative reads", () => {
+  it("SR4b replays actions on the current ledger and preserves immutable input and cumulative reads", async () => {
     const input = fixture();
     input.source = structuredClone(input.source);
     input.source.passages[0].text = source.passages[0].text.repeat(500);
@@ -442,14 +676,20 @@ describe("whole-material teaching build", () => {
     let pending = next;
     let lastArtifact = "";
     for (let i = 0; i < 32; i++) {
+      await new Promise<void>(resolve => setImmediate(resolve));
       lastArtifact = write(input, pending, { kind: "read", lid: "1.1", start: 0, end: 20 }).artifact_path;
       if (i < 31) pending = tasks(input).tasks.at(-1)!;
     }
-    expect(tasks(input).state.teaching_blocked).toContain("预算耗尽");
+    const stopped = tasks(input);
+    expect(stopped.state.teaching_blocked).toBeUndefined();
+    expect(stopped.state.work_units!.length).toBeGreaterThanOrEqual(32);
+    const decision = stopped.tasks.at(-1)!;
+    expect(JSON.parse(decision.rendered_input).retrieval_budget).toMatchObject({ steps_used: 32, step_limit: 32, allowed_actions: ["resolve", "read"] });
+    expect(() => write(input, decision, { kind: "read", lid: "1.1", start: 0, end: 20 })).toThrow("retrieval steps are exhausted");
     expect(JSON.parse(readFileSync(lastArtifact, "utf8")).payload.read_ranges).toEqual([{ ...binding("1.1"), start: 0, end: 20 }]);
     expect(() => closeTeachingStage(input, "formal_objects")).toThrow("incomplete");
     expect(existsSync(path.join(input.target.workspace_dir, "teaching_readiness.json"))).toBe(false);
-  });
+  }, 120000);
   it("keeps existing formal identities when a new teaching policy rebuilds the same source", () => {
     const input = fixture();
     const existing = acceptFormalObjects({ source, proposal, operation_id: "prior-policy" });

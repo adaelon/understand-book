@@ -21,6 +21,15 @@ pub struct ExportItem {
 }
 
 impl ExportItem {
+    /// Omit absent content on later metadata patches so saved I/O stays intact.
+    pub fn with_content(mut self, inputs: Option<Value>, outputs: Option<Value>) -> Self {
+        if let Some(inputs) = inputs { self.payload["inputs"] = inputs; }
+        if let Some(outputs) = outputs { self.payload["outputs"] = outputs; }
+        else { self.payload.as_object_mut().unwrap().remove("outputs"); }
+        self.encoded_bytes = serde_json::to_vec(&self.payload).unwrap().len();
+        self
+    }
+
     pub fn new(
         root_run_id: String,
         run_id: String,

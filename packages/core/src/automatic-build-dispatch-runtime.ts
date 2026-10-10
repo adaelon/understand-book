@@ -1067,25 +1067,50 @@ export function recordAutomaticBuildDispatchBootstrapFailure(
   opaqueHandoffRef: string,
   now: string,
 ): void {
+  recordAutomaticBuildDispatchStartupRelease(target, stage, identity, opaqueHandoffRef, now,
+    "automatic_build_bootstrap_failure.v1");
+}
+
+/** A terminal child's handoff can be replaced before it claims generation, even before open. */
+export function recordAutomaticBuildDispatchTerminalSession(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  identity: AutomaticBuildRecoveryGenerationIdentity,
+  opaqueHandoffRef: string,
+  now: string,
+): boolean {
+  return recordAutomaticBuildDispatchStartupRelease(target, stage, identity, opaqueHandoffRef, now,
+    "automatic_build_terminal_session.v1");
+}
+
+function recordAutomaticBuildDispatchStartupRelease(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  identity: AutomaticBuildRecoveryGenerationIdentity,
+  opaqueHandoffRef: string,
+  now: string,
+  version: "automatic_build_bootstrap_failure.v1" | "automatic_build_terminal_session.v1",
+): boolean {
   const epoch = identity.version === "automatic_build_recovery_generation_identity.v2"
     ? identity.bootstrap_epoch : 0;
   const file = path.join(bootstrapFailureDirectory(target, stage, identity), `${epoch}.json`);
-  const record = { version: "automatic_build_bootstrap_failure.v1", opaque_handoff_ref: opaqueHandoffRef,
+  const record = { version, opaque_handoff_ref: opaqueHandoffRef,
     recovery_identity: identity };
   if (existsSync(file)) {
     if (stableJson(readJson(file)) !== stableJson(record)) throw new Error("bootstrap failure conflicts");
-    return;
+    return false;
   }
   const current = inspectAutomaticBuildDispatchRecoveryGeneration(target, stage, identity.dispatch_id,
     { now, dispatch_run_id: identity.dispatch_run_id });
-  if (stableJson(current.recovery_identity) !== stableJson(identity)) return;
+  if (stableJson(current.recovery_identity) !== stableJson(identity)) return false;
   const persisted = readAutomaticBuildDispatch(target, stage, identity.dispatch_id, identity.dispatch_run_id);
   const binding = persisted.manifest.task_bindings?.[identity.current_work_unit_id];
   if (inspectAutomaticBuildTaskClaim(target, stage, identity.current_work_unit_id, {
     now, ...(binding ? { binding } : {}),
     ...(binding && isAutomaticBuildTaskPolicyBindingV2(binding) ? { policy_generation: "v3_only" as const } : {}),
-  }).status === "already_leased") return;
+  }).status === "already_leased") return false;
   writeCreateOnly(file, record);
+  return true;
 }
 
 export class AutomaticBuildDispatchSettledError extends Error {

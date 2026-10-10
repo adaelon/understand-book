@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>同角不同径：为什么大圆盘边缘走得更远</title>
+<style>
+:root{
+  --canvas:#f4f7fa; --ink:#1b2129; --ink-soft:#5b6672; --surface:#ffffff;
+  --line:#cfd8e3; --accent:#2f6feb; --accent2:#d9691a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--ink); background:var(--canvas); line-height:1.55; -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:1000px;margin:0 auto;padding:14px 12px 30px}
+h1{font-size:clamp(17px,4.4vw,24px);line-height:1.35;margin:2px 0 6px}
+.lead{margin:0 0 12px;color:var(--ink-soft);font-size:clamp(13px,3.3vw,15px)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 10px 6px}
+.controls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;margin-bottom:6px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;min-height:44px;min-width:44px;padding:6px 14px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button:focus-visible,input:focus-visible{outline:3px solid #89b0ff;outline-offset:2px}
+.slider{display:flex;flex-direction:column;gap:0;flex:1 1 210px;min-width:170px}
+.slider label{font-size:12.5px;color:var(--ink-soft)}
+.rowline{display:flex;align-items:center;gap:8px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:44px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:4px;background:#dbe3ec}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;margin-top:-11px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-track{height:8px;border-radius:4px;background:#dbe3ec}
+input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:var(--accent);border:3px solid #fff}
+output{font-variant-numeric:tabular-nums;font-size:13px;min-width:62px;text-align:right}
+.stage{width:100%;overflow:hidden;border-radius:10px;background:#fff}
+.stage canvas{touch-action:none;display:block}
+.result{margin:8px 0 6px;font-size:13.5px;font-variant-numeric:tabular-nums;background:#eef4ff;border:1px solid #cfe0ff;border-radius:8px;padding:8px 10px}
+.notes{margin-top:16px;font-size:14px}
+.notes h2{font-size:15.5px;margin:14px 0 4px}
+.notes p{margin:6px 0}
+.notes ul{margin:6px 0;padding-left:20px}
+.notes li{margin:4px 0}
+.formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#fff;border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+@media (max-width:430px){
+  button{padding:6px 10px;font-size:13px}
+  .btnrow{gap:6px}
+  .controls{gap:8px 10px}
+  .slider{flex:1 1 100%;min-width:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>同样转过一个角度，为什么大圆盘边缘走得更远？</h1>
+  <p class="lead">两个圆盘共用同一个转角 θ，弧长 s = rθ：同样的角度，半径越大，弧越长。拖动转角或半径试试。</p>
+
+  <section class="panel">
+    <div class="controls">
+      <div class="btnrow">
+        <button id="play" class="primary" type="button">▶ 播放</button>
+        <button id="prev" type="button">⏮ 上一步</button>
+        <button id="reset" type="button">↺ θ = 0</button>
+      </div>
+      <div class="slider">
+        <label for="thetaRange">转角 θ（弧度，0–2π）</label>
+        <div class="rowline">
+          <input id="thetaRange" type="range" min="0" max="6.283185307179586" step="0.001" value="0" aria-label="转角 theta，弧度">
+          <output id="thetaOut" for="thetaRange">0.000</output>
+        </div>
+      </div>
+      <div class="slider">
+        <label for="r2Range">大盘半径 r₂（1–3，盘1 固定 r₁ = 1）</label>
+        <div class="rowline">
+          <input id="r2Range" type="range" min="1" max="3" step="0.01" value="2" aria-label="大盘半径 r2">
+          <output id="r2Out" for="r2Range">2.00</output>
+        </div>
+      </div>
+    </div>
+    <div id="stageHost" class="stage" role="img" aria-label="两个圆盘与展开路程的比较图"></div>
+    <p id="result" class="result" aria-live="polite"></p>
+  </section>
+
+  <section class="notes">
+    <h2>为什么半径大的走得更远</h2>
+    <p>弧度的定义就是“拿半径去量弧”：半径 r 的圆上，长度等于 r 的那段弧，对应的圆心角正好是 1 弧度。把 θ 个这样的弧接起来，长度就是 <span class="formula">s = rθ</span>。</p>
+    <p>换句话说，<strong>每转过 1 弧度，边缘前进的长度正好等于半径</strong>。盘 2 的半径是盘 1 的 r₂ 倍，同一角度下它走过的弧也就是 r₂ 倍——这正是图里两条展开条长度之比。</p>
+
+    <h2>相同的是角度，不同的是路程</h2>
+    <p>两盘共用同一个 θ：扇形张角相同、参考射线转过的角度相同；但弧长 <span class="formula">s₁ = 1·θ</span> 与 <span class="formula">s₂ = r₂·θ</span> 不同。路程比 <span class="formula">s₂/s₁ = r₂/r₁</span> 与 θ 无关；路程差 <span class="formula">Δs = s₂ − s₁ = (r₂ − r₁)·θ</span>，当 r₂ = 1 或 θ = 0 时正好是 0。</p>
+
+    <h2>怎么用这张图</h2>
+    <ul>
+      <li>拖动<b>转角 θ</b> 滑块，或直接拖动圆盘上的圆形手柄：两盘的扇形与圆弧同步扫过同一个角度。</li>
+      <li>拖动<b>半径 r₂</b> 滑块，或拖动盘 2 半径虚线末端的方块手柄：只有盘 2 的半径、弧长和橙色展开条变化，盘 1 不变。</li>
+      <li>“播放”按 π/4 弧度一步连续推进（8 步转满一圈），再点一次暂停；“上一步”按同样步长回退；改变 θ 或 r₂ 会先暂停。</li>
+      <li>操作结束后位置会自动保存，重新打开这一版页面会回到同样的 θ、r₂ 和步进位置。</li>
+    </ul>
+
+    <h2>假设</h2>
+    <p>理想圆周运动：θ 以弧度计，s = rθ；盘 1 半径固定为 1 个长度单位，盘 2 半径在 1–3 之间可调，θ 在 0–2π 之间。这里不考虑速度、时间、摩擦等因素——路程只由 r 和 θ 决定。</p>
+  </section>
+</div>
+
+<script data-presentation-library="konva" src="libraries/konva-10.7.0.min.js"></script><script>
+(function(){
+  'use strict';
+  var TWO_PI = Math.PI*2, PI = Math.PI, STEP = PI/4, NSTEP = 8;
+  var R1 = 1, R2_MIN = 1, R2_MAX = 3;
+  var D1C = '#2f6feb', D2C = '#d9691a', INK = '#1b2129', SOFT = '#5b6672', DARK = '#415060';
+  var V = {barH: 16, titleW: 120};
+
+  var state = {theta: 0, r2: 2, playing: false};
+
+  var host = document.getElementById('stageHost');
+  var resultEl = document.getElementById('result');
+  var thetaRange = document.getElementById('thetaRange');
+  var r2Range = document.getElementById('r2Range');
+  var thetaOut = document.getElementById('thetaOut');
+  var r2Out = document.getElementById('r2Out');
+  var playBtn = document.getElementById('play');
+  var prevBtn = document.getElementById('prev');
+  var resetBtn = document.getElementById('reset');
+
+  function clip(v, lo, hi){ return v < lo ? lo : (v > hi ? hi : v); }
+  function commit(){ if (window.presentation && window.presentation.commitState) window.presentation.commitState(); }
+
+  /* ---------- model: s = r*theta, steps of pi/4 ---------- */
+  function semIndex(){
+    var t = clip(state.theta, 0, TWO_PI)/STEP;
+    return Math.min(NSTEP, Math.floor(t + 1e-9));
+  }
+  function progress(){
+    var t = clip(state.theta, 0, TWO_PI)/STEP;
+    var f = Math.min(NSTEP, Math.floor(t + 1e-9));
+    return clip(t - f, 0, 0.999999);
+  }
+  function snapshot(){
+    return {semantic_state: semIndex(), transition_progress: progress(),
+            playing: state.playing, theta: state.theta, r2: state.r2};
+  }
+
+  /* ---------- layout ---------- */
+  var LAY = null;
+  function computeLayout(){
+    var W = Math.max(280, Math.round(host.clientWidth || 320));
+    var pad = 10, gap = 14, edge = 44, titleH = 30, bottomH = 30;
+    var u = Math.max(16, Math.min((W - 2*pad - gap - edge)/8, 56));
+    var totalW = 8*u + gap;
+    var x0 = Math.max(pad, (W - totalW)/2);
+    var c1x = x0 + u;
+    var c2x = c1x + 4*u + gap;
+    var cy = pad + titleH + 3*u;
+    var discBottom = cy + 3*u + bottomH;
+    var trackX = pad + 8, trackW = W - 2*(pad + 8);
+    var Lpx = trackW/(TWO_PI*3);
+    var headY = discBottom + 8;
+    var r1rowY = headY + 34;      /* 盘1 行标签 */
+    var bar1Y = r1rowY + 16;      /* 盘1 展开条 */
+    var r2rowY = r1rowY + 88;     /* 盘2 行标签（在 Δs 括号线之下） */
+    var bar2Y = r1rowY + 104;     /* 盘2 展开条 */
+    var H = bar2Y + V.barH + 26;
+    LAY = {W:W, H:H, u:u, x0:x0, c1x:c1x, c2x:c2x, cy:cy, discBottom:discBottom,
+           trackX:trackX, trackW:trackW, Lpx:Lpx, headY:headY,
+           r1rowY:r1rowY, bar1Y:bar1Y, r2rowY:r2rowY, bar2Y:bar2Y,
+           full1Y:bar1Y + 20, brkLblY:r1rowY + 56, brkLineY:r1rowY + 78, full2Y:bar2Y + 20};
+  }
+
+  /* ---------- konva scene ---------- */
+  var stage = null, layer = null, S = null;
+
+  function txt(cfg){
+    var base = {fontFamily:'-apple-system,BlinkMacSystemFont,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif',
+                fontSize:12, fill:INK, listening:false};
+    for (var k in cfg) base[k] = cfg[k];
+    return new Konva.Text(base);
+  }
+  function makeWedge(fillColor){
+    return new Konva.Shape({fill:fillColor, listening:false, sceneFunc:function(ctx, shape){
+      var r = shape.getAttr('rr') || 1, sw = shape.getAttr('sweep') || 0;
+      ctx.beginPath(); ctx.moveTo(0,0);
+      ctx.arc(0, 0, Math.max(r,1), 0, -sw, true);
+      ctx.closePath(); ctx.fillStrokeShape(shape);
+    }});
+  }
+  function makeBand(color){
+    return new Konva.Shape({fill:color, listening:false, sceneFunc:function(ctx, shape){
+      var r = Math.max(shape.getAttr('rr') || 0, 1);
+      var sw = shape.getAttr('sweep') || 0;
+      var b = shape.getAttr('band') || 4;
+      if (sw < 1e-5) return;
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(r-b, 0.5), 0, -sw, true);
+      ctx.arc(0, 0, r, -sw, 0, false);
+      ctx.closePath(); ctx.fillStrokeShape(shape);
+    }});
+  }
+  function makeHandle(color){
+    var h = new Konva.Circle({radius:7, fill:color, stroke:'#ffffff', strokeWidth:2.5, draggable:true});
+    h.hitFunc(function(ctx, shape){ ctx.beginPath(); ctx.arc(0,0,22,0,PI*2); ctx.closePath(); ctx.fillStrokeShape(shape); });
+    return h;
+  }
+  function buildDisc(color, wedgeFill, withRadiusHandle){
+    var grp = new Konva.Group();
+    var rim = new Konva.Circle({radius:30, stroke:'#c3ccd8', strokeWidth:1.5, listening:false});
+    var refRay = new Konva.Line({points:[0,0,30,0], stroke:'#9aa6b2', strokeWidth:1, dash:[5,5], listening:false});
+    var radLine = new Konva.Line({points:[0,0,0,-30], strokeWidth:1.5, dash:[5,5], listening:false});
+    var wedge = makeWedge(wedgeFill);
+    var band = makeBand(color);
+    var spoke = new Konva.Line({points:[0,0,30,0], stroke:color, strokeWidth:3, lineCap:'round', listening:false});
+    var wedgeLabel = txt({text:'θ', fontSize:12, fontStyle:'bold', fill:color, width:20, align:'center', wrap:'none'});
+    var handle = makeHandle(color);
+    var title = txt({text:'', fontSize:11.5, fontStyle:'bold', fill:color, width:V.titleW, align:'center', wrap:'none'});
+    grp.add(rim); grp.add(refRay); grp.add(radLine);
+    grp.add(wedge); grp.add(band); grp.add(spoke); grp.add(wedgeLabel);
+    grp.add(handle); grp.add(title);
+    var radHandle = null;
+    if (withRadiusHandle){
+      radHandle = new Konva.Rect({x:-8, y:-8, width:16, height:16, cornerRadius:3,
+                                  fill:DARK, stroke:'#ffffff', strokeWidth:2, draggable:true});
+      radHandle.hitFunc(function(ctx, shape){ ctx.beginPath(); ctx.rect(-22,-22,44,44); ctx.closePath(); ctx.fillStrokeShape(shape); });
+      grp.add(radHandle);
+    }
+    layer.add(grp);
+    return {grp:grp, rim:rim, refRay:refRay, radLine:radLine, wedge:wedge,
+            band:band, spoke:spoke, wedgeLabel:wedgeLabel, handle:handle, title:title, radHandle:radHandle};
+  }
+  function buildBars(){
+    var zone = new Konva.Group(); layer.add(zone);
+    var head = txt({text:'展开：把两段圆弧拉直，放在同一把尺子上', fontSize:11.5, fill:SOFT});
+    var row1 = txt({text:'盘 1 · 展开路程 s₁ = r₁θ', fontSize:11.5, fill:D1C, wrap:'none'});
+    var row2 = txt({text:'盘 2 · 展开路程 s₂ = r₂θ', fontSize:11.5, fill:D2C, wrap:'none'});
+    var track1 = new Konva.Line({points:[0,0,1,0], stroke:'#e6ecf3', strokeWidth:V.barH, listening:false});
+    var track2 = new Konva.Line({points:[0,0,1,0], stroke:'#e6ecf3', strokeWidth:V.barH, listening:false});
+    var bar1 = new Konva.Rect({fill:D1C, cornerRadius:3, listening:false});
+    var bar2 = new Konva.Rect({fill:D2C, cornerRadius:3, listening:false});
+    var full1 = new Konva.Line({points:[0,0,0,1], stroke:'#8d9aa8', strokeWidth:1.5, dash:[3,3], listening:false});
+    var full2 = new Konva.Line({points:[0,0,0,1], stroke:'#8d9aa8', strokeWidth:1.5, dash:[3,3], listening:false});
+    var full1Lbl = txt({text:'整圈 2πr₁', fontSize:10.5, fill:SOFT, wrap:'none'});
+    var full2Lbl = txt({text:'整圈 2πr₂', fontSize:10.5, fill:SOFT, wrap:'none'});
+    var val1 = txt({text:'', fontSize:12, fontStyle:'bold', fill:D1C, wrap:'none'});
+    var val2 = txt({text:'', fontSize:12, fontStyle:'bold', fill:D2C, wrap:'none'});
+    var bracket = new Konva.Line({points:[0,0,0,0], stroke:DARK, strokeWidth:1.5, listening:false});
+    var bracketLbl = txt({text:'', fontSize:11.5, fontStyle:'bold', fill:DARK, wrap:'none'});
+    var zeroLbl = txt({text:'', fontSize:11.5, fill:DARK, wrap:'none'});
+    zone.add(track1); zone.add(track2); zone.add(bar1); zone.add(bar2);
+    zone.add(full1); zone.add(full2); zone.add(full1Lbl); zone.add(full2Lbl);
+    zone.add(head); zone.add(row1); zone.add(row2);
+    zone.add(val1); zone.add(val2); zone.add(bracket); zone.add(bracketLbl); zone.add(zeroLbl);
+    return {head:head, row1:row1, row2:row2, track1:track1, track2:track2,
+            bar1:bar1, bar2:bar2, full1:full1, full2:full2, full1Lbl:full1Lbl, full2Lbl:full2Lbl,
+            val1:val1, val2:val2, bracket:bracket, bracketLbl:bracketLbl, zeroLbl:zeroLbl};
+  }
+
+  /* 圆盘子对象都用「以圆心为原点」的坐标 */
+  function drawDisc(o, cx, cy, R, isDisc1, titleText, titleAbsX){
+    var th = state.theta;
+    o.grp.position({x:cx, y:cy});
+    o.rim.radius(R);
+    o.refRay.points([0,0,R,0]);
+    o.radLine.points([0,0,0,-R]);
+    o.radLine.stroke(isDisc1 ? '#9aa6b2' : 'rgba(217,105,26,0.8)');
+    o.band.setAttrs({rr:R, sweep:th, band:Math.max(4, R*0.08)});
+    var cs = Math.cos(th)*R, sn = Math.sin(th)*R;
+    o.spoke.points([0,0,cs,-sn]);
+    o.handle.position({x:cs, y:-sn});
+    o.wedge.setAttrs({rr:Math.max(R*0.30, 9), sweep:th});
+    var showWedge = th > 0.05;
+    o.wedge.visible(showWedge);
+    o.wedgeLabel.visible(showWedge);
+    if (showWedge){
+      var mid = th/2, rr = Math.max(R*0.46, 14);
+      o.wedgeLabel.position({x:Math.cos(mid)*rr, y:-Math.sin(mid)*rr});
+      o.wedgeLabel.offsetX(o.wedgeLabel.width()/2);
+      o.wedgeLabel.offsetY(o.wedgeLabel.height()/2);
+    }
+    if (o.radHandle) o.radHandle.position({x:0, y:-R});
+    o.title.text(titleText);
+    o.title.position({x:titleAbsX - cx, y:-R - 34});
+  }
+
+  function placeEndLabel(node, endX, y, right){
+    var w = node.width();
+    var x = endX + 6;
+    if (x + w > right) x = endX - 6 - w;
+    node.position({x:Math.max(LAY.trackX, x), y:y});
+  }
+
+  function render(){
+    if (!LAY || !S || !S.d1 || !S.head) return;
+    var A = LAY, th = state.theta, s1 = R1*th, s2 = state.r2*th;
+    var Wt = V.titleW;
+    var t1x = clip(A.c1x - Wt/2, 2, Math.max(2, A.W - 2 - Wt));
+    var t2x = clip(A.c2x - Wt/2, 2, Math.max(2, A.W - 2 - Wt));
+    if (t2x < t1x + Wt + 6) t2x = Math.min(t1x + Wt + 6, Math.max(2, A.W - 2 - Wt));
+    drawDisc(S.d1, A.c1x, A.cy, R1*A.u, true, '盘1 · r₁ = 1.00', t1x);
+    drawDisc(S.d2, A.c2x, A.cy, state.r2*A.u, false, '盘2 · r₂ = ' + state.r2.toFixed(2) + ' ↕', t2x);
+
+    var px = function(v){ return A.trackX + v*A.Lpx; };
+    var e1 = px(s1), e2 = px(s2), right = A.trackX + A.trackW;
+
+    S.head.position({x:A.trackX, y:A.headY});
+    S.row1.position({x:A.trackX, y:A.r1rowY});
+    S.row2.position({x:A.trackX, y:A.r2rowY});
+
+    S.track1.points([A.trackX, A.bar1Y + V.barH/2, right, A.bar1Y + V.barH/2]);
+    S.track2.points([A.trackX, A.bar2Y + V.barH/2, right, A.bar2Y + V.barH/2]);
+    S.bar1.setAttrs({x:A.trackX, y:A.bar1Y, width:Math.max(s1*A.Lpx, 2), height:V.barH});
+    S.bar2.setAttrs({x:A.trackX, y:A.bar2Y, width:Math.max(s2*A.Lpx, 2), height:V.barH});
+
+    var f1 = px(TWO_PI*R1), f2 = px(TWO_PI*state.r2);
+    S.full1.points([f1, A.bar1Y - 6, f1, A.bar1Y + V.barH + 6]);
+    S.full2.points([f2, A.bar2Y - 6, f2, A.bar2Y + V.barH + 6]);
+    S.full1Lbl.text('整圈 2πr₁ = ' + (TWO_PI*R1).toFixed(2));
+    S.full2Lbl.text('整圈 2πr₂ = ' + (TWO_PI*state.r2).toFixed(2));
+    S.full1Lbl.position({x:clip(f1 - 2, A.trackX, Math.max(A.trackX, right - 118)), y:A.full1Y});
+    S.full2Lbl.position({x:clip(f2 - 2, A.trackX, Math.max(A.trackX, right - 118)), y:A.full2Y});
+
+    S.val1.text('s₁ = ' + s1.toFixed(3));
+    placeEndLabel(S.val1, e1, A.bar1Y + V.barH/2 - 7.5, right);
+    S.val2.text('s₂ = ' + s2.toFixed(3));
+    placeEndLabel(S.val2, e2, A.bar2Y + V.barH/2 - 7.5, right);
+
+    var ds = s2 - s1;
+    var showBracket = ds > 1e-9;
+    S.bracket.visible(showBracket);
+    S.bracketLbl.visible(showBracket);
+    S.zeroLbl.visible(!showBracket);
+    if (showBracket){
+      var y = A.brkLineY;
+      S.bracket.points([e1, y + 6, e1, y, e2, y, e2, y + 6]);
+      S.bracketLbl.text('Δs = (r₂ − r₁)·θ = ' + ds.toFixed(3));
+      var w = S.bracketLbl.width();
+      S.bracketLbl.position({x:clip((e1 + e2)/2 - w/2, A.trackX, Math.max(A.trackX, right - w)), y:A.brkLblY});
+    } else {
+      S.zeroLbl.text(state.r2 <= R2_MIN + 1e-9
+        ? 'r₂ = r₁ = 1：两盘完全相同 → Δs = 0'
+        : 'θ = 0：两盘边缘都还没移动 → Δs = 0');
+      S.zeroLbl.position({x:A.trackX, y:A.brkLblY});
+    }
+    layer.batchDraw();
+    if (typeof layer.drawHit === 'function') layer.drawHit();
+  }
+
+  /* ---------- text / controls ---------- */
+  function syncControls(){
+    if (document.activeElement !== thetaRange) thetaRange.value = String(state.theta);
+    if (document.activeElement !== r2Range) r2Range.value = String(state.r2);
+    thetaOut.textContent = state.theta.toFixed(3) + ' rad';
+    r2Out.textContent = state.r2.toFixed(2);
+  }
+  function updateResult(){
+    var th = state.theta, s = semIndex(), p = progress();
+    var s1 = R1*th, s2 = state.r2*th, ds = s2 - s1;
+    var stepTxt = (s >= NSTEP) ? '第 8 步（整圈完成）' : '第 ' + s + ' 步 + ' + p.toFixed(2);
+    var extra;
+    if (ds <= 1e-9){
+      extra = (state.r2 <= R2_MIN + 1e-9) ? '两盘半径相同 → Δs = 0' : 'θ = 0 → 两盘都未移动，Δs = 0';
+    } else {
+      extra = 'Δs = ' + ds.toFixed(3) + '，s₂/s₁ = ' + (s2/s1).toFixed(2);
+    }
+    resultEl.textContent = 'θ = ' + th.toFixed(3) + ' rad（' + (th*180/PI).toFixed(1) + '°）｜' + stepTxt +
+      '｜r₂ = ' + state.r2.toFixed(2) + '｜s₁ = r₁θ = ' + s1.toFixed(3) + '，s₂ = r₂θ = ' + s2.toFixed(3) + '｜' + extra;
+    host.setAttribute('aria-label', '两个圆盘：盘1 半径1，盘2 半径' + state.r2.toFixed(2) +
+      '；共同转角 ' + th.toFixed(3) + ' 弧度；盘1 弧长 ' + s1.toFixed(3) + '，盘2 弧长 ' + s2.toFixed(3) + '。');
+  }
+  function syncAll(){ syncControls(); render(); updateResult(); }
+  function updatePlayLabel(){ playBtn.textContent = state.playing ? '⏸ 暂停' : '▶ 播放'; }
+
+  /* ---------- playback ---------- */
+  var rafId = 0, lastTs = 0, STEP_SECONDS = 0.7;
+  function stopPlayback(){
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    lastTs = 0; state.playing = false;
+  }
+  function tick(ts){
+    if (!state.playing) return;
+    if (!lastTs) lastTs = ts;
+    var dt = Math.min((ts - lastTs)/1000, 0.05); lastTs = ts;
+    var next = state.theta + STEP*dt/STEP_SECONDS, done = false;
+    if (next >= TWO_PI){ next = TWO_PI; done = true; }
+    state.theta = next;
+    syncAll();
+    if (done){ stopPlayback(); updatePlayLabel(); commit(); return; }
+    rafId = requestAnimationFrame(tick);
+  }
+  function startPlayback(){
+    if (state.theta >= TWO_PI - 1e-9) state.theta = 0;
+    state.playing = true; lastTs = 0; updatePlayLabel();
+    rafId = requestAnimationFrame(tick);
+  }
+  function togglePlay(){
+    if (state.playing){ stopPlayback(); updatePlayLabel(); commit(); }
+    else startPlayback();
+  }
+
+  /* ---------- seek / state api ---------- */
+  function seekTo(obj){
+    var o = obj || {};
+    var s = Math.round(Number(o.semantic_state));
+    if (!isFinite(s)) s = 0;
+    s = clip(s, 0, NSTEP);
+    var p = Number(o.transition_progress);
+    if (!isFinite(p)) p = 0;
+    p = clip(p, 0, 0.999999);
+    state.theta = (s >= NSTEP) ? TWO_PI : (s + p)*STEP;
+    syncAll();
+    return snapshot();
+  }
+  function seek(obj){
+    stopPlayback(); updatePlayLabel();
+    return seekTo(obj);
+  }
+
+  /* ---------- interaction: drags ---------- */
+  function attachSpokeDrag(o){
+    o.handle.on('dragstart', function(){ stopPlayback(); updatePlayLabel(); });
+    o.handle.on('dragmove', function(){
+      var p = o.grp.getRelativePointerPosition();
+      if (!p) return;
+      var raw = Math.atan2(-p.y, p.x);
+      var target = raw < 0 ? raw + TWO_PI : raw;
+      var delta = target - state.theta;
+      while (delta > PI) delta -= TWO_PI;
+      while (delta < -PI) delta += TWO_PI;
+      state.theta = clip(state.theta + delta, 0, TWO_PI);
+      syncAll();
+    });
+    o.handle.on('dragend', function(){ commit(); });
+  }
+  function attachRadiusDrag(o){
+    o.radHandle.on('dragstart', function(){ stopPlayback(); updatePlayLabel(); });
+    o.radHandle.on('dragmove', function(){
+      var p = o.grp.getRelativePointerPosition();
+      if (!p) return;
+      state.r2 = clip(-p.y / LAY.u, R2_MIN, R2_MAX);
+      syncAll();
+    });
+    o.radHandle.on('dragend', function(){ commit(); });
+  }
+
+  /* ---------- wiring ---------- */
+  playBtn.addEventListener('click', togglePlay);
+  prevBtn.addEventListener('click', function(){
+    stopPlayback(); updatePlayLabel();
+    var cur = semIndex(), p = progress();
+    var target = p > 1e-6 ? cur : Math.max(0, cur - 1);
+    seekTo({semantic_state: target, transition_progress: 0});
+    commit();
+  });
+  resetBtn.addEventListener('click', function(){
+    stopPlayback(); updatePlayLabel();
+    seekTo({semantic_state: 0, transition_progress: 0});
+    commit();
+  });
+  thetaRange.addEventListener('input', function(){
+    stopPlayback(); updatePlayLabel();
+    var v = Number(thetaRange.value);
+    state.theta = clip(isFinite(v) ? v : 0, 0, TWO_PI);
+    syncAll();
+  });
+  thetaRange.addEventListener('change', function(){ commit(); });
+  r2Range.addEventListener('input', function(){
+    stopPlayback(); updatePlayLabel();
+    var v = Number(r2Range.value);
+    state.r2 = clip(isFinite(v) ? v : R2_MIN, R2_MIN, R2_MAX);
+    syncAll();
+  });
+  r2Range.addEventListener('change', function(){ commit(); });
+
+  window.presentationScene = {
+    seek: function(obj){ return seek(obj); },
+    snapshot: function(){ return snapshot(); }
+  };
+
+  if (window.presentation && window.presentation.registerStateReader){
+    window.presentation.registerStateReader(function(){
+      return {values: {theta: state.theta, r2: state.r2,
+                       semantic_state: semIndex(), transition_progress: progress()},
+              visible_step: String(semIndex())};
+    });
+  }
+  if (window.presentation && window.presentation.registerStateRestorer){
+    window.presentation.registerStateRestorer(function(saved){
+      var v = (saved && saved.values && saved.values.page) ? saved.values.page : null;
+      if (!v) return;
+      stopPlayback();
+      if (typeof v.r2 === 'number' && isFinite(v.r2)) state.r2 = clip(v.r2, R2_MIN, R2_MAX);
+      if (typeof v.theta === 'number' && isFinite(v.theta)){
+        state.theta = clip(v.theta, 0, TWO_PI);
+      } else if (typeof v.semantic_state === 'number'){
+        var s = clip(Math.round(v.semantic_state), 0, NSTEP);
+        var p = (typeof v.transition_progress === 'number' && isFinite(v.transition_progress))
+              ? clip(v.transition_progress, 0, 0.999999) : 0;
+        state.theta = (s >= NSTEP) ? TWO_PI : (s + p)*STEP;
+      }
+      updatePlayLabel();
+      syncAll();
+    });
+  }
+
+  /* ---------- init ---------- */
+  function boot(){
+    computeLayout();
+    stage = new Konva.Stage({container:'stageHost', width:LAY.W, height:LAY.H});
+    layer = new Konva.Layer();
+    stage.add(layer);
+    var d1 = buildDisc(D1C, 'rgba(47,111,235,0.12)', false);
+    var d2 = buildDisc(D2C, 'rgba(217,105,26,0.13)', true);
+    var bars = buildBars();
+    S = {d1:d1, d2:d2, head:bars.head, row1:bars.row1, row2:bars.row2,
+         track1:bars.track1, track2:bars.track2, bar1:bars.bar1, bar2:bars.bar2,
+         full1:bars.full1, full2:bars.full2, full1Lbl:bars.full1Lbl, full2Lbl:bars.full2Lbl,
+         val1:bars.val1, val2:bars.val2, bracket:bars.bracket, bracketLbl:bars.bracketLbl,
+         zeroLbl:bars.zeroLbl};
+    attachSpokeDrag(S.d1);
+    attachSpokeDrag(S.d2);
+    attachRadiusDrag(S.d2);
+    updatePlayLabel();
+    syncAll();
+  }
+  boot();
+
+  var resizeFrame = 0, prevW = -1;
+  if (typeof ResizeObserver !== 'undefined'){
+    var ro = new ResizeObserver(function(){
+      if (resizeFrame) return;
+      resizeFrame = requestAnimationFrame(function(){
+        resizeFrame = 0;
+        var w = host.clientWidth;
+        if (w === prevW) return;
+        prevW = w;
+        if (!stage) return;
+        computeLayout();
+        stage.size({width:LAY.W, height:LAY.H});
+        render();
+      });
+    });
+    ro.observe(host);
+  } else {
+    window.addEventListener('resize', function(){
+      computeLayout();
+      if (!stage) return;
+      stage.size({width:LAY.W, height:LAY.H});
+      render();
+    });
+  }
+})();
+</script>
+</body>
+</html>

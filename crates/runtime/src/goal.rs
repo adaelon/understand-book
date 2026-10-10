@@ -70,7 +70,7 @@ pub struct GoalWorkingState {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(tag = "operation", rename_all = "snake_case")]
+#[serde(tag = "operation", rename_all = "snake_case", deny_unknown_fields)]
 pub enum GoalUpdate {
     Working {
         focus: String,

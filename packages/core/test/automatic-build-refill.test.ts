@@ -19,7 +19,7 @@ describe("single-operation refill", () => {
     const runtime = engine({ kind: "SPAWN_EXECUTORS", executors: [launch("A"), launch("B"), launch("D", "C"), launch("D", "C")] });
     const result = automaticBuildRefill(input, runtime);
     expect(runtime.step).toHaveBeenCalledExactlyOnceWith({ version: "automatic_build_step_request.v1",
-      invocation_ref: "invocation", available_agent_slots: 1 }, ["ref-A", "ref-B"]);
+      invocation_ref: "invocation", available_agent_slots: 1 }, ["ref-A", "ref-B"], ["ref-C"]);
     expect(result.live_by_slot).toEqual({ A: owned("A"), B: owned("B") });
     expect(result.completed_refs).toEqual(["ref-C"]);
     expect(result.ready_executors).toEqual([launch("D", "C")]);

@@ -62,12 +62,15 @@ impl CancellableAdapter<'_> {
         self.cancellation
             .check()
             .map_err(|error| crate::AdapterError {
+                spend_stop: None,
                 message: error.message,
             })
     }
 }
 
 impl crate::ModelAdapter for CancellableAdapter<'_> {
+    fn set_spend_context(&self, scope: crate::model_spend::ChargeScope, port: Option<std::sync::Arc<dyn crate::model_spend::ModelSpendPort>>) { self.inner.set_spend_context(scope,port); }
+    fn set_model_purpose(&self, purpose: &str) { self.inner.set_model_purpose(purpose); }
     fn stream_text_is_structured(&self) -> bool {
         self.inner.stream_text_is_structured()
     }
@@ -302,6 +305,10 @@ impl RunContext {
     /// Close the provider protocol for the unexecuted suffix of a cancelled tool batch.
     /// These are cancellation receipts, not executed tools or activity records.
     pub fn close_cancelled_tool_calls(&mut self) {
+        self.close_stopped_tool_calls("AGENT_RUN_CANCELLED", "cancelled", "Tool was not executed because the run was cancelled");
+    }
+
+    pub fn close_stopped_tool_calls(&mut self, code: &str, category: &str, message: &str) {
         self.presentation_authoring = None;
         self.presentation_authoring_finished = true;
         let start = self
@@ -324,8 +331,7 @@ impl RunContext {
                 tool_call_id: Some(id),
                 tool_calls: Vec::new(),
                 content: Some(
-                    serde_json::json!({"error_code":"AGENT_RUN_CANCELLED", "category":"cancelled",
-                    "message":"Tool was not executed because the run was cancelled"})
+                    serde_json::json!({"error_code":code, "category":category, "message":message})
                     .to_string(),
                 ),
             });

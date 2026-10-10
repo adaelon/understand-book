@@ -2,7 +2,10 @@ CREATE TABLE users (
     user_id TEXT PRIMARY KEY NOT NULL,
     disabled INTEGER NOT NULL DEFAULT 0 CHECK(disabled IN (0,1)),
     auth_epoch INTEGER NOT NULL DEFAULT 0,
-    password_hash TEXT
+    password_hash TEXT,
+    is_admin INTEGER NOT NULL DEFAULT 0 CHECK(is_admin IN (0,1)),
+    email TEXT CHECK(email IS NULL OR (email=lower(trim(email)) AND length(email)>0)),
+    email_verified_at INTEGER CHECK((email IS NULL) = (email_verified_at IS NULL))
 );
 -- MU4 uses Argon2id PHC strings in users.password_hash. NULL cannot sign in.
 -- A 32-byte session-token digest is the opaque session identity; epoch and

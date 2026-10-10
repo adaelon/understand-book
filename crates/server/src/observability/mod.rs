@@ -217,17 +217,29 @@ impl ObservabilityRuntime {
     }
 
     pub fn start_run(self: &Arc<Self>, book_id: &str, session_id: &str) -> Option<ObservationRun> {
+        self.start_run_with_input(book_id, session_id, || serde_json::json!({}))
+    }
+
+    pub fn start_run_with_input(
+        self: &Arc<Self>, book_id: &str, session_id: &str,
+        input: impl FnOnce() -> serde_json::Value,
+    ) -> Option<ObservationRun> {
         let config = self.config.as_ref()?;
         let thread_id = opaque_ref(&self.thread_refs, session_id);
         let book_ref = opaque_ref(&self.book_refs, book_id);
         let identity = RunIdentity::new(thread_id, book_ref);
         let root = root_started(&identity);
-        let active = self.enqueue(export_item(root, ExportOperation::Create, &config.project));
+        let mut item = export_item(root, ExportOperation::Create, &config.project);
+        if config.mode == config::ObservabilityMode::Full {
+            item = item.with_content(Some(input()), None);
+        }
+        let active = self.enqueue(item);
         Some(ObservationRun {
             inner: Arc::new(ObservationRunInner {
                 runtime: self.clone(),
                 identity,
                 mapper: Mutex::new(ActivityMapper::new(config.max_trace_spans)),
+                content: Mutex::new(HashMap::new()),
                 answer_first_patch_ms: Mutex::new(None),
                 active: AtomicBool::new(active),
                 finished: AtomicBool::new(false),
@@ -326,12 +338,32 @@ struct ObservationRunInner {
     runtime: Arc<ObservabilityRuntime>,
     identity: RunIdentity,
     mapper: Mutex<ActivityMapper>,
+    content: Mutex<HashMap<u32, ActivityContent>>,
     answer_first_patch_ms: Mutex<Option<f64>>,
     active: AtomicBool,
     finished: AtomicBool,
 }
 
+#[derive(Default)]
+struct ActivityContent {
+    inputs: Option<serde_json::Value>,
+    outputs: Option<serde_json::Value>,
+}
+
 impl ObservationRun {
+    fn captures_content(&self) -> bool {
+        self.inner.active.load(Ordering::Acquire)
+            && self.inner.runtime.config.as_ref().is_some_and(|c| c.mode == config::ObservabilityMode::Full)
+    }
+
+    fn content_item(&self, item: ExportItem, step_id: u32, terminal: bool) -> ExportItem {
+        if !self.captures_content() { return item; }
+        let content = if terminal {
+            self.inner.content.lock().unwrap().remove(&step_id).unwrap_or_default()
+        } else { ActivityContent::default() };
+        item.with_content(content.inputs, content.outputs)
+    }
+
     pub fn event_anchor(&self) -> Instant {
         self.inner.identity.started
     }
@@ -365,7 +397,7 @@ impl ObservationRun {
             delivery,
             persistence_state,
             incomplete,
-            error_code,
+            error_code.clone(),
             dropped,
             *self
                 .inner
@@ -377,10 +409,17 @@ impl ObservationRun {
             enrich_root_metadata(&mut observation.metadata, outcome);
         }
         let project = &self.inner.runtime.config.as_ref().unwrap().project;
+        let mut item = export_item(observation, ExportOperation::Update, project);
+        if self.captures_content() {
+            item = item.with_content(None, Some(match outcome {
+                Some(outcome) => serde_json::to_value(outcome).unwrap(),
+                None => serde_json::json!({"error_code":error_code,"cancelled":cancelled}),
+            }));
+        }
         if !self
             .inner
             .runtime
-            .enqueue(export_item(observation, ExportOperation::Update, project))
+            .enqueue(item)
         {
             self.inner.active.store(false, Ordering::Release);
         }
@@ -390,6 +429,8 @@ impl ObservationRun {
         if !self.inner.active.load(Ordering::Acquire) {
             return;
         }
+        let step_id = event.activity.step_id;
+        let terminal = event.activity.status != runtime::run_events::ActivityStatus::Running;
         let mapped = self
             .inner
             .mapper
@@ -407,7 +448,7 @@ impl ObservationRun {
         if !self
             .inner
             .runtime
-            .enqueue(export_item(observation, operation, project))
+            .enqueue(self.content_item(export_item(observation, operation, project), step_id, terminal))
         {
             // A dropped child does not stop the root update; the final root record carries the
             // local dropped count when capacity becomes available.
@@ -418,6 +459,7 @@ impl ObservationRun {
         if !self.inner.active.load(Ordering::Acquire) {
             return;
         }
+        let step_id = evidence.step_id;
         let mapped = self
             .inner
             .mapper
@@ -431,7 +473,7 @@ impl ObservationRun {
         let _ = self
             .inner
             .runtime
-            .enqueue(export_item(observation, operation, project));
+            .enqueue(self.content_item(export_item(observation, operation, project), step_id, false));
     }
 }
 
@@ -518,6 +560,19 @@ struct ActivityObservationSink {
 }
 
 impl RunEventSink for ActivityObservationSink {
+    fn captures_content(&self) -> bool { self.run.captures_content() }
+    fn activity_input(&self, step_id: u32, input: serde_json::Value) {
+        if self.captures_content() {
+            self.run.inner.content.lock().unwrap().entry(step_id).or_default().inputs = Some(input);
+        }
+    }
+    fn activity_output(&self, step_id: u32, output: serde_json::Value) {
+        if self.captures_content() {
+            let mut content = self.run.inner.content.lock().unwrap();
+            let saved = content.entry(step_id).or_default().outputs.get_or_insert_with(|| serde_json::json!({}));
+            saved.as_object_mut().unwrap().extend(output.as_object().unwrap().clone());
+        }
+    }
     fn emit(&self, event: RuntimeEvent) {
         self.run.observe(event);
     }
@@ -834,7 +889,7 @@ mod tests {
                 let _purpose = events.scope(None, "query");
                 observed.complete_observed(completion(), &mut |delta| forwarded.push(delta)).unwrap();
             }
-            assert!(!forwarded.iter().any(|delta| matches!(delta, ModelDelta::Request(_))));
+            assert!(!forwarded.iter().any(|delta| matches!(delta, ModelDelta::Request(_) | ModelDelta::Response(_))));
             let bodies = wire.join().unwrap();
             let activities = events.activities();
             for (activity, body) in activities.iter().zip(&bodies) {
@@ -901,6 +956,34 @@ mod tests {
         assert!(status.sent >= 12);
         println!("LANGSMITH_CANARY_ROOTS={}", serde_json::to_string(&roots).unwrap());
         println!("LANGSMITH_CANARY_STATUS={}", serde_json::to_string(&status).unwrap());
+    }
+
+    #[test]
+    fn full_content_survives_rejected_tools_and_later_evidence_updates() {
+        use runtime::run_events::{ActivityStatus, RunEvents};
+        let sent = Arc::new(Mutex::new(Vec::new()));
+        let mut settings = config();
+        settings.mode = config::ObservabilityMode::Full;
+        let runtime = ObservabilityRuntime::with_transport(settings,
+            Box::new(RecordingTransport { sent: sent.clone(), reject_root: false }));
+        let run = runtime.start_run_with_input("book", "session", || serde_json::json!({"message":"check"})).unwrap();
+        let events = RunEvents::new(Some(run.sink()));
+        let activity = events.begin("tool", "goal.update", "update", false);
+        events.input(activity.step_id, || serde_json::json!({"operation":"working"}));
+        events.output(activity.step_id, || serde_json::json!({"result":{"error_code":"GOAL_UPDATE_INVALID","message":"missing next_move"}}));
+        let step_id = activity.step_id;
+        events.finish(activity, ActivityStatus::Rejected, None, Some("GOAL_UPDATE_INVALID".into()), None);
+        run.observe_evidence(EvidenceObservation { step_id, accepted_count: 1, evidence_refs: vec!["1.1".into()] });
+        run.finish(None, false, PersistenceState::Saved, None);
+        runtime.shutdown();
+        let sent = sent.lock().unwrap();
+        let tool = sent.iter().find(|item| item.payload["name"] == "goal.update").unwrap();
+        assert_eq!(tool.payload["inputs"]["operation"], "working");
+        assert_eq!(tool.payload["outputs"]["result"]["message"], "missing next_move");
+        let update = sent.iter().find(|item| item.run_id == tool.run_id && item.operation == ExportOperation::Update).unwrap();
+        assert!(update.payload.get("inputs").is_none());
+        assert!(update.payload.get("outputs").is_none());
+        assert!(run.inner.content.lock().unwrap().is_empty());
     }
 
     #[test]

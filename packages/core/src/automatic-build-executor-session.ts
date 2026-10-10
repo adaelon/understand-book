@@ -31,6 +31,7 @@ import {
   finishAutomaticBuildDispatch,
   inspectAutomaticBuildDispatchRecoveryGeneration,
   recordAutomaticBuildDispatchBootstrapFailure,
+  recordAutomaticBuildDispatchTerminalSession,
   inspectAutomaticBuildDispatch,
   validateAutomaticBuildDispatchHandoff,
   type AutomaticBuildDispatchExecutorHandoffRefV1,
@@ -4309,6 +4310,24 @@ export function recordAutomaticBuildExecutorBootstrapFailure(
   recordAutomaticBuildDispatchBootstrapFailure(target, owner.stage, record.recovery_identity, ref, now);
 }
 
+/** Refill reports a terminal owned ref. An active generation or a newer ref takes precedence. */
+export function recoverAutomaticBuildExecutorTerminalSession(
+  opaqueHandoffRefValue: string,
+  expectedTarget: BuildTargetRefV2,
+  now: string,
+): boolean {
+  const ref = validateOpaqueHandoffRef(opaqueHandoffRefValue);
+  const record = readOpaqueHandoffRecord(ref);
+  if (!sameTargetRef(record.target_ref, expectedTarget)) throw new Error("terminal session target mismatch");
+  if (record.version !== "automatic_build_opaque_handoff_record.v4"
+    && record.version !== "automatic_build_opaque_handoff_record.v5") return false;
+  const target = resolveRecordTarget(record.target_locator, record.target_ref);
+  const owner = record.owner_identity;
+  const inspection = inspectAutomaticBuildDispatch(target, owner.stage, owner.dispatch_id, now, owner.dispatch_run_id);
+  if (inspection.state !== "active") return false;
+  return recordAutomaticBuildDispatchTerminalSession(target, owner.stage, record.recovery_identity, ref, now);
+}
+
 export function recordAutomaticBuildExecutorOpenCallCorrection(
   correction: AutomaticBuildOpenCallCorrectionV1,
   expectedTarget: BuildTargetRefV2,
@@ -5031,6 +5050,7 @@ export function submitAutomaticBuildExecutorCandidateV3(
           category: "transport",
           code: "candidate_request_too_large",
           phase: "generation",
+          expected: validation.expected,
         }),
         now,
       },
@@ -5316,12 +5336,13 @@ function validateCandidateSubmitRequestV3(
   routed = validateCandidateSubmitRoutingV3(value),
 ):
   | { status: "within_limit"; request: AutomaticBuildExecutorCandidateSubmitV3 }
-  | { status: "blocked" } {
+  | { status: "blocked"; expected: string } {
   const measurement = measureExecutorCandidateRequest(
     value,
     transportProfile,
   );
-  if (measurement.blocking_reasons.length > 0) return { status: "blocked" };
+  if (measurement.blocking_reasons.length > 0) return { status: "blocked", expected:
+    `Request measured ${measurement.serialized_request_tokens} estimated tokens / ${measurement.serialized_request_bytes} bytes; limits are ${transportProfile.max_candidate_request_tokens} tokens / ${transportProfile.max_candidate_request_bytes} bytes including envelope. Shorten candidate prose and duplication while preserving required fields, source coverage and evidence.` };
   return {
     status: "within_limit",
     request: routed as AutomaticBuildExecutorCandidateSubmitV3,

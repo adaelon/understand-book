@@ -32,6 +32,10 @@ pub(crate) fn deferred() -> ToolError {
 pub(crate) enum Capability {
     Me,
     Logout,
+    Allowance,
+    AccountUsage,
+    EmailBinding,
+    Password,
     Library,
     Book(PublishedBookRef, String),
     History,
@@ -67,6 +71,10 @@ pub(crate) fn capability(path: &str) -> Result<Capability, ToolError> {
     Ok(match path {
         "/auth/me" => Capability::Me,
         "/auth/logout" => Capability::Logout,
+        "/account/password" => Capability::Password,
+        "/account/allowance" => Capability::Allowance,
+        "/account/usage" => Capability::AccountUsage,
+        "/account/email/start" | "/account/email/resend" | "/account/email/complete" => Capability::EmailBinding,
         "/library" | "/book/library" => Capability::Library,
         "/me/chats" | "/agent/history" => Capability::History,
         "/agent/history/recap" => Capability::Recap,
@@ -129,6 +137,7 @@ pub(crate) fn book_leaf_allowed(leaf: &str) -> bool {
             | "guided_route_from"
             | "unvisited_back"
             | "teaching_readiness"
+            | "tutor_readiness"
             | "pdf/original"
             | "original.pdf"
     ) || leaf.starts_with("assets/")
@@ -139,6 +148,11 @@ pub struct AuthorizedContext {
     pub(crate) user: UserHandle,
 }
 pub struct Authorization {
+    pub(crate) email_binding: crate::account_email::EmailBinding,
+    pub(crate) password: crate::account_password::AccountPassword,
+    pub(crate) registration: crate::account_registration::Registration,
+    pub(crate) spend: Arc<crate::model_spend_store::ModelSpendStore>,
+    pub(crate) admin: crate::admin_store::AdminStore,
     pub(crate) sandbox: crate::presentation_sandbox::Sandbox,
     pub(crate) auth: Arc<AuthService>,
     pub(crate) users: Mutex<UserRegistry>,
@@ -239,6 +253,11 @@ impl Authorization {
         users.presentation_limits = (limits.presentation_bytes, limits.presentation_files);
         let sandbox = crate::presentation_sandbox::Sandbox::load(writer.root());
         Ok(Self {
+            registration: crate::account_registration::Registration::new(ControlStore::open(writer.clone())?),
+            email_binding: crate::account_email::EmailBinding::new(ControlStore::open(writer.clone())?),
+            password: crate::account_password::AccountPassword::new(ControlStore::open(writer.clone())?),
+            spend: Arc::new(crate::model_spend_store::ModelSpendStore::new(ControlStore::open(writer.clone())?)),
+            admin: crate::admin_store::AdminStore::new(ControlStore::open(writer.clone())?),
             sandbox,
             auth: Arc::new(AuthService::new(ControlStore::open(writer.clone())?)),
             library: Mutex::new(PublishedLibrary::with_budget(

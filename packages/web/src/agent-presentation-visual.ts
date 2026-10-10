@@ -17,18 +17,22 @@ createApp(defineComponent({ setup() {
   const tutor = useTutorControl();
   const showTutor = new URLSearchParams(location.search).has('tutor');
   const panel = ref(false);
+  const tutorAction = async (action: import('./generated/TutorAction').TutorAction) => {
+    await tutor.act(action);
+    window.dispatchEvent(new Event('tutor-state-changed'));
+  };
   if (showTutor) void tutor.load();
   const control = () => showTutor ? h(TutorControl, { enabled: !!tutor.state.value?.control.enabled, label: tutor.label.value,
     busy: tutor.busy.value, unavailable: !tutor.state.value || !!tutor.pending.value, error: tutor.error.value,
-    onToggle: () => tutor.act({ kind: 'set_enabled', enabled: !tutor.state.value?.control.enabled }), onManage: () => { panel.value = true; } }) : null;
+    onToggle: () => tutorAction({ kind: 'set_enabled', enabled: !tutor.state.value?.control.enabled }), onManage: () => { panel.value = true; } }) : null;
   const chat = ref<any[]>([{ teachingRef: fixture.teaching_ref, turnId: fixture.turn_id, user: "解释证据召回率", outcome: fixture.outcome, pending: false,
     questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] }]);
   return () => h("main", { style: "max-width:760px;margin:24px auto;padding:8px" }, [
     control(),
     panel.value ? h(TutorPanel, { state: tutor.state.value, busy: tutor.busy.value, error: tutor.error.value,
-      pending: !!tutor.pending.value, sourceId: 'fixture-book', label: tutor.label.value,
+      pending: !!tutor.pending.value, sourceId: tutor.readiness.value?.source_id ?? 'fixture-book', label: tutor.label.value,
       readiness: tutor.readiness.value, readinessError: tutor.readinessError.value, onRefreshReadiness: tutor.loadReadiness,
-      onAction: tutor.act, onRetry: tutor.retry, onClose: () => { panel.value = false; } }) : null,
+      onAction: tutorAction, onRetry: tutor.retry, onClose: () => { panel.value = false; } }) : null,
     workspace.value?.suspended ? h('button', { onClick: () => { workspace.value!.suspended = false; } }, '返回演示') : null,
     h("p", { "data-testid": "reader-status" }, opened.value ? "已在正文中打开来源" : "保持当前阅读位置"),
     h("p", { "data-testid": "follow-up-status" }, followUp.value),

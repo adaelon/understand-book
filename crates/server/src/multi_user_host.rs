@@ -61,6 +61,7 @@ impl RunningMultiUserServer {
 pub(crate) struct Site {
     origin: String,
     host: String,
+    pub(crate) mail: crate::account_mail::AccountMail,
 }
 impl Site {
     pub(crate) fn new(origin: &str) -> Result<Self, String> {
@@ -78,6 +79,7 @@ impl Site {
         let normalized = parsed.origin().ascii_serialization();
         let host = normalized.strip_prefix("https://").unwrap().to_string();
         Ok(Self {
+            mail: crate::account_mail::AccountMail::disabled(&normalized),
             origin: normalized,
             host,
         })
@@ -202,12 +204,17 @@ pub fn start(config: MultiUserConfig) -> Result<RunningMultiUserServer, String> 
             "Multi-user backend must bind loopback behind the configured HTTPS proxy".into(),
         );
     }
-    let site = Arc::new(Site::new(&config.origin)?);
+    let mut site = Site::new(&config.origin)?;
+    site.mail = crate::account_mail::AccountMail::from_env(&site.origin)?;
+    let site = Arc::new(site);
     let mut access = Authorization::new(UserRegistry::open(&config.root).map_err(|e| e.error_code)?)
         .map_err(|e| e.error_code)?;
     access.runs.observability = crate::observability::ObservabilityRuntime::from_env();
     let access = Arc::new(access);
     if let Ok(provider) = crate::ProviderConfig::from_env() {
+        if let Err(e) = access.spend.validate_provider(&provider.base_url, &provider.model) {
+            eprintln!("Managed model sends unavailable: {}; check model-rates.json", e.code());
+        }
         access.runs.configure(provider).map_err(|e| e.error_code)?;
     }
     start_with_access(config.addr, site, access)
@@ -388,9 +395,41 @@ pub(crate) fn dispatch(
             }
         }
         let (path, _) = authorization::canonical(url)?;
+        if matches!(url, "/api/auth/register/start" | "/api/auth/register/resend" | "/api/auth/register/complete") {
+            expect_method(method, "POST")?;
+            let result = match path {
+                "/auth/register/start" => access.registration.start(serde_json::from_str(body).map_err(|_| invalid())?, &site.mail, now),
+                "/auth/register/resend" => access.registration.resend(serde_json::from_str(body).map_err(|_| invalid())?, &site.mail, now),
+                _ => access.registration.complete(serde_json::from_str(body).map_err(|_| invalid())?, now).map_err(Into::into),
+            };
+            return Ok(match result {
+                Ok(value) => HttpReply::json(value),
+                Err(failure) => {
+                    let mut reply = HttpReply::error(failure.error);
+                    if let Some(request) = failure.request {
+                        let mut body: Value = serde_json::from_slice(&reply.body).unwrap();
+                        body.as_object_mut().unwrap().extend(request.as_object().unwrap().clone());
+                        reply.body = body.to_string().into_bytes();
+                    }
+                    reply
+                }
+            });
+        }
         let token = headers
             .get("Cookie")
             .and_then(|c| auth::token_from_cookie(c).ok());
+        if matches!(url, "/api/auth/password/forgot" | "/api/auth/password/reset") {
+            expect_method(method, "POST")?;
+            let resetting = path == "/auth/password/reset";
+            let value = if resetting {
+                access.password.reset(serde_json::from_str(body).map_err(|_| invalid())?, now)?
+            } else {
+                access.password.forgot(serde_json::from_str(body).map_err(|_| invalid())?, &site.mail, now)?
+            };
+            let mut reply = HttpReply::json(value);
+            if resetting { reply.cookie = Some(auth::cookie("", true)); }
+            return Ok(reply);
+        }
         if path == "/auth/login" {
             expect_method(method, "POST")?;
             #[derive(Deserialize)]
@@ -403,8 +442,9 @@ pub(crate) fn dispatch(
             let token = access
                 .auth
                 .login(&input.username, &input.password, token, now)?;
+            let principal = access.auth.authenticate(&token, now)?;
             let mut reply =
-                HttpReply::json(json!({"user_id":input.username,"csrf_token":auth::csrf(&token)}));
+                HttpReply::json(json!({"user_id":principal.user_id(),"email":access.auth.email(&principal,now)?,"csrf_token":auth::csrf(&token)}));
             reply.cookie = Some(auth::cookie(&token, false));
             return Ok(reply);
         }
@@ -425,6 +465,11 @@ pub(crate) fn dispatch(
         } else {
             serde_json::from_str(body).map_err(|_| invalid())?
         };
+        if path.starts_with("/admin/") && url.starts_with("/api/admin/") {
+            access.auth.require_reader_admin(&principal, now)?;
+            return crate::admin_api::dispatch(access, &principal, method, path, &query, input, now)
+                .map(HttpReply::json);
+        }
         for key in [
             "user_id",
             "owner_user_id",
@@ -439,10 +484,50 @@ pub(crate) fn dispatch(
         let capability = authorization::capability(path)?;
         // Login/logout/me do not load private state; all other routes get the authenticated authority.
         match capability {
+            Capability::Password => {
+                expect_method(method, "POST")?;
+                if !query.is_empty() { return Err(invalid()); }
+                let value = access.password.change(&principal, serde_json::from_value(input).map_err(|_| invalid())?, &access.auth, now)?;
+                let mut reply = HttpReply::json(value);
+                reply.cookie = Some(auth::cookie("", true));
+                return Ok(reply);
+            }
+            Capability::EmailBinding => {
+                expect_method(method, "POST")?;
+                if !query.is_empty() { return Err(invalid()); }
+                let result = match path {
+                    "/account/email/start" => access.email_binding.start(&principal, serde_json::from_value(input).map_err(|_| invalid())?, &access.auth, &site.mail, now),
+                    "/account/email/resend" => access.email_binding.resend(&principal, serde_json::from_value(input).map_err(|_| invalid())?, &site.mail, now),
+                    _ => access.email_binding.complete(&principal, serde_json::from_value(input).map_err(|_| invalid())?, now).map_err(Into::into),
+                };
+                return Ok(match result {
+                    Ok(value) => HttpReply::json(value),
+                    Err(failure) => {
+                        let mut reply = HttpReply::error(failure.error);
+                        if let Some(request) = failure.request {
+                            let mut body: Value = serde_json::from_slice(&reply.body).unwrap();
+                            body.as_object_mut().unwrap().extend(request.as_object().unwrap().clone());
+                            reply.body = body.to_string().into_bytes();
+                        }
+                        reply
+                    }
+                });
+            }
+            Capability::Allowance => {
+                expect_method(method, "GET")?;
+                if !query.is_empty() || input.as_object().is_some_and(|v|!v.is_empty()) { return Err(invalid()); }
+                return access.spend.allowance(principal.user_id(), now).map(HttpReply::json);
+            }
+            Capability::AccountUsage => {
+                expect_method(method, "GET")?;
+                if input.as_object().is_some_and(|v|!v.is_empty()) { return Err(invalid()); }
+                let (limit,offset) = crate::admin_api::page(&query)?;
+                return access.spend.charges(Some(principal.user_id()),false,limit,offset,true,None,None).map(HttpReply::json);
+            }
             Capability::Me => {
                 expect_method(method, "GET")?;
                 return Ok(HttpReply::json(
-                    json!({"user_id":principal.user_id(),"csrf_token":auth::csrf(token),"capabilities":{"presentation":access.sandbox.capability()}}),
+                    json!({"user_id":principal.user_id(),"email":access.auth.email(&principal,now)?,"csrf_token":auth::csrf(token),"capabilities":{"presentation":access.sandbox.capability(),"admin":access.auth.is_reader_admin(&principal, now)?}}),
                 ));
             }
             Capability::Logout => {
@@ -568,6 +653,9 @@ pub(crate) fn dispatch(
                     &input,
                     &now.to_string(),
                 )?;
+                if matches!(action, "attach" | "takeover" | "fork" | "book/open") {
+                    access.admin.record_read(context.user_id(), now)?;
+                }
                 Ok(HttpReply::json(value))
             }
             Capability::ChatAction => {
@@ -595,12 +683,14 @@ pub(crate) fn dispatch(
             Capability::NewWorkspace => {
                 expect_method(method, "POST")?;
                 let user = context.user.lock().unwrap();
-                Ok(HttpReply::json(access.workspaces.lock().unwrap().create(
+                let value = access.workspaces.lock().unwrap().create(
                     &context,
                     &user,
                     &access.library,
                     &input,
-                )?))
+                )?;
+                access.admin.record_read(context.user_id(), now)?;
+                Ok(HttpReply::json(value))
             }
             Capability::Tutor(mutate) => {
                 expect_method(method, if mutate { "POST" } else { "GET" })?;
@@ -741,7 +831,7 @@ pub(crate) fn dispatch(
                 }
                 Ok(HttpReply::from_reply(reply))
             }
-            Capability::Me | Capability::Logout => unreachable!(),
+            Capability::Me | Capability::Logout | Capability::Allowance | Capability::AccountUsage | Capability::EmailBinding | Capability::Password => unreachable!(),
         }
     })();
     match result {

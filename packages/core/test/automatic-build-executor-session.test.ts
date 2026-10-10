@@ -1679,6 +1679,32 @@ describe("automatic build bounded executor session V3", () => {
       });
   }, 30_000);
 
+  it("delivers an oversized candidate correction to the next bounded generation and commits a smaller candidate", () => {
+    const value = v3Fixture("candidate-size-feedback");
+    const first = startV3Generation(value, "2026-08-08T07:44:01.000Z");
+    expect(submitAutomaticBuildExecutorCandidateV3({ version: "automatic_build_executor_candidate_submit.v3",
+      opaque_session_ref: first.opaque_session_ref, candidate_sink_ref: first.candidate_sink_ref,
+      candidate: { value: "界".repeat(first.output_contract.transport.candidate_value_max_estimated_tokens + 1) },
+    }, { now: "2026-08-08T07:44:02.000Z" })).toMatchObject({ action: { kind: "DONE", status: "retryable_failure" } });
+    const next = automaticBuildNext(value.source, value.root, 1, {
+      now: "2026-08-08T07:44:03.000Z", available_agent_slots: 1,
+      accepted_plan_digest: value.plan.preflight?.descriptor_plan_digest, executor_dispatches: true, build_plan: value.buildPlan,
+    });
+    if (!("dispatches" in next.action) || !next.action.dispatches?.length) throw new Error("expected retry dispatch");
+    const delivery = expectDeliverInput(openAutomaticBuildExecutorSessionV3(next.action.dispatches[0].opaque_handoff_ref, { now: "2026-08-08T07:44:04.000Z" }));
+    const delivered = collectV3Delivery(delivery, "2026-08-08T07:44:04.000Z");
+    const response = startAutomaticBuildExecutorGeneration(delivered.start_request, { now: "2026-08-08T07:44:05.000Z" });
+    const second = expectGenerateV3(response);
+    expect(second).toMatchObject({ semantic_attempt: 2, retry_feedback: {
+      code: "candidate_request_too_large", json_pointer: "/", expected: expect.stringContaining("limits are 2048 tokens / 32768 bytes"),
+    } });
+    expect(measureExecutorTransportResponse(response, "", CODEX_EXECUTOR_TRANSPORT_PROFILE_V2).status).toBe("within_limit");
+    expect(submitAutomaticBuildExecutorCandidateV3({ version: "automatic_build_executor_candidate_submit.v3",
+      opaque_session_ref: second.opaque_session_ref, candidate_sink_ref: second.candidate_sink_ref,
+      candidate: { nodes: [], edges: [] },
+    }, { now: "2026-08-08T07:44:07.000Z" })).toMatchObject({ action: { kind: "DONE", status: "committed" } });
+  }, 30_000);
+
   it("keeps an untyped downstream candidate rejection as a redacted internal writer failure", () => {
     const value = v3Fixture("v3-structured-schema-failure");
     const generated = startV3Generation(value, "2026-08-08T07:45:01.000Z");

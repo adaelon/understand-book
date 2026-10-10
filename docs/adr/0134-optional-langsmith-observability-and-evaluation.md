@@ -120,3 +120,10 @@ Resident 已覆盖执行树、三轴状态、Provider 报告用量、首字、�
 - [W6：Prevent logging of sensitive data](https://docs.langchain.com/langsmith/mask-inputs-outputs)
 - [W7：Upload existing experiments](https://docs.langchain.com/langsmith/upload-existing-experiments)
 - [W8：Evaluate agents](https://docs.langchain.com/langsmith/evaluate-llm-application)
+
+
+## 2026-10-09 修订：Resident 完整输入输出
+
+用户明确要求网站 LangSmith 记录输入输出，不再只有元数据。Resident 增加 `UB_OBSERVABILITY_MODE=full`：根记录用户消息与最终结果，模型记录最终 HTTP 请求体、完整响应与归一化结果，工具记录实际参数及结果（含拒绝错误）。凭据和 HTTP 授权头不进入这些内容通路。原 metadata 模式仍只传允许列表元数据，off 保持关闭。
+
+正文通过显式选择的 RunEventSink 内容回调进入 LangSmith inputs/outputs，不加入公共活动摘要或 ub_observation.v1 元数据信封。完整模式沿用异步有界队列和 spool，单条上限 16 MiB、队列总量 64 MiB；超过边界记丢弃状态。后续元数据更新省略内容字段，避免覆盖已保存内容。本修订替代 §5 对已启用 full 模式的正文限制；执行权威、生命周期与非阻塞要求保持。

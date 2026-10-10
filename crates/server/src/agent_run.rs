@@ -289,7 +289,18 @@ pub(crate) fn execute_model(
     let result = run(&adapter, prepared, &mut context);
     runtime::presentation_author::redact_history(&mut context.messages);
     runtime::tool_exposure::redact_history(&mut context.messages);
-    let cancelled = cancellation.is_cancelled();
+    let spend_stop = result.as_ref().err()
+        .filter(|error| error.category == "model_spend")
+        .and_then(|error| runtime::model_spend::SpendStop::from_code(&error.error_code));
+    let cancelled = cancellation.is_cancelled() && spend_stop.is_none();
+    if let Some(reason) = spend_stop {
+        // Pre-turn compaction can stop before the accepted question is appended.
+        if !context.messages.iter().enumerate().any(|(index, message)|
+            index >= prepared.messages.len() && message.role == runtime::Role::User) {
+            context.messages.push(Message::user(prepared.agent_message.clone()));
+        }
+        context.close_stopped_tool_calls(reason.code(), "model_spend", "Tool was not executed because model spending stopped");
+    }
     if cancelled {
         context.close_cancelled_tool_calls();
     }
@@ -323,9 +334,9 @@ pub(crate) fn execute_model(
     // handles), so feeding that suffix into the next run makes expired state
     // look reusable. Keep the user's question for an ordinary "retry" follow-up,
     // while retaining the detailed failure trace out of band in run_summary. A
-    // cancelled run keeps its synthetic closing receipts so the persisted tool
-    // protocol remains balanced, as required by the cancellation contract.
-    let persisted_messages = if result.is_ok() || cancelled {
+    // cancelled or spend-stopped run keeps committed receipts and closes its
+    // unexecuted suffix, so explicit continuation sees the effects already made.
+    let persisted_messages = if result.is_ok() || cancelled || spend_stop.is_some() {
         context.messages.clone()
     } else {
         let mut messages = context.messages.clone();
@@ -357,7 +368,8 @@ fn execute_observed(
     observability: Option<&Arc<crate::observability::ObservabilityRuntime>>,
 ) -> ExecutionReport {
     let observation_run = observability.and_then(|runtime| {
-        runtime.start_run(&prepared.scope.book.base.book_id, &prepared.turn_ref.session_id)
+        runtime.start_run_with_input(&prepared.scope.book.base.book_id, &prepared.turn_ref.session_id,
+            || json!({"message":prepared.message,"messages":prepared.messages}))
     });
     let observation_sink = observation_run.as_ref().map(|run| run.sink());
     let event_sink: Option<Arc<dyn RunEventSink>> = match (stream, observation_sink) {
@@ -405,7 +417,7 @@ fn execute_observed(
                 Some(AgentTurnError {
                     error_code: error.error_code.clone(),
                     category: error.category.clone(),
-                    message: error.message.clone(),
+                    message: saved_error_message(error),
                 }),
             ),
         };
@@ -474,6 +486,13 @@ pub(crate) struct RunEventFanout {
 }
 
 impl RunEventSink for RunEventFanout {
+    fn captures_content(&self) -> bool { self.observation.captures_content() }
+    fn activity_input(&self, step_id: u32, input: Value) {
+        self.observation.activity_input(step_id, input);
+    }
+    fn activity_output(&self, step_id: u32, output: Value) {
+        self.observation.activity_output(step_id, output);
+    }
     fn emit(&self, event: RuntimeEvent) {
         self.stream.emit(event.clone());
         self.observation.emit(event);
@@ -853,4 +872,11 @@ pub(crate) fn recover_pending_except(history: &mut AgentHistory, path: &Option<P
         *history = candidate;
     }
     Ok(())
+}
+
+/// Used only by terminal history candidates; unsaved responses keep the execution reason separately.
+pub(crate) fn saved_error_message(error: &ToolError) -> String {
+    if error.category == "model_spend" && runtime::model_spend::SpendStop::from_code(&error.error_code).is_some() {
+        format!("{} 本次已完成内容已保存。", error.message)
+    } else { error.message.clone() }
 }

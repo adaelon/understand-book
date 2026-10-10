@@ -30,7 +30,7 @@ async function showAccount(identity) {
   const current = ++generation;
   csrf = identity.csrf_token;
   form.reset(); form.hidden = true; library.hidden = false;
-  document.querySelector('#identity').textContent = identity.user_id;
+  document.querySelector('#identity').textContent = identity.email || identity.user_id;
   let result;
   try { result = await request('/library'); }
   catch (error) {

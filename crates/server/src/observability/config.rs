@@ -5,6 +5,7 @@ use std::time::Duration;
 pub enum ObservabilityMode {
     Off,
     Metadata,
+    Full,
 }
 
 impl ObservabilityMode {
@@ -12,6 +13,7 @@ impl ObservabilityMode {
         match self {
             Self::Off => "off",
             Self::Metadata => "metadata",
+            Self::Full => "full",
         }
     }
 }
@@ -156,11 +158,12 @@ impl ObservabilityConfig {
         {
             "" | "off" => return Ok(None),
             "metadata" => ObservabilityMode::Metadata,
+            "full" => ObservabilityMode::Full,
             value => {
                 return Err(ConfigError {
                     code: "OBSERVABILITY_CONFIG_INVALID",
                     message: format!(
-                        "unknown UB_OBSERVABILITY_MODE={value}; expected off or metadata"
+                        "unknown UB_OBSERVABILITY_MODE={value}; expected off, metadata or full"
                     ),
                 })
             }
@@ -206,8 +209,8 @@ impl ObservabilityConfig {
             request_timeout: Duration::from_secs(10),
             shutdown_timeout: Duration::from_secs(2),
             queue_items: 1_024,
-            queue_bytes: 4 * 1024 * 1024,
-            max_item_bytes: 64 * 1024,
+            queue_bytes: if mode == ObservabilityMode::Full { 64 * 1024 * 1024 } else { 4 * 1024 * 1024 },
+            max_item_bytes: if mode == ObservabilityMode::Full { 16 * 1024 * 1024 } else { 64 * 1024 },
             max_trace_spans: 512,
             spool,
         }))
@@ -249,6 +252,26 @@ mod tests {
         assert_eq!(spool.max_files, 4_096);
         assert_eq!(spool.retention, Duration::from_secs(24 * 60 * 60));
         assert_eq!(spool.target_change, SpoolTargetChange::Replay);
+    }
+
+    #[test]
+    fn full_mode_accepts_real_prompt_payloads_larger_than_metadata_budget() {
+        let config = ObservabilityConfig::from_getter(|key| match key {
+            "UB_OBSERVABILITY_MODE" => Some("full".into()),
+            "LANGSMITH_API_KEY" => Some("fixture".into()),
+            "LANGSMITH_PROJECT" => Some("full-fixture".into()),
+            _ => None,
+        }, false).unwrap().unwrap();
+        assert_eq!(config.mode.as_str(), "full");
+        let queue = super::super::queue::BoundedQueue::new(super::super::queue::QueueLimits {
+            max_items: config.queue_items, max_bytes: config.queue_bytes,
+            max_item_bytes: config.max_item_bytes,
+        });
+        let item = super::super::queue::ExportItem::new("r".into(), "r".into(), None, 1,
+            super::super::queue::ExportOperation::Create, serde_json::json!({}))
+            .with_content(Some(serde_json::json!({"messages":"x".repeat(256 * 1024)})), None);
+        assert!(queue.try_push(item).is_ok());
+        assert!(queue.pending().1 > 256 * 1024);
     }
 
     #[test]

@@ -7,6 +7,12 @@ mod ex11;
 mod ex12;
 #[path = "presentation_animation_tests.rs"]
 mod animation;
+#[path = "presentation_ex14_baseline_tests.rs"]
+mod ex14_baseline;
+#[path = "presentation_ex14_tests.rs"]
+mod ex14;
+#[path = "presentation_ex14_media_tests.rs"]
+mod ex14_media;
 #[path = "presentation_edit_tests.rs"]
 mod editing;
 use crate::agent_run::{AppStatePort, BorrowedAppPort, RuntimeStatePort};

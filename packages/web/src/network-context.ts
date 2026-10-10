@@ -1,4 +1,4 @@
-import { shallowRef } from 'vue';
+import { shallowReactive, shallowRef } from 'vue';
 
 export interface PublishedBookRef { book_id: string; publication_id: string }
 export interface ChatDraft {
@@ -6,10 +6,14 @@ export interface ChatDraft {
   quote: import('./api').AskQuote | null;
   goalId: string | null;
 }
+// Admission may outlive its App instance during connection or publication changes.
+// Keep its restorable composer draft in the identity scope, never browser storage.
+export const submittedRunDrafts = shallowReactive(new Map<string, ChatDraft>());
 export interface NetworkIdentity {
   user_id: string;
+  email?: string | null;
   csrf_token: string;
-  capabilities?: { presentation: { authoring: boolean; reason: string } };
+  capabilities?: { admin?: boolean; presentation: { authoring: boolean; reason: string } };
 }
 export interface NetworkWorkspace {
   workspace_id: string; generation: number; revision: number;
@@ -20,25 +24,39 @@ export interface NetworkWorkspace {
 export const network = shallowRef<{
   identity: NetworkIdentity | null; workspace: NetworkWorkspace | null;
   attachment: string; epoch: number; enabled: boolean; linked: boolean;
+  readerGeneration?: number;
 }>({ identity: null, workspace: null, attachment: '', epoch: 0, enabled: false, linked: false });
 
 export function sceneKey() {
   const n = network.value, w = n.workspace;
   return `${n.epoch}:${n.identity?.user_id}:${w?.workspace_id}:${w?.generation}:${w?.published_book_ref.book_id}:${w?.published_book_ref.publication_id}`;
 }
+// Chat commands advance request authority without replacing the mounted book.
+export function readerKey() {
+  const n = network.value, w = n.workspace;
+  return `${n.epoch}:${n.identity?.user_id}:${w?.workspace_id}:${n.readerGeneration ?? w?.generation}:${w?.published_book_ref.book_id}:${w?.published_book_ref.publication_id}`;
+}
 /** Same local owner as Server UserRuntime; network identity is unavailable until authenticated. */
 export function readerPreferenceOwner(): string | null {
   return network.value.enabled ? network.value.identity?.user_id ?? null : 'local';
 }
 export function installIdentity(identity: NetworkIdentity | null) {
+  submittedRunDrafts.clear();
   network.value = { enabled: true, identity, workspace: null, attachment: crypto.randomUUID(), epoch: network.value.epoch + 1, linked: false };
 }
-export function installWorkspace(workspace: NetworkWorkspace, attachment = network.value.attachment, linked = network.value.linked) {
+export function installWorkspace(workspace: NetworkWorkspace, attachment = network.value.attachment, linked = network.value.linked, transition?: 'chat') {
   if (network.value.linked && network.value.workspace && workspace.generation !== network.value.workspace.generation) {
     network.value = { ...network.value, workspace: null, epoch: network.value.epoch + 1 };
     return;
   }
-  network.value = { ...network.value, workspace, attachment, linked };
+  const previous = network.value.workspace;
+  const sameBook = previous?.workspace_id === workspace.workspace_id
+    && previous.published_book_ref.book_id === workspace.published_book_ref.book_id
+    && previous.published_book_ref.publication_id === workspace.published_book_ref.publication_id;
+  const keepReader = sameBook && attachment === network.value.attachment
+    && (previous.generation === workspace.generation || transition === 'chat');
+  const readerGeneration = keepReader ? network.value.readerGeneration ?? previous.generation : workspace.generation;
+  network.value = { ...network.value, workspace, attachment, linked, readerGeneration };
   if (!linked && network.value.identity) sessionStorage.setItem(workspaceStorageKey(), JSON.stringify({ workspace_id: workspace.workspace_id }));
 }
 export function workspaceStorageKey() { return `understand-book:workspace:${network.value.identity?.user_id}`; }
@@ -54,14 +72,14 @@ export function forgetNetwork() {
   installIdentity(null);
 }
 
-/** Components may retain promises after unmount; their next request must retain the old scene. */
-export function bindSceneApi<T extends object>(api: T): T {
-  const key = sceneKey();
+/** Retained callbacks stay bound to their component's scene or Reader lifetime. */
+export function bindSceneApi<T extends object>(api: T, scopeKey = sceneKey): T {
+  const key = scopeKey();
   return new Proxy(api, { get(target, property) {
     const value = Reflect.get(target, property);
     if (typeof value !== 'function') return value;
     return (...args: unknown[]) => {
-      if (network.value.enabled && sceneKey() !== key) throw new Error('阅读现场已切换');
+      if (network.value.enabled && scopeKey() !== key) throw new Error('阅读现场已切换');
       return Reflect.apply(value, target, args);
     };
   } });

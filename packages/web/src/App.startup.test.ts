@@ -3,7 +3,7 @@ import { mount, flushPromises } from "@vue/test-utils";
 import { defineComponent } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App.vue";
-import { network, installIdentity, installWorkspace } from './network-context';
+import { network, installIdentity, installWorkspace, submittedRunDrafts } from './network-context';
 import { writeReaderSurfacePreference } from './reader-surface';
 import * as networkClient from './network-client';
 
@@ -11,7 +11,8 @@ const api = vi.hoisted(() => Object.fromEntries([
   "desktopStatus", "buildWorkbench", "manifest", "assetManifest", "sourceFingerprint",
   "sourceManifest", "state", "profileManifest", "text", "recall", "agentHistory",
   "profileMemory", "profileBackfill", "intentUsageEvent", "intentArtifacts", "bookLibrary",
-  "openBook", "agentNew", "disposeEffect",
+  "openBook", "agentNew", "disposeEffect", "agentRunCreate", "agentRun", "agentRunRetrySave",
+  "tutorState", "tutorReadiness", "tutorMutate", "tutorStart",
 ].map(key => [key, vi.fn()])));
 vi.mock("./api", async original => ({ ...await original<typeof import("./api")>(), api }));
 vi.mock("./components/PdfReaderPane.vue", () => ({ default: { name: "PdfReaderPane", template: "<div />" } }));
@@ -34,6 +35,9 @@ function start() {
 beforeEach(() => {
   vi.resetAllMocks();
   book = "startup";
+  api.tutorState.mockResolvedValue({ control: { enabled: true, revision: 0, current_tutor_session_id: null }, sessions: {} });
+  api.tutorReadiness.mockResolvedValue({ status: 'ready', source_id: 'startup', source_revision: 's1', limitations: [], reason: '可用',
+    teaching_assets: { status: 'stale', teaching_map_revision: null, limitations: [], reason: '教学资料构建失败' } });
   api.desktopStatus.mockResolvedValue({ desktop_host: false, reader_only: true, active_book: true });
   api.buildWorkbench.mockImplementation(async () => ({ book_id: book, readiness: { route: "reader" },
     input: { manifest: null }, source_review: { unresolved: [] } }));
@@ -59,14 +63,161 @@ beforeEach(() => {
   api.bookLibrary.mockResolvedValue({ root: "books", books: [] });
   api.openBook.mockImplementation(async () => { book = "second"; return { ok: true, book_id: book }; });
 });
+
+it('sends the real start request with optional teaching assets unavailable', async () => {
+  api.tutorState.mockResolvedValue({ control: { enabled: false, revision: 0, current_tutor_session_id: null }, sessions: {} });
+  api.tutorMutate.mockResolvedValue({ control: { enabled: true, revision: 1, current_tutor_session_id: null }, sessions: {} });
+  api.tutorStart.mockResolvedValue({ started: true, message: '请从原文开始学习' });
+  api.agentRunCreate.mockResolvedValue({ answer: '已开始', answer_view: { parts: [] }, effects: [] });
+  const w = mount(App, { shallow: true, global: { stubs: { TopBar: defineComponent({ template: '<div><slot name="tutor-control" /></div>' }) } } });
+  wrappers.push(w);
+  await flushPromises();
+  w.findComponent({ name: 'TutorControl' }).vm.$emit('toggle');
+  await flushPromises();
+  expect(api.tutorStart).toHaveBeenCalledOnce();
+  expect(api.agentRunCreate).toHaveBeenCalledWith('请从原文开始学习', expect.anything());
+});
 afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount());
   network.value = { ...network.value, enabled: false, workspace: null, identity: null };
   localStorage.clear(); sessionStorage.clear();
+  submittedRunDrafts.clear();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("workspace startup", () => {
+  it("shows the text-free page animation until the first reading window is ready", async () => {
+    const text = deferred<{ lid: string; text: string }>();
+    api.text.mockReturnValue(text.promise);
+    const wrapper = mount(App, { shallow: true, global: {
+      renderStubDefaultSlot: true, stubs: { LoadingAnimation: false },
+    } });
+    wrappers.push(wrapper);
+    await flushPromises();
+    const loading = wrapper.get(".app-loading");
+    expect(loading.text()).toBe("");
+    expect(loading.get('[role="status"]').attributes("aria-label")).toBe("正在加载");
+    expect(loading.find(".book-loading-turn").exists()).toBe(true);
+    expect(wrapper.findComponent({ name: "ReaderPane" }).exists()).toBe(false);
+    text.resolve({ lid: "1.1", text: "可立即阅读的正文" });
+    await flushPromises();
+    expect(wrapper.find(".app-loading").exists()).toBe(false);
+    expect(wrapper.findComponent({ name: "ReaderPane" }).exists()).toBe(true);
+  });
+
+  it("removes the loading animation and exposes the error when material loading fails", async () => {
+    api.manifest.mockRejectedValueOnce(new Error("material load failed"));
+    const wrapper = start();
+    await flushPromises();
+    expect(wrapper.find(".app-loading").exists()).toBe(false);
+    expect(wrapper.get(".banner").text()).toContain("material load failed");
+  });
+
+  it('ADM8 keeps a submitted draft when first-chat admission remounts App before returning', async () => {
+    const admission = deferred<unknown>();
+    api.agentRunCreate.mockReturnValue(admission.promise);
+    const old = mount(App, { props: { chatDraft: { message: '首次提问', quote: { lid: '1.1', quote: '原文' }, goalId: null } }, shallow: true, global: { renderStubDefaultSlot: true } });
+    await flushPromises();
+    old.findComponent({ name: 'RightRail' }).vm.$emit('send-agent'); await flushPromises();
+    old.unmount();
+    api.agentHistory.mockResolvedValue({ ...history(), current: { ...history().current, turns: [{
+      turn_id: 'first-turn', user: '首次提问', status: 'failed', effect_labels: [],
+      error: { category: 'model_spend', error_code: 'ALLOWANCE_INSUFFICIENT', message: 'server stop' },
+    }] } });
+    const current = start(); await flushPromises();
+    admission.resolve({ book_id: 'startup', session_id: 'startup-chat', turn_id: 'first-turn' }); await flushPromises();
+    const rail = current.findComponent({ name: 'RightRail' });
+    expect(rail.props('agentInput')).toBe('首次提问');
+    expect(rail.props('askDraft')).toEqual({ lid: '1.1', quote: '原文' });
+    expect(submittedRunDrafts.size).toBe(0);
+    expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
+  });
+  it.each(['saved', 'failed', 'new-draft'] as const)('ADM8 projects a real terminal snapshot (%s) and preserves the right draft', async state => {
+    vi.stubGlobal('EventSource', class extends EventTarget { close() {} });
+    const snapshot = deferred<unknown>();
+    const descriptor = { book_id: 'startup', session_id: 'startup-chat', turn_id: 'stopped' };
+    const spendError = { category: 'model_spend', error_code: 'ALLOWANCE_INSUFFICIENT', message: 'server stop' };
+    const savedTurn = { turn_id: 'stopped', user: '待回答', status: 'failed', effect_labels: [], error: spendError };
+    api.agentRunCreate.mockResolvedValue(descriptor);
+    api.agentRun.mockReturnValue(snapshot.promise);
+    const wrapper = mount(App, { props: { chatDraft: { message: '待回答', quote: null, goalId: null } }, shallow: true, global: { renderStubDefaultSlot: true } });
+    wrappers.push(wrapper); await flushPromises();
+    api.agentHistory.mockResolvedValue({ ...history(), current: { ...history().current, turns: [savedTurn] } });
+    const rail = wrapper.findComponent({ name: 'RightRail' });
+    rail.vm.$emit('send-agent'); await flushPromises();
+    expect(rail.props('agentInput')).toBe('');
+    if (state === 'new-draft') rail.vm.$emit('update:agentInput', '等待期间写的新问题');
+    snapshot.resolve({ descriptor, last_seq: 1, execution_state: 'failed', activities: [],
+      persistence_state: state === 'failed' ? 'failed' : 'saved',
+      final_view: state === 'failed' ? null : savedTurn,
+      error: state === 'failed' ? { error_code: 'TURN_UNSAVED', message: 'save failed', execution_error: spendError } : null });
+    await flushPromises();
+    expect(rail.props('chat')[0].spendStop.message).toContain(state === 'failed' ? '尚未保存' : '已保存');
+    expect(rail.props('agentInput')).toBe(state === 'new-draft' ? '等待期间写的新问题' : '待回答');
+    expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
+  });
+  it('ADM8 restores a denied draft and quote, exposes the allowance action, and only explicitly continues the original goal', async () => {
+    const { ApiError } = await import('./api');
+    const draft = { message: '尚未回答的问题', quote: { lid: '1.1', quote: '原文' }, goalId: 'original-goal' };
+    api.agentHistory.mockResolvedValue({ ...history(), current: { ...history().current,
+      goals: [{ id: 'original-goal', status: 'open' }] } });
+    api.agentRunCreate.mockRejectedValueOnce(new ApiError(409, 'ALLOWANCE_INSUFFICIENT', 'model_spend', 'denied'));
+    const wrapper = mount(App, { props: { chatDraft: draft }, shallow: true, global: { renderStubDefaultSlot: true } });
+    wrappers.push(wrapper); await flushPromises();
+    const rail = wrapper.findComponent({ name: 'RightRail' });
+    rail.vm.$emit('send-agent'); await flushPromises();
+    expect(rail.props('agentInput')).toBe(draft.message);
+    expect(rail.props('askDraft')).toEqual(draft.quote);
+    expect(rail.props('chat')[0].spendStop.message).toContain('问题未提交');
+    rail.vm.$emit('show-allowance'); await flushPromises();
+    expect(wrapper.emitted('show-allowance')).toHaveLength(1);
+    expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
+    api.agentRunCreate.mockResolvedValueOnce({ answer: '继续结果', effects: [] });
+    rail.vm.$emit('continue-goal', 'original-goal'); await flushPromises();
+    expect(api.agentRunCreate).toHaveBeenLastCalledWith('继续这个任务', expect.objectContaining({ goal_id: 'original-goal' }));
+    expect(rail.props('agentInput')).toBe(draft.message);
+  });
+
+  it('ADM8 recovers a saved spend stop from history using its code without claiming task completion', async () => {
+    api.agentHistory.mockResolvedValue({ ...history(), current: { ...history().current, turns: [{
+      turn_id: 'stopped', user: '问题', status: 'failed', effect_labels: [],
+      error: { category: 'model_spend', error_code: 'ALLOWANCE_EXPIRED', message: 'server text' },
+    }] } });
+    const wrapper = start(); await flushPromises();
+    const turn = wrapper.findComponent({ name: 'RightRail' }).props('chat')[0];
+    expect(turn.spendStop.message).toContain('没有有效');
+    expect(turn.spendStop.message).toContain('已保存');
+    expect(turn.pending).toBe(false);
+    expect(api.agentRunCreate).not.toHaveBeenCalled();
+  });
+
+  it("passes the table renderer and canonical focus marks to the reader", async () => {
+    const text = "| 状态 | 归属 |\n| 笔记 | 读者 |";
+    api.manifest.mockResolvedValue({ tree: [
+      { lid: "1", kind: "chapter", children: ["1.1"], span: { start: 0, end: text.length }, title: "首章" },
+      { lid: "1.1", kind: "table", children: [], span: { start: 0, end: text.length } },
+    ], stats_by_lid: {} });
+    api.text.mockImplementation(async (lid: string) => ({ lid, text }));
+    api.recall.mockResolvedValue([{ mem_id: "table-highlight", type: "highlight", layer: "long_term", book_id: book,
+      anchor: { lid: "1.1" }, content: "读者", range: { start: text.indexOf("读者"), end: text.indexOf("读者") + 2 } }]);
+    const wrapper = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: { ReaderPane: false } } });
+    wrappers.push(wrapper); await flushPromises();
+    const pane = wrapper.findComponent({ name: "ReaderPane" });
+    const table = pane.props("segments").find((seg: { kind: string }) => seg.kind === "table");
+    const root = document.createElement("div");
+    root.innerHTML = pane.props("renderSeg")(table);
+    expect(root.querySelectorAll("table tr")).toHaveLength(2);
+    expect(root.querySelector("td mark.hl-mark")?.textContent).toBe("读者");
+    expect(table.text).toBe(text);
+    pane.vm.$emit('focus-source-local', { lid: "1.1", quote: "读者" });
+    await flushPromises();
+    expect(wrapper.get('.source-preview-table').element.tagName).toBe('DIV');
+    expect(wrapper.findAll('.source-preview-table table tr')).toHaveLength(2);
+    expect(wrapper.get('.source-preview-table td mark.source-focus-mark').text()).toBe('读者');
+    expect(wrapper.find('.source-preview-table mark.hl-mark').exists()).toBe(false);
+  });
+
   it('restores the unsent message and quote after the network scene remounts', async () => {
     const draft = { message: '尚未发送', quote: { lid: '1.1', quote: '原文引用' }, goalId: null };
     const wrapper = mount(App, { props: { chatDraft: draft }, shallow: true, global: { renderStubDefaultSlot: true } });

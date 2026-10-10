@@ -1918,6 +1918,7 @@ mod tests {
         fn execute(&mut self, _input: &ReviewInput) -> Result<ReviewExecutionOutput, AdapterError> {
             self.calls.fetch_add(1, Ordering::SeqCst);
             Err(AdapterError {
+                spend_stop: None,
                 message: "temporary review failure".into(),
             })
         }

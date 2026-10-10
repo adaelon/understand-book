@@ -1,6 +1,8 @@
 # Whole-source prebuild gate for formal learning
 
-Status: Accepted, 2026-09-07. Design decision; implementation pending.
+Status: Superseded by [ADR-0158](0158-book-structure-ready-tutor-and-optional-teaching-assets.md), 2026-10-09, for Tutor startup readiness. Original decision accepted 2026-09-07.
+
+当前准入为可信来源、BookStructure 及必要前置就绪即可使用 Tutor；正式教学预构建不阻塞教学。以下保留原决策依据，公共教学资产的完整发布质量仍遵循 ADR-0142。
 
 **决策**: 整份材料的教学基座就绪后开放正式学习。
 

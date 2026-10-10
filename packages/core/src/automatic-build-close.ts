@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { canonicalBuildJson } from "./build-intent";
 import {
@@ -317,6 +317,37 @@ function publicArtifactsMatchReceipt(
     const bytes = readFileSync(file);
     return bytes.byteLength === artifact.size_bytes && sha256(bytes) === artifact.sha256;
   });
+}
+
+/** A downstream plan may bind the accepted publication without upgrading its producer. */
+export function readAcceptedBookStructureClose(
+  target: AutomaticBuildTarget,
+  qualityProfile: ExtractionQualityProfile = "full",
+): AutomaticBuildStageCloseResultV2 | undefined {
+  const directory = path.join(target.workspace_dir, ".build/automatic-build/v2/close/book_structure");
+  if (!existsSync(directory)) return undefined;
+  const files = readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    const file = path.join(directory, entry.name);
+    return entry.isDirectory()
+      ? readdirSync(file).filter(name => name.endsWith(".json")).map(name => path.join(file, name))
+      : entry.name.endsWith(".json") ? [file] : [];
+  });
+  for (const file of files.sort()) {
+    try {
+      const closed = parseAutomaticBuildStageCloseResult(JSON.parse(readFileSync(file, "utf8")));
+      if (closed.stage !== "book_structure" || closed.target.book_id !== target.book_id
+        || closed.target.profile_id !== target.profile_id
+        || closed.target.input_fingerprint !== target.target_ref.input_fingerprint
+        || !closed.postcondition.policy_contracts.length
+        || closed.postcondition.policy_contracts.some(contract => contract.semantic_contract.quality_profile !== qualityProfile)) continue;
+      const receipt = readAutomaticBuildPublicationReceipt(target.workspace_dir, "book_structure", closed.publication.transaction_id);
+      if (receipt.artifacts.length !== 1 || receipt.artifacts[0].path !== "book_structure.json"
+        || publicationReceiptDigest(receipt) !== closed.publication.receipt_digest
+        || !publicArtifactsMatchReceipt(target, receipt)) continue;
+      return closed;
+    } catch { /* A historical or interrupted publication is not an accepted dependency. */ }
+  }
+  return undefined;
 }
 
 export function automaticBuildStageCloseResultPath(

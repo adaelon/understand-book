@@ -35,7 +35,7 @@ export interface MarkedSourceRange extends SourceTextRange {
   className: string;
 }
 
-function shortestEditScript(source: string, semantic: string): Edit[] {
+function shortestEditScript(source: string, semantic: string, sourceSyntax?: Uint8Array): Edit[] {
   const sourceLength = source.length;
   const semanticLength = semantic.length;
   const maxDistance = sourceLength + semanticLength;
@@ -55,6 +55,7 @@ function shortestEditScript(source: string, semantic: string): Edit[] {
       while (
         sourceOffset < sourceLength
         && semanticOffset < semanticLength
+        && !sourceSyntax?.[sourceOffset]
         && source[sourceOffset] === semantic[semanticOffset]
       ) {
         sourceOffset += 1;
@@ -121,8 +122,8 @@ function backtrackEdits(
   return reversed.reverse();
 }
 
-function alignmentSpans(source: string, semantic: string): AlignmentSpan[] {
-  const edits = shortestEditScript(source, semantic);
+function alignmentSpans(source: string, semantic: string, sourceSyntax?: Uint8Array): AlignmentSpan[] {
+  const edits = shortestEditScript(source, semantic, sourceSyntax);
   const spans: AlignmentSpan[] = [];
   let sourceOffset = 0;
   let semanticOffset = 0;
@@ -267,9 +268,24 @@ export function sourceTextForRanges(source: string, ranges: SourceTextRange[]): 
   return ranges.map(({ start, end }) => source.slice(start, end)).join("");
 }
 
+function htmlTableSourceSyntax(source: string): Uint8Array {
+  const syntax = new Uint8Array(source.length);
+  // Tags and non-rendered bodies must never match visible cell characters.
+  // Quoted attribute values can contain '>', so a tag does not end there.
+  for (const match of source.matchAll(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi)) {
+    syntax.fill(1, match.index, match.index + match[0].length);
+  }
+  for (const match of source.matchAll(/<!--[\s\S]*?-->|<\/?[A-Za-z](?:[^"'<>]|"[^"]*"|'[^']*')*>/g)) {
+    syntax.fill(1, match.index, match.index + match[0].length);
+  }
+  return syntax;
+}
+
 export function createMarkdownDomSourceMap(source: string, root: Node) {
   const projection = projectDom(root);
-  const spans = alignmentSpans(source, projection.text);
+  const renderedHtmlTable = /^\s*<table(?:\s|>)/i.test(source)
+    && root instanceof Element && (root.tagName === "TABLE" || root.querySelector("table"));
+  const spans = alignmentSpans(source, projection.text, renderedHtmlTable ? htmlTableSourceSyntax(source) : undefined);
 
   function sourceRangesForSemanticRange(start: number, end: number): SourceTextRange[] {
     const selectionStart = Math.max(0, Math.min(start, projection.text.length));

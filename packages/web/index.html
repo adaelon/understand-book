@@ -4,9 +4,121 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>understand-book 阅读器</title>
+    <style>
+      body { margin: 0; background: #fbfaf7; }
+      .app-bootstrap {
+        height: 100vh;
+        height: 100dvh;
+        display: grid;
+        place-items: center;
+        background: var(--reader-canvas, #fbfaf7);
+      }
+      .book-loading {
+        width: 112px;
+        height: 112px;
+        display: grid;
+        place-items: center;
+      }
+      .book-loading-book {
+        position: relative;
+        width: 56px;
+        height: 40px;
+        perspective: 180px;
+        transform: translateY(-3px);
+      }
+      .book-loading-leaf {
+        position: absolute;
+        top: 0;
+        box-sizing: border-box;
+        width: 28px;
+        height: 36px;
+        border: 1.6px solid #b8ad9c;
+        background: var(--reader-card, #fffdf8);
+      }
+      .book-loading-left {
+        left: 0;
+        border-radius: 5px 1px 1px 3px;
+        transform: skewY(8deg);
+        transform-origin: right center;
+      }
+      .book-loading-right {
+        right: 0;
+        border-radius: 1px 5px 3px 1px;
+        transform: skewY(-8deg);
+        transform-origin: left center;
+      }
+      .book-loading-lines {
+        position: absolute;
+        inset: 9px 6px auto;
+        height: 1.4px;
+        border-radius: 2px;
+        background: #e5d9cb;
+        box-shadow: 0 6px 0 #e5d9cb, 0 12px 0 #e5d9cb;
+      }
+      .book-loading-turn {
+        z-index: 2;
+        left: 28px;
+        border-color: var(--reader-coral, #cc785c);
+        border-radius: 1px 5px 3px 1px;
+        transform-origin: left center;
+        animation: book-loading-page-turn 1.85s infinite;
+      }
+      .book-loading-turn .book-loading-lines {
+        background: var(--reader-coral, #cc785c);
+        box-shadow: 0 6px 0 var(--reader-coral, #cc785c), 0 12px 0 var(--reader-coral, #cc785c);
+        opacity: 0.28;
+      }
+      .book-loading-spine {
+        position: absolute;
+        top: 0;
+        left: 27px;
+        z-index: 3;
+        width: 1.6px;
+        height: 36px;
+        border-radius: 2px;
+        background: #b8ad9c;
+      }
+      .book-loading-shadow {
+        position: absolute;
+        top: 48px;
+        left: 10px;
+        width: 36px;
+        height: 3px;
+        border-radius: 50%;
+        background: rgb(86 65 43 / 0.10);
+        filter: blur(2px);
+        animation: book-loading-page-shadow 1.85s ease-in-out infinite;
+      }
+      @keyframes book-loading-page-turn {
+        0% { transform: rotateY(0deg) skewY(-8deg); opacity: 0; animation-timing-function: ease-out; }
+        10% { transform: rotateY(0deg) skewY(-8deg); opacity: 1; animation-timing-function: cubic-bezier(.45, 0, .25, 1); }
+        74% { transform: rotateY(-180deg) skewY(-8deg); opacity: 1; animation-timing-function: ease-in; }
+        86%, 100% { transform: rotateY(-180deg) skewY(-8deg); opacity: 0; }
+      }
+      @keyframes book-loading-page-shadow {
+        0%, 12%, 86%, 100% { transform: scaleX(1); opacity: .65; }
+        44% { transform: scaleX(.78); opacity: .9; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .book-loading-turn, .book-loading-shadow { animation: none; }
+        .book-loading-turn { transform: skewY(-8deg); opacity: .8; }
+      }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <main class="app-bootstrap">
+        <div class="book-loading" role="status" aria-label="正在加载">
+          <div class="book-loading-book" aria-hidden="true">
+            <span class="book-loading-leaf book-loading-left"><span class="book-loading-lines"></span></span>
+            <span class="book-loading-leaf book-loading-right"><span class="book-loading-lines"></span></span>
+            <span class="book-loading-leaf book-loading-turn"><span class="book-loading-lines"></span></span>
+            <span class="book-loading-spine"></span>
+            <span class="book-loading-shadow"></span>
+          </div>
+        </div>
+      </main>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

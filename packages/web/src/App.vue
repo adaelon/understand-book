@@ -2,17 +2,20 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { FolderOpen, Highlighter, Languages, MessageSquareText, RotateCcw, Save, Sparkles, X } from "@lucide/vue";
 import { api as sharedApi, ApiError } from "./api";
-import { network, bindSceneApi, sceneKey, readerPreferenceOwner, type ChatDraft } from './network-context';
+import { network, bindSceneApi, sceneKey, readerKey, readerPreferenceOwner, submittedRunDrafts, type ChatDraft } from './network-context';
 import { useReaderTypography } from './useReaderTypography';
 import ReaderTypographyPanel from './components/ReaderTypographyPanel.vue';
 import BookCover from './components/BookCover.vue';
+import LoadingAnimation from './components/LoadingAnimation.vue';
 import type { ScrollAnchor } from './reader-text-anchor';
 import { typographyHtml } from './reader-typography';
 import { recoverSubmissions, recoverWorkspaceBinding } from './network-client';
 import type { RecapTarget } from './session-recap';
 const recapProps = defineProps<{ recapTarget?: RecapTarget | null; chatDraft?: ChatDraft | null }>();
-const recapEmit = defineEmits<{ (e: 'recap-publication', target: RecapTarget): void; (e: 'recap-consumed'): void; (e: 'update:chatDraft', draft: ChatDraft): void }>();
-const api = bindSceneApi(sharedApi);
+const recapEmit = defineEmits<{ (e: 'recap-publication', target: RecapTarget): void; (e: 'recap-consumed'): void; (e: 'update:chatDraft', draft: ChatDraft): void; (e: 'show-allowance'): void }>();
+import { spendNotice, type SpendNotice } from './account-allowance';
+const api = bindSceneApi(sharedApi, readerKey);
+const mountedReaderKey = readerKey();
 let disposed = false;
 import { generateBookIdFromTitle } from "./book-id";
 import type {
@@ -84,7 +87,7 @@ import {
   projectPdfAnnotations,
   type PdfUserAnnotationProjection,
 } from "./pdf-annotation-projection";
-import { isDisplayFormulaSource, renderFormulaSource, renderInlineMarkdown, renderMarkdown } from "./md";
+import { isDisplayFormulaSource, renderFormulaSource, renderInlineMarkdown, renderMarkdown, renderTableSource } from "./md";
 import {
   createMarkdownDomSourceMap,
   markMarkdownDomSourceRanges,
@@ -412,6 +415,7 @@ function startResize(which: "left" | "right", event: MouseEvent) {
 }
 
 function fail(e: unknown) {
+  if (disposed || (e instanceof ApiError && e.errorCode === 'CLIENT_CONTEXT_STALE')) return;
   if (e instanceof ApiError && e.errorCode === "CHAT_BUSY") { banner.value = "此对话仍有排队、执行中或未保存的回合，请先处理原运行再删除。"; return; }
   if (e instanceof ApiError && e.errorCode === "REQUEST_KEY_CLOSED") { banner.value = "原对话已删除或原请求已关闭，不会转投其他对话。"; return; }
   if (e instanceof ApiError) banner.value = `[${e.category}] ${e.errorCode}: ${e.message}`;
@@ -892,6 +896,7 @@ function isRawAssetSegment(seg: { kind?: NodeKind }): boolean {
 }
 
 function renderSegmentText(seg: { kind?: NodeKind }, text: string): string {
+  if (seg.kind === "table") return renderTableSource(text);
   if (isRawAssetSegment(seg)) return escapeHtml(text);
   return seg.kind === "formula" ? renderFormulaSource(text) : renderInlineText(text);
 }
@@ -1129,7 +1134,7 @@ function sourcePreviewSingleHtml(seg: Segment): string {
   if (level) return `<h${level} class="source-preview-heading">${renderSourcePreviewSeg(seg)}</h${level}>`;
   if (seg.kind === "formula") return `<div class="source-preview-formula">${renderSourcePreviewSeg(seg)}</div>`;
   if (seg.kind === "code") return `<pre class="source-preview-asset source-preview-code"><code>${renderSourcePreviewSeg(seg)}</code></pre>`;
-  if (seg.kind === "table") return `<pre class="source-preview-asset source-preview-table">${renderSourcePreviewSeg(seg)}</pre>`;
+  if (seg.kind === "table") return `<div class="source-preview-asset source-preview-table reader-table">${renderSourcePreviewSeg(seg)}</div>`;
   if (seg.kind === "image") {
     const meta = imageMeta(seg.text);
     const asset = seg.imageAsset;
@@ -3097,6 +3102,7 @@ function clearAskDraft() {
 
 // ── agent 对话区(外层 E agent 主入口)`[ADR-0030]` ──
 interface ChatTurn {
+  spendStop?: SpendNotice;
   teachingRef?: string | null;
   presentationFollowUp?: import('./generated/PresentationFollowUp').PresentationFollowUp | null;
   turnId: string | null;
@@ -3139,7 +3145,7 @@ watch(() => [recapProps.recapTarget, agentHistoryLoading.value, rightRailRef.val
     if (target.session_id !== activeChatSessionId.value) applyAgentHistory(await api.agentHistorySelect(target.session_id));
     await nextTick();
     workspaceRef.value?.showAssistant('agent');
-    await rail.openRecapTarget(target);
+    await rightRailRef.value?.openRecapTarget(target);
   } catch (failure) { fail(failure); }
 });
 const askDraft = ref<AskDraft | null>(recapProps.chatDraft?.quote ?? null);
@@ -3153,6 +3159,8 @@ const agentFullscreen = ref(false);
 const agentFullscreenSuspendedForSource = ref(false);
 const mobileWorkspaceEnabled = import.meta.env.VITE_MOBILE_WORKSPACE !== "0";
 const workspaceContextKey = computed(() => `${network.value.enabled ? sceneKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}:${activeChatSessionId.value || "no-chat"}`);
+const readerContextKey = computed(() => `${network.value.enabled ? readerKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}`);
+const chatSceneKey = computed(() => network.value.enabled ? sceneKey() : 'local');
 const workspaceLogicalState = computed<WorkspaceLogicalState>(() => ({
   // Reader layout belongs to the book; recovering a chat must not replay saved focus.
   contextKey: buildWorkbenchSnapshot.value?.book_id ?? "no-book",
@@ -3223,6 +3231,7 @@ function toggleNavigationOutline() {
   else leftRailOpen.value = !leftRailOpen.value;
 }
 const acceptingRun = ref(false);
+let submissionSequence = 0;
 const residentRun = useAgentRun((snapshot) => { void finishResidentRun(snapshot).catch(fail); });
 const sending = computed(() => acceptingRun.value || residentRun.active.value);
 const runConnection = computed(() => residentRun.connection.value);
@@ -3238,7 +3247,22 @@ watch([residentRun.snapshot, residentRun.connection], ([snapshot]) => {
   turn.runStatus = runStatusText(snapshot, residentRun.connection.value);
   if (snapshot.final_view) Object.assign(turn, chatTurnFromHistory(snapshot.final_view, turn), { runStatus: turn.runStatus });
   if (snapshot.persistence_state === "failed") turn.error = snapshot.error ? runStatusText(snapshot, residentRun.connection.value) : "运行已结束，但结果未保存。已发生的阅读操作保留。";
+  turn.spendStop = spendNotice(snapshot.error ?? snapshot.final_view?.error, snapshot.persistence_state);
+  restoreAllowanceDraft(turn);
 }, { flush: "sync" });
+function restoreAllowanceDraft(turn: ChatTurn, rejectedDraft?: ChatDraft) {
+  const draft = rejectedDraft ?? (turn.turnId ? submittedRunDrafts.get(turn.turnId) : undefined);
+  if (draft && !turn.pending && !turn.spendStop && turn.turnId) submittedRunDrafts.delete(turn.turnId);
+  if (!turn.spendStop || !draft) return;
+  // A stopped request must not overwrite a newer question the reader is already drafting.
+  if (!agentInput.value && !askDraft.value) {
+    agentInput.value = draft.message;
+    askDraft.value = draft.quote;
+    targetGoalId.value = draft.goalId;
+  }
+  if (turn.turnId) submittedRunDrafts.delete(turn.turnId);
+}
+watch(() => submittedRunDrafts.size, () => { for (const turn of chat.value) restoreAllowanceDraft(turn); });
 const seenResidentEffects = new Set<string>();
 let residentReaderRevision = -1;
 let residentReaderTurn = "";
@@ -3294,6 +3318,7 @@ async function finishResidentRun(snapshot: RunSnapshot) {
   if (minimapEffect?.kind === "PaperMinimap") lastPaperMinimapEffect.value = minimapEffect.effect;
   await refreshAnnotations();
   if (snapshot.persistence_state === "saved" && snapshot.descriptor.session_id === activeChatSessionId.value) await refreshAgentHistory();
+  submittedRunDrafts.delete(snapshot.descriptor.turn_id);
   window.dispatchEvent(new Event("tutor-state-changed"));
   await refreshProfileSurface(true);
 }
@@ -3384,6 +3409,32 @@ const latestTrace = computed<TraceStep[]>(() => {
   return [];
 });
 const effectPending = ref<Record<string, boolean>>({});
+watch(chatSceneKey, () => {
+  if (disposed || readerKey() !== mountedReaderKey) return;
+  // First-question admission creates its chat before returning the accepted run.
+  const admittingFirstChat = !activeChatSessionId.value && acceptingRun.value;
+  residentRun.forget();
+  startupHistoryRequestSeq += 1;
+  activeChatSessionId.value = network.value.workspace?.selected_chat ?? '';
+  chatGoals.value = [];
+  targetGoalId.value = null;
+  effectPending.value = {};
+  showTrace.value = {};
+  presentationWorkspace.value = null;
+  pendingLayoutProposal.value = null;
+  agentHistoryError.value = null;
+  profileMemoryRequestSeq += 1;
+  profileMemoryLoading.value = false;
+  profileMemoryError.value = null;
+  void tutor.load();
+  if (!admittingFirstChat) {
+    submissionSequence += 1;
+    acceptingRun.value = false;
+    chat.value = [];
+    askDraft.value = null;
+    agentInput.value = '';
+  }
+}, { flush: 'sync' });
 function effState(ti: number, ei: number): string | undefined {
   const turn = chat.value[ti];
   const effect = turn?.outcome?.effects[ei];
@@ -3407,6 +3458,7 @@ function localQuestionQuoteView(draft: AskDraft): AgentQuestionQuoteView {
 function chatTurnFromHistory(turn: StoredAgentChatTurn, previous?: ChatTurn): ChatTurn {
   const matchingPrevious = previous?.user === turn.user ? previous : undefined;
   return {
+    spendStop: spendNotice(turn.error, turn.status === 'pending_assistant' ? 'pending' : 'saved'),
     dispositions: Object.fromEntries((turn.domain?.effects ?? []).filter(e => e.disposition).map(e => [e.effect_id, e.disposition!])),
     teachingRef: turn.teaching_ref,
     presentationFollowUp: turn.presentation_follow_up,
@@ -3436,6 +3488,7 @@ function applyAgentHistory(history: AgentHistoryResponse) {
   chatGoals.value = history.current.goals ?? [];
   if (!chatGoals.value.some(goal => goal.id === targetGoalId.value && goal.status === "open")) targetGoalId.value = null;
   chat.value = history.current.turns.map((turn, index) => chatTurnFromHistory(turn, previousChat[index]));
+  for (const turn of chat.value) restoreAllowanceDraft(turn);
   const unknown = unknownSubmissionsBySession.get(history.current.id) ?? [];
   const unresolved = network.value.enabled ? [] : unknown.filter((record) => !submissionWasAccepted(record, {
     sessionId: history.current.id,
@@ -3462,6 +3515,8 @@ function applyAgentHistory(history: AgentHistoryResponse) {
       current.pending = snapshot.persistence_state === "pending";
       current.runStatus = runStatusText(snapshot, residentRun.connection.value);
       if (snapshot.persistence_state === "failed") current.error = snapshot.error ? runStatusText(snapshot, residentRun.connection.value) : "运行已结束，但结果未保存。已发生的阅读操作保留。";
+      current.spendStop = spendNotice(snapshot.error ?? snapshot.final_view?.error, snapshot.persistence_state);
+      restoreAllowanceDraft(current);
     }
   }
 }
@@ -3570,7 +3625,7 @@ function onTutorResponse(event: Event) {
   if (sending.value) { banner.value = "回答已记录，请等待当前回复完成后继续。"; return; }
   void submitAgentMessage(detail.text, detail.text, null, undefined, { teaching_ref: detail.eventId });
 }
-async function submitAgentMessage(msg: string, displayUser: string, draft: AskDraft | null, presentationFollowUp?: import("./generated/PresentationFollowUp").PresentationFollowUp, goalMeta: Pick<AgentChatMeta, "goal_id" | "goal_action" | "teaching_ref"> = {}) {
+async function submitAgentMessage(msg: string, displayUser: string, draft: AskDraft | null, presentationFollowUp?: import("./generated/PresentationFollowUp").PresentationFollowUp, goalMeta: Pick<AgentChatMeta, "goal_id" | "goal_action" | "teaching_ref"> = {}, submittedDraft?: ChatDraft) {
   if (sending.value || agentHistoryLoading.value || agentHistoryError.value) return;
   const questionAnchorLid = draft?.lid ?? selectedLid.value ?? viewport.value?.top_lid ?? null;
   const turn: ChatTurn = {
@@ -3586,6 +3641,8 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
     effectLabels: [],
   };
   const submissionSessionId = activeChatSessionId.value;
+  const submission = ++submissionSequence;
+  const submissionIdentity = network.value.identity;
   const knownTurnIds = chat.value.flatMap((candidate) => candidate.turnId ? [candidate.turnId] : []);
   chat.value.push(turn);
   acceptingRun.value = true;
@@ -3597,7 +3654,10 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
       display_user: displayUser, question_anchor_lid: questionAnchorLid,
       question_quote: draft ? { ...draft } : null,
     });
-    if (disposed) return;
+    if ('turn_id' in result && submittedDraft && submissionIdentity?.user_id === network.value.identity?.user_id && submissionIdentity?.csrf_token === network.value.identity?.csrf_token) {
+      submittedRunDrafts.set(result.turn_id, submittedDraft);
+    }
+    if (disposed || submission !== submissionSequence) return;
     if ("turn_id" in result) {
       turn.turnId = result.turn_id;
       activeChatSessionId.value = result.session_id;
@@ -3609,8 +3669,14 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
       await refreshProfileSurface(true);
     }
   } catch (error) {
+    if (disposed || submission !== submissionSequence) return;
     turn.pending = false;
-    if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+    const stop = error instanceof ApiError ? spendNotice({ error_code: error.errorCode, category: error.category, message: error.message }, 'unsubmitted') : undefined;
+    if (stop) {
+      turn.spendStop = stop;
+      turn.error = stop.message;
+      restoreAllowanceDraft(turn, submittedDraft);
+    } else if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
       turn.error = "认证已失效，本次问题未提交。请通过现有受保护入口恢复登录。";
     } else if (error instanceof ApiError && error.status < 500) {
       turn.error = `[${error.category}] ${error.errorCode}: ${error.message}`;
@@ -3624,7 +3690,7 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
       try { applyAgentHistory(await api.agentHistory()); } catch { /* Keep the explicit unknown state. */ }
     }
   } finally {
-    acceptingRun.value = false;
+    if (submission === submissionSequence) acceptingRun.value = false;
   }
 }
 
@@ -3633,9 +3699,10 @@ async function sendAgent() {
   const msg = agentInput.value.trim();
   if (!msg) return;
   const draft = askDraft.value;
+  const submittedDraft = { message: agentInput.value, quote: draft, goalId: targetGoalId.value };
   agentInput.value = "";
   askDraft.value = null;
-  await submitAgentMessage(msg, msg, draft, undefined, targetGoalId.value ? { goal_id: targetGoalId.value } : {});
+  await submitAgentMessage(msg, msg, draft, undefined, targetGoalId.value ? { goal_id: targetGoalId.value } : {}, submittedDraft);
 }
 
 function targetGoal(goalId: string) {
@@ -3902,6 +3969,7 @@ async function returnToAgentAnswer() {
 
 async function newChat() {
   if (agentHistoryLoading.value || agentHistoryError.value) return;
+  const previousChat = activeChatSessionId.value;
   agentHistoryLoading.value = true;
   try {
     const response = await api.agentNew();
@@ -3910,11 +3978,13 @@ async function newChat() {
     agentInput.value = "";
     await refreshProfileSurface(true);
   } catch (e) {
+    if (!disposed && activeChatSessionId.value !== previousChat) agentHistoryError.value = errorMessage(e);
     fail(e);
   } finally { if (!disposed) agentHistoryLoading.value = false; }
 }
 async function selectChat(sessionId: string) {
-  if (!sessionId || sessionId === activeChatSessionId.value) return;
+  if (!sessionId || sessionId === activeChatSessionId.value || agentHistoryLoading.value) return;
+  const previousChat = activeChatSessionId.value;
   agentHistoryLoading.value = true;
   try {
     applyAgentHistory(await api.agentHistorySelect(sessionId));
@@ -3922,6 +3992,7 @@ async function selectChat(sessionId: string) {
     agentInput.value = "";
     await refreshProfileSurface(true);
   } catch (e) {
+    if (!disposed && activeChatSessionId.value !== previousChat) agentHistoryError.value = errorMessage(e);
     fail(e);
   } finally { if (!disposed) agentHistoryLoading.value = false; }
 }
@@ -4119,6 +4190,7 @@ function resetBookSessionUi() {
   targetGoalId.value = null;
   activeChatSessionId.value = "";
   unknownSubmissionsBySession.clear();
+  submittedRunDrafts.clear();
   askDraft.value = null;
   agentInput.value = "";
   effectPending.value = {};
@@ -4484,13 +4556,13 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       @enter-reader="enterReader"
     />
 
-    <main v-else-if="appSurface === 'loading'" class="app-loading">正在加载工作区...</main>
+    <main v-else-if="appSurface === 'loading'" class="app-loading"><LoadingAnimation /></main>
 
     <ReaderWorkspace
       v-else-if="appSurface === 'reader'"
       ref="workspaceRef"
       :logical="workspaceLogicalState"
-      :context-key="workspaceContextKey"
+      :context-key="readerContextKey"
       :enabled="mobileWorkspaceEnabled"
       :selection-active="!!hlPopover"
       :left-collapsed="!leftRailOpen"
@@ -4618,6 +4690,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       ></div>
 
       <RightRail
+        :key="chatSceneKey"
         v-model:presentation-workspace="presentationWorkspace"
         ref="rightRailRef"
         @recap-publication="recapEmit('recap-publication', $event)"
@@ -4635,6 +4708,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         :can-stop="residentRun.active.value"
         @stop-agent="stopResidentRun"
         @continue-goal="continueGoal"
+        @show-allowance="recapEmit('show-allowance')"
         @cancel-goal="cancelGoal"
         @target-goal="targetGoal"
         @clear-goal-target="targetGoalId = null"
@@ -5726,6 +5800,9 @@ async function submitOpenBook(dir = bookPickerDir.value) {
   white-space: pre;
   overflow-wrap: normal;
   tab-size: 2;
+}
+.source-preview-table {
+  white-space: normal;
 }
 .source-preview-code code {
   background: transparent;

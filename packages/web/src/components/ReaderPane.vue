@@ -429,6 +429,10 @@ function onPointerUp(event: PointerEvent) {
   else emit("note-placement-invalid");
 }
 
+function isTextAsset(segment: Segment): boolean {
+  return segment.kind === 'code' || segment.kind === 'table';
+}
+
 function toggleAssetWrap(lid: string) {
   const next = new Set(wrappedAssetLids.value);
   if (next.has(lid)) next.delete(lid);
@@ -661,18 +665,18 @@ watch(
           class="asset-block"
           :class="[`asset-${item.segment.kind}`, {
             anchor: item.segment.lid === props.viewportAnchor,
-            selected: item.segment.lid === props.selectedLid,
+            selected: !isTextAsset(item.segment) && item.segment.lid === props.selectedLid,
             hl: props.isHighlighted(item.segment.lid),
             'note-placement-candidate': item.segment.lid === placementCandidateLid,
             'asset-expanded': item.segment.lid === expandedAssetLid,
           }]"
-          @click="emit('select', item.segment.lid)"
+          @click="!isTextAsset(item.segment) && emit('select', item.segment.lid)"
         >
           <div class="asset-head" data-reader-selection-ignore>
             <span>{{ item.segment.kind }}</span>
             <span class="asset-head-actions">
               <button
-                v-if="item.segment.kind === 'code' || item.segment.kind === 'table'"
+                v-if="isTextAsset(item.segment)"
                 type="button"
                 :aria-pressed="wrappedAssetLids.has(item.segment.lid)"
                 @click.stop="toggleAssetWrap(item.segment.lid)"
@@ -680,11 +684,11 @@ watch(
               <button type="button" @click.stop="toggleAssetExpanded(item.segment.lid)">
                 {{ item.segment.lid === expandedAssetLid ? '收起' : '展开' }}
               </button>
-              <button class="asset-jump" title="选中该 LID" @click.stop="emit('select', item.segment.lid)">定位</button>
+              <button v-if="!isTextAsset(item.segment)" class="asset-jump" title="选中该 LID" @click.stop="emit('select', item.segment.lid)">定位</button>
             </span>
           </div>
           <pre v-if="item.segment.kind === 'code'" class="asset-source asset-code" :class="{ 'soft-wrap': wrappedAssetLids.has(item.segment.lid) }"><code v-html="renderBody(item.segment)"></code></pre>
-          <pre v-else-if="item.segment.kind === 'table'" class="asset-source asset-table" :class="{ 'soft-wrap': wrappedAssetLids.has(item.segment.lid) }" v-html="renderBody(item.segment)"></pre>
+          <div v-else-if="item.segment.kind === 'table'" class="asset-source asset-table reader-table" :class="{ 'soft-wrap': wrappedAssetLids.has(item.segment.lid) }" v-html="renderBody(item.segment)"></div>
           <figure v-else-if="item.segment.kind === 'image'" class="asset-image-figure">
             <img
               v-if="imageRenderSrc(props.imageAsset(item.segment.lid))"

@@ -197,8 +197,8 @@ fn mu9_t60_preview_import_retry_and_interrupted_files_preserve_owner_ids_and_byt
             .unwrap()
             .evidence("evidence-old")
             .unwrap()
-            .delivery_ref,
-        "turn-old"
+            .delivery_ref.as_deref(),
+        Some("turn-old")
     );
     assert!(
         !b.lock()

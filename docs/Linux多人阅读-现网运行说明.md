@@ -1,6 +1,16 @@
 # Linux 多人阅读现网运行说明
 
-2026-10-02 已发布对话排序与闲置恢复修补，随后EX13/JL上线，当前 release 为 `/opt/understand-book/releases/ex13-jl-20261002`。历史列表与问答正文最新在上；返回网页和重试会重新绑定失效现场并保留同一对话草稿，运行恢复回执补齐展示字段。发布与实机复验见[修复记录](修复记录-Linux对话排序与闲置恢复.md)及[EX13/JL上线记录](Linux上线-EX12-EX13-JL.md)。旧标签页刷新一次加载新版。
+2026-10-09 20:00 HKT，INV0–INV9 与 T15–T18 已同版发布。schema 9，正式域名注册/找回/后台和原账号阅读复核通过，真实收信在隔离同版候选通过。现网此版因缺少 Tutor 必要接纳回执阻塞旧书；随后已按用户要求修改源码，直接使用已有 Pass1、discourse 与 BookStructure，修复已于 20:32:02 HKT 部署并通过公网与实际 Tutor 界面复核，书籍无需重建或重新导入。见 [Tutor 上线记录](performance/tutor-artifacts-deployment-20261009/README.md)。版本、数据根、备份和证据见 [INV9 发布运行单](邮箱账号-INV9发布运行单.md)。
+
+2026-10-09 15:26 HKT 已发布无文字翻页加载动画：56px 书页、1.85 秒一轮，入口文件下载、登录恢复、初始书架与工作区加载连续显示，内容就绪立即退场。15:32 HKT 公网登录、打开书籍与刷新恢复验收通过，脚本错误 0、问答模型请求 0；原服务持续 active。刷新页面加载新版。见[发布与回退记录](performance/reader-loading-20261009/README.md)。
+
+2026-10-09 14:55 HKT 已发布阅读助手连续对话布局：单行输入按需展开、任务收为一行并按需打开详情、顶部一行导航、发送与停止共用一个位置。刷新已打开页面加载新版。15:00 公网登录、打开书籍、历史、草稿与桌面/手机布局验收通过，模型请求 0；仅更新前端，原服务进程和私人数据保持。见 [发布与回退记录](performance/reading-assistant-space-20261009/README.md)。
+
+2026-10-09 正式入口已切换为 [https://understandbook.top/](https://understandbook.top/)，后台为 [https://understandbook.top/admin/](https://understandbook.top/admin/)。Cloudflare A 记录代理到 `115.190.121.150`，用户已确认 Full (strict) 与 Always Use HTTPS；源站安装 Origin CA 证书，Nginx Host 与后端 Origin 同步使用域名。旧 IP HTTPS 入口以 308 保留路径跳转到域名。公网证书、管理员登录/后台 API/退出及源站路由验收通过，模型请求 0。详见 [域名接入记录](performance/domain-20261009/README.md)。
+
+2026-10-08 已切换到 `/opt/understand-book/releases/adm10-20261008`，schema8。ADM运营后台、账号额度、EX14.0–3（ex14.v4 / Manim）与近期阅读器修补已上线。后台入口 `https://115.190.121.150/admin/`，用户名admin，密码单独交付。reader/puff/adaelon/admin各10元成本额度、30天；付费开通收款11元授予10元；联系19847595883。旧标签页刷新加载新版。备份、验收和费用差额见[ADM10发布运行单](运营后台-ADM10发布运行单.md)。以下旧日期段落保留历史。
+
+2026-10-02 已发布对话排序与闲置恢复修补，随后EX13/JL上线，当时 release 为 `/opt/understand-book/releases/ex13-jl-20261002`。历史列表与问答正文最新在上；返回网页和重试会重新绑定失效现场并保留同一对话草稿，运行恢复回执补齐展示字段。发布与实机复验见[修复记录](修复记录-Linux对话排序与闲置恢复.md)及[EX13/JL上线记录](Linux上线-EX12-EX13-JL.md)。旧标签页刷新一次加载新版。
 
 2026-10-03 16:51，AI Infra全书BSR7结构已发布为新的默认书籍版本`01a100f5-e3c3-72f3-8bfb-eb8a08774ab5`：14单元、956重点、345主干点、11跨章主线。沿用原正文/base与图片，补入结构、篇章索引和修正后的公式释义；reader、puff、adaelon继承原权限，旧版与私人数据保留。HTTPS实际读取全量通过，服务active，模型请求0。[发布与验收记录](performance/book-structure-bsr7.md#linux书籍同步)。已打开的旧现场仍绑定旧发布，从材料选择中打开新版（默认）即可使用。
 
@@ -14,10 +24,10 @@
 
 ## 入口与版本
 
-- 新入口：`https://115.190.121.150`；旧 `http://115.190.121.150:8080` 切换后以 308 跳转到新入口。
-- release：`/opt/understand-book/releases/ex13-jl-20261002`，Rust `--release` 与同源码网络 Web `packages/web/dist-multi`；此前 release 保留供回退。
+- 正式入口：`https://understandbook.top/`；后台 `https://understandbook.top/admin/`；旧 `https://115.190.121.150` 保留路径以 308 跳转到域名，历史 8080 入口经旧 IP 跳转。
+- release：`/opt/understand-book/releases/inv9-20261009`，Rust `--release` 与同源码网络 Web `packages/web/dist-multi`；此前 release 保留供回退。
 - 服务：`understand-book-multi.service`；账户 `understand-book`；后端 `127.0.0.1:8788`。
-- 数据：`/opt/understand-book/data/multi-reader`；旧资料归属账号 `reader`。
+- 数据：`/opt/understand-book/data/multi-reader-inv9-20261009`；旧资料归属账号 `reader`。
 - 环境：`/opt/understand-book/multi-reader.env`，0600；沿用旧 Provider 路由和 Key。
 - 初始登录资料：远端 `/opt/understand-book/multi-reader-credentials.json`，0600；本地交付另存用户私人目录。凭证不进入仓库或运行证据。
 
@@ -29,6 +39,10 @@ journalctl -u understand-book-multi -n 100 --no-pager
 ```
 
 ## HTTPS 续期
+
+正式域名的源站证书为 `/etc/nginx/ssl/understandbook.top.pem`，私钥为 `/etc/nginx/ssl/understandbook.top.key`，覆盖根域名与一级通配子域名，有效期至 2041-10-05 04:37 UTC。Cloudflare 管理浏览器侧证书续期。Origin CA 证书用于 Cloudflare 到源站的连接，正式域名保持橙色云朵代理；若将来需要域名直连源站，改用公开可信的域名证书。
+
+后续发布继续使用 `server_name understandbook.top`、`proxy_set_header Host understandbook.top` 与 `UNDERSTAND_BOOK_ORIGIN=https://understandbook.top`。旧 IP 证书继续服务旧书签的 HTTPS 跳转，其续期机制如下。
 
 证书 `/etc/letsencrypt/live/understand-book-ip/{fullchain.pem,privkey.pem}` 覆盖公网 IP，使用 Let's Encrypt shortlived profile。申请方式见 [官方说明](https://letsencrypt.org/2026/03/11/shorter-certs-certbot)。现有 80 端口站点只增加 ACME challenge 路径，其他路由保留。
 

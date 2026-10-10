@@ -1419,6 +1419,11 @@ impl TurnEvidenceLedger {
             .collect()
     }
 
+    fn teaching_source_ranges(&self) -> Vec<EvidenceRange> {
+        self.evidence.iter().filter(|e| e.claim_kind == EvidenceClaimKind::SourceText)
+            .map(|e| e.range.clone()).collect()
+    }
+
     fn evidence_state(&self) -> EvidenceState {
         self.evidence_state
     }
@@ -2948,8 +2953,8 @@ fn deliver_agent_answer(
     output_token_limit: Option<u32>,
     guided_task: Option<&str>,
     current_trace: &[TraceStep],
-) -> AnswerDelivery {
-    match compile_agent_answer(raw, bindings, provenance) {
+) -> Result<AnswerDelivery, ToolError> {
+    Ok(match compile_agent_answer(raw, bindings, provenance) {
         Ok(compiled) => AnswerDelivery {
             compiled,
             incomplete: false,
@@ -2960,7 +2965,7 @@ fn deliver_agent_answer(
         },
         Err(error) => {
             if let Some(compiled) = repair_raw_lid_leaks(raw, &error.issues, bindings, provenance) {
-                return AnswerDelivery {
+                return Ok(AnswerDelivery {
                     compiled,
                     incomplete: false,
                     warning: None,
@@ -2972,7 +2977,7 @@ fn deliver_agent_answer(
                         },
                         repair: Some(AnswerDeliveryAttemptDiagnostics::default()),
                     }),
-                };
+                });
             }
             let allowed_sources: Vec<_> = bindings
                 .iter()
@@ -3010,6 +3015,9 @@ fn deliver_agent_answer(
             {
                 projector.discard();
             }
+            if let Err(error) = &repaired {
+                if let Some(reason) = error.spend_stop { return Err(reason.tool_error()); }
+            }
             let extra_tokens = repaired
                 .as_ref()
                 .ok()
@@ -3045,14 +3053,14 @@ fn deliver_agent_answer(
                 }),
             });
             if let Some(compiled) = repaired_compiled {
-                return AnswerDelivery {
+                return Ok(AnswerDelivery {
                     compiled,
                     incomplete: false,
                     warning: None,
                     extra_turns: 1,
                     extra_tokens,
                     diagnostics,
-                };
+                });
             }
             let compiled =
                 compile_agent_answer(SOURCE_PRESENTATION_FAILURE_MESSAGE, &[], provenance)
@@ -3066,7 +3074,7 @@ fn deliver_agent_answer(
                 diagnostics,
             }
         }
-    }
+    })
 }
 
 fn delivery_issue(error_code: &str, match_form: &str) -> AnswerDeliveryIssue {
@@ -3090,11 +3098,11 @@ fn source_marker_span_end(value: &str, start: usize) -> usize {
 /// 外层 loop 暴露给模型的工具集(7 个;reader.* 留 S7)`[ADR-0026]`。
 fn declared_tool_specs() -> Vec<ToolSpec> {
     use serde_json::json;
-    let s = |name: &str, description: &str, parameters: serde_json::Value| ToolSpec {
+    let s = |name: &str, description: &str, parameters: serde_json::Value| crate::tool_schema::complete_spec(ToolSpec {
         name: name.into(),
         description: description.into(),
         parameters,
-    };
+    });
     let book_s = |id: BookToolId| {
         let contract = contract_for(id);
         ToolSpec {
@@ -3254,11 +3262,11 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
         ),
         s(
             "memory.save",
-            "Save one memory record: note, highlight, or position for a user's verbatim note or location; qa for a user's question about the book after answering with book.query, using the question location as anchor_lid and the original question as content; or context for an epistemically honest understanding of reader background, preferences, interests, or sticking points. Notes and highlights automatically anchor to the LID; context may cite real LIDs that support it.",
+            "Save highlight or position memory; qa records the user's original question after answering with book.query; context records sourced reader background, preferences, interests or sticking points. Use reader.note for every note: note is not a memory.save type. anchor_lid is the question or memory location. context may cite real LIDs supporting it.",
             json!({
                 "type": "object",
                 "properties": {
-                    "type": {"type": "string", "enum": ["note", "highlight", "position", "qa", "context"]},
+                    "type": {"type": "string", "enum": ["highlight", "position", "qa", "context"]},
                     "anchor_lid": {"type": "string"},
                     "content": {"type": "string"},
                     "citations": {
@@ -4963,11 +4971,10 @@ fn maybe_auto_compact(
             target_active_tokens: budget.target_input_tokens.max(1),
         },
     )
-    .map_err(|error| ToolError {
-        error_code: COMPACTION_FAILED.into(),
-        category: "provider".into(),
-        message: error.message,
-    })?;
+    .map_err(|error| crate::model_spend::SpendStop::from_code(&error.error_code)
+        .map(crate::model_spend::SpendStop::tool_error).unwrap_or(ToolError {
+            error_code: COMPACTION_FAILED.into(), category: "provider".into(), message: error.message,
+        }))?;
     sink.install(&checkpoint, &persisted_messages)
         .map_err(|error| ToolError {
             error_code: COMPACTION_FAILED.into(),
@@ -5882,11 +5889,7 @@ fn run_context_inner(
         let turn: AssistantTurn = match turn_result {
             Ok(turn) => turn,
             Err(error) => {
-                return Err(ToolError {
-                    error_code: "PROVIDER_ERROR".into(),
-                    category: "provider".into(),
-                    message: error.message,
-                })
+                return Err(error.into_tool_error())
             }
         };
         context.cancellation.check()?;
@@ -5977,7 +5980,7 @@ fn run_context_inner(
             if context.tutor.as_ref().is_some_and(|t| t["status"] == "active") && !context.tutor_resolved {
                 if !tutor_selection_retry && !cfg.turn_limit_reached(turns) {
                     tutor_selection_retry = true;
-                    goal_completion_retry = Some("Select a source-grounded move with tutor.step after reading material and original evidence, or resolve an outside-scope request with operation=outside.");
+                    goal_completion_retry = Some("Read original text with book tools, then select a source-grounded TeachingTarget with tutor.step and deliver it. object_ids/object_refs may be empty; read applicable available objects with material, but missing objects or cognitive materials do not block teaching. Or resolve an outside-scope request with operation=outside.");
                     continue;
                 }
                 return Err(memory::teaching::invalid("教学动作尚未完成来源绑定，请重试"));
@@ -6025,7 +6028,7 @@ fn run_context_inner(
                     guided_origin.as_deref(),
                     trace,
                 )
-            });
+            }).transpose()?;
             if let Some(delivery) = &delivery {
                 turns += delivery.extra_turns;
                 spent += delivery.extra_tokens;
@@ -6173,8 +6176,8 @@ fn run_context_inner(
                 };
             let phase_blocked = phase_stalled && !recovery_call;
             let blocked_without_progress = phase_blocked || repeated_without_progress;
-            let schema_valid =
-                registered.is_some_and(|r| r.validate_arguments(&tc.arguments).is_ok());
+            let argument_validation = registered.map(|r| r.validate_arguments(&tc.arguments));
+            let schema_valid = argument_validation.as_ref().is_some_and(|result| result.is_ok());
             let intent_allowed = !registered.is_some_and(|r| {
                 r.routing_card.effects == crate::tool_registry::ToolEffect::ReaderWrite
                     && !context
@@ -6199,6 +6202,11 @@ fn run_context_inner(
                 registered.map(|r| r.activity_label()).unwrap_or("未知工具"),
                 executed,
             );
+            context.events.input(activity.step_id, || serde_json::json!({
+                "tool_call_id":tc.id,
+                "arguments":serde_json::from_str::<serde_json::Value>(&tc.arguments)
+                    .unwrap_or_else(|_| serde_json::Value::String(tc.arguments.clone()))
+            }));
             let activity_scope = context.events.scope(Some(activity.step_id), "outer");
             checkpoint_sink.persist_progress(messages, &context.events.activities())?;
             let (result, effect, query_audit) = match handler {
@@ -6248,6 +6256,16 @@ fn run_context_inner(
                     None,
                     None,
                 ),
+                Some(handler) if !schema_valid => {
+                    let code = match handler {
+                        ToolHandlerId::GoalUpdate => "GOAL_UPDATE_INVALID",
+                        ToolHandlerId::PresentationAuthor => "PRESENTATION_ARGUMENTS_INVALID",
+                        _ => "TOOL_ARGUMENTS_INVALID",
+                    };
+                    let error = argument_validation.as_ref().and_then(|r| r.as_ref().err())
+                        .expect("registered tool has an argument validation error");
+                    (err_json(code, "validation", &error.message), None, None)
+                }
                 Some(ToolHandlerId::ToolSearch) => {
                     let result = match search_and_activate(
                         &tc.arguments,
@@ -6274,14 +6292,14 @@ fn run_context_inner(
                     let request: Result<serde_json::Value, _> = serde_json::from_str(&tc.arguments);
                     let resolving = request.as_ref().ok().is_some_and(|r| matches!(r["operation"].as_str(), Some("select" | "outside")));
                     let result = request.map_err(|e| memory::teaching::invalid(format!("{e}"))).and_then(|request| {
-                        if request["operation"] != "assess" { return state.tutor_step(request, &context.evidence_ledger.bindings(), &context.evidence_ledger.evidence.iter().map(|e| e.range.clone()).collect::<Vec<_>>()); }
+                        if request["operation"] != "assess" { return state.tutor_step(request, &context.evidence_ledger.bindings(), &context.evidence_ledger.teaching_source_ranges()); }
                         let id = request["action_ref"].as_str().ok_or_else(|| memory::teaching::invalid("Missing action_ref"))?;
                         let packet = state.tutor_assessment_input(id)?;
                         if !packet["existing"].is_null() { return Ok(serde_json::json!({"assessment":packet["existing"]})); }
                         if cfg.turn_limit_reached(turns) || !tutor_assessment_attempts.insert(id.to_string()) { return Err(memory::teaching::invalid("Assessment remains unassessed; this run has no further evaluator budget")); }
                         context.cancellation.check()?;
                         turns += 1;
-                        let (output,usage) = crate::tutor::evaluate(adapter,runtime_profile.clone(),packet).map_err(|_| memory::teaching::invalid("Assessment failed; response remains unassessed"))?;
+                        let (output,usage) = crate::tutor::evaluate(adapter,runtime_profile.clone(),packet).map_err(|error| error.spend_stop.map(crate::model_spend::SpendStop::tool_error).unwrap_or_else(|| memory::teaching::invalid("Assessment failed; response remains unassessed")))?;
                         spent = spent.saturating_add(usage);
                         context.cancellation.check()?;
                         if output["tool_calls"] == true { return Err(memory::teaching::invalid("Evaluator returned tools; response remains unassessed")); }
@@ -6492,6 +6510,9 @@ fn run_context_inner(
                 context.events.effect_created(activity.step_id, effect);
             }
             drop(activity_scope);
+            let spend_stop = serde_json::from_str::<serde_json::Value>(&result).ok()
+                .filter(|error| error["category"] == "model_spend")
+                .and_then(|error| error["error_code"].as_str().and_then(crate::model_spend::SpendStop::from_code));
             let (mut activity_status, activity_error, activity_count) =
                 crate::run_events::tool_result(&result);
             if !executed {
@@ -6500,6 +6521,10 @@ fn run_context_inner(
             if context.cancellation.is_cancelled() {
                 activity_status = crate::run_events::ActivityStatus::Cancelled;
             }
+            context.events.output(activity.step_id, || serde_json::json!({
+                "result":serde_json::from_str::<serde_json::Value>(&result)
+                    .unwrap_or_else(|_| serde_json::Value::String(result.clone()))
+            }));
             let activity_step_id = activity.step_id;
             context.events.finish(
                 activity,
@@ -6639,6 +6664,9 @@ fn run_context_inner(
                 tool_calls: vec![],
                 tool_call_id: Some(tc.id.clone()),
             });
+            if let Some(reason) = spend_stop {
+                return Err(reason.tool_error());
+            }
             checkpoint_sink.persist_effects(&run_effects(effects.clone(), &context.navigation))?;
             checkpoint_sink.persist_progress(messages, &context.events.activities())?;
         }
@@ -6821,11 +6849,7 @@ fn run_context_inner(
                 .active_tool_results
                 .mark_projected_fresh_results_sampled();
 
-            let finalization_turn = finalization_result.map_err(|error| ToolError {
-                error_code: "PROVIDER_ERROR".into(),
-                category: "provider".into(),
-                message: error.message,
-            })?;
+            let finalization_turn = finalization_result.map_err(crate::AdapterError::into_tool_error)?;
             let objective_gap = context.goal.as_ref().and_then(|goal| goal.objective_gap(
                 context.delivered_presentations.len(),
                 run_effects(effects.clone(), &context.navigation).len(),
@@ -6869,7 +6893,7 @@ fn run_context_inner(
                 experimental.then_some(8_000),
                 guided_origin.as_deref(),
                 trace,
-            );
+            )?;
             let goal_completion_candidate = context.goal.as_ref().is_some_and(|goal| {
                 (goal.requirements.iter().any(|requirement|
                     requirement.verification != crate::goal::GoalVerification::Content)
@@ -6918,6 +6942,7 @@ fn run_context_inner(
 
 #[cfg(test)]
 mod tests {
+    mod adm6 { include!("adm6_tests.rs"); }
     use super::*;
 
     mod presentation_authoring {
@@ -7868,6 +7893,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "fake complete 脚本耗尽".into(),
                 })
         }
@@ -7876,6 +7902,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "fake chat 脚本耗尽".into(),
                 })
         }
@@ -7894,6 +7921,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "react fake complete 脚本耗尽".into(),
                 })
         }
@@ -7903,6 +7931,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "react fake chat 脚本耗尽".into(),
                 })?;
             parse_react_assistant_turn(&raw)
@@ -7912,6 +7941,7 @@ mod tests {
     impl ModelAdapter for RecordingAdapter {
         fn complete(&self, _req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "recording adapter complete is not scripted".into(),
             })
         }
@@ -7929,6 +7959,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "recording structured script exhausted".into(),
                 })?;
             Ok(match turn.text {
@@ -7945,6 +7976,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "recording chat script exhausted".into(),
                 })
         }
@@ -7966,6 +7998,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "request-plan recording complete script exhausted".into(),
                 })
         }
@@ -7976,6 +8009,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "request-plan recording chat script exhausted".into(),
                 })
         }
@@ -8015,6 +8049,7 @@ mod tests {
     impl ModelAdapter for ProfileChangingAdapter {
         fn complete(&self, _req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "profile fixture complete is not scripted".into(),
             })
         }
@@ -8041,6 +8076,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "profile fixture chat script exhausted".into(),
                 })
         }
@@ -8049,6 +8085,7 @@ mod tests {
     impl ModelAdapter for QueryAuditAdapter {
         fn complete(&self, _req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "query audit adapter requires structured completion".into(),
             })
         }
@@ -8091,6 +8128,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "query audit chat script exhausted".into(),
                 })
         }
@@ -8099,6 +8137,7 @@ mod tests {
     impl ModelAdapter for RealRereadAdapter {
         fn complete(&self, _req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "real reread fixture does not use complete".into(),
             })
         }
@@ -8141,6 +8180,7 @@ mod tests {
                                 .map(str::to_string)
                         })
                         .ok_or_else(|| AdapterError {
+                            spend_stop: None,
                             message: "source.present did not return a source ref".into(),
                         })?;
                     AssistantTurn {
@@ -8154,6 +8194,7 @@ mod tests {
                 }
                 _ => {
                     return Err(AdapterError {
+                        spend_stop: None,
                         message: "real reread fixture exhausted".into(),
                     })
                 }
@@ -8188,6 +8229,7 @@ mod tests {
     impl ModelAdapter for AutoCompactionAdapter {
         fn complete(&self, _req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "auto-compaction fixture requires structured completion".into(),
             })
         }
@@ -8200,6 +8242,7 @@ mod tests {
                 serde_json::Deserializer::from_str(&req.user)
                     .into_iter::<crate::compaction::RecordedCompactionInput>().next().unwrap().map_err(|error| {
                     AdapterError {
+                        spend_stop: None,
                         message: format!("invalid compaction request in fixture: {error}"),
                     }
                 })?;
@@ -8255,6 +8298,7 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "auto-compaction chat script exhausted".into(),
                 })
         }
@@ -10437,6 +10481,18 @@ user_question=\"explain normalization and create a rich presentation\"";
     }
 
     #[test]
+    fn tutor_t16_literal_occurrence_requires_original_read_for_teaching() {
+        let book = Book::new(sample_base(), &"X".repeat(100));
+        let evidence = EvidenceRange { start_lid:"1.1".into(), end_lid:"1.1".into(), ranges:vec![] };
+        let mut ledger = TurnEvidenceLedger::default();
+        ledger.observe_literal_occurrence(evidence.clone());
+        assert!(ledger.teaching_source_ranges().is_empty());
+        observe_tool_evidence(&mut ledger, "book.text", r#"{"lid":"1.1"}"#,
+            &serde_json::json!({"lid":"1.1","text":book.text("1.1", None).unwrap()}).to_string(), &book);
+        assert_eq!(ledger.teaching_source_ranges(), vec![evidence]);
+    }
+
+    #[test]
     fn source_presentation_accepts_search_as_a_literal_occurrence_claim() {
         let source = format!("needle{}", "X".repeat(94));
         let b = Book::new(sample_base(), &source);
@@ -10465,6 +10521,7 @@ user_question=\"explain normalization and create a rich presentation\"";
             EvidenceClaimKind::LiteralOccurrence
         );
         assert_eq!(ledger.evidence[0].range, evidence);
+        assert!(ledger.teaching_source_ranges().is_empty());
 
         let digest = b
             .resolve_source(&evidence, SOURCE_PRESENTATION_LOCALE, None)
@@ -13272,7 +13329,7 @@ user_question=\"这段怎么理解？\"",
                 None,
                 None,
                 &[],
-            );
+            ).unwrap();
             assert_eq!(delivery.compiled.bindings.len(), 1, "{answer}");
             assert_eq!(delivery.extra_turns, 0);
         }
@@ -15896,7 +15953,7 @@ user_question={}",
             );
         }
         assert_eq!(
-            schema("book.context")["properties"]["granularity"]["enum"],
+            schema("book.context")["properties"]["granularity"]["anyOf"][0]["enum"],
             serde_json::json!(["near", "mid", "far"])
         );
         assert_eq!(

@@ -1,4 +1,6 @@
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import * as os from "node:os";
 import path from "node:path";
@@ -15,6 +17,26 @@ vi.mock("node:os", async importOriginal => {
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 describe("build driver failure boundary", () => {
+  it("accepts refill stdin larger than 64 KiB with the full completed-ref history", () => {
+    const registry = mkdtempSync(path.join(tmpdir(), "build-driver-large-refill-"));
+    const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
+    const request = JSON.stringify({ version: "automatic_build_refill_request.v1",
+      invocation_ref: `abinv1_${"b".repeat(64)}`, capacity_limit: 3, live_by_slot: {},
+      completed_refs: Array.from({ length: 900 }, (_, index) => `abhandoff1_${index.toString(16).padStart(64, "0")}`),
+      terminal_children: [] });
+    expect(Buffer.byteLength(request, "utf8")).toBeGreaterThan(65_536);
+    const result = spawnSync(process.execPath, [path.join(repoRoot, "node_modules", "tsx", "dist", "cli.mjs"),
+      path.join(repoRoot, "skills", "build", "automatic-build-driver.ts")], {
+      cwd: repoRoot, input: request, encoding: "utf8", timeout: 30_000,
+      env: { ...process.env, UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT: registry },
+    });
+    expect(result.status, result.stderr).toBe(0);
+    // A deliberately absent invocation proves stdin reached normal refill handling.
+    expect(JSON.parse(result.stdout)).toMatchObject({ version: "automatic_build_step.v1", action: {
+      kind: "NEEDS_USER", projection: { code: "invocation_record_missing" },
+    } });
+  }, 40_000);
+
   it("shares durable control storage with the executor when the OS temp directory changes", () => {
     const directory = mkdtempSync(path.join(tmpdir(), "build-driver-persistent-"));
     const userDirectory = path.join(directory, "user");

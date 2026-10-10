@@ -6,6 +6,7 @@ import {
   EXTRACTOR_CONTRACT_SCHEMA_VERSIONS,
   ExtractorContractError,
   PROFILE_SIDECAR_FIELD_CONTRACTS_V1,
+  automaticBuildCandidateCorrection,
   automaticBuildFailureDiagnosticFromCandidateSinkError,
   automaticBuildFailureDiagnosticFromExecutorReport,
   automaticBuildFailureDiagnosticFromError,
@@ -47,6 +48,28 @@ function diagnosticOf(run: () => unknown) {
 }
 
 describe("automatic build extractor contracts", () => {
+  it("corrects the persisted BookStructure role string error at the actual role_hints array", () => {
+    const diagnostic = createAutomaticBuildFailureDiagnosticV3({
+      category: "schema", code: "schema_invalid", phase: "artifact_writer",
+      json_pointer: "/role_hint", expected: "non-empty UTF-8 string no larger than 64 bytes",
+    });
+    const correction = automaticBuildCandidateCorrection(diagnostic);
+    expect(correction).toMatchObject({ code: "schema_invalid", json_pointer: "/role_hints" });
+    expect(correction!.expected).toContain("role_hints is an array");
+    expect(correction!.expected).toContain("Remove any top-level role_hint field");
+  });
+  it("corrects the persisted BookStructure singular role pointer without changing unrelated diagnostics", () => {
+    const facts = { category: "schema" as const, code: "schema_invalid", phase: "artifact_writer" as const,
+      json_pointer: "/role_hint", expected: "setup | foundation | method | application | case | synthesis" };
+    const correction = automaticBuildCandidateCorrection(createAutomaticBuildFailureDiagnosticV3(facts));
+    expect(correction).toMatchObject({ code: "schema_invalid", json_pointer: "/role_hints" });
+    expect(correction!.expected).toContain("role_hints is an array");
+    expect(correction!.expected).toContain("Remove any top-level role_hint field");
+    const unrelated = { ...facts, expected: "a different role contract" };
+    expect(automaticBuildCandidateCorrection(createAutomaticBuildFailureDiagnosticV3(unrelated))).toEqual({
+      code: unrelated.code, json_pointer: unrelated.json_pointer, expected: unrelated.expected,
+    });
+  });
   it("distinguishes a writer field correction from missing diagnostics, generation and evidence failures", () => {
     const fieldError = { category: "schema" as const, code: "schema_invalid", phase: "artifact_writer" as const,
       json_pointer: "/unit_card/candidate_key_stops/4/type", expected: "definition | example | claim" };

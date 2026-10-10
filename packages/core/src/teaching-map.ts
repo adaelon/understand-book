@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { canonicalBuildJson } from "./build-intent";
+import { ExtractorContractError } from "./extractor-contract";
 import type { BookStructureSidecar, BookStructureUnitSource } from "./book-structure";
 import type { LidNode } from "./generated/LidNode";
 
@@ -38,6 +39,16 @@ export const ObjectProposalZ = MeaningZ.extend({
   participants: z.array(z.object({ object_key: text, role: text }).strict()),
   component_keys: z.array(text),
 }).strict();
+export function checkObjectCardinality(object: z.infer<typeof ObjectProposalZ>, pointer: string): void {
+  const field = object.kind === "composite" && !object.component_keys.length ? "component_keys"
+    : object.kind === "relation" && object.participants.length < 2 ? "participants" : undefined;
+  if (!field) return;
+  throw new ExtractorContractError({ version: "automatic_build_extractor_diagnostic.v1", code: "schema_invalid",
+    json_pointer: `${pointer}/${field}`,
+    expected: field === "component_keys" ? "composite object requires components: at least one local object key"
+      : "learnable relation requires participants and roles: at least two local object keys with roles",
+    actual: object[field] });
+}
 export const FormalObjectProposalZ = z.object({
   objects: z.array(ObjectProposalZ),
   prerequisites: z.array(z.object({
@@ -105,10 +116,9 @@ export function acceptFormalObjects(input: { source: TeachingSource; proposal: u
     return ref;
   };
   const revisions = [...(previous?.objects ?? [])];
-  for (const object of proposal.objects) {
+  for (const [index, object] of proposal.objects.entries()) {
     checkTeachingBindings(object.source_bindings, source);
-    if (object.kind === "relation" && object.participants.length < 2) throw new Error("learnable relation requires participants and roles");
-    if (object.kind === "composite" && !object.component_keys.length) throw new Error("composite object requires components");
+    checkObjectCardinality(object, `/objects/${index}`);
     const ref = get(object.key);
     if (object.component_keys.includes(object.key)) throw new Error("object cannot contain itself");
     const old = revisions.filter(item => sameObjectRef(item.ref, ref)).at(-1);

@@ -48,6 +48,7 @@ struct Probe {
 impl ModelAdapter for Probe {
     fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
         Err(AdapterError {
+            spend_stop: None,
             message: "MU10 fixture".into(),
         })
     }
@@ -228,7 +229,7 @@ fn mu10_kill_host_child() {
             control_revision: state.control.revision,
             source_id: f.x.book_id.clone(),
             source_revision: publication.book.source_fingerprint().into(),
-            map_revision: "v1".into(),
+            map_revision: Some("v1".into()),
             chat_session_id: "original-chat".into(),
             turn_id: "original-turn".into(),
         };

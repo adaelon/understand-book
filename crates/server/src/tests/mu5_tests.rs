@@ -18,6 +18,29 @@ pub(super) struct Fixture {
     pub(super) a: String,
     pub(super) b: String,
 }
+
+#[test]
+fn tutor_t18_published_readiness_requires_the_exact_reader_grant() {
+    let f = Fixture::new();
+    // Model an already published book from before tutor_readiness was introduced.
+    let directory = f.access.library.lock().unwrap().load("A", &f.x).unwrap().directory().to_path_buf();
+    let path = directory.join("publication.json");
+    let mut manifest: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    manifest.as_object_mut().unwrap().remove("tutor_readiness");
+    let original_permissions = std::fs::metadata(&path).unwrap().permissions();
+    let mut writable = original_permissions.clone();
+    writable.set_readonly(false);
+    std::fs::set_permissions(&path, writable).unwrap();
+    std::fs::write(&path, manifest.to_string()).unwrap();
+    std::fs::set_permissions(&path, original_permissions).unwrap();
+    let path = f.x.url("tutor_readiness");
+    let ready = f.ok(&f.a, "GET", &path, json!({}));
+    assert_eq!(ready["status"], "ready");
+    assert_eq!(ready["teaching_assets"]["teaching_map_revision"], "v1");
+    assert!(ready.get("required_stages").is_none());
+    f.access.library.lock().unwrap().revoke("A", &f.x).unwrap();
+    assert_ne!(f.call(&f.a, "GET", &path, json!({})).0, 200);
+}
 impl Fixture {
     pub(super) fn new() -> Self {
         Self::configured(None)
@@ -38,6 +61,10 @@ impl Fixture {
         let publish = |id: &str| {
             let dir = write_multi_leaf_book(&format!("mu5-{id}-{}", uuid::Uuid::now_v7()), id, 30);
             let book = Book::load(dir.to_str().unwrap()).unwrap();
+            let source = std::fs::read(dir.join("source.txt")).unwrap();
+            super::tutor_tests::t15_foundation(&dir, &book);
+            std::fs::write(dir.join("source.txt"), source).unwrap();
+            super::tutor_tests::t15_close(&dir, &book, "pass1", &["base.json", "source.txt"]);
             std::fs::create_dir_all(dir.join("teaching/versions/v1")).unwrap();
             std::fs::write(dir.join("teaching/versions/v1/map.json"),json!({"source_id":id,"source_revision":book.source_fingerprint(),"objects":{"active_refs":[{"source_id":id,"object_id":"speed"}],"objects":[{"ref":{"source_id":id,"object_id":"speed"},"meaning":"speed","object_revision":1,"source_bindings":[{"source_id":id,"source_revision":book.source_fingerprint(),"lid":"1.1"}]}]},"cognitive_materials":{"materials":[]}}).to_string()).unwrap();
             std::fs::write(dir.join("teaching_readiness.json"),json!({"version":"teaching_readiness.v1","status":"ready","source_id":id,"source_revision":book.source_fingerprint(),"teaching_map_revision":"v1","map_path":"teaching/versions/v1/map.json","coverage":{"source":"complete","structure":"complete","objects":"complete","cognitive_materials":"complete","source_review":"passed"},"limitations":[]}).to_string()).unwrap();
@@ -796,7 +823,17 @@ fn mu5_presentation_linked_view_keeps_chat_and_late_restore_cannot_replace_user_
 fn mu5_schema_two_upgrade_keeps_owner_rows_and_workspace_book_budget_is_shared() {
     let root = tempfile::tempdir().unwrap();
     let writer = crate::control_store::ServiceWriter::acquire(root.path()).unwrap();
-    let mut control = ControlStore::open(writer.clone()).unwrap();
+    let connection = rusqlite::Connection::open(root.path().join("control.sqlite")).unwrap();
+    connection
+        .execute_batch(include_str!("control_schema_v4.sql"))
+        .unwrap();
+    connection
+        .pragma_update(None, "application_id", 0x55424d55_i64)
+        .unwrap();
+    let mut control = ControlStore {
+        connection,
+        writer: writer.clone(),
+    };
     control.create_user("prior").unwrap();
     control.connection.execute_batch("INSERT INTO reader_workspaces(owner_user_id,workspace_id) VALUES('prior','prior-scene'); ALTER TABLE reader_workspaces DROP COLUMN checkpoint_seq; ALTER TABLE run_admissions DROP COLUMN cancel_requested; ALTER TABLE run_admissions DROP COLUMN key_closed; ALTER TABLE run_admissions DROP COLUMN unsaved; PRAGMA user_version=2;").unwrap();
     drop(control);
@@ -840,6 +877,31 @@ fn mu5_schema_two_upgrade_keeps_owner_rows_and_workspace_book_budget_is_shared()
     let _ = f.action(&f.a, &w, "one", "detach", json!({}));
     let next = f.create(&f.a, &f.y, "two");
     assert_eq!(next["published_book_ref"], json!(f.y));
+}
+
+#[test]
+fn adm1_admin_identity_does_not_bypass_reader_private_or_material_scope() {
+    let mut f = Fixture::new();
+    f.control.set_reader_admin("A", true).unwrap();
+    let now = multi_user_host::now();
+    let admin = f.access.auth.authenticate(&f.a, now).unwrap();
+    let reader = f.access.auth.authenticate(&f.b, now).unwrap();
+    f.access.auth.require_reader_admin(&admin, now).unwrap();
+    assert_eq!(
+        f.access.auth.require_reader_admin(&reader, now).unwrap_err().error_code,
+        "ADMIN_REQUIRED"
+    );
+    let w = f.create(&f.b, &f.x, "reader-page");
+    let w = f.action(&f.b, &w, "reader-page", "chat/new", json!({}));
+    let chat_path = format!("/api/me/chats/{}", w["selected_chat"].as_str().unwrap());
+    assert_eq!(f.call(&f.b, "GET", &chat_path, json!({})).0, 200);
+    assert_eq!(f.call(&f.a, "GET", &chat_path, json!({})).0, 404);
+    let workspace_path = format!("/api/workspaces/{}", w["workspace_id"].as_str().unwrap());
+    assert_eq!(f.call(&f.a, "GET", &workspace_path, json!({})).0, 404);
+    f.access.library.lock().unwrap().revoke("A", &f.x).unwrap();
+    let book_path = format!("/api/books/{}/publications/{}/manifest", f.x.book_id, f.x.publication_id);
+    assert_eq!(f.call(&f.b, "GET", &book_path, json!({})).0, 200);
+    assert_eq!(f.call(&f.a, "GET", &book_path, json!({})).0, 404);
 }
 
 #[test]

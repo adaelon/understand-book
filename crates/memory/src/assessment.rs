@@ -8,7 +8,7 @@ use rusqlite::{params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct RubricItem {
     pub id: String,
@@ -17,7 +17,7 @@ pub struct RubricItem {
     pub source_lids: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ScoringRule {
     /// Canonical choice tokens, submitted as a JSON array (or a single token).
@@ -30,7 +30,7 @@ pub enum ScoringRule {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AssessmentContract {
     pub rule: ScoringRule,
@@ -41,7 +41,7 @@ pub struct AssessmentContract {
     pub feedback: FeedbackPolicy,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum FeedbackPolicy {
     AfterSubmit,

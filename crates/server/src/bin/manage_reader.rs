@@ -5,7 +5,7 @@ fn main() {
     let args: Vec<_> = std::env::args().skip(1).collect();
     let result = (|| -> Result<(), String> {
         if args.len() != 3 {
-            return Err("usage: manage_reader <absolute-service-root> create|password|disable|enable|revoke <user-id>; create/password read password from stdin".into());
+            return Err("usage: manage_reader <absolute-service-root> create|password|disable|enable|revoke|grant-admin|revoke-admin <user-id>; create/password read password from stdin; admin operations require the service to be stopped".into());
         }
         let writer = ServiceWriter::acquire(Path::new(&args[0])).map_err(|e| e.error_code)?;
         let mut control = ControlStore::open(writer).map_err(|e| e.error_code)?;
@@ -25,6 +25,8 @@ fn main() {
             "disable" => control.set_user_disabled(&args[2], true),
             "enable" => control.set_user_disabled(&args[2], false),
             "revoke" => control.revoke_user_sessions(&args[2]),
+            "grant-admin" => control.set_reader_admin(&args[2], true),
+            "revoke-admin" => control.set_reader_admin(&args[2], false),
             _ => return Err("Unknown account operation".into()),
         };
         result.map_err(|e| e.error_code)

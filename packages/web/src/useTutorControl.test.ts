@@ -4,16 +4,16 @@ import { api } from './api';
 import { useTutorControl } from './useTutorControl';
 
 afterEach(() => vi.restoreAllMocks());
-beforeEach(() => { vi.spyOn(api, 'tutorReadiness').mockResolvedValue({ status: 'preparing', source_id: 'book', teaching_map_revision: null, limitations: [], reason: '准备中' }); });
+beforeEach(() => { vi.spyOn(api, 'tutorReadiness').mockResolvedValue({ status: 'preparing', source_id: 'book', source_revision: 's1', limitations: [], reason: '准备中', teaching_assets: { status: 'preparing', teaching_map_revision: null, limitations: [], reason: '资料缺失' } }); });
 
 it('shows source readiness independently and ignores a previous book response', async () => {
   const tutor = useTutorControl();
   let finish!: (value: Awaited<ReturnType<typeof api.tutorReadiness>>) => void;
   vi.mocked(api.tutorReadiness).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
   const old = tutor.loadReadiness();
-  vi.mocked(api.tutorReadiness).mockResolvedValueOnce({ status: 'ready', source_id: 'current-book', teaching_map_revision: 'v1', limitations: ['省略连接'], reason: '材料已就绪' });
+  vi.mocked(api.tutorReadiness).mockResolvedValueOnce({ status: 'ready', source_id: 'current-book', source_revision: 's1', limitations: ['省略连接'], reason: '可以学习', teaching_assets: { status: 'ready', teaching_map_revision: 'v1', limitations: ['省略连接'], reason: '资料已就绪' } });
   await tutor.loadReadiness();
-  finish({ status: 'preparing', source_id: 'old-book', teaching_map_revision: null, limitations: [], reason: '准备中' });
+  finish({ status: 'preparing', source_id: 'old-book', source_revision: 's1', limitations: [], reason: '准备中', teaching_assets: { status: 'preparing', teaching_map_revision: null, limitations: [], reason: '资料缺失' } });
   await old;
   expect(tutor.readiness.value?.source_id).toBe('current-book');
   expect(tutor.state.value).toBeNull();
@@ -35,7 +35,7 @@ it('keeps the durable state on write failure and retries the exact operation', a
   await tutor.retry();
   expect(mutate.mock.calls[1][0]).toEqual(mutate.mock.calls[0][0]);
   expect(tutor.pending.value).toBeNull();
-  expect(tutor.label.value).toContain('教学准备中');
+  expect(tutor.label.value).toContain('学习基础准备中');
 });
 
 it('does not invent disabled state when the persisted control cannot be read', async () => {
@@ -47,4 +47,30 @@ it('does not invent disabled state when the persisted control cannot be read', a
   expect(tutor.state.value).toBeNull();
   expect(tutor.label.value).toContain('未加载');
   expect(mutate).not.toHaveBeenCalled();
+});
+
+it('keeps enabled intent and session ownership across optional failure, pause, book switch and recovery', async () => {
+  const state = { control: { enabled: true, revision: 2, current_tutor_session_id: 'learn' }, sessions: {
+    learn: { id: 'learn', revision: 1, status: 'active' as const, user_intent: '理解速度', explicit_constraints: [],
+      current_focus: { interpretation: '', target_object_refs: [], capability_targets: [] },
+      material_scope: [{ source_id: 'book', scope_refs: [], role: 'primary' as const }], default_teaching_intent: null, path_instance_ref: null, progress_ref: null },
+  } };
+  vi.spyOn(api, 'tutorState').mockResolvedValue(state);
+  const tutor = useTutorControl();
+  await tutor.load();
+  const ready = { status: 'ready' as const, source_id: 'book', source_revision: 's1', limitations: [], reason: '可以学习',
+    teaching_assets: { status: 'stale' as const, teaching_map_revision: null, limitations: [], reason: '教学构建失败' } };
+  vi.mocked(api.tutorReadiness).mockResolvedValue(ready);
+  await tutor.loadReadiness();
+  expect(tutor.label.value).toContain('可以开始或继续学习');
+  expect(tutor.state.value?.control.enabled).toBe(true);
+  tutor.state.value!.sessions.learn!.status = 'paused';
+  expect(tutor.label.value).toContain('已暂停');
+  tutor.state.value!.sessions.learn!.status = 'active';
+  vi.mocked(api.tutorReadiness).mockResolvedValueOnce({ ...ready, source_id: 'other' });
+  await tutor.loadReadiness();
+  expect(tutor.label.value).toContain('不属于本次学习');
+  await tutor.loadReadiness();
+  expect(tutor.label.value).toContain('可以开始或继续学习');
+  expect(tutor.current.value?.id).toBe('learn');
 });

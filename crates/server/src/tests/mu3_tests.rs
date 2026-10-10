@@ -457,7 +457,17 @@ fn mu3_service_metadata_reopens_defaults_and_schema_one_upgrades_without_losing_
     let root = tempfile::tempdir().unwrap();
     let input = tempfile::tempdir().unwrap();
     let writer = ServiceWriter::acquire(root.path()).unwrap();
-    let mut control = ControlStore::open(writer.clone()).unwrap();
+    let connection = rusqlite::Connection::open(root.path().join("control.sqlite")).unwrap();
+    connection
+        .execute_batch(include_str!("control_schema_v4.sql"))
+        .unwrap();
+    connection
+        .pragma_update(None, "application_id", 0x55424d55_i64)
+        .unwrap();
+    let mut control = ControlStore {
+        connection,
+        writer: writer.clone(),
+    };
     control.create_user("A").unwrap();
     control
         .connection
@@ -596,4 +606,39 @@ fn mu3_symlinks_are_rejected_at_import_and_resource_read() {
     )
     .unwrap();
     assert!(library.publish(input.path()).is_err());
+}
+
+#[test]
+fn tutor_t15_publication_preserves_admission_without_private_build_files() {
+    let root = tempfile::tempdir().unwrap();
+    let input = tempfile::tempdir().unwrap();
+    material(input.path(), "t15-published", b"image");
+    let book = Book::load(input.path().to_str().unwrap()).unwrap();
+    super::tutor_tests::t15_foundation(input.path(), &book);
+    let local = crate::tutor_api::tutor_source_readiness(&book, input.path());
+    assert_eq!(local["status"], "ready", "{local}");
+    let mut library = library(root.path(), 2);
+    let manifest = library.publish(input.path()).unwrap();
+    assert_eq!(manifest.tutor_readiness, local);
+    assert!(!manifest.files.keys().any(|p| p.starts_with(".build/")));
+    library.grant("A", &manifest.reference).unwrap();
+    let publication = library.load("A", &manifest.reference).unwrap();
+    assert_eq!(crate::tutor_api::tutor_source_readiness(&publication.book, publication.directory()), local);
+    // Republishing a sealed input retains the original admission; no build history is needed.
+    let republished = library.publish(publication.directory()).unwrap();
+    assert_eq!(republished.tutor_readiness, local);
+    assert_ne!(manifest.reference.publication_id, republished.reference.publication_id);
+    // Older publications use their existing artifacts without reimport or build history.
+    let mut old = serde_json::to_value(&manifest).unwrap();
+    old.as_object_mut().unwrap().remove("tutor_readiness");
+    let path = publication.directory().join("publication.json");
+    let original_permissions = std::fs::metadata(&path).unwrap().permissions();
+    let mut writable = original_permissions.clone();
+    writable.set_readonly(false);
+    std::fs::set_permissions(&path, writable).unwrap();
+    std::fs::write(&path, old.to_string()).unwrap();
+    std::fs::set_permissions(&path, original_permissions).unwrap();
+    assert_eq!(crate::tutor_api::tutor_source_readiness(&publication.book, publication.directory())["status"], "ready");
+    let old: crate::published_library::PublicationManifest = serde_json::from_value(old).unwrap();
+    assert!(old.tutor_readiness.is_null());
 }

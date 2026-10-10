@@ -1,0 +1,59 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box}body{margin:0;padding:8px;font:14px sans-serif}h1{font-size:20px}.intro{height:1100px}.controls{display:flex;gap:4px;flex-wrap:wrap}button{min-width:44px;min-height:44px;padding:4px}video{display:block;width:100%;height:clamp(64px,calc(100vh - 100px),300px);object-fit:contain;background:#000}video[hidden]{display:none}#readout{margin:4px 0;font-size:12px;line-height:16px}.tail{height:700px}
+</style></head><body>
+<header class="intro"><h1>两个固定媒体演示</h1><p>A 与 B 使用同一八秒过程，各自保存位置。蓝方块向右运动；标签应始终为 B。后段红色 WRONG A 是人为植入的错误。</p></header>
+<div class="controls" id="controls"><button id="select-a">选择 A</button><button id="select-b">选择 B</button><button id="play">播放</button><button id="replay">重播</button></div>
+<video id="a" playsinline preload="auto" src="assets/@ASSET@.mp4" poster="assets/@ASSET@.png"></video>
+<video id="b" hidden playsinline preload="auto" src="assets/@ASSET@.mp4" poster="assets/@ASSET@.png"></video>
+<p id="readout"></p><div class="tail"></div>
+<script>
+const videos={a:document.querySelector('#a'),b:document.querySelector('#b')};
+const state={active_demo:'a',a_step:0,a_progress:0,a_time:0,b_step:0,b_progress:0,b_time:0};
+const pending={a:false,b:false}, callbacks={a:null,b:null};
+const freezeMedia = false;
+function output(){const id=state.active_demo;document.querySelector('#readout').textContent=`活动 ${id.toUpperCase()}；逻辑 ${(state[id+'_step']+state[id+'_progress']).toFixed(3)}；解码 ${state[id+'_time'].toFixed(3)} 秒`;document.querySelector('#play').textContent=videos[id].paused?'播放':'暂停';}
+function select(id){for(const key of ['a','b']){videos[key].pause();videos[key].hidden=key!==id;}state.active_demo=id;output();}
+function cancelFrame(id){if(callbacks[id]!==null)videos[id].cancelVideoFrameCallback(callbacks[id]);callbacks[id]=null;}
+function event(video,name){return new Promise((resolve,reject)=>{
+ const timer=setTimeout(()=>finish(new Error(`Media ${name} timed out`)),2500);
+ function finish(error){clearTimeout(timer);video.removeEventListener(name,ok);video.removeEventListener('error',bad);error?reject(error):resolve();}
+ const ok=()=>finish(),bad=()=>finish(new Error('Media decode failed'));
+ video.addEventListener(name,ok,{once:true});video.addEventListener('error',bad,{once:true});
+ if(video.error)bad();
+});}
+async function seek(id,step,progress){
+ const video=videos[id];pending[id]=true;cancelFrame(id);video.pause();
+ try{
+  if(video.readyState<2)await event(video,'loadeddata');
+  // Use the last frame's interior so media clock rounding cannot select its predecessor.
+  const target=Math.min(step+progress,video.duration-0.5/30);
+  if(!freezeMedia && (Math.abs(video.currentTime-target)>1e-8 || video.seeking)){
+   const done=event(video,'seeked');video.currentTime=target;await done;
+  }
+  if(video.readyState<2)await event(video,'loadeddata');
+  const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);
+  // At EOF the media clock may equal duration; the decoded frame is still the last encoded one.
+  state[id+'_time']=Math.min(Math.floor((video.currentTime+1e-6)*30),Math.ceil(video.duration*30)-1)/30;
+  state[id+'_step']=step;state[id+'_progress']=progress;output();
+ }finally{pending[id]=false;}
+ return snapshot();
+}
+function snapshot(){const id=state.active_demo;return {semantic_state:state[id+'_step'],transition_progress:state[id+'_progress'],playing:!videos[id].paused,media_time:state[id+'_time'],active_demo:id};}
+function presented(id){const video=videos[id];callbacks[id]=video.requestVideoFrameCallback((_,meta)=>{
+ callbacks[id]=null;if(video.paused || pending[id])return;
+ state[id+'_time']=meta.mediaTime;state[id+'_step']=Math.floor(meta.mediaTime);state[id+'_progress']=meta.mediaTime-Math.floor(meta.mediaTime);output();presented(id);
+});}
+for(const id of ['a','b']){
+ videos[id].addEventListener('play',()=>{cancelFrame(id);presented(id);output();});
+ videos[id].addEventListener('pause',()=>{cancelFrame(id);output();if(!pending[id])presentation.commitState();});
+ videos[id].addEventListener('ended',()=>{state[id+'_step']=8;state[id+'_progress']=0;output();presentation.commitState();});
+ document.querySelector('#select-'+id).onclick=()=>select(id);
+}
+async function play(restart){const id=state.active_demo,video=videos[id];if(!restart&&!video.paused){video.pause();return;}if(restart)await seek(id,0,0);document.querySelector('#controls').scrollIntoView({block:'start'});await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);await video.play();}
+document.querySelector('#play').onclick=()=>play(false).catch(e=>document.querySelector('#readout').textContent=e.message);
+document.querySelector('#replay').onclick=()=>play(true).catch(e=>document.querySelector('#readout').textContent=e.message);
+window.presentationScene={seek:args=>seek(state.active_demo,args.semantic_state,args.transition_progress),snapshot};
+presentation.registerStateReader(()=>({values:{...state},visible_step:String(state[state.active_demo+'_step'])}));
+presentation.registerStateRestorer(async saved=>{const value=saved.values.page;for(const id of ['a','b'])await seek(id,value[id+'_step'],value[id+'_progress']);select(value.active_demo);});
+output();
+</script></body></html>

@@ -71,7 +71,14 @@ onBeforeUnmount(() => observer?.disconnect());
     <p>这里区分实际表现、你的原话和系统解释；没有依据的能力保持未知。</p>
     <p v-if="error" role="alert">{{ error }} <button :disabled="busy" @click="retry">重试</button></p>
     <p v-if="view?.stale" role="status">有新的依据尚未合入此视图。<button :disabled="busy" @click="load(true)">更新理解视图</button></p>
-    <p v-if="view && !view.rows.length">尚无可展示的学习对象；材料就绪并产生表现后会在这里显示。</p>
+    <p v-if="view && !view.rows.length && !view.interpretations?.length">尚无理解记录；相关提问、回应和活动表现会成为后续讲解的依据。</p>
+    <article v-for="item in view?.interpretations" :key="item.evidence_id" aria-label="当前理解解释">
+      <h4>{{ item.label }} · {{ item.nature === 'hypothesis' ? '暂定理解' : '活动表现' }}</h4>
+      <p>{{ item.interpretation }}</p>
+      <p v-if="item.correction">你的纠正：{{ item.correction }}</p>
+      <p v-if="item.teaching_implication">后续教学：{{ item.teaching_implication }}</p>
+      <button :disabled="busy || !!pending" @click="inspect(item.evidence_id)">查看事实与修订</button>
+    </article>
     <article v-for="row in view?.rows" :key="`${row.object_id}:${row.object_revision}:${row.capability}:${row.historical}`">
       <h4>{{ row.label }} <small v-if="row.historical">历史版本</small></h4>
       <p>{{ capability[row.capability] ?? (row.capability || '尚未观察能力') }}：{{ row.state === 'unknown' ? '未知' : '已有表现依据' }}</p>
@@ -84,11 +91,13 @@ onBeforeUnmount(() => observer?.disconnect());
     <button v-if="view?.next != null" :disabled="busy" @click="load(false,true)">查看更多对象</button>
     <section v-if="history" aria-label="解释历史"><h4>{{ history.row.label }}的解释历史</h4><button v-for="(id,index) in history.refs" :key="id" :disabled="busy || !!pending" @click="inspect(id)">查看历史依据 {{ index + 1 }}</button><button v-if="history.next != null" :disabled="busy" @click="older(history.row,true)">更早的解释</button></section>
     <section v-if="selected" aria-label="表现依据">
-      <h4>{{ selected.label }}的表现依据</h4>
-      <p>当时的活动：{{ selected.prompt }}</p>
+      <h4>{{ selected.label }}的{{ selected.nature === 'hypothesis' ? '理解依据' : '表现依据' }}</h4>
+      <p>{{ selected.nature === 'hypothesis' ? '适用目标' : '当时的活动' }}：{{ selected.prompt }}</p>
       <p>你的原话：</p><blockquote>{{ selected.learner_quote }}</blockquote>
       <p>系统解释：{{ selected.interpretation }}</p>
-      <p>第 {{ selected.attempt }} 次作答；{{ selected.assistance_count ? '回答前已展示帮助' : '未记录到事先展示的帮助' }}。</p>
+      <p v-if="selected.nature === 'hypothesis'">这是依据实际使用形成的暂定判断，可随你的纠正和新表现修订。</p>
+      <p v-else>第 {{ selected.attempt }} 次作答；{{ selected.assistance_count ? '回答前已展示帮助' : '未记录到事先展示的帮助' }}。</p>
+      <p v-if="selected.teaching_implication">后续教学：{{ selected.teaching_implication }}</p>
       <p v-if="selected.correction">你的纠正：{{ selected.correction }}</p>
       <p v-if="selected.feedback_hidden">详细判定依据会在本活动请求直接讲解后揭示。</p>
       <ul v-else-if="selected.source_quotes?.length" ref="feedback" :data-feedback-ref="selected.assessment_ref ?? undefined"><li v-for="(item,index) in selected.source_quotes" :key="index">{{ item.reason }} <q v-if="item.quote">{{ item.quote }}</q><q v-for="(source,i) in item.sources" :key="i">{{ source.quote }}</q></li></ul>

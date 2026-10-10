@@ -14,8 +14,8 @@ test('sign-in errors, account catalog, CSRF logout and account switch', async ({
     if (path === '/api/auth/login') {
       const body = request.postDataJSON();
       if (body.password === 'wrong') return route.fulfill({ status: 401, json: {} });
-      owner = body.username; csrf = `csrf-${owner}`;
-      return route.fulfill({ json: { user_id: owner, csrf_token: csrf } });
+      owner = body.username.includes('@') ? 'A' : body.username; csrf = `csrf-${owner}`;
+      return route.fulfill({ json: { user_id: owner, email: owner === 'A' ? 'reader@example.com' : null, csrf_token: csrf } });
     }
     if (!owner) return route.fulfill({ status: 401, json: {} });
     if (path === '/api/auth/me') return route.fulfill({ json: { user_id: owner, csrf_token: csrf } });
@@ -27,18 +27,19 @@ test('sign-in errors, account catalog, CSRF logout and account switch', async ({
     return route.fulfill({ status: 404, json: {} });
   });
   await page.goto('https://reader.example/');
-  await page.getByLabel('账号', { exact: true }).fill('A');
+  await page.getByLabel('邮箱或账号', { exact: true }).fill('A');
   await page.getByLabel('密码', { exact: true }).fill('wrong');
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('账号或密码不正确');
   await expect(page.getByLabel('密码', { exact: true })).toHaveValue('');
-  await page.getByLabel('账号', { exact: true }).fill('A');
+  await page.getByLabel('邮箱或账号', { exact: true }).fill('reader@example.com');
   await page.getByLabel('密码', { exact: true }).fill('fixture-only-password');
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.getByRole('listitem')).toHaveText('A的材料');
+  await expect(page.locator('#identity')).toHaveText('reader@example.com');
   await page.getByRole('button', { name: '退出登录' }).click();
   await expect(page.getByRole('listitem')).toHaveCount(0);
-  await page.getByLabel('账号', { exact: true }).fill('B');
+  await page.getByLabel('邮箱或账号', { exact: true }).fill('B');
   await page.getByLabel('密码', { exact: true }).fill('fixture-only-password');
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.getByRole('listitem')).toHaveText('B的材料');
@@ -68,7 +69,7 @@ test('late startup identity cannot replace a newly signed-in account', async ({ 
   });
   await page.goto('https://reader.example/');
   await identityRequested;
-  await page.getByLabel('账号', { exact: true }).fill('new-account');
+  await page.getByLabel('邮箱或账号', { exact: true }).fill('new-account');
   await page.getByLabel('密码', { exact: true }).fill('fixture-only-password');
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.locator('#identity')).toHaveText('new-account');

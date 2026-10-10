@@ -527,6 +527,7 @@ mod tests {
     impl ModelAdapter for StructuredAdapter {
         fn complete(&self, _req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "complete is not used".into(),
             })
         }
@@ -537,12 +538,14 @@ mod tests {
                 .borrow_mut()
                 .pop_front()
                 .ok_or_else(|| AdapterError {
+                    spend_stop: None,
                     message: "structured outputs exhausted".into(),
                 })
         }
 
         fn chat(&self, _request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
             Err(AdapterError {
+                spend_stop: None,
                 message: "chat is not used".into(),
             })
         }

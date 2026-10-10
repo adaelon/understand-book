@@ -22,13 +22,13 @@ function start() {
       <section role="dialog" aria-modal="true" aria-label="学习会话" class="tutor-panel">
         <header><h2>学习会话</h2><button @click="emit('close')">关闭</button></header>
         <p role="status">{{ label }}</p>
-        <p data-testid="teaching-readiness">{{ readinessError || readiness?.reason || '正在读取教学材料状态' }} <button @click="emit('refreshReadiness')">刷新材料状态</button></p>
-        <ul v-if="readiness?.limitations.length"><li v-for="limitation in readiness.limitations" :key="limitation">{{ limitation }}</li></ul>
-        <p>材料就绪后，开启或继续学习将从当前现场开始；你随时可以要求直接讲解。</p>
+        <p data-testid="teaching-readiness">{{ readinessError || (readiness?.status === 'ready' ? '可以开始或继续学习' : readiness?.reason) || '正在读取学习就绪状态' }} <button @click="emit('refreshReadiness')">刷新学习状态</button></p>
+        <ul v-if="readiness?.limitations?.length"><li v-for="limitation in readiness.limitations" :key="limitation">{{ limitation }}</li></ul>
+        <p>{{ readiness?.status === 'ready' ? '从当前问题和原文开始；可用的教学资料会在后续学习中使用。' : '学习基础准备好后即可开始；等待期间可以先保存学习意图。' }}你随时可以要求直接讲解。</p>
         <p v-if="error" role="alert">{{ error }} <button :disabled="busy" @click="emit('retry')">重试</button></p>
         <form @submit.prevent="start">
           <label>本次想学什么 <textarea v-model="intent" rows="2" /></label>
-          <button :disabled="busy || pending || !state || !intent.trim()">{{ readiness?.status === 'ready' ? '开始学习' : '保存学习意图' }}</button>
+          <button :disabled="busy || pending || !state || !sourceId || !intent.trim()">{{ readiness?.status === 'ready' && state?.control.enabled ? '开始学习' : '保存学习意图' }}</button>
         </form>
         <article v-for="session in sessions" :key="session.id">
           <h3>{{ session.user_intent }} <small v-if="state?.control.current_tutor_session_id === session.id">当前</small></h3>
@@ -38,7 +38,8 @@ function start() {
               <option value="">随本次需求</option><option value="direct_explanation">直接讲解</option><option value="guided_inquiry">引导思考</option>
             </select>
           </label>
-          <button :disabled="busy || pending || !state?.control.enabled" @click="emit('action', { kind: 'resume', session_id: session.id })">{{ session.status === 'active' ? '继续教学' : '继续这次学习' }}</button>
+          <p v-if="sourceId && !session.material_scope.some(material => material.source_id === sourceId)">请回到本次学习的书籍继续，或为当前书籍开始新目标。</p>
+          <button :disabled="busy || pending || !state?.control.enabled || readiness?.status !== 'ready' || !session.material_scope.some(material => material.source_id === sourceId)" @click="emit('action', { kind: 'resume', session_id: session.id })">{{ session.status === 'active' ? '继续教学' : '继续这次学习' }}</button>
           <button v-if="session.status === 'active'" :disabled="busy || pending" @click="emit('action', { kind: 'pause', session_id: session.id })">暂停</button>
           <button v-if="session.status !== 'ended'" :disabled="busy || pending" @click="emit('action', { kind: 'end', session_id: session.id })">结束这次学习</button>
         </article>

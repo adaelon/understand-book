@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { source, proposal, binding } from "./fixtures/teaching-source";
 import { acceptFormalObjects, type FormalObjectProposal, type FormalObjects } from "../src/teaching-map";
-import { newObjectAlignment, advanceObjectAlignment, alignmentFocus, objectAlignmentInput, type ObjectAlignmentWork } from "../src/teaching-object-alignment";
+import { newObjectAlignment, advanceObjectAlignment, mergeObjectAlignmentBranch, alignmentFocus, objectAlignmentInput, type ObjectAlignmentWork } from "../src/teaching-object-alignment";
 import type { FormalObjectFragmentResult } from "../src/teaching-object-fragments";
 import { fixture as retrievalFixture, cases as retrievalCases } from "../testdata/semantic-retrieval/gold";
+import { automaticBuildCandidateCorrection, automaticBuildFailureDiagnosticFromWriterError } from "../src/extractor-contract";
 
 const fragment = (id: string, candidate: FormalObjectProposal): FormalObjectFragmentResult => ({ version: "formal_object_fragment.v1", fragment_id: id,
   source_ranges: source.passages.map(p => ({ lid: p.lid, start: 0, end: p.text.length })), auxiliary_ranges: [], proposal: structuredClone(candidate) });
@@ -25,10 +26,89 @@ function resolveAll(work: ObjectAlignmentWork) {
   }
 }
 describe("bounded cross-fragment object alignment", () => {
+  it("supplements only missing inspected evidence after exhaustion, including gaps and the last pending search", () => {
+    let work = newObjectAlignment([fragment("f", proposal)]);
+    const focus = alignmentFocus(work);
+    if (focus.kind !== "candidate") throw new Error("fixture needs a candidate");
+    const lid = focus.object.source_bindings[0].lid;
+    const length = source.passages.find(p => p.lid === lid)!.text.length;
+    work = advance(work, { kind: "read", lid, start: 0, end: 2 });
+    work = advance(work, { kind: "read", lid, start: 4, end: length });
+    work.steps_since_progress = 32;
+    work.search = { query: "pending", offset: 0, keys: [], next_offset: null, preparation_required: true };
+    const input = objectAlignmentInput(work, source);
+    expect(input.search).toBeUndefined();
+    expect(input.retrieval_budget?.next_read).toEqual({ kind: "read", lid, start: 2, end: 4 });
+    expect(() => advance(work, { kind: "read", lid, start: 1, end: 4 })).toThrow("retrieval steps are exhausted");
+    expect(() => advance(work, { kind: "read", lid: "2.3", start: 0, end: 1 })).toThrow("retrieval steps are exhausted");
+    let failure: unknown;
+    try { advance(work, { kind: "resolve", keys: [focus.key], object: focus.object }); } catch (error) { failure = error; }
+    expect(automaticBuildCandidateCorrection(automaticBuildFailureDiagnosticFromWriterError(failure, { writer_started: true })))
+      .toMatchObject({ json_pointer: "/object/source_bindings/0", expected: expect.stringContaining("unread source range") });
+    work = advance(work, input.retrieval_budget!.next_read);
+    expect(work.steps_since_progress).toBe(33);
+    expect(() => advance(work, input.retrieval_budget!.next_read)).toThrow("retrieval steps are exhausted");
+    expect(advance(work, { kind: "resolve", keys: [focus.key], object: focus.object }).resolved).toContain(focus.key);
+  });
+  it("allows the final grounded decision after 32 retrieval steps and rejects more lookup actions", () => {
+    let work = newObjectAlignment([fragment("f", proposal)]);
+    const focus = alignmentFocus(work);
+    if (focus.kind !== "candidate") throw new Error("fixture needs a candidate");
+    work.focus_key = focus.key;
+    work = readBindings(work, focus.object.source_bindings);
+    while (work.steps_since_progress < 31) work = advance(work, { kind: "inspect", key: focus.key });
+    expect(objectAlignmentInput(work, source)).not.toHaveProperty("retrieval_budget");
+    work = advance(work, { kind: "inspect", key: focus.key });
+    expect(objectAlignmentInput(work, source).retrieval_budget).toEqual({ steps_used: 32, step_limit: 32, allowed_actions: ["resolve"] });
+    for (const action of [{ kind: "search", query: "source", offset: 0 }, { kind: "inspect", key: focus.key },
+      { kind: "read", lid: focus.object.source_bindings[0].lid, start: 0, end: 1 }]) {
+      let failure: unknown;
+      try { advance(work, action); } catch (error) { failure = error; }
+      expect(automaticBuildCandidateCorrection(automaticBuildFailureDiagnosticFromWriterError(failure, { writer_started: true })))
+        .toMatchObject({ json_pointer: "/kind", expected: expect.stringContaining("kind=resolve") });
+    }
+    expect(() => advance({ ...work, read_ranges: [] }, { kind: "resolve", keys: [focus.key], object: focus.object }))
+      .toThrow("unread source range");
+    const resolved = advance(work, { kind: "resolve", keys: [focus.key], object: focus.object });
+    expect(resolved.resolved).toContain(focus.key);
+    expect(resolved.steps_since_progress).toBe(0);
+    expect(resolved.focus_key).toBeUndefined();
+    expect(objectAlignmentInput(resolved, source)).not.toHaveProperty("retrieval_budget");
+  });
+  it("reduces independent branch decisions and defers overlapping or changed reference decisions", () => {
+    const base = newObjectAlignment([fragment("f", proposal)]);
+    const [a, b, c] = [base.proposal.objects[2], base.proposal.objects[3], base.proposal.objects[0]];
+    const branchFor = (key: string, inspected: string[] = []) => {
+      const branch = structuredClone(base); branch.focus_key = key; branch.inspected = inspected;
+      return readBindings(branch, base.proposal.objects.filter(o => o.key === key || inspected.includes(o.key)).flatMap(o => o.source_bindings));
+    };
+    const first = branchFor(a.key, [b.key]);
+    const merged = mergeObjectAlignmentBranch({ current: base, branch: first,
+      action: { kind: "resolve", keys: [a.key, b.key], object: a }, source, operation_id: "lane-0" })!;
+    expect(merged.resolved).toContain(a.key);
+    expect(merged.proposal.objects.some(o => o.key === b.key)).toBe(false);
+    expect(mergeObjectAlignmentBranch({ current: merged, branch: branchFor(b.key),
+      action: { kind: "resolve", keys: [b.key], object: b }, source, operation_id: "lane-1" })).toBeUndefined();
+    const independent = mergeObjectAlignmentBranch({ current: merged, branch: branchFor(c.key),
+      action: { kind: "resolve", keys: [c.key], object: c }, source, operation_id: "lane-2" });
+    expect(independent?.resolved).toEqual(expect.arrayContaining([a.key, c.key]));
+    expect(base.resolved).toEqual([]);
+    expect(first.read_ranges.length).toBeGreaterThan(0);
+    const relation = base.proposal.objects.find(o => o.participants.some(p => p.object_key === b.key));
+    if (!relation) throw new Error("fixture requires a relation to the merged object");
+    expect(mergeObjectAlignmentBranch({ current: merged, branch: branchFor(relation.key),
+      action: { kind: "resolve", keys: [relation.key], object: relation }, source, operation_id: "changed-reference" })).toBeUndefined();
+  });
   it("SR6 returns the actual source boundary when an inspected object's paragraph length was not visible", () => {
     const f = retrievalFixture();
     const inspect = advanceObjectAlignment({ ...f, action: { kind: "inspect", key: "later/speed-reworded" }, operation_id: "sr6-read" });
     const length = f.source.passages.find(p => p.lid === "2.2")!.text.length;
+    let failure: unknown;
+    try { advanceObjectAlignment({ ...f, work: inspect, action: { kind: "read", lid: "2.2", start: 0, end: 2000 }, operation_id: "sr6-read" }); }
+    catch (error) { failure = error; }
+    const diagnostic = automaticBuildFailureDiagnosticFromWriterError(failure, { writer_started: true });
+    expect(diagnostic).toMatchObject({ category: "schema", code: "schema_invalid", phase: "artifact_writer", json_pointer: "/end" });
+    expect(automaticBuildCandidateCorrection(diagnostic)).toMatchObject({ json_pointer: "/end", expected: expect.stringContaining(`source_length_utf16=${length}`) });
     expect(() => advanceObjectAlignment({ ...f, work: inspect, action: { kind: "read", lid: "2.2", start: 0, end: 2000 }, operation_id: "sr6-read" }))
       .toThrow(`source_length_utf16=${length}`);
     expect(inspect.read_ranges).toEqual([]);

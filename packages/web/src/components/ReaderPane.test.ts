@@ -3,7 +3,7 @@ import { mount } from "@vue/test-utils";
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import type { MemoryRecord } from "../api";
-import { renderFormulaSource } from "../md";
+import { renderFormulaSource, renderTableSource } from "../md";
 import ReaderPane, { type Segment } from "./ReaderPane.vue";
 
 function segment(lid: string, kind: Segment["kind"]): Segment {
@@ -263,6 +263,11 @@ describe("ReaderPane Note rendering", () => {
     });
     const original = wrapper.get(".asset-source.asset-code").text();
     const actions = wrapper.findAll(".asset-head button");
+    expect(actions.map(action => action.text())).toEqual(["换行", "展开"]);
+    await wrapper.get("code").trigger("click");
+    expect(wrapper.emitted("select")).toBeUndefined();
+    await wrapper.setProps({ selectedLid: "code.1" });
+    expect(wrapper.get(".asset-block").classes()).not.toContain("selected");
     await actions[0].trigger("click");
     expect(wrapper.get(".asset-source.asset-code").classes()).toContain("soft-wrap");
     expect(wrapper.get(".asset-source.asset-code").text()).toBe(original);
@@ -270,5 +275,37 @@ describe("ReaderPane Note rendering", () => {
     expect(wrapper.get(".asset-block").classes()).toContain("asset-expanded");
     await wrapper.findAll(".asset-head button")[1].trigger("click");
     expect(wrapper.get(".asset-block").classes()).not.toContain("asset-expanded");
+    wrapper.unmount();
+  });
+
+  it("renders an EPUB table with wrap and expand without selecting the block on click", async () => {
+    const table = { ...segment("table.1", "table"), text: "| 状态 | 归属 |\n| 笔记 | 读者 |" };
+    const wrapper = mount(ReaderPane, {
+      props: {
+        segments: [table], viewportAnchor: null, selectedLid: null,
+        renderSeg: (value) => renderTableSource(value.text),
+        renderMarkdown: (source) => source, markdownHeadingLevel: () => null,
+        isAsset: () => true, isHighlighted: () => false,
+        highlightsOf: () => [], highlightCardsOf: () => [], visibleNotes: [],
+        hlExcerpt: () => "", imageMeta: () => null, imageAsset: () => null,
+      },
+    });
+    expect(wrapper.get(".asset-source.asset-table").element.tagName).toBe("DIV");
+    expect(wrapper.findAll("table tr")).toHaveLength(2);
+    const original = wrapper.get("table").html();
+    const actions = wrapper.findAll(".asset-head button");
+    expect(actions.map(action => action.text())).toEqual(["换行", "展开"]);
+    await actions[0].trigger("click");
+    expect(actions[0].attributes("aria-pressed")).toBe("true");
+    expect(wrapper.get(".asset-source.asset-table").classes()).toContain("soft-wrap");
+    await actions[1].trigger("click");
+    expect(wrapper.get(".asset-block").classes()).toContain("asset-expanded");
+    await wrapper.get("td").trigger("click");
+    expect(wrapper.emitted("select")).toBeUndefined();
+    await wrapper.setProps({ selectedLid: "table.1" });
+    expect(wrapper.get(".asset-block").classes()).not.toContain("selected");
+    expect(wrapper.get("table").html()).toBe(original);
+    expect(table.text).toBe("| 状态 | 归属 |\n| 笔记 | 读者 |");
+    wrapper.unmount();
   });
 });

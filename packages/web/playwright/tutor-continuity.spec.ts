@@ -1,0 +1,41 @@
+import { expect, test } from '@playwright/test';
+
+test('source-only learning survives pause, resume, correction and reload while optional build failed', async ({ page }) => {
+  await page.route('**/api/**', async route => {
+    const response = await route.fetch({ url: route.request().url().replace(/^.*\/api/, 'http://127.0.0.1:4175') });
+    await route.fulfill({ response });
+  });
+  await page.goto('/agent-presentation-visual.html?tutor');
+  const toggle = page.getByRole('switch').first();
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  const manage = page.getByRole('button', { name: '管理教学会话' }).first();
+  await manage.click();
+  const panel = page.getByRole('dialog', { name: '学习会话', exact: true });
+  await expect(panel.getByTestId('teaching-readiness')).toContainText('可以开始或继续学习');
+  await panel.getByRole('textbox', { name: '本次想学什么' }).fill('理解速度');
+  await expect(panel.getByRole('button', { name: '开始学习', exact: true })).toBeEnabled();
+  await panel.getByRole('button', { name: '暂停', exact: true }).click();
+  await expect(panel.getByRole('status').first()).toContainText('已暂停');
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  await panel.getByRole('button', { name: '继续这次学习', exact: true }).click();
+  await expect(panel.getByText('学习进行中', { exact: true })).toBeVisible();
+  await panel.getByRole('button', { name: '关闭', exact: true }).click();
+  const activity = page.locator('.agent-presentation .tutor-activities article').first();
+  await activity.scrollIntoViewIfNeeded();
+  await activity.getByRole('textbox').fill('A');
+  await activity.getByRole('button', { name: '提交回答', exact: true }).click();
+  await expect(activity.getByText('本次回答符合标准')).toBeVisible();
+  await manage.click();
+  await panel.getByRole('button', { name: '查看事实与修订' }).first().click();
+  await panel.getByRole('textbox', { name: '纠正这条解释' }).fill('我已经理解分母，下一步想讨论适用条件。');
+  await panel.getByRole('button', { name: '保存纠正' }).click();
+  await expect(panel.getByText('你的纠正：我已经理解分母，下一步想讨论适用条件。')).toBeVisible();
+  await page.request.post('http://127.0.0.1:4175/reopen');
+  await page.reload();
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  await manage.click();
+  await expect(panel.getByTestId('teaching-readiness')).toContainText('可以开始或继续学习');
+  await panel.getByRole('button', { name: '查看事实与修订' }).first().click();
+  await expect(panel.getByText('你的纠正：我已经理解分母，下一步想讨论适用条件。')).toBeVisible();
+  await page.screenshot({ path: '../../tmp/t18-continuity.png' });
+});

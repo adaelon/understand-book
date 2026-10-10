@@ -9,6 +9,7 @@ import { bookStructureReferenceScope } from "../src/book-structure-evidence";
 import { resolveContentProfile } from "../src/content-profile";
 import type { LidNode } from "../src/generated/LidNode";
 import { readAutomaticBuildTaskStage } from "../src/build-orchestrator";
+import { automaticBuildCandidateCorrection, automaticBuildFailureDiagnosticFromWriterError } from "../src/extractor-contract";
 
 it("covers every complete leaf exactly once, splitting long natural sections without crossing their boundaries", () => {
   const excerpts = Array.from({ length: 25 }, (_, i) => ({ lid: `1.${i < 20 ? 1 : 2}.${i + 1}`, text: `Mechanism ${i}. ` + "condition and consequence ".repeat(80) + "END" }));
@@ -70,6 +71,45 @@ it("starts with source outline, persists distinct same-LID candidates and reject
   expect(readFileSync(new URL("../../../agents/book-structure-discovery-extractor.md", import.meta.url), "utf8")).toBe(STRUCTURE_DISCOVERY_PROMPT);
 }, 120000);
 
+it("identifies missing and unexpected observation fields in the next-generation correction", () => {
+  const f = structureProductionFixture(1);
+  const outline = Object.values(f.get().generation_tasks!)[0];
+  if (outline.kind !== "book_structure") throw Error("outline");
+  f.submit(outline.task);
+  const generation = Object.values(f.get().generation_tasks!).find(g => g.kind === "book_structure"
+    && g.task.descriptor.kind === "structure_fragment");
+  if (!generation || generation.kind !== "book_structure") throw Error("fragment");
+  const candidate = structureProductionResponse(generation.task) as any;
+  const invalid = structuredClone(candidate);
+  delete invalid.evidence_lids;
+  invalid.notes = "extra field";
+  let error: unknown;
+  try { f.submit(generation.task, invalid); } catch (caught) { error = caught; }
+  const diagnostic = automaticBuildFailureDiagnosticFromWriterError(error, { writer_started: true });
+  const correction = automaticBuildCandidateCorrection(diagnostic);
+  expect(correction).toMatchObject({ code: "schema_invalid", json_pointer: "/" });
+  expect(correction!.expected).toContain("missing: evidence_lids");
+  expect(correction!.expected).toContain("unexpected: notes");
+  expect(() => f.submit(generation.task, candidate)).not.toThrow();
+}, 120000);
+
+it("points invalid role values at their role_hints array item", () => {
+  const f = structureProductionFixture(1);
+  const outline = Object.values(f.get().generation_tasks!)[0];
+  if (outline.kind !== "book_structure") throw Error("outline");
+  f.submit(outline.task);
+  const generation = Object.values(f.get().generation_tasks!).find(g => g.kind === "book_structure"
+    && g.task.descriptor.kind === "structure_fragment");
+  if (!generation || generation.kind !== "book_structure") throw Error("fragment");
+  const candidate = structureProductionResponse(generation.task) as any;
+  candidate.role_hints = ["foundation", "overview"];
+  let error: unknown;
+  try { f.submit(generation.task, candidate); } catch (caught) { error = caught; }
+  const diagnostic = automaticBuildFailureDiagnosticFromWriterError(error, { writer_started: true });
+  expect(automaticBuildCandidateCorrection(diagnostic)).toEqual({ code: "schema_invalid",
+    json_pointer: "/role_hints/1", expected: "setup | foundation | method | application | case | synthesis" });
+}, 120000);
+
 it("focused discovery keeps the whole source outline and exactly the same chapter delivery", () => {
   const f = structureProductionFixture(2), first = Object.values(f.get().generation_tasks!)[0];
   if (first.kind !== "book_structure") throw Error("outline");
@@ -106,5 +146,12 @@ it("accepts an empty heading-only core even when a graph edge delivers body cont
     summary_fragments: [], candidate_key_stops: [], role_hints: [], dependency_hints: [], evidence_lids: [] };
   expect(() => f.submit(headingTask, empty)).not.toThrow();
   const bodyTask = tasks().find(t => "core_leaf_lids" in t.input && t.input.core_leaf_lids.includes(body.lid))!;
-  expect(() => f.submit(bodyTask, empty)).toThrow("discovery body needs a grounded overview");
+  let bodyError: unknown;
+  try { f.submit(bodyTask, empty); } catch (error) { bodyError = error; }
+  expect(bodyError).toBeDefined();
+  const diagnostic = automaticBuildFailureDiagnosticFromWriterError(bodyError, { writer_started: true });
+  expect(diagnostic).toMatchObject({ category: "schema", code: "schema_invalid", phase: "artifact_writer",
+    json_pointer: "/summary_fragments" });
+  expect(automaticBuildCandidateCorrection(diagnostic)).toEqual({ code: "schema_invalid",
+    json_pointer: "/summary_fragments", expected: "discovery body needs a grounded overview: at least one summary fragment with text and evidence_lids from this core" });
 }, 120000);

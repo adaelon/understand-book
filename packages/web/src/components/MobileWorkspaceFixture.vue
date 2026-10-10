@@ -7,6 +7,7 @@ import ReaderWorkspace from "./ReaderWorkspace.vue";
 import RightRail from "./RightRail.vue";
 import type { WorkspaceAuxTab } from "./ReaderWorkspace.vue";
 import type { ReaderSelectionSnapshot } from "../useReaderSelection";
+import type { ResidentGoal } from "../api";
 
 const logical = {
   contextKey: "fixture:chat",
@@ -20,6 +21,15 @@ const segments: Segment[] = [
   { lid: "1.2", kind: "code", text: "fn main() {\n    let very_long_identifier = \"保留缩进与很长很长的一行代码😀\";\n}", formula: null, imageAsset: null },
 ];
 const longChat = new URLSearchParams(location.search).has('long-chat');
+const fixtureParams = new URLSearchParams(location.search);
+const running = ref(fixtureParams.has('running-task'));
+const targetGoalId = ref<string | null>(null);
+const chatGoals = ref<ResidentGoal[]>(fixtureParams.has('task') ? [{
+  id: 'fixture-goal', revision: 1, interpretation: '全书的主线是怎样的呢，给我个演示页我看看',
+  requirements: [{ id: 'page', description: '交付全书主线演示', basis_turn_id: 'long-turn', verification: 'presentation_delivery' }],
+  working: { focus: '整理全书主线', open_questions: [], next_move: '完成演示', items: [{ id: 'page', description: '制作演示', status: 'in_progress' }] },
+  result_refs: [], status: 'open', last_stop_reason: null,
+}] : []);
 const requestedTab = ref<WorkspaceAuxTab>('agent');
 const requestedTabRevision = ref(0);
 const fullscreen = ref(false);
@@ -102,7 +112,15 @@ function onSelection(snapshot: ReaderSelectionSnapshot | null) {
       @toggle-fullscreen="fullscreen = !fullscreen"
       :chat-sessions="[]"
       active-chat-session-id="fixture-chat"
-      :sending="false"
+      :sending="running"
+      :can-stop="running"
+      :chat-goals="chatGoals"
+      :target-goal-id="targetGoalId"
+      @stop-agent="running = false; chatGoals[0].last_stop_reason = 'AGENT_RUN_CANCELLED'"
+      @continue-goal="running = true"
+      @cancel-goal="chatGoals[0].status = 'cancelled'"
+      @target-goal="targetGoalId = $event"
+      @clear-goal-target="targetGoalId = null"
       :show-trace="{}"
       :latest-trace="[]"
       selected-lid="1.1"
@@ -119,7 +137,7 @@ function onSelection(snapshot: ReaderSelectionSnapshot | null) {
       :effect-secondary-label="() => ''"
       :goto-back="() => ''"
       :ask-draft="null"
-      @send-agent="sendCount += 1"
+      @send-agent="sendCount += 1; agentInput = ''"
     />
     <button v-if="selectionText" class="fixture-selection-action" type="button">
       冻结：{{ selectionText }}

@@ -387,12 +387,15 @@ function exactKeys(
   field = "/",
 ): void {
   const allowed = new Set([...required, ...optional]);
-  if (required.some((key) => !(key in value))
-    || Object.keys(value).some((key) => !allowed.has(key))) {
+  const missing = required.filter(key => !(key in value));
+  const unexpected = Object.keys(value).filter(key => !allowed.has(key));
+  if (missing.length || unexpected.length) {
     failCandidateValidation(
       "schema_invalid",
       field,
-      "exact proof-bound BookStructure candidate fields",
+      `exact proof-bound BookStructure candidate fields; missing: ${missing.join(", ") || "none"}; `
+        + `unexpected: ${unexpected.join(", ") || "none"}; required: ${required.join(", ")}; `
+        + `optional: ${optional.join(", ") || "none"}`,
       value,
     );
   }
@@ -587,12 +590,13 @@ function validateObservation(
       record,
     );
   }
-  const roleHints = record.role_hints.map((role) => {
-    const value = candidateBoundedString(role, "role_hint", 64) as BookStructureSpineRole;
+  const roleHints = record.role_hints.map((role, index) => {
+    const field = `role_hints[${index}]`;
+    const value = candidateBoundedString(role, field, 64) as BookStructureSpineRole;
     if (!SPINE_ROLES.has(value)) {
       failCandidateValidation(
         "schema_invalid",
-        "role_hint",
+        field,
         "setup | foundation | method | application | case | synthesis",
         value,
       );
@@ -604,7 +608,11 @@ function validateObservation(
   const coreHasBody = "core_leaf_lids" in task.input
     ? task.input.core_leaf_lids.some(lid => allowed.has(lid))
     : allowed.size > 0;
-  if (discovery && coreHasBody && !record.summary_fragments.length) throw new Error("discovery body needs a grounded overview");
+  if (discovery && coreHasBody && !record.summary_fragments.length) {
+    failCandidateValidation("schema_invalid", "summary_fragments",
+      "discovery body needs a grounded overview: at least one summary fragment with text and evidence_lids from this core",
+      record.summary_fragments);
+  }
   return {
     version: BOOK_STRUCTURE_FRAGMENT_SCHEMA_VERSION_V1,
     parent_unit_lid: task.parent_unit_lid,

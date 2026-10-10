@@ -18,3 +18,4 @@ ureq = { version = "2", features = ["json"] }
 url = "2"
 dotenvy = "0.15"
 ts-rs = "10"
+uuid = { version = "1", features = ["v7"] }

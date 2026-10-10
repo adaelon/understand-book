@@ -1,0 +1,21 @@
+body { font-family: "Noto Serif CJK SC", "Source Han Serif SC", "Microsoft YaHei", serif; line-height: 1.75; color: #202b35; margin: 5%; }
+h1, h2, h3, h4 { font-family: "Microsoft YaHei", sans-serif; line-height: 1.4; color: #153d50; page-break-after: avoid; }
+h1 { font-size: 1.7em; margin: 1.5em 0; }
+h2 { font-size: 1.3em; margin-top: 2em; }
+h3 { font-size: 1.1em; }
+p { margin: .85em 0; overflow-wrap: anywhere; }
+a { color: #176b8b; text-decoration: none; overflow-wrap: anywhere; }
+pre, code { font-family: Consolas, "Microsoft YaHei", monospace; font-size: .88em; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; line-height: 1.5; padding: .8em; background: #f2f5f6; border-left: .18em solid #7c9aa8; }
+code { overflow-wrap: anywhere; }
+table { width: 100%; border-collapse: collapse; font-size: .82em; margin: 1.4em 0; table-layout: fixed; }
+th, td { border: 1px solid #c7d1d7; padding: .45em; text-align: left; vertical-align: top; overflow-wrap: anywhere; word-break: break-word; }
+th { background: #eaf0f3; font-weight: bold; }
+tr { page-break-inside: avoid; }
+img { max-width: 100%; height: auto; vertical-align: middle; }
+img.math-inline { height: 1.35em; width: auto; max-width: none; vertical-align: -.25em; }
+img.math-display { max-width: 100%; max-height: 7em; width: auto; display: block; margin: 1em auto; }
+figure, div.figure { margin: 1.5em 0; text-align: center; }
+figcaption, p.caption { font-size: .8em; color: #576976; }
+blockquote { margin: 1em 0; padding: .1em 1em; border-left: .2em solid #99aeba; color: #455864; }
+.titlepage { text-align: center; padding-top: 15%; }

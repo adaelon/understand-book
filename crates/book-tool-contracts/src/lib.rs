@@ -275,6 +275,7 @@ pub struct ContextInput {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct ConceptInput {
+    #[schemars(length(min = 1, max = 4096))]
     pub query: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub anchor_lid: Option<String>,
@@ -475,6 +476,7 @@ fn default_search_page_size() -> usize {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct SearchTextInput {
+    #[schemars(length(min = 1, max = 4096))]
     pub query: String,
     #[serde(default)]
     pub match_mode: SearchMatchMode,
@@ -577,9 +579,23 @@ pub fn input_schema(id: BookToolId) -> Value {
         BookToolId::Concept => concept_input_schema(),
         BookToolId::Structure | BookToolId::GuidePath => schema_value::<AtInput>(),
         BookToolId::PaperReadingGuide => schema_value::<PaperReadingGuideInput>(),
-        BookToolId::Query => schema_value::<BookQueryRequest>(),
+        BookToolId::Query => {
+            let mut schema = schema_value::<BookQueryRequest>();
+            schema["anyOf"] = json!([
+                {"properties":{"intent":{"enum":["definition","explanation"]}}},
+                {"properties":{"intent":{"enum":["relation","comparison"]},"targets":{"minItems":2}}}
+            ]);
+            schema
+        },
         BookToolId::Synthesize => schema_value::<SynthesizeInput>(),
-        BookToolId::Guide => schema_value::<GuideInput>(),
+        BookToolId::Guide => {
+            let mut schema = schema_value::<GuideInput>();
+            schema["anyOf"] = json!([
+                {"properties":{"action":{"enum":["guide"]},"intent":{"type":"string","minLength":1}},"required":["intent"]},
+                {"properties":{"action":{"enum":["close"]},"session_id":{"type":"string","minLength":1}},"required":["action","session_id"]}
+            ]);
+            schema
+        },
     }
 }
 
@@ -598,7 +614,7 @@ pub fn concept_input_schema() -> Value {
     schema
 }
 
-fn schema_value<T: JsonSchema>() -> Value {
+pub fn schema_value<T: JsonSchema>() -> Value {
     let root = SchemaGenerator::default().into_root_schema_for::<T>();
     let mut value = serde_json::to_value(root).expect("JsonSchema must serialize");
     let definitions = value
@@ -650,29 +666,6 @@ fn inline_tool_schema(value: &mut Value, definitions: &serde_json::Map<String, V
             }
         }
         *value = single_all_of;
-        inline_tool_schema(value, definitions);
-        return;
-    }
-
-    let optional_inner = value
-        .get("anyOf")
-        .and_then(Value::as_array)
-        .filter(|variants| variants.len() == 2)
-        .and_then(|variants| {
-            let has_null = variants
-                .iter()
-                .any(|variant| variant.get("type") == Some(&Value::String("null".into())));
-            has_null
-                .then(|| {
-                    variants
-                        .iter()
-                        .find(|variant| variant.get("type") != Some(&Value::String("null".into())))
-                        .cloned()
-                })
-                .flatten()
-        });
-    if let Some(optional_inner) = optional_inner {
-        *value = optional_inner;
         inline_tool_schema(value, definitions);
         return;
     }
@@ -942,9 +935,11 @@ mod tests {
         }
         assert_eq!(input_schema(BookToolId::Text)["required"], json!(["lid"]));
         assert_eq!(
-            input_schema(BookToolId::Context)["properties"]["granularity"]["enum"],
+            input_schema(BookToolId::Context)["properties"]["granularity"]["anyOf"][0]["enum"],
             json!(["near", "mid", "far"])
         );
+        assert_eq!(input_schema(BookToolId::Context)["properties"]["granularity"]["anyOf"][1], json!({"type":"null"}));
+        assert!(validate_input(BookToolId::Context, json!({"lid":"1.1","granularity":null})).is_ok());
         assert_eq!(
             input_schema(BookToolId::PaperReadingGuide)["properties"]["mode"]["default"],
             "skim"

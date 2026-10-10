@@ -173,6 +173,28 @@ struct AuthoringPort {
     reader: Reader,
     writes: usize,
     deliveries: usize,
+    recorded_preview: Option<AuthorResult>,
+}
+
+#[test]
+fn tool_contract_invalid_arguments_stop_before_host_and_can_be_corrected() {
+    let b = book();
+    let mut port = AuthoringPort::new(&b, "tool-contract-gate");
+    let adapter = RequestPlanRecordingAdapter::new(vec![
+        discover(),
+        author("invalid", json!({"operation":"write","title":"Page","html":"<p>x</p>","readable_content":"Text","state_contract":"not an object"})),
+        write("corrected"),
+        turn_final("Draft saved."),
+    ], vec![]);
+    let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+    execute(&mut port, &b, &adapter, &mut context).unwrap();
+    assert_eq!(port.writes, 1, "invalid request must never reach host storage");
+    let result = context.messages.iter().find(|m| m.tool_call_id.as_deref() == Some("invalid")).unwrap();
+    assert!(result.content.as_deref().unwrap().contains("PRESENTATION_ARGUMENTS_INVALID"));
+    // Persisted messages hold receipts; correction details live in the next model projection.
+    let plans = adapter.seen_plans.borrow();
+    let feedback = plans[2].input.iter().find(|m| m.tool_call_id.as_deref() == Some("invalid")).unwrap();
+    assert!(feedback.content.as_deref().unwrap().contains("state_contract"));
 }
 impl AuthoringPort {
     fn new(book: &Book, label: &str) -> Self {
@@ -181,6 +203,7 @@ impl AuthoringPort {
             reader: Reader::new(book, 1),
             writes: 0,
             deliveries: 0,
+            recorded_preview: None,
         }
     }
 }
@@ -231,6 +254,10 @@ impl ResidentStatePort for AuthoringPort {
                     json!({"status":"candidate_saved", "candidate_id":format!("c{}",self.writes)});
             }
             AuthorRequest::Preview { candidate_id, .. } => {
+                if let Some(recorded) = self.recorded_preview.take() {
+                    assert_eq!(recorded.body["candidate_id"], candidate_id);
+                    return Ok(recorded);
+                }
                 result.body =
                     json!({"status":"preview_ready_for_inspection", "candidate_id":candidate_id});
                 result.previewed_candidate = Some(candidate_id.clone());
@@ -635,6 +662,7 @@ fn ex12_cancellation_and_new_run_end_design_state() {
                 assert_eq!(design(request).unwrap()["framework"], "CANCEL_FRAME");
                 self.stop.cancel();
                 return Err(AdapterError {
+                    spend_stop: None,
                     message: "cancelled during sampling".into(),
                 });
             }
@@ -680,10 +708,21 @@ fn ex12_cancellation_and_new_run_end_design_state() {
 
 #[test]
 fn ex12_current_framework_survives_mid_turn_compaction() {
+    check_framework_survives_mid_turn_compaction("local", json!(["editing"]));
+}
+
+fn check_framework_survives_mid_turn_compaction(selected_phase: &str, needs: Value) {
+    let media_selected = needs.as_array().is_some_and(|items| items.iter().any(|n| n == "manim"));
     let b = book();
     let mut port = AuthoringPort::new(&b, "ex12-compaction");
     let messages = completed_history("OLD_COMPLETED_HISTORY", 35_000);
     let snapshot = default_profile_snapshot(&b, &port.store, "t0");
+    // Discovery activates this schema after the initial pressure measurement.
+    // Reserve it explicitly so the working material, not tool activation,
+    // remains the event that triggers this compaction fixture.
+    let author_schema_tokens = crate::model_runtime::estimate_text_tokens(
+        &crate::presentation_author::spec().parameters.to_string(),
+    );
     let profile = tune_profile_just_above_initial_pressure(
         &b,
         &snapshot,
@@ -691,18 +730,18 @@ fn ex12_current_framework_survives_mid_turn_compaction() {
         &messages,
         "Explain the relationship",
         compaction_profile("ex12-compaction"),
-        10_000,
+        (if media_selected { 20_000 } else { 10_000 }) + author_schema_tokens,
     );
     let local = prepare(
         "latest",
-        "local",
+        selected_phase,
         "CURRENT_FRAME",
         "CURRENT_FOCUS",
-        json!(["editing"]),
+        needs,
     );
     // Pressure comes from preserved current-turn conversation, not the brief design record.
     let mut next = write("pressure-after-selection");
-    next.text = Some("Current working material. ".repeat(2_000));
+    next.text = Some("Current working material. ".repeat(if media_selected { 6_000 } else { 2_000 }));
     let adapter = AutoCompactionAdapter::new(
         profile,
         vec![discover(), local, write("saved-before-pressure"), next, turn_final("Continue later.")],
@@ -769,8 +808,28 @@ fn ex12_current_framework_survives_mid_turn_compaction() {
         .as_deref()
         .unwrap()
         .contains("CURRENT_FRAME"));
-    assert!(after.contains("Presentation phase: local"));
-    assert_eq!(after.matches("Presentation phase: local").count(), 1, "compaction lost or duplicated active guidance");
+    assert!(after.contains(&format!("Presentation phase: {selected_phase}")));
+    assert_eq!(after.matches(&format!("Presentation phase: {selected_phase}")).count(), 1, "compaction lost or duplicated active guidance");
+    if selected_phase == "local" {
+        assert!(sampled[4].iter().filter_map(|m| m.content.as_deref())
+            .any(|s| s.contains(include_str!("../../../skills/presentation/phases/local.md").trim())), "compaction lost local visual methods");
+        ex14::record_value("local-compaction", "messages.json", &json!(*sampled));
+    }
+    if selected_phase == "review" {
+        assert!(after.contains("观察关系真正发生的位置"));
+        assert!(after.contains("prerequisite actions plus target actions"));
+        let current = sampled[4].iter().rev().filter_map(|m| m.content.as_deref())
+            .find(|s| s.starts_with("presentation_guidance_state.v1\n")).unwrap();
+        assert!(current.contains(if media_selected { "manim" } else { "continuous_scene" }));
+        if media_selected {
+            let manim = include_str!("../../../skills/presentation/references/manim.md").trim();
+            assert_eq!(sampled[4].iter().filter_map(|m| m.content.as_deref())
+                .filter(|s| s.contains(manim)).count(), 1, "compaction lost or duplicated Manim guidance");
+            ex14::record_value("media-compaction", "messages.json", &json!(*sampled));
+        } else {
+            ex14::record_value("compaction", "messages.json", &json!(*sampled));
+        }
+    }
     assert_eq!(sampled[3][0].content, sampled[4][0].content, "compaction rebuilt different common instructions");
     let saved = sampled[4].iter().flat_map(|m| &m.tool_calls).find(|c| c.id == "saved-before-pressure").unwrap();
     let args: Value = serde_json::from_str(&saved.arguments).unwrap();
@@ -786,6 +845,9 @@ fn ex12_current_framework_survives_mid_turn_compaction() {
         }
     }
 }
+
+#[path = "presentation_ex14_guidance_tests.rs"]
+mod ex14;
 
 #[test]
 fn ex12_omitted_fields_clear_previous_work_before_delivery() {

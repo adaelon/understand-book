@@ -23,6 +23,10 @@ import { retrievalDependencies, retrievalPreparationMatches } from "./semantic-r
 import { readBuildRetrievalState, retrievalRemainingWork, type TeachingRetrievalRequest } from "./automatic-build-retrieval";
 import { createCandidateTransportContract } from "./executor-transport";
 import { STRUCTURE_ORGANIZATION_PROMPTS } from "./book-structure-organization-prompts";
+import type { ModelExecutionBudgetBlockedV3 } from "./model-input-budget";
+import { estimateTokens } from "./window";
+
+const STRUCTURE_ORGANIZATION_BODY_LIMIT_TOKENS = 20000;
 
 export type StructureOrganizationKind = "structure_outline" | "structure_chapter" | "structure_chapter_selection" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile";
 export type StructureOrganizationState = StructureOutline | StructureChapterWork | StructureThemeDirectory;
@@ -42,7 +46,11 @@ export type StructureOrganizationInput = {
 export interface StructureOrganizationAcceptance { version: "book_structure_action.v1"; accepted_action: unknown }
 export function renderStructureOrganizationInput(input: StructureOrganizationInput): string {
   const indent = input.phase === "plan" && input.context.planning_candidate_refs ? undefined : 2;
-  return JSON.stringify({ phase: input.phase, input: input.body, reference_scope: input.reference_scope }, null, indent) + "\n";
+  const delivery = { phase: input.phase, input: input.body, reference_scope: input.reference_scope };
+  const rendered = JSON.stringify(delivery, null, indent) + "\n";
+  // Retain accepted outline identities when their original rendering already fits.
+  return input.phase === "outline" && estimateTokens(rendered) > STRUCTURE_ORGANIZATION_BODY_LIMIT_TOKENS
+    ? JSON.stringify(delivery) + "\n" : rendered;
 }
 export function applyStructureOrganizationAction(input: StructureOrganizationInput, action: unknown): StructureOrganizationState {
   switch (input.phase) {
@@ -65,7 +73,9 @@ export function structureOrganizationContracts(base: BookStructureExecutionContr
   }])) as Record<StructureOrganizationKind, Pick<BookStructureExecutionContractV2, "semantic_prompt" | "policy_fingerprint">>;
 }
 export const structureOrganizationGeneration = (kind: StructureOrganizationKind, quality: string) => `${kind.replaceAll("_", "-")}.${quality}.${kind === "structure_chapter" || kind.startsWith("structure_theme") ? "v2" : "v1"}`;
-export class StructureOrganizationBlocked extends Error {}
+export class StructureOrganizationBlocked extends Error {
+  constructor(message: string, readonly budget?: ModelExecutionBudgetBlockedV3) { super(message); }
+}
 
 const structureThemeRevisionRequestSchema = z.object({
   id: z.string().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/),
@@ -133,6 +143,7 @@ export function routeStructureOrganization(input: {
   let preparation: TeachingRetrievalRequest | undefined;
   let remaining: ReturnType<typeof retrievalRemainingWork> | undefined;
   let blocked: string | undefined;
+  let budgetBlocked: ModelExecutionBudgetBlockedV3 | undefined;
   const scope: BookStructureReferenceScope = { unit_lids: input.outline.chapters.map(c => c.unit_lid), dependency_target_lids: [], evidence_by_unit: {} };
   // Descriptors bind the actual rendered input. Core dependencies live in the current
   // context and are rechecked by applying the saved action, including unshown candidates.
@@ -141,9 +152,9 @@ export function routeStructureOrganization(input: {
     const reserve = kind === "structure_outline" ? 5000 : kind === "structure_chapter" || kind === "structure_chapter_selection" ? 3500 : 6500;
     const evaluated = evaluateBookStructureExecution({ contract, rendered_input: rendered,
       transport_profile: input.execution_profile.transport_profile,
-      budget: { stage_body_limit_tokens: 20000, executor_context_floor_tokens: 32768,
+      budget: { stage_body_limit_tokens: STRUCTURE_ORGANIZATION_BODY_LIMIT_TOKENS, executor_context_floor_tokens: 32768,
         output_reserve_tokens: reserve, max_candidate_tokens: Math.min(reserve, createCandidateTransportContract(input.execution_profile.transport_profile).candidate_value_max_estimated_tokens), safety_margin_tokens: 512 } });
-    if (evaluated.status !== "within_limit") throw new StructureOrganizationBlocked(`BookStructure ${id} input exceeds its execution budget; reduce the requested material before resuming`);
+    if (evaluated.status !== "within_limit") throw new StructureOrganizationBlocked(`BookStructure ${id} input exceeds its execution budget; reduce the requested material before resuming`, evaluated);
     const descriptor = proofBoundBookStructureDescriptor({ target: input.target.target_ref,
       work_unit_id: `${id}-${evaluated.proof.rendered_input_sha256.slice(0, 16)}`, kind, rendered_input: rendered, proof: evaluated.proof,
       policy_fingerprint: contract.policy_fingerprint, input_basis: { kind: "semantic_projection", projection_kind: "book_structure",
@@ -284,6 +295,7 @@ export function routeStructureOrganization(input: {
   } catch (error) {
     if (!(error instanceof StructureOrganizationBlocked)) throw error;
     blocked = error.message;
+    budgetBlocked = error.budget;
   }
-  return { tasks, pending, progress, candidate, preparation, remaining, blocked };
+  return { tasks, pending, progress, candidate, preparation, remaining, blocked, budget_blocked: budgetBlocked };
 }

@@ -65,7 +65,7 @@ pub struct ReaderState {
     pub layout: ReaderLayoutState,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum PaperMinimapMode {
@@ -82,7 +82,7 @@ pub enum PaperMinimapActor {
     Agent,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum PaperMinimapPresentation {
@@ -90,7 +90,7 @@ pub enum PaperMinimapPresentation {
     Expanded,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperViewportPosition {
     pub start_page: u32,
@@ -156,7 +156,7 @@ pub struct MinimapOverlay {
     pub local_projection: Option<PaperLocalProjection>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum UserLandmarkKind {
@@ -177,7 +177,7 @@ pub struct UserLandmark {
     pub created_from_effect: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum UserLandmarkOverrideOperation {
@@ -230,7 +230,7 @@ pub struct ReaderPaperMinimapState {
     pub saved_user_overlay: SavedUserOverlay,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum PaperMinimapAction {
@@ -274,7 +274,7 @@ pub enum PaperMinimapAction {
     ClearSessionOverlay {},
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum SavedUserOverlayAction {
@@ -303,7 +303,7 @@ pub enum SavedUserOverlayAction {
     ClearSavedOverlay {},
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[serde(tag = "scope", content = "action", rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum PaperMinimapCommand {

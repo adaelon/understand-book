@@ -205,6 +205,7 @@ impl Resources {
                 slots.waiting.retain(|(id, _)| *id != ticket);
                 self.changed.notify_all();
                 return Err(AdapterError {
+                    spend_stop: None,
                     message: e.error_code,
                 });
             }
@@ -308,6 +309,7 @@ impl LimitedAdapter<'_> {
         }
         let _permit = permit?;
         self.cancellation.check().map_err(|e| AdapterError {
+            spend_stop: None,
             message: e.error_code,
         })?;
         if let Some((access, publication)) = self.authorization {
@@ -316,9 +318,7 @@ impl LimitedAdapter<'_> {
                 .lock()
                 .unwrap()
                 .authorize(&self.owner, publication)
-                .map_err(|_| AdapterError {
-                    message: "RUN_PERMISSION_REVOKED".into(),
-                })?;
+                .map_err(|_| AdapterError::from(runtime::model_spend::SpendStop::PermissionRevoked))?;
         }
         let mut reported = None;
         let result = invoke(&mut |delta: ModelDelta| {
@@ -345,6 +345,8 @@ impl LimitedAdapter<'_> {
     }
 }
 impl ModelAdapter for LimitedAdapter<'_> {
+    fn set_spend_context(&self, scope: runtime::model_spend::ChargeScope, port: Option<Arc<dyn runtime::model_spend::ModelSpendPort>>) { self.inner.set_spend_context(scope,port); }
+    fn set_model_purpose(&self, purpose: &str) { self.inner.set_model_purpose(purpose); }
     fn stream_text_is_structured(&self) -> bool {
         self.inner.stream_text_is_structured()
     }
@@ -421,6 +423,7 @@ mod tests {
                 }
             }
             Err(AdapterError {
+                spend_stop: None,
                 message: "timeout".into(),
             })
         }

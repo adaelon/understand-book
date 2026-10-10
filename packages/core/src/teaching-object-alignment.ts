@@ -1,11 +1,14 @@
 import { z } from "zod";
-import { acceptFormalObjects, checkTeachingBindings, LearningObjectRefZ, ObjectProposalZ, SourceBindingZ,
+import { acceptFormalObjects, checkTeachingBindings, checkObjectCardinality, LearningObjectRefZ, ObjectProposalZ, SourceBindingZ,
   type FormalObjectProposal, type FormalObjects, type TeachingSource, type TeachingSourceBinding } from "./teaching-map";
 import type { FormalObjectFragmentResult, TeachingSourceRange } from "./teaching-object-fragments";
 import { projectRetrievalCatalog, retrievalCatalog, retrievalPage, type RetrievalRequest } from "./semantic-retrieval";
 import { retrievalDependencies, retrievalPreparationMatches, type PreparedRetrieval } from "./semantic-retrieval-preparation";
+import { ExtractorContractError } from "./extractor-contract";
+import { isDeepStrictEqual } from "node:util";
 
 type ObjectProposal = FormalObjectProposal["objects"][number];
+export const ALIGNMENT_RETRIEVAL_STEP_LIMIT = 32;
 const text = z.string().trim().min(1);
 export const AlignmentActionZ = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("search"), query: z.string(), offset: z.number().int().nonnegative() }).strict(),
@@ -27,6 +30,8 @@ export interface ObjectAlignmentWork {
   search?: { query: string; offset: number; keys: string[]; next_offset: number | null; preparation_required?: true };
   reading?: { lid: string; start: number; end: number; text: string };
   steps_since_progress: number;
+  /** A parallel branch keeps its candidate focus until its resolve action. */
+  focus_key?: string;
   result?: FormalObjects;
   /** A reused finish action needs materialization at the stage-close write boundary. */
   finish_requested?: true;
@@ -55,11 +60,15 @@ export function newObjectAlignment(fragments: FormalObjectFragmentResult[]): Obj
   }
   return { version: "formal_object_alignment.v3", proposal, resolved: [], redirects: {}, source_ranges, inspected: [], read_ranges: [], steps_since_progress: 0 };
 }
-function requireReadBindings(work: ObjectAlignmentWork, bindings: TeachingSourceBinding[], source: TeachingSource): void {
-  for (const binding of bindings) {
+function requireReadBindings(work: ObjectAlignmentWork, bindings: TeachingSourceBinding[], source: TeachingSource, pointer: string): void {
+  for (const [index, binding] of bindings.entries()) {
     const range = binding.range_utf16 ?? { start: 0, end: source.passages.find(p => p.lid === binding.lid)!.text.length };
     if (!work.read_ranges.some(r => r.source_id === binding.source_id && r.source_revision === binding.source_revision
-      && r.lid === binding.lid && r.start <= range.start && r.end >= range.end)) throw new Error("alignment cites unread source range");
+      && r.lid === binding.lid && r.start <= range.start && r.end >= range.end)) throw new ExtractorContractError({
+        version: "automatic_build_extractor_diagnostic.v1", code: "schema_invalid", json_pointer: `${pointer}/${index}`,
+        expected: `alignment cites unread source range: read lid=${binding.lid}, start=${range.start}, end=${range.end} in spans of at most 2000 before submitting this binding. After retrieval exhaustion, use retrieval_budget.next_read or cite already read evidence.`,
+        actual: { lid: binding.lid, ...range },
+      });
   }
 }
 function oldObjects(previous?: FormalObjects) {
@@ -70,7 +79,9 @@ function unclaimed(work: ObjectAlignmentWork, previous?: FormalObjects) {
     && !work.proposal.correspondences.some(c => c.from.some(r => r.object_id === old.ref.object_id)));
 }
 export function alignmentFocus(work: ObjectAlignmentWork, previous?: FormalObjects) {
-  const object = work.proposal.objects.find(o => !work.resolved.includes(o.key));
+  const object = work.focus_key ? work.proposal.objects.find(o => o.key === work.focus_key && !work.resolved.includes(o.key))
+    : work.proposal.objects.find(o => !work.resolved.includes(o.key));
+  if (work.focus_key && !object) throw new Error("parallel alignment focus unavailable or already resolved");
   if (object) return { kind: "candidate" as const, key: object.key, object };
   const old = unclaimed(work, previous)[0];
   if (old) return { kind: "identity" as const, key: priorKey(old.ref.object_id), object: old };
@@ -79,6 +90,28 @@ export function alignmentFocus(work: ObjectAlignmentWork, previous?: FormalObjec
 function catalog(work: ObjectAlignmentWork, previous?: FormalObjects) {
   return [...work.proposal.objects.map(o => ({ key: o.key, object: o })),
     ...oldObjects(previous).map(o => ({ key: priorKey(o.ref.object_id), object: o }))];
+}
+// After lookup is exhausted, the finite set of already inspected source passages can still be read.
+// Subtracting cumulative coverage makes every accepted supplemental read advance toward completion.
+function supplementalReadRanges(work: ObjectAlignmentWork, source: TeachingSource, previous?: FormalObjects): TeachingSourceRange[] {
+  const focus = alignmentFocus(work, previous);
+  if (focus.kind === "finish") return [];
+  const records = catalog(work, previous);
+  const bindings = [focus.object, ...work.inspected.flatMap(key => records.find(r => r.key === key)?.object ?? [])]
+    .flatMap(object => object.source_bindings);
+  const lids = unique(bindings.filter(b => b.source_id === source.source_id && b.source_revision === source.source_revision).map(b => b.lid));
+  return lids.flatMap(lid => {
+    const end = source.passages.find(p => p.lid === lid)?.text.length ?? 0;
+    let start = 0;
+    const missing: TeachingSourceRange[] = [];
+    for (const read of work.read_ranges.filter(r => r.source_id === source.source_id && r.source_revision === source.source_revision && r.lid === lid)
+      .sort((a, b) => a.start - b.start)) {
+      if (read.start > start) missing.push({ lid, start, end: read.start });
+      start = Math.max(start, read.end);
+    }
+    if (start < end) missing.push({ lid, start, end });
+    return missing;
+  });
 }
 export function alignmentRetrievalRequest(work: ObjectAlignmentWork, previous?: FormalObjects): RetrievalRequest {
   const focus = alignmentFocus(work, previous), focus_key = focus.kind === "finish" ? undefined : focus.key;
@@ -92,8 +125,9 @@ function requirePreparedRetrieval(work: ObjectAlignmentWork, previous: FormalObj
 }
 /** The persisted ledger is complete; only a bounded focus, page and inspected records enter the model. */
 export function objectAlignmentInput(work: ObjectAlignmentWork, source: TeachingSource, previous?: FormalObjects, prepared?: PreparedRetrieval) {
+  const exhausted = work.steps_since_progress >= ALIGNMENT_RETRIEVAL_STEP_LIMIT;
   if (prepared) requirePreparedRetrieval(work, previous, prepared);
-  else if (work.search?.preparation_required) throw new Error("alignment retrieval preparation required");
+  else if (!exhausted && work.search?.preparation_required) throw new Error("alignment retrieval preparation required");
   const focus = alignmentFocus(work, previous);
   const records = catalog(work, previous);
   const summaries = (keys: string[]) => keys.flatMap(key => {
@@ -102,6 +136,7 @@ export function objectAlignmentInput(work: ObjectAlignmentWork, source: Teaching
       conditions: record.object.conditions.join("; ").slice(0, 180) }] : [];
   });
   const focusBindings = focus.kind === "finish" ? [] : focus.object.source_bindings;
+  const nextRead = exhausted ? supplementalReadRanges(work, source, previous)[0] : undefined;
   const page = prepared ? retrievalPage(prepared.sequence, work.search?.offset ?? 0, prepared.dependencies.policy) : undefined;
   const search = page ? { query: work.search?.query ?? (focus.kind === "finish" ? "" : focus.object.meaning),
     mode: work.search ? "explicit" : "focus", offset: page.offset, keys: page.items.map(r => r.key), next_offset: page.next_offset,
@@ -109,10 +144,16 @@ export function objectAlignmentInput(work: ObjectAlignmentWork, source: Teaching
     items: page.items.flatMap(hit => summaries([hit.key]).map(summary => ({ ...summary, match_reasons: hit.match_reasons }))) }
     : work.search ? { ...work.search, items: summaries(work.search.keys) } : undefined;
   return { mode: "alignment", source_id: source.source_id, source_revision: source.source_revision, focus,
+    ...(exhausted ? { retrieval_budget: {
+      steps_used: work.steps_since_progress, step_limit: ALIGNMENT_RETRIEVAL_STEP_LIMIT,
+      allowed_actions: [focus.kind === "candidate" ? "resolve" : focus.kind === "identity" ? "identity" : "finish", ...(nextRead ? ["read"] : [])],
+      ...(nextRead ? { next_read: { kind: "read", ...nextRead, end: Math.min(nextRead.start + 2000, nextRead.end) },
+        read_scope: "Only unread intervals of source passages bound to the focus or already inspected objects; each span is at most 2000 UTF-16 units." } : {}),
+    } } : {}),
     remaining_candidates: work.proposal.objects.filter(o => !work.resolved.includes(o.key)).length,
     remaining_identities: unclaimed(work, previous).length,
     catalog_size: records.length, source_ranges: focus.kind === "candidate" ? work.source_ranges[focus.key] : [],
-    search,
+    search: exhausted ? undefined : search,
     inspected_keys: work.inspected, inspected: work.inspected.slice(-3).map(key => records.find(r => r.key === key)), reading: work.reading,
     read_ranges: work.read_ranges,
     source_previews: unique(focusBindings.map(b => b.lid)).slice(0, 3).flatMap(lid => {
@@ -127,6 +168,14 @@ export function advanceObjectAlignment(input: { work: ObjectAlignmentWork; actio
   if (work.version !== "formal_object_alignment.v3") throw new Error("object alignment contract is stale");
   if (work.result) throw new Error("object alignment already complete");
   const action = AlignmentActionZ.parse(input.action), focus = alignmentFocus(work, previous);
+  if (work.steps_since_progress >= ALIGNMENT_RETRIEVAL_STEP_LIMIT) {
+    const required = focus.kind === "candidate" ? "resolve" : focus.kind === "identity" ? "identity" : "finish";
+    const supplemental = action.kind === "read" && action.start < action.end && supplementalReadRanges(work, source, previous)
+      .some(r => r.lid === action.lid && r.start <= action.start && r.end >= action.end);
+    if (action.kind !== required && !supplemental) throw new ExtractorContractError({ version: "automatic_build_extractor_diagnostic.v1", code: "schema_invalid",
+      json_pointer: "/kind", expected: `The ${ALIGNMENT_RETRIEVAL_STEP_LIMIT} retrieval steps are exhausted. Submit kind=${required} using read source ranges, or use retrieval_budget.next_read to supplement missing evidence. Further search, inspect, out-of-scope reads and repeated reads are unavailable.`,
+      actual: action.kind });
+  }
   if (input.retrieval) requirePreparedRetrieval(work, previous, input.retrieval);
   const records = catalog(work, previous);
   const visible = new Set([...work.inspected, ...(focus.kind === "finish" ? [] : [focus.key])]);
@@ -152,7 +201,11 @@ export function advanceObjectAlignment(input: { work: ObjectAlignmentWork; actio
   if (action.kind === "read") {
     const passage = source.passages.find(p => p.lid === action.lid);
     if (!passage || action.start >= action.end || action.end > passage.text.length || action.end - action.start > 2000)
-      throw new Error(`alignment source range invalid or too large: lid=${action.lid}; source_length_utf16=${passage?.text.length ?? "unavailable"}; require 0 <= start < end <= source_length_utf16 and end - start <= 2000`);
+      throw new ExtractorContractError({ version: "automatic_build_extractor_diagnostic.v1", code: "schema_invalid",
+        json_pointer: passage ? "/end" : "/lid",
+        expected: passage ? `Read range requires 0 <= start < end <= source_length_utf16=${passage.text.length} and end - start <= 2000; requested start=${action.start}.`
+          : "Read requires an existing source passage LID.",
+        actual: passage ? { start: action.start, end: action.end } : action.lid });
     work.reading = { ...action, text: passage.text.slice(action.start, action.end) };
     const samePassage = (r: ObjectAlignmentWork["read_ranges"][number]) => r.source_id === source.source_id
       && r.source_revision === source.source_revision && r.lid === action.lid;
@@ -181,9 +234,8 @@ export function advanceObjectAlignment(input: { work: ObjectAlignmentWork; actio
     for (const key of [...action.object.participants.map(p => p.object_key), ...action.object.component_keys]) {
       if (!work.proposal.objects.some(o => o.key === key)) throw new Error("alignment reference is unresolved");
     }
-    if (action.object.kind === "relation" && action.object.participants.length < 2) throw new Error("learnable relation requires participants and roles");
-    if (action.object.kind === "composite" && !action.object.component_keys.length) throw new Error("composite object requires components");
-    requireReadBindings(work, action.object.source_bindings, source);
+    checkObjectCardinality(action.object, "/object");
+    requireReadBindings(work, action.object.source_bindings, source, "/object/source_bindings");
     const replacement = { ...action.object, candidate_refs: unique([...action.object.candidate_refs, ...selected.flatMap(o => o.candidate_refs)]) };
     const ranges = action.keys.flatMap(key => work.source_ranges[key] ?? []);
     for (const key of action.keys) delete work.source_ranges[key];
@@ -216,7 +268,7 @@ export function advanceObjectAlignment(input: { work: ObjectAlignmentWork; actio
     checkTeachingBindings(action.source_bindings, source);
     if (action.source_bindings.some(b => !targets.some(o => o.source_bindings.some(binding => binding.lid === b.lid)))) throw new Error("identity evidence must bind current objects");
     if (action.from.length > 1 && targets.length > 1) throw new Error("identity decision must be a split or merge");
-    requireReadBindings(work, action.source_bindings, source);
+    requireReadBindings(work, action.source_bindings, source, "/source_bindings");
     if (action.from.length === 1 && targets.length === 1) targets[0].existing_ref = action.from[0];
     else {
       work.proposal.correspondences.push({ kind: action.from.length > 1 ? "merge" : "split", from: action.from,
@@ -227,9 +279,32 @@ export function advanceObjectAlignment(input: { work: ObjectAlignmentWork; actio
     work.result = acceptFormalObjects({ source, proposal: work.proposal, previous, operation_id: input.operation_id });
   }
   work.steps_since_progress = 0;
+  delete work.focus_key;
   delete work.finish_requested;
   work.inspected = [];
   work.read_ranges = [];
   delete work.search; delete work.reading;
   return work;
+}
+
+/** Commit a branch decision in lane order; overlapping decisions need a fresh focus. */
+export function mergeObjectAlignmentBranch(input: { current: ObjectAlignmentWork; branch: ObjectAlignmentWork;
+  action: unknown; source: TeachingSource; previous?: FormalObjects; operation_id: string }): ObjectAlignmentWork | undefined {
+  const action = AlignmentActionZ.parse(input.action);
+  if (action.kind !== "resolve" || !input.branch.focus_key) throw new Error("parallel alignment requires a focused resolve decision");
+  const dependencies = unique([...action.keys, ...input.branch.inspected,
+    ...action.object.component_keys, ...action.object.participants.map(p => p.object_key)]);
+  for (const key of dependencies) {
+    const before = input.branch.proposal.objects.find(o => o.key === key);
+    const current = input.current.proposal.objects.find(o => o.key === key);
+    if (!isDeepStrictEqual(before, current)
+      || (action.keys.includes(key) && input.current.resolved.includes(key) !== input.branch.resolved.includes(key))) return;
+  }
+  const work = structuredClone(input.current);
+  work.focus_key = input.branch.focus_key;
+  work.inspected = [...input.branch.inspected];
+  work.read_ranges = structuredClone(input.branch.read_ranges);
+  work.reading = input.branch.reading;
+  delete work.search;
+  return advanceObjectAlignment({ work, action, source: input.source, previous: input.previous, operation_id: input.operation_id });
 }

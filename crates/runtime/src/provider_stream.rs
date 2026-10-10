@@ -35,8 +35,10 @@ impl ModelUsage {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ModelDelta {
     /// Final wire request, emitted once per logical call (before any identical-body retry).
-    /// ObservedAdapter consumes this in memory; it must not reach answer or export sinks.
+    /// ObservedAdapter consumes this for diagnostics and opt-in full tracing, never answer sinks.
     Request(std::sync::Arc<Value>),
+    /// Complete provider response before adapter parsing, for opt-in tracing.
+    Response(std::sync::Arc<Value>),
     Text(String),
     ToolArguments {
         index: usize,
@@ -60,6 +62,7 @@ impl<F: FnMut(ModelDelta)> ModelObserver for F {
 pub fn ignore(_: ModelDelta) {}
 fn error(message: impl ToString) -> AdapterError {
     AdapterError {
+        spend_stop: None,
         message: message.to_string(),
     }
 }
@@ -107,7 +110,7 @@ pub fn read_response(
     cancellation: &CancellationToken,
     observer: &mut dyn ModelObserver,
 ) -> Result<Value, AdapterError> {
-    if response
+    let result = if response
         .header("Content-Type")
         .unwrap_or("")
         .split(';')
@@ -124,7 +127,11 @@ pub fn read_response(
         }
         cancellation.check().map_err(|e| error(e.message))?;
         Ok(value)
+    };
+    if let Ok(value) = &result {
+        observer.observe(ModelDelta::Response(std::sync::Arc::new(value.clone())));
     }
+    result
 }
 
 pub fn read_sse(

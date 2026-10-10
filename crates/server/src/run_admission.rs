@@ -618,8 +618,13 @@ impl RunAdmissions {
         session_runtime::link_teaching(user, &frozen.turn_ref(), &frozen.now)?;
         self.point("prepared")?;
         {
-            let state = self.state.lock().unwrap();
-            let changed = state.control.connection.execute("UPDATE run_admissions SET dispatch_state='queued',unsaved=0 WHERE owner_user_id=? AND turn_id=? AND dispatch_state='preparing'",params![row.owner,row.turn]).map_err(|_|storage())?;
+            let mut state = self.state.lock().unwrap();
+            let tx = state.control.connection.transaction().map_err(|_|storage())?;
+            let changed = tx.execute("UPDATE run_admissions SET dispatch_state='queued',unsaved=0 WHERE owner_user_id=? AND turn_id=? AND dispatch_state='preparing'",params![row.owner,row.turn]).map_err(|_|storage())?;
+            if changed == 1 {
+                crate::admin_usage::record(&tx, &row.owner, "question", &row.turn, frozen.now.parse().map_err(|_|invalid())?)?;
+            }
+            tx.commit().map_err(|_|storage())?;
             if changed == 1 {
                 if let Some(stream) = state.streams.get(&(row.owner.clone(), row.turn.clone())) {
                     stream.dispatch_state("queued");
@@ -1017,6 +1022,13 @@ impl RunAdmissions {
             publication: row.publication.clone(),
         };
         let provider_adapter = (provider.make)();
+        // Every nested model purpose inherits this server-owned run attribution.
+        let spend_scope = runtime::model_spend::ChargeScope::ReaderRun {
+            user_id: row.owner.clone(), run_ref: row.turn.clone(),
+        };
+        provider_adapter.set_spend_context(spend_scope.clone(), Some(access.spend.port(
+            spend_scope, row.publication.clone(), cancellation.clone(),
+        )));
         let adapter = crate::service_limits::LimitedAdapter {
             inner: provider_adapter.as_ref(),
             resources: access.resources.clone(),
@@ -1026,9 +1038,10 @@ impl RunAdmissions {
             authorization: Some((access, &row.publication)),
             stream: Some(stream.clone()),
         };
-        let observation = self.observability.start_run(
+        let observation = self.observability.start_run_with_input(
             &prepared.scope.book.base.book_id,
             &prepared.turn_ref.session_id,
+            || json!({"message":prepared.message,"messages":prepared.messages}),
         );
         let sink: Arc<dyn runtime::run_events::RunEventSink> = match &observation {
             Some(run) => Arc::new(agent_run::RunEventFanout {
@@ -1070,7 +1083,13 @@ impl RunAdmissions {
                 self.update(&row, "settled", false)?;
             }
             Err(_) => {
-                stream.finish(None, Some(json!({"error_code":"TURN_UNSAVED"})));
+                stream.finish(None, Some(json!({
+                    "error_code":"TURN_UNSAVED",
+                    "message":"本次运行结果尚未保存，请重试保存。",
+                    "execution_error":finished.result.as_ref().err().map(|error| json!({
+                        "error_code":error.error_code,"category":error.category,"message":error.message
+                    }))
+                })));
                 self.mark_unsaved(&row);
                 self.state.lock().unwrap().unsaved.insert(
                     (row.owner.clone(), row.turn.clone()),
@@ -1104,6 +1123,7 @@ impl RunAdmissions {
         session_runtime::link_teaching(user, &reference, &now)?;
         let cursors = agent_history_review_cursors(&user.agent_history);
         user.store.reconcile_review_jobs(&cursors, &now)?;
+        self.record_completed(user, &reference)?;
         self.update(row, "settled", false)
     }
     fn save_finished(
@@ -1127,7 +1147,7 @@ impl RunAdmissions {
                 Some(AgentTurnError {
                     error_code: e.error_code.clone(),
                     category: e.category.clone(),
-                    message: e.message.clone(),
+                    message: agent_run::saved_error_message(e),
                 }),
             ),
         };
@@ -1162,6 +1182,7 @@ impl RunAdmissions {
         session_runtime::link_teaching(&mut user, &prepared.turn_ref, &prepared.now)?;
         let cursors = agent_history_review_cursors(&user.agent_history);
         user.store.reconcile_review_jobs(&cursors, &prepared.now)?;
+        self.record_completed(&user, &prepared.turn_ref)?;
         let t = user
             .agent_history
             .sessions
@@ -1174,6 +1195,14 @@ impl RunAdmissions {
             })
             .ok_or_else(missing)?;
         Ok(json!(turn_view(&prepared.scope.book, t)))
+    }
+    fn record_completed(&self, user: &user_runtime::UserRuntime, reference: &AgentTurnRef) -> Result<(),ToolError> {
+        let session = user.agent_history.sessions.iter().find(|s|s.id==reference.session_id).ok_or_else(missing)?;
+        let turn = session.turns.iter().find(|t|t.turn_id==reference.turn_id).ok_or_else(missing)?;
+        if crate::admin_usage::delivered(session,turn) {
+            crate::admin_usage::record(&self.state.lock().unwrap().control.connection, user.user_id().ok_or_else(missing)?, "completed", &reference.turn_id, crate::multi_user_host::now())?;
+        }
+        Ok(())
     }
     pub(crate) fn lookup(
         &self,
@@ -1254,6 +1283,19 @@ impl RunAdmissions {
                 .clone(),
         )
     }
+    /// Account disable persists cancel_requested in the account transaction first.
+    /// Queued work uses run_one/end_pending; active work uses the normal cancel token.
+    /// No reader workspace or impersonated Principal is needed.
+    pub(crate) fn cancel_disabled_user(&self, owner: &str) {
+        let state = self.state.lock().unwrap();
+        for ((user, _), active) in &state.active {
+            if user == owner {
+                active.cancellation.cancel();
+                active.stream.cancelling();
+            }
+        }
+    }
+
     pub(crate) fn cancel(
         &self,
         context: &AuthorizedContext,

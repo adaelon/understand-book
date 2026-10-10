@@ -2,6 +2,8 @@
 
 状态：已接受，2026-09-29；T6–T12 的交付事实、教学循环、显式行为、判题、Evidence 和学习投影已实现；验证与限制见 [T9–T12 记录](../performance/tutor-t9-t12-20260929.md)。收敛 Grill Q78、Q81–Q88，继承 [ADR-0119](0119-agent-native-learning-environment-and-teaching-agency.md) 的 Agent 教学选择权与系统状态所有权。
 
+2026-10-09 更新：[ADR-0158](0158-book-structure-ready-tutor-and-optional-teaching-assets.md) 替代 §3 中“正式资产共同决定是否进入 TutorLoop”的准入要求，并扩展 §1–2 的目标关联：学习目标与确切原文可独立承载实际交付、评分和证据，正式对象引用按可用性补充。下述对象教学合同继续适用于已有正式对象的路径，实际事实、帮助条件和评分冻结规则继续有效。
+
 ## §1 事实与判断
 
 **决策**：实际呈现与行为经证据解释形成学习状态。

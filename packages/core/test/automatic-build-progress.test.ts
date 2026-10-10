@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { projectAutomaticBuildProgress } from "../src/automatic-build-progress";
 import type { AutomaticBuildPreflightV2 } from "../src/automatic-build-budget";
 import type { AutomaticBuildStageState } from "../src/build-orchestrator";
+import type { TeachingGenerationTask } from "../src/teaching-build";
 
 const plan = { public_stage_closure: ["pass1", "profile_sidecar", "book_structure"], private_artifacts: [] };
 function stage(options: { closed?: boolean; pending?: string[]; extra?: boolean } = {}): AutomaticBuildStageState {
@@ -24,6 +25,29 @@ function forecast(confidence: "low" | "matched"): AutomaticBuildPreflightV2 {
 }
 
 describe("build progress projection", () => {
+  it("reports the reduced shared ledger rather than a parallel branch's frozen proposal", () => {
+    const state: AutomaticBuildStageState = { stage: "formal_objects", closed: false, pending_tasks: ["a", "b", "c"],
+      object_alignment: { total_objects: 9, resolved_objects: 3, remaining_objects: 6 },
+      generation_tasks: { c: { kind: "teaching", task: { alignment: { proposal: { objects: [{ key: "stale" }] }, resolved: [] } } as unknown as TeachingGenerationTask } } };
+    expect(projectAutomaticBuildProgress({ plan: { public_stage_closure: ["formal_objects"], private_artifacts: [] },
+      stages: [state], status: "running" }).stages[0].object_alignment).toEqual(state.object_alignment);
+  });
+  it("counts unresolved objects from the latest alignment input instead of the one discovered action", () => {
+    const alignmentTask = (keys: string[], resolved: string[]) => ({ kind: "teaching" as const,
+      task: { alignment: { proposal: { objects: keys.map(key => ({ key, meaning: "private semantic text" })) }, resolved } } as TeachingGenerationTask });
+    const state: AutomaticBuildStageState = { stage: "formal_objects", closed: false, pending_tasks: ["next"],
+      work_units: [{ work_unit_id: "old" }, { work_unit_id: "next" }] as AutomaticBuildStageState["work_units"],
+      generation_tasks: { old: alignmentTask(["a", "b", "c"], []), next: alignmentTask(["a", "b", "c"], ["a"]) } };
+    const progress = projectAutomaticBuildProgress({ plan: { public_stage_closure: ["formal_objects"], private_artifacts: [] },
+      stages: [state], status: "running" });
+    expect(progress.stages[0].work?.pending).toBe(1);
+    expect(progress.stages[0]).toHaveProperty("object_alignment", { total_objects: 3, resolved_objects: 1, remaining_objects: 2 });
+    expect(JSON.stringify(progress)).not.toContain("private semantic text");
+    state.generation_tasks!.next = alignmentTask(["a", "c"], ["a", "b"]);
+    expect(projectAutomaticBuildProgress({ plan: { public_stage_closure: ["formal_objects"], private_artifacts: [] },
+      stages: [state], status: "running" }).stages[0]).toHaveProperty("object_alignment",
+        { total_objects: 2, resolved_objects: 1, remaining_objects: 1 });
+  });
   it("shows the whole selected route without inventing zero counts for future stages", () => {
     const progress = projectAutomaticBuildProgress({ plan, stages: [stage(),
       { stage: "pass2", closed: false, pending_tasks: [] }], status: "running" });

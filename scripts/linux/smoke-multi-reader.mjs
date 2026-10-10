@@ -34,7 +34,7 @@ const page = await context.newPage();
 page.setDefaultTimeout(30_000);
 async function login(owner) {
   await page.goto(base);
-  await page.getByLabel('账号', { exact: true }).fill(owner);
+  await page.getByLabel('邮箱或账号', { exact: true }).fill(owner);
   await page.getByLabel('密码', { exact: true }).fill(credentials[owner]);
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await page.getByRole('heading', { name: '选择阅读材料' }).waitFor();

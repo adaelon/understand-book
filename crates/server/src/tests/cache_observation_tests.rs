@@ -18,11 +18,12 @@ impl LangSmithTransport for Capture {
 // path. Only the external model and LangSmith service are fixtures.
 #[test]
 fn formal_admission_exports_usage_diagnostics_and_terminal_states() {
-    for failure in ["none", "provider", "save"] {
+    for (mode, failure) in [("metadata","none"),("metadata","provider"),("metadata","save"),
+        ("full","none"),("full","provider"),("full","save")] {
         let mut f = Fixture::new();
         let sent = Arc::new(Mutex::new(Vec::new()));
         let config = ObservabilityConfig::from_getter(|key| match key {
-            "UB_OBSERVABILITY_MODE" => Some("metadata".into()),
+            "UB_OBSERVABILITY_MODE" => Some(mode.into()),
             "LANGSMITH_API_KEY" => Some("fixture-key".into()),
             "LANGSMITH_PROJECT" => Some("formal-admission-fixture".into()),
             _ => None,
@@ -31,6 +32,7 @@ fn formal_admission_exports_usage_diagnostics_and_terminal_states() {
         Arc::get_mut(&mut f.access).unwrap().runs.observability = observation.clone();
 
         let provider = tiny_http::Server::http("127.0.0.1:0").unwrap();
+        crate::tests::adm5_tests::seed_model(&mut f, &format!("http://{}", provider.server_addr()), "formal-admission-fixture", 1_000_000);
         f.access.runs.configure(ProviderConfig {
             mode: runtime::ProviderMode::Native,
             api_key: "PRIVATE_MODEL_KEY".into(),
@@ -113,6 +115,26 @@ fn formal_admission_exports_usage_diagnostics_and_terminal_states() {
                 assert_eq!(metadata["usage_metadata"]["input_token_details"]["cache_read"], 800);
             }
         }
-        assert!(!format!("{sent:?}").contains("PRIVATE_"));
+        if mode == "metadata" {
+            assert!(!format!("{sent:?}").contains("PRIVATE_"));
+        } else {
+            assert_eq!(roots[0].payload["inputs"]["message"], "你好 PRIVATE_QUESTION");
+            if failure != "provider" {
+                assert_eq!(roots[1].payload["outputs"]["answer"], "你好！");
+            } else {
+                assert_eq!(roots[1].payload["outputs"]["error_code"], "PROVIDER_ERROR");
+            }
+            for (index, item) in models.iter().enumerate() {
+                assert_eq!(item.payload["inputs"], bodies[index], "export actual provider request");
+                if failure != "provider" || index == 0 {
+                    assert!(item.payload["outputs"]["response"]["choices"].is_array());
+                    assert!(item.payload["outputs"]["parsed"].is_object());
+                } else { assert!(item.payload["outputs"]["error"].is_string()); }
+            }
+            let tool = sent.iter().find(|item| item.payload["outputs"]["result"].is_object()).unwrap();
+            assert_eq!(tool.payload["inputs"]["arguments"], json!({}));
+            assert!(!tool.payload["outputs"]["result"].as_object().unwrap().is_empty());
+            assert!(!format!("{sent:?}").contains("PRIVATE_MODEL_KEY"));
+        }
     }
 }

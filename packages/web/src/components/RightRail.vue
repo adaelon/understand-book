@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { BookOpen, ExternalLink, Undo2, X } from "@lucide/vue";
+import { ChevronDown, ExternalLink, Maximize2, Minimize2, Undo2, X } from "@lucide/vue";
 import { api as sharedApi } from "../api";
 import { bindSceneApi, network } from '../network-context';
 const api = bindSceneApi(sharedApi);
@@ -47,6 +47,7 @@ type ContextTab = "agent" | "artifacts" | "profile" | "trace" | "formula" | "not
 type AskDraft = AskQuote;
 type DisplayQuestionQuote = AskDraft | AgentQuestionQuoteView;
 interface ChatTurn {
+  spendStop?: import('../account-allowance').SpendNotice;
   teachingRef?: string | null;
   presentationFollowUp?: PresentationFollowUp | null;
   turnId: string | null;
@@ -137,6 +138,7 @@ const emit = defineEmits<{
   (e: "stop-agent"): void;
   (e: "toggle-fullscreen"): void;
   (e: "continue-goal", goalId: string): void;
+  (e: "show-allowance"): void;
   (e: "cancel-goal", goalId: string): void;
   (e: "target-goal", goalId: string): void;
   (e: "clear-goal-target"): void;
@@ -205,6 +207,7 @@ function selectPresentation(turnId: string, reference: PresentationRef, open = t
   if (open) void scrollToTurn(turnId);
 }
 function submitMessage() {
+  if (props.sending || props.canStop || props.historyLoading || props.historyError || !props.agentInput.trim()) return;
   if (workspaceVisible.value && sceneBound.value) {
     discussionOpen.value = true;
     followTranscript.value = true;
@@ -221,17 +224,23 @@ async function locateScene(receipt: PresentationFollowUp, restore = false) {
   await nextTick();
   if (restore) await presentationInstances.get(workspaceKey.value)?.restore(receipt);
 }
+const historySessions = computed(() => props.chatSessions.filter(session => session.turn_count > 0));
 const historyOpen = ref(false);
 const recapOpen = ref(false);
 const recapButton = ref<HTMLButtonElement>();
 const chatMenuOpen = ref(false);
+const contextMenuOpen = ref(false);
+const contextTools = ref<HTMLElement | null>(null);
+const contextMenuButton = ref<HTMLButtonElement | null>(null);
 const chatActions = ref<HTMLElement | null>(null);
 const chatMenuButton = ref<HTMLButtonElement | null>(null);
 function focusChatAction(button: HTMLButtonElement | null | undefined) {
   (button?.getClientRects().length ? button : chatMenuButton.value)?.focus({ preventScroll: true });
 }
 function dismissChatMenu(event: PointerEvent) {
-  if (event.target instanceof Node && !chatActions.value?.contains(event.target)) chatMenuOpen.value = false;
+  if (!(event.target instanceof Node)) return;
+  if (!chatActions.value?.contains(event.target)) chatMenuOpen.value = false;
+  if (!contextTools.value?.contains(event.target)) contextMenuOpen.value = false;
 }
 watch(historyOpen, (open, previous) => {
   if (previous && !open) void nextTick(() => focusChatAction(chatActions.value?.querySelector('.history-button')));
@@ -299,8 +308,32 @@ async function scrollToTurn(turnId: string): Promise<boolean> {
 const latestActivities = computed(() => props.chat.at(-1)?.activities ?? []);
 const openGoals = computed(() => (props.chatGoals ?? []).filter(goal => goal.status === "open"));
 const targetGoal = computed(() => openGoals.value.find(goal => goal.id === props.targetGoalId) ?? null);
+const taskDetailsOpen = ref(false);
+const taskSummaryButton = ref<HTMLButtonElement | null>(null);
+const taskCloseButton = ref<HTMLButtonElement | null>(null);
+const runActive = computed(() => props.sending || props.canStop);
+const taskSummary = computed(() => {
+  if (runActive.value) return "正在执行";
+  return openGoals.value.length === 1 ? goalStopLabel(openGoals.value[0].last_stop_reason) : `${openGoals.value.length} 项任务尚未完成`;
+});
+function openTaskDetails() {
+  taskDetailsOpen.value = true;
+  void nextTick(() => taskCloseButton.value?.focus({ preventScroll: true }));
+}
+function closeTaskDetails() {
+  taskDetailsOpen.value = false;
+  void nextTick(() => taskSummaryButton.value?.focus({ preventScroll: true }));
+}
+function supplementGoal(goalId: string) {
+  emit('target-goal', goalId);
+  taskDetailsOpen.value = false;
+  void nextTick(() => agentInputRef.value?.focus({ preventScroll: true }));
+}
+watch(() => [props.activeChatSessionId, openGoals.value.length] as const, ([session, count], previous) => {
+  if (!count || session !== previous?.[0]) taskDetailsOpen.value = false;
+});
 function goalStopLabel(reason: string | null | undefined): string {
-  if (!reason) return "等待继续";
+  if (!reason) return "任务尚未完成";
   if (reason === "TURN_LIMIT_EXCEEDED") return "本次达到运行上限";
   if (reason === "AGENT_RUN_CANCELLED") return "本次生成已停止";
   if (reason === "AGENT_NO_PROGRESS") return "本次未能继续推进";
@@ -308,15 +341,25 @@ function goalStopLabel(reason: string | null | undefined): string {
 }
 const activityToolCount = computed(() => latestActivities.value.filter(a => a.kind === "tool").length);
 const agentInputRef = ref<HTMLTextAreaElement | null>(null);
+const composeExpanded = ref(false);
+const composeTall = ref(false);
 let inputResizeObserver: ResizeObserver | undefined;
 let inputWidth = 0;
 function resizeAgentInput() {
   const input = agentInputRef.value;
   if (!input) return;
-  if (!window.matchMedia('(max-width: 1023px)').matches) { input.style.height = ''; return; }
   if (!input.clientWidth) return;
-  input.style.height = '0px';
-  input.style.height = `${Math.min(120, Math.max(44, input.scrollHeight + 2))}px`;
+  const previousHeight = input.style.height;
+  input.style.height = '44px';
+  const height = composeExpanded.value ? Math.min(120, Math.max(44, input.scrollHeight + 2)) : 44;
+  input.style.height = `${height}px`;
+  composeTall.value = height > 48;
+  if (previousHeight !== input.style.height && followTranscript.value) void scrollTranscriptToLatest();
+}
+function collapseAgentInput() {
+  composeExpanded.value = false;
+  if (agentInputRef.value) agentInputRef.value.scrollTop = 0;
+  agentInputRef.value?.blur();
 }
 onMounted(() => {
   document.addEventListener('pointerdown', dismissChatMenu);
@@ -329,7 +372,7 @@ onMounted(() => {
   if (agentInputRef.value) inputResizeObserver.observe(agentInputRef.value);
   resizeAgentInput();
 });
-watch(() => [props.agentInput, activeTab.value, props.fullscreen], () => resizeAgentInput(), { flush: 'post' });
+watch(() => [props.agentInput, activeTab.value, props.fullscreen, composeExpanded.value], () => resizeAgentInput(), { flush: 'post' });
 const tabs: { id: ContextTab; label: string }[] = [
   { id: "agent", label: "问答" },
   { id: "artifacts", label: "成果" },
@@ -423,9 +466,9 @@ const agentSourcePopupStyle = computed(() => {
 });
 
 // Keep completed rendered blocks mounted while the active tail grows.
-function draftMarkdownBlocks(text: string): string[] {
+function draftMarkdownBlocks(html: string): string[] {
   const template = document.createElement("template");
-  template.innerHTML = props.renderMarkdown(text);
+  template.innerHTML = html;
   return Array.from(template.content.childNodes).flatMap(node => {
     if (node.nodeType === Node.ELEMENT_NODE) return [(node as Element).outerHTML];
     if (!node.textContent?.trim()) return [];
@@ -458,16 +501,121 @@ function incompleteNotice(outcome: OuterOutcome): string | null {
   }
 }
 
-function sourceButtonLabel(outcome: OuterOutcome, sourceRefIds: string[]): string {
-  if (sourceRefIds.length !== 1) return `${sourceRefIds.length} 个来源`;
-  return sourceChipLabel(outcome.answer_view?.sources ?? [], sourceRefIds[0]);
+type AnswerDisplayPart = { kind: "html"; html: string } | Extract<AgentAnswerPart, { kind: "presentation" }>;
+const SOURCE_PLACEHOLDER = /\uE000UB_SOURCE_(\d+)\uE001/g;
+const SOURCE_AFTER_TABLE_ROW = /^(\s*\|.*\|)[ \t]*(\uE000UB_SOURCE_\d+\uE001(?:[ \t]*\uE000UB_SOURCE_\d+\uE001)*)[ \t]*$/;
+const SOURCE_ONLY_LINE = /^[ \t]*(\uE000UB_SOURCE_\d+\uE001(?:[ \t]*\uE000UB_SOURCE_\d+\uE001)*)[ \t]*$/;
+
+function placeTableSourcesInCells(markdown: string): string {
+  const lines = markdown.split(/\r?\n/);
+  const putInLastCell = (row: string, tokens: string) => `${row.trimEnd().slice(0, -1)} ${tokens} |`;
+  for (let index = 0; index < lines.length; index += 1) {
+    const trailing = lines[index].match(SOURCE_AFTER_TABLE_ROW);
+    if (trailing) {
+      lines[index] = putInLastCell(trailing[1], trailing[2]);
+      continue;
+    }
+    const standalone = lines[index].match(SOURCE_ONLY_LINE);
+    if (standalone && index > 0 && /^\s*\|.*\|\s*$/.test(lines[index - 1])) {
+      lines[index - 1] = putInLastCell(lines[index - 1], standalone[1]);
+      lines.splice(index, 1);
+      index -= 1;
+    }
+  }
+  return lines.join("\n");
 }
 
-function markdownPartClass(parts: AgentAnswerPart[], index: number): Record<string, boolean> {
-  return {
-    "before-source": parts[index + 1]?.kind === "sources",
-    "after-source": parts[index - 1]?.kind === "sources",
+function inlineSourceButton(part: Extract<AgentAnswerPart, { kind: "sources" }>, index: number, sources: NonNullable<OuterOutcome["answer_view"]>["sources"], draft: boolean, canOpen: boolean): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = draft ? "agent-source-button draft-source" : "agent-source-button";
+  button.dataset.answerSourceIndex = String(index);
+  button.disabled = !draft && !canOpen;
+  if (!draft) {
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.setAttribute("width", "14");
+    icon.setAttribute("height", "14");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    icon.setAttribute("fill", "none");
+    icon.setAttribute("stroke", "currentColor");
+    icon.setAttribute("stroke-width", "2");
+    icon.setAttribute("stroke-linecap", "round");
+    icon.setAttribute("stroke-linejoin", "round");
+    icon.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", "M12 7v14M3 18V5a2 2 0 0 1 2-2h4a3 3 0 0 1 3 3 3 3 0 0 1 3-3h4a2 2 0 0 1 2 2v13a1 1 0 0 1-1 1h-5a3 3 0 0 0-3 3 3 3 0 0 0-3-3H4a1 1 0 0 1-1-1Z");
+    icon.append(path);
+    button.append(icon);
+  }
+  const label = document.createElement("span");
+  label.textContent = part.source_ref_ids.length === 1
+    ? sourceChipLabel(sources, part.source_ref_ids[0])
+    : `${part.source_ref_ids.length} 个来源`;
+  button.append(label);
+  return button;
+}
+
+function answerDisplayParts(parts: AgentAnswerPart[], sources: NonNullable<OuterOutcome["answer_view"]>["sources"], draft = false, canOpen = true): AnswerDisplayPart[] {
+  const display: AnswerDisplayPart[] = [];
+  let markdown = "";
+  const inlineSources = new Map<number, Extract<AgentAnswerPart, { kind: "sources" }>>();
+  const flush = () => {
+    if (!markdown) return;
+    if (inlineSources.size === 0) {
+      display.push({ kind: "html", html: props.renderMarkdown(markdown) });
+      markdown = "";
+      return;
+    }
+    const template = document.createElement("template");
+    template.innerHTML = props.renderMarkdown(placeTableSourcesInCells(markdown));
+    const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_TEXT);
+    const textNodes: Text[] = [];
+    while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
+    for (const node of textNodes) {
+      const content = node.textContent ?? "";
+      SOURCE_PLACEHOLDER.lastIndex = 0;
+      if (!SOURCE_PLACEHOLDER.test(content)) continue;
+      SOURCE_PLACEHOLDER.lastIndex = 0;
+      const replacement = document.createDocumentFragment();
+      let cursor = 0;
+      for (const match of content.matchAll(SOURCE_PLACEHOLDER)) {
+        const index = Number(match[1]);
+        const source = inlineSources.get(index);
+        if (!source) continue;
+        replacement.append(document.createTextNode(content.slice(cursor, match.index)));
+        replacement.append(inlineSourceButton(source, index, sources, draft, canOpen));
+        cursor = match.index + match[0].length;
+      }
+      replacement.append(document.createTextNode(content.slice(cursor)));
+      node.replaceWith(replacement);
+    }
+    display.push({ kind: "html", html: template.innerHTML });
+    markdown = "";
+    inlineSources.clear();
   };
+  parts.forEach((part, index) => {
+    if (part.kind === "markdown") markdown += part.text;
+    else if (part.kind === "sources") {
+      markdown += `\uE000UB_SOURCE_${index}\uE001`;
+      inlineSources.set(index, part);
+    } else {
+      flush();
+      display.push(part);
+    }
+  });
+  flush();
+  return display;
+}
+
+function onAnswerSourceClick(turn: ChatTurn, parts: AgentAnswerPart[], event: MouseEvent) {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  const button = target.closest<HTMLButtonElement>("button[data-answer-source-index]");
+  if (!button || !(event.currentTarget as Element).contains(button)) return;
+  const part = parts[Number(button.dataset.answerSourceIndex)];
+  if (part?.kind !== "sources") return;
+  event.stopPropagation();
+  void openAgentSources(turn, part.source_ref_ids, { currentTarget: button });
 }
 
 function closeAgentSourcePopup() {
@@ -544,6 +692,10 @@ function onAgentSourceViewportResize() {
 
 window.addEventListener("resize", onAgentSourceViewportResize);
 function onFullscreenKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && taskDetailsOpen.value) { event.preventDefault(); closeTaskDetails(); return; }
+  if (event.key === 'Escape' && contextMenuOpen.value) {
+    event.preventDefault(); contextMenuOpen.value = false; contextMenuButton.value?.focus(); return;
+  }
   if (event.key === 'Escape' && chatMenuOpen.value) {
     event.preventDefault(); chatMenuOpen.value = false; chatMenuButton.value?.focus(); return;
   }
@@ -626,7 +778,10 @@ async function openActiveAgentSourceInReader() {
 
 function onAgentInputKeydown(event: KeyboardEvent) {
   if (event.isComposing || event.keyCode === 229) return;
-  if (event.ctrlKey && event.key === "Enter") submitMessage();
+  if (event.key === 'Escape' && composeExpanded.value) {
+    event.preventDefault(); event.stopPropagation(); collapseAgentInput(); return;
+  }
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") { event.preventDefault(); submitMessage(); }
 }
 
 const notesPanel = ref<HTMLElement | null>(null);
@@ -778,6 +933,8 @@ function deleteHistorySession(sessionId: string) {
 
 function selectTab(tab: ContextTab) {
   activeTab.value = tab;
+  contextMenuOpen.value = false;
+  chatMenuOpen.value = false;
   if (tab === "profile") emit("refresh-profile");
   if (tab === "artifacts") emit("open-artifacts");
 }
@@ -826,9 +983,11 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       <button class="discussion-toggle" @click="discussionOpen = !discussionOpen">{{ discussionOpen ? '收起讨论' : '展开讨论' }}</button>
       <slot name="tutor-control" />
     </div>
-    <div v-if="!props.fullscreen" class="context-tabs" role="tablist" aria-label="辅助阅读功能">
+    <div v-if="!workspaceVisible" class="rail-toolbar agent-head">
+      <h3 class="rail-title">问这本书</h3>
+      <div v-if="!props.fullscreen" class="context-tabs" role="tablist" aria-label="辅助阅读功能">
       <button
-        v-for="tab in tabs"
+        v-for="tab in tabs.slice(0, 2)"
         :key="tab.id"
         class="tab"
         :class="{ active: activeTab === tab.id }"
@@ -847,19 +1006,30 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           {{ artifactAcceptedCount }}
         </span>
       </button>
-    </div>
-
-    <section id="reader-panel-agent" v-show="activeTab === 'agent'" class="tab-panel agent-panel" role="tabpanel" aria-labelledby="reader-tab-agent">
-      <div class="agent-head">
-        <div>
-          <p class="rail-kicker">阅读助手</p>
-          <h3>问这本书</h3>
+      <div ref="contextTools" class="context-tools">
+        <button ref="contextMenuButton" class="context-menu-toggle" :class="{ active: !['agent', 'artifacts'].includes(activeTab) }" type="button" aria-label="阅读工具" :aria-expanded="contextMenuOpen" aria-controls="reader-secondary-tabs" @click="contextMenuOpen = !contextMenuOpen; chatMenuOpen = false">
+          {{ tabs.find(tab => tab.id === activeTab && !['agent', 'artifacts'].includes(tab.id))?.label ?? '工具' }}
+          <span v-if="profileAttentionCount" class="tool-attention">{{ profileAttentionCount }}</span>
+          <ChevronDown :size="14" aria-hidden="true" />
+        </button>
+        <div v-show="contextMenuOpen" id="reader-secondary-tabs" class="secondary-tabs" role="tablist" aria-label="更多阅读工具">
+          <button v-for="tab in tabs.slice(2)" :key="tab.id" class="tab" :class="{ active: activeTab === tab.id }" type="button" role="tab" :id="`reader-tab-${tab.id}`" :aria-selected="activeTab === tab.id" :aria-controls="`reader-panel-${tab.id}`" @click="selectTab(tab.id)">
+            {{ tab.label }}<span v-if="tab.id === 'profile' && profileAttentionCount" class="tab-badge">{{ profileAttentionCount }}</span>
+          </button>
         </div>
-        <div ref="chatActions" class="chat-actions" :class="{ 'menu-open': chatMenuOpen }">
-          <button class="new-chat" title="新对话" :disabled="props.historyLoading || !!props.historyError" @click="emit('new-chat')">新建</button>
-          <button ref="chatMenuButton" class="chat-menu-toggle" type="button" aria-label="问答操作" :aria-expanded="chatMenuOpen" aria-controls="chat-secondary-actions" @click="chatMenuOpen = !chatMenuOpen">操作</button>
-          <div id="chat-secondary-actions" class="chat-secondary-actions" @click="($event.target as HTMLElement).closest('button') && (chatMenuOpen = false)">
+      </div>
+      </div>
+      <div ref="chatActions" class="chat-actions" :class="{ 'menu-open': chatMenuOpen }">
+          <button ref="chatMenuButton" class="chat-menu-toggle" type="button" aria-label="问答操作" :aria-expanded="chatMenuOpen" aria-controls="chat-secondary-actions" @click="chatMenuOpen = !chatMenuOpen; contextMenuOpen = false">会话<ChevronDown :size="14" aria-hidden="true" /></button>
+          <div v-show="chatMenuOpen" id="chat-secondary-actions" class="chat-secondary-actions" @click="($event.target as HTMLElement).closest('button') && (chatMenuOpen = false)">
+          <button class="new-chat" title="新对话" :disabled="props.historyLoading || !!props.historyError" @click="emit('new-chat')">新对话</button>
           <button ref="recapButton" class="recap-button" :disabled="!props.activeChatSessionId || props.historyLoading || !!props.historyError" @click="recapOpen = true">本次阅读回顾</button>
+          <button class="history-button" title="打开对话历史" :disabled="props.historyLoading || !!props.historyError" @click="historyOpen = true">
+            本书历史
+            <span>{{ historySessions.length }}</span>
+          </button>
+          <slot v-if="props.fullscreen" name="tutor-control" />
+          </div>
           <button
             ref="fullscreenButton"
             type="button"
@@ -867,14 +1037,33 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             :aria-label="props.fullscreen ? '退出问答全屏' : '问答全屏'"
             :aria-pressed="!!props.fullscreen"
             @click="emit('toggle-fullscreen')"
-          >{{ props.fullscreen ? '退出全屏' : '全屏' }}</button>
-          <button class="history-button" title="打开对话历史" :disabled="props.historyLoading || !!props.historyError" @click="historyOpen = true">
-            本书历史
-            <span>{{ props.chatSessions.length }}</span>
-          </button>
-          <slot v-if="props.fullscreen" name="tutor-control" />
-          </div>
+          ><Minimize2 v-if="props.fullscreen" :size="16" aria-hidden="true" /><Maximize2 v-else :size="16" aria-hidden="true" /></button>
         </div>
+    </div>
+
+    <section id="reader-panel-agent" v-show="activeTab === 'agent'" class="tab-panel agent-panel" role="tabpanel" :aria-labelledby="props.fullscreen ? undefined : 'reader-tab-agent'" :aria-label="props.fullscreen ? '问这本书' : undefined">
+      <button v-if="openGoals.length" ref="taskSummaryButton" class="task-summary-toggle" type="button" :aria-expanded="taskDetailsOpen" aria-controls="reader-task-details" @click="openTaskDetails">
+        <span class="task-summary-status">{{ taskSummary }}</span>
+        <span class="task-summary-title">{{ openGoals.length === 1 ? openGoals[0].interpretation : '查看未完成任务' }}</span>
+        <span class="task-summary-action">查看任务</span>
+      </button>
+      <div v-if="taskDetailsOpen && openGoals.length" class="goal-overlay" @click.self="closeTaskDetails">
+        <section id="reader-task-details" class="goal-details" role="dialog" aria-label="当前任务详情">
+          <header class="goal-details-head"><strong>当前任务</strong><button ref="taskCloseButton" type="button" aria-label="关闭任务详情" @click="closeTaskDetails"><X :size="16" aria-hidden="true" /></button></header>
+          <div class="goal-list" aria-label="当前任务">
+            <div v-for="goal in openGoals" :key="goal.id" class="goal-card">
+              <strong>{{ goal.interpretation }}</strong>
+              <p>{{ runActive ? '当前对话正在执行' : goalStopLabel(goal.last_stop_reason) }}<span v-if="goal.result_refs.length"> · 已有部分结果</span></p>
+              <p v-if="goal.requirements.length" class="goal-requirements">交付要求：{{ goal.requirements.map(item => item.description).join('；') }}</p>
+              <ul v-if="goal.working.items.length" class="goal-work-items"><li v-for="item in goal.working.items" :key="item.id"><span>{{ { pending: '待做', in_progress: '进行中', completed: '已完成' }[item.status] }}</span>{{ item.description }}</li></ul>
+              <div class="goal-actions">
+                <button :disabled="runActive" @click="emit('continue-goal', goal.id); closeTaskDetails()">继续任务</button>
+                <button :disabled="runActive" @click="supplementGoal(goal.id)">补充要求</button>
+                <button :disabled="runActive" @click="emit('cancel-goal', goal.id); closeTaskDetails()">结束任务</button>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
 
       <SessionRecap v-if="recapOpen" :session-id="props.activeChatSessionId" :navigate="openRecapTarget" @close="closeRecap" />
@@ -906,35 +1095,27 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           <div v-if="!turn.outcome && turn.liveEffects?.length" class="live-effects">
             <p v-for="item in turn.liveEffects" :key="item.effect_id">{{ props.effLabel(item.effect) }}</p>
           </div>
-          <div v-if="turn.pending && turn.draft?.view" class="answer-draft ans-text md" aria-label="回答草稿">
-            <template v-for="(part, pi) in turn.draft.view.parts" :key="`${turn.draft.message_id}-${turn.draft.revision}-${pi}`">
-              <template v-if="part.kind === 'markdown'">
-                <div v-for="(block, bi) in draftMarkdownBlocks(part.text)" :key="bi" v-memo="[block]" class="answer-markdown" v-html="block"></div>
+          <div v-if="turn.pending && turn.draft?.view" class="answer-draft ans-text md" aria-label="回答草稿" @click="onAnswerSourceClick(turn, turn.draft.view.parts, $event)">
+            <template v-for="(part, pi) in answerDisplayParts(turn.draft.view.parts, turn.draft.view.sources, true)" :key="`${turn.draft.message_id}-${turn.draft.revision}-${pi}`">
+              <template v-if="part.kind === 'html'">
+                <div v-for="(block, bi) in draftMarkdownBlocks(part.html)" :key="bi" v-memo="[block]" class="answer-markdown" v-html="block"></div>
               </template>
-              <button v-else-if="part.kind === 'sources'" type="button" class="agent-source-button draft-source" @click.stop="openAgentSources(turn, part.source_ref_ids, $event)">{{ part.source_ref_ids.length === 1 ? sourceChipLabel(turn.draft.view.sources, part.source_ref_ids[0]) : `${part.source_ref_ids.length} 个来源` }}</button>
             </template>
           </div>
-          <p v-if="!turn.pending && turn.error" class="incomplete">{{ turn.error }}</p>
+          <div v-if="!turn.pending && turn.spendStop" class="incomplete" role="status">
+            <p>{{ turn.spendStop.message }}</p>
+            <button v-if="network.enabled" type="button" @click="emit('show-allowance')">查看使用额度</button>
+          </div>
+          <p v-else-if="!turn.pending && turn.error" class="incomplete">{{ turn.error }}</p>
 
-          <div v-else-if="turn.outcome" class="a-msg">
-            <div v-if="answerParts(turn.outcome).length" class="ans-text md" @mouseup="onAnswerMouseUp(turn)">
-              <template v-for="(part, pi) in answerParts(turn.outcome)" :key="pi">
+          <div v-if="turn.outcome && (!turn.error || turn.spendStop)" class="a-msg">
+            <div v-if="answerParts(turn.outcome).length" class="ans-text md" @mouseup="onAnswerMouseUp(turn)" @click="onAnswerSourceClick(turn, answerParts(turn.outcome), $event)">
+              <template v-for="(part, pi) in answerDisplayParts(answerParts(turn.outcome), turn.outcome.answer_view?.sources ?? [], false, !!turn.turnId)" :key="pi">
                 <div
-                  v-if="part.kind === 'markdown'"
+                  v-if="part.kind === 'html'"
                   class="answer-markdown"
-                  :class="markdownPartClass(answerParts(turn.outcome), pi)"
-                  v-html="props.renderMarkdown(part.text)"
+                  v-html="part.html"
                 ></div>
-                <button
-                  v-else-if="part.kind === 'sources'"
-                  type="button"
-                  class="agent-source-button"
-                  :disabled="!turn.turnId"
-                  @click.stop="openAgentSources(turn, part.source_ref_ids, $event)"
-                >
-                  <BookOpen :size="14" aria-hidden="true" />
-                  <span>{{ sourceButtonLabel(turn.outcome, part.source_ref_ids) }}</span>
-                </button>
                 <template v-else-if="part.kind === 'presentation' && turn.turnId">
                 <button v-if="workspaceVisible" class="presentation-reference" @click="selectPresentation(turn.turnId, part)">打开演示 · 版本 {{ part.revision }}</button>
                 <AgentPresentation v-if="loadedPresentations.has(presentationKey(turn.turnId, part))"
@@ -1036,30 +1217,19 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           </div>
         </div>
         <div v-if="props.chat.length === 0 && !props.historyLoading && !props.historyError" class="empty">
-          <template v-if="props.chatSessions.length">
-            <p>当前对话为空，本书有 {{ props.chatSessions.length }} 段已保存的历史对话。</p>
-            <button type="button" class="history-button empty-history-button" @click="historyOpen = true">查看本书的 {{ props.chatSessions.length }} 段历史对话</button>
+          <template v-if="historySessions.length">
+            <p>当前对话为空，本书有 {{ historySessions.length }} 段已保存的历史对话。</p>
+            <button type="button" class="history-button empty-history-button" @click="historyOpen = true">查看本书的 {{ historySessions.length }} 段历史对话</button>
           </template>
           <p v-else>本书还没有保存的对话。可以在这里提问；其他材料的对话可在对应材料的“本书历史”中查看。</p>
         </div>
       </div>
 
-      <div class="agent-input">
-        <div v-if="workspaceVisible || openGoals.length || props.runConnection === 'reconnecting' || targetGoal || props.askDraft" class="agent-input-context">
+      <div class="agent-input" :class="{ composing: composeExpanded }">
+        <div v-if="workspaceVisible || props.runConnection === 'reconnecting' || targetGoal || props.askDraft" class="agent-input-context">
         <div v-if="workspaceVisible" class="scene-binding">
           <span>{{ sceneBound ? `发送时绑定当前现场 · 版本 ${workspace?.reference.revision}` : '普通聊天' }}</span>
           <button @click="sceneBound = !sceneBound">{{ sceneBound ? '移除现场绑定' : '绑定当前演示' }}</button>
-        </div>
-        <div v-if="openGoals.length" class="goal-list" aria-label="当前任务">
-          <div v-for="goal in openGoals" :key="goal.id" class="goal-card">
-            <strong>当前任务 · {{ goal.interpretation }}</strong>
-            <p>{{ goalStopLabel(goal.last_stop_reason) }}<span v-if="goal.requirements.some(item => item.verification === 'presentation_delivery')"> · 页面交付待确认</span><span v-if="goal.result_refs.length"> · 已有部分结果</span></p>
-            <div class="goal-actions">
-              <button :disabled="props.sending || props.canStop" @click="emit('continue-goal', goal.id)">继续任务</button>
-              <button :disabled="props.sending || props.canStop" @click="emit('target-goal', goal.id); agentInputRef?.focus()">补充要求</button>
-              <button :disabled="props.sending || props.canStop" @click="emit('cancel-goal', goal.id)">取消任务</button>
-            </div>
-          </div>
         </div>
         <p v-if="props.runConnection === 'reconnecting'" role="status">连接中断，正在重新连接；运行仍可继续。</p>
         <div v-if="targetGoal" class="goal-target">
@@ -1076,20 +1246,23 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           <blockquote>{{ props.askDraft.quote }}</blockquote>
         </div>
         </div>
+        <div v-if="composeTall" class="compose-caption"><span>草稿会保留</span><button type="button" aria-label="收起输入" @click="collapseAgentInput">收起</button></div>
         <div class="agent-compose-row">
         <textarea
           ref="agentInputRef"
           data-workspace-input="agent"
           :disabled="network.enabled && (props.historyLoading || !!props.historyError)"
           :value="props.agentInput"
-          rows="3"
+          rows="1"
+          aria-label="围绕当前阅读内容提问"
           :placeholder="props.askDraft ? '围绕引用来源提问...' : '从当前阅读位置提问...'"
           @input="emit('update:agentInput', ($event.target as HTMLTextAreaElement).value)"
+          @focus="composeExpanded = true"
           @keydown="onAgentInputKeydown"
         />
         <button v-if="props.canStop" class="stop-agent" @click="emit('stop-agent')">停止</button>
-        <button :disabled="props.sending || props.historyLoading || !!props.historyError || !props.agentInput.trim()" @click="submitMessage">
-          {{ props.sending ? "..." : "发送" }}
+        <button v-else class="send-agent" :disabled="props.sending || props.historyLoading || !!props.historyError || !props.agentInput.trim()" @click="submitMessage">
+          {{ props.sending ? "发送中" : "发送" }}
         </button>
         </div>
       </div>
@@ -1277,7 +1450,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           </header>
           <div class="history-list">
             <article
-              v-for="session in props.chatSessions"
+              v-for="session in historySessions"
               :key="session.id"
               class="history-card"
               :class="{ active: session.id === props.activeChatSessionId }"
@@ -1317,7 +1490,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
                 <button class="history-delete" @click.stop="deleteHistorySession(session.id)">删除</button>
               </div>
             </article>
-            <p v-if="props.chatSessions.length === 0" class="empty history-empty">暂无保存的对话历史。</p>
+            <p v-if="historySessions.length === 0" class="empty history-empty">暂无保存的对话历史。</p>
           </div>
         </section>
       </div>
@@ -1389,6 +1562,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 
 <style scoped>
 .right-rail {
+  container-type: inline-size;
+  container-name: reading-assistant;
   min-width: 0;
   border-left: 1px solid var(--hairline);
   background: var(--reader-card);
@@ -1466,10 +1641,6 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .right-rail.fullscreen .agent-input {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
-@media (max-width: 480px) {
-  .right-rail.fullscreen .agent-head { flex-wrap: wrap; }
-  .right-rail.fullscreen .chat-actions { margin-left: auto; }
-}
 .context-tabs {
   flex: 0 0 auto;
   display: grid;
@@ -1518,6 +1689,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   overflow: hidden;
 }
 .agent-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
 }
@@ -1836,11 +2008,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .answer-markdown {
   display: contents;
 }
-.answer-markdown.before-source :deep(p:last-child),
-.answer-markdown.after-source :deep(p:first-child) {
-  display: inline;
-}
-.agent-source-button {
+.ans-text :deep(.agent-source-button) {
   min-height: 26px;
   max-width: 100%;
   display: inline-flex;
@@ -1857,11 +2025,11 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   font-weight: 650;
   line-height: 1.25;
 }
-.agent-source-button:hover:not(:disabled) {
+.ans-text :deep(.agent-source-button:hover:not(:disabled)) {
   border-color: #1764c0;
   background: rgba(33, 112, 214, 0.14);
 }
-.agent-source-button span {
+.ans-text :deep(.agent-source-button span) {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -2189,12 +2357,13 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 }
 .agent-input {
   border-top: 1px solid var(--hairline);
-  padding: 0.75rem;
+  flex: 0 0 auto;
+  padding: 8px max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
-.goal-list { display: grid; gap: 0.5rem; max-height: 12rem; overflow-y: auto; }
+.goal-list { display: grid; gap: 0.5rem; }
 .goal-card { border: 1px solid var(--hairline); border-radius: 0.6rem; padding: 0.6rem; background: var(--canvas-parchment); }
 .goal-card strong { display: block; font-size: 0.83rem; overflow-wrap: anywhere; }
 .goal-card p { margin: 0.35rem 0; color: var(--steel); font-size: 0.76rem; }
@@ -2203,33 +2372,62 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .goal-target { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.76rem; color: var(--steel); }
 .goal-target span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agent-input textarea {
-  width: 100%;
-  resize: vertical;
+  box-sizing: border-box;
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  min-height: 44px;
+  height: 44px;
+  max-height: 120px;
+  resize: none;
+  font-size: 16px;
+  line-height: 24px;
+  padding: 9px 12px;
 }
-.agent-compose-row { display: flex; flex-direction: column; gap: 0.5rem; }
-.agent-input-context { display: grid; gap: 0.5rem; }
+.agent-input:not(.composing) textarea { overflow-y: hidden; }
+.agent-compose-row { display: flex; flex-direction: row; align-items: flex-end; gap: 0.5rem; }
+.agent-compose-row > button { flex: 0 0 auto; min-width: 44px; min-height: 44px; }
+.agent-input-context { display: grid; gap: 0.5rem; max-height: min(128px, calc(var(--app-input-viewport-height, 100dvh) * .22)); overflow-y: auto; }
+.compose-caption { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--steel); font-size: .75rem; }
+.compose-caption button { min-height: 28px; padding: 2px 8px; border: 0; background: transparent; }
+.transcript { min-height: 0; padding: 12px 16px 16px; }
+.rail-toolbar.agent-head { flex: 0 0 auto; min-height: 52px; padding: 4px 12px; align-items: center; flex-wrap: nowrap; gap: 8px; border-bottom: 1px solid var(--hairline-soft); z-index: 6; }
+.rail-title { display: none; margin: 0; white-space: nowrap; }
+.right-rail.fullscreen .rail-title { display: block; }
+.rail-toolbar .context-tabs { display: flex; align-items: center; gap: 2px; padding: 0; border: 0; background: transparent; position: static; }
+.rail-toolbar .tab { padding: 6px 10px; min-height: 40px; white-space: nowrap; }
+.context-tools, .chat-actions { position: relative; }
+.chat-actions { flex: 0 0 auto; flex-wrap: nowrap; align-items: center; margin-left: auto; gap: 4px; }
+.chat-menu-toggle, .context-menu-toggle { display: inline-flex; min-height: 40px; align-items: center; gap: 4px; padding: 5px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--steel); font-size: .82rem; white-space: nowrap; }
+.context-menu-toggle.active { background: var(--surface-soft); color: var(--ink); }
+.tool-attention { color: var(--brand-green-deep); font-size: .75rem; }
+.chat-actions .fullscreen-button { width: 40px; min-height: 40px; padding: 0; border: 0; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
+.chat-secondary-actions, .secondary-tabs { display: flex; flex-direction: column; align-items: stretch; gap: 4px; position: absolute; z-index: 20; top: calc(100% + 4px); width: 230px; max-height: calc(var(--app-input-viewport-height, 100dvh) - 80px); overflow-y: auto; padding: 8px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--canvas); box-shadow: 0 8px 24px #0002; }
+.chat-secondary-actions { right: 0; }
+.secondary-tabs { left: 0; width: 160px; }
+.chat-secondary-actions button, .secondary-tabs .tab { justify-content: flex-start; text-align: left; min-height: 40px; padding: 7px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); font-weight: 400; }
+.chat-secondary-actions button:hover, .secondary-tabs .tab:hover { background: var(--surface-soft); }
+.task-summary-toggle { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 6px 16px; border: 0; border-radius: 0; background: var(--canvas-parchment); font-size: .76rem; text-align: left; color: var(--steel); }
+.task-summary-status { flex: 0 1 auto; max-width: 50%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.task-summary-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-summary-action { margin-left: auto; white-space: nowrap; color: var(--ink); }
+.goal-overlay { position: absolute; z-index: 5; inset: 0; padding: 8px; background: #0002; }
+.goal-details { max-height: 100%; overflow-y: auto; padding: 10px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--canvas); box-shadow: 0 8px 24px #0002; }
+.goal-details-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.goal-details-head > button { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 40px; padding: 0; border: 0; background: transparent; }
+.goal-work-items { display: grid; gap: 5px; list-style: none; margin: 8px 0; padding: 0; font-size: .78rem; }
+.goal-work-items li { display: flex; align-items: baseline; gap: 8px; }
+.goal-work-items span { flex: 0 0 auto; color: var(--steel); }
+.goal-actions { flex-wrap: wrap; }
+@container reading-assistant (max-width: 380px) {
+  .rail-toolbar.agent-head { padding-inline: 8px; gap: 4px; }
+  .rail-toolbar .tab { padding-inline: 8px; }
+  .task-summary-title { display: none; }
+  .secondary-tabs { left: auto; right: 0; }
+}
 @media (max-width: 1023px) {
-  .right-rail .agent-head { flex: 0 0 auto; min-height: 52px; padding: 4px 12px; align-items: center; flex-wrap: nowrap; }
-  .agent-head .rail-kicker { display: none; }
-  .agent-head h3 { white-space: nowrap; }
-  .chat-actions { position: relative; flex-wrap: nowrap; }
-  .chat-actions > .new-chat { order: 0; }
-  .chat-menu-toggle { display: block; min-height: 44px; }
-  .chat-secondary-actions { display: none; }
-  .menu-open .chat-secondary-actions {
-    display: flex; flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 0.4rem;
-    position: absolute; z-index: 20; top: calc(100% + 4px); right: 0;
-    width: min(260px, calc(100vw - 24px)); max-height: calc(var(--app-input-viewport-height, 100dvh) - 80px);
-    overflow-y: auto; padding: 8px; border: 1px solid var(--hairline); border-radius: 12px;
-    background: var(--canvas); box-shadow: 0 8px 24px #0002;
-  }
-  .chat-secondary-actions button { min-height: 44px; }
-  .right-rail .agent-input { flex: 0 0 auto; padding: 8px max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
-  .agent-compose-row { flex-direction: row; align-items: flex-end; }
-  .agent-compose-row > button { flex: 0 0 auto; min-width: 44px; min-height: 44px; }
-  .agent-input textarea { flex: 1; min-width: 0; min-height: 44px; max-height: min(120px, calc(var(--app-input-viewport-height, 100dvh) * .3)); resize: none; font-size: 16px; }
-  .agent-input-context { max-height: min(160px, calc(var(--app-input-viewport-height, 100dvh) * .25)); overflow-y: auto; }
-  .transcript { min-height: 0; padding: 8px 12px; }
+  .rail-title { display: block; }
+  .rail-toolbar .context-tabs { display: none; }
 }
 .formula-meaning {
   margin: 0 0 0.75rem;

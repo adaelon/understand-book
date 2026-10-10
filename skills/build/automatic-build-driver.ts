@@ -43,6 +43,7 @@ import {
   issueAutomaticBuildOpaqueHandoff,
   recordAutomaticBuildExecutorBootstrapFailure,
   recordAutomaticBuildExecutorOpenCallCorrection,
+  recoverAutomaticBuildExecutorTerminalSession,
   validateAutomaticBuildOpenCallCorrection,
   type AutomaticBuildOpenCallCorrectionV1,
   resolveAutomaticBuildTargetLids,
@@ -80,6 +81,7 @@ import {
 import {
   createAutomaticBuildFailureDiagnostic,
   createAutomaticBuildFailureDiagnosticV3,
+  isAutomaticBuildCorrectableCandidateFailure,
   isAutomaticBuildFailureDiagnosticV3,
   legacyAutomaticBuildFailureDiagnostic,
   requiredRecoveryForAutomaticBuildFailure,
@@ -100,7 +102,9 @@ import {
 } from "./automatic-build";
 import { prepareIntentArtifactMailboxes } from "./intent-artifact";
 
-const MAX_STDIN_BYTES = 65_536;
+// Refill stdin retains completed handoff refs across a whole-book invocation.
+const MAX_STDIN_BYTES = 1_048_576;
+const MAX_ROOT_RESPONSE_BYTES = 65_536;
 const MAX_RECORD_BYTES = 1_048_576;
 const MAX_TRANSITIONS = 8;
 const INVOCATION_REF = /^abinv1_[a-f0-9]{64}$/u;
@@ -160,6 +164,8 @@ const USER_DECISION_REASONS = new Set<AutomaticBuildUserDecisionReasonV1>([
   "foundation_required",
   "legacy_migration_required",
   "quality_gate_failed",
+  "structure_execution_budget_exceeded",
+  "structure_preparation_incomplete",
   "retry_exhausted",
   "recovery_not_satisfied",
   "executor_instability",
@@ -183,6 +189,8 @@ export type AutomaticBuildUserDecisionReasonV1 =
   | "foundation_required"
   | "legacy_migration_required"
   | "quality_gate_failed"
+  | "structure_execution_budget_exceeded"
+  | "structure_preparation_incomplete"
   | "retry_exhausted"
   | "recovery_not_satisfied"
   | "executor_instability"
@@ -1013,7 +1021,8 @@ function externalReason(internalReason: string): AutomaticBuildUserDecisionReaso
     case "legacy_resume_selected":
     case "legacy_partial_dispatch_run":
       return "legacy_migration_required";
-    case "structure_preparation_incomplete":
+    case "structure_execution_budget_exceeded": return "structure_execution_budget_exceeded";
+    case "structure_preparation_incomplete": return "structure_preparation_incomplete";
     case "quality_gate_failed": return "quality_gate_failed";
     case "retry_exhausted": return "retry_exhausted";
     case "recovery_not_satisfied": return "recovery_not_satisfied";
@@ -1040,6 +1049,8 @@ function userMessage(reason: AutomaticBuildUserDecisionReasonV1): string {
     case "foundation_required": return "The deterministic build foundation requires attention before continuing.";
     case "legacy_migration_required": return "Legacy build state requires an explicit migration choice.";
     case "quality_gate_failed": return "The stage quality gate failed and publication remains closed.";
+    case "structure_execution_budget_exceeded": return "BookStructure input exceeds its single-task execution budget. Reduce the input size before retrying; accepted work is retained.";
+    case "structure_preparation_incomplete": return "BookStructure preparation is incomplete. Resolve the outstanding structure work before retrying; accepted work is retained.";
     case "retry_exhausted": return "Semantic retries are exhausted and require explicit recovery.";
     case "recovery_not_satisfied": return "The bound terminal state does not satisfy same-scope retry recovery.";
     case "executor_instability": return "Executor lease recovery is exhausted and requires explicit recovery.";
@@ -1082,6 +1093,8 @@ function choicesFor(reason: AutomaticBuildUserDecisionReasonV1) {
         },
       ];
     case "quality_gate_failed":
+    case "structure_execution_budget_exceeded":
+    case "structure_preparation_incomplete":
     case "retry_exhausted":
     case "recovery_not_satisfied":
     case "executor_instability":
@@ -1113,6 +1126,7 @@ function failureProjectionFor(
   const tasks = Array.isArray(action.tasks) ? action.tasks : [];
   const workUnitCount = tasks.length;
   let diagnostic: AutomaticBuildFailureDiagnosticV2;
+  let allCandidateCorrections = false;
   if (reason === "executor_instability") {
     diagnostic = createAutomaticBuildFailureDiagnosticV3({
       category: "executor",
@@ -1128,12 +1142,16 @@ function failureProjectionFor(
         return [];
       }
     });
+    allCandidateCorrections = diagnostics.length > 0
+      && diagnostics.length === tasks.length
+      && diagnostics.every(isAutomaticBuildCorrectableCandidateFailure);
     if (!diagnostics.length) {
       diagnostic = legacyAutomaticBuildFailureDiagnostic();
     } else if (diagnostics.every((item) => (
       item.version === diagnostics[0].version
       && item.category === diagnostics[0].category
       && item.code === diagnostics[0].code
+      && requiredRecoveryForAutomaticBuildFailure(item) === requiredRecoveryForAutomaticBuildFailure(diagnostics[0])
       && (!isAutomaticBuildFailureDiagnosticV3(item)
         || (isAutomaticBuildFailureDiagnosticV3(diagnostics[0])
           && item.phase === diagnostics[0].phase))
@@ -1159,7 +1177,9 @@ function failureProjectionFor(
   return {
     diagnostic,
     work_unit_count: workUnitCount,
-    required_recovery: requiredRecoveryForAutomaticBuildFailure(diagnostic),
+    required_recovery: allCandidateCorrections
+      ? "confirm_candidate_retry"
+      : requiredRecoveryForAutomaticBuildFailure(diagnostic),
   };
 }
 
@@ -2184,7 +2204,7 @@ function collectForbiddenFields(value: unknown, found: string[] = []): string[] 
 function finalizeResponse(response: AutomaticBuildStepResponseV1): AutomaticBuildStepResponseV1 {
   if (response.version !== "automatic_build_step.v1"
     || collectForbiddenFields(response).length
-    || Buffer.byteLength(canonicalAutomaticBuildJson(response), "utf8") > MAX_STDIN_BYTES) {
+    || Buffer.byteLength(canonicalAutomaticBuildJson(response), "utf8") > MAX_ROOT_RESPONSE_BYTES) {
     throw new Error("automatic build root response violates its boundary contract");
   }
   return response;
@@ -2198,7 +2218,7 @@ interface DriverRetrievalPreparation {
 }
 
 /** The same control flow serves synchronous readers and asynchronous production hosts. */
-function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1, liveHandoffRefs: string[] = []): Generator<DriverRetrievalPreparation, AutomaticBuildStepResponseV1, AutomaticBuildAsyncPreparationResult> {
+function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1, liveHandoffRefs: string[] = [], completedHandoffRefs: string[] = []): Generator<DriverRetrievalPreparation, AutomaticBuildStepResponseV1, AutomaticBuildAsyncPreparationResult> {
   let input: AutomaticBuildStepRequestV1;
   try {
     input = validateStepRequest(inputValue);
@@ -2207,6 +2227,19 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
   }
   const invocation = readInvocation(input.invocation_ref);
   let current = loadDriverState(invocation, input.available_agent_slots);
+  const completedRefs = new Set(completedHandoffRefs);
+  const liveRefs = new Set(liveHandoffRefs);
+  const recoverTerminalLaunches = (executors: Array<{ opaque_handoff_ref: string }>): boolean => {
+    let recovered = false;
+    for (const launch of executors) {
+      const ref = launch.opaque_handoff_ref;
+      if (!completedRefs.has(ref) || liveRefs.has(ref)) continue;
+      if (!invocationDispatchProjection(invocation, ref)) throw new Error("terminal handoff was not issued by this invocation");
+      recovered = recoverAutomaticBuildExecutorTerminalSession(ref, invocation.initial_target_ref,
+        new Date().toISOString()) || recovered;
+    }
+    return recovered;
+  };
   const heldWorkUnitIds = liveHandoffRefs.flatMap(ref => {
     const projection = invocationDispatchProjection(invocation, ref);
     if (!projection) throw new Error("live handoff was not issued by this invocation");
@@ -2323,7 +2356,7 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
       && current.plan.public_stage_closure.includes(stage.stage));
     if (preparation?.policy_set) {
       const prepared = prepareAutomaticBuildSnapshot(current.plan_result.snapshot.target, preparation.policy_set.stage,
-        { quality_profile: invocation.input.quality_profile, execution_profile: invocationExecutionProfile(invocation.input) });
+        { quality_profile: invocation.input.quality_profile, execution_profile: invocationExecutionProfile(invocation.input), reuse: current.plan.reuse });
       if (prepared.status === "blocked") {
         return finish(issueBoundary(invocation, boundaryFromAction(automaticBuildRecoveryAction(prepared.recovery), stateIdentity(current))));
       }
@@ -2379,6 +2412,7 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
           action.dispatch_run_id, issuedAt) ?? reissueActiveDispatchHandoffRefs(invocation,
           action.stage, replayIds, action.dispatch_run_id, issuedAt)));
       }
+      if (recoverTerminalLaunches(executors)) continue;
       const bootstrapBoundary = bootstrapBoundaryForLaunches(invocation, current, executors);
       if (bootstrapBoundary) return finish(bootstrapBoundary);
       return finish({
@@ -2406,6 +2440,7 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
           action.dispatch_run_id,
           issuedAt,
         );
+        if (recoverTerminalLaunches(executors)) continue;
         const bootstrapBoundary = bootstrapBoundaryForLaunches(invocation, current, executors);
         if (bootstrapBoundary) return finish(bootstrapBoundary);
         return finish({
@@ -2432,6 +2467,7 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
         {
           book_id: invocation.initial_target_ref.book_id,
           quality_profile: invocation.input.quality_profile,
+          build_plan: current.plan,
         },
       ) as unknown as Record<string, unknown>;
       if (outcome.next === "replan") continue;
@@ -2549,9 +2585,9 @@ function dshControllerCommand(value: Record<string, unknown>, step: DriverStep =
     ...(value.decision === undefined ? {} : { decision: value.decision as AutomaticBuildStepRequestV1["decision"] }) });
 }
 
-type DriverStep = (request: AutomaticBuildStepRequestV1, liveHandoffRefs?: string[]) => AutomaticBuildStepResponseV1 | Promise<AutomaticBuildStepResponseV1>;
-export function automaticBuildStep(input: AutomaticBuildStepRequestV1, liveHandoffRefs: string[] = []): AutomaticBuildStepResponseV1 {
-  const steps = automaticBuildStepTransitions(input, liveHandoffRefs);
+type DriverStep = (request: AutomaticBuildStepRequestV1, liveHandoffRefs?: string[], completedHandoffRefs?: string[]) => AutomaticBuildStepResponseV1 | Promise<AutomaticBuildStepResponseV1>;
+export function automaticBuildStep(input: AutomaticBuildStepRequestV1, liveHandoffRefs: string[] = [], completedHandoffRefs: string[] = []): AutomaticBuildStepResponseV1 {
+  const steps = automaticBuildStepTransitions(input, liveHandoffRefs, completedHandoffRefs);
   const next = steps.next();
   if (next.done) return next.value;
   return steps.next({ status: "needs_user", action: { kind: "needs_user", reason: "preparation_required", stage: next.value.stage,
@@ -2559,8 +2595,8 @@ export function automaticBuildStep(input: AutomaticBuildStepRequestV1, liveHando
 }
 
 export async function automaticBuildStepWithPreparation(input: AutomaticBuildStepRequestV1, liveHandoffRefs: string[] = [],
-  options: { runtime?: BuildRetrievalRuntime; signal?: AbortSignal } = {}): Promise<AutomaticBuildStepResponseV1> {
-  const steps = automaticBuildStepTransitions(input, liveHandoffRefs);
+  options: { runtime?: BuildRetrievalRuntime; signal?: AbortSignal } = {}, completedHandoffRefs: string[] = []): Promise<AutomaticBuildStepResponseV1> {
+  const steps = automaticBuildStepTransitions(input, liveHandoffRefs, completedHandoffRefs);
   let next = steps.next();
   while (!next.done) {
     const { target, plan, quality_profile, execution_profile, stage } = next.value;
@@ -2572,7 +2608,7 @@ export async function automaticBuildStepWithPreparation(input: AutomaticBuildSte
 }
 
 export function runAutomaticBuildDriverCommandWithPreparation(value: unknown, signal?: AbortSignal): Promise<unknown> {
-  return Promise.resolve(runAutomaticBuildDriverCommand(value, (request, refs) => automaticBuildStepWithPreparation(request, refs, { signal })));
+  return Promise.resolve(runAutomaticBuildDriverCommand(value, (request, refs, completedRefs) => automaticBuildStepWithPreparation(request, refs, { signal }, completedRefs)));
 }
 
 export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep = automaticBuildStep): unknown {
@@ -2583,9 +2619,9 @@ export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep 
     return automaticBuildRefill(value, {
       validateStep: validateStepRequest,
       maxParallel: ref => readInvocation(ref).input.max_parallel,
-      step: (request, liveHandoffRefs) => {
+      step: (request, liveHandoffRefs, completedHandoffRefs) => {
         try {
-          const result = step(request, liveHandoffRefs);
+          const result = step(request, liveHandoffRefs, completedHandoffRefs);
           return result instanceof Promise ? result.catch(error => {
             const response = automaticBuildDriverFailureResponse(error);
             if (response.version !== "automatic_build_step.v1") throw error;

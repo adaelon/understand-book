@@ -12,6 +12,7 @@ export interface AutomaticBuildProgressV1 {
     stage: string;
     status: "complete" | "pending" | "awaiting_dependencies";
     work?: AutomaticBuildPreflightV2["work_units"] & { scope: "discovered" };
+    object_alignment?: { total_objects: number; resolved_objects: number; remaining_objects: number };
   }>;
   current_stage_forecast?: {
     stage: string;
@@ -49,6 +50,18 @@ export function projectAutomaticBuildProgress(input: {
         skipped: state.work_units.length - eligible.length,
         pending, committed: eligible.length - pending,
       };
+    }
+    if (stage === "formal_objects") {
+      if (state.object_alignment) result.object_alignment = state.object_alignment;
+      const latest = Object.values(state.generation_tasks ?? {}).reverse()
+        .find(task => task.kind === "teaching" && task.task.alignment);
+      if (!state.object_alignment && latest?.kind === "teaching" && latest.task.alignment) {
+        const alignment = latest.task.alignment;
+        const resolved = new Set(alignment.resolved);
+        const total = alignment.proposal.objects.length;
+        const remaining = alignment.proposal.objects.filter(object => !resolved.has(object.key)).length;
+        result.object_alignment = { total_objects: total, resolved_objects: total - remaining, remaining_objects: remaining };
+      }
     }
     return result;
   });

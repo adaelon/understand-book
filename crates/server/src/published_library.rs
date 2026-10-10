@@ -35,6 +35,9 @@ pub struct PublicationManifest {
     pub capabilities: Value,
     pub artifact_versions: BTreeMap<String, Value>,
     pub teaching_readiness: Value,
+    /// Import-time snapshot; runtime admission reads artifacts, optional assets reuse this snapshot.
+    #[serde(default)]
+    pub tutor_readiness: Value,
     pub build_readiness: Value,
     pub resident_bytes: u64,
 }
@@ -445,6 +448,7 @@ impl PublishedLibrary {
         let teaching_readiness =
             serde_json::from_str(&crate::tutor_api::source_readiness(&book, stage.path()).body)
                 .map_err(|_| invalid())?;
+        let tutor_readiness = crate::tutor_api::tutor_source_readiness(&book, input);
         // Same book_id may gain capabilities, but canonical source and its actual attachment cannot change.
         let mut stmt = self
             .control
@@ -511,6 +515,7 @@ impl PublishedLibrary {
             capabilities: source["capabilities"].clone(),
             artifact_versions,
             teaching_readiness,
+            tutor_readiness,
             build_readiness: snapshot["readiness"].clone(),
             resident_bytes: book.resident_budget_bytes(),
         };
@@ -710,6 +715,8 @@ impl PublishedLibrary {
         }
         let reply = if leaf == "teaching_readiness" {
             crate::ok_json(&publication.manifest.teaching_readiness)
+        } else if leaf == "tutor_readiness" {
+            crate::ok_json(&crate::tutor_api::readiness_view(&publication.book, &publication.directory))
         } else {
             crate::route_book(
                 &publication.book,

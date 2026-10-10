@@ -160,6 +160,7 @@ impl ReviewExecutor for ProviderReviewExecutor {
             system: REVIEW_EXTRACTOR_SYSTEM.into(),
             user: serde_json::to_string(&serde_json::json!({"review_input": input})).map_err(
                 |_| AdapterError {
+                    spend_stop: None,
                     message: "memory review input serialization failed".into(),
                 },
             )?,
@@ -458,6 +459,7 @@ fn has_explicit_global_scope(text: &str) -> bool {
 
 fn invalid_output(message: impl Into<String>) -> AdapterError {
     AdapterError {
+        spend_stop: None,
         message: message.into(),
     }
 }

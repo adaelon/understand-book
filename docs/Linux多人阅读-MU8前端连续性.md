@@ -10,11 +10,13 @@
 
 ## 用户与现场生命周期
 
-`network-context.ts` 保存内存身份、CSRF、workspace、attachment、generation 与 PublishedBookRef。页面组件以用户生命周期代次、workspace、generation 和发布绑定为 key。`networkFetch` 检查请求开始和返回时的同一场景，旧响应拒收；组件持有 `bindSceneApi`，卸载后遗留的异步链不能向新现场继续发命令。PDF 加载任务、SSE、来源浮层、草稿与教学组件随旧树卸载。
+`network-context.ts` 保存内存身份、CSRF、workspace、attachment、generation 与 PublishedBookRef。`sceneKey` 包含服务器 generation，用于请求、聊天组件与附属页的现场隔离；`readerKey` 用于整个阅读应用的挂载。同一材料内成功的新建、选择聊天命令保留 Reader 的挂载代次，正文、PDF 与设备布局继续使用原实例；聊天子树重新挂载，旧 SSE 观察、来源浮层、输入草稿和演示选择被清理。首次提问自动建聊保留正在提交的问题。
+
+`networkFetch` 仍核对请求开始和返回时的完整场景，旧响应拒收。聊天组件的 `bindSceneApi` 绑定 `sceneKey`；保留的 App 与 Tutor 控制绑定 `readerKey`，后续操作使用新的请求现场。旧提问的迟到接单结果不能切回旧聊天。换材料、换账号、连接恢复引起的换代仍重建整个应用；对话创建成功但历史读取失败时，在对话区提供恢复入口。
 
 每页 attachment 都在登录恢复时重新生成。普通标签页使用自己的 sessionStorage，只保存当前用户的 workspace ID。刷新先读取服务检查点再 attach；复制标签页携带同一个句柄时，由 MU5 在仍有主连接的情况下 fork，不能借复制的浏览器状态接管原窗口。设备上的阅读表面偏好按 user 命名空间读取。
 
-退出立即卸载私人页面，清除该用户的本页待核对请求和现场句柄；先尝试 detach，再撤销 Cookie。BroadcastChannel 通知同浏览器的其他页面清理身份。回到前台、pageshow、online 时复验身份和现场；会话改变、工作区换代或发布绑定改变都会重建场景。旋转、键盘和输入法事件只影响既有布局。
+退出立即卸载私人页面，清除该用户的本页待核对请求和现场句柄；先尝试 detach，再撤销 Cookie。BroadcastChannel 通知同浏览器的其他页面清理身份。回到前台、pageshow、online 时复验身份和现场；登录会话改变、恢复连接导致的工作区换代或发布绑定改变都会重建场景。旋转、键盘和输入法事件只影响既有布局。
 
 ## 提交与观察
 
