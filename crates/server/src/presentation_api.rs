@@ -171,7 +171,29 @@ pub(crate) fn route_with_restore(state: &PrivateBookContext<'_>, body: &str, obs
         Err(_) => return err_reply(&invalid()),
     };
     let result = (|| -> Result<Value, ToolError> {
-        let (mut version, session) = delivered(state, &request)?;
+        let (version, session) = delivered(state, &request)?;
+        let saved = match &request.saved_state {
+            Some(receipt) => {
+                if receipt.session_id != request.session_id || receipt.turn_id != request.turn_id || receipt.reference != request.reference { return Err(invalid()); }
+                Some(state.read_presentation_state(receipt)?)
+            }
+            None if restore_latest => state.latest_presentation_state(&request.session_id, &request.reference)?,
+            None => None,
+        };
+        render(state, version, &session.messages, saved, observe, &request.text, &request.source_ref_ids)
+    })();
+    match result {
+        Ok(value) => ok_json(&value),
+        Err(error) => err_reply(&error),
+    }
+}
+
+/// Both chat and note access use the same public-content compiler and resource projection.
+pub(crate) fn render(
+    state: &PrivateBookContext<'_>, mut version: AgentPresentation, messages: &[Message],
+    saved: Option<runtime::presentation::SavedPresentationState>, observe: bool,
+    text: &str, source_ref_ids: &[String],
+) -> Result<Value, ToolError> {
         // Labels belong to the book resolver; generated pages never supply labels.
         let mut resolved_labels = Vec::new();
         let mut resolved_indexes = Vec::new();
@@ -189,9 +211,9 @@ pub(crate) fn route_with_restore(state: &PrivateBookContext<'_>, body: &str, obs
         for (index, source) in resolved_indexes.into_iter().zip(resolved_labels) {
             version.content.source_bindings[index].label_snapshot = source.label;
         }
-        validate_semantics(&version, &session.messages)?;
+        validate_semantics(&version, messages)?;
         if observe {
-            if request.source_ref_ids.iter().any(|id| {
+            if source_ref_ids.iter().any(|id| {
                 !version
                     .content
                     .source_bindings
@@ -200,7 +222,7 @@ pub(crate) fn route_with_restore(state: &PrivateBookContext<'_>, body: &str, obs
             }) {
                 return Err(invalid());
             }
-            let view = compile_text(&request.text, &version, &session.messages)?;
+            let view = compile_text(text, &version, messages)?;
             // Source markup is represented by dedicated bound DOM controls, not text.
             if view
                 .parts
@@ -214,21 +236,8 @@ pub(crate) fn route_with_restore(state: &PrivateBookContext<'_>, body: &str, obs
         let readable_view = compile_text(
             &version.content.readable_content,
             &version,
-            &session.messages,
+            messages,
         )?;
-        let saved = match &request.saved_state {
-            Some(receipt) => {
-                if receipt.session_id != request.session_id
-                    || receipt.turn_id != request.turn_id
-                    || receipt.reference != request.reference
-                {
-                    return Err(invalid());
-                }
-                Some(state.read_presentation_state(receipt)?)
-            }
-            None if restore_latest => state.latest_presentation_state(&request.session_id, &request.reference)?,
-            None => None,
-        };
         let sources = version
             .content
             .source_bindings
@@ -252,11 +261,6 @@ pub(crate) fn route_with_restore(state: &PrivateBookContext<'_>, body: &str, obs
             initial_state: version.content.initial_state,
         })
         .expect("serializable presentation"))
-    })();
-    match result {
-        Ok(value) => ok_json(&value),
-        Err(error) => err_reply(&error),
-    }
 }
 
 /// Only actually delivered versions participate, including a delivery committed before interruption.

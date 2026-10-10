@@ -1,0 +1,42 @@
+[WebServer] (node:42040) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:41528) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:41624) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  1 playwright\session-recap.spec.ts:47:44 › RS4 selects facts and downloads the frozen recap at 1440px (9.9s)
+
+
+  1) playwright\session-recap.spec.ts:47:44 › RS4 selects facts and downloads the frozen recap at 1440px 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator: getByRole('dialog', { name: '生成分享图' }).getByLabel('排版', { exact: true })
+    Expected: "recap"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveValue" with timeout 5000ms
+      - waiting for getByRole('dialog', { name: '生成分享图' }).getByLabel('排版', { exact: true })
+
+
+      87 |   await shareButton.click();
+      88 |   const panel = page.getByRole('dialog', { name: '生成分享图' });
+    > 89 |   await expect(panel.getByLabel('排版', { exact: true })).toHaveValue('recap');
+         |                                                         ^
+      90 |   await panel.getByLabel('标题', { exact: true }).fill('前提与证据');
+      91 |   await panel.getByLabel('我的感想', { exact: true }).fill('下次从一个新例子开始。');
+      92 |   refreshed = true;
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\session-recap.spec.ts:89:57
+
+    Error Context: test-results\session-recap-RS4-selects--4fbcf--the-frozen-recap-at-1440px\error-context.md
+
+  1 failed
+    playwright\session-recap.spec.ts:47:44 › RS4 selects facts and downloads the frozen recap at 1440px 
+undefined
+E:\allwork\download\agent\understand-book-reading-share\packages\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: playwright test playwright/session-recap.spec.ts --grep RS4.*1440 --workers=1

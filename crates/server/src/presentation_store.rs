@@ -188,6 +188,22 @@ impl PresentationStore {
         }
         Ok(version)
     }
+    /// The caller has resolved a persisted note (or a committed follow-up) owned by this user.
+    pub(crate) fn read_retained_state(
+        &self,
+        owner: &PresentationOwner,
+        receipt: &PresentationFollowUp,
+    ) -> Result<SavedPresentationState, ToolError> {
+        self.read_version(owner, &receipt.reference)?;
+        check_id(&receipt.saved_state_ref)?;
+        let saved: SavedPresentationState = Self::read(&self.root.join("states")
+            .join(&receipt.reference.presentation_id).join(receipt.reference.revision.to_string())
+            .join(format!("{}.json", receipt.state_revision)))?;
+        if saved.receipt != *receipt || &saved.owner != owner {
+            return Err(invalid("State receipt does not match retained version"));
+        }
+        Ok(saved)
+    }
     fn read_candidate(
         &self,
         owner: &PresentationOwner,

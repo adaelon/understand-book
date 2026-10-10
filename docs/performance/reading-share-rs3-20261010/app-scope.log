@@ -1,0 +1,16 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/App.startup.test.ts (47 tests) 1186ms
+
+ Test Files  1 passed (1)
+      Tests  47 passed (47)
+   Start at  14:52:53
+   Duration  11.42s (transform 3.00s, setup 0ms, collect 6.18s, tests 1.19s, environment 2.93s, prepare 476ms)
+

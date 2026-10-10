@@ -1,0 +1,132 @@
+[WebServer] (node:42356) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:41848) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 6 tests using 1 worker
+
+(node:24640) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 playwright\session-recap.spec.ts:5:3 › JL9 recap is readable and returns to chat at 390px (3.4s)
+  ok 2 playwright\session-recap.spec.ts:5:3 › JL9 recap is readable and returns to chat at 1440px (1.4s)
+  x  3 playwright\session-recap.spec.ts:47:44 › RS4 selects facts and downloads the frozen recap at 320px (12.3s)
+(node:27240) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  4 playwright\session-recap.spec.ts:47:44 › RS4 selects facts and downloads the frozen recap at 390px (14.1s)
+(node:43532) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  5 playwright\session-recap.spec.ts:47:44 › RS4 selects facts and downloads the frozen recap at 768px (15.5s)
+(node:31780) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  6 playwright\session-recap.spec.ts:47:44 › RS4 selects facts and downloads the frozen recap at 1440px (12.5s)
+
+
+  1) playwright\session-recap.spec.ts:47:44 › RS4 selects facts and downloads the frozen recap at 320px 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.session-recap')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for locator('.session-recap')
+
+
+      113 |   await page.screenshot({ path: `../../docs/performance/reading-share-rs4-20261010/share-${width}.png` });
+      114 |   await page.keyboard.press('Escape');
+    > 115 |   await expect(panel).toHaveCount(0); await expect(recap).toBeVisible(); await expect(shareButton).toBeFocused();
+          |                                                           ^
+      116 |   await shareButton.click();
+      117 |   await expect(panel.locator('.share-original pre').first()).toHaveText('刷新后的问题');
+      118 |   await panel.getByRole('button', { name: '重新选材' }).click();
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\session-recap.spec.ts:115:59
+
+    Error Context: test-results\session-recap-RS4-selects--28a36-s-the-frozen-recap-at-320px\error-context.md
+
+  2) playwright\session-recap.spec.ts:47:44 › RS4 selects facts and downloads the frozen recap at 390px 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.session-recap')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for locator('.session-recap')
+
+
+      113 |   await page.screenshot({ path: `../../docs/performance/reading-share-rs4-20261010/share-${width}.png` });
+      114 |   await page.keyboard.press('Escape');
+    > 115 |   await expect(panel).toHaveCount(0); await expect(recap).toBeVisible(); await expect(shareButton).toBeFocused();
+          |                                                           ^
+      116 |   await shareButton.click();
+      117 |   await expect(panel.locator('.share-original pre').first()).toHaveText('刷新后的问题');
+      118 |   await panel.getByRole('button', { name: '重新选材' }).click();
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\session-recap.spec.ts:115:59
+
+    Error Context: test-results\session-recap-RS4-selects--d6da6-s-the-frozen-recap-at-390px\error-context.md
+
+  3) playwright\session-recap.spec.ts:47:44 › RS4 selects facts and downloads the frozen recap at 768px 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.session-recap')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for locator('.session-recap')
+
+
+      113 |   await page.screenshot({ path: `../../docs/performance/reading-share-rs4-20261010/share-${width}.png` });
+      114 |   await page.keyboard.press('Escape');
+    > 115 |   await expect(panel).toHaveCount(0); await expect(recap).toBeVisible(); await expect(shareButton).toBeFocused();
+          |                                                           ^
+      116 |   await shareButton.click();
+      117 |   await expect(panel.locator('.share-original pre').first()).toHaveText('刷新后的问题');
+      118 |   await panel.getByRole('button', { name: '重新选材' }).click();
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\session-recap.spec.ts:115:59
+
+    Error Context: test-results\session-recap-RS4-selects--806de-s-the-frozen-recap-at-768px\error-context.md
+
+  4) playwright\session-recap.spec.ts:47:44 › RS4 selects facts and downloads the frozen recap at 1440px 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.session-recap')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for locator('.session-recap')
+
+
+      113 |   await page.screenshot({ path: `../../docs/performance/reading-share-rs4-20261010/share-${width}.png` });
+      114 |   await page.keyboard.press('Escape');
+    > 115 |   await expect(panel).toHaveCount(0); await expect(recap).toBeVisible(); await expect(shareButton).toBeFocused();
+          |                                                           ^
+      116 |   await shareButton.click();
+      117 |   await expect(panel.locator('.share-original pre').first()).toHaveText('刷新后的问题');
+      118 |   await panel.getByRole('button', { name: '重新选材' }).click();
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\session-recap.spec.ts:115:59
+
+    Error Context: test-results\session-recap-RS4-selects--4fbcf--the-frozen-recap-at-1440px\error-context.md
+
+  4 failed
+    playwright\session-recap.spec.ts:47:44 › RS4 selects facts and downloads the frozen recap at 320px 
+    playwright\session-recap.spec.ts:47:44 › RS4 selects facts and downloads the frozen recap at 390px 
+    playwright\session-recap.spec.ts:47:44 › RS4 selects facts and downloads the frozen recap at 768px 
+    playwright\session-recap.spec.ts:47:44 › RS4 selects facts and downloads the frozen recap at 1440px 
+  2 passed (1.4m)
+undefined
+E:\allwork\download\agent\understand-book-reading-share\packages\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: playwright test playwright/session-recap.spec.ts --workers=1

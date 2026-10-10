@@ -1,25 +1,25 @@
 # CONTEXT —— 术语表
 
 ## 阅读笔记（Reading note）
-读者主动保存的想法与所选阅读内容，以及促成这段记录的原文、助手回答或演示现场的关联。自己的文字、原文摘录和助手解释分别保留内容身份；正文批注是阅读笔记的一种呈现方式。旧记录继续按已有事实显示“阅读笔记”。状态：BOUNDARY_CHANGE，设计已接受、RN1–RN4 待实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+读者主动保存的想法与所选阅读内容，以及促成这段记录的原文、助手回答或演示现场的关联。自己的文字、原文摘录和助手解释分别保留内容身份；正文批注是阅读笔记的一种呈现方式。旧记录继续按已有事实显示“阅读笔记”。状态：BOUNDARY_CHANGE，RN1 存储合同、RN2 演示保存／返回与 RN3 统一编辑已实现，RN4 检索与回看已实现、Web 验收通过，实体平台待验（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 笔记关联（Note association）
-一条笔记指向记录时的原文选区、已交付回答或已保存演示现场的明确关系，用于说明记录背景和返回原对象。它与读者写下的文字、笔记在正文中的显示位置分别表达；首版每条笔记保留一个主要关联。状态：NEW，设计已接受、待实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+一条笔记指向记录时的原文选区、已交付回答、已保存演示现场或首次明确正文放置的关系，用于说明记录背景和返回原对象。它与读者写下的文字、笔记在正文中的显示位置分别表达；首版每条笔记保留一个主要关联。状态：EXISTING，RN1 存储与接口已实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 笔记编辑草稿（Note editing draft）
-读者正在填写或修改、尚未保存为笔记的文字与所选关联，归属创建时的读者和材料。收起编辑区仍可继续填写，保存与明确放弃分别结束草稿。它不同于选择正文落点的 Note 放置草稿，也不同于只编辑分享表达的分享草稿。状态：NEW，设计已接受、待实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+读者正在填写或修改、尚未保存为笔记的文字与所选关联，归属创建时的读者和材料。收起编辑区仍可继续填写，保存与明确放弃分别结束草稿。它不同于选择正文落点的 Note 放置草稿，也不同于只编辑分享表达的分享草稿。状态：EXISTING，RN3 四类入口统一草稿已实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 笔记保留的演示现场（Note-retained presentation scene）
-读者保存笔记时明确关联的演示版本与当时参数、步骤和可见结果，随笔记保留，供以后打开或显式恢复。删除原聊天不结束这份保留关系；删除笔记只解除该笔记的关联，其他仍在使用同一演示的记录继续有效。状态：NEW，设计已接受、待实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+读者保存笔记时明确关联的演示版本与当时参数、步骤和可见结果，随笔记保留，供以后打开或显式恢复。删除原聊天不结束这份保留关系；删除笔记只解除该笔记的关联，其他仍在使用同一演示的记录继续有效。状态：EXISTING，RN2 已实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 阅读分享图（Reading share image）
-读者将明确选取的原文、阅读笔记、回答或图解整理成的静态图片，保留内容身份、必要上下文与来源，供个人保存和分享。它表达选取时的内容，不代表材料已公开或读者已掌握；状态：NEW，已确认设计、待实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+读者将明确选取的原文、阅读笔记、阅读回顾、回答或图解整理成的静态图片，保留内容身份、必要上下文与来源，供个人保存和分享。它表达选取时的内容，不代表材料已公开或读者已掌握；状态：EXISTING，RS1–RS7 笔记、原文选区、高亮、回顾条目、已交付回答与当前／笔记记录时的图解分享已实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 分享草稿（Share draft）
-读者为生成阅读分享图而准备的内容选择、标题、补充感想与版式组合；草稿中的编辑只影响本次分享表达，原文、已保存笔记及回答仍保有各自内容身份。状态：NEW，已确认设计、待实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+读者为生成阅读分享图而准备的内容选择、标题、补充感想与版式组合；草稿中的编辑只影响本次分享表达，原文、已保存笔记、回顾事实及回答仍保有各自内容身份。状态：EXISTING，RS1–RS7 页面内笔记／摘录／回顾／已交付回答／图解分享草稿已实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 阅读接续卡（Reading resumption card）
-围绕读者已有可恢复阅读现场呈现材料、读位和相关问题或明确待继续事项的入口，帮助读者重新接上思路。它是私人阅读状态的呈现，区别于用于分享的静态图片和记录同次来源往返的阅读返回点；状态：NEW，已确认设计、待实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+围绕读者已有可恢复阅读现场呈现材料、读位和相关问题或明确待继续事项的入口，帮助读者重新接上思路。它是私人阅读状态的呈现，区别于用于分享的静态图片和记录同次来源往返的阅读返回点；状态：EXISTING，RS5 已实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 运营管理员（ReaderAdmin）
 获准管理受邀账号、材料授权、收款登记、使用额度和内测码的应用身份。管理员权限与普通读者对私人内容的访问范围分别表达；状态：EXISTING，原管理能力与 INV2 内测码管理已实现（[ADR-0156](docs/adr/0156-reader-admin-and-account-allowance.md)、[ADR-0159](docs/adr/0159-email-accounts-and-single-use-beta-invites.md)）。
@@ -294,13 +294,13 @@ E 的记忆所在。**独立于只读基座、用户私有、可变、跨书**�
 选区创建的 Note 可选携带的结构化来源上下文:保存 `resolved/partial` 状态、用户实际选择的 `raw_quote`、可验证的 `resolved_quote` 与按阅读顺序排列的完整 LID ranges。用户内容可保留 raw quote,但 citations 与精确投影只能使用 resolved quote/ranges。Note 的 `anchor.lid` 仍取首个 resolved LID用于语义定位和排序,PDF 行内标记取末 range 作为显示锚,citations 由 ranges 中的 LID 去重派生;普通旧 Note 无此字段且保持兼容。状态:BOUNDARY_CHANGE。
 
 ## Memory replace
-Note 内容编辑使用的原子替换命令:验证旧 `mem_id` 后只更新 content,默认继承 anchor、selection context、note placement、citations 与 layer;写入失败时旧记录保持不变。带 quote source 的重新定位必须走显式“重新选择”并提交新的 selection context;无引用来源 Note 的正文迁移走独立 Note 原子重锚,两者都不得伪装成内容编辑。RN1 将继承范围扩展到笔记关联、保留片段及其内容身份，编辑文字保持原演示现场。状态:BOUNDARY_CHANGE，原命令已实现，RN 扩展待实现（见 [docs/adr/0074]、[docs/adr/0083]、[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+Note 内容编辑使用的原子替换命令:验证旧 `mem_id` 后只更新 content,默认继承 anchor、selection context、note placement、citations 与 layer;写入失败时旧记录保持不变。带 quote source 的重新定位必须走显式“重新选择”并提交新的 selection context;无引用来源 Note 的正文迁移走独立 Note 原子重锚,两者都不得伪装成内容编辑。RN1 已扩展继承范围到笔记关联、保留片段及其内容身份，编辑文字保持原演示现场和首次保存时间。状态:EXISTING，RN1 已实现（见 [docs/adr/0074]、[docs/adr/0083]、[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 无引用来源 Note (unquoted-source Note)
-不带结构化 `selection_context` 的 Note;正文中的 blockquote (`>`) 只是内容展示,不证明引用来源也不决定记录类型。当前实现要求新记录带显式 Note 正文放置，二者皆无只允许作为未知旧类型兼容读取。已接受的 RN 扩展允许以确切助手回答或演示现场建立笔记关联，正文放置由读者另行选择。状态:BOUNDARY_CHANGE，原规则已实现，RN 扩展待实现（见 [docs/adr/0083]、[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+不带结构化 `selection_context` 的 Note;正文中的 blockquote (`>`) 只是内容展示,不证明引用来源也不决定记录类型。没有明确回答／演示关联的新记录需带显式 Note 正文放置；缺少结构依据的既有记录按未知旧类型读取。RN1 允许以确切助手回答或演示现场建立笔记关联，正文放置由读者另行选择。状态:EXISTING，RN1 存储与接口已实现（见 [docs/adr/0083]、[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## Note 放置草稿 (NotePlacementDraft)
-用户从 Agent 回答截取无引用来源内容后形成、尚未写入 memory 的单个短生命周期草稿,绑定当前书、阅读表面与来源指纹。有效目标提交成功后转成 Note;取消、新草稿、切书或关闭 Reader 时丢弃,写入失败或结果待确认时暂留。RN 扩展后，该草稿继续服务显式正文放置；回答和演示的普通记录入口使用笔记编辑草稿。状态:BOUNDARY_CHANGE，原交互已实现，RN 扩展待实现（见 [docs/adr/0083]、[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+用户从 Agent 回答截取无引用来源内容后形成、尚未写入 memory 的单个短生命周期草稿,绑定当前书、阅读表面与来源指纹。有效目标提交成功后转成 Note;取消、新草稿、切书或关闭 Reader 时丢弃,写入失败或结果待确认时暂留。RN 扩展后，该草稿继续服务显式正文放置；回答和演示的普通记录入口使用笔记编辑草稿。状态:BOUNDARY_CHANGE，原交互与 RN3 回答直接记录已实现（见 [docs/adr/0083]、[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## Note 放置会话 (Note placement session)
 用户把 Note 放置草稿首次绑定或把已有无引用来源 Note 移到正文目标的单一临时交互控制器。首版仅由 Pointer Events 点选真实目标;Markdown 与 PDF 会话严格隔离,提交前最新操作可抢占,提交后不可取消或替换。状态:BOUNDARY_CHANGE(见 [docs/adr/0083])。

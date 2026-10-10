@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+ ✓ src/reading-notes.test.ts (3 tests) 71ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  15:22:44
+   Duration  1.48s (transform 84ms, setup 0ms, collect 87ms, tests 71ms, environment 0ms, prepare 652ms)
+

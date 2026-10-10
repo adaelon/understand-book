@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from "vue";
+import ShareImagePanel from './components/ShareImagePanel.vue';
+import { answerShareSource, deliveredAnswerText, excerptShareSource, noteShareSource, shareHighlightKey, shareNoteKey, sharePresentationKey, type ShareSource } from './reading-share';
 import { FolderOpen, Highlighter, Languages, MessageSquareText, RotateCcw, Save, Sparkles, X } from "@lucide/vue";
 import { api as sharedApi, ApiError } from "./api";
 import { network, bindSceneApi, sceneKey, readerKey, readerPreferenceOwner, submittedRunDrafts, type ChatDraft } from './network-context';
@@ -12,7 +14,7 @@ import { typographyHtml } from './reader-typography';
 import { recoverSubmissions, recoverWorkspaceBinding } from './network-client';
 import type { RecapTarget } from './session-recap';
 const recapProps = defineProps<{ recapTarget?: RecapTarget | null; chatDraft?: ChatDraft | null }>();
-const recapEmit = defineEmits<{ (e: 'recap-publication', target: RecapTarget): void; (e: 'recap-consumed'): void; (e: 'update:chatDraft', draft: ChatDraft): void; (e: 'show-allowance'): void }>();
+const recapEmit = defineEmits<{ (e: 'recap-publication', target: RecapTarget): void; (e: 'recap-consumed'): void; (e: 'update:chatDraft', draft: ChatDraft): void; (e: 'show-allowance'): void; (e: 'show-library'): void }>();
 import { spendNotice, type SpendNotice } from './account-allowance';
 const api = bindSceneApi(sharedApi, readerKey);
 const mountedReaderKey = readerKey();
@@ -110,7 +112,6 @@ import {
   resolveReaderStateNavigationTarget,
 } from "./reader-navigation";
 import { recallBookAnnotations } from "./reader-annotations";
-import { selectionContextForAgentNote } from "./agent-note-selection";
 import {
   createPlacedNote,
   isMarkdownInlineNote,
@@ -146,6 +147,7 @@ import LeftRail from "./components/LeftRail.vue";
 import PdfReaderPane from "./components/PdfReaderPane.vue";
 import ReaderPane from "./components/ReaderPane.vue";
 import ReaderWorkspace, { type WorkspaceAuxTab } from "./components/ReaderWorkspace.vue";
+import NoteEditorPanel from "./components/NoteEditorPanel.vue";
 import RightRail from "./components/RightRail.vue";
 import { useAgentRun } from "./useAgentRun";
 import { submissionWasAccepted, type UnknownSubmissionAudit } from "./agent-submission-recovery";
@@ -265,6 +267,8 @@ const mobileGlobalActionsOpen = ref(false);
 const rightRailRef = ref<{
   scrollToTurn: (turnId: string) => Promise<boolean>;
   showMemory: (memId: string) => Promise<boolean>;
+  replaceMemory?: (oldId: string, record: MemoryRecord) => void;
+  openNotePresentation: (record: MemoryRecord, restore?: boolean) => Promise<void>;
   openRecapTarget: (target: RecapTarget) => Promise<void>;
 } | null>(null);
 interface Segment {
@@ -519,14 +523,26 @@ function lidOrderIndex(lid: string | null | undefined): number {
 function sortMemoryByBookOrder(a: MemoryRecord, b: MemoryRecord): number {
   return lidOrderIndex(a.anchor.lid) - lidOrderIndex(b.anchor.lid)
     || (a.anchor.lid ?? "").localeCompare(b.anchor.lid ?? "")
+    || (a.range?.start ?? a.selection_context?.ranges[0]?.range.start ?? 0) - (b.range?.start ?? b.selection_context?.ranges[0]?.range.start ?? 0)
     || a.mem_id.localeCompare(b.mem_id);
 }
 const allNotes = computed(() => annotations.value.filter((r) => r.type === "note").sort(sortMemoryByBookOrder));
 const allHighlights = computed(() =>
   annotations.value
-    .filter((r) => r.type === "highlight" && isHighlightCardRepresentative(r))
+    .filter((r) => r.type === "highlight" && (highlightGroupMembers(r)[0]?.mem_id ?? r.mem_id) === r.mem_id)
+    .map(record => ({ ...record, content: highlightGroupMembers(record).map(member => member.content).join('\n') }))
     .sort(sortMemoryByBookOrder),
 );
+const noteBookOrder = computed(() => [...allNotes.value, ...allHighlights.value].sort(sortMemoryByBookOrder).map(r => r.mem_id));
+const noteSourceLabels = computed(() => Object.fromEntries(annotations.value.map(record => {
+  let lid = record.anchor.lid ?? '';
+  while (lid) {
+    const title = titleByLid.value.get(lid);
+    if (title) return [record.mem_id, stripMarkdownHeadingLine(title)];
+    lid = lid.includes('.') ? lid.slice(0, lid.lastIndexOf('.')) : '';
+  }
+  return [record.mem_id, '来源未知'];
+})));
 const visibleNotes = computed(() => {
   const visible = segments.value.map((seg) => seg.lid);
   const order = new Map(visible.map((lid, idx) => [lid, idx]));
@@ -1192,28 +1208,77 @@ async function modifyHighlight(rec: MemoryRecord) {
   if (!banner.value) banner.value = "已移除该高亮——重新框选文字再点「🖍 高亮选区」即可改范围。";
 }
 
-// ── 笔记编辑器(内联模态 + 实时 MD/LaTeX 预览)替换 window.prompt ──
-const noteEditor = ref<{
+// One page-local draft, fixed to its material and selected association.
+const noteCollapsed = ref(false);
+const noteError = ref('');
+type NoteDraft = {
+  materialKey: string;
+  initialContent: string;
+  legacy?: boolean;
+  excerpt?: import('./generated/NoteExcerpt').NoteExcerpt | null;
+  request?: import('./api').NoteCreateRequest;
+  receipt?: import('./generated/PresentationFollowUp').PresentationFollowUp;
+  title?: string;
+  summary?: string;
   lid: string;
   memId: string | null;
   layer: string;
   content: string;
   selectionContext: SelectionContext | null;
-} | null>(null);
+};
+const noteEditor = ref<NoteDraft | null>(null);
 const noteSaving = ref(false);
-const notePreview = computed(() => renderMarkdown(noteEditor.value?.content ?? ""));
+const noteDirty = computed(() => !!noteEditor.value && (noteEditor.value.memId
+  ? noteEditor.value.content !== noteEditor.value.initialContent || !!noteEditor.value.selectionContext
+  : !!noteEditor.value.content.trim() || !!noteEditor.value.excerpt));
+const noteTransition = ref<{ label: string; resolve: (proceed: boolean) => void } | null>(null);
+async function beforeNoteLeave(label = '离开当前材料'): Promise<boolean> {
+  if (noteTransition.value || noteSaving.value) return false;
+  if (!noteDirty.value) { cancelNote(); return true; }
+  if (document.activeElement instanceof HTMLTextAreaElement) document.activeElement.blur();
+  noteCollapsed.value = false;
+  return new Promise(resolve => { noteTransition.value = { label, resolve }; });
+}
+async function resolveNoteTransition(action: 'save' | 'discard' | 'continue') {
+  const pending = noteTransition.value;
+  if (!pending || noteSaving.value) return;
+  if (action === 'save' && !await saveNote()) return;
+  if (noteTransition.value !== pending) return;
+  if (action === 'discard') cancelNote();
+  noteTransition.value = null;
+  pending.resolve(action !== 'continue');
+}
+defineExpose({ beforeNoteLeave });
+async function beginNote(draft: Omit<NoteDraft, 'materialKey' | 'initialContent'>) {
+  if (draft.memId && noteEditor.value?.memId === draft.memId && !draft.selectionContext) { noteCollapsed.value = false; return; }
+  const materialKey = noteMaterialKey.value;
+  if (!await beforeNoteLeave('打开另一条笔记') || disposed || materialKey !== noteMaterialKey.value) return;
+  noteEditor.value = { ...draft, materialKey, initialContent: draft.content };
+  noteCollapsed.value = false; noteError.value = '';
+}
 function openNewNote(lid = selectedLid.value, content = "", selectionContext: SelectionContext | null = null) {
   if (!lid) return;
-  noteEditor.value = { lid, memId: null, layer: "long_term", content, selectionContext };
+  void beginNote({ lid, memId: null, layer: 'long_term', content, selectionContext,
+    title: '原文', excerpt: selectionContext ? { kind: 'original', text: selectionContext.raw_quote } : null,
+    request: selectionContext ? { association: { kind: 'selection' }, retained_excerpt: selectionContext.raw_quote } : undefined });
+}
+function recordPresentationNote(receipt: import('./generated/PresentationFollowUp').PresentationFollowUp, title: string, summary = '') {
+  const fixed = { ...receipt, reference: { ...receipt.reference } };
+  void beginNote({ lid: '', memId: null, layer: 'long_term', content: '', selectionContext: null,
+    receipt: fixed, request: { association: { kind: 'presentation', receipt: fixed } }, title, summary });
 }
 function openEditNote(rec: MemoryRecord) {
-  noteEditor.value = {
+  const association = rec.note?.association;
+  void beginNote({
     lid: rec.anchor.lid ?? "",
     memId: rec.mem_id,
     layer: rec.layer,
     content: rec.content,
     selectionContext: null,
-  };
+    legacy: !rec.note, excerpt: rec.note?.retained_excerpt,
+    title: association?.kind === 'presentation' ? association.title : association?.kind === 'answer' ? '助手回答' : '阅读笔记',
+    receipt: association?.kind === 'presentation' ? association.receipt : undefined,
+  });
 }
 async function showAnnotationInNotes(record: MemoryRecord) {
   workspaceRef.value?.showAssistant('notes');
@@ -1222,56 +1287,86 @@ async function showAnnotationInNotes(record: MemoryRecord) {
   await rightRailRef.value?.showMemory(record.mem_id);
 }
 function cancelNote() {
-  if (noteEditor.value?.selectionContext && pdfSelectionState.value.phase === "saving") {
-    cancelPdfSelectionDraft();
-  }
+  if (noteSaving.value) return;
   noteEditor.value = null;
 }
 // 保存:新建走 save;编辑走原子 replace,默认继承旧锚与 selection context。
 async function saveNote() {
   const ed = noteEditor.value;
-  if (!ed || noteSaving.value) return;
-  const contextKey = workspaceContextKey.value;
-  const content = ed.content.trim();
-  if (!content) return;
+  if (!ed || noteSaving.value || ed.materialKey !== noteMaterialKey.value) return false;
+  const current = () => !disposed && ed.materialKey === noteMaterialKey.value && noteEditor.value === ed;
+  const content = ed.content;
+  if (!content.trim() && !ed.excerpt) return false;
   noteSaving.value = true;
+  noteError.value = '';
   try {
     banner.value = "";
     if (ed.memId) {
-      await api.replace({
+      const saved = await api.replace({
         mem_id: ed.memId,
         content,
         selection_context: ed.selectionContext ?? undefined,
       });
-    } else if (ed.selectionContext) {
+      if (!current()) return false;
+      if (saved) {
+        rightRailRef.value?.replaceMemory?.(ed.memId, saved);
+        annotations.value = annotations.value.map(record => record.mem_id === ed.memId ? saved : record);
+      }
+    } else if (ed.request) {
       await api.save({
         type: "note",
         content,
         layer: ed.layer,
-        selection_context: ed.selectionContext,
+        selection_context: ed.selectionContext ?? undefined,
+        note: ed.request,
       });
     } else {
       await api.note(ed.lid, content);
     }
-    if (disposed || contextKey !== workspaceContextKey.value) return;
-    if (noteEditor.value === ed) noteEditor.value = null;
-    await refreshAnnotations();
-    if (ed.selectionContext && pdfSelectionState.value.phase === "saving") {
-      completePdfSelectionAction();
-    }
+    if (!current()) return false;
+    noteEditor.value = null;
+    banner.value = '笔记已保存';
+    try { await refreshAnnotations(); }
+    catch (e) { if (!disposed && ed.materialKey === noteMaterialKey.value) fail(e); }
+    return true;
   } catch (e) {
-    if (!disposed && contextKey === workspaceContextKey.value) fail(e);
+    if (current()) { noteError.value = errorMessage(e); fail(e); }
+    return false;
   } finally { noteSaving.value = false; }
 }
 async function deleteNote(rec: MemoryRecord) {
   if (!window.confirm("删除这条笔记?")) return;
+  const scope = noteMaterialKey.value;
   try {
-    banner.value = "";
+    banner.value = '';
     await api.delete(rec.mem_id);
+    if (disposed || scope !== noteMaterialKey.value) return;
+    if (noteEditor.value?.memId === rec.mem_id) noteEditor.value = null;
+    annotations.value = annotations.value.filter(record => record.mem_id !== rec.mem_id);
+    banner.value = '笔记已删除';
     await refreshAnnotations();
-  } catch (e) {
-    fail(e);
+  } catch (e) { if (!disposed && scope === noteMaterialKey.value) fail(e); }
+}
+async function openNoteAnswer(record: MemoryRecord) {
+  const association = record.note?.association;
+  if (association?.kind !== 'answer' || agentHistoryLoading.value) return;
+  const scope = noteMaterialKey.value;
+  if (association.session_id !== activeChatSessionId.value) await selectChat(association.session_id);
+  if (disposed || scope !== noteMaterialKey.value) return;
+  if (association.session_id !== activeChatSessionId.value || !chat.value.some(turn => turn.turnId === association.turn_id)) {
+    banner.value = '原回答当前不可用，已保存的笔记与摘录仍可阅读。'; return;
   }
+  presentationWorkspace.value = null;
+  workspaceRef.value?.showAssistant('agent'); requestWorkspaceTab('agent');
+  await nextTick();
+  if (disposed || scope !== noteMaterialKey.value) return;
+  if (!await rightRailRef.value?.scrollToTurn(association.turn_id)) banner.value = '原回答当前不可用，已保存的笔记与摘录仍可阅读。';
+}
+async function openNoteAssociation(record: MemoryRecord, restore = false) {
+  if (record.note?.association.kind === 'answer') { await openNoteAnswer(record); return; }
+  workspaceRef.value?.showAssistant('agent'); requestWorkspaceTab('agent');
+  await nextTick();
+  await rightRailRef.value?.openNotePresentation(record, restore);
 }
 
 function kindOf(lid: string): NodeKind {
@@ -1365,15 +1460,19 @@ async function refreshPdfAnnotationProjection(records: MemoryRecord[]) {
   }
 }
 
+let annotationReadSequence = 0;
 async function refreshAnnotations(): Promise<MemoryRecord[]> {
+  const sequence = ++annotationReadSequence;
+  const materialKey = noteMaterialKey.value;
   const bookId = buildWorkbenchSnapshot.value?.book_id;
   if (!bookId) {
     annotations.value = [];
     resetPdfAnnotationProjection();
     return [];
   }
-  const records = await recallBookAnnotations(bookId, api.recall);
-  if (buildWorkbenchSnapshot.value?.book_id !== bookId) return records;
+  const publication = network.value.enabled ? network.value.workspace?.published_book_ref.publication_id ?? null : null;
+  const records = (await recallBookAnnotations(bookId, api.recall)).filter(record => !record.note || record.note.material.publication_id === publication);
+  if (disposed || materialKey !== noteMaterialKey.value || sequence !== annotationReadSequence) return [];
   annotations.value = records;
   await refreshPdfAnnotationProjection(records);
   return records;
@@ -2380,6 +2479,8 @@ function codexPluginStateLabel(state: CodexPluginState): string {
   }[state];
 }
 onMounted(() => {
+  window.addEventListener('beforeunload', noteBeforeUnload);
+  document.addEventListener('pointerdown', collapseNoteOutside);
   window.addEventListener("agent-admission-changed", scheduleWorkspaceRecovery);
   window.addEventListener("workspace-recovered", scheduleWorkspaceRecovery);
   window.addEventListener("linked-reader-changed", refreshLinkedReader);
@@ -2392,6 +2493,9 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
   disposed = true;
+  clearNoteScope();
+  window.removeEventListener('beforeunload', noteBeforeUnload);
+  document.removeEventListener('pointerdown', collapseNoteOutside);
   window.removeEventListener("agent-admission-changed", scheduleWorkspaceRecovery);
   window.removeEventListener("workspace-recovered", scheduleWorkspaceRecovery);
   window.removeEventListener("linked-reader-changed", refreshLinkedReader);
@@ -2926,6 +3030,10 @@ async function submitNotePlacementTarget(placement: NoteBodyPlacement) {
         : null;
     notePlacementController.saveSucceeded();
     if (!result || !notePlacementBookIsCurrent(saving)) return;
+    if (saving.record && 'mem_id' in result) {
+      rightRailRef.value?.replaceMemory?.(saving.record.mem_id, result);
+      annotations.value = annotations.value.map(record => record.mem_id === saving.record!.mem_id ? result : record);
+    }
     try {
       await refreshAnnotations();
     } catch (refreshError) {
@@ -3075,11 +3183,8 @@ function noteSelection() {
     hlPopover.value = null;
     return;
   }
-  const quote = p.text.replace(/\s+/g, " ").trim();
-  selectedLid.value = p.anchorLid;
   hlPopover.value = null;
-  window.getSelection()?.removeAllRanges();
-  openNewNote(p.anchorLid, quote ? `> ${quote}` : "", markdownSelectionContext(p));
+  openNewNote(p.anchorLid, "", markdownSelectionContext(p));
 }
 function askSelection() {
   const p = hlPopover.value;
@@ -3158,6 +3263,124 @@ const workspaceAuxTabRevision = ref(0);
 const agentFullscreen = ref(false);
 const agentFullscreenSuspendedForSource = ref(false);
 const mobileWorkspaceEnabled = import.meta.env.VITE_MOBILE_WORKSPACE !== "0";
+const noteMaterialKey = computed(() => `${network.value.enabled ? readerKey() : 'local'}:${buildWorkbenchSnapshot.value?.book_id ?? 'no-book'}`);
+const shareDraft = ref<{ source: ShareSource; loading: boolean } | null>(null);
+let shareReturnFocus: HTMLElement | null = null;
+let shareOperation = 0;
+provide(sharePresentationKey, async load => {
+  const operation = ++shareOperation, scope = noteMaterialKey.value, chatId = activeChatSessionId.value;
+  const target = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const source = await load();
+  if (disposed || operation !== shareOperation || scope !== noteMaterialKey.value || chatId !== activeChatSessionId.value) return;
+  shareReturnFocus = target; shareDraft.value = { source, loading: false };
+});
+function closeShare() {
+  shareOperation++;
+  shareDraft.value = null;
+  const target = shareReturnFocus; shareReturnFocus = null;
+  void nextTick(() => { if (target?.isConnected) target.focus({ preventScroll: true }); });
+}
+provide(shareNoteKey, async (requested) => {
+  const record = annotations.value.find(record => record.mem_id === requested.mem_id && record.type === 'note');
+  if (!record) { banner.value = '这条笔记当前不可用，请重新打开笔记。'; return; }
+  const bookId = buildWorkbenchSnapshot.value?.book_id;
+  if (record.book_id !== bookId) return;
+  shareReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const labels = [...new Set((record.note?.source_bindings ?? []).map(source => source.label_snapshot).filter(Boolean))];
+  const association = record.note?.association.kind;
+  // Reanchoring an answer/presentation is a display position, not its original source.
+  const bodySource = !record.note || association === 'selection' || association === 'body_placement';
+  if (bodySource && record.anchor.lid) {
+    const placement = record.note_placement;
+    const entry = pdfEntryByLid.value.get(record.anchor.lid);
+    const pageIndex = placement?.kind === 'pdf_region' ? placement.page_index : entry?.primary_region?.pageIndex ?? entry?.regions[0]?.pageIndex;
+    const label = pageIndex !== undefined ? `第 ${pdfSourceMap.value?.pages.find(page => page.pageIndex === pageIndex)?.page_label ?? pageIndex + 1} 页`
+      : noteSourceLabels.value[record.mem_id];
+    if (label && label !== '来源未知' && !labels.includes(label)) labels.push(label);
+  }
+  const hasSource = labels.length > 0 || (bodySource && !!record.anchor.lid);
+  void beginShare(noteShareSource(record, hasSource ? labels : ['无已记录出处']), hasSource);
+});
+async function beginShare(source: ShareSource, hasSource = true) {
+  shareOperation++;
+  shareReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  shareDraft.value = { source, loading: hasSource };
+  if (!hasSource) return;
+  const scope = noteMaterialKey.value, chatId = activeChatSessionId.value;
+  const active = shareDraft.value;
+  const stillCurrent = () => !disposed && shareDraft.value === active && scope === noteMaterialKey.value && chatId === activeChatSessionId.value;
+  const bookId = buildWorkbenchSnapshot.value?.book_id;
+  let title = buildWorkbenchSnapshot.value?.input?.manifest?.display_title
+    || bookPickerBooks.value.find(book => book.book_id === bookId)?.name || '';
+  try {
+    const metadata = await api.paperMetadata();
+    if (!stillCurrent()) return;
+    title = metadata.title?.value || title;
+  } catch { if (!stillCurrent()) return; }
+  if (!stillCurrent()) return;
+  if (!title) {
+    try {
+      const library = await api.bookLibrary();
+      if (!stillCurrent()) return;
+      title = library.books.find(book => book.book_id === bookId)?.name ?? '';
+    } catch { if (!stillCurrent()) return; }
+  }
+  if (!stillCurrent()) return;
+  active.source.sources = [title ? `《${title}》` : '材料名称暂不可用', ...source.sources];
+  active.loading = false;
+}
+function excerptLabels(lids: string[]): string[] {
+  return [...new Set(lids.map(lid => {
+    const entry = pdfEntryByLid.value.get(lid);
+    const pages = entry?.regions.map(region => region.pageIndex) ?? [];
+    if (pages.length) return [...new Set(pages)].map(index => `第 ${pdfSourceMap.value?.pages.find(page => page.pageIndex === index)?.page_label ?? index + 1} 页`).join('、');
+    return chapterLabelForNote(lid);
+  }).filter(Boolean))];
+}
+function chapterLabelForNote(lid: string): string {
+  while (lid) {
+    const title = titleByLid.value.get(lid);
+    if (title) return stripMarkdownHeadingLine(title);
+    lid = lid.includes('.') ? lid.slice(0, lid.lastIndexOf('.')) : '';
+  }
+  return '来源位置暂不可用';
+}
+function shareSelection() {
+  const selected = hlPopover.value;
+  if (!selected || selected.contextKey !== workspaceContextKey.value) return;
+  void beginShare(excerptShareSource(selected.text, excerptLabels(selected.ranges.map(range => range.lid))));
+  hlPopover.value = null;
+}
+function sharePdfSelection() {
+  const draft = pdfSelectionState.value.draft;
+  if (!draft || draft.status !== 'resolved') return;
+  const pages = [...new Set(pdfSelectionState.value.capture?.rects.map(rect => rect.pageIndex) ?? [])];
+  const labels = pages.map(index => `第 ${pdfSourceMap.value?.pages.find(page => page.pageIndex === index)?.page_label ?? index + 1} 页`);
+  void beginShare(excerptShareSource(draft.raw_quote, labels.length ? labels : excerptLabels(draft.ranges.map(range => range.lid)), 'plain'));
+  pdfSelectionSession.cancel();
+}
+provide(shareHighlightKey, requested => {
+  const record = annotations.value.find(record => record.mem_id === requested.mem_id && record.type === 'highlight');
+  if (!record || record.book_id !== buildWorkbenchSnapshot.value?.book_id) return;
+  const members = highlightGroupMembers(record);
+  const pages = [...new Set(members.flatMap(member => pdfAnnotationProjection.value.highlights.find(highlight => highlight.mem_id === member.mem_id)?.rects.map(rect => rect.pageIndex) ?? []))];
+  const labels = pages.map(index => `第 ${pdfSourceMap.value?.pages.find(page => page.pageIndex === index)?.page_label ?? index + 1} 页`);
+  void beginShare(excerptShareSource(members.map(member => member.content).join('\n'), labels.length ? labels : excerptLabels(members.map(member => member.anchor.lid).filter((lid): lid is string => !!lid))));
+});
+watch([noteMaterialKey, activeChatSessionId], () => { shareOperation++; shareDraft.value = null; shareReturnFocus = null; }, { flush: 'sync' });
+watch(noteMaterialKey, clearNoteScope, { flush: 'sync' });
+function clearNoteScope() {
+  noteEditor.value = null; noteCollapsed.value = false; noteError.value = '';
+  annotations.value = [];
+  const pending = noteTransition.value; noteTransition.value = null; pending?.resolve(false);
+}
+function noteBeforeUnload(event: BeforeUnloadEvent) {
+  if (noteDirty.value || noteSaving.value) { event.preventDefault(); event.returnValue = ''; }
+}
+function collapseNoteOutside(event: PointerEvent) {
+  if (!noteEditor.value || noteTransition.value || noteCollapsed.value) return;
+  if (event.target instanceof Element && !event.target.closest('.note-editor-panel, .note-resume, .share-image-panel, [data-share-note]')) noteCollapsed.value = true;
+}
 const workspaceContextKey = computed(() => `${network.value.enabled ? sceneKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}:${activeChatSessionId.value || "no-chat"}`);
 const readerContextKey = computed(() => `${network.value.enabled ? readerKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}`);
 const chatSceneKey = computed(() => network.value.enabled ? sceneKey() : 'local');
@@ -3185,7 +3408,6 @@ watch(workspaceContextKey, (contextKey, previous) => {
     hlPopover.value = null;
     window.getSelection()?.removeAllRanges();
   }
-  noteEditor.value = null;
   closeSourcePreview();
   pendingReadingReturnPoint = null;
   readingContinuity.invalidateContext(contextKey);
@@ -3354,25 +3576,19 @@ async function highlightPdfSelection() {
 }
 
 function notePdfSelection() {
-  const ready = pdfSelectionState.value.draft;
-  if (!ready || !getPdfSelectionCapabilities(ready.status).canNote) return;
-  const draft = pdfSelectionSession.beginAction();
-  const first = draft?.ranges[0];
-  if (!draft || !first) return;
-  const quote = draft.raw_quote.replace(/\s+/g, " ").trim();
-  selectedLid.value = first.lid;
+  const draft = pdfSelectionState.value.draft;
+  if (!draft || !getPdfSelectionCapabilities(draft.status).canNote || !draft.ranges[0]) return;
+  const first = draft.ranges[0];
+  const selectionContext = selectionContextOf(draft);
   const reselect = pdfReselectTarget.value?.kind === "note" ? pdfReselectTarget.value.record : null;
   if (reselect) {
-    noteEditor.value = {
-      lid: first.lid,
-      memId: reselect.mem_id,
-      layer: reselect.layer,
-      content: reselect.content,
-      selectionContext: selectionContextOf(draft),
-    };
-  } else {
-    openNewNote(first.lid, quote ? `> ${quote}` : "", selectionContextOf(draft));
-  }
+    void beginNote({ lid: first.lid, memId: reselect.mem_id, layer: reselect.layer,
+      content: reselect.content, selectionContext, legacy: !reselect.note,
+      excerpt: reselect.note?.retained_excerpt ? { kind: 'original', text: selectionContext.raw_quote } : null,
+      title: '重新选择原文' });
+  } else openNewNote(first.lid, '', selectionContext);
+  // The editor owns the immutable selection; later PDF selections are independent.
+  completePdfSelectionAction();
 }
 
 function askPdfSelection() {
@@ -3625,7 +3841,7 @@ function onTutorResponse(event: Event) {
   if (sending.value) { banner.value = "回答已记录，请等待当前回复完成后继续。"; return; }
   void submitAgentMessage(detail.text, detail.text, null, undefined, { teaching_ref: detail.eventId });
 }
-async function submitAgentMessage(msg: string, displayUser: string, draft: AskDraft | null, presentationFollowUp?: import("./generated/PresentationFollowUp").PresentationFollowUp, goalMeta: Pick<AgentChatMeta, "goal_id" | "goal_action" | "teaching_ref"> = {}, submittedDraft?: ChatDraft) {
+async function submitAgentMessage(msg: string, displayUser: string, draft: AskDraft | null, presentationFollowUp?: import("./generated/PresentationFollowUp").PresentationFollowUp, goalMeta: Pick<AgentChatMeta, "goal_id" | "goal_action" | "teaching_ref" | "note_mem_id"> = {}, submittedDraft?: ChatDraft) {
   if (sending.value || agentHistoryLoading.value || agentHistoryError.value) return;
   const questionAnchorLid = draft?.lid ?? selectedLid.value ?? viewport.value?.top_lid ?? null;
   const turn: ChatTurn = {
@@ -3727,6 +3943,10 @@ async function cancelGoal(goalId: string) {
   }
 }
 
+async function sendNoteFollowUp(message: string, receipt: import('./generated/PresentationFollowUp').PresentationFollowUp, memId: string) {
+  if (!activeChatSessionId.value || sending.value) return;
+  await submitAgentMessage(message, message, null, receipt, { note_mem_id: memId });
+}
 async function sendPresentationFollowUp(message: string, receipt: import("./generated/PresentationFollowUp").PresentationFollowUp) {
   if (receipt.session_id !== activeChatSessionId.value || sending.value) return;
   await submitAgentMessage(message, message, null, receipt);
@@ -3778,12 +3998,6 @@ async function keepEffect(ti: number, _ei: number, effect: AgentEffect) {
   await disposeEffect(ti, effect, "keep");
 }
 
-function notePlacementDraftId(): string {
-  const random = globalThis.crypto?.randomUUID?.()
-    ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  return `note-placement-${random}`;
-}
-
 function cancelNotePlacement() {
   if (notePlacementController.cancel()) banner.value = "已取消正文放置。";
 }
@@ -3825,65 +4039,36 @@ async function startNotePlacement(note: MemoryRecord) {
   }
 }
 
-async function saveAgentSelection(turn: ChatTurn, text: string) {
-  const selectionContext = selectionContextForAgentNote(turn.questionSelection);
-  const content = text.trim();
-  if (!content) return;
-  const sourceQuote = turn.questionQuote?.quote.replace(/\s+/g, " ").trim();
-  const noteContent = sourceQuote ? `> ${sourceQuote}\n\n${content}` : content;
-  if (!selectionContext) {
-    if (!unquotedNotePlacementAvailable.value) {
-      banner.value = "当前阅读表面尚未启用无引用 Note 正文放置。";
-      return;
-    }
-    try {
-      banner.value = "";
-      const surface = notePlacementSurface.value;
-      const source = await api.sourceFingerprint();
-      if (surface !== notePlacementSurface.value
-        || buildWorkbenchSnapshot.value?.book_id !== source.book_id
-        || !notePlacementCapability(surface, NOTE_PLACEMENT_CAPABILITIES)) {
-        banner.value = "阅读表面已变化，请重新选择 Agent 摘录。";
-        return;
-      }
-      noteSourceFingerprint.value = source.source_fingerprint;
-      const created = notePlacementController.createDraft({
-        draft_id: notePlacementDraftId(),
-        book_id: source.book_id,
-        surface_kind: surface,
-        source_fingerprint: source.source_fingerprint,
-        content: noteContent,
-        origin: { kind: "agent_answer", chat_session_id: activeChatSessionId.value },
-      });
-      if (created) { window.getSelection()?.removeAllRanges(); workspaceRef.value?.showReader(); }
-      const targetLabel = surface === "pdf" ? "PDF 正文区域" : "正文中的真实段落";
-      banner.value = created
-        ? `请选择${targetLabel}放置这条 Note。`
-        : "当前 Note 正在提交或核对，暂时不能替换。";
-    } catch (e) {
-      fail(e);
-    }
-    return;
-  }
-  const anchor = selectionContext.ranges[0]?.lid ?? turn.questionAnchorLid;
-  if (!anchor) return;
-  try {
-    banner.value = "";
-    await api.save({
-      type: "note",
-      anchor_lid: anchor,
-      content: noteContent,
-      layer: "long_term",
-      selection_context: selectionContext,
-    });
-    if (viewport.value?.visible_lids.includes(anchor)) {
-      await refreshAnnotations();
-    } else {
-      await loadWindow((await api.goto(anchor)).viewport);
-    }
-  } catch (e) {
-    fail(e);
-  }
+function saveAgentSelection(turn: ChatTurn, text: string) {
+  if (turn.pending || turn.error || !turn.turnId || !activeChatSessionId.value || !text.trim()) return;
+  const parts = turn.outcome?.answer_view?.parts;
+  const texts = parts ? parts.filter(p => p.kind === 'markdown').map(p => p.text) : [turn.outcome?.answer ?? ''];
+  if (!texts.some(source => source.includes(text))) { banner.value = '请重新选择已交付回答中的连续文字。'; return; }
+  void beginNote({ lid: '', memId: null, layer: 'long_term', content: '', selectionContext: null,
+    title: '助手回答', excerpt: { kind: 'assistant', text },
+    request: { association: { kind: 'answer', session_id: activeChatSessionId.value, turn_id: turn.turnId }, retained_excerpt: text } });
+}
+
+async function shareAgentAnswer(requested: ChatTurn, excerpt?: string) {
+  shareOperation++;
+  const turn = chat.value.find(turn => turn.turnId === requested.turnId);
+  if (!turn || !activeChatSessionId.value) return;
+  const fullText = deliveredAnswerText(turn), text = excerpt ?? fullText;
+  if (!fullText || !text.trim() || !fullText.includes(text)) return;
+  const turnId = turn.turnId!, sessionId = activeChatSessionId.value;
+  const view = turn.outcome!.answer_view;
+  const ids = [...new Set(view?.parts.flatMap(part => part.kind === 'sources' ? part.source_ref_ids : []) ?? [])];
+  const labels = ids.map(id => view?.sources.find(source => source.source_ref_id === id)?.label || '来源名称暂不可用');
+  // Answer citations are turn-bound. Never supplement them with the current book metadata.
+  shareReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  shareDraft.value = { source: answerShareSource(fullText, text, sessionId, turnId, labels), loading: ids.length > 0 };
+  const active = shareDraft.value, scope = noteMaterialKey.value;
+  const resolved = await Promise.allSettled(ids.map(id => api.agentSourceResolve(turnId, id)));
+  if (disposed || shareDraft.value !== active || scope !== noteMaterialKey.value || sessionId !== activeChatSessionId.value) return;
+  active.source.sources = resolved.length ? resolved.map((result, index) => result.status === 'fulfilled'
+    ? `${result.value.material_title ? `《${result.value.material_title}》 · ` : ''}${result.value.label || labels[index]}${result.value.stale ? '（来源暂不可用）' : ''}`
+    : `${labels[index]}（来源暂不可用）`) : ['无已记录出处'];
+  active.loading = false;
 }
 
 function captureReadingReturnPoint(turnId: string): ReadingReturnPoint {
@@ -3985,13 +4170,17 @@ async function newChat() {
 async function selectChat(sessionId: string) {
   if (!sessionId || sessionId === activeChatSessionId.value || agentHistoryLoading.value) return;
   const previousChat = activeChatSessionId.value;
+  const scope = noteMaterialKey.value;
   agentHistoryLoading.value = true;
   try {
-    applyAgentHistory(await api.agentHistorySelect(sessionId));
+    const history = await api.agentHistorySelect(sessionId);
+    if (disposed || scope !== noteMaterialKey.value) return;
+    applyAgentHistory(history);
     askDraft.value = null;
     agentInput.value = "";
     await refreshProfileSurface(true);
   } catch (e) {
+    if (disposed || scope !== noteMaterialKey.value) return;
     if (!disposed && activeChatSessionId.value !== previousChat) agentHistoryError.value = errorMessage(e);
     fail(e);
   } finally { if (!disposed) agentHistoryLoading.value = false; }
@@ -4027,6 +4216,7 @@ async function loadBookLibrary() {
 }
 
 async function openBook() {
+  if (network.value.enabled) { recapEmit('show-library'); return; }
   bookPickerOpen.value = true;
   if (bookPickerBooks.value.length === 0) {
     await loadBookLibrary();
@@ -4067,6 +4257,7 @@ function readLocalFileAsBase64(file: File): Promise<string> {
 }
 
 async function submitCreateBook() {
+  if (!await beforeNoteLeave('创建另一份材料')) return;
   const title = newBookTitle.value.trim();
   const bookId = generatedNewBookId.value;
   const markdown = newBookMarkdown.value;
@@ -4203,6 +4394,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
     bookPickerError.value = "Choose a book directory or enter one manually.";
     return;
   }
+  if (!await beforeNoteLeave('切换材料')) return;
   try {
     openingBook.value = true;
     banner.value = "";
@@ -4636,8 +4828,10 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @selection-cancel="cancelPdfSelectionDraft"
         @viewport-interaction="onPdfViewportInteraction"
         @edit-note="openEditNote"
+        @open-note="openNoteAssociation"
         @delete-note="deleteNote"
         @reselect-note="reselectPdfNote"
+        @show-notes="showAnnotationInNotes"
         @delete-highlight="deleteHighlight"
         @reselect-highlight="reselectPdfHighlight"
         @note-placement-target="onPdfNotePlacementTarget"
@@ -4676,6 +4870,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @modify-highlight="modifyHighlight"
         @delete-highlight="deleteHighlight"
         @edit-note="openEditNote"
+        @open-note="openNoteAssociation"
         @delete-note="deleteNote"
         @show-notes="showAnnotationInNotes"
         @place-note="startNotePlacement"
@@ -4721,6 +4916,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         :selected-formula="selectedFormula"
         :context-notes="allNotes"
         :context-highlights="allHighlights"
+        :note-book-order="noteBookOrder" :note-source-labels="noteSourceLabels" :note-scope-key="noteMaterialKey"
         :annotation-location="pdfAnnotationProjection.location_by_mem_id"
         :render-markdown="renderMarkdown"
         :eff-label="effLabel"
@@ -4752,8 +4948,10 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @retry-history="retryHistory"
         @toggle-fullscreen="toggleAgentFullscreen"
         @presentation-follow-up="sendPresentationFollowUp"
+        @record-note="recordPresentationNote" @note-follow-up="sendNoteFollowUp"
         @new-chat="newChat"
         @select-chat="selectChat"
+        @open-note-answer="openNoteAnswer"
         @delete-chat="deleteChat"
         @clear-ask="clearAskDraft"
         @goto="doGoto"
@@ -4762,8 +4960,10 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @undo-effect="undoEffect"
         @keep-effect="keepEffect"
         @save-answer-selection="saveAgentSelection"
+        @share-answer="shareAgentAnswer"
         @place-note="startNotePlacement"
         @edit-note="openEditNote"
+        @open-note="openNoteAssociation"
         @delete-note="deleteNote"
         @modify-highlight="modifyHighlight"
         @delete-highlight="deleteHighlight"
@@ -4846,6 +5046,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
           <MessageSquareText :size="16" />
           <span>笔记</span>
         </button>
+        <button v-if="pdfSelectionCapabilities.canNote" title="生成分享图" :disabled="pdfSelectionState.phase === 'saving'" @mousedown.prevent="sharePdfSelection">生成分享图</button>
         <button
           v-if="pdfSelectionCapabilities.canAsk"
           title="问 AI"
@@ -4890,6 +5091,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
     >
       <button @mousedown.prevent="confirmHighlight">高亮</button>
       <button @mousedown.prevent="noteSelection">笔记</button>
+      <button @mousedown.prevent="shareSelection">生成分享图</button>
       <button @mousedown.prevent="askSelection">问 AI</button>
     </div>
 
@@ -4965,33 +5167,25 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       </section>
     </div>
 
-    <div v-if="noteEditor" class="note-modal" @click.self="cancelNote">
-      <div class="note-dialog">
-        <div class="nd-head">
-          <span>{{ noteEditor.memId ? "编辑笔记" : "新建笔记" }} · {{ noteEditor.lid }}</span>
-          <button class="nd-close" title="关闭" @click="cancelNote">×</button>
-        </div>
-        <div class="nd-body">
-          <textarea
-            v-model="noteEditor.content"
-            class="nd-input"
-            placeholder="支持 Markdown 和 LaTeX: **加粗**, - 列表, $E=mc^2$ ..."
-            @keydown.ctrl.enter="saveNote"
-          ></textarea>
-          <div class="nd-preview md" v-html="notePreview"></div>
-        </div>
-        <div class="nd-foot">
-          <span class="nd-hint">Ctrl+Enter 保存 · Markdown/LaTeX 预览</span>
-          <span class="nd-actions">
-            <button @click="cancelNote">取消</button>
-            <button class="primary" :disabled="noteSaving || !noteEditor.content.trim()" @click="saveNote">保存</button>
-          </span>
-        </div>
-      </div>
+    <ShareImagePanel v-if="shareDraft" :source="shareDraft.source" :loading="shareDraft.loading" @close="closeShare" />
+    <NoteEditorPanel v-if="noteEditor && !noteCollapsed" v-model:content="noteEditor.content"
+      :title="noteEditor.title ?? '阅读笔记'" :summary="noteEditor.summary" :revision="noteEditor.receipt?.reference.revision"
+      :excerpt="noteEditor.excerpt" :legacy="noteEditor.legacy" :saving="noteSaving" :disabled="!!noteTransition" :error="noteError"
+      @save="saveNote" @collapse="noteCollapsed = true" @discard="cancelNote" />
+    <button v-if="noteEditor && noteCollapsed" class="note-resume" @click="noteCollapsed = false">继续编辑笔记</button>
+    <div v-if="noteTransition" class="note-transition" role="dialog" aria-modal="true" aria-label="处理未保存笔记">
+      <p>{{ noteTransition.label }}前，如何处理未保存的笔记？</p>
+      <p v-if="noteError" role="alert">{{ noteError }}</p>
+      <button :disabled="noteSaving" @click="resolveNoteTransition('save')">保存并继续</button>
+      <button :disabled="noteSaving" @click="resolveNoteTransition('discard')">放弃并继续</button>
+      <button :disabled="noteSaving" @click="resolveNoteTransition('continue')">继续编辑</button>
     </div>
   </div>
 </template>
 <style scoped>
+.note-transition { position: fixed; z-index: 150; bottom: 24px; right: 16px; box-sizing: border-box; width: min(380px, calc(100vw - 32px)); padding: 20px; background: var(--canvas); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 32px #0003; }
+.note-transition button { min-height: 44px; margin: 4px; }
+.note-resume { position: fixed; z-index: 120; right: 20px; bottom: 24px; padding: 12px 18px; background: var(--canvas); color: var(--accent); border: 1px solid var(--line); border-radius: 12px; }
 .desktop-settings-modal {
   position: fixed;
   inset: 0;

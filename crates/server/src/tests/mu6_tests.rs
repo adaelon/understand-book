@@ -2037,7 +2037,7 @@ fn jl7_backup_restores_new_chats_checkpoint_and_original_domain_objects() {
     let note = state.user.store.save(SaveInput {
         mem_id: None, mem_type: "note".into(), layer: "session".into(), book_id: f.x.book_id.clone(),
         anchor: Anchor { lid: Some("1.1".into()), concept: None }, content: "Original note".into(),
-        range: None, selection_context: None, note_placement: None, citations: None,
+        range: None, selection_context: None, note_placement: None, note: None, citations: None,
         source_session_id: Some(turn.session_id.clone()),
     }, "now").unwrap();
     let effect = AgentEffect::Note { mem_id: note.mem_id.clone(), lid: "1.1".into(), text: note.content };

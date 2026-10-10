@@ -1,4 +1,4 @@
-function (config) {
+function (config, staticCapture) {
   const send = message => parent.postMessage({ channel: config.channel, ...message }, "*");
   let revision = 0;
   let observer;
@@ -15,7 +15,7 @@ function (config) {
   let hostGeneration;
   let editing = false;
   let zoom = 1;
-  const pendingCaptures = new Set();
+  const pendingCaptures = new Map();
   window.presentation = Object.freeze({
     initialState: config.initialState,
     restoredState: config.restoredState ?? null,
@@ -52,7 +52,7 @@ function (config) {
       pendingFocus = undefined;
       const captures = Array.from(pendingCaptures);
       pendingCaptures.clear();
-      captures.forEach(capture);
+      captures.forEach(([id, mode]) => capture(id, mode));
       observer?.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
     }
     if (event.data.kind === "theme") {
@@ -60,6 +60,11 @@ function (config) {
       for (const [name, value] of Object.entries(event.data.values)) document.documentElement.style.setProperty(name, value);
     }
     if (event.data.kind === "snapshot") capture(event.data.request_id);
+    if (event.data.kind === "export-static") {
+      const id = event.data.request_id;
+      Promise.all([document.fonts.ready, ...Array.from(document.images, image => image.decode())])
+        .then(() => capture(id, true), () => send({ kind: "static-error", request_id: id, message: "图解图片资源加载失败，请重新加载后重试。" }));
+    }
   });
   function clearMasks() {
     for (const { node, style, ariaHidden, overlay } of masks) {
@@ -154,12 +159,12 @@ function (config) {
     observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
     return { text, source_ref_ids: refs };
   }
-  function capture(request_id) {
-    if (restoring || !observer) { pendingCaptures.add(request_id); return; }
+  function capture(request_id, exporting = false) {
+    if (restoring || !observer) { pendingCaptures.set(request_id, exporting); return; }
     const observation = observe();
     // Read the result only after the exact observed revision is accepted.
     if (pendingRevision) {
-      pendingCaptures.add(request_id);
+      pendingCaptures.set(request_id, exporting);
       return;
     }
     const controls = Array.from(document.querySelectorAll("input, textarea, select"))
@@ -169,13 +174,21 @@ function (config) {
       value: node instanceof HTMLSelectElement && node.multiple ? Array.from(node.selectedOptions, option => option.value) : node.value,
       ...(node.type === "checkbox" || node.type === "radio" ? { checked: node.checked } : {}),
       }));
+    try {
     const custom = stateReader ? stateReader() : {};
     // One synchronous browser read freezes parameters and actual rendered semantics together.
-    send({ kind: "state", request_id, state: {
+    send({ kind: exporting ? "static-result" : "state", request_id, ...(exporting ? { image: staticCapture(), parameters: Array.from(document.querySelectorAll('input, textarea, select')).filter(node => !node.closest('[data-presentation-mask]') && node.getClientRects().length > 0 && getComputedStyle(node).visibility !== 'hidden' && node.type !== 'hidden').map((node, index) => ({
+      label: node.getAttribute('aria-label') || Array.from(node.labels ?? [], label => label.textContent.trim()).join(' ') || `参数 ${index + 1}`,
+      value: node.type === 'checkbox' || node.type === 'radio' ? (node.checked ? '已选' : '未选') : node instanceof HTMLSelectElement ? Array.from(node.selectedOptions, option => option.text).join('、') : node.value,
+    })) } : {}), state: {
       values: { controls, page: custom.values ?? null },
       visible_step: custom.visible_step ?? document.querySelector("[data-presentation-step]")?.getAttribute("data-presentation-step") ?? null,
       observed_result: visibleText(document.body).trim(), source_ref_ids: observation.source_ref_ids,
     } });
+    } catch (error) {
+      if (exporting) send({ kind: "static-error", request_id, message: error instanceof Error ? error.message : String(error) });
+      else throw error;
+    }
   }
   function visibleText(node) {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent;

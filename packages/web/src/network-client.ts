@@ -24,18 +24,39 @@ export async function networkFetch<T>(method: string, path: string, body?: unkno
 // Serialize CAS writes from this page. Each operation captures its scene before joining the queue.
 let writes: Promise<unknown> = Promise.resolve();
 let bindingRecovery: { key: string; task: Promise<void> } | null = null;
+export interface ReadingResumption {
+  workspace_id: string;
+  published_book_ref: import('./network-context').PublishedBookRef;
+  selected_chat: string | null;
+  position_label: string | null;
+  position_excerpt: string | null;
+  last_question: string | null;
+}
+function savedWorkspaceId(): string | null {
+  const saved = sessionStorage.getItem(workspaceStorageKey());
+  return network.value.workspace?.workspace_id ?? (saved ? JSON.parse(saved).workspace_id : null);
+}
+export async function readReadingResumption(): Promise<ReadingResumption | null> {
+  const id = savedWorkspaceId();
+  return id ? networkFetch<ReadingResumption>('GET', `/workspaces/${id}/resumption`) : null;
+}
 /** Reclaim a cold main scene before exposing its new generation to the Reader. */
-export function recoverWorkspaceBinding(): Promise<void> {
+export function recoverWorkspaceBinding(expected?: ReadingResumption): Promise<void> {
   const key = sceneKey();
   if (bindingRecovery?.key === key) return bindingRecovery.task;
   if (network.value.linked) return Promise.reject(new ApiError(409, 'WORKSPACE_STALE', 'conflict', '请从原阅读窗口重新打开附属窗口'));
   const result = writes.catch(() => {}).then(async () => {
     if (key !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', '阅读现场已切换');
     const n = network.value;
-    const saved = sessionStorage.getItem(workspaceStorageKey());
-    const id = n.workspace?.workspace_id ?? (saved ? JSON.parse(saved).workspace_id : null);
+    const id = savedWorkspaceId();
     if (!id) return;
     const latest = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${id}`);
+    if (expected && (latest.workspace_id !== expected.workspace_id
+      || latest.published_book_ref.book_id !== expected.published_book_ref.book_id
+      || latest.published_book_ref.publication_id !== expected.published_book_ref.publication_id
+      || latest.selected_chat !== expected.selected_chat)) {
+      throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', '接续现场已更新，请查看最新记录后继续。');
+    }
     const attached = await networkFetch<NetworkWorkspace>('POST', `/workspaces/${id}/attach`, {
       attachment_id: n.attachment, generation: latest.generation, expected_revision: latest.revision,
     });
@@ -83,7 +104,7 @@ export async function workspaceRead<T = unknown>(action: string, body: Record<st
     ...body, attachment_id: n.attachment, generation: w.generation, expected_revision: w.revision,
   });
 }
-const readActions = new Set(['reader/state', 'profile/manifest', 'profile/memory', 'memory/recall',
+const readActions = new Set(['memory/presentation.read', 'memory/presentation.observe', 'reader/state', 'profile/manifest', 'profile/memory', 'memory/recall',
   'reader/paper_minimap.state', 'reader/pdf_selection.resolve', 'reader/pdf_ranges.project', 'agent/source.resolve']);
 
 interface Admission extends RunDescriptor {

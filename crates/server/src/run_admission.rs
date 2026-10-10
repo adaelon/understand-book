@@ -775,6 +775,7 @@ fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolError> {
         "question_anchor_lid",
         "question_quote",
         "presentation_follow_up",
+        "note_mem_id",
         "teaching_ref",
         "goal_id",
         "goal_action",
@@ -1445,6 +1446,9 @@ impl RunAdmissions {
             save_agent_history_path(&user.history_path, &candidate)?;
             user.agent_history = candidate;
         }
+        // Presentation versions embed their resources and remain in private storage.
+        // Memory note associations and committed follow-ups retain their exact receipts;
+        // removing this chat never removes another live object's presentation relation.
         self.point("chat_deleted")?;
         self.state.lock().unwrap().control.connection.execute("UPDATE run_admissions SET key_closed=1 WHERE owner_user_id=? AND chat_session_id=?",params![context.user_id(),chat]).map_err(|_|storage())?;
         access

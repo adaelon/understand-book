@@ -1,0 +1,15 @@
+[WebServer] (node:25368) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:23268) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 4 tests using 1 worker
+
+(node:29880) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 playwright\reading-resumption.spec.ts:4:44 › RS5 reads the saved scene without navigation at 320px (4.0s)
+  ok 2 playwright\reading-resumption.spec.ts:4:44 › RS5 reads the saved scene without navigation at 390px (1.3s)
+  ok 3 playwright\reading-resumption.spec.ts:4:44 › RS5 reads the saved scene without navigation at 768px (1.4s)
+  ok 4 playwright\reading-resumption.spec.ts:4:44 › RS5 reads the saved scene without navigation at 1440px (1.6s)
+
+  4 passed (16.4s)

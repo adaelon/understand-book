@@ -11,7 +11,7 @@ for (const reject of [false, true]) test(`async restoration ${reject ? 'fails wi
       if(event.data.kind==='observe') (event.source as Window).postMessage({channel:'agent-presentation',kind:'accepted',revision:event.data.revision},'*');
     });
     const frame=document.createElement('iframe');frame.setAttribute('sandbox','allow-scripts');
-    frame.srcdoc=`<script>(${bridge})({sources:[],initialState:{},restoredState:{values:{page:{time:1.5}}}})</script><p id="result">Default frame</p><script>
+    frame.srcdoc=`<script>(${bridge})({channel:"agent-presentation",sources:[],initialState:{},restoredState:{values:{page:{time:1.5}}}})</script><p id="result">Default frame</p><script>
       let time=0;presentation.registerStateReader(()=>({values:{time}}));
       presentation.registerStateRestorer(saved=>new Promise((resolve,reject)=>{window.finishRestore=()=>{${reject ? "reject(new Error('decode failed'))" : "time=saved.values.page.time;document.querySelector('#result').textContent='Restored '+time;presentation.commitState();resolve()"}}}));
     </script>`;
@@ -46,7 +46,7 @@ test("a delayed observation keeps the accepted result and focused slider visible
   await page.evaluate(({ bridge, style }) => {
     const frame = document.createElement("iframe");
     frame.setAttribute("sandbox", "allow-scripts");
-    frame.srcdoc = `<style>${style}</style><script>(${bridge})({sources:[],initialState:{}})</script>
+    frame.srcdoc = `<style>${style}</style><script>(${bridge})({channel:"agent-presentation",sources:[],initialState:{}})</script>
       <input id="count" type="range" min="0" max="3" value="2"><output id="result">2/3</output>
       <script>document.querySelector('#count').oninput=e=>document.querySelector('#result').textContent=e.target.value+'/3';</script>`;
     document.body.appendChild(frame);
@@ -90,6 +90,7 @@ test("a delayed observation keeps the accepted result and focused slider visible
 
 test("a pending subtree replacement shows only the last accepted public text", async ({ page }) => {
   const bridge = readFileSync(new URL("../src/presentation-bridge.js", import.meta.url), "utf8");
+  const sourceChip = readFileSync(new URL('../src/source-chip.js', import.meta.url), 'utf8').replace('export function', 'function');
   const style = readFileSync(new URL("../src/presentation.css", import.meta.url), "utf8");
   await page.goto("about:blank");
   await page.evaluate(() => {
@@ -98,14 +99,14 @@ test("a pending subtree replacement shows only the last accepted public text", a
       if (event.data.kind === "observe") (window as any).observations.push({ source: event.source, revision: event.data.revision });
     });
   });
-  await page.evaluate(({ bridge, style }) => {
+  await page.evaluate(({ bridge, style, sourceChip }) => {
     const frame = document.createElement("iframe");
     frame.setAttribute("sandbox", "allow-scripts");
-    frame.srcdoc = `<style>${style}</style><script>(${bridge})({sources:[],initialState:{}})</script>
+    frame.srcdoc = `<style>${style}</style><script>${sourceChip}\n(${bridge})({channel:"agent-presentation",sources:[],initialState:{}})</script>
       <button id="replace" onclick="document.querySelector('#region').innerHTML='<p>internal position 1.1</p><button data-source-ref=unknown>invented</button>'">Replace</button>
       <section id="region"><p>Accepted explanation</p></section>`;
     document.body.appendChild(frame);
-  }, { bridge, style });
+  }, { bridge, style, sourceChip });
   await expect.poll(() => page.evaluate(() => (window as any).observations.length)).toBe(1);
   await page.evaluate(() => {
     const item = (window as any).observations[0];
@@ -132,7 +133,7 @@ test("semantic observation preserves the focused control for repeated keyboard i
     const frame = document.createElement("iframe");
     frame.setAttribute("sandbox", "allow-scripts");
     frame.srcdoc = `<style>html[data-presentation-pending] body{visibility:hidden}</style>
-      <script>(${bridge})({sources:[],initialState:{}})</script>
+      <script>(${bridge})({channel:"agent-presentation",sources:[],initialState:{}})</script>
       <input id="count" type="range" min="0" max="3" value="2"><output id="result">2/3</output>
       <script>document.querySelector('#count').oninput=e=>document.querySelector('#result').textContent=e.target.value+'/3';</script>`;
     document.body.appendChild(frame);
@@ -160,7 +161,7 @@ test("restore runs after page DOMContentLoaded initialization without saving aga
   await page.evaluate(bridge => {
     const frame = document.createElement("iframe");
     frame.setAttribute("sandbox", "allow-scripts");
-    frame.srcdoc = `<script>(${bridge})({sources:[],initialState:{count:2},restoredState:{values:{controls:[{key:'count',type:'range',value:'1'}],page:{count:1}},visible_step:'explain'}})</script>
+    frame.srcdoc = `<script>(${bridge})({channel:"agent-presentation",sources:[],initialState:{count:2},restoredState:{values:{controls:[{key:'count',type:'range',value:'1'}],page:{count:1}},visible_step:'explain'}})</script>
       <input id="count" type="range" min="0" max="3" value="2"><output id="result"></output>
       <script>document.addEventListener('DOMContentLoaded',()=>{
         const input=document.querySelector('#count'),result=document.querySelector('#result');
@@ -192,7 +193,7 @@ test("snapshot reads visible results, custom step and live controls in one brows
   await page.evaluate(bridge => {
     const frame = document.createElement("iframe");
     frame.setAttribute("sandbox", "allow-scripts");
-    frame.srcdoc = `<script>(${bridge})({sources:[],initialState:{}})</script>
+    frame.srcdoc = `<script>(${bridge})({channel:"agent-presentation",sources:[],initialState:{}})</script>
       <p hidden>Old result: 99/100</p><p style="display:none">Old step</p>
       <input id="count" type="range" min="0" max="3" value="2"><input id="selected" type="checkbox" checked>
       <output id="result">2/3</output><svg aria-label="Two thirds filled"></svg>
@@ -230,7 +231,7 @@ test("editing focus reports only a boolean bound to the host content generation"
     const frame = document.createElement("iframe");
     frame.setAttribute("sandbox", "allow-scripts");
     frame.srcdoc = `<style>html[data-presentation-pending] body{visibility:hidden}</style>
-      <script>(${bridge})({sources:[],initialState:{}})</script><input id="editor" value="draft"><p>Visible result</p>`;
+      <script>(${bridge})({channel:"agent-presentation",sources:[],initialState:{}})</script><input id="editor" value="draft"><p>Visible result</p>`;
     document.body.appendChild(frame);
   }, bridge);
 

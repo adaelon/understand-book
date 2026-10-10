@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { inject } from 'vue';
+import { deliveredAnswerText, shareHighlightKey } from '../reading-share';
+const shareHighlight = inject(shareHighlightKey, null);
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { ChevronDown, ExternalLink, Maximize2, Minimize2, Undo2, X } from "@lucide/vue";
 import { api as sharedApi } from "../api";
-import { bindSceneApi, network } from '../network-context';
-const api = bindSceneApi(sharedApi);
+import { bindSceneApi, network, readerKey } from '../network-context';
+const api = bindSceneApi(sharedApi, readerKey);
+import { findNotes, noteKindLabel, notePreview, noteTimeLabel, type NoteFilter } from '../reading-notes';
 import type {
   AgentAnswerPart,
   AgentEffect,
@@ -25,9 +29,10 @@ import type {
   TraceStep,
 } from "../api";
 import type { PdfAnnotationLocation } from "../pdf-annotation-projection";
-import { rangeToMarkdown } from "../selection";
+import { answerNoteExcerpt } from "../answer-note-selection";
 import AgentActivities from "./AgentActivities.vue";
 import TutorActivities from "./TutorActivities.vue";
+import NoteDetail from "./NoteDetail.vue";
 import AgentPresentation from "./AgentPresentation.vue";
 import { sourceChipLabel } from "../source-chip.js";
 import SourceExcerpt from './SourceExcerpt.vue';
@@ -101,6 +106,9 @@ const props = defineProps<{
   selectedFormula: FormulaSemantics | null;
   contextNotes: MemoryRecord[];
   contextHighlights: MemoryRecord[];
+  noteBookOrder?: string[];
+  noteSourceLabels?: Record<string, string>;
+  noteScopeKey?: string;
   annotationLocation?: Record<string, PdfAnnotationLocation>;
   renderMarkdown: (source: string) => string;
   effLabel: (effect: AgentEffect) => string;
@@ -131,6 +139,9 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
   (e: 'recap-publication', target: RecapTarget): void;
+  (e: "open-note-answer", note: MemoryRecord): void;
+  (e: "record-note", receipt: PresentationFollowUp, title: string, summary: string): void;
+  (e: "note-follow-up", message: string, receipt: PresentationFollowUp, memId: string): void;
   (e: "presentation-follow-up", message: string, receipt: import("../generated/PresentationFollowUp").PresentationFollowUp): void;
   (e: "update:agentInput", value: string): void;
   (e: "send-agent"): void;
@@ -150,6 +161,7 @@ const emit = defineEmits<{
   (e: "undo-effect", turnIndex: number, effectIndex: number, effect: AgentEffect): void;
   (e: "keep-effect", turnIndex: number, effectIndex: number, effect: AgentEffect): void;
   (e: "save-answer-selection", turn: ChatTurn, text: string): void;
+  (e: "share-answer", turn: ChatTurn, text?: string): void;
   (e: "place-note", note: MemoryRecord): void;
   (e: "edit-note" | "delete-note" | "modify-highlight" | "delete-highlight", record: MemoryRecord): void;
   (e: "goto", lid: string): void;
@@ -171,6 +183,33 @@ const activeTab = ref<ContextTab>("agent");
 const workspace = defineModel<PresentationWorkspace | null>('presentationWorkspace', { default: null });
 const workspaceVisible = computed(() => !!workspace.value && !workspace.value.suspended);
 const workspaceKey = computed(() => workspace.value ? presentationKey(workspace.value.turnId, workspace.value.reference) : '');
+const retainedNote = ref<MemoryRecord | null>(null);
+const noteFollowUp = ref<MemoryRecord | null>(null);
+const retainedPresentation = ref<InstanceType<typeof AgentPresentation>>();
+const retainedReceipt = computed(() => retainedNote.value?.note?.association.kind === 'presentation' ? retainedNote.value.note.association.receipt : undefined);
+watch(() => props.contextNotes, notes => {
+  if (noteFollowUp.value && !notes.some(n => n.mem_id === noteFollowUp.value!.mem_id)) noteFollowUp.value = null;
+  if (retainedNote.value && !notes.some(n => n.mem_id === retainedNote.value!.mem_id)) { retainedNote.value = null; workspace.value = null; }
+});
+async function openNotePresentation(note: MemoryRecord, restore = false) {
+  if (note.note?.association.kind !== 'presentation') return;
+  const receipt = note.note.association.receipt;
+  const sameChat = receipt.session_id === props.activeChatSessionId && props.chat.some(t => t.turnId === receipt.turn_id && t.outcome && answerParts(t.outcome).some(p => p.kind === 'presentation' && presentationKey(t.turnId!, p) === presentationKey(receipt.turn_id, receipt.reference)));
+  activeTab.value = 'agent';
+  // Reuse an already mounted version so merely opening it cannot reset its state.
+  if (sameChat) { retainedNote.value = null; await locateScene(receipt, restore); noteFollowUp.value = note; return; }
+  noteFollowUp.value = note;
+  retainedNote.value = note;
+  workspace.value = { turnId: receipt.turn_id, reference: receipt.reference };
+  sceneBound.value = true;
+  await nextTick();
+  if (restore) await retainedPresentation.value?.restore(receipt);
+}
+function retainedSent(message: string, receipt: PresentationFollowUp) {
+  if (!retainedNote.value || !props.activeChatSessionId) return;
+  discussionOpen.value = true;
+  emit('note-follow-up', message, receipt, retainedNote.value.mem_id);
+}
 const sceneBound = ref(true);
 const discussionOpen = ref(false);
 const split = ref(63);
@@ -193,7 +232,7 @@ const loadedPresentations = ref(new Set<string>());
 let loadedSession = props.activeChatSessionId;
 watch(() => [props.chat, props.activeChatSessionId, workspace.value] as const, () => {
   if (loadedSession !== props.activeChatSessionId) {
-    workspace.value = null; loadedPresentations.value.clear(); presentationInstances.clear(); loadedSession = props.activeChatSessionId;
+    retainedNote.value = null; noteFollowUp.value = null; workspace.value = null; loadedPresentations.value.clear(); presentationInstances.clear(); loadedSession = props.activeChatSessionId;
   }
   if (workspace.value) return;
   for (const turn of props.chat) for (const part of turn.outcome ? answerParts(turn.outcome) : []) {
@@ -201,6 +240,7 @@ watch(() => [props.chat, props.activeChatSessionId, workspace.value] as const, (
   }
 }, { immediate: true, deep: true });
 function selectPresentation(turnId: string, reference: PresentationRef, open = true) {
+  retainedNote.value = null; noteFollowUp.value = null;
   loadedPresentations.value.add(presentationKey(turnId, reference));
   workspace.value = open ? { turnId, reference } : null;
   sceneBound.value = true;
@@ -211,15 +251,22 @@ function submitMessage() {
   if (workspaceVisible.value && sceneBound.value) {
     discussionOpen.value = true;
     followTranscript.value = true;
-    void presentationInstances.get(workspaceKey.value)?.followUp();
+    if (retainedNote.value) void retainedPresentation.value?.followUp();
+    else void presentationInstances.get(workspaceKey.value)?.followUp();
   } else emit('send-agent');
 }
 function presentationSent(message: string, receipt: PresentationFollowUp) {
   followTranscript.value = true;
   discussionOpen.value = true;
-  emit('presentation-follow-up', message, receipt);
+  const note = noteFollowUp.value;
+  if (note?.note?.association.kind === 'presentation') emit('note-follow-up', message, note.note.association.receipt, note.mem_id);
+  else emit('presentation-follow-up', message, receipt);
 }
 async function locateScene(receipt: PresentationFollowUp, restore = false) {
+  if (receipt.session_id !== props.activeChatSessionId) {
+    const note = props.contextNotes.find(n => n.note?.association.kind === 'presentation' && n.note.association.receipt.saved_state_ref === receipt.saved_state_ref);
+    if (note) { await openNotePresentation(note, restore); return; }
+  }
   selectPresentation(receipt.turn_id, receipt.reference);
   await nextTick();
   if (restore) await presentationInstances.get(workspaceKey.value)?.restore(receipt);
@@ -259,7 +306,9 @@ async function openRecapTarget(target: RecapTarget) {
     return;
   }
   // Recheck current availability while preserving the panel's factual cutoff.
+  const scope = readerKey();
   const current = await api.sessionRecap(target.session_id, target.through_seq);
+  if (scope !== readerKey() || target.session_id !== props.activeChatSessionId) throw new Error('阅读现场已切换');
   const item = target.kind === 'source'
     ? current.sources.find(s => s.source_ref_id === target.source.source_ref_id && s.evidence[0].turn_id === target.turn_id)
     : current.effects.find(e => e.effect_id === target.effect.effect_id && e.evidence[0].turn_id === target.turn_id);
@@ -281,16 +330,34 @@ async function openRecapTarget(target: RecapTarget) {
     selectPresentation(target.turn_id, reference);
   } else if (target.effect.object_id && ['Note', 'Highlight'].includes(target.effect.effect.effect.kind)) {
     const records = await api.recall();
-    const record = records.find(r => r.mem_id === target.effect.object_id);
-    if (!record?.anchor.lid) throw new Error('原成果当前不可用');
-    emit('focus-source', { lid: record.anchor.lid, quote: leadingQuote(record.content), memId: record.mem_id });
+    const record = records.find(r => r.mem_id === ('object_id' in item ? item.object_id : null));
+    if (scope !== readerKey() || target.session_id !== props.activeChatSessionId) throw new Error('阅读现场已切换');
+    if (!record || !await showMemory(record.mem_id)) throw new Error('原成果当前不可用，请刷新笔记');
   } else {
     activeTab.value = 'agent'; followTranscript.value = false;
     if (!await scrollToTurn(target.turn_id)) throw new Error('操作记录当前不可用');
   }
 }
 const fullscreenButton = ref<HTMLButtonElement | null>(null);
-const notesExpanded = ref(false);
+const noteQuery = ref('');
+const noteFilter = ref<NoteFilter>('all');
+const noteOrder = ref<'recent' | 'original'>('recent');
+const filteredNotes = computed(() => findNotes([...props.contextNotes, ...props.contextHighlights],
+  noteQuery.value, noteFilter.value, noteOrder.value, props.noteBookOrder ?? [...props.contextNotes, ...props.contextHighlights].map(n => n.mem_id), noteAssociationTitle));
+function noteAssociationTitle(note: MemoryRecord): string {
+  const association = note.note?.association;
+  if (association?.kind === 'presentation') return association.title;
+  if (association?.kind === 'answer') {
+    return props.chatSessions.find(s => s.id === association.session_id)?.title || '助手回答';
+  }
+  return props.noteSourceLabels?.[note.mem_id] || note.note?.source_bindings?.[0]?.label_snapshot || '来源未知';
+}
+watch(() => props.noteScopeKey, () => {
+  noteQuery.value = ''; noteFilter.value = 'all'; noteOrder.value = 'recent';
+  openNoteDetails.value.clear();
+  retainedNote.value = null; noteFollowUp.value = null; workspace.value = null;
+});
+const openNoteDetails = ref(new Set<string>());
 const transcriptRef = ref<HTMLElement | null>(null);
 const followTranscript = ref(true);
 function trackTranscriptScroll() {
@@ -428,9 +495,11 @@ watch(
 );
 
 const answerSelection = ref<{ x: number; y: number; text: string; turn: ChatTurn } | null>(null);
+const answerSelectionError = ref('');
 
 interface AgentSourcePopupState {
   fromRecap: boolean;
+  noteMemId?: string;
   turnId: string;
   sourceRefIds: string[];
   activeSourceRefId: string;
@@ -692,6 +761,8 @@ function onAgentSourceViewportResize() {
 
 window.addEventListener("resize", onAgentSourceViewportResize);
 function onFullscreenKeydown(event: KeyboardEvent) {
+  // The native share dialog owns Escape, including after a browser download moves focus.
+  if (event.key === 'Escape' && document.querySelector('.share-image-panel[open]')) return;
   if (event.key === 'Escape' && taskDetailsOpen.value) { event.preventDefault(); closeTaskDetails(); return; }
   if (event.key === 'Escape' && contextMenuOpen.value) {
     event.preventDefault(); contextMenuOpen.value = false; contextMenuButton.value?.focus(); return;
@@ -716,12 +787,12 @@ onBeforeUnmount(() => {
   window.removeEventListener("keydown", onFullscreenKeydown);
 });
 
-async function openAgentSources(turn: Pick<ChatTurn, 'turnId'>, sourceRefIds: string[], event: { currentTarget: EventTarget | null }, fromRecap = false) {
+async function openAgentSources(turn: Pick<ChatTurn, 'turnId'>, sourceRefIds: string[], event: { currentTarget: EventTarget | null }, fromRecap = false, noteMemId?: string) {
   if (!turn.turnId || sourceRefIds.length === 0) return;
   agentSourceAnchor = event.currentTarget as HTMLElement | null;
   const requestSequence = ++sourceRequestSequence;
   agentSourcePopup.value = {
-    fromRecap,
+    fromRecap, noteMemId,
     turnId: turn.turnId,
     sourceRefIds: [...sourceRefIds],
     activeSourceRefId: sourceRefIds[0],
@@ -735,7 +806,7 @@ async function openAgentSources(turn: Pick<ChatTurn, 'turnId'>, sourceRefIds: st
   await refreshAgentSourcePopupPosition();
   try {
     const sources = await Promise.all(
-      sourceRefIds.map((sourceRefId) => api.agentSourceResolve(turn.turnId!, sourceRefId)),
+      sourceRefIds.map((sourceRefId) => api.agentSourceResolve(turn.turnId!, sourceRefId, noteMemId)),
     );
     if (requestSequence !== sourceRequestSequence || !agentSourcePopup.value) return;
     agentSourcePopup.value.sources = sources;
@@ -765,7 +836,7 @@ async function openActiveAgentSourceInReader() {
   popup.error = null;
   emit("agent-source-will-open", { turnId: popup.turnId, sourceRefId: source.source_ref_id });
   try {
-    await api.agentSourceOpen(popup.turnId, source.source_ref_id);
+    await api.agentSourceOpen(popup.turnId, source.source_ref_id, popup.noteMemId);
     if (requestSequence !== sourceRequestSequence) return;
     closeAgentSourcePopup();
     emit("agent-source-opened");
@@ -787,6 +858,7 @@ function onAgentInputKeydown(event: KeyboardEvent) {
 const notesPanel = ref<HTMLElement | null>(null);
 async function showMemory(memId: string): Promise<boolean> {
   activeTab.value = 'notes';
+  noteQuery.value = ''; noteFilter.value = 'all'; openNoteDetails.value.add(memId);
   await nextTick();
   const card = Array.from(notesPanel.value?.querySelectorAll<HTMLElement>('[data-mem-id]') ?? [])
     .find(el => el.dataset.memId === memId);
@@ -796,9 +868,14 @@ async function showMemory(memId: string): Promise<boolean> {
   card.focus({ preventScroll: true });
   return true;
 }
-defineExpose({ scrollToTurn, showMemory, openRecapTarget });
+function replaceMemory(oldId: string, record: MemoryRecord) {
+  if (openNoteDetails.value.delete(oldId)) openNoteDetails.value.add(record.mem_id);
+  if (retainedNote.value?.mem_id === oldId) retainedNote.value = record;
+  if (noteFollowUp.value?.mem_id === oldId) noteFollowUp.value = record;
+}
+defineExpose({ scrollToTurn, showMemory, replaceMemory, openRecapTarget, openNotePresentation });
 
-watch(() => props.activeChatSessionId, closeAgentSourcePopup);
+watch(() => props.activeChatSessionId, () => { closeAgentSourcePopup(); answerSelection.value = null; answerSelectionError.value = ''; });
 watch(() => props.chat, () => {
   const popup = agentSourcePopup.value;
   if (!popup || popup.fromRecap) return;
@@ -808,7 +885,8 @@ watch(() => props.chat, () => {
 }, { deep: true });
 
 function onAnswerMouseUp(turn: ChatTurn) {
-  if (!turn.questionSelection && !props.unquotedNotePlacementAvailable) {
+  answerSelectionError.value = '';
+  if (turn.pending || turn.error || !turn.turnId || !turn.outcome) {
     answerSelection.value = null;
     return;
   }
@@ -825,20 +903,28 @@ function onAnswerMouseUp(turn: ChatTurn) {
     answerSelection.value = null;
     return;
   }
-  const text = rangeToMarkdown(range);
+  const text = answerNoteExcerpt(range, answerParts(turn.outcome).flatMap(part => part.kind === 'markdown' ? [part.text] : []));
   if (!text) {
     answerSelection.value = null;
+    answerSelectionError.value = '这段选区无法对应单个连续的回答片段，请在同一段回答文字内重新选择。';
     return;
   }
   const rect = range.getBoundingClientRect();
-  const x = Math.min(Math.max(rect.left + rect.width / 2, 54), window.innerWidth - 54);
+  const x = Math.min(Math.max(rect.left + rect.width / 2, 110), window.innerWidth - 110);
   const y = Math.max(46, rect.top);
   answerSelection.value = { x, y, text, turn };
 }
 function saveAnswerSelection(turn: ChatTurn) {
   const selected = answerSelection.value;
-  if (!selected) return;
+  if (!selected || selected.turn !== turn) return;
   emit("save-answer-selection", turn, selected.text);
+  answerSelection.value = null;
+  window.getSelection()?.removeAllRanges();
+}
+function shareAnswerSelection() {
+  const selected = answerSelection.value;
+  if (!selected || !deliveredAnswerText(selected.turn)) return;
+  emit('share-answer', selected.turn, selected.text);
   answerSelection.value = null;
   window.getSelection()?.removeAllRanges();
 }
@@ -868,12 +954,9 @@ function annotationLocationLabel(record: MemoryRecord): string | null {
   if (status === "unmapped") return "PDF 未定位";
   return null;
 }
-function notePreviewMarkdown(note: MemoryRecord): string {
-  const body = note.content.replace(/^>.*(\n>.*)*\n*/m, "").trim();
-  return body || note.content.trim();
-}
 function noteSourceLid(note: MemoryRecord): string | null {
-  if (note.selection_context) return note.anchor.lid ?? null;
+  if (note.type === 'highlight' || note.selection_context) return note.anchor.lid ?? null;
+  if (note.note_placement?.kind === 'pdf_region' && note.note_placement.source_fingerprint === props.noteSourceFingerprint && props.annotationLocation?.[note.mem_id] === 'exact') return note.anchor.lid ?? null;
   if (note.note_placement?.kind !== "lid_block"
     || note.note_placement.source_fingerprint !== props.noteSourceFingerprint
     || note.anchor.lid !== note.note_placement.lid) {
@@ -885,13 +968,10 @@ function canFocusNoteSource(note: MemoryRecord): boolean {
   return noteSourceLid(note) !== null;
 }
 function noteSourceLabel(note: MemoryRecord): string {
-  if (note.selection_context) return "引用来源";
-  if (!note.note_placement) return "无法定位";
-  if (note.note_placement.kind === "pdf_region") {
-    return props.annotationLocation?.[note.mem_id] === "exact" ? "PDF 正文" : "无法定位";
-  }
-  if (note.note_placement.source_fingerprint !== props.noteSourceFingerprint) return "来源已变更";
-  return note.anchor.lid === note.note_placement.lid ? "跳到来源" : "无法定位";
+  const placement = note.note_placement;
+  if (placement?.source_fingerprint && placement.source_fingerprint !== props.noteSourceFingerprint) return '来源已变更';
+  if (placement?.kind === 'pdf_region') return `第 ${placement.page_index + 1} 页`;
+  return noteAssociationTitle(note);
 }
 function notePlacementActionLabel(note: MemoryRecord): string | null {
   if (!props.unquotedNotePlacementAvailable || note.selection_context) return null;
@@ -1066,14 +1146,23 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         </section>
       </div>
 
-      <SessionRecap v-if="recapOpen" :session-id="props.activeChatSessionId" :navigate="openRecapTarget" @close="closeRecap" />
+      <AgentPresentation v-if="retainedNote && retainedReceipt" ref="retainedPresentation"
+        :session-id="retainedReceipt.session_id" :turn-id="retainedReceipt.turn_id" :reference="retainedReceipt.reference"
+        :note-mem-id="retainedNote.mem_id" :note-receipt="retainedReceipt" :workspace="workspaceVisible"
+        :toolbar-target="workspaceVisible ? workspaceTools : undefined" :shared-question="props.agentInput"
+        @update:shared-question="emit('update:agentInput', $event)" @follow-up="retainedSent"
+        :busy="!props.activeChatSessionId || props.sending || props.historyLoading || !!props.historyError"
+        @expand="workspace = $event ? { turnId: retainedReceipt!.turn_id, reference: retainedReceipt!.reference } : null"
+        @source="(id, anchor) => openAgentSources({ turnId: retainedReceipt!.turn_id }, [id], { currentTarget: anchor }, true, retainedNote!.mem_id)" />
+      <SessionRecap v-if="recapOpen" :session-id="props.activeChatSessionId" :session-title="props.chatSessions.find(session => session.id === props.activeChatSessionId)?.title" :navigate="openRecapTarget" @close="closeRecap" />
       <AgentPresentation v-if="recapPresentation" :session-id="props.activeChatSessionId" :turn-id="recapPresentation.turnId"
         :toolbar-target="workspaceVisible && workspaceKey === presentationKey(recapPresentation.turnId, recapPresentation.reference) ? workspaceTools : undefined"
         :ref="instance => { if (instance && recapPresentation) presentationInstances.set(presentationKey(recapPresentation.turnId, recapPresentation.reference), instance as InstanceType<typeof AgentPresentation>); }"
         :reference="recapPresentation.reference" :workspace="workspaceVisible && workspaceKey === presentationKey(recapPresentation.turnId, recapPresentation.reference)"
-        :busy="props.sending || props.historyLoading || !!props.historyError" @follow-up="presentationSent"
+        :busy="props.sending || props.historyLoading || !!props.historyError" @follow-up="presentationSent" @record-note="(receipt, title, summary) => emit('record-note', receipt, title, summary)"
         @source="(id, anchor) => openAgentSources({ turnId: recapPresentation!.turnId }, [id], { currentTarget: anchor }, true)"
         @expand="selectPresentation(recapPresentation.turnId, recapPresentation.reference, $event)" />
+      <p v-if="answerSelectionError" role="status">{{ answerSelectionError }}</p>
       <div ref="transcriptRef" class="transcript" @scroll="trackTranscriptScroll">
         <p v-if="props.historyLoading" role="status">正在恢复对话，可以先阅读正文。</p>
         <div v-else-if="props.historyError" role="alert">
@@ -1088,7 +1177,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             <blockquote>{{ turn.questionQuote.quote }}</blockquote>
           </div>
           <p class="u-msg">{{ turn.user }}</p>
-          <PresentationSceneCard v-if="turn.presentationFollowUp" :receipt="turn.presentationFollowUp" @locate="locateScene(turn.presentationFollowUp)" @restore="locateScene(turn.presentationFollowUp, true)" />
+          <PresentationSceneCard v-if="turn.presentationFollowUp" :receipt="turn.presentationFollowUp" :mem-id="props.contextNotes.find(n => n.note?.association.kind === 'presentation' && n.note.association.receipt.saved_state_ref === turn.presentationFollowUp?.saved_state_ref)?.mem_id" @locate="locateScene(turn.presentationFollowUp)" @restore="locateScene(turn.presentationFollowUp, true)" />
           <AgentActivities v-if="turn.activities?.length" :activities="turn.activities" />
           <p v-if="turn.runStatus" class="run-status" role="status">{{ turn.runStatus }}</p>
           <p v-if="turn.pending && !turn.runStatus" class="pending">正在接收运行...</p>
@@ -1126,12 +1215,16 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
                   :workspace="workspaceVisible && workspaceKey === presentationKey(turn.turnId, part)"
                   :shared-question="props.agentInput" @update:shared-question="emit('update:agentInput', $event)"
                   @expand="selectPresentation(turn.turnId!, part, $event)"
-                  :busy="props.sending || props.historyLoading || !!props.historyError" @follow-up="presentationSent"
+                  :busy="props.sending || props.historyLoading || !!props.historyError" @follow-up="presentationSent" @record-note="(receipt, title, summary) => emit('record-note', receipt, title, summary)"
                   @source="(id, anchor) => openAgentSources(turn, [id], { currentTarget: anchor })" />
                 </template>
               </template>
             </div>
             <p v-else class="ans-text">暂无回答。</p>
+            <details v-if="deliveredAnswerText(turn)" class="answer-actions">
+              <summary>回答操作</summary>
+              <button @click="emit('share-answer', turn)">生成理解卡</button>
+            </details>
             <TutorActivities v-if="turn.turnId && !turn.pending && (turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step'))" :session-id="props.activeChatSessionId" :turn-id="turn.turnId" />
             <p v-if="incompleteNotice(turn.outcome)" class="incomplete">
               未完成: {{ incompleteNotice(turn.outcome) }}
@@ -1228,7 +1321,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       <div class="agent-input" :class="{ composing: composeExpanded }">
         <div v-if="workspaceVisible || props.runConnection === 'reconnecting' || targetGoal || props.askDraft" class="agent-input-context">
         <div v-if="workspaceVisible" class="scene-binding">
-          <span>{{ sceneBound ? `发送时绑定当前现场 · 版本 ${workspace?.reference.revision}` : '普通聊天' }}</span>
+          <span>{{ sceneBound ? `${noteFollowUp ? '绑定记录时的现场' : '发送时绑定当前现场'} · 版本 ${workspace?.reference.revision}` : '普通聊天' }}</span>
           <button @click="sceneBound = !sceneBound">{{ sceneBound ? '移除现场绑定' : '绑定当前演示' }}</button>
         </div>
         <p v-if="props.runConnection === 'reconnecting'" role="status">连接中断，正在重新连接；运行仍可继续。</p>
@@ -1362,69 +1455,45 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         <p class="rail-kicker">全部笔记</p>
         <h3>{{ noteCount }} 条</h3>
         <div v-if="noteCount" class="note-fold-controls">
-          <button @click="notesExpanded = true">展开</button>
-          <button @click="notesExpanded = false">收起</button>
+          <button @click="filteredNotes.forEach(note => openNoteDetails.add(note.mem_id))">展开</button>
+          <button @click="openNoteDetails.clear()">收起</button>
         </div>
       </div>
+      <div v-if="noteCount" class="note-search-controls">
+        <input v-model="noteQuery" type="search" aria-label="搜索笔记" placeholder="搜索文字、摘录或关联标题" />
+        <label>类型 <select v-model="noteFilter" aria-label="笔记类型">
+          <option value="all">全部</option><option value="original">原文</option><option value="answer">回答</option>
+          <option value="presentation">演示</option><option value="highlight">高亮</option><option value="unknown">旧笔记（类型未知）</option>
+        </select></label>
+        <label>排序 <select v-model="noteOrder" aria-label="笔记排序"><option value="recent">最近记录</option><option value="original">原文顺序</option></select></label>
+        <p role="status">{{ filteredNotes.length }} 条记录</p>
+      </div>
       <div v-if="noteCount" class="memory-list">
-        <details
-          v-for="note in props.contextNotes"
-          :key="note.mem_id"
-          class="memory-card note-memory-card"
-          :data-mem-id="note.mem_id"
-          tabindex="-1"
-          :open="notesExpanded"
-        >
+        <details v-for="note in filteredNotes" :key="note.mem_id"
+          class="memory-card note-memory-card" :class="{ 'highlight-card': note.type === 'highlight' }"
+          :data-mem-id="note.mem_id" tabindex="-1" :open="openNoteDetails.has(note.mem_id)"
+          @toggle="($event.target as HTMLDetailsElement).open ? openNoteDetails.add(note.mem_id) : openNoteDetails.delete(note.mem_id)">
           <summary class="memory-meta note-memory-summary">
-            <span class="memory-kind-with-location">
-              笔记
-              <small v-if="annotationLocationLabel(note)" :data-location="props.annotationLocation?.[note.mem_id]">
-                {{ annotationLocationLabel(note) }}
-              </small>
+            <span class="memory-kind-with-location">{{ noteKindLabel(note) }}
+              <small v-if="annotationLocationLabel(note)" :data-location="props.annotationLocation?.[note.mem_id]">{{ annotationLocationLabel(note) }}</small>
             </span>
-            <button
-              v-if="canFocusNoteSource(note)"
-              class="note-source-button"
-              @click.prevent.stop="emit('focus-source', { lid: noteSourceLid(note)!, quote: leadingQuote(note.content), memId: note.mem_id })"
-            >
-              {{ noteSourceLabel(note) }}
-            </button>
-            <code v-else>{{ noteSourceLabel(note) }}</code>
+            <button v-if="canFocusNoteSource(note)" class="note-source-button" @click.prevent.stop="emit('focus-source', { lid: noteSourceLid(note)!, quote: note.selection_context?.resolved_quote ?? (note.type === 'highlight' ? note.content : null), memId: note.mem_id })">{{ noteSourceLabel(note) }}</button>
+            <span v-else class="note-association-title">{{ noteSourceLabel(note) }}</span>
             <em>展开/收起</em>
-            <div class="note-preview md" v-html="props.renderMarkdown(notePreviewMarkdown(note))"></div>
+            <time class="note-time">{{ noteTimeLabel(note) }}</time>
+            <div class="note-preview">{{ notePreview(note) }}</div>
           </summary>
-          <div class="md" v-html="props.renderMarkdown(note.content)"></div>
-          <div class="note-actions">
-            <button @click="emit('edit-note', note)">编辑</button>
-            <button @click="emit('delete-note', note)">删除</button>
-          </div>
-          <button
-            v-if="notePlacementActionLabel(note)"
-            type="button"
-            class="note-placement-action"
-            data-note-placement-action
-            :data-mem-id="note.mem_id"
-            @click="emit('place-note', note)"
-          >
-            {{ notePlacementActionLabel(note) }}
-          </button>
+          <NoteDetail v-if="note.type !== 'highlight' && openNoteDetails.has(note.mem_id)" :note="note"
+            @locate="openNotePresentation(note)" @restore="openNotePresentation(note, true)"
+            @answer="emit('open-note-answer', note)" @edit="emit('edit-note', note)" @delete="emit('delete-note', note)" />
+          <template v-if="note.type === 'highlight' && openNoteDetails.has(note.mem_id)">
+            <blockquote class="highlight-content">{{ note.content }}</blockquote>
+            <button v-if="shareHighlight" @click="shareHighlight(note)">生成分享图</button>
+            <div class="note-actions"><button @click="emit('modify-highlight', note)">编辑</button><button @click="emit('delete-highlight', note)">删除</button></div>
+          </template>
+          <button v-if="note.type !== 'highlight' && notePlacementActionLabel(note)" type="button" class="note-placement-action" data-note-placement-action :data-mem-id="note.mem_id" @click="emit('place-note', note)">{{ notePlacementActionLabel(note) }}</button>
         </details>
-        <article v-for="hl in props.contextHighlights" :key="hl.mem_id" class="memory-card highlight-card" :data-mem-id="hl.mem_id" tabindex="-1">
-          <div class="memory-meta">
-            <span class="memory-kind-with-location">
-              高亮
-              <small v-if="annotationLocationLabel(hl)" :data-location="props.annotationLocation?.[hl.mem_id]">
-                {{ annotationLocationLabel(hl) }}
-              </small>
-            </span>
-            <code>{{ hl.anchor.lid }}</code>
-          </div>
-          <p>{{ excerpt(hl) }}</p>
-          <div class="note-actions">
-            <button @click="emit('modify-highlight', hl)">编辑</button>
-            <button @click="emit('delete-highlight', hl)">删除</button>
-          </div>
-        </article>
+        <p v-if="!filteredNotes.length" class="empty">没有匹配的记录。</p>
       </div>
       <p v-else class="empty panel-empty">暂无笔记或高亮。</p>
     </section>
@@ -1435,6 +1504,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         :style="{ left: answerSelection.x + 'px', top: answerSelection.y - 40 + 'px' }"
       >
         <button @mousedown.prevent="saveAnswerSelection(answerSelection.turn)">记笔记</button>
+        <button v-if="deliveredAnswerText(answerSelection.turn)" @mousedown.prevent="shareAnswerSelection">生成理解卡</button>
       </div>
     </Teleport>
 
@@ -1561,6 +1631,14 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 </template>
 
 <style scoped>
+.note-search-controls { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.note-search-controls input { width: 100%; min-width: 0; }
+.note-search-controls input, .note-search-controls select { min-height: 40px; padding: 8px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.note-search-controls label { min-width: 0; }
+.note-search-controls p { width: 100%; margin: 0; }
+.note-time { grid-column: 1 / -1; color: var(--stone); font-size: 12px; }
+.highlight-content { white-space: pre-wrap; overflow-wrap: anywhere; }
+
 .right-rail {
   container-type: inline-size;
   container-name: reading-assistant;
@@ -2132,7 +2210,11 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   color: #fff;
   padding: 0.28rem 0.65rem;
   font-size: 0.82rem;
+  white-space: nowrap;
 }
+.answer-actions { margin-top:8px; font-size:12px; color:var(--ink-muted); }
+.answer-actions summary { cursor:pointer; }
+.answer-actions button { margin-top:6px; min-height:36px; }
 .ask-draft {
   border: 1px solid var(--hairline-soft);
   border-radius: 8px;
@@ -2477,8 +2559,11 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   color: var(--slate);
   font-size: 0.84rem;
   line-height: 1.45;
-  max-height: 7.5rem;
-  overflow: auto;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
   text-transform: none;
 }
 .note-preview :deep(h1),
@@ -2545,7 +2630,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .note-memory-summary::-webkit-details-marker {
   display: none;
 }
-.note-memory-summary code {
+.note-association-title {
   min-width: 0;
   flex: 1;
   overflow: hidden;

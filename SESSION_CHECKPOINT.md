@@ -1,44 +1,42 @@
-# SESSION_CHECKPOINT — 2026-10-10 10:13（Asia/Hong_Kong）
+# SESSION_CHECKPOINT — 2026-10-10 17:45（Asia/Hong_Kong）
 
 ## 新鲜度自检
-- 写入时最新 commit：`4e0b68e feat: integrate book structure, tutoring and multi-user reader`。
+- 写入时最新 commit：`7fd8a08 docs: carry forward reading notes and sharing plan`。
 - 读入时对比 `git log -3`；若不同，以实际 Git 和工作树为准。
-- RS0 已加入笔记升级前置设计，未提交；RN1–RN4、RS1–RS8 待实施。工作区有其他工作线的未提交修改，以当前文件为准。
+- RN1–RN4、RS1–RS8 本次整理为 `codex/reading-share` 集成提交，目标为本地 main；未发布。main 其他工作线的未提交改动继续保留。
 
 ## 当前在做什么
-**阅读分享与安静呈现：设计修订已落档，下一刀 RN1「笔记模型与存储合同」。**
+**RS8「理解空间的单项阅读」功能／Web 已完成；RN1–RN4、RS1–RS8 功能主线已实现，平台待验项与后续新功能独立接续。**
 
-笔记保存“自己的想法＋可返回的原文、回答或演示现场”。RN1–RN2 交付演示记录／返回闭环，RN3–RN4 完成统一编辑、搜索和最近记录；随后 RS1–RS3 交付图片分享。演示版本、现场和必要资源随笔记保留，删除原聊天后仍可返回。
+理解空间已采用短预览列表与单项详情；原话、系统解释、暂定理解、实际表现、帮助条件及历史版本分别显示。依据按需展开且可见才记录反馈展示；纠正沿原证据及幂等命令，历史沿原对象分页。见 [RS8 验收](docs/performance/reading-share-rs8-20261010/README.md)。
 
 ## 下一步（可直接接手）
-1. 按冷启动读序读取已接受的笔记合同与当前读写入口，查看拟修改文件的工作区差异。
-2. 在 `crates/memory/src/lib.rs` 的 Record／SaveInput／replace／reanchor 路径固定笔记专属字段，映射用户文字、保留片段、原材料／发布和主要关联；同文不同现场分别保存。
-3. 在 `document.rs` 沿现有机制实现 v3→v4，准备真实旧存储结构样本，覆盖旧正文、标识、选区、放置及其他私人记忆保持；保留现有旧格式升级入口。
-4. 在 server memory 路由、`workspace_client.rs` 与 Web `api.ts` 接通原文／回答／演示关联笔记的创建、读取和原子编辑，透出原 `generated_at`；正文放置沿原命令另行执行。
-5. 定向验证关联准入、身份区别、编辑继承、失败原子性和旧存储升级，写回实际合同、切片状态与代码链路，再刷新 checkpoint 指向 RN2。
+1. RN／RS 功能已整理提交；接续时用 `git log -3` 确认 main 集成状态，保留 main 中产品首页与构建重试等独立在途改动。
+2. 若接续平台验收，先读 [RS3 已知限制](docs/performance/reading-share-rs3-20261010/README.md) 与 [RN4 验收](docs/performance/reading-notes-rn4-20261010/README.md)，按隔离目录准备原生保存／取消／切现场的实测；Computer Use 仍处于用户停止状态，不自行恢复。
+3. 若接续新功能，从实施方案 §7 选择并明确下一切片；停读意图、理解前后对照与问题回看尚未排期。
 
 ## 未提交 / 未完成
-- RS0 修订：[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)、[切片方案](docs/切片方案-阅读分享与安静呈现.md)、ADR-0083 扩展说明、CONTEXT、架构、代码链路和本页已修改；功能代码尚未改动。
-- 本次 96 处相对链接及锚点、切片状态与依赖、术语、RN1 接手入口及文档差异空白检查通过；功能验收分别归 RN／RS 各片。
-- RN1 当前 schema 为 v3；新笔记仍强制选区或正文放置，演示读取仍要求原聊天存在，不能把现有回执当作独立留存已实现。
-- RN2 需从已存笔记解析版本、现场与资源，覆盖删除原聊天／服务重启后返回，以及当前对话追问绑定；复用原演示存储和宿主。
-- RN3 共用一个笔记编辑草稿：收起保留，同材料换聊天不串关联，材料切换和新建另一条前处理未保存内容；页面刷新后的持久恢复不在首版。
-- RN4 覆盖当前材料内搜索、类型筛选、最近记录／原文顺序、详情及平台连续性；RS1 依赖 RN4。
-- `NoteEditorPanel.vue`、`NoteDetail.vue`、`ShareImagePanel.vue`、`reading-share.ts` 为拟新增接点。主笔记列表在 RightRail，NoteCard 主要用于 PDF 弹层。
-- 原 Tutor 主线 T19 真实体验验收仍待完成，入口为 [Tutor 方案](docs/切片方案-Tutor预构建不阻塞教学.md) 的 T19；基础成品准入发布状态见 [上线记录](docs/performance/tutor-artifacts-deployment-20261009/README.md)。
-- 其他任务入口：[EX](checkpoint_ex.md)、[JSONL](SESSION_CHECKPOINT_JSONL.md)、[DSH](SESSION_CHECKPOINT_DSH.md)、[运营后台](SESSION_CHECKPOINT_ADMIN.md)、[ADM](checkpoint_ADM.md)、[INV](checkpoint_INV.md)、[工具契约](SESSION_CHECKPOINT_TOOL_CONTRACTS.md)、[LangSmith](SESSION_CHECKPOINT_LANGSMITH_FULL.md)。
-- 视频工作继续以[视频方案](docs/切片方案-视频理解与渐进伴读.md)和[验收记录](docs/验收-视频理解.md)为准。
+- RN1–RN4、RS1–RS8 的代码、测试、合同及验收记录已纳入本次集成提交；临时运行目录与 test-results 留在原工作区。
+- 集成验证：Web 20 文件 182 项、memory 143 项、server 定向 52 项通过（5 项按原设置忽略），Web 类型及生产构建通过。
+- RS8 最终 Web 2 文件 9 项通过；Chromium 4 项通过，覆盖 320／390／1280px 长文、纠正、未知状态、依据可见性、帮助条件和历史。最终类型／生产构建通过；日志与 PNG 见 RS8 验收。
+- RS8 已复现并修复反馈回执延迟失败覆盖纠正重试的问题；两类错误分别保留。当前解释仍沿服务端最近 20 条；无对象暂定解释没有新增历史接口，纠正草稿仅驻留当前组件。
+- RS7 图解分享功能／Web 已完成，见 [RS7 验收](docs/performance/reading-share-rs7-20261010/README.md)。当前图解同次固定图面和参数；笔记图解在独立 960×640 页恢复核对，不重置原演示。
+- RS7 视频／音频、WebGL、嵌入页、Shadow DOM、未展开滚动区及无法完整恢复的旧现场明确拒绝；原生保存／实体手机仍待验。
+- RS6 回答分享、RS5 只读接续及 RS4 固定选材／截点已完成；原来源、Reader、未发送文字及原导航保持，见 [RS6](docs/performance/reading-share-rs6-20261010/README.md)、[RS5](docs/performance/reading-share-rs5-20261010/README.md)、[RS4](docs/performance/reading-share-rs4-20261010/README.md)。
+- RN1–RN4、RS1–RS3 功能已实现。RS3 用户确认的无配图纸页与精简弹窗保持；原生保存和实体手机验收延期仍有效。
+- Windows Debug NSIS 候选已构建，未安装、未覆盖原安装、未发布。原生逐页保存／取消／切现场、安装后资源路径与 Release 行为、RN4 平台连续性均未实测完成。
+- 用户已停止 Computer Use，后续不得自行恢复。隔离窗口 PID／目录与重启隔离变量见 [RS3 验收](docs/performance/reading-share-rs3-20261010/README.md)。
+- MU10 百回合恢复 queued 0／预期 100 为既有独立失败，本轮未修改或复验；旧笔记历史 ID、未知旧记录与删除聊天限制沿 RN4。
+- 分享草稿／PNG 驻留当前页面；回顾分享另在关闭回顾时结束。普通文字内嵌媒体、过宽对象与不可分过高内容沿 RS2 报错。
+- Tutor T19 真实体验待验，见 [Tutor 方案](docs/切片方案-Tutor预构建不阻塞教学.md)。
+- 其他工作线入口：[EX](checkpoint_ex.md)、[JSONL](SESSION_CHECKPOINT_JSONL.md)、[DSH](SESSION_CHECKPOINT_DSH.md)、[运营后台](SESSION_CHECKPOINT_ADMIN.md)、[ADM](checkpoint_ADM.md)、[INV](checkpoint_INV.md)、[工具契约](SESSION_CHECKPOINT_TOOL_CONTRACTS.md)、[LangSmith](SESSION_CHECKPOINT_LANGSMITH_FULL.md)。
 
 ## 冷启动读序
-1. [ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)：全文；[ADR-0083](docs/adr/0083-unquoted-note-explicit-body-placement.md)：设计扩展及 §1、§4–§6，区分现行准入与 RN 扩展。
-2. [实施切片](docs/切片方案-阅读分享与安静呈现.md)：§1–§1.3、§5、RN1–RN4、§6、§8；首刀以 RN1 为准。
-3. [CONTEXT](CONTEXT.md)：阅读笔记、笔记关联、笔记编辑草稿、笔记保留的演示现场、Memory replace、无引用来源 Note、Note 正文放置、授权访问上下文。
-4. [memory](crates/memory/src/lib.rs)：Record、SaveInput、保存／替换／重锚及记录身份；[document.rs](crates/memory/src/document.rs)：版本门禁和升级；[server](crates/server/src/lib.rs)：memory 保存／替换／重锚路由；[workspace_client.rs](crates/server/src/workspace_client.rs)：对应用户命令。
-5. [api.ts](packages/web/src/api.ts)：MemoryRecord、SelectionContext 与 memory 接口；[App.vue](packages/web/src/App.vue)：noteEditor、saveNote、saveAgentSelection；[RightRail.vue](packages/web/src/components/RightRail.vue)：Notes 主列表与回答摘录。
-6. [PresentationFollowUp](packages/web/src/generated/PresentationFollowUp.ts)、[presentation_store.rs](crates/server/src/presentation_store.rs)、[presentation_api.rs](crates/server/src/presentation_api.rs)：不可变现场、版本读取和原聊天依赖；[架构](docs/架构.md)：待实施笔记数据流；[代码链路](docs/代码链路.md)：最新 RS0 修订条目。
+1. [实施切片](docs/切片方案-阅读分享与安静呈现.md) §2、§5、RS8、§7–§8；[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md) §1／§5；`CONTEXT.md` 理解空间／LearningEvidence 相关术语。
+2. [RS8 验收](docs/performance/reading-share-rs8-20261010/README.md)、`packages/web/src/components/UnderstandingSpace.vue` 及其组件／浏览器测试；`TutorPanel.vue` 与 App／RightRail 原入口。
+3. `packages/web/src/api.ts` 理解投影／证据／纠正接口；`crates/server/src/teaching.rs` 的 understanding／evidence_view／纠正路由；`crates/memory/src/learning_evidence.rs` 的 correct_evidence／对象历史。服务端合同本轮保持。
+4. [架构](docs/架构.md)「阅读笔记与分享」「普通使用驱动的理解接续」；[代码链路](docs/代码链路.md) RS8；[RS3 待验项](docs/performance/reading-share-rs3-20261010/README.md)。
 
 ## 本会话决策摘要
-- 内容、关联和正文显示位置分别表达，新笔记保留明确内容身份，旧正文按已有事实读取，见 ADR-0160 §7。
-- 已存笔记保留原演示版本、现场与资源，删除聊天不失去返回能力，见 ADR-0160 §8。
-- 轻量编辑、收起续写、按需预览；先完成 RN1–RN4，再进入 RS1，见 ADR-0160 §9–§10。
-- 分享继续使用所选内容和原来源，同一排版驱动预览／PNG；静态图面导出归 RS7，见 ADR-0160 §2–§6。
+- RS8 沿 ADR-0160 §1／§5 完成局部呈现，不增加能力判定或新存储；实现与验证落于 RS8 验收和架构。
+- RN／RS 功能主线完成；RS3／RN4 平台延期与用户停止 Computer Use 的约束继续保留。

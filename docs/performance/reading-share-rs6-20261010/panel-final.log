@@ -1,0 +1,16 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+stderr | src/components/ShareImagePanel.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/ShareImagePanel.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/ShareImagePanel.test.ts (5 tests) 152ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  16:39:21
+   Duration  5.68s (transform 581ms, setup 0ms, collect 1.24s, tests 152ms, environment 3.24s, prepare 493ms)
+

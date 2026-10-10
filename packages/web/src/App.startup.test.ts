@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { mount, flushPromises } from "@vue/test-utils";
-import { defineComponent } from 'vue';
+import { defineComponent, inject } from 'vue';
+import { renderShare, shareHighlightKey, shareNoteKey, sharePresentationKey } from './reading-share';
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App.vue";
 import { network, installIdentity, installWorkspace, submittedRunDrafts } from './network-context';
@@ -10,12 +11,13 @@ import * as networkClient from './network-client';
 const api = vi.hoisted(() => Object.fromEntries([
   "desktopStatus", "buildWorkbench", "manifest", "assetManifest", "sourceFingerprint",
   "sourceManifest", "state", "profileManifest", "text", "recall", "agentHistory",
-  "profileMemory", "profileBackfill", "intentUsageEvent", "intentArtifacts", "bookLibrary",
+  "profileMemory", "profileBackfill", "intentUsageEvent", "intentArtifacts", "bookLibrary", "paperMetadata",
   "openBook", "agentNew", "disposeEffect", "agentRunCreate", "agentRun", "agentRunRetrySave",
-  "tutorState", "tutorReadiness", "tutorMutate", "tutorStart",
+  "save", "replace", "delete", "agentHistorySelect", "agentSourceResolve", "tutorState", "tutorReadiness", "tutorMutate", "tutorStart",
 ].map(key => [key, vi.fn()])));
 vi.mock("./api", async original => ({ ...await original<typeof import("./api")>(), api }));
 vi.mock("./components/PdfReaderPane.vue", () => ({ default: { name: "PdfReaderPane", template: "<div />" } }));
+vi.mock('./reading-share', async original => ({ ...await original<typeof import('./reading-share')>(), renderShare: vi.fn() }));
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -389,5 +391,382 @@ describe("JL6 effect receipts in chat", () => {
     const reloaded = start(); await flushPromises();
     expect(reloaded.findComponent({ name: "RightRail" }).props("effState")(0, 0)).toBe("已保留");
     expect(api.disposeEffect).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe('RN2 presentation note draft', () => {
+  const receipt = { session_id: 'startup-chat', turn_id: 'old-turn', reference: { presentation_id: 'page', revision: 2 }, state_revision: 4, saved_state_ref: 'state-4' };
+  it('keeps the captured association across collapse, chat change and save failure', async () => {
+    const wrapper = start(); await flushPromises();
+    wrapper.findComponent({ name: 'RightRail' }).vm.$emit('record-note', receipt, 'Recorded example');
+    await flushPromises();
+    let editor = wrapper.findComponent({ name: 'NoteEditorPanel' });
+    editor.vm.$emit('update:content', 'my thought'); editor.vm.$emit('collapse'); await flushPromises();
+    expect(wrapper.findComponent({ name: 'NoteEditorPanel' }).exists()).toBe(false);
+    api.agentNew.mockResolvedValue({ ok: true, history: { ...history(), active_session_id: 'new-chat', current: { ...history().current, id: 'new-chat' } } });
+    wrapper.findComponent({ name: 'RightRail' }).vm.$emit('new-chat'); await flushPromises();
+    await wrapper.get('.note-resume').trigger('click');
+    editor = wrapper.findComponent({ name: 'NoteEditorPanel' });
+    expect(editor.props('content')).toBe('my thought');
+    api.save.mockRejectedValueOnce(new Error('write failed'));
+    editor.vm.$emit('save'); await flushPromises();
+    expect(editor.props('error')).toContain('write failed');
+    expect(editor.props('content')).toBe('my thought');
+    api.save.mockResolvedValue({ status: 'CREATED', record: { mem_id: 'saved' } });
+    editor.vm.$emit('save'); await flushPromises();
+    expect(api.save).toHaveBeenLastCalledWith(expect.objectContaining({ content: 'my thought', note: { association: { kind: 'presentation', receipt } } }));
+    expect(wrapper.findComponent({ name: 'NoteEditorPanel' }).exists()).toBe(false);
+    expect(wrapper.findComponent({ name: 'RightRail' }).props('activeChatSessionId')).toBe('new-chat');
+  });
+  it('edits a reactive saved note through replace and binds follow-up to the selected chat', async () => {
+    const wrapper = start(); await flushPromises();
+    const record = { mem_id: 'saved', type: 'note', book_id: 'startup', content: 'original', layer: 'long_term', anchor: {}, note: { association: { kind: 'presentation', receipt, title: 'Example' } } };
+    wrapper.findComponent({ name: 'RightRail' }).vm.$emit('edit-note', record); await flushPromises();
+    const editor = wrapper.findComponent({ name: 'NoteEditorPanel' });
+    expect(editor.props('content')).toBe('original');
+    editor.vm.$emit('update:content', 'edited');
+    api.replace.mockResolvedValue({ ...record, mem_id: 'edited', content: 'edited' });
+    editor.vm.$emit('save'); await flushPromises();
+    expect(api.replace).toHaveBeenCalledWith({ mem_id: 'saved', content: 'edited', selection_context: undefined });
+    api.agentRunCreate.mockResolvedValue({ answer: 'ok', answer_view: { parts: [] }, effects: [] });
+    wrapper.findComponent({ name: 'RightRail' }).vm.$emit('note-follow-up', 'explain', receipt, 'edited'); await flushPromises();
+    expect(api.agentRunCreate).toHaveBeenCalledWith('explain', expect.objectContaining({ note_mem_id: 'edited', presentation_follow_up: receipt }));
+  });
+});
+
+
+describe('RN3 unified note draft', () => {
+  const turn = { turnId: 'answer-1', pending: false, outcome: { answer: '__选中的回答__' } };
+  const old = { mem_id: 'old', type: 'note', book_id: 'startup', layer: 'long_term', anchor: { lid: '1.1' }, content: '> 原来混排的内容\n\n用户编辑过的文字' };
+  const editor = (w: ReturnType<typeof start>) => w.findComponent({ name: 'NoteEditorPanel' });
+  async function choose(w: ReturnType<typeof start>, label: string) {
+    await w.get('.note-transition').findAll('button').find(b => b.text() === label)!.trigger('click'); await flushPromises();
+  }
+  it('records answers directly with their fixed turn, preserving the composer and reading position', async () => {
+    const w = start(); await flushPromises();
+    const rail = w.findComponent({ name: 'RightRail' });
+    rail.vm.$emit('update:agentInput', '我的问题');
+    rail.vm.$emit('save-answer-selection', turn, '__选中的回答__'); await flushPromises();
+    expect(editor(w).props('content')).toBe('');
+    expect(editor(w).props('excerpt')).toEqual({ kind: 'assistant', text: '__选中的回答__' });
+    api.agentNew.mockResolvedValue({ ok: true, history: { ...history(), active_session_id: 'other', current: { ...history().current, id: 'other' } } });
+    rail.vm.$emit('new-chat'); await flushPromises();
+    expect(editor(w).exists()).toBe(true);
+    editor(w).vm.$emit('save'); await flushPromises();
+    expect(api.save).toHaveBeenCalledWith(expect.objectContaining({ content: '', note: { association: { kind: 'answer', session_id: 'startup-chat', turn_id: 'answer-1' }, retained_excerpt: '__选中的回答__' } }));
+    expect(rail.props('selectedLid')).toBe('1.1');
+  });
+  it('processes another note with continue, failure, save and discard without overwriting the draft', async () => {
+    const w = start(); await flushPromises(); const rail = w.findComponent({ name: 'RightRail' });
+    rail.vm.$emit('edit-note', old); await flushPromises();
+    expect(editor(w).props('legacy')).toBe(true);
+    expect(editor(w).props('content')).toBe(old.content);
+    editor(w).vm.$emit('update:content', '第一次修改');
+    rail.vm.$emit('save-answer-selection', turn, '__选中的回答__'); await flushPromises();
+    await choose(w, '继续编辑'); expect(editor(w).props('content')).toBe('第一次修改');
+    rail.vm.$emit('save-answer-selection', turn, '__选中的回答__'); await flushPromises();
+    api.replace.mockRejectedValueOnce(new Error('写入失败'));
+    await choose(w, '保存并继续');
+    expect(w.find('.note-transition').exists()).toBe(true); expect(editor(w).props('content')).toBe('第一次修改');
+    api.replace.mockResolvedValue({ ...old, mem_id: 'new-id', content: '第一次修改' });
+    await choose(w, '保存并继续');
+    expect(api.replace).toHaveBeenLastCalledWith({ mem_id: 'old', content: '第一次修改', selection_context: undefined });
+    expect(editor(w).props('excerpt').kind).toBe('assistant');
+    rail.vm.$emit('edit-note', old); await flushPromises(); await choose(w, '放弃并继续');
+    expect(editor(w).props('content')).toBe(old.content);
+  });
+  it('keeps whitespace meaningful to Markdown when saving a legacy note', async () => {
+    const w = start(); await flushPromises();
+    const record = { ...old, content: '    const n = 1;\n\n' };
+    w.findComponent({ name: 'RightRail' }).vm.$emit('edit-note', record); await flushPromises();
+    editor(w).vm.$emit('save'); await flushPromises();
+    expect(api.replace).toHaveBeenCalledWith({ mem_id: 'old', content: record.content, selection_context: undefined });
+  });
+  it('guards material switches and unload, and preserves failed text before leaving', async () => {
+    const w = start(); await flushPromises();
+    w.findComponent({ name: 'RightRail' }).vm.$emit('save-answer-selection', turn, '__选中的回答__'); await flushPromises();
+    const event = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(event); expect(event.defaultPrevented).toBe(true);
+    const leave = (w.vm as unknown as { beforeNoteLeave: (label: string) => Promise<boolean> }).beforeNoteLeave('切换发布');
+    await flushPromises(); await choose(w, '继续编辑'); expect(await leave).toBe(false);
+    const exit = (w.vm as unknown as { beforeNoteLeave: (label: string) => Promise<boolean> }).beforeNoteLeave('退出登录');
+    await flushPromises(); await choose(w, '放弃并继续'); expect(await exit).toBe(true);
+    expect(editor(w).exists()).toBe(false);
+    const clean = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(clean); expect(clean.defaultPrevented).toBe(false);
+  });
+  it('clears private drafts on an identity change and ignores late save failures', async () => {
+    installIdentity({ user_id: 'A', csrf_token: 'a' });
+    installWorkspace({ workspace_id: 'w', generation: 1, revision: 1, selected_chat: 'startup-chat', published_book_ref: { book_id: 'startup', publication_id: 'p1' }, reader: { book_id: 'startup', viewport: { anchor_lid: '1.1', top_lid: '1.1', bottom_lid: '1.1', visible_lids: ['1.1'], width: 1 }, layout: { rev: 0, open_slots: [] } } } as never);
+    const pending = deferred<unknown>(); api.save.mockReturnValue(pending.promise);
+    const w = start(); await flushPromises();
+    w.findComponent({ name: 'RightRail' }).vm.$emit('save-answer-selection', turn, '__选中的回答__'); await flushPromises();
+    editor(w).vm.$emit('save'); await flushPromises();
+    installIdentity({ user_id: 'B', csrf_token: 'b' }); await flushPromises();
+    pending.reject(new Error('A 的保存错误')); await flushPromises();
+    expect(editor(w).exists()).toBe(false); expect(w.text()).not.toContain('A 的保存错误');
+  });
+  it.each(['ReaderPane', 'RightRail'])('opens original notes from %s with read-only excerpts and atomic text editing', async name => {
+    const w = start(); await flushPromises();
+    const record = { ...old, content: '自己的话', note: { association: { kind: 'selection' }, retained_excerpt: { kind: 'original', text: '原文片段' } } };
+    const surface = w.findComponent({ name });
+    surface.vm.$emit('edit-note', record); await flushPromises();
+    expect(editor(w).props('excerpt')).toEqual(record.note.retained_excerpt);
+    editor(w).vm.$emit('update:content', ''); editor(w).vm.$emit('save'); await flushPromises();
+    expect(api.replace).toHaveBeenCalledWith({ mem_id: 'old', content: '', selection_context: undefined });
+  });
+});
+
+
+describe('RN4 note continuity', () => {
+  const note = { mem_id: 'old', type: 'note', book_id: 'startup', layer: 'long_term', anchor: {}, content: '自己的想法', generated_at: '1700000000',
+    note: { material: { book_id: 'startup', publication_id: null }, association: { kind: 'answer', session_id: 'original', turn_id: 'original-turn' }, retained_excerpt: { kind: 'assistant', text: '原回答摘录' }, source_bindings: [] } };
+  it('uses the replacement identity immediately and keeps a failed delete visible', async () => {
+    api.recall.mockResolvedValue([note]);
+    const w = start(); await flushPromises(); const rail = w.getComponent({ name: 'RightRail' });
+    rail.vm.$emit('edit-note', note); await flushPromises();
+    const saved = { ...note, mem_id: 'edited', content: '修订文字' };
+    api.replace.mockResolvedValue(saved); api.recall.mockResolvedValue([saved]);
+    const editor = w.getComponent({ name: 'NoteEditorPanel' }); editor.vm.$emit('update:content', saved.content); editor.vm.$emit('save'); await flushPromises();
+    expect(rail.props('contextNotes')).toEqual([saved]); expect(w.text()).toContain('笔记已保存');
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    api.delete.mockRejectedValueOnce(new Error('删除失败'));
+    rail.vm.$emit('delete-note', saved); await flushPromises(); expect(rail.props('contextNotes')).toEqual([saved]);
+    api.delete.mockResolvedValue({ ok: true }); api.recall.mockResolvedValue([]);
+    rail.vm.$emit('delete-note', saved); await flushPromises(); expect(api.delete).toHaveBeenLastCalledWith('edited');
+    expect(rail.props('contextNotes')).toEqual([]); expect(w.text()).toContain('笔记已删除');
+  });
+  it('opens the original answer and reports a deleted chat without changing notes', async () => {
+    const scroll = vi.fn().mockResolvedValue(true);
+    const w = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: { ReaderPane: defineComponent({ setup(_, { expose }) { expose({ captureScrollAnchor: vi.fn() }); return {}; }, template: '<div />' }), ReaderWorkspace: defineComponent({ setup(_, { expose }) { expose({ showAssistant: vi.fn() }); return {}; }, template: '<div><slot /><slot name="reader" /><slot name="assistant" /></div>' }), RightRail: defineComponent({ name: 'RightRail', setup(_, { expose }) { expose({ scrollToTurn: scroll }); return {}; }, template: '<div />' }) } } }); wrappers.push(w);
+    await flushPromises(); const rail = w.getComponent({ name: 'RightRail' });
+    const original = { ...history(), active_session_id: 'original', current: { ...history().current, id: 'original', turns: [{ turn_id: 'original-turn', user: '原问题', status: 'completed', effect_labels: [], outcome: null }] } };
+    api.agentHistorySelect.mockResolvedValue(original);
+    rail.vm.$emit('open-note-answer', note); await flushPromises();
+    expect(api.agentHistorySelect).toHaveBeenCalledWith('original'); expect(scroll).toHaveBeenCalledWith('original-turn');
+    api.agentHistorySelect.mockRejectedValueOnce(new Error('聊天已删除'));
+    rail.vm.$emit('open-note-answer', { ...note, note: { ...note.note, association: { ...note.note.association, session_id: 'deleted' } } }); await flushPromises();
+    expect(w.text()).toContain('原回答当前不可用'); expect(scroll).toHaveBeenCalledTimes(1);
+  });
+  it.each(['publication', 'identity'])('does not apply a late recall after changing %s', async change => {
+    installIdentity({ user_id: 'A', csrf_token: 'a' });
+    const workspace = { workspace_id: 'w', generation: 1, revision: 1, selected_chat: 'startup-chat', published_book_ref: { book_id: 'startup', publication_id: 'p1' }, reader: { book_id: 'startup', viewport: { anchor_lid: '1.1', top_lid: '1.1', bottom_lid: '1.1', visible_lids: ['1.1'], width: 1 }, layout: { rev: 0, open_slots: [] } } };
+    installWorkspace(workspace as never);
+    const wait = deferred<unknown[]>(); api.recall.mockReturnValue(wait.promise);
+    const w = start(); await flushPromises();
+    expect(api.recall).toHaveBeenCalled();
+    if (change === 'identity') installIdentity({ user_id: 'B', csrf_token: 'b' });
+    else installWorkspace({ ...workspace, generation: 2, published_book_ref: { book_id: 'startup', publication_id: 'p2' } } as never);
+    await flushPromises(); wait.resolve([{ ...note, note: { ...note.note, material: { book_id: 'startup', publication_id: 'p1' } } }]); await flushPromises();
+    expect(w.getComponent({ name: 'RightRail' }).props('contextNotes')).toEqual([]);
+  });
+  it('only projects the current publication for structured notes while retaining unknown legacy records', async () => {
+    installIdentity({ user_id: 'A', csrf_token: 'a' });
+    installWorkspace({ workspace_id: 'w', generation: 1, revision: 1, selected_chat: 'startup-chat', published_book_ref: { book_id: 'startup', publication_id: 'p2' }, reader: { book_id: 'startup', viewport: { anchor_lid: '1.1', top_lid: '1.1', bottom_lid: '1.1', visible_lids: ['1.1'], width: 1 }, layout: { rev: 0, open_slots: [] } } } as never);
+    const current = { ...note, mem_id: 'p2', note: { ...note.note, material: { book_id: 'startup', publication_id: 'p2' } } };
+    const old = { ...note, mem_id: 'legacy', note: undefined };
+    api.recall.mockResolvedValue([note, current, old]); const w = start(); await flushPromises();
+    expect(w.getComponent({ name: 'RightRail' }).props('contextNotes').map((n: any) => n.mem_id).sort()).toEqual(['legacy', 'p2']);
+  });
+});
+
+
+it('RN4 searches and displays all parts of a grouped highlight without changing its deletion identity', async () => {
+  const highlight = { type: 'highlight', layer: 'long_term', book_id: 'startup', source_session_id: 'highlight-group:g', content: '前半段', mem_id: 'h1', anchor: { lid: '1.1' } };
+  api.recall.mockResolvedValue([highlight, { ...highlight, mem_id: 'h2', anchor: { lid: '2.1' }, content: '后半段搜索目标' }]);
+  const w = start(); await flushPromises();
+  expect(w.getComponent({ name: 'RightRail' }).props('contextHighlights')).toEqual([{ ...highlight, content: '前半段\n后半段搜索目标' }]);
+});
+
+describe('RS1 shared note selection and scope', () => {
+  const note = { mem_id: 'share-note', type: 'note', book_id: 'startup', layer: 'long_term', anchor: { lid: '1.1' }, content: '已保存的中文想法' };
+  function startSharing(realPanel = false) {
+    const w = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: {
+      ...(realPanel ? { ShareImagePanel: false } : {}),
+      RightRail: defineComponent({ name: 'RightRail', props: ['contextNotes'], setup() { return { share: inject(shareNoteKey)! }; },
+        template: '<div><button v-for="note in contextNotes" :key="note.mem_id" @click="share(note)">分享</button></div>' }),
+    } } }); wrappers.push(w); return w;
+  }
+  it('keeps saved text and an independent editing draft untouched while using the real book title', async () => {
+    api.recall.mockResolvedValue([note]); api.paperMetadata.mockResolvedValue({ title: { value: '理解学习的方法' } });
+    const w = startSharing(); await flushPromises();
+    const rail = w.getComponent({ name: 'RightRail' }); rail.vm.$emit('edit-note', note); await flushPromises();
+    w.getComponent({ name: 'NoteEditorPanel' }).vm.$emit('update:content', '未保存的修改'); await flushPromises();
+    await rail.get('button').trigger('click'); await flushPromises();
+    const share = w.getComponent({ name: 'ShareImagePanel' });
+    expect(share.props('source')).toMatchObject({ parts: [{ label: '阅读笔记', text: note.content }], sources: ['《理解学习的方法》', '首章'] });
+    share.vm.$emit('close'); await flushPromises();
+    expect(w.getComponent({ name: 'NoteEditorPanel' }).props('content')).toBe('未保存的修改');
+    expect(rail.props('contextNotes')[0].content).toBe(note.content);
+    expect(api.replace).not.toHaveBeenCalled(); expect(api.save).not.toHaveBeenCalled(); expect(api.agentRunCreate).not.toHaveBeenCalled();
+  });
+  it.each(['chat', 'identity', 'publication', 'material'])('clears a pending source read on %s change', async change => {
+    if (change === 'publication') {
+      installIdentity({ user_id: 'A', csrf_token: 'a' });
+      installWorkspace({ workspace_id: 'w', generation: 1, revision: 1, selected_chat: 'startup-chat', published_book_ref: { book_id: 'startup', publication_id: 'p1' }, reader: { book_id: 'startup', viewport: { anchor_lid: '1.1', top_lid: '1.1', bottom_lid: '1.1', visible_lids: ['1.1'], width: 1 }, layout: { rev: 0, open_slots: [] } } } as never);
+    }
+    const pending = deferred<any>(); api.paperMetadata.mockReturnValue(pending.promise); api.recall.mockResolvedValue([note]);
+    const w = startSharing(); await flushPromises(); const rail = w.getComponent({ name: 'RightRail' });
+    await rail.get('button').trigger('click'); await flushPromises(); expect(w.findComponent({ name: 'ShareImagePanel' }).exists()).toBe(true);
+    if (change === 'chat') { api.agentHistorySelect.mockResolvedValue({ ...history(), active_session_id: 'other', current: { ...history().current, id: 'other' } }); rail.vm.$emit('select-chat', 'other'); }
+    else if (change === 'identity') installIdentity({ user_id: 'B', csrf_token: 'b' });
+    else if (change === 'material') {
+      w.getComponent({ name: 'TopBar' }).vm.$emit('open-book'); await flushPromises();
+      await w.get('input[placeholder=".understand-book/book-id"]').setValue('second');
+      await w.get('.book-picker-actions .primary-action').trigger('click');
+    }
+    else installWorkspace({ ...network.value.workspace!, generation: 2, published_book_ref: { book_id: 'startup', publication_id: 'p2' } });
+    await flushPromises(); pending.resolve({ title: { value: '旧来源晚到' } }); await flushPromises();
+    expect(w.findComponent({ name: 'ShareImagePanel' }).exists()).toBe(false);
+  });
+  it('does not manufacture a source for a legacy unplaced note or after metadata failure', async () => {
+    api.recall.mockResolvedValue([{ ...note, anchor: {} }, { ...note, mem_id: 'source-note' }]);
+    api.paperMetadata.mockRejectedValue(new Error('不可用'));
+    const w = startSharing(); await flushPromises(); const rail = w.getComponent({ name: 'RightRail' });
+    await rail.findAll('button')[1].trigger('click'); await flushPromises();
+    expect(w.getComponent({ name: 'ShareImagePanel' }).props('source').sources).toEqual(['无已记录出处']);
+    expect(api.paperMetadata).not.toHaveBeenCalled();
+    w.getComponent({ name: 'ShareImagePanel' }).vm.$emit('close'); await flushPromises();
+    await rail.findAll('button')[0].trigger('click'); await flushPromises();
+    expect(w.getComponent({ name: 'ShareImagePanel' }).props('source').sources).toEqual(['材料名称暂不可用', '首章']);
+  });
+  it('loads the existing material name even when the book picker has never been opened', async () => {
+    api.recall.mockResolvedValue([note]); api.paperMetadata.mockResolvedValue({ available: false });
+    api.bookLibrary.mockResolvedValue({ root: 'books', books: [{ book_id: 'startup', name: '学习与理解', dir: 'books/startup', route: 'reader' }] });
+    const w = startSharing(); await flushPromises();
+    await w.getComponent({ name: 'RightRail' }).get('button').trigger('click'); await flushPromises();
+    expect(w.getComponent({ name: 'ShareImagePanel' }).props('source').sources).toEqual(['《学习与理解》', '首章']);
+  });
+  it('ignores a late library title after the share is closed', async () => {
+    api.recall.mockResolvedValue([note]); api.paperMetadata.mockResolvedValue({ available: false });
+    const pending = deferred<any>(); api.bookLibrary.mockReturnValue(pending.promise);
+    const w = startSharing(); await flushPromises();
+    await w.getComponent({ name: 'RightRail' }).get('button').trigger('click'); await flushPromises();
+    expect(w.getComponent({ name: 'ShareImagePanel' }).props('loading')).toBe(true);
+    w.getComponent({ name: 'ShareImagePanel' }).vm.$emit('close'); await flushPromises();
+    pending.resolve({ books: [{ book_id: 'startup', name: '迟到书名' }] }); await flushPromises();
+    expect(w.findComponent({ name: 'ShareImagePanel' }).exists()).toBe(false);
+  });
+  it.each(['identity', 'material', 'publication', 'chat'])('discards late PNG output after %s changes the reader scene', async change => {
+    vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(() => {});
+    vi.spyOn(HTMLDialogElement.prototype, 'close').mockImplementation(() => {});
+    const create = vi.spyOn(URL, 'createObjectURL');
+    installIdentity({ user_id: 'A', csrf_token: 'a' });
+    installWorkspace({ workspace_id: 'w', generation: 1, revision: 1, selected_chat: 'startup-chat',
+      published_book_ref: { book_id: 'startup', publication_id: 'p1' }, reader: { book_id: 'startup', viewport: { anchor_lid: '1.1', top_lid: '1.1', bottom_lid: '1.1', visible_lids: ['1.1'], width: 1 }, layout: { rev: 0, open_slots: [] } } } as never);
+    api.recall.mockResolvedValue([note]); api.paperMetadata.mockResolvedValue({ title: { value: '原材料' } });
+    const pending = deferred<Blob[]>(); vi.mocked(renderShare).mockReturnValue(pending.promise);
+    const w = startSharing(true); await flushPromises();
+    await w.getComponent({ name: 'RightRail' }).get('button').trigger('click'); await flushPromises();
+    const share = w.getComponent({ name: 'ShareImagePanel' });
+    await share.findAll('button').find(button => button.text() === '预览图片')!.trigger('click');
+    expect(renderShare).toHaveBeenCalledOnce();
+    if (change === 'identity') installIdentity({ user_id: 'B', csrf_token: 'b' });
+    else if (change === 'chat') installWorkspace({ ...network.value.workspace!, generation: 2, selected_chat: 'other-chat' }, undefined, false, 'chat');
+    else installWorkspace({ ...network.value.workspace!, generation: 2,
+      published_book_ref: { book_id: change === 'material' ? 'second' : 'startup', publication_id: 'p2' } });
+    await flushPromises();
+    expect(w.findComponent({ name: 'ShareImagePanel' }).exists()).toBe(false);
+    pending.resolve([new Blob(['old private output'])]); await flushPromises();
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
+it('RS2 shares all actual highlight group members and their chapter labels without trusting the UI preview text', async () => {
+  const first = { mem_id: 'h1', type: 'highlight', book_id: 'startup', layer: 'long_term', anchor: { lid: '1.1' }, range: { start: 0, end: 3 }, content: '前半段', source_session_id: 'highlight-group:one' };
+  const second = { ...first, mem_id: 'h2', anchor: { lid: '2.1' }, content: '后半段' };
+  api.recall.mockResolvedValue([second, first]); api.paperMetadata.mockResolvedValue({ title: { value: '原材料' } });
+  const w = mount(App, { shallow:true, global: { renderStubDefaultSlot:true, stubs: {
+    RightRail: defineComponent({ name:'RightRail', setup() { return { share: inject(shareHighlightKey)! }; },
+      template: '<button @click="share({mem_id: \'h1\', content: \'伪造预览\'})">分享高亮</button>' }),
+  } } }); wrappers.push(w); await flushPromises();
+  await w.getComponent({name:'RightRail'}).get('button').trigger('click'); await flushPromises();
+  expect(w.getComponent({name:'ShareImagePanel'}).props('source')).toMatchObject({ parts: [{label:'原文摘录',text:'前半段\n后半段'}],sources:['《原材料》','首章','后章'] });
+  expect(api.save).not.toHaveBeenCalled(); expect(api.agentRunCreate).not.toHaveBeenCalled();
+});
+
+describe('RS6 delivered answer sharing', () => {
+  function setupAnswer(options: { pending?: boolean; incomplete?: boolean; sources?: boolean } = {}) {
+    const outcome = { answer: '旧回答原文', incomplete: !!options.incomplete, effects: [], trace: [], memory_updates: [],
+      answer_view: { parts: [{ kind: 'markdown', text: '仅当条件成立时，结论才成立。' },
+        ...(options.sources === false ? [] : [{ kind: 'sources', source_ref_ids: ['old-a', 'other-b'] }])],
+        sources: [{ source_ref_id: 'old-a', label: '旧材料 · 第一章' }, { source_ref_id: 'other-b', label: '另一材料 · 第 9 页' }] } };
+    api.agentHistory.mockResolvedValue({ ...history(), current: { ...history().current, turns: [
+      { turn_id: 'old-turn', user: '旧问题', status: 'completed', outcome, effect_labels: [] },
+      { turn_id: 'other-turn', user: '其他问题', status: 'completed', outcome: { ...outcome, answer_view: null, answer: '不要分享的另一回答' }, effect_labels: [] },
+    ] } });
+    return outcome;
+  }
+  it('freezes the selected historical answer and resolves multiple original materials without current metadata', async () => {
+    setupAnswer();
+    api.agentSourceResolve.mockImplementation(async (_turn, id) => ({ label: id === 'old-a' ? '旧材料 · 第一章' : '另一材料 · 第 9 页', stale: id === 'other-b' }));
+    const w = start(); await flushPromises(); const rail = w.getComponent({ name: 'RightRail' });
+    const beforeMetadata = api.paperMetadata.mock.calls.length;
+    rail.vm.$emit('share-answer', rail.props('chat')[0], '结论才成立。'); await flushPromises();
+    const panel = w.getComponent({ name: 'ShareImagePanel' });
+    expect(panel.props('source')).toMatchObject({ parts: [{ label: '助手解释', text: '结论才成立。' }],
+      sources: ['旧材料 · 第一章', '另一材料 · 第 9 页（来源暂不可用）'], answer: { sessionId: 'startup-chat', turnId: 'old-turn' } });
+    expect(api.agentSourceResolve.mock.calls).toEqual([['old-turn', 'old-a'], ['old-turn', 'other-b']]);
+    expect(api.paperMetadata.mock.calls.length).toBe(beforeMetadata);
+    expect(api.save).not.toHaveBeenCalled(); expect(api.agentRunCreate).not.toHaveBeenCalled();
+    expect(rail.props('chat')[0].outcome.answer).toBe('旧回答原文');
+  });
+  it('keeps an unavailable original label and shares unsourced answers without inventing an attribution', async () => {
+    setupAnswer(); api.agentSourceResolve.mockRejectedValue(new Error('unavailable'));
+    const w = start(); await flushPromises(); const rail = w.getComponent({ name: 'RightRail' });
+    rail.vm.$emit('share-answer', rail.props('chat')[0]); await flushPromises();
+    expect(w.getComponent({ name: 'ShareImagePanel' }).props('source').sources).toEqual(['旧材料 · 第一章（来源暂不可用）', '另一材料 · 第 9 页（来源暂不可用）']);
+    rail.vm.$emit('share-answer', rail.props('chat')[1]); await flushPromises();
+    expect(w.getComponent({ name: 'ShareImagePanel' }).props('source')).toMatchObject({ parts: [{ text: '不要分享的另一回答' }], sources: ['无已记录出处'] });
+    expect(api.agentSourceResolve).toHaveBeenCalledTimes(2);
+  });
+  it('rejects incomplete answers and text outside the delivered answer', async () => {
+    setupAnswer({ incomplete: true }); const w = start(); await flushPromises(); const rail = w.getComponent({ name: 'RightRail' });
+    rail.vm.$emit('share-answer', rail.props('chat')[0]); await flushPromises();
+    expect(w.findComponent({ name: 'ShareImagePanel' }).exists()).toBe(false);
+    rail.props('chat')[0].outcome.incomplete = false;
+    rail.vm.$emit('share-answer', rail.props('chat')[0], '另一回答'); await flushPromises();
+    expect(w.findComponent({ name: 'ShareImagePanel' }).exists()).toBe(false);
+    rail.props('chat')[0].pending = true;
+    rail.vm.$emit('share-answer', rail.props('chat')[0]); await flushPromises();
+    expect(w.findComponent({ name: 'ShareImagePanel' }).exists()).toBe(false);
+  });
+  it.each(['close', 'chat', 'identity', 'publication'])('ignores late original sources after %s', async change => {
+    if (change === 'publication') {
+      installIdentity({ user_id: 'A', csrf_token: 'a' });
+      installWorkspace({ workspace_id: 'w', generation: 1, revision: 1, selected_chat: 'startup-chat', published_book_ref: { book_id: 'startup', publication_id: 'p1' }, reader: { book_id: 'startup', viewport: { anchor_lid: '1.1', top_lid: '1.1', bottom_lid: '1.1', width: 1, visible_lids: ['1.1'] }, layout: { rev: 0, open_slots: [] } } } as never);
+    }
+    setupAnswer(); const pending = deferred<any>(); api.agentSourceResolve.mockReturnValue(pending.promise);
+    const w = start(); await flushPromises(); const rail = w.getComponent({ name: 'RightRail' });
+    rail.vm.$emit('share-answer', rail.props('chat')[0]); await flushPromises();
+    expect(w.getComponent({ name: 'ShareImagePanel' }).props('loading')).toBe(true);
+    if (change === 'close') w.getComponent({ name: 'ShareImagePanel' }).vm.$emit('close');
+    if (change === 'chat') { api.agentHistorySelect.mockResolvedValue({ ...history(), active_session_id: 'other', current: { ...history().current, id: 'other' } }); rail.vm.$emit('select-chat', 'other'); }
+    if (change === 'identity') installIdentity({ user_id: 'B', csrf_token: 'b' });
+    if (change === 'publication') installWorkspace({ ...network.value.workspace!, generation: 2, published_book_ref: { book_id: 'startup', publication_id: 'p2' } });
+    await flushPromises(); pending.resolve({ label: '迟到来源', stale: false }); await flushPromises();
+    expect(w.findComponent({ name: 'ShareImagePanel' }).exists()).toBe(false);
+  });
+});
+
+
+describe('RS7 shared diagram lifetime', () => {
+  it.each(['success', 'chat', 'identity', 'new-share'])('handles %s while a diagram is being prepared', async change => {
+    let share!: (load: () => Promise<any>) => Promise<void>;
+    const w = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: {
+      RightRail: defineComponent({ name: 'RightRail', setup() { share = inject(sharePresentationKey)!; return () => null; } }),
+    } } }); wrappers.push(w); await flushPromises();
+    const source = { parts: [{ id: 'body', label: '图解现场', text: '记录的参数' }], sources: ['旧来源'], association: '版本 2', diagram: { png: 'data:image/png;base64,AA==', width: 640, height: 360, title: '旧图解' } };
+    const pending = deferred<any>(); const operation = share(() => pending.promise);
+    if (change === 'chat') { api.agentHistorySelect.mockResolvedValue({ ...history(), active_session_id: 'other', current: { ...history().current, id: 'other' } }); w.getComponent({ name: 'RightRail' }).vm.$emit('select-chat', 'other'); }
+    if (change === 'identity') installIdentity({ user_id: 'B', csrf_token: 'b' });
+    if (change === 'new-share') await share(async () => ({ ...source, association: '版本 3' }));
+    await flushPromises(); pending.resolve(source); await operation; await flushPromises();
+    if (change === 'success') {
+      expect(w.getComponent({ name: 'ShareImagePanel' }).props('source')).toEqual(source);
+      w.getComponent({ name: 'ShareImagePanel' }).vm.$emit('close'); await flushPromises();
+      expect(w.findComponent({ name: 'ShareImagePanel' }).exists()).toBe(false);
+    } else if (change === 'new-share') expect(w.getComponent({ name: 'ShareImagePanel' }).props('source').association).toBe('版本 3');
+    else expect(w.findComponent({ name: 'ShareImagePanel' }).exists()).toBe(false);
+    expect(api.save).not.toHaveBeenCalled(); expect(api.agentRunCreate).not.toHaveBeenCalled();
   });
 });

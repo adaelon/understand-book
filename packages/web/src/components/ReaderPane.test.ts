@@ -102,7 +102,8 @@ describe("ReaderPane Note rendering", () => {
     expect(wrapper.findAll('.annotation-marker')[0].text()).toContain('2');
     await wrapper.findAll('.annotation-marker')[0].trigger('click');
     let preview = document.querySelector('.annotation-preview')!;
-    expect(preview.textContent).toContain('Short **body**');
+    expect(preview.textContent).toContain('Short body');
+    expect(preview.querySelector('.note-detail strong')?.textContent).toBe('body');
     expect(document.querySelectorAll('.annotation-preview')).toHaveLength(1);
     (preview.querySelector('footer button') as HTMLButtonElement).click();
     expect(wrapper.emitted('edit-note')?.at(-1)).toEqual([short]);

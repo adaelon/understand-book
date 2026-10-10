@@ -1,0 +1,93 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ❯ src/App.startup.test.ts (48 tests | 1 failed | 47 skipped) 101ms
+   ↓ sends the real start request with optional teaching assets unavailable
+   ↓ workspace startup > shows the text-free page animation until the first reading window is ready
+   ↓ workspace startup > removes the loading animation and exposes the error when material loading fails
+   ↓ workspace startup > ADM8 keeps a submitted draft when first-chat admission remounts App before returning
+   ↓ workspace startup > ADM8 projects a real terminal snapshot (saved) and preserves the right draft
+   ↓ workspace startup > ADM8 projects a real terminal snapshot (failed) and preserves the right draft
+   ↓ workspace startup > ADM8 projects a real terminal snapshot (new-draft) and preserves the right draft
+   ↓ workspace startup > ADM8 restores a denied draft and quote, exposes the allowance action, and only explicitly continues the original goal
+   ↓ workspace startup > ADM8 recovers a saved spend stop from history using its code without claiming task completion
+   ↓ workspace startup > passes the table renderer and canonical focus marks to the reader
+   ↓ workspace startup > restores the unsent message and quote after the network scene remounts
+   ↓ workspace startup > rebinds the network workspace before retrying a failed history read
+   ↓ workspace startup > JL9 resumes a recap target after the original chat has loaded
+   ↓ workspace startup > uses the attached network reading position without another state round trip
+   ↓ workspace startup > does not wait for PDF metadata when the saved surface is text
+   ↓ workspace startup > shows text without waiting for annotations or profile configuration
+   ↓ workspace startup > starts independent material requests together
+   ↓ workspace startup > shows the reader while history and profile are still pending
+   ↓ workspace startup > keeps the reader and unsent draft available when history fails, and supports retry
+   ↓ workspace startup > ignores history from the previous book after a book switch
+   ↓ JL6 effect receipts in chat > submits the stable effect identity and restores handled state after reload
+   ↓ RN2 presentation note draft > keeps the captured association across collapse, chat change and save failure
+   ↓ RN2 presentation note draft > edits a reactive saved note through replace and binds follow-up to the selected chat
+   ↓ RN3 unified note draft > records answers directly with their fixed turn, preserving the composer and reading position
+   ↓ RN3 unified note draft > processes another note with continue, failure, save and discard without overwriting the draft
+   ↓ RN3 unified note draft > keeps whitespace meaningful to Markdown when saving a legacy note
+   ↓ RN3 unified note draft > guards material switches and unload, and preserves failed text before leaving
+   ↓ RN3 unified note draft > clears private drafts on an identity change and ignores late save failures
+   ↓ RN3 unified note draft > opens original notes from ReaderPane with read-only excerpts and atomic text editing
+   ↓ RN3 unified note draft > opens original notes from RightRail with read-only excerpts and atomic text editing
+   ↓ RN4 note continuity > uses the replacement identity immediately and keeps a failed delete visible
+   ↓ RN4 note continuity > opens the original answer and reports a deleted chat without changing notes
+   ↓ RN4 note continuity > does not apply a late recall after changing publication
+   ↓ RN4 note continuity > does not apply a late recall after changing identity
+   ↓ RN4 note continuity > only projects the current publication for structured notes while retaining unknown legacy records
+   ↓ RN4 searches and displays all parts of a grouped highlight without changing its deletion identity
+   ↓ RS1 shared note selection and scope > keeps saved text and an independent editing draft untouched while using the real book title
+   ↓ RS1 shared note selection and scope > clears a pending source read on chat change
+   ↓ RS1 shared note selection and scope > clears a pending source read on identity change
+   ↓ RS1 shared note selection and scope > clears a pending source read on publication change
+   ↓ RS1 shared note selection and scope > clears a pending source read on material change
+   ↓ RS1 shared note selection and scope > does not manufacture a source for a legacy unplaced note or after metadata failure
+   × RS1 shared note selection and scope > loads the existing material name even when the book picker has never been opened 99ms
+     → expected [ '材料名称暂不可用', '首章' ] to deeply equal [ '《学习与理解》', '首章' ]
+   ↓ RS1 shared note selection and scope > discards late PNG output after identity changes the reader scene
+   ↓ RS1 shared note selection and scope > discards late PNG output after material changes the reader scene
+   ↓ RS1 shared note selection and scope > discards late PNG output after publication changes the reader scene
+   ↓ RS1 shared note selection and scope > discards late PNG output after chat changes the reader scene
+   ↓ RS2 shares all actual highlight group members and their chapter labels without trusting the UI preview text
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/App.startup.test.ts > RS1 shared note selection and scope > loads the existing material name even when the book picker has never been opened
+AssertionError: expected [ '材料名称暂不可用', '首章' ] to deeply equal [ '《学习与理解》', '首章' ]
+
+- Expected
++ Received
+
+  [
+-   "《学习与理解》",
++   "材料名称暂不可用",
+    "首章",
+  ]
+
+ ❯ src/App.startup.test.ts:637:81
+    635|     const w = startSharing(); await flushPromises();
+    636|     await w.getComponent({ name: 'RightRail' }).get('button').trigger(…
+    637|     expect(w.getComponent({ name: 'ShareImagePanel' }).props('source')…
+       |                                                                                 ^
+    638|   });
+    639|   it.each(['identity', 'material', 'publication', 'chat'])('discards l…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 47 skipped (48)
+   Start at  15:01:33
+   Duration  10.89s (transform 2.93s, setup 0ms, collect 5.92s, tests 101ms, environment 3.64s, prepare 567ms)
+
+undefined
+E:\allwork\download\agent\understand-book-reading-share\packages\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/App.startup.test.ts -t loads the existing material name --maxWorkers=1

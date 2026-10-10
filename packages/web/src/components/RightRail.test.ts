@@ -218,14 +218,14 @@ describe('JL9 recap jumps', () => {
   const chat = [{ turnId: 'turn-1', user: '原问题', pending: false, outcome: null, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] }];
   const base = { session_id: 'chat-1', through_seq: 10, turn_id: 'turn-1' };
   it('opens without navigation, then locates the turn, bound source, kept object and exact presentation version', async () => {
-    vi.spyOn(api, 'sessionRecap').mockResolvedValue(recap);
+    vi.spyOn(api, 'sessionRecap').mockResolvedValue({ ...recap, effects: [{ ...note, object_id: 'edited-object' }, presentation] });
     const resolve = vi.spyOn(api, 'agentSourceResolve').mockResolvedValue({ source_ref_id: 'source-1', label: '原文', highlighted_quote: '引文', context_before: '', context_after: '', stale: false, can_open_in_reader: true });
     const read = vi.spyOn(api, 'presentationRead').mockResolvedValue({} as never);
-    vi.spyOn(api, 'recall').mockResolvedValue([{ mem_id: 'kept-object', anchor: { lid: '1.2' }, content: '保留后的笔记' }] as never);
+    vi.spyOn(api, 'recall').mockResolvedValue([{ mem_id: 'edited-object', anchor: { lid: '1.2' }, content: '保留后的笔记' }] as never);
     const scroll = vi.fn(); vi.stubGlobal('HTMLElement', HTMLElement);
     const prior = HTMLElement.prototype.scrollIntoView;
     HTMLElement.prototype.scrollIntoView = scroll;
-    const wrapper = mount(RightRail, { props: { ...baseProps, chat }, global: { stubs: { AgentPresentation: true } } });
+    const wrapper = mount(RightRail, { props: { ...baseProps, chat, contextNotes: [{ mem_id: 'edited-object', type: 'note', book_id: 'book', layer: 'long_term', anchor: {}, content: '保留后的笔记' }] }, global: { stubs: { AgentPresentation: true } } });
     try {
       await wrapper.get('.recap-button').trigger('click'); await flushPromises();
       expect(document.body.querySelector('.session-recap')).not.toBeNull();
@@ -233,11 +233,12 @@ describe('JL9 recap jumps', () => {
       const rail = wrapper.vm as unknown as { openRecapTarget: (t: RecapTarget) => Promise<void> };
       await rail.openRecapTarget({ ...base, kind: 'turn' }); expect(scroll).toHaveBeenCalled();
       await rail.openRecapTarget({ ...base, kind: 'source', source });
-      expect(resolve).toHaveBeenCalledWith('turn-1', 'source-1');
+      expect(resolve).toHaveBeenCalledWith('turn-1', 'source-1', undefined);
       await wrapper.setProps({ chat: [{ ...chat[0], pending: true, runStatus: '新活动' }] });
       expect(document.body.querySelector('.agent-source-popup')).not.toBeNull();
       await rail.openRecapTarget({ ...base, kind: 'effect', effect: note });
-      expect(wrapper.emitted('focus-source')?.[0]).toEqual([{ lid: '1.2', quote: null, memId: 'kept-object' }]);
+      expect(wrapper.get('[data-mem-id="edited-object"]').attributes('open')).toBeDefined();
+      expect(wrapper.emitted('focus-source')).toBeUndefined();
       await rail.openRecapTarget({ ...base, kind: 'effect', effect: presentation });
       expect(read).toHaveBeenCalledWith('chat-1', 'turn-1', { presentation_id: 'p', revision: 2 });
       expect(wrapper.getComponent({ name: 'AgentPresentation' }).props('reference')).toEqual({ presentation_id: 'p', revision: 2 });
@@ -1225,3 +1226,54 @@ describe("mobile input continuity", () => {
   });
 });
 
+
+
+describe('RN4 note retrieval', () => {
+  const note = (id: string, content: string, more = {}) => ({ mem_id: id, content, type: 'note', layer: 'long_term', book_id: 'book', anchor: {}, ...more });
+  it('searches excerpts and titles, mixes highlights by real time, clears filters for a targeted record and follows replacements', async () => {
+    const notes = [note('legacy', '> 混排旧正文'), note('answer', '自己的想法', { generated_at: '1700000000', note: {
+      association: { kind: 'answer', session_id: 'original-chat', turn_id: 'answer-turn' }, retained_excerpt: { kind: 'assistant', text: '助手独有片段' }, source_bindings: [],
+    } })];
+    const highlight = note('highlight', '原文高亮', { type: 'highlight', generated_at: '2025-01-01T00:00:00Z' });
+    const w = mount(RightRail, { props: { ...baseProps, contextNotes: notes as never, contextHighlights: [highlight], noteBookOrder: ['legacy', 'highlight', 'answer'],
+      chatSessions: [{ id: 'original-chat', title: '梯度下降的讨论', turn_count: 1, turns: [], created_at: '', updated_at: '' }] } });
+    const ids = () => w.findAll('.memory-card').map(c => c.attributes('data-mem-id'));
+    const rail = w.vm as unknown as { showMemory: (id: string) => Promise<boolean>; replaceMemory: (id: string, record: any) => void };
+    const scroll = vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(() => {});
+    try {
+      expect(ids()).toEqual(['highlight', 'answer', 'legacy']);
+      expect(w.get('[data-mem-id="legacy"]').text()).toContain('保存时间未知');
+      await w.get('[aria-label="搜索笔记"]').setValue('助手独有'); expect(ids()).toEqual(['answer']);
+      await w.get('[aria-label="搜索笔记"]').setValue('梯度下降'); expect(ids()).toEqual(['answer']);
+      await w.get('[aria-label="笔记类型"]').setValue('highlight'); expect(ids()).toEqual([]);
+      expect(await rail.showMemory('answer')).toBe(true); await flushPromises();
+      await w.get('[data-mem-id="answer"]').findAll('button').find(b => b.text() === '返回原回答')!.trigger('click');
+      expect(w.emitted('open-note-answer')?.[0]?.[0]).toMatchObject({ mem_id: 'answer' });
+      const edited = { ...notes[1], mem_id: 'edited', content: '修订后的想法' };
+      rail.replaceMemory('answer', edited); await w.setProps({ contextNotes: [notes[0], edited] as never });
+      expect(w.get('[data-mem-id="edited"]').attributes('open')).toBeDefined();
+      expect(w.get('[data-mem-id="edited"] .note-detail').text()).toContain('修订后的想法');
+      await w.get('[aria-label="笔记排序"]').setValue('original');
+      await w.setProps({ noteBookOrder: ['legacy', 'highlight', 'edited'] }); expect(ids()).toEqual(['legacy', 'highlight', 'edited']);
+      await w.get('[aria-label="搜索笔记"]').setValue('私人查询');
+      await w.setProps({ noteScopeKey: 'another-publication', contextNotes: [], contextHighlights: [] });
+      await w.setProps({ contextNotes: [notes[0]] as never });
+      expect((w.get('[aria-label="搜索笔记"]').element as HTMLInputElement).value).toBe('');
+    } finally { w.unmount(); scroll.mockRestore(); }
+  });
+});
+
+it.each(['completed', 'pending', 'incomplete', 'failed', 'cancelled'])('RS6 exposes an answer menu only for a delivered complete answer: %s', async status => {
+  const turn = { turnId: 'rs6-turn', user: '原问题', pending: status === 'pending', error: status === 'failed' ? 'failed' : undefined,
+    runStatus: status === 'cancelled' ? '已停止' : undefined, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+    outcome: { answer: '仅当条件成立时，结论成立。', incomplete: status === 'incomplete', effects: [], trace: [], memory_updates: [],
+      profile_usage: { injected_fact_ids: [], claimed_used_fact_ids: [], influences: [] } } as any };
+  const wrapper = mount(RightRail, { props: { ...baseProps, renderMarkdown, chat: [turn] } });
+  try {
+    expect(wrapper.find('.answer-actions').exists()).toBe(status === 'completed');
+    if (status === 'completed') {
+      await wrapper.get('.answer-actions button').trigger('click');
+      expect(wrapper.emitted('share-answer')?.[0]).toEqual([turn]);
+    }
+  } finally { wrapper.unmount(); }
+});

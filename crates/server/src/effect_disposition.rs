@@ -301,6 +301,7 @@ pub(crate) fn execute(
                     range: original.range,
                     selection_context: original.selection_context,
                     note_placement: original.note_placement,
+                    note: original.note,
                     citations: Some(original.citations),
                     source_session_id: original.source_session_id,
                 },

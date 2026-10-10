@@ -1,0 +1,245 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/RightRail.test.ts (43 tests) 1382ms
+stderr | src/App.startup.test.ts > RS6 delivered answer sharing > ignores late original sources after publication
+[Vue warn]: Invalid prop: type check failed for prop "selectedLid". Expected String | Null, got Undefined  
+  at <LeftRail goto-input="" onUpdate:gotoInput=fn search-query=""  ... > 
+  at <ReaderWorkspace key=10 ref="workspaceRef" logical= {
+  contextKey: 'startup',
+  revision: 0,
+  activePreset: null,
+  openSlots: [],
+  focusedSlot: null
+}  ... > 
+  at <App ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+[Vue warn]: Invalid prop: type check failed for prop "selectedLid". Expected String | Null, got Undefined  
+  at <ReaderPane key=1 ref="readerPaneRef" typography= {
+  font: 'serif',
+  languageMode: 'cjk-mixed',
+  fontSizePx: 19,
+  lineHeight: 1.85,
+  cjkLetterSpacingEm: 0.015,
+  measure: 'standard'
+}  ... > 
+  at <ReaderWorkspace key=10 ref="workspaceRef" logical= {
+  contextKey: 'startup',
+  revision: 0,
+  activePreset: null,
+  openSlots: [],
+  focusedSlot: null
+}  ... > 
+  at <App ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+[Vue warn]: Invalid prop: type check failed for prop "selectedLid". Expected String | Null, got Undefined  
+  at <RightRail key="17:A:w:1:startup:p1" presentation-workspace=null onUpdate:presentationWorkspace=fn  ... > 
+  at <ReaderWorkspace key=10 ref="workspaceRef" logical= {
+  contextKey: 'startup',
+  revision: 0,
+  activePreset: null,
+  openSlots: [],
+  focusedSlot: null
+}  ... > 
+  at <App ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+ ❯ src/App.startup.test.ts (56 tests | 1 failed) 1679ms
+   ✓ sends the real start request with optional teaching assets unavailable 78ms
+   ✓ workspace startup > shows the text-free page animation until the first reading window is ready 53ms
+   ✓ workspace startup > removes the loading animation and exposes the error when material loading fails 26ms
+   ✓ workspace startup > ADM8 keeps a submitted draft when first-chat admission remounts App before returning 77ms
+   ✓ workspace startup > ADM8 projects a real terminal snapshot (saved) and preserves the right draft 61ms
+   ✓ workspace startup > ADM8 projects a real terminal snapshot (failed) and preserves the right draft 34ms
+   ✓ workspace startup > ADM8 projects a real terminal snapshot (new-draft) and preserves the right draft 41ms
+   ✓ workspace startup > ADM8 restores a denied draft and quote, exposes the allowance action, and only explicitly continues the original goal 36ms
+   ✓ workspace startup > ADM8 recovers a saved spend stop from history using its code without claiming task completion 21ms
+   ✓ workspace startup > passes the table renderer and canonical focus marks to the reader 82ms
+   ✓ workspace startup > restores the unsent message and quote after the network scene remounts 21ms
+   ✓ workspace startup > rebinds the network workspace before retrying a failed history read 30ms
+   ✓ workspace startup > JL9 resumes a recap target after the original chat has loaded 26ms
+   ✓ workspace startup > uses the attached network reading position without another state round trip 23ms
+   ✓ workspace startup > does not wait for PDF metadata when the saved surface is text 22ms
+   ✓ workspace startup > shows text without waiting for annotations or profile configuration 17ms
+   ✓ workspace startup > starts independent material requests together 21ms
+   ✓ workspace startup > shows the reader while history and profile are still pending 21ms
+   ✓ workspace startup > keeps the reader and unsent draft available when history fails, and supports retry 22ms
+   ✓ workspace startup > ignores history from the previous book after a book switch 43ms
+   ✓ JL6 effect receipts in chat > submits the stable effect identity and restores handled state after reload 47ms
+   ✓ RN2 presentation note draft > keeps the captured association across collapse, chat change and save failure 25ms
+   ✓ RN2 presentation note draft > edits a reactive saved note through replace and binds follow-up to the selected chat 23ms
+   ✓ RN3 unified note draft > records answers directly with their fixed turn, preserving the composer and reading position 34ms
+   ✓ RN3 unified note draft > processes another note with continue, failure, save and discard without overwriting the draft 31ms
+   ✓ RN3 unified note draft > keeps whitespace meaningful to Markdown when saving a legacy note 15ms
+   ✓ RN3 unified note draft > guards material switches and unload, and preserves failed text before leaving 27ms
+   ✓ RN3 unified note draft > clears private drafts on an identity change and ignores late save failures 20ms
+   ✓ RN3 unified note draft > opens original notes from ReaderPane with read-only excerpts and atomic text editing 21ms
+   ✓ RN3 unified note draft > opens original notes from RightRail with read-only excerpts and atomic text editing 21ms
+   ✓ RN4 note continuity > uses the replacement identity immediately and keeps a failed delete visible 26ms
+   ✓ RN4 note continuity > opens the original answer and reports a deleted chat without changing notes 30ms
+   ✓ RN4 note continuity > does not apply a late recall after changing publication 18ms
+   ✓ RN4 note continuity > does not apply a late recall after changing identity 19ms
+   ✓ RN4 note continuity > only projects the current publication for structured notes while retaining unknown legacy records 38ms
+   ✓ RN4 searches and displays all parts of a grouped highlight without changing its deletion identity 14ms
+   ✓ RS1 shared note selection and scope > keeps saved text and an independent editing draft untouched while using the real book title 38ms
+   ✓ RS1 shared note selection and scope > clears a pending source read on chat change 25ms
+   ✓ RS1 shared note selection and scope > clears a pending source read on identity change 14ms
+   ✓ RS1 shared note selection and scope > clears a pending source read on publication change 18ms
+   ✓ RS1 shared note selection and scope > clears a pending source read on material change 30ms
+   ✓ RS1 shared note selection and scope > does not manufacture a source for a legacy unplaced note or after metadata failure 22ms
+   ✓ RS1 shared note selection and scope > loads the existing material name even when the book picker has never been opened 15ms
+   ✓ RS1 shared note selection and scope > ignores a late library title after the share is closed 29ms
+   ✓ RS1 shared note selection and scope > discards late PNG output after identity changes the reader scene 31ms
+   ✓ RS1 shared note selection and scope > discards late PNG output after material changes the reader scene 29ms
+   ✓ RS1 shared note selection and scope > discards late PNG output after publication changes the reader scene 27ms
+   ✓ RS1 shared note selection and scope > discards late PNG output after chat changes the reader scene 28ms
+   ✓ RS2 shares all actual highlight group members and their chapter labels without trusting the UI preview text 25ms
+   ✓ RS6 delivered answer sharing > freezes the selected historical answer and resolves multiple original materials without current metadata 23ms
+   ✓ RS6 delivered answer sharing > keeps an unavailable original label and shares unsourced answers without inventing an attribution 23ms
+   ✓ RS6 delivered answer sharing > rejects incomplete answers and text outside the delivered answer 31ms
+   ✓ RS6 delivered answer sharing > ignores late original sources after close 15ms
+   ✓ RS6 delivered answer sharing > ignores late original sources after chat 43ms
+   ✓ RS6 delivered answer sharing > ignores late original sources after identity 18ms
+   × RS6 delivered answer sharing > ignores late original sources after publication 29ms
+     → Unable to get component with name ShareImagePanel within: <div data-v-7a7a37b1="" class="app" style="--reader-font: &quot;Noto Serif SC Variable&quot;, serif; --reader-size: 19px; --reader-leading: 1.85; --reader-cjk-spacing: 0.015em; --reader-measure: 36em; --reader-paragraph-gap: 1.2em;">
+  <top-bar-stub data-v-7a7a37b1="" chaptertitle="" progresspct="0" typographyavailable="true" focusavailable="true" focusreading="false" chatunavailable="true" debugopen="false" leftrailopen="true" buildintentopen="false" buildintentavailable="false" workbenchavailable="false" desktophost="false" mobilecollapsible="true" mobileopen="false"></top-bar-stub>
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <p data-v-7a7a37b1="" class="banner">TypeError: Cannot read properties of undefined (reading 'split')</p>
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <reader-workspace-stub data-v-7a7a37b1="" logical="[object Object]" contextkey="17:A:w:1:startup:p1:startup" preference="auto" compareintent="false" selectionactive="false" expanded="false" leftcollapsed="false" returnavailable="false" returnlabel="返回回答" enabled="true" readersurface="markdown" pdfsurfaceavailable="false" globalactionsopen="false" style="--left-rail-width: 240px; --left-resizer-width: 6px; --right-rail-width: 384px;">
+    <left-rail-stub data-v-7a7a37b1="" gotoinput="" searchquery="" outlineitems="[object Object],[object Object]" progresspct="0" leafcount="1" debugopen="false" paperenabled="false" paperloading="false" paperminimapundoavailable="false" paperminimapactionbusy="false"></left-rail-stub>
+    <div data-v-7a7a37b1="" class="resize-handle resize-handle-left" role="separator" aria-orientation="vertical" title="调整目录栏宽度"></div>
+    <reader-pane-stub data-v-7a7a37b1="" typography="[object Object]" contextkey="17:A:w:1:startup:p1:startup:no-chat" segments="" renderseg="[Function]" rendermarkdown="[Function]" markdownheadinglevel="[Function]" isasset="[Function]" ishighlighted="[Function]" highlightsof="[Function]" highlightcardsof="[Function]" visiblenotes="" hlexcerpt="[Function]" imagemeta="[Function]" imageasset="[Function]" noteplacementactive="false"></reader-pane-stub>
+    <div data-v-7a7a37b1="" class="resize-handle resize-handle-right" role="separator" aria-orientation="vertical" title="调整上下文栏宽度"></div>
+    <right-rail-stub data-v-7a7a37b1="" agentinput="" chat="" chatsessions="" chatgoals="" activechatsessionid="" runconnection="closed" noteplacementsurface="markdown" notesourcefingerprint="startup" showtrace="[object Object]" latesttrace="" contextnotes="" contexthighlights="" notebookorder="" notesourcelabels="[object Object]" notescopekey="17:A:w:1:startup:p1:startup" annotationlocation="[object Object]" rendermarkdown="[Function]" efflabel="[Function]" effstate="[Function]" isgoto="[Function]" showeffectprimary="[Function]" showeffectsecondary="[Function]" effectprimarylabel="[Function]" effectsecondarylabel="[Function]" gotoback="[Function]" profileupdatestates="[object Object]" requestedtabrevision="0" fullscreen="false" sending="false" historyloading="true" canstop="false" unquotednoteplacementavailable="true" profilememoryloading="false" profilememorybusy="false" profilebackfillloading="false" profilebackfillbusy="false" intentartifactsloading="false"></right-rail-stub>
+  </reader-workspace-stub>
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+</div>
+stderr | src/components/ShareImagePanel.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/ShareImagePanel.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/ShareImagePanel.test.ts (5 tests) 144ms
+stderr | src/reading-share.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/reading-share.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ❯ src/reading-share.test.ts (6 tests | 1 failed) 46ms
+   × RS6 shares only delivered answer text with explicit assistant identity and no private fields 21ms
+     → expected '助手解释当条件成立时，结论成立。\n我的感想我补充的感想' to be '助手解释当条件成立时，结论成立。我的感想我补充的感想' // Object.is equality
+   ✓ RS1 selected content and readable page > keeps legacy identity neutral, structured parts separate, and protocol fields out of images 2ms
+   ✓ RS1 selected content and readable page > foregrounds the excerpt only in excerpt layout without rewriting content or attribution 2ms
+   ✓ RS1 selected content and readable page > renders paragraphs, lists, code, formulas, links and tables using the reader format 15ms
+   ✓ RS1 selected content and readable page > keeps PDF punctuation literal and reflections separate from source Markdown 1ms
+   ✓ RS1 selected content and readable page > rejects missing resources and empty selections with an actionable reason 3ms
+stderr | src/answer-note-selection.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/answer-note-selection.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/answer-note-selection.test.ts (7 tests) 67ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/App.startup.test.ts > RS6 delivered answer sharing > ignores late original sources after publication
+Error: Unable to get component with name ShareImagePanel within: <div data-v-7a7a37b1="" class="app" style="--reader-font: &quot;Noto Serif SC Variable&quot;, serif; --reader-size: 19px; --reader-leading: 1.85; --reader-cjk-spacing: 0.015em; --reader-measure: 36em; --reader-paragraph-gap: 1.2em;">
+  <top-bar-stub data-v-7a7a37b1="" chaptertitle="" progresspct="0" typographyavailable="true" focusavailable="true" focusreading="false" chatunavailable="true" debugopen="false" leftrailopen="true" buildintentopen="false" buildintentavailable="false" workbenchavailable="false" desktophost="false" mobilecollapsible="true" mobileopen="false"></top-bar-stub>
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <p data-v-7a7a37b1="" class="banner">TypeError: Cannot read properties of undefined (reading 'split')</p>
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <reader-workspace-stub data-v-7a7a37b1="" logical="[object Object]" contextkey="17:A:w:1:startup:p1:startup" preference="auto" compareintent="false" selectionactive="false" expanded="false" leftcollapsed="false" returnavailable="false" returnlabel="返回回答" enabled="true" readersurface="markdown" pdfsurfaceavailable="false" globalactionsopen="false" style="--left-rail-width: 240px; --left-resizer-width: 6px; --right-rail-width: 384px;">
+    <left-rail-stub data-v-7a7a37b1="" gotoinput="" searchquery="" outlineitems="[object Object],[object Object]" progresspct="0" leafcount="1" debugopen="false" paperenabled="false" paperloading="false" paperminimapundoavailable="false" paperminimapactionbusy="false"></left-rail-stub>
+    <div data-v-7a7a37b1="" class="resize-handle resize-handle-left" role="separator" aria-orientation="vertical" title="调整目录栏宽度"></div>
+    <reader-pane-stub data-v-7a7a37b1="" typography="[object Object]" contextkey="17:A:w:1:startup:p1:startup:no-chat" segments="" renderseg="[Function]" rendermarkdown="[Function]" markdownheadinglevel="[Function]" isasset="[Function]" ishighlighted="[Function]" highlightsof="[Function]" highlightcardsof="[Function]" visiblenotes="" hlexcerpt="[Function]" imagemeta="[Function]" imageasset="[Function]" noteplacementactive="false"></reader-pane-stub>
+    <div data-v-7a7a37b1="" class="resize-handle resize-handle-right" role="separator" aria-orientation="vertical" title="调整上下文栏宽度"></div>
+    <right-rail-stub data-v-7a7a37b1="" agentinput="" chat="" chatsessions="" chatgoals="" activechatsessionid="" runconnection="closed" noteplacementsurface="markdown" notesourcefingerprint="startup" showtrace="[object Object]" latesttrace="" contextnotes="" contexthighlights="" notebookorder="" notesourcelabels="[object Object]" notescopekey="17:A:w:1:startup:p1:startup" annotationlocation="[object Object]" rendermarkdown="[Function]" efflabel="[Function]" effstate="[Function]" isgoto="[Function]" showeffectprimary="[Function]" showeffectsecondary="[Function]" effectprimarylabel="[Function]" effectsecondarylabel="[Function]" gotoback="[Function]" profileupdatestates="[object Object]" requestedtabrevision="0" fullscreen="false" sending="false" historyloading="true" canstop="false" unquotednoteplacementavailable="true" profilememoryloading="false" profilememorybusy="false" profilebackfillloading="false" profilebackfillbusy="false" intentartifactsloading="false"></right-rail-stub>
+  </reader-workspace-stub>
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+</div>
+ ❯ VueWrapper.getComponent ../../node_modules/@vue/test-utils/dist/vue-test-utils.cjs.js:7203:15
+    7201|         }
+    7202|         message += ` within: ${this.html()}`;
+    7203|         throw new Error(message);
+       |               ^
+    7204|     }
+    7205|     isVisible() {
+ ❯ src/App.startup.test.ts:741:14
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/reading-share.test.ts > RS6 shares only delivered answer text with explicit assistant identity and no private fields
+AssertionError: expected '助手解释当条件成立时，结论成立。\n我的感想我补充的感想' to be '助手解释当条件成立时，结论成立。我的感想我补充的感想' // Object.is equality
+
+- Expected
++ Received
+
+- 助手解释当条件成立时，结论成立。我的感想我补充的感想
++ 助手解释当条件成立时，结论成立。
++ 我的感想我补充的感想
+
+ ❯ src/reading-share.test.ts:22:20
+     20|   expect(source.sources).toEqual(['无已记录出处']);
+     21|   const sections = shareSections({ ...draft(), source, reflection: '我补…
+     22|   expect(sections).toBe('助手解释当条件成立时，结论成立。我的感想我补充的感想');
+       |                    ^
+     23|   expect(sections).not.toContain('private-');
+     24| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 3 passed (5)
+      Tests  2 failed | 115 passed (117)
+   Start at  16:33:27
+   Duration  19.95s (transform 3.74s, setup 0ms, collect 10.55s, tests 3.32s, environment 17.79s, prepare 2.59s)
+
+undefined
+E:\allwork\download\agent\understand-book-reading-share\packages\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/reading-share.test.ts src/components/ShareImagePanel.test.ts src/App.startup.test.ts src/components/RightRail.test.ts src/answer-note-selection.test.ts --maxWorkers=2
