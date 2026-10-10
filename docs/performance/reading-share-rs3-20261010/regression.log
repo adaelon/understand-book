@@ -1,0 +1,25 @@
+[WebServer] (node:39896) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:33436) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 14 tests using 1 worker
+
+(node:30500) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 playwright\pdf-selection-actions.spec.ts:357:34 › RS1 previews and downloads selected notes without changing reading state at 390px (11.1s)
+  ok  2 playwright\pdf-selection-actions.spec.ts:357:34 › RS1 previews and downloads selected notes without changing reading state at 1440px (7.3s)
+  ok  3 playwright\pdf-selection-actions.spec.ts:581:1 › resolved real PDF selection performs three explicit actions and sends structured AskQuote (2.3s)
+  ok  4 playwright\pdf-selection-actions.spec.ts:776:1 › RN3 PDF draft survives collapse, failure and a reduced keyboard viewport, then edits through the annotation (2.6s)
+  ok  5 playwright\pdf-selection-actions.spec.ts:816:1 › RN3 Markdown and delivered answer entries share the editor, preserving old mixed notes and material-switch choices (3.0s)
+  ok  6 playwright\pdf-selection-actions.spec.ts:877:44 › RN4 retrieves mixed notes and preserves edit/delete/answer continuity at 320px (2.1s)
+  ok  7 playwright\pdf-selection-actions.spec.ts:877:44 › RN4 retrieves mixed notes and preserves edit/delete/answer continuity at 390px (1.8s)
+  ok  8 playwright\pdf-selection-actions.spec.ts:877:44 › RN4 retrieves mixed notes and preserves edit/delete/answer continuity at 768px (1.9s)
+  ok  9 playwright\pdf-selection-actions.spec.ts:877:44 › RN4 retrieves mixed notes and preserves edit/delete/answer continuity at 1440px (2.5s)
+  ok 10 playwright\pdf-selection-actions.spec.ts:934:34 › RS2 rich content paginates completely and saves the exact preview at 390px (9.9s)
+  ok 11 playwright\pdf-selection-actions.spec.ts:934:34 › RS2 rich content paginates completely and saves the exact preview at 1440px (11.3s)
+  ok 12 playwright\pdf-selection-actions.spec.ts:978:1 › RS2 PDF exact selection and saved highlight use original text and source, partial selection cannot share (5.6s)
+  ok 13 playwright\pdf-selection-actions.spec.ts:999:1 › RS2 Markdown cross-paragraph selection preserves source text and downloads a later page (6.9s)
+  ok 14 playwright\pdf-selection-actions.spec.ts:1104:1 › RS2 overwide tables and formulas fail before PNG export; long ordered lists and code preserve every item (3.5s)
+
+  14 passed (1.5m)

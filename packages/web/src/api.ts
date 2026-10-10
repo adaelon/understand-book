@@ -4,6 +4,9 @@ import type { RunDescriptor, RunSnapshot, RunActivity } from "./agent-run-state"
 // 类型化命令面 REST 客户端 `[ADR-0028]`:前端经 `/api` dev proxy 打到 tiny_http。
 // 端点名 = 命令名;book.*→GET、reader.*/memory.*/book.query→POST;错误透传 §4.4 信封。
 import type { Manifest } from "./generated/Manifest";
+import type { NoteData } from "./generated/NoteData";
+import type { NoteCreateRequest } from "./generated/NoteCreateRequest";
+export type { NoteData, NoteCreateRequest };
 import type { BookQueryRequest } from "./generated/BookQueryRequest";
 import type { QueryOutcome } from "./generated/QueryOutcome";
 import type { ToolError } from "./generated/ToolError";
@@ -175,21 +178,8 @@ export interface SelectionContext {
   resolved_quote: string;
   ranges: SelectedRange[];
 }
-export type NoteBodyPlacement =
-  | {
-      kind: "lid_block";
-      source_fingerprint: string;
-      lid: string;
-    }
-  | {
-      kind: "pdf_region";
-      source_fingerprint: string;
-      lid: string;
-      source_map_version: "pdf_source_map.v1" | "pdf_source_map.v2";
-      source_map_config_hash: string;
-      page_index: number;
-      region_id: string;
-    };
+export type { NoteBodyPlacement } from "./generated/NoteBodyPlacement";
+import type { NoteBodyPlacement } from "./generated/NoteBodyPlacement";
 export type NoteSaveStatus = "CREATED" | "EXISTING";
 /** memory 记录(符 V3 §4.3;JSON 字段 `type` = Rust mem_type 的 serde rename)。 */
 export interface MemoryRecord {
@@ -202,6 +192,8 @@ export interface MemoryRecord {
   range?: TextRange | null; // 高亮段内区间;note / 整段高亮为空 `[ADR-0031]`
   selection_context?: SelectionContext | null;
   note_placement?: NoteBodyPlacement | null;
+  note?: NoteData | null;
+  generated_at?: string;
   source_session_id?: string | null;
 }
 export interface NoteSaveOutcome {
@@ -1202,6 +1194,7 @@ export interface LearningEvidenceView {
   source_quotes: { reason?: string; quote?: string; response_quote?: string; sources?: { quote: string }[] }[] | null;
 }
 export interface AgentChatMeta {
+  note_mem_id?: string;
   teaching_ref?: string;
   goal_id?: string;
   goal_action?: "cancel" | "replace";
@@ -1213,6 +1206,7 @@ export interface AgentChatMeta {
 export interface SourcePopupView {
   source_ref_id: string;
   label: string;
+  material_title?: string | null;
   highlighted_quote: string;
   context_before: string;
   context_after: string;
@@ -1437,6 +1431,7 @@ export const api = {
     layer?: string;
     selection_context?: SelectionContext;
     note_placement?: NoteBodyPlacement;
+    note?: NoteCreateRequest;
     source_session_id?: string;
   }) => http<MemoryRecord | NoteSaveOutcome>("POST", "/memory/save", r),
   reanchor: (mem_id: string, note_placement: NoteBodyPlacement) =>
@@ -1466,8 +1461,8 @@ export const api = {
     http<AgentHistoryResponse>("POST", "/agent/history/select", { session_id }),
   agentHistoryDelete: (session_id: string) =>
     http<AgentHistoryResponse>("POST", "/agent/history/delete", { session_id }),
-  agentSourceResolve: (turn_id: string, source_ref_id: string) =>
-    http<SourcePopupView>("POST", "/agent/source.resolve", { turn_id, source_ref_id }),
+  agentSourceResolve: (turn_id: string, source_ref_id: string, note_mem_id?: string) =>
+    http<SourcePopupView>("POST", "/agent/source.resolve", { turn_id, source_ref_id, note_mem_id }),
   tutorState: () => http<import('./generated/TutorState').TutorState>('GET', '/tutor/state'),
   tutorUnderstanding: (after = 0, rebuild = false) => http<UnderstandingView>('POST', '/tutor/understanding', { after, rebuild }),
   tutorEvidence: (evidence_ref: string) => http<LearningEvidenceView>('POST', '/tutor/evidence', { evidence_ref }),
@@ -1482,12 +1477,16 @@ export const api = {
   tutorReadiness: () => http<{ status: 'preparing' | 'ready'; source_id: string; source_revision: string; limitations: string[]; reason: string;
     teaching_assets: { status: 'preparing' | 'ready' | 'stale'; teaching_map_revision: string | null; limitations: string[]; reason: string } }>('GET', '/tutor/readiness'),
   tutorMutate: (request: import('./generated/TutorMutation').TutorMutation) => http<import('./generated/TutorState').TutorState>('POST', '/tutor/mutate', request),
+  notePresentationRead: (mem_id: string, restore = false) =>
+    http<import("./generated/PresentationView").PresentationView>("POST", "/memory/presentation.read", { mem_id, restore }),
+  notePresentationObserve: (mem_id: string, text: string, source_ref_ids: string[]) =>
+    http<{ accepted: boolean }>("POST", "/memory/presentation.observe", { mem_id, text, source_ref_ids }),
   presentationRead: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, saved_state?: import("./generated/PresentationFollowUp").PresentationFollowUp) =>
     http<import("./generated/PresentationView").PresentationView>("POST", "/agent/presentation.read", { session_id, turn_id, reference, saved_state }),
   presentationSaveState: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, state: import("./generated/PresentationState").PresentationState) =>
     http<import("./generated/PresentationFollowUp").PresentationFollowUp>("POST", "/agent/presentation.state.save", { session_id, turn_id, reference, state }),
   presentationObserve: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, text: string, source_ref_ids: string[]) =>
     http<{ accepted: boolean }>("POST", "/agent/presentation.observe", { session_id, turn_id, reference, text, source_ref_ids }),
-  agentSourceOpen: (turn_id: string, source_ref_id: string) =>
-    http<SourceOpenView>("POST", "/agent/source.open", { turn_id, source_ref_id }),
+  agentSourceOpen: (turn_id: string, source_ref_id: string, note_mem_id?: string) =>
+    http<SourceOpenView>("POST", "/agent/source.open", { turn_id, source_ref_id, note_mem_id }),
 };

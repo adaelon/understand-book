@@ -15,6 +15,7 @@ fn note(id: &str, content: &str) -> SaveInput {
         content: content.into(),
         range: None,
         selection_context: None,
+        note: None,
         note_placement: None,
         citations: None,
         source_session_id: Some("session-legacy".into()),

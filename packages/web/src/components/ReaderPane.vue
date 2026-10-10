@@ -53,6 +53,7 @@ function imageRenderSrc(asset: ImageAssetManifestEntry | null | undefined): stri
   return asset.url_path ?? (asset.status === "external" ? asset.original_src : null);
 }
 const emit = defineEmits<{
+  (e: "open-note", record: MemoryRecord, restore?: boolean): void;
   (e: "select", lid: string): void;
   (e: "prose-selection-change", snapshot: ReaderSelectionSnapshot | null): void;
   (e: "modify-highlight", rec: MemoryRecord): void;
@@ -726,7 +727,7 @@ watch(
         :records="activeRecords" :active="activeRecord" :source-text="annotationSourceText"
         :render-markdown="props.renderMarkdown" @select="selectAnnotation" @close="closeAnnotation(true)"
         @edit="editAnnotation" @delete="deleteAnnotation" @place="placeAnnotation"
-        @source="openAnnotationSource" @show-notes="showAnnotationInNotes" />
+        @open-note="(record, restore) => { closeAnnotation(); emit('open-note', record, restore); }" @source="openAnnotationSource" @show-notes="showAnnotationInNotes" />
     </Teleport>
 
   </main>

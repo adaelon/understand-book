@@ -1,0 +1,41 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+ ❯ src/components/UnderstandingSpace.test.ts (8 tests | 1 failed | 7 skipped) 103ms
+   ↓ opens one hypothesis with real words and corrects it without inventing a performance
+   ↓ keeps unknown objects unknown and returns keyboard focus without reading invented evidence
+   ↓ preserves independent, assisted, revised and historical evidence and pages history by the original object
+   ↓ records feedback only after details are expanded and visible; hidden feedback stays hidden
+   ↓ retries an evidence read instead of reloading the list
+   ↓ reuses a pending correction identity and only rereads after a confirmed write
+   ↓ keeps loaded object pages after correction and refreshes their original row
+   × keeps correction retry available when a displayed-feedback receipt fails later 101ms
+     → expected '我的理解从原话看见理解的变化选择一项，查看解释与依据。没有依据的能力保持未…' to contain '纠正提交或刷新未完成'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/UnderstandingSpace.test.ts > keeps correction retry available when a displayed-feedback receipt fails later
+AssertionError: expected '我的理解从原话看见理解的变化选择一项，查看解释与依据。没有依据的能力保持未…' to contain '纠正提交或刷新未完成'
+
+Expected: "纠正提交或刷新未完成"
+Received: "我的理解从原话看见理解的变化选择一项，查看解释与依据。没有依据的能力保持未知。反馈展示记录未保存：{"error":"回执断线"} 重试当前解释平均速度暂定理解可能需要理解分母← 返回概念列表平均速度活动表现当前解释 · 系统解释可能需要理解分母你的原话为什么用总时间？第 1 次作答；未记录到事先展示的帮助。尚未判定后续教学从整个过程解释查看详细依据当时的活动理解总时间的含义依据总时间纠正这条解释保存纠正"
+
+ ❯ src/components/UnderstandingSpace.test.ts:208:22
+    206|     await w.get('textarea').setValue('这是我自己的解释'); await w.get('form').…
+    207|     failFeedback(Response.json({ error: '回执断线' }, { status: 503 })); a…
+    208|     expect(w.text()).toContain('纠正提交或刷新未完成');
+       |                      ^
+    209|     expect(w.text()).toContain('反馈展示记录未保存');
+    210|     await button(w, '重试').trigger('click'); await flushPromises();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 skipped (8)
+   Start at  17:20:48
+   Duration  9.05s (transform 465ms, setup 0ms, collect 1.10s, tests 103ms, environment 5.50s, prepare 636ms)
+
+undefined
+E:\allwork\download\agent\understand-book-reading-share\packages\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/components/UnderstandingSpace.test.ts -t keeps correction retry available --maxWorkers=1

@@ -77,7 +77,11 @@ describe("RightRail PDF Note placement actions", () => {
     expect(actions.map((button) => button.text())).toEqual(["移动", "重新放置", "放置到正文"]);
     await actions[0].trigger("click");
     expect(wrapper.emitted("place-note")?.[0]).toEqual([current]);
-    expect(wrapper.find('[data-mem-id="pdf-current"] code').text()).toBe("PDF 正文");
-    expect(wrapper.find('[data-mem-id="pdf-stale"] code').text()).toBe("无法定位");
+    expect(wrapper.find('[data-mem-id="pdf-current"] .note-source-button').text()).toBe('第 1 页');
+    await wrapper.find('[data-mem-id="pdf-current"] .note-source-button').trigger('click');
+    expect(wrapper.emitted('focus-source')?.[0]).toEqual([{ lid: '1.1', quote: null, memId: 'pdf-current' }]);
+    expect(wrapper.find('[data-mem-id="pdf-stale"] .note-association-title').text()).toBe('第 1 页');
+    expect(wrapper.find('[data-mem-id="pdf-stale"] .note-source-button').exists()).toBe(false);
+    wrapper.unmount();
   });
 });

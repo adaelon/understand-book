@@ -1,0 +1,50 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+stderr | src/components/SessionRecap.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/SessionRecap.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ❯ src/components/SessionRecap.test.ts (8 tests | 1 failed | 7 skipped) 209ms
+   ↓ JL9 reading recap > freezes the range until explicit refresh and opens exact evidence only on a click
+   ↓ JL9 reading recap > clears an old chat immediately and discards late responses
+   ↓ JL9 reading recap > keeps facts on refresh failure, shows unavailable objects and reports click-time deletion
+   ↓ RS4 selected recap > separates viewing focus from explicit sharing, freezes the draft across refresh, and reselects new facts
+   ↓ RS4 selected recap > clears selection and the image on chat change and keeps empty recaps unshareable
+   ↓ RS4 selected recap > clears the frozen draft when the identity changes
+   ↓ RS4 selected recap > clears the frozen draft when the publication changes
+   × RS4 selected recap > keeps the open draft when the same workspace only advances its revision 207ms
+     → expected false to be true // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/SessionRecap.test.ts > RS4 selected recap > keeps the open draft when the same workspace only advances its revision
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/components/SessionRecap.test.ts:168:63
+    166|       network.value = { ...network.value, workspace: { ...network.valu…
+    167|       await flushPromises();
+    168|       expect(wrapper.findComponent(ShareImagePanel).exists()).toBe(tru…
+       |                                                               ^
+    169|       expect(wrapper.getComponent(ShareImagePanel).element).toBe(panel…
+    170|       expect(read).toHaveBeenCalledTimes(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 skipped (8)
+   Start at  16:11:16
+   Duration  7.43s (transform 709ms, setup 0ms, collect 1.56s, tests 209ms, environment 4.32s, prepare 565ms)
+
+undefined
+E:\allwork\download\agent\understand-book-reading-share\packages\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/components/SessionRecap.test.ts -t only advances --maxWorkers=1

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { inject } from 'vue';
+import { shareHighlightKey } from '../reading-share';
+const shareHighlight = inject(shareHighlightKey, null);
+import NoteDetail from './NoteDetail.vue';
 import type { MemoryRecord } from '../api';
 const props = defineProps<{
   records: MemoryRecord[];
@@ -7,6 +11,7 @@ const props = defineProps<{
   renderMarkdown: (source: string) => string;
 }>();
 const emit = defineEmits<{
+  (event: "open-note", record: MemoryRecord, restore?: boolean): void;
   (event: 'select', id: string): void;
   (event: 'close'): void;
   (event: 'edit' | 'delete' | 'show-notes' | 'place', record: MemoryRecord): void;
@@ -33,11 +38,13 @@ function quote() {
         {{ record.type === 'highlight' ? '高亮' : '笔记' }} {{ index + 1 }}
       </button>
     </div>
-    <div class="annotation-content">
+    <NoteDetail v-if="props.active.type === 'note'" :note="props.active" embedded @answer="emit('open-note', props.active)" @locate="emit('open-note', props.active)" @restore="emit('open-note', props.active, true)" />
+    <div v-else class="annotation-content">
       <blockquote class="annotation-source">{{ quote() || props.sourceText }}</blockquote>
       <div class="md" v-html="props.renderMarkdown(props.active.content)"></div>
     </div>
     <footer>
+      <button v-if="props.active.type === 'highlight' && shareHighlight" @click="shareHighlight(props.active)">生成分享图</button>
       <button @click="emit('edit', props.active)">编辑</button>
       <button @click="emit('delete', props.active)">删除</button>
       <button v-if="props.active.type === 'note' && props.active.note_placement?.kind === 'lid_block' && !props.active.selection_context"

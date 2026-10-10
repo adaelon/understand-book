@@ -32,3 +32,17 @@ describe("presentation host editing focus", () => {
     )).toBe(false);
   });
 });
+
+
+it('RS7 accepts static output only from the same opaque frame and current channel', () => {
+  const source = {} as Window;
+  for (const data of [
+    { kind: 'static-result', request_id: 'export-1', state: {}, image: { svg: '<svg/>', width: 640, height: 360, resources: [] } },
+    { kind: 'static-error', request_id: 'export-1', message: '资源未就绪' },
+  ]) {
+    const event = { source, origin: 'null', data: { ...data, channel: 'current' } } as MessageEvent;
+    expect(acceptsPresentationMessage(event, source, 'current')).toBe(true);
+    expect(acceptsPresentationMessage(event, source, 'previous')).toBe(false);
+    expect(acceptsPresentationMessage(event, {} as Window, 'current')).toBe(false);
+  }
+});

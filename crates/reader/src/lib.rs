@@ -1871,6 +1871,7 @@ impl Reader {
                 content: frag,
                 range: range_rec,
                 selection_context: None,
+                note: None,
                 note_placement: None,
                 citations: None, // memory 自动派生锚回 lid 的 citation
                 source_session_id,
@@ -1914,6 +1915,7 @@ impl Reader {
                 content: text.to_string(),
                 range: None,
                 selection_context: None,
+                note: None,
                 note_placement: Some(NoteBodyPlacement::LidBlock {
                     source_fingerprint: book.source_fingerprint().to_string(),
                     lid: lid.to_string(),

@@ -8,7 +8,7 @@ import { workspaceAction } from './network-client';
 
 const reads = vi.hoisted(() => Object.fromEntries([
   'manifest', 'assetManifest', 'sourceFingerprint', 'sourceManifest', 'profileManifest', 'text',
-  'recall', 'profileMemory', 'tutorState', 'tutorReadiness', 'agentRunCreate', 'agentRun',
+  'recall', 'save', 'profileMemory', 'tutorState', 'tutorReadiness', 'agentRunCreate', 'agentRun',
 ].map(name => [name, vi.fn()])));
 vi.mock('./api', async original => {
   const actual = await original<typeof import('./api')>();
@@ -46,6 +46,7 @@ beforeEach(() => {
   reads.agentRunCreate.mockResolvedValue({ answer: '新回答', effects: [] });
   vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit) => {
     requests.push(url);
+    if (url === '/api/auth/logout' || url.endsWith('/detach')) return Response.json({ ok: true });
     if (url === '/api/auth/me') return Response.json(network.value.identity);
     if (url === '/api/workspaces/workspace' || url.endsWith('/attach')) return Response.json(workspace);
     if (url.endsWith('/chat/new') || url.endsWith('/chat/select')) {
@@ -163,4 +164,30 @@ it('offers a local history retry if chat creation succeeds but its history canno
   expect(rail().props('historyError')).toBeNull();
   expect(wrapper.getComponent({ name: 'ReaderPane' }).vm).toBe(reader);
   expect(requests.filter(url => url.endsWith('/chat/new'))).toHaveLength(1);
+});
+
+
+it('RN3 preserves an answer draft across network chat changes and processes it before logout', async () => {
+  wrapper = mount(NetworkApp, { shallow: true, global: { renderStubDefaultSlot: true, stubs: { App: false,
+    TopBar: { template: '<div><slot name="account" /></div>' } } } });
+  await flushPromises();
+  rail().vm.$emit('save-answer-selection', { turnId: 'old-turn', pending: false, outcome: { answer: '原回答' } }, '原回答');
+  await flushPromises();
+  const editor = () => wrapper.getComponent({ name: 'NoteEditorPanel' });
+  editor().vm.$emit('update:content', '我的想法');
+  rail().vm.$emit('new-chat'); await flushPromises();
+  expect(editor().props('content')).toBe('我的想法');
+  const logout = () => wrapper.findAll('button').find(b => b.text() === '退出登录')!;
+  await logout().trigger('click'); await flushPromises();
+  expect(requests).not.toContain('/api/auth/logout');
+  await wrapper.get('.note-transition').findAll('button').find(b => b.text() === '继续编辑')!.trigger('click'); await flushPromises();
+  expect(network.value.identity?.user_id).toBe('reader');
+  await logout().trigger('click'); await flushPromises();
+  reads.save.mockRejectedValueOnce(new Error('写入失败'));
+  await wrapper.get('.note-transition').findAll('button').find(b => b.text() === '保存并继续')!.trigger('click'); await flushPromises();
+  expect(requests).not.toContain('/api/auth/logout'); expect(editor().props('content')).toBe('我的想法');
+  reads.save.mockResolvedValue({ mem_id: 'saved' });
+  await wrapper.get('.note-transition').findAll('button').find(b => b.text() === '保存并继续')!.trigger('click'); await flushPromises();
+  expect(reads.save).toHaveBeenLastCalledWith(expect.objectContaining({ note: { association: { kind: 'answer', session_id: 'old', turn_id: 'old-turn' }, retained_excerpt: '原回答' } }));
+  expect(requests).toContain('/api/auth/logout'); expect(network.value.identity).toBeNull();
 });

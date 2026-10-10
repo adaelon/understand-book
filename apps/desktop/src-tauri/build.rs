@@ -7,6 +7,7 @@ fn main() {
         "set_desktop_library_directory",
         "desktop_provider_status",
         "save_desktop_provider_settings",
+        "save_reading_share_image",
     ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(app_manifest))
         .expect("failed to build Understand Book desktop application");

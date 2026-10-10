@@ -348,6 +348,12 @@ pub(crate) fn resolve(
                     DeliveredEffect::Reader {
                         effect: AgentEffect::Note { .. } | AgentEffect::Highlight { .. },
                     } => {
+                        if let Some(record) = effect.object_id.as_deref()
+                            .and_then(|id| user.store.current_note_record(id))
+                            .filter(|record| record.book_id == session.book_id)
+                        {
+                            effect.object_id = Some(record.mem_id.clone());
+                        }
                         if effect
                             .object_id
                             .as_ref()

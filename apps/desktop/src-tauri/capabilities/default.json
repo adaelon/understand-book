@@ -9,10 +9,12 @@
   "permissions": [
     "core:default",
     "dialog:allow-open",
+    "dialog:allow-save",
     "allow-codex-plugin-status",
     "allow-install-codex-plugin",
     "allow-set-desktop-library-directory",
     "allow-desktop-provider-status",
-    "allow-save-desktop-provider-settings"
+    "allow-save-desktop-provider-settings",
+    "allow-save-reading-share-image"
   ]
 }

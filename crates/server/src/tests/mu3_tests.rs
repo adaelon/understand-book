@@ -210,6 +210,7 @@ fn mu3_default_change_keeps_old_run_history_and_capacity_pins() {
     let source = agent_source_binding(
         &state,
         &AgentSourceRequest {
+            note_mem_id: None,
             turn_id: saved.sessions[0].turns[0].turn_id.clone(),
             source_ref_id: "s1".into(),
         },

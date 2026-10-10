@@ -589,6 +589,62 @@ fn mu5_live_reader_observes_user_navigation_but_late_run_effect_does_not_overrid
 }
 
 #[test]
+fn rs5_resumption_reads_committed_scene_without_warming_or_writing_it() {
+    let f = Fixture::new();
+    let w = f.create(&f.a, &f.x, "original");
+    let w = f.action(&f.a, &w, "original", "chat/new", json!({}));
+    let w = f.action(&f.a, &w, "original", "checkpoint", json!({"top_lid":"1.16"}));
+    let port = f.run(&w, "original");
+    drop(port);
+    let other = f.create(&f.a, &f.y, "other-window");
+    let path = format!("/api/workspaces/{}/resumption", w["workspace_id"].as_str().unwrap());
+    let saved = || f.control.connection.query_row(
+        "SELECT generation,revision,checkpoint,checkpoint_seq FROM reader_workspaces WHERE workspace_id=?",
+        [w["workspace_id"].as_str().unwrap()], |r| Ok((r.get::<_, u64>(0)?,r.get::<_, u64>(1)?,r.get::<_, String>(2)?,r.get::<_, u64>(3)?))
+    ).unwrap();
+    let before = saved();
+    f.access.workspaces.lock().unwrap().evict_idle(std::time::Instant::now() + WORKSPACE_IDLE_TTL + Duration::from_secs(1)).unwrap();
+    f.access.library.lock().unwrap().evict_cache();
+    let summary = f.ok(&f.a, "GET", &path, json!({}));
+    assert_eq!(summary["published_book_ref"], w["published_book_ref"]);
+    assert_eq!(summary["selected_chat"], w["selected_chat"]);
+    assert_eq!(summary["last_question"], "Explain this");
+    assert!(summary["position_excerpt"].as_str().is_some_and(|s| !s.is_empty()));
+    assert_eq!(saved(), before, "preview must not advance even a cold workspace");
+    assert_eq!(f.get(&f.a, &other)["published_book_ref"], json!(f.y));
+    assert_ne!(f.call(&f.b, "GET", &path, json!({})).0, 200);
+    f.access.library.lock().unwrap().revoke("A", &f.x).unwrap();
+    assert_ne!(f.call(&f.a, "GET", &path, json!({})).0, 200);
+}
+
+#[test]
+fn rs5_resumption_without_questions_and_after_chat_deletion_keeps_position() {
+    let f = Fixture::new();
+    let w = f.create(&f.a, &f.x, "original");
+    let path = format!("/api/workspaces/{}/resumption", w["workspace_id"].as_str().unwrap());
+    let empty = f.ok(&f.a, "GET", &path, json!({}));
+    assert!(empty["last_question"].is_null());
+    assert!(empty["selected_chat"].is_null());
+    let w = f.action(&f.a, &w, "original", "chat/new", json!({}));
+    let port = f.run(&w, "original");
+    {
+        let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();
+        let mut user = handle.lock().unwrap();
+        let mut session = user.agent_history.sessions.iter().find(|s| s.id == port.scope.chat_session_id).unwrap().clone();
+        session.turns[0].status = AgentAssistantStatus::Cancelled;
+        session.turns[0].error = Some(AgentTurnError { error_code: "CANCELLED".into(), category: "cancelled".into(), message: "Stopped by reader".into() });
+        let turn = AgentTurnRef { session_id: session.id.clone(), turn_id: session.turns[0].turn_id.clone(), user_turn_ordinal: 1 };
+        crate::session_runtime::finish(&mut user, &turn, &session, "finished").unwrap();
+    }
+    drop(port);
+    f.ok(&f.a, "POST", "/api/agent/history/delete", json!({"session_id":w["selected_chat"]}));
+    let deleted = f.ok(&f.a, "GET", &path, json!({}));
+    assert!(deleted["last_question"].is_null());
+    assert!(deleted["selected_chat"].is_null());
+    assert_eq!(deleted["position_excerpt"], empty["position_excerpt"]);
+}
+
+#[test]
 fn mu5_restart_restores_exact_publication_chat_position_and_layout() {
     let f = Fixture::new();
     let w = f.create(&f.a, &f.x, "old");
@@ -617,6 +673,10 @@ fn mu5_restart_restores_exact_publication_chat_position_and_layout() {
         a,
         b,
     };
+    let summary = f.ok(&f.a, "GET", &format!("/api/workspaces/{}/resumption", w["workspace_id"].as_str().unwrap()), json!({}));
+    assert_eq!(summary["published_book_ref"], w["published_book_ref"]);
+    assert_eq!(summary["selected_chat"], w["selected_chat"]);
+    // The original stamp must still work after a read-only preview across service restart.
     let restored = f.action(&f.a, &w, "new-page", "attach", json!({}));
     assert_eq!(restored["workspace_id"], w["workspace_id"]);
     assert_eq!(restored["selected_chat"], w["selected_chat"]);
@@ -949,4 +1009,109 @@ fn mu5_global_capacity_and_admission_pin_prevent_idle_eviction() {
     assert_eq!(f.get(&f.a, &first)["generation"], first["generation"]);
     let fresh = f.create(&tokens[5], &f.x, "page");
     assert!(fresh["workspace_id"].is_string());
+}
+
+#[test]
+fn rn2_network_notes_keep_private_access_after_chat_deletion_and_restart() {
+    use runtime::presentation::*;
+    let f = Fixture::new();
+    let w = f.create(&f.a, &f.x, "parent");
+    let w = f.action(&f.a, &w, "parent", "chat/new", json!({}));
+    let port = f.run(&w, "parent");
+    let reference = PresentationRef {
+        presentation_id: "mu5-presentation".into(),
+        revision: 1,
+    };
+    {
+        let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();
+        let mut user = handle.lock().unwrap();
+        let mut session = user
+            .agent_history
+            .sessions
+            .iter()
+            .find(|s| s.id == port.scope.chat_session_id)
+            .unwrap().clone();
+        session.turns[0].status = AgentAssistantStatus::Completed;
+        session.turns[0].outcome = Some(OuterOutcome {
+            answer: Some("A simple scene".into()),
+            answer_view: Some(AgentAnswerView {
+                parts: vec![AgentAnswerPart::Presentation {
+                    presentation_id: reference.presentation_id.clone(),
+                    revision: 1,
+                }],
+                sources: vec![],
+            }),
+            incomplete: false,
+            warning: None,
+            turns: 1,
+            tokens_spent: 0,
+            effects: vec![],
+            trace: vec![],
+            profile_usage: Default::default(),
+            memory_updates: vec![],
+            source_bindings: vec![],
+            delivery_diagnostics: None,
+            request_audit: Default::default(),
+        });
+        let version = AgentPresentation {
+            reference: reference.clone(),
+            candidate_id: "candidate".into(),
+            owner: PresentationOwner {
+                book_id: f.x.book_id.clone(),
+                session_id: port.scope.chat_session_id.clone(),
+            },
+            created_by_turn_id: port.scope.turn_id.clone(),
+            based_on: None,
+            content: PresentationContent {
+                animation_assets: Default::default(),
+                title: "A scene".into(),
+                content_files: BTreeMap::from([("index.html".into(), "<p>Scene</p>".into())]),
+                entrypoint: "index.html".into(),
+                readable_content: "A simple scene".into(),
+                source_bindings: vec![],
+                assumptions: vec![],
+                state_contract: json!({}),
+                initial_state: json!({}),
+            },
+        };
+        let path = user
+            .presentation_root()
+            .unwrap()
+            .join("versions/mu5-presentation/1.json");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, serde_json::to_vec(&version).unwrap()).unwrap();
+        let turn = AgentTurnRef { session_id: session.id.clone(), turn_id: session.turns[0].turn_id.clone(), user_turn_ordinal: 1 };
+        crate::session_runtime::finish(&mut user, &turn, &session, "finished").unwrap();
+    }
+    let request = json!({"session_id":port.scope.chat_session_id,"turn_id":port.scope.turn_id,"reference":reference});
+
+    let mut save = request.clone();
+    save["state"] = json!({"values":{"slider":2},"visible_step":"recorded","observed_result":"Two","source_ref_ids":[]});
+    let w = f.action(&f.a, &w, "parent", "presentation/save", save);
+    let receipt = w["presentation"].clone();
+    let w = f.action(&f.a, &w, "parent", "memory/save", json!({"type":"note","content":"My note","note":{"association":{"kind":"presentation","receipt":receipt}}}));
+    let id = w["result"]["record"]["mem_id"].as_str().unwrap().to_string();
+    drop(port);
+    let chat_path = format!("/api/me/chats/{}", w["selected_chat"].as_str().unwrap());
+    assert_eq!(f.call(&f.a, "DELETE", &chat_path, json!({})).0, 200);
+    let Fixture { root, access, control, x, y, a, b } = f;
+    drop(access); drop(control);
+    let users = UserRegistry::open(root.path()).unwrap();
+    let control = ControlStore::open(users.writer()).unwrap();
+    let f = Fixture { root, access: Arc::new(Authorization::new(users).unwrap()), control, x, y, a, b };
+    let w = f.get(&f.a, &w);
+    let w = f.action(&f.a, &w, "reopened", "attach", json!({}));
+    let read = json!({"mem_id":id,"restore":true});
+    let restored = f.action(&f.a, &w, "reopened", "memory/presentation.read", read.clone());
+    assert_eq!(restored["result"]["restored_state"]["values"]["slider"], 2);
+    assert_eq!(restored["result"]["reference"], json!(reference));
+    let other = f.create(&f.b, &f.x, "other");
+    let mut input = Fixture::stamp(&other, "other"); input["mem_id"] = json!(id);
+    assert_ne!(f.call(&f.b, "POST", &format!("/api/workspaces/{}/memory/presentation.read", other["workspace_id"].as_str().unwrap()), input).0, 200);
+    let wrong = f.create(&f.a, &f.y, "wrong");
+    let mut input = Fixture::stamp(&wrong, "wrong"); input["mem_id"] = json!(id);
+    assert_ne!(f.call(&f.a, "POST", &format!("/api/workspaces/{}/memory/presentation.read", wrong["workspace_id"].as_str().unwrap()), input).0, 200);
+    f.access.library.lock().unwrap().revoke("A", &f.x).unwrap();
+    let mut input = Fixture::stamp(&w, "reopened"); input["mem_id"] = json!(id);
+    assert_ne!(f.call(&f.a, "POST", &format!("/api/workspaces/{}/memory/presentation.read", w["workspace_id"].as_str().unwrap()), input).0, 200);
 }

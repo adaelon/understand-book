@@ -4,6 +4,13 @@ export function acceptsPresentationMessage(event: MessageEvent, source: Window |
   const data = event.data;
   if (!data || typeof data !== "object" || data.channel !== channel || typeof data.kind !== "string") return false;
   switch (data.kind) {
+    case "static-result": return typeof data.request_id === "string"
+      && data.state !== null && typeof data.state === "object"
+      && typeof data.image?.svg === "string"
+      && Number.isFinite(data.image.width) && data.image.width > 0
+      && Number.isFinite(data.image.height) && data.image.height > 0
+      && (data.image.resources === undefined || Array.isArray(data.image.resources) && data.image.resources.every((url: unknown) => typeof url === "string" && url.startsWith("data:")));
+    case "static-error": return typeof data.request_id === "string" && typeof data.message === "string";
     case "state": return data.state !== null && typeof data.state === "object"
       && (data.request_id === undefined || Number.isSafeInteger(data.request_id));
     case "source": return typeof data.source_ref_id === "string";

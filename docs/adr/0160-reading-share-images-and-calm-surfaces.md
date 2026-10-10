@@ -1,6 +1,6 @@
 # ADR-0160 阅读分享图与安静的内容呈现
 
-状态：设计已接受，2026-10-10 修订；RS0 文档已落档，RN1–RN4、RS1–RS8 待实施。先完成笔记升级，再交付笔记与摘录分享；阅读回顾、书架接续、回答／图解分享与理解空间随后接入。扩展 [ADR-0083](0083-unquoted-note-explicit-body-placement.md) 的笔记准入，复用 [ADR-0144](0144-shared-presentation-conversation-workspace.md) 的演示版本与现场恢复。
+状态：设计已接受，2026-10-10 修订；RS0 文档已落档，RN1–RN4 功能已实现；RN4 实体平台待验，RS1–RS8 功能／Web 验收完成，RS3 原生保存与实体手机待验。实际存储与接口见 [RN1 合同](../RN1-笔记存储合同.md)；演示闭环见 [RN2 实现与验收](../performance/reading-notes-rn2-20261010/README.md)，图片分享见 [RS1 验收](../performance/reading-share-rs1-20261010/README.md)、[RS2 验收](../performance/reading-share-rs2-20261010/README.md)、[RS3 验收](../performance/reading-share-rs3-20261010/README.md)与 [RS4 回顾验收](../performance/reading-share-rs4-20261010/README.md)。书架接续见 [RS5 验收](../performance/reading-share-rs5-20261010/README.md)，回答分享见 [RS6 验收](../performance/reading-share-rs6-20261010/README.md)，图解分享见 [RS7 验收](../performance/reading-share-rs7-20261010/README.md)，理解空间见 [RS8 验收](../performance/reading-share-rs8-20261010/README.md)。扩展 [ADR-0083](0083-unquoted-note-explicit-body-placement.md) 的笔记准入，复用 [ADR-0144](0144-shared-presentation-conversation-workspace.md) 的演示版本与现场恢复。
 
 阅读笔记保存读者的想法与促成记录的原文、回答或演示现场，并支持返回当时内容。界面延续暖纸色与珊瑚色强调，在笔记、单项成果和分享图上形成清楚的内容层级。实施范围、接入点与验收见[切片方案](../切片方案-阅读分享与安静呈现.md)，术语见 [CONTEXT](../../CONTEXT.md)。
 
@@ -93,5 +93,5 @@
 **否决**：
 - 先把旧笔记导出成图片：记录、编辑和返回现场的缺口仍然存在。
 - 将主列表的笔记与正文批注分别改造：同一记录会产生多套操作与内容解释。
-**命门**：RN1–RN2 形成演示笔记闭环，RN3–RN4 完成统一编辑、搜索、最近记录和平台连续性验收；RS1 依赖 RN4。RightRail 主列表、Markdown 批注、PDF NoteCard 及演示入口共用内容身份与操作语义。最近记录沿真实保存时间，原文顺序作为可选查看方式。
+**命门**：RN1–RN2 形成演示笔记闭环，RN3–RN4 完成统一编辑、搜索、最近记录和平台连续性验收；RS1 依赖 RN4。RightRail 主列表、Markdown 批注、PDF NoteCard 及演示入口共用内容身份与操作语义。最近记录沿真实保存时间，原文顺序作为可选查看方式。RN4 编辑导航关系随原 memory 文档原子提交，回顾只读解析当前 ID；历史回合保持原事实。
 **展开**：[实施顺序](../切片方案-阅读分享与安静呈现.md#5-实施顺序与接手方式)、[RN4](../切片方案-阅读分享与安静呈现.md#rn4-笔记回看与连续性验收)。

@@ -3,9 +3,10 @@ use crate::profile::{EvidenceExclusion, ProfileFact};
 use crate::Record;
 use crate::ReviewState;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
-pub const MEMORY_SCHEMA_VERSION: u32 = 3;
+pub const MEMORY_SCHEMA_VERSION: u32 = 4;
+#[cfg(test)]
 pub(crate) const PREVIOUS_MEMORY_SCHEMA_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -14,6 +15,9 @@ pub struct MemoryDocument {
     pub document_revision: u64,
     pub projection_revision: u64,
     pub records: Vec<Record>,
+    /// Read-only navigation from an earlier note identity to its current record.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) note_replacements: BTreeMap<String, String>,
     #[serde(default)]
     pub profile_facts: Vec<ProfileFact>,
     #[serde(default)]
@@ -25,12 +29,22 @@ pub struct MemoryDocument {
 }
 
 impl MemoryDocument {
+    pub(crate) fn replace_note_identity(&mut self, previous: &str, current: &str) {
+        if previous == current { return; }
+        for target in self.note_replacements.values_mut() {
+            if target == previous { *target = current.to_owned(); }
+        }
+        self.note_replacements.remove(current);
+        self.note_replacements.insert(previous.to_owned(), current.to_owned());
+    }
+
     pub(crate) fn empty() -> MemoryDocument {
         MemoryDocument {
             schema_version: MEMORY_SCHEMA_VERSION,
             document_revision: 0,
             projection_revision: 0,
             records: Vec::new(),
+            note_replacements: BTreeMap::new(),
             profile_facts: Vec::new(),
             review_state: ReviewState::default(),
             exclusions: Vec::new(),
@@ -44,6 +58,7 @@ impl MemoryDocument {
             document_revision: 1,
             projection_revision: 1,
             records,
+            note_replacements: BTreeMap::new(),
             profile_facts: Vec::new(),
             review_state: ReviewState::default(),
             exclusions: Vec::new(),
@@ -51,8 +66,8 @@ impl MemoryDocument {
         }
     }
 
-    pub(crate) fn migrate_from_v2(mut self) -> Result<MemoryDocument, String> {
-        if self.schema_version != PREVIOUS_MEMORY_SCHEMA_VERSION {
+    pub(crate) fn migrate_previous(mut self) -> Result<MemoryDocument, String> {
+        if !matches!(self.schema_version, 2 | 3) {
             return Err(format!(
                 "无法从 memory schema_version {} 迁移到 {}",
                 self.schema_version, MEMORY_SCHEMA_VERSION

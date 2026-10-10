@@ -693,7 +693,7 @@ pub(crate) fn dispatch(
             Capability::Workspace(id) => {
                 let prefix = format!("/workspaces/{id}");
                 let action = path.strip_prefix(&prefix).unwrap().trim_start_matches('/');
-                expect_method(method, if action.is_empty() { "GET" } else { "POST" })?;
+                expect_method(method, if action.is_empty() || action == "resumption" { "GET" } else { "POST" })?;
                 if matches!(action, "agent/runs" | "agent/chat") {
                     return admit_reply(
                         access,

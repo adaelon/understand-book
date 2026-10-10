@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { inject } from 'vue';
+import { shareHighlightKey } from '../reading-share';
+const shareHighlight = inject(shareHighlightKey, null);
 import { Eye, EyeOff, MessageSquareText, Minus, Plus, Scan, ScanText, Trash2, X } from "@lucide/vue";
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from "vue";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
@@ -55,12 +58,14 @@ const props = withDefaults(defineProps<{
 });
 
 const emit = defineEmits<{
+  (e: "open-note", record: MemoryRecord, restore?: boolean): void;
   (e: "goto", lid: string): void;
   (e: "focus-source", source: { lid: string; quote: string | null }): void;
   (e: "viewport-change", position: PaperViewportPosition): void;
   (e: "viewport-interaction"): void;
   (e: "selection-capture", capture: PdfSelectionCapture): void;
   (e: "selection-cancel"): void;
+  (e: "show-notes", record: MemoryRecord): void;
   (e: "edit-note", note: MemoryRecord): void;
   (e: "delete-note", note: MemoryRecord): void;
   (e: "reselect-note", note: MemoryRecord): void;
@@ -1313,6 +1318,8 @@ onBeforeUnmount(() => {
               :note="note"
               :render-markdown="props.renderMarkdown"
               @focus-source="emit('focus-source', $event)"
+              @open-note="(record, restore) => { closeAnnotationSurface(); emit('open-note', record, restore); }"
+              @show-notes="closeAnnotationSurface(); emit('show-notes', $event)"
               @edit="emit('edit-note', $event)"
               @delete="emit('delete-note', $event)"
             />
@@ -1330,6 +1337,7 @@ onBeforeUnmount(() => {
         <div v-else-if="activeHighlight" class="pdf-highlight-surface">
           <p>{{ activeHighlight.record.content }}</p>
           <div class="pdf-highlight-actions">
+      <button v-if="shareHighlight" @click="shareHighlight(activeHighlight.record)">生成分享图</button>
             <button title="重新选择高亮" @click="emitHighlightReselect(activeHighlight.record)">
               <ScanText :size="15" />
               重新选择
