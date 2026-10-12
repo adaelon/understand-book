@@ -1,0 +1,82 @@
+{
+  "status": "passed",
+  "origin": "https://understandbook.top",
+  "checks": [
+    "Existing reader/admin login, authorized catalog, model allowance and receipts are readable",
+    "HTTPS/proxy protocol: no-Origin Bearer, 11 tools, notification 202, GET 405, bad Origin/version and missing credential rejected",
+    "Search/read/source URL identifies the exact publication and matches Reader text at UTF-16 coordinates",
+    "Exactly 15 gifted free calls consumed; original free balance, paid balance and model allowance preserved"
+  ],
+  "concurrency": [
+    {
+      "concurrent_reads": 1,
+      "successful": 1,
+      "latency_ms": [
+        1354.864
+      ],
+      "response_bytes": [
+        2757
+      ]
+    },
+    {
+      "concurrent_reads": 4,
+      "successful": 4,
+      "latency_ms": [
+        1361.152,
+        1391.882,
+        1413.216,
+        1401.747
+      ],
+      "response_bytes": [
+        2757,
+        2757,
+        2757,
+        2757
+      ]
+    },
+    {
+      "concurrent_reads": 8,
+      "successful": 8,
+      "latency_ms": [
+        1366.653,
+        1397.384,
+        1390.534,
+        1406.149,
+        1310.341,
+        1424.993,
+        1329.333,
+        1347.096
+      ],
+      "response_bytes": [
+        2759,
+        2759,
+        2759,
+        2759,
+        2757,
+        2759,
+        2757,
+        2759
+      ]
+    }
+  ],
+  "operation_id": "mcp10-production-20261012",
+  "verified_at_utc": "2026-10-12T00:53:34.902037+00:00",
+  "publication_count": 10,
+  "published_book_ref": {
+    "book_id": "mastering-rust",
+    "publication_id": "01a0f58a-4df3-7822-8f5d-f712568fd50a"
+  },
+  "source_range_utf16": {
+    "end": 41,
+    "start": 4
+  },
+  "canonical_text_matches": true,
+  "gifted_calls": 15,
+  "charged_calls": 15,
+  "paid_calls": 0,
+  "model_requests": 0,
+  "free_remaining_before": 1000,
+  "free_remaining_after": 1000,
+  "test_credential_revoked": true,
+  "test_sessions_logged_out": true
+}

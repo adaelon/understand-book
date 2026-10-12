@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "upgrade": "9 -> 12",
+  "restore": "12 -> 12",
+  "old_schema9_restore_readable": true,
+  "old_binary_rejects_schema12": true,
+  "restored_publications": 10,
+  "restored_mcp_usage_and_receipt_api_equal": true,
+  "production_modified": false,
+  "model_requests": 0
+}

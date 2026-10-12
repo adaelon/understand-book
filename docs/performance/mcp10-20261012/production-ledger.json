@@ -1,0 +1,37 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-10-12T00:57:06.489159+00:00",
+  "preserved_business_tables": {
+    "users": 4,
+    "book_grants": 39,
+    "book_defaults": 9,
+    "allowance_periods": 4,
+    "allowance_adjustments": 5,
+    "manual_receipts": 0,
+    "receipt_corrections": 0,
+    "model_call_charges": 280,
+    "charge_reports": 280,
+    "charge_reconciliations": 0
+  },
+  "gift_operations": 2,
+  "gifted_calls": 28,
+  "consumed_calls": 28,
+  "consumption_by_tool": [
+    [
+      "book_search_text",
+      "free_month",
+      1
+    ],
+    [
+      "book_text",
+      "free_month",
+      27
+    ]
+  ],
+  "reader_free_remaining": 1000,
+  "paid_calls": 0,
+  "test_credentials_created": 2,
+  "test_credentials_revoked": 2,
+  "model_charge_rows_added": 0,
+  "payment_receipts_added": 0
+}

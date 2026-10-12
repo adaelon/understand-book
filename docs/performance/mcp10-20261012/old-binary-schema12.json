@@ -1,0 +1,7 @@
+{
+  "status": "passed",
+  "old_release": "/opt/understand-book/releases/ux-trace-20261011",
+  "exit": 2,
+  "error_code": "CONTROL_SCHEMA_INCOMPATIBLE",
+  "old_schema9_restore_login_publications": 10
+}

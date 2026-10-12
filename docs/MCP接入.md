@@ -8,7 +8,7 @@
 
 | 设置 | 示例／规则 |
 | --- | --- |
-| MCP URL | `https://reader.example/mcp`；将示例域名替换为实际站点 |
+| MCP URL | `https://understandbook.top/mcp` |
 | Authorization | `Bearer <YOUR_MCP_CREDENTIAL>`；替换尖括号占位值 |
 | Content-Type | `application/json` |
 | Accept | `application/json, text/event-stream` |
@@ -107,7 +107,7 @@
 
 ## 已知限制
 
-- MCP1–MCP9 已实现并验收，尚未发布；账号页面与来源打开见 [MCP7](内测MCP-MCP7实现.md)。来源 URL 应与结构化定位一起保存。
+- MCP0–MCP10 已于 2026-10-12 上线，正式接入页为 [MCP 接入](https://understandbook.top/?account=mcp)。账号页面与来源打开见 [MCP7](内测MCP-MCP7实现.md)，备份／恢复和部署证据见 [发布运行单](内测MCP-发布运行单.md)。来源 URL 应与结构化定位一起保存。
 - Codex CLI 0.162.0-alpha.2 已通过本机 Streamable HTTP 完整阅读、翻页、引用和额度耗尽验收；需在客户端允许该 MCP 的读取工具。Claude Code 2.1.196 已通过初始化／工具发现，完整阅读因模型服务凭证 401 尚未验收。[客户端记录](performance/beta-mcp/README.md)。
-- HTTPS 代理部署待 MCP10。示例域名和凭证均为占位值，线上可用地址以站点实际开通为准。
+- 正式 HTTPS 代理已通过协议、来源和扣次验收；凭证占位值必须替换为本人创建的值。首批按 4 个活跃读取任务规划。
 - 服务端提交消费后连接中断，已记次数保留；再次成功请求会另计一次，复用 JSON-RPC id 不会去重。

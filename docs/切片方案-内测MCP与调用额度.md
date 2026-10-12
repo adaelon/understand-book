@@ -1,8 +1,8 @@
 # 内测 MCP 与调用额度切片方案
 
-日期：2026-10-11。状态：**MCP0–MCP9 已完成；MCP10 待实施，远程服务尚未上线。**
+日期：2026-10-12。状态：**MCP0–MCP10 已完成并上线。** 发布版本、恢复与正式 HTTPS 证据见 [MCP10 运行单](内测MCP-发布运行单.md)。
 
-决策入口：[ADR-0162](adr/0162-beta-remote-mcp-and-prepaid-call-credits.md)。产品说明：[内测 MCP 产品约定](内测MCP-产品约定.md)。实际接口见 [MCP1 实现](内测MCP-MCP1实现.md)、[MCP2 实现](内测MCP-MCP2实现.md)、[MCP3 实现](内测MCP-MCP3实现.md)、[MCP4 实现](内测MCP-MCP4实现.md)、[MCP5 实现](内测MCP-MCP5实现.md)、[MCP6 实现](内测MCP-MCP6实现.md)、[MCP7 实现](内测MCP-MCP7实现.md)与 [MCP8 实现](内测MCP-MCP8实现.md)，MCP9 验收见 [实现记录](内测MCP-MCP9实现.md)，MCP10 的新增文件、类型和接口为拟实施落点；现状依据已在 `codex/reading-share` 工作树复核。接手入口：[内测 MCP 实施入口](内测MCP-实施入口.md)。
+决策入口：[ADR-0162](adr/0162-beta-remote-mcp-and-prepaid-call-credits.md)。产品说明：[内测 MCP 产品约定](内测MCP-产品约定.md)。实际接口见 [MCP1 实现](内测MCP-MCP1实现.md)、[MCP2 实现](内测MCP-MCP2实现.md)、[MCP3 实现](内测MCP-MCP3实现.md)、[MCP4 实现](内测MCP-MCP4实现.md)、[MCP5 实现](内测MCP-MCP5实现.md)、[MCP6 实现](内测MCP-MCP6实现.md)、[MCP7 实现](内测MCP-MCP7实现.md)与 [MCP8 实现](内测MCP-MCP8实现.md)，MCP9 验收见 [实现记录](内测MCP-MCP9实现.md)，MCP10 发布、备份恢复和 HTTPS 证据见 [发布运行单](内测MCP-发布运行单.md)；当前集成基线为 main。接手入口：[内测 MCP 实施入口](内测MCP-实施入口.md)。
 
 ## 0 对齐确认单
 
@@ -193,9 +193,9 @@ McpUsage = { call_id, user_id, tool, published_book_ref, units: 1,
 | MCP7 | MCP6 | 已实现 | 读者接入页面、额度展示与来源打开；[接口与验收](内测MCP-MCP7实现.md) |
 | MCP8 | MCP4 | 已实现 | 管理员购包、赠送与更正界面；[实现与验收](内测MCP-MCP8实现.md) |
 | MCP9 | MCP7、MCP8 | 已完成 | 双账号、真实 Agent、引用／账本与回归；[验收](内测MCP-MCP9实现.md) |
-| MCP10 | MCP9 | 待实施 | Linux 发布运行单、恢复与线上验证 |
+| MCP10 | MCP9 | 已上线 | Linux 发布运行单、schema 9 → 12／12 恢复、正式 HTTPS 与账本验证 |
 
-各切片完成时更新本表并在代码链路记录实际入口、文件、测试与证据；未运行的验收保持待验。MCP1–MCP9 已有实际实现和验收，MCP10 仍为计划。
+各切片完成时更新本表并在代码链路记录实际入口、文件、测试与证据；未运行的验收保持待验。MCP1–MCP10 已有实际实现、发布和验收。
 
 ### MCP1 — 内测账号接入凭证
 
@@ -271,8 +271,9 @@ McpUsage = { call_id, user_id, tool, published_book_ref, units: 1,
 
 ### MCP10 — 发布与运行单
 
+**实现**：2026-10-12 合并提交 `8497f29` 已在正式站点发布。旧／新 schema 成套恢复、4 个账号／10 个发布／280 条模型费用保留、HTTPS 11 工具／来源／28 条赠送消费、8,000 字符页 1／4／8 路并发全部通过。见 [运行单](内测MCP-发布运行单.md)与 [证据](performance/mcp10-20261012/README.md)。
 **输入与产出**：形成 Linux 数据备份、schema 升级、服务/代理发布及恢复操作步骤；发布版本与实现状态分开记录。
-**落点**：`scripts/linux/nginx-multi-reader.conf.example`、既有构建/发布脚本，拟新增 `docs/内测MCP-发布运行单.md`。
+**落点**：`scripts/linux/nginx-multi-reader.conf.example`、既有构建脚本，新增 `verify-mcp-upgrade.py`、`test-verify-mcp-upgrade.py`、`smoke-mcp-release.py`、`measure-mcp-pages.py` 和 `docs/内测MCP-发布运行单.md`。
 **验收**：备份恢复在临时目录完成；升级后旧账号、材料和模型费用仍可读取；经正式 HTTPS 代理验证 MCP，使用明确标记的赠送次数验证扣次。真实收款只登记已确认的付款。
 **恢复**：发布前验证旧服务对新 schema 的行为；不能读取时采用维护窗口恢复成套备份。开始真实 MCP 购包后，不得通过覆盖旧备份丢弃已发生的收款与消费，按运行单保留新增事实并执行修复。
 
@@ -284,7 +285,7 @@ MCP1–MCP9 完成后，内测账号可通过受支持客户端独立接入，�
 
 ## 10 已知限制与后续触发条件
 
-- MCP1 凭证、MCP2 读取、MCP3 免费次数、MCP4 付费包与 MCP5 远程协议已实现；MCP6–MCP9 已完成 Agent 自述、接入／管理界面和集成验收；发布验收沿 MCP10 实施。
+- MCP1–MCP10 已完成；正式接入为 `https://understandbook.top/mcp`。各早期切片记录中的“未发布”描述其当时状态，最新上线状态以 MCP10 运行单为准。
 - 首版面向可配置请求头的远程 MCP 客户端；Codex CLI 0.162.0-alpha.2 完整阅读已验收，Claude Code 2.1.196 仅初始化／发现通过（模型凭证 401）。仅支持 OAuth 的客户端需要后续独立接入工作。
 - 原文按服务端成功提交记次计量；响应传输中断后重新调用可能再次消费。首版不承诺网络交付恰好一次。
 - 1,000 次月度免费额度与 10 元/1,000 次是内测初始政策。真实使用、付费意愿与托管成本形成证据后调整后续政策。

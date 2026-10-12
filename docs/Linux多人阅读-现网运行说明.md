@@ -1,5 +1,7 @@
 # Linux 多人阅读现网运行说明
 
+2026-10-12 08:53 HKT 已整体发布 main 合并提交 `8497f29`（Tutor TC0–TC6、Reader 与 MCP0–MCP9），MCP10 正式 HTTPS 和恢复验收完成。现网 release 为 `mcp10-20261012`，数据根 `multi-reader-mcp10-20261012`，schema 12；服务 active。MCP 入口 [https://understandbook.top/mcp](https://understandbook.top/mcp)，本人从 [MCP 接入](https://understandbook.top/?account=mcp) 创建凭证。旧账号、材料、私人文件和模型费用保留，完整版本／恢复边界见 [MCP10 运行单](内测MCP-发布运行单.md)。下列旧日期段落保留历史。
+
 2026-10-09 20:00 HKT，INV0–INV9 与 T15–T18 已同版发布。schema 9，正式域名注册/找回/后台和原账号阅读复核通过，真实收信在隔离同版候选通过。现网此版因缺少 Tutor 必要接纳回执阻塞旧书；随后已按用户要求修改源码，直接使用已有 Pass1、discourse 与 BookStructure，修复已于 20:32:02 HKT 部署并通过公网与实际 Tutor 界面复核，书籍无需重建或重新导入。见 [Tutor 上线记录](performance/tutor-artifacts-deployment-20261009/README.md)。版本、数据根、备份和证据见 [INV9 发布运行单](邮箱账号-INV9发布运行单.md)。
 
 2026-10-09 15:26 HKT 已发布无文字翻页加载动画：56px 书页、1.85 秒一轮，入口文件下载、登录恢复、初始书架与工作区加载连续显示，内容就绪立即退场。15:32 HKT 公网登录、打开书籍与刷新恢复验收通过，脚本错误 0、问答模型请求 0；原服务持续 active。刷新页面加载新版。见[发布与回退记录](performance/reader-loading-20261009/README.md)。
@@ -25,9 +27,9 @@
 ## 入口与版本
 
 - 正式入口：`https://understandbook.top/`；后台 `https://understandbook.top/admin/`；旧 `https://115.190.121.150` 保留路径以 308 跳转到域名，历史 8080 入口经旧 IP 跳转。
-- release：`/opt/understand-book/releases/inv9-20261009`，Rust `--release` 与同源码网络 Web `packages/web/dist-multi`；此前 release 保留供回退。
+- release：`/opt/understand-book/releases/mcp10-20261012`，应用提交 `8497f29`，Rust `--release` 与同源码网络 Web／Admin；此前 release 保留，schema 12 恢复边界见 MCP10 运行单。
 - 服务：`understand-book-multi.service`；账户 `understand-book`；后端 `127.0.0.1:8788`。
-- 数据：`/opt/understand-book/data/multi-reader-inv9-20261009`；旧资料归属账号 `reader`。
+- 数据：`/opt/understand-book/data/multi-reader-mcp10-20261012`，schema 12；旧资料归属账号 `reader`。
 - 环境：`/opt/understand-book/multi-reader.env`，0600；沿用旧 Provider 路由和 Key。
 - 初始登录资料：远端 `/opt/understand-book/multi-reader-credentials.json`，0600；本地交付另存用户私人目录。凭证不进入仓库或运行证据。
 
