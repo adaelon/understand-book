@@ -208,7 +208,7 @@ pub fn tools_list_result() -> Value {
             contract.aliases.mcp.map(|name| {
                 json!({
                     "name": name,
-                    "description": contract.description,
+                    "description": contract.mcp_description(),
                     "inputSchema": input_schema(contract.id),
                 })
             })
@@ -713,6 +713,7 @@ fn jsonrpc_error(id: Value, code: i64, message: impl Into<String>, data: Value) 
 
 #[cfg(test)]
 mod tests {
+    mod examples { include!("mcp_example_tests.rs"); }
     use super::*;
     use crate::UnconfiguredAdapter;
     use artifact_tools::{
@@ -1058,7 +1059,8 @@ mod tests {
             .and_then(|tool| tool["description"].as_str())
             .expect("book_concept description");
         assert!(concept_description.contains("candidates"));
-        assert!(concept_description.contains("book.text"));
+        assert!(concept_description.contains("book_text"));
+        assert!(!concept_description.contains("book.text"));
 
         for name in tool_names() {
             assert_eq!(

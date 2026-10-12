@@ -1,0 +1,25 @@
+    Blocking waiting for file lock on artifact directory
+   Compiling book-tool-contracts v0.0.0 (E:\allwork\download\agent\understand-book\crates\book-tool-contracts)
+   Compiling read-tools v0.0.0 (E:\allwork\download\agent\understand-book\crates\read-tools)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized] target(s) in 1m 01s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\read_tools-c7e341cde690a4ec.exe)
+
+running 5 tests
+test tests::context_rejects_unknown_granularity ... ok
+test tests::context_near_missing_lid_errors ... ok
+test tests::context_near_tree_adjacency ... ok
+test tests::context_far_accumulates_near_mid_and_long_range ... ok
+test tests::context_projects_discourse_relations_to_near_and_far ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 167 filtered out; finished in 0.00s
+

@@ -3168,6 +3168,7 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
                     "quote": {"type": "string", "minLength": 1, "description": "Continuous verbatim text already observed this turn; include enough context to support the claim and uniquely identify the passage. The tool computes LIDs and exact offsets."}
                 },
                 "required": ["quote"],
+                "examples": [{"quote":"The alpha threshold activates only when the value is greater than 10."}],
                 "additionalProperties": false
             }),
         ),
@@ -7032,6 +7033,7 @@ fn run_context_inner(
 
 #[cfg(test)]
 mod tests {
+    mod book_examples { include!("book_example_tests.rs"); }
     mod adm6 { include!("adm6_tests.rs"); }
     mod turn_failures { include!("turn_failure_tests.rs"); }
     use super::*;

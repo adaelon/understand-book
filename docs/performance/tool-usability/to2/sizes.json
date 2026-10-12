@@ -1,0 +1,518 @@
+{
+  "totals": [
+    {
+      "surface": "local_mcp",
+      "tools": 16,
+      "examples": 8,
+      "schema_before_bytes": 11182,
+      "schema_after_bytes": 12131,
+      "description_bytes": 3970
+    },
+    {
+      "surface": "remote_mcp",
+      "tools": 11,
+      "examples": 6,
+      "schema_before_bytes": 14358,
+      "schema_after_bytes": 15453,
+      "description_bytes": 14913
+    },
+    {
+      "surface": "resident",
+      "tools": 34,
+      "examples": 9,
+      "schema_before_bytes": 43235,
+      "schema_after_bytes": 44279,
+      "description_bytes": 10552
+    }
+  ],
+  "tools": [
+    {
+      "surface": "local_mcp",
+      "tool": "book_manifest",
+      "examples": 0,
+      "schema_before_bytes": 46,
+      "schema_after_bytes": 46,
+      "description_bytes": 154
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_text",
+      "examples": 1,
+      "schema_before_bytes": 497,
+      "schema_after_bytes": 540,
+      "description_bytes": 176
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_search_text",
+      "examples": 2,
+      "schema_before_bytes": 2738,
+      "schema_after_bytes": 2992,
+      "description_bytes": 317
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_context",
+      "examples": 1,
+      "schema_before_bytes": 795,
+      "schema_after_bytes": 849,
+      "description_bytes": 326
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_concept",
+      "examples": 1,
+      "schema_before_bytes": 876,
+      "schema_after_bytes": 940,
+      "description_bytes": 417
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_structure",
+      "examples": 1,
+      "schema_before_bytes": 285,
+      "schema_after_bytes": 311,
+      "description_bytes": 325
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_guide_path",
+      "examples": 0,
+      "schema_before_bytes": 285,
+      "schema_after_bytes": 285,
+      "description_bytes": 339
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_paper_metadata",
+      "examples": 0,
+      "schema_before_bytes": 46,
+      "schema_after_bytes": 46,
+      "description_bytes": 301
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_paper_lexicon",
+      "examples": 0,
+      "schema_before_bytes": 46,
+      "schema_after_bytes": 46,
+      "description_bytes": 306
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_paper_reading_guide",
+      "examples": 0,
+      "schema_before_bytes": 391,
+      "schema_after_bytes": 391,
+      "description_bytes": 347
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_query",
+      "examples": 1,
+      "schema_before_bytes": 1646,
+      "schema_after_bytes": 2016,
+      "description_bytes": 300
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_synthesize",
+      "examples": 1,
+      "schema_before_bytes": 499,
+      "schema_after_bytes": 637,
+      "description_bytes": 251
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_guide",
+      "examples": 0,
+      "schema_before_bytes": 1228,
+      "schema_after_bytes": 1228,
+      "description_bytes": 170
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "artifact_list",
+      "examples": 0,
+      "schema_before_bytes": 178,
+      "schema_after_bytes": 178,
+      "description_bytes": 76
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "artifact_search",
+      "examples": 0,
+      "schema_before_bytes": 442,
+      "schema_after_bytes": 442,
+      "description_bytes": 84
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "artifact_read",
+      "examples": 0,
+      "schema_before_bytes": 1184,
+      "schema_after_bytes": 1184,
+      "description_bytes": 81
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_list",
+      "examples": 0,
+      "schema_before_bytes": 621,
+      "schema_after_bytes": 621,
+      "description_bytes": 681
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_text",
+      "examples": 1,
+      "schema_before_bytes": 1142,
+      "schema_after_bytes": 1294,
+      "description_bytes": 1200
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_search_text",
+      "examples": 2,
+      "schema_before_bytes": 3610,
+      "schema_after_bytes": 4082,
+      "description_bytes": 1677
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_context",
+      "examples": 1,
+      "schema_before_bytes": 1667,
+      "schema_after_bytes": 1830,
+      "description_bytes": 1502
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_concept",
+      "examples": 1,
+      "schema_before_bytes": 1748,
+      "schema_after_bytes": 1921,
+      "description_bytes": 1593
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_structure",
+      "examples": 1,
+      "schema_before_bytes": 1170,
+      "schema_after_bytes": 1305,
+      "description_bytes": 1501
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_guide_path",
+      "examples": 0,
+      "schema_before_bytes": 1170,
+      "schema_after_bytes": 1170,
+      "description_bytes": 1515
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_paper_metadata",
+      "examples": 0,
+      "schema_before_bytes": 946,
+      "schema_after_bytes": 946,
+      "description_bytes": 1477
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_paper_lexicon",
+      "examples": 0,
+      "schema_before_bytes": 946,
+      "schema_after_bytes": 946,
+      "description_bytes": 1482
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_paper_reading_guide",
+      "examples": 0,
+      "schema_before_bytes": 1276,
+      "schema_after_bytes": 1276,
+      "description_bytes": 1523
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "mcp_usage",
+      "examples": 0,
+      "schema_before_bytes": 62,
+      "schema_after_bytes": 62,
+      "description_bytes": 762
+    },
+    {
+      "surface": "resident",
+      "tool": "presentation.author",
+      "examples": 0,
+      "schema_before_bytes": 10282,
+      "schema_after_bytes": 10282,
+      "description_bytes": 1232
+    },
+    {
+      "surface": "resident",
+      "tool": "tutor.step",
+      "examples": 0,
+      "schema_before_bytes": 11152,
+      "schema_after_bytes": 11152,
+      "description_bytes": 1086
+    },
+    {
+      "surface": "resident",
+      "tool": "book.query",
+      "examples": 1,
+      "schema_before_bytes": 1646,
+      "schema_after_bytes": 2016,
+      "description_bytes": 154
+    },
+    {
+      "surface": "resident",
+      "tool": "book.synthesize",
+      "examples": 1,
+      "schema_before_bytes": 499,
+      "schema_after_bytes": 637,
+      "description_bytes": 142
+    },
+    {
+      "surface": "resident",
+      "tool": "book.search_text",
+      "examples": 2,
+      "schema_before_bytes": 2738,
+      "schema_after_bytes": 2992,
+      "description_bytes": 156
+    },
+    {
+      "surface": "resident",
+      "tool": "book.text",
+      "examples": 1,
+      "schema_before_bytes": 497,
+      "schema_after_bytes": 540,
+      "description_bytes": 64
+    },
+    {
+      "surface": "resident",
+      "tool": "tool.search",
+      "examples": 0,
+      "schema_before_bytes": 1063,
+      "schema_after_bytes": 1063,
+      "description_bytes": 274
+    },
+    {
+      "surface": "resident",
+      "tool": "goal.update",
+      "examples": 0,
+      "schema_before_bytes": 2419,
+      "schema_after_bytes": 2419,
+      "description_bytes": 617
+    },
+    {
+      "surface": "resident",
+      "tool": "artifact.list",
+      "examples": 0,
+      "schema_before_bytes": 178,
+      "schema_after_bytes": 178,
+      "description_bytes": 145
+    },
+    {
+      "surface": "resident",
+      "tool": "artifact.search",
+      "examples": 0,
+      "schema_before_bytes": 442,
+      "schema_after_bytes": 442,
+      "description_bytes": 205
+    },
+    {
+      "surface": "resident",
+      "tool": "artifact.read",
+      "examples": 0,
+      "schema_before_bytes": 1184,
+      "schema_after_bytes": 1184,
+      "description_bytes": 178
+    },
+    {
+      "surface": "resident",
+      "tool": "source.present",
+      "examples": 1,
+      "schema_before_bytes": 312,
+      "schema_after_bytes": 407,
+      "description_bytes": 1195
+    },
+    {
+      "surface": "resident",
+      "tool": "book.context",
+      "examples": 1,
+      "schema_before_bytes": 795,
+      "schema_after_bytes": 849,
+      "description_bytes": 212
+    },
+    {
+      "surface": "resident",
+      "tool": "book.concept",
+      "examples": 1,
+      "schema_before_bytes": 876,
+      "schema_after_bytes": 940,
+      "description_bytes": 201
+    },
+    {
+      "surface": "resident",
+      "tool": "book.structure",
+      "examples": 1,
+      "schema_before_bytes": 285,
+      "schema_after_bytes": 311,
+      "description_bytes": 206
+    },
+    {
+      "surface": "resident",
+      "tool": "book.guide_path",
+      "examples": 0,
+      "schema_before_bytes": 285,
+      "schema_after_bytes": 285,
+      "description_bytes": 238
+    },
+    {
+      "surface": "resident",
+      "tool": "book.paper_reading_guide",
+      "examples": 0,
+      "schema_before_bytes": 391,
+      "schema_after_bytes": 391,
+      "description_bytes": 248
+    },
+    {
+      "surface": "resident",
+      "tool": "book.paper_metadata",
+      "examples": 0,
+      "schema_before_bytes": 46,
+      "schema_after_bytes": 46,
+      "description_bytes": 211
+    },
+    {
+      "surface": "resident",
+      "tool": "book.paper_lexicon",
+      "examples": 0,
+      "schema_before_bytes": 46,
+      "schema_after_bytes": 46,
+      "description_bytes": 169
+    },
+    {
+      "surface": "resident",
+      "tool": "profile.manifest",
+      "examples": 0,
+      "schema_before_bytes": 164,
+      "schema_after_bytes": 164,
+      "description_bytes": 140
+    },
+    {
+      "surface": "resident",
+      "tool": "profile.mark_used",
+      "examples": 0,
+      "schema_before_bytes": 362,
+      "schema_after_bytes": 362,
+      "description_bytes": 209
+    },
+    {
+      "surface": "resident",
+      "tool": "book.route_from",
+      "examples": 0,
+      "schema_before_bytes": 180,
+      "schema_after_bytes": 180,
+      "description_bytes": 274
+    },
+    {
+      "surface": "resident",
+      "tool": "book.guided_route_from",
+      "examples": 0,
+      "schema_before_bytes": 180,
+      "schema_after_bytes": 180,
+      "description_bytes": 357
+    },
+    {
+      "surface": "resident",
+      "tool": "book.unvisited_back",
+      "examples": 0,
+      "schema_before_bytes": 101,
+      "schema_after_bytes": 101,
+      "description_bytes": 450
+    },
+    {
+      "surface": "resident",
+      "tool": "book.route_to",
+      "examples": 0,
+      "schema_before_bytes": 237,
+      "schema_after_bytes": 237,
+      "description_bytes": 210
+    },
+    {
+      "surface": "resident",
+      "tool": "memory.save",
+      "examples": 0,
+      "schema_before_bytes": 394,
+      "schema_after_bytes": 394,
+      "description_bytes": 346
+    },
+    {
+      "surface": "resident",
+      "tool": "memory.recall",
+      "examples": 0,
+      "schema_before_bytes": 132,
+      "schema_after_bytes": 132,
+      "description_bytes": 149
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.gotoLid",
+      "examples": 0,
+      "schema_before_bytes": 102,
+      "schema_after_bytes": 102,
+      "description_bytes": 151
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.scroll",
+      "examples": 0,
+      "schema_before_bytes": 155,
+      "schema_after_bytes": 155,
+      "description_bytes": 162
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.highlight",
+      "examples": 0,
+      "schema_before_bytes": 180,
+      "schema_after_bytes": 180,
+      "description_bytes": 264
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.note",
+      "examples": 0,
+      "schema_before_bytes": 136,
+      "schema_after_bytes": 136,
+      "description_bytes": 138
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.layout.apply",
+      "examples": 0,
+      "schema_before_bytes": 1998,
+      "schema_after_bytes": 1998,
+      "description_bytes": 229
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.paper_minimap.apply",
+      "examples": 0,
+      "schema_before_bytes": 3745,
+      "schema_after_bytes": 3745,
+      "description_bytes": 344
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.state",
+      "examples": 0,
+      "schema_before_bytes": 33,
+      "schema_after_bytes": 33,
+      "description_bytes": 196
+    }
+  ]
+}

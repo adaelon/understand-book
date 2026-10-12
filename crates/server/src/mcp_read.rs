@@ -92,6 +92,10 @@ fn reference(value: Value) -> Result<PublishedBookRef, ToolError> {
 
 /// This schema projection is also the input contract for the later remote transport.
 pub fn tool_definitions() -> Vec<Value> {
+    // A captured publication of fixtures/example-book; actual callers copy their
+    // selected reference from book_list, as published_book_ref documents.
+    let example_reference: Value = serde_json::from_str(include_str!("../../book-tool-contracts/fixtures/example-book/publication-ref.json"))
+        .expect("example publication reference must be JSON");
     let ref_schema = json!({"type":"object","additionalProperties":false,
         "description":"Copy the exact immutable publication reference from book_list; keep both identifiers on every content call and continuation.",
         "properties":{"book_id":{"type":"string","minLength":1,"description":"Material identifier returned by book_list."},"publication_id":{"type":"string","minLength":1,"description":"Exact publication version returned by book_list."}},
@@ -105,27 +109,6 @@ pub fn tool_definitions() -> Vec<Value> {
     for id in READ_TOOLS {
         let contract = contract_for(id);
         let mut schema = input_schema(id);
-        for (key, description) in [
-            ("lid", "LID returned by a locating tool in this publication; do not invent it."),
-            ("end_lid", "Optional inclusive final LID for a source range; omit to read only lid."),
-            ("query", "Nonblank literal text for book_search_text, or a concept/entity name or alias for book_concept; at most 4,096 Unicode characters."),
-            ("at", "Optional returned LID to focus the structural view or route; omit for the whole-publication overview."),
-            ("anchor_lid", "Optional known LID to anchor concept candidate ranking."),
-            ("limit", "Maximum concept candidates (default 12, maximum 50); inspect matched_count and truncated before claiming complete recall."),
-            ("granularity", "Context reach: near for adjacency/local edges, mid for other concept/entity occurrences, far for long-range edges; returns pointers, not source text."),
-            ("k", "Optional maximum context pointers; omit to use the tool's default."),
-            ("match_mode", "Literal matching mode, not semantic retrieval; use the declared enum."),
-            ("scope", "Optional within_lid subtree and/or relative_to LID with before/after direction, using known LIDs from this publication."),
-            ("order", "Order of literal occurrences; use returned next_calls to preserve search pagination."),
-            ("cursor", "Opaque search cursor; copy from next_calls with the original search arguments."),
-            ("page_size", "Maximum literal occurrences per search batch (default 20, maximum 50)."),
-            ("mode", "Reading depth: skim, close or deep; default skim."),
-            ("stage", "Reading stage: passive, active, critical or creative; default passive."),
-        ] {
-            if let Some(property) = schema["properties"].get_mut(key) {
-                property["description"] = json!(description);
-            }
-        }
         schema["properties"]["published_book_ref"] = ref_schema.clone();
         if schema.get("required").is_none() {
             schema["required"] = json!([]);
@@ -134,6 +117,11 @@ pub fn tool_definitions() -> Vec<Value> {
             .as_array_mut()
             .unwrap()
             .push(json!("published_book_ref"));
+        if let Some(examples) = schema.get_mut("examples").and_then(Value::as_array_mut) {
+            for example in examples {
+                example["published_book_ref"] = example_reference.clone();
+            }
+        }
         if id == BookToolId::Text {
             schema["properties"]["start_utf16"] = json!({"type":"integer","minimum":0,
                 "description":"Absolute canonical-source UTF-16 position from next_calls; omit for the first page."});
@@ -143,8 +131,8 @@ pub fn tool_definitions() -> Vec<Value> {
                 "properties":{"path":{"type":"string"},"offset":{"type":"integer","minimum":0,"default":0},
                     "limit":{"type":"integer","minimum":1,"maximum":50,"default":20}},"required":["path"]});
         }
-        let description = format!("{} Use when: {} {} {} {} {}",
-            contract.description, contract.use_when, contract.do_not_use_when,
+        let description = format!("{} {} {} {}",
+            contract.mcp_description(),
             if id == BookToolId::SearchText {
                 "Hits are data.occurrences: pass a hit's start_lid as book_text.lid and end_lid as book_text.end_lid; source_range_utf16 is the exact whole-hit range and ranges gives per-LID positions."
             } else { "" },

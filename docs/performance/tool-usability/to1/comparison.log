@@ -1,0 +1,29 @@
+{
+  "checks": "tool order, input constraints, remote fields/guidance, unrelated tools unchanged",
+  "totals": [
+    {
+      "surface": "local_mcp",
+      "tools": 16,
+      "schema_before_bytes": 5207,
+      "schema_after_bytes": 11182,
+      "description_before_bytes": 2335,
+      "description_after_bytes": 3970
+    },
+    {
+      "surface": "remote_mcp",
+      "tools": 11,
+      "schema_before_bytes": 12260,
+      "schema_after_bytes": 14358,
+      "description_before_bytes": 14913,
+      "description_after_bytes": 14913
+    },
+    {
+      "surface": "resident",
+      "tools": 34,
+      "schema_before_bytes": 37960,
+      "schema_after_bytes": 43235,
+      "description_before_bytes": 10552,
+      "description_after_bytes": 10552
+    }
+  ]
+}

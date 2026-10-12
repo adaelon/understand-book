@@ -2,6 +2,8 @@
 
 状态:方案冻结；CR0–CR10 已完成。
 
+后续优化：[工具契约与 Agent 可用性优化](切片方案-工具契约与Agent可用性优化.md)，继续完善发现结果中的用途说明、能力恢复提示、候选到正文的参数交接与覆盖表达。
+
 冻结决策:[ADR-0113](adr/0113-open-natural-language-capability-routing-and-runtime-evidence-topology.md)。延伸:[ADR-0036](adr/0036-反馈信号模型-显式nl主信号-导航讲法二维-结构兜底消歧-viewport模式分裂-人访客两投影.md)、[ADR-0091](adr/0091-model-aware-agent-request-tool-exposure-and-active-context-budget.md)。收窄解释:[ADR-0104](adr/0104-intent-seeded-guided-reading-tool-exposure-and-resident-navigation-policy.md)。
 
 ## 0. 对齐确认单

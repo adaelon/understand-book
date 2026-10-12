@@ -41,6 +41,17 @@ pub struct BookToolContract {
     pub result_contract: &'static str,
 }
 
+impl BookToolContract {
+    /// MCP callers have no Resident routing card; include its shared guidance here.
+    pub fn mcp_description(&self) -> String {
+        format!(
+            "{} Use when: {} {}",
+            self.description, self.use_when, self.do_not_use_when
+        )
+        .replace("book.text", "book_text")
+    }
+}
+
 const CONTRACTS: &[BookToolContract] = &[
     contract(
         BookToolId::Manifest,
@@ -49,7 +60,7 @@ const CONTRACTS: &[BookToolContract] = &[
         Some("manifest"),
         "Return the read-only book manifest.",
         "Inspect public book identity and structure metadata.",
-        "Do not expose the full manifest to the Resident model surface.",
+        "Do not treat manifest metadata as source-text evidence.",
         "book_manifest.v1",
     ),
     contract(
@@ -239,8 +250,10 @@ pub struct EmptyInput {}
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct TextInput {
+    #[schemars(description = "Known LID from this book's locating or structure results; for a search hit, use start_lid. Reads the node's canonical source span, including descendants.")]
     pub lid: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Inclusive final LID in source reading order; for a search hit, use end_lid. Reads from lid's span start through end_lid's span end. Omit or null to read only lid's span.")]
     pub end_lid: Option<String>,
 }
 
@@ -262,13 +275,19 @@ impl ContextGranularity {
     }
 }
 
+pub const DEFAULT_CONTEXT_GRANULARITY: ContextGranularity = ContextGranularity::Near;
+pub const DEFAULT_CONTEXT_K: usize = 10;
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct ContextInput {
+    #[schemars(description = "Known LID in this book to expand around. Returned items are context pointers; read their LIDs through the source-text tool for evidence.")]
     pub lid: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Context reach: near includes tree adjacency and local relations; mid adds other concept/entity occurrences; far also adds long-range relations. Omit or null for near.")]
     pub granularity: Option<ContextGranularity>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Maximum number of context pointers returned across all layers. Omit or null for 10; zero returns no items. Counts pointers, not characters or source passages.")]
     pub k: Option<usize>,
 }
 
@@ -276,10 +295,13 @@ pub struct ContextInput {
 #[serde(deny_unknown_fields)]
 pub struct ConceptInput {
     #[schemars(length(min = 1, max = 4096))]
+    #[schemars(description = "Nonblank concept/entity name, alias or descriptive terms for deterministic candidate recall from names and occurrence text. At most 4,096 Unicode scalar values, including surrounding whitespace; not literal occurrence enumeration.")]
     pub query: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Optional known LID in this book to rank nearby candidates and previews. Omit or null for unanchored ranking; this does not restrict recall to a subtree.")]
     pub anchor_lid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Maximum concept/entity candidates, 1..50; omit or null for 12. Inspect matched_count and truncated for candidate coverage; this does not limit occurrences within a candidate.")]
     pub limit: Option<usize>,
 }
 
@@ -291,6 +313,7 @@ pub const MAX_CONCEPT_QUERY_CHARS: usize = 4096;
 #[serde(deny_unknown_fields)]
 pub struct AtInput {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Optional known LID in this book to locate its structural role or current route segment. Omit or null for the whole-book view; this is a location, not a natural-language query.")]
     pub at: Option<String>,
 }
 
@@ -348,8 +371,10 @@ impl Default for PaperStage {
 #[serde(deny_unknown_fields)]
 pub struct PaperReadingGuideInput {
     #[serde(default)]
+    #[schemars(description = "Reading depth: skim, close or deep. Defaults to skim.")]
     pub mode: PaperMode,
     #[serde(default)]
+    #[schemars(description = "Reading stage: passive, active, critical or creative. Defaults to passive.")]
     pub stage: PaperStage,
 }
 
@@ -367,6 +392,7 @@ pub enum BookQueryIntent {
 #[serde(deny_unknown_fields)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct QueryObligation {
+    #[schemars(description = "One nonblank, independently checkable requirement the semantic answer must address.")]
     pub requirement: String,
 }
 
@@ -374,12 +400,17 @@ pub struct QueryObligation {
 #[serde(deny_unknown_fields)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct BookQueryRequest {
+    #[schemars(description = "Self-contained, nonblank semantic question about the named targets, with enough context to resolve referents. Use literal search for exact wording or first/previous occurrences.")]
     pub query: String,
+    #[schemars(description = "Question kind: definition or explanation requires 1..3 targets; relation or comparison requires 2..3 separately named targets.")]
     pub intent: BookQueryIntent,
     #[schemars(length(min = 1, max = 3))]
+    #[schemars(description = "Explicit referents to resolve before reading evidence. Each item is nonblank and unique after trimming and lowercasing; name comparison/relation targets separately, not as one combined phrase.")]
     pub targets: Vec<String>,
     #[schemars(length(min = 1, max = 3))]
+    #[schemars(description = "One to three answer requirements, each in its own requirement object; these guide evidence sufficiency for the requested answer.")]
     pub obligations: Vec<QueryObligation>,
+    #[schemars(description = "Required known LID in this book anchoring referent resolution. It provides local context without restricting evidence retrieval to this node.")]
     pub anchor_lid: String,
 }
 
@@ -387,8 +418,10 @@ pub struct BookQueryRequest {
 #[serde(deny_unknown_fields)]
 pub struct SynthesizeInput {
     #[schemars(length(min = 1))]
+    #[schemars(description = "Nonempty list of known LIDs selected as the complete evidence scope. Synthesis reads only these nodes and returns citations drawn from this list, without expanding retrieval.")]
     pub lids: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Synthesis instruction for the supplied LIDs; omit or null to synthesize their content without an additional task.")]
     pub task: Option<String>,
 }
 
@@ -409,14 +442,19 @@ impl Default for GuideAction {
 #[serde(deny_unknown_fields)]
 pub struct GuideInput {
     #[serde(default)]
+    #[schemars(description = "guide opens or refines an ephemeral visitor session and requires intent; close ends it and requires session_id. Defaults to guide.")]
     pub action: GuideAction,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Session identifier returned by an earlier guide call. For guide, omit or null to open a session, or supply it to refine that session; required for close.")]
     pub session_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Nonblank natural-language reading goal, required on every guide action, including session refinement; unused for close.")]
     pub intent: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Optional known LID in this book to anchor guided reading. Omit or null when no location is chosen; unused for close.")]
     pub anchor_lid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Optional reader feedback to combine with intent when generating the next guide; unused for close.")]
     pub feedback: Option<String>,
 }
 
@@ -443,7 +481,9 @@ pub enum SearchRelativeDirection {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct SearchRelativeScope {
+    #[schemars(description = "Known reference LID in this book. The relative filter excludes this node's entire source span, including its descendants.")]
     pub lid: String,
+    #[schemars(description = "before keeps hits ending at or before the reference span's start; after keeps hits starting at or after its end. Direction filters scope independently of result order.")]
     pub direction: SearchRelativeDirection,
 }
 
@@ -451,8 +491,10 @@ pub struct SearchRelativeScope {
 #[serde(deny_unknown_fields)]
 pub struct SearchTextScope {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Known LID whose source span, including descendants, must contain each whole hit. Omit or null for no subtree restriction.")]
     pub within_lid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Optional before/after filter around a known LID, excluding that node's span. Intersects with within_lid when both are supplied.")]
     pub relative_to: Option<SearchRelativeScope>,
 }
 
@@ -477,17 +519,23 @@ fn default_search_page_size() -> usize {
 #[serde(deny_unknown_fields)]
 pub struct SearchTextInput {
     #[schemars(length(min = 1, max = 4096))]
+    #[schemars(description = "Literal text to locate in canonical source, containing non-whitespace text and at most 4,096 Unicode scalar values. Exact mode preserves query whitespace; this is not a semantic question or regex. Read chosen hits using their start_lid/end_lid.")]
     pub query: String,
     #[serde(default)]
+    #[schemars(description = "exact (default) matches unchanged text; normalized applies NFKC, full non-Turkic case folding and whitespace collapsing. Both locate literal occurrences, not semantic equivalents; result ranges use original-source UTF-16 positions.")]
     pub match_mode: SearchMatchMode,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Optional source scope using known LIDs from this book. Omit, null or {} searches the whole book; within_lid and relative_to intersect, and each whole hit must fit the resulting range.")]
     pub scope: Option<SearchTextScope>,
     #[serde(default)]
+    #[schemars(description = "document (default) returns earliest occurrences first; reverse_document returns latest first. Uses canonical source order, not lexical LID sorting. Combine before with reverse_document for previous occurrences.")]
     pub order: SearchOrder,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Opaque next_cursor from the preceding search result. Omit or null for the first page; preserve query, match_mode, scope, order and page_size on continuation. A changed source revision invalidates it.")]
     pub cursor: Option<String>,
     #[serde(default = "default_search_page_size")]
     #[schemars(range(min = 1, max = 50))]
+    #[schemars(description = "Maximum literal occurrences per search page, 1..50, default 20. Does not change total_occurrences or exhaustive coverage of the requested literal scope; preserve it when using cursor.")]
     pub page_size: usize,
 }
 
@@ -569,13 +617,18 @@ pub struct QueryValidationIssues {
 }
 
 pub fn input_schema(id: BookToolId) -> Value {
-    match id {
+    let mut schema = match id {
         BookToolId::Manifest | BookToolId::PaperMetadata | BookToolId::PaperLexicon => {
             schema_value::<EmptyInput>()
         }
         BookToolId::Text => schema_value::<TextInput>(),
         BookToolId::SearchText => search_text_input_schema(),
-        BookToolId::Context => schema_value::<ContextInput>(),
+        BookToolId::Context => {
+            let mut schema = schema_value::<ContextInput>();
+            schema["properties"]["granularity"]["default"] = json!(DEFAULT_CONTEXT_GRANULARITY);
+            schema["properties"]["k"]["default"] = json!(DEFAULT_CONTEXT_K);
+            schema
+        },
         BookToolId::Concept => concept_input_schema(),
         BookToolId::Structure | BookToolId::GuidePath => schema_value::<AtInput>(),
         BookToolId::PaperReadingGuide => schema_value::<PaperReadingGuideInput>(),
@@ -596,6 +649,34 @@ pub fn input_schema(id: BookToolId) -> Value {
             ]);
             schema
         },
+    };
+    let examples = input_examples(id);
+    if !examples.is_empty() {
+        schema["examples"] = json!(examples);
+    }
+    schema
+}
+
+/// Complete inputs for the small `fixtures/example-book` material. LIDs in a
+/// real call still come from that book's locating results, as field docs specify.
+pub fn input_examples(id: BookToolId) -> Vec<Value> {
+    match id {
+        BookToolId::SearchText => vec![
+            json!({"query":"threshold","match_mode":"exact","order":"document","page_size":1}),
+            json!({"query":"THRESHOLD","match_mode":"normalized","scope":{"within_lid":"1","relative_to":{"lid":"1.3","direction":"before"}},"order":"reverse_document","page_size":1}),
+        ],
+        BookToolId::Concept => vec![json!({"query":"threshold","anchor_lid":"1.2","limit":5})],
+        BookToolId::Query => vec![json!({
+            "query":"How do the activation conditions of the alpha threshold and beta threshold differ?",
+            "intent":"comparison","targets":["alpha threshold","beta threshold"],
+            "obligations":[{"requirement":"State the activation condition at each location."},{"requirement":"Compare whether equality activates each threshold, citing both passages."}],
+            "anchor_lid":"1.1"
+        })],
+        BookToolId::Text => vec![json!({"lid":"1.1","end_lid":"1.2"})],
+        BookToolId::Synthesize => vec![json!({"lids":["1.1","1.2"],"task":"Summarize these two threshold conditions using only these passages; state any evidence gaps."})],
+        BookToolId::Context => vec![json!({"lid":"1.2","granularity":"near","k":3})],
+        BookToolId::Structure => vec![json!({"at":"1.2"})],
+        _ => vec![],
     }
 }
 
@@ -875,6 +956,63 @@ pub fn validate_query_request(request: &BookQueryRequest) -> Result<(), QueryVal
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn advertised_examples_are_complete_distinct_typed_inputs() {
+        let mut count = 0;
+        for contract in contracts() {
+            let schema = input_schema(contract.id);
+            let Some(examples) = schema["examples"].as_array() else { continue };
+            assert_eq!(examples, &input_examples(contract.id));
+            for (index, example) in examples.iter().enumerate() {
+                assert!(!examples[..index].contains(example));
+                validate_input(contract.id, example.clone()).unwrap();
+                count += 1;
+            }
+        }
+        assert_eq!(count, 8);
+    }
+
+    #[test]
+    fn common_parameters_explain_nested_fields_and_tool_specific_meanings() {
+        fn check_fields(schema: &Value) {
+            match schema {
+                Value::Object(object) => {
+                    if let Some(properties) = object.get("properties").and_then(Value::as_object) {
+                        for (name, property) in properties {
+                            assert!(property["description"].as_str().is_some_and(|s| !s.is_empty()), "{name}: {property}");
+                        }
+                    }
+                    for value in object.values() { check_fields(value); }
+                }
+                Value::Array(items) => items.iter().for_each(check_fields),
+                _ => {}
+            }
+        }
+        for contract in contracts() {
+            // Inspect property definitions, not conditional constraint fragments.
+            check_fields(&input_schema(contract.id)["properties"]);
+            if let Some(properties) = input_schema(contract.id)["properties"].as_object() {
+                for (name, property) in properties {
+                    assert!(property["description"].as_str().is_some_and(|s| !s.is_empty()), "{:?}.{name}", contract.id);
+                }
+            }
+        }
+        let literal = input_schema(BookToolId::SearchText);
+        let concept = input_schema(BookToolId::Concept);
+        let semantic = input_schema(BookToolId::Query);
+        assert!(literal["properties"]["query"]["description"].as_str().unwrap().contains("Literal"));
+        assert!(concept["properties"]["query"]["description"].as_str().unwrap().contains("concept"));
+        assert!(semantic["properties"]["query"]["description"].as_str().unwrap().contains("semantic"));
+        assert_ne!(literal["properties"]["query"], concept["properties"]["query"]);
+        assert!(literal["properties"]["cursor"]["description"].as_str().unwrap().contains("page_size"));
+        let context = input_schema(BookToolId::Context);
+        assert_eq!(context["properties"]["granularity"]["default"], "near");
+        assert_eq!(context["properties"]["k"]["default"], 10);
+        assert_eq!(context["properties"]["k"]["minimum"].as_f64(), Some(0.0));
+        assert!(validate_input(BookToolId::Context, json!({"lid":"1.1","k":0})).is_ok());
+        assert!(validate_input(BookToolId::Context, json!({"lid":"1.1","k":null,"granularity":null})).is_ok());
+    }
 
     #[test]
     fn aliases_are_unique_per_surface() {

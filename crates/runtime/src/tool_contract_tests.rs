@@ -2,6 +2,70 @@ use super::*;
 use serde_json::json;
 
 #[test]
+fn advertised_examples_survive_provider_projection_and_real_validation() {
+    let registry = crate::orchestrator::resident_tool_registry();
+    let specs = crate::orchestrator::tool_specs();
+    let profile = crate::ModelRuntimeCatalog::default().resolve("test", crate::ProviderToolProtocol::Native, None);
+    let plan = crate::AgentRequestPlan::for_agent_turn(profile, &[crate::Message::user("Compare conditions")], &specs);
+    let (native, names) = crate::native_chat_request_projection("test", &plan);
+    let react = crate::react_chat_request_projection("test", &plan);
+    let protocol = react["messages"][0]["content"].as_str().unwrap();
+    let advertised = specs.iter().map(|s| json!({"name":s.name,"description":s.description,"parameters":s.parameters})).collect::<Vec<_>>();
+    assert!(protocol.contains(&serde_json::to_string_pretty(&advertised).unwrap()));
+    let mut count = 0;
+    for (index, spec) in specs.iter().enumerate() {
+        let Some(examples) = spec.parameters["examples"].as_array() else { continue };
+        assert!(!examples.is_empty(), "{}", spec.name);
+        assert_eq!(native["tools"][index]["function"]["parameters"], spec.parameters);
+        assert_eq!(names[native["tools"][index]["function"]["name"].as_str().unwrap()], spec.name);
+        for (i, input) in examples.iter().enumerate() {
+            assert!(!examples[..i].contains(input), "duplicate {}", spec.name);
+            validate_schema(&spec.parameters, input, "$").unwrap();
+            registry.registration(&spec.name).unwrap().validate_arguments(&input.to_string()).unwrap();
+            count += 1;
+        }
+    }
+    assert_eq!(count, 9);
+}
+
+#[test]
+fn advertised_example_validation_detects_projection_and_parser_drift() {
+    let mut schema = input_schema(BookToolId::Text);
+    let example = schema["examples"][0].clone();
+    schema["properties"].as_object_mut().unwrap().remove("end_lid");
+    assert!(validate_schema(&schema, &example, "$").is_err());
+    let mut invalid = input_schema(BookToolId::Query)["examples"][0].clone();
+    invalid["targets"] = json!(["alpha threshold", "alpha threshold"]);
+    assert!(validate_schema(&input_schema(BookToolId::Query), &invalid, "$").is_ok());
+    assert!(crate::orchestrator::resident_tool_registry().registration("book.query").unwrap().validate_arguments(&invalid.to_string()).is_err());
+}
+
+#[test]
+fn book_common_semantics_and_routing_guidance_reach_the_resident_surface() {
+    let registry = crate::orchestrator::resident_tool_registry();
+    for contract in book_tool_contracts::contracts() {
+        let Some(name) = contract.aliases.resident else { continue };
+        let registration = registry.registration(name).unwrap();
+        assert_eq!(registration.spec.parameters, input_schema(contract.id), "{name}");
+        assert_eq!(registration.routing_card.use_when, vec![contract.use_when.to_string()]);
+        assert_eq!(registration.routing_card.avoid_when, vec![contract.do_not_use_when.to_string()]);
+        if let Some(properties) = registration.spec.parameters["properties"].as_object() {
+            for (field, property) in properties {
+                assert!(property["description"].as_str().is_some_and(|s| !s.is_empty()), "{name}.{field}");
+            }
+        }
+        for remote_field in ["published_book_ref", "start_utf16", "page"] {
+            assert!(registration.spec.parameters["properties"].get(remote_field).is_none(), "{name}.{remote_field}");
+        }
+    }
+    for input in [json!({"lid":"1.1"}), json!({"lid":"1.1","k":0}), json!({"lid":"1.1","k":null,"granularity":null})] {
+        check("book.context", input, true);
+    }
+    check("book.search_text", json!({"query":"alpha","scope":{"within_lid":"1","relative_to":{"lid":"1.2","direction":"before"}}}), true);
+    check("book.search_text", json!({"query":"alpha","scope":{"relative_to":{"lid":"1.2"}}}), false);
+}
+
+#[test]
 fn optional_nulls_match_serde_without_weakening_required_fields() {
     check(
         "tutor.step",

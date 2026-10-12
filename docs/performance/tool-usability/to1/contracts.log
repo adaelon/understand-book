@@ -1,0 +1,19 @@
+   Compiling book-tool-contracts v0.0.0 (E:\allwork\download\agent\understand-book\crates\book-tool-contracts)
+    Finished `test` profile [unoptimized] target(s) in 4.21s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\book_tool_contracts-82378eeb74e4a5f1.exe)
+
+running 11 tests
+test tests::model_visible_contract_metadata_is_authored_in_english ... ok
+test tests::aliases_are_unique_per_surface ... ok
+test tests::validator_rejects_unknown_fields_and_applies_defaults ... ok
+test tests::query_validator_enforces_intent_dependent_target_count ... ok
+test tests::concept_v2_contract_and_validation ... ok
+test tests::search_text_contract_applies_defaults_and_rejects_invalid_bounds ... ok
+test tests::resident_contract_schema_is_closed_and_typed ... ok
+test tests::common_parameters_explain_nested_fields_and_tool_specific_meanings ... ok
+test export_bindings_queryobligation ... ok
+test export_bindings_bookqueryintent ... ok
+test export_bindings_bookqueryrequest ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

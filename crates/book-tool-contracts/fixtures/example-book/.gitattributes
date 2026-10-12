@@ -1,0 +1,3 @@
+source.txt text eol=lf
+base.json text eol=crlf
+book_structure.json text eol=crlf

@@ -1409,7 +1409,7 @@ pub fn parse_content_profile_id(raw: &str) -> Result<ContentProfileId, ToolError
 }
 
 /// context 默认 top-K(占位,待 P1 实测回填 ADR-0013/0016「何时回头」)。
-pub const DEFAULT_NEAR_K: usize = 10;
+pub const DEFAULT_NEAR_K: usize = book_tool_contracts::DEFAULT_CONTEXT_K;
 /// route_from 每类前沿默认 top-K(沿用 context 截断惯例 `[ADR-0034 影响段]`)。
 pub const DEFAULT_ROUTE_K: usize = DEFAULT_NEAR_K;
 /// route_to BFS 默认跳数预算(占位,实测回填 `[ADR-0034 决策3 路径式预算全程]`)。
@@ -7022,7 +7022,8 @@ impl Book {
         k: Option<usize>,
     ) -> Result<Context, ToolError> {
         let anchor = self.node(lid)?;
-        let granularity = granularity.unwrap_or("near");
+        let granularity =
+            granularity.unwrap_or(book_tool_contracts::DEFAULT_CONTEXT_GRANULARITY.as_str());
         if !matches!(granularity, "near" | "mid" | "far") {
             return Err(ToolError {
                 error_code: "INVALID_GRANULARITY".into(),

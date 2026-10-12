@@ -7,22 +7,35 @@ fn discovery(f: &Fixture) -> Value {
     f.rpc(0, json!({"jsonrpc":"2.0","id":1,"method":"tools/list"}))["result"]["tools"].clone()
 }
 
-fn without_descriptions(mut value: Value) -> Value {
-    match &mut value {
-        Value::Object(fields) => {
-            fields.remove("description");
-            for field in fields.values_mut() {
-                *field = without_descriptions(field.take());
-            }
-        }
-        Value::Array(items) => {
-            for item in items {
-                *item = without_descriptions(item.take());
-            }
-        }
-        _ => {}
-    }
-    value
+#[test]
+#[ignore = "one-time fixture capture; set TOOL_EXAMPLE_REFERENCE to an output path"]
+fn mcp_contract_capture_example_publication() {
+    let f = Fixture::with_example_book(true);
+    let path = std::env::var("TOOL_EXAMPLE_REFERENCE").unwrap();
+    let manifest = f.access.library.lock().unwrap().publish(f._input.path()).unwrap();
+    let directory = std::path::Path::new(&path);
+    std::fs::create_dir_all(directory).unwrap();
+    std::fs::write(directory.join("publication.json"), serde_json::to_vec_pretty(&manifest).unwrap()).unwrap();
+    std::fs::write(directory.join("publication-ref.json"), serde_json::to_vec_pretty(&manifest.reference).unwrap()).unwrap();
+}
+
+/// Explicit measurement entry point; ordinary tests never write snapshots.
+#[test]
+#[ignore = "set TOOL_CONTRACT_SNAPSHOT and run explicitly to capture published definitions"]
+fn mcp_contract_export_tool_definitions() {
+    let f = Fixture::new();
+    let resident: Vec<_> = runtime::orchestrator::tool_specs()
+        .into_iter()
+        .map(|spec| json!({"name":spec.name,"description":spec.description,"inputSchema":spec.parameters}))
+        .collect();
+    let snapshot = json!({
+        "resident": resident,
+        "local_mcp": crate::mcp::tools_list_result()["tools"],
+        "remote_mcp": discovery(&f),
+    });
+    let path = std::env::var("TOOL_CONTRACT_SNAPSHOT").expect("snapshot output path is required");
+    std::fs::write(path, serde_json::to_vec_pretty(&snapshot).unwrap()).unwrap();
+    assert_eq!(f.count(), 0);
 }
 
 #[test]
@@ -123,8 +136,13 @@ fn mcp_contract_initialize_and_all_tool_schemas_explain_the_reading_path() {
                 "{name}.{key}"
             );
         }
-        // Remote guidance must preserve the shared validator's types, enums, bounds and required inputs.
+        // Compare all shared semantics, including nested descriptions and defaults.
         let mut local = schema.clone();
+        if let Some(examples) = local.get_mut("examples").and_then(Value::as_array_mut) {
+            for example in examples {
+                assert!(example.as_object_mut().unwrap().remove("published_book_ref").is_some());
+            }
+        }
         let properties = local["properties"].as_object_mut().unwrap();
         properties.remove("published_book_ref");
         properties.remove(if name == "book_text" {
@@ -144,13 +162,33 @@ fn mcp_contract_initialize_and_all_tool_schemas_explain_the_reading_path() {
         if original.get("required").is_none() {
             local.as_object_mut().unwrap().remove("required");
         }
-        assert_eq!(
-            without_descriptions(local),
-            without_descriptions(original),
-            "{name}"
-        );
+        assert_eq!(local, original, "{name}");
     }
     assert_eq!(f.count(), 0);
+}
+
+#[test]
+fn mcp_contract_local_and_resident_keep_common_semantics_without_remote_fields() {
+    let local = crate::mcp::tools_list_result();
+    let resident = runtime::orchestrator::tool_specs();
+    for contract in book_tool_contracts::contracts() {
+        let schema = book_tool_contracts::input_schema(contract.id);
+        let name = contract.aliases.mcp.unwrap();
+        let tool = local["tools"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap();
+        assert_eq!(tool["inputSchema"], schema, "{name}");
+        let description = tool["description"].as_str().unwrap();
+        assert!(description.contains(contract.use_when), "{name}");
+        assert!(description.contains(&contract.do_not_use_when.replace("book.text", "book_text")), "{name}");
+        assert!(!description.contains("book.text"), "{name}");
+        for remote_term in ["published_book_ref", "start_utf16", "next_calls", "charged_units", "source_url"] {
+            assert!(!tool.to_string().contains(remote_term), "{name}: {remote_term}");
+        }
+        if let Some(alias) = contract.aliases.resident {
+            let spec = resident.iter().find(|s| s.name == alias).unwrap();
+            assert_eq!(spec.parameters, schema, "{alias}");
+            assert_eq!(spec.description, contract.description, "{alias}");
+        }
+    }
 }
 
 fn assert_usage(usage: &Value, charged: i64) {
@@ -192,6 +230,49 @@ fn projection(result: &Value) -> &Value {
         *value
     );
     value
+}
+
+#[test]
+fn mcp_contract_remote_advertised_examples_execute_unchanged() {
+    let f = Fixture::with_example_book(true);
+    let tools = discovery(&f);
+    let directory = f.tool(0, "book_list", json!({}));
+    let reference = &projection(&directory)["items"][0]["published_book_ref"];
+    assert_eq!(*reference, json!(f.reference));
+    let mut count = 0;
+    for tool in tools.as_array().unwrap() {
+        let Some(examples) = tool["inputSchema"]["examples"].as_array() else { continue };
+        let name = tool["name"].as_str().unwrap();
+        for input in examples {
+            assert_eq!(input["published_book_ref"], *reference);
+            let result = f.tool(0, name, input.clone());
+            assert_eq!(result["isError"], false, "{name}: {result}");
+            let result = projection(&result);
+            assert_usage(&result["usage"], 1);
+            assert_eq!(result["published_book_ref"], *reference);
+            match name {
+                "book_text" => {
+                    let source = include_str!("../../book-tool-contracts/fixtures/example-book/source.txt");
+                    assert_eq!(result["data"]["text"], source.lines().take(2).collect::<Vec<_>>().join("\n") + "\n");
+                    assert_eq!(result["sources"][0]["published_book_ref"], *reference);
+                    assert_eq!(result["sources"][0]["start_lid"], "1.1");
+                    assert_eq!(result["sources"][0]["end_lid"], "1.2");
+                }
+                "book_search_text" => assert_eq!(result["data"]["occurrences"][0]["start_lid"], if input["order"] == "document" { "1.1" } else { "1.2" }),
+                "book_concept" => assert_eq!(result["data"]["returned_count"], 2),
+                "book_context" => assert!(!result["data"]["items"].as_array().unwrap().is_empty()),
+                "book_structure" => assert_eq!(result["data"]["available"], true),
+                _ => unreachable!("{name}"),
+            }
+            count += 1;
+        }
+    }
+    assert_eq!(count, 6);
+    assert_eq!(f.count(), count);
+    let denied = f.tool(2, "book_text", tools.as_array().unwrap().iter().find(|t| t["name"] == "book_text").unwrap()["inputSchema"]["examples"][0].clone());
+    assert_eq!(denied["isError"], true);
+    assert_eq!(f.count(), count);
+    f.no_private_state();
 }
 
 #[test]

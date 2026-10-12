@@ -24,6 +24,10 @@ struct Fixture {
 }
 impl Fixture {
     fn new() -> Self {
+        Self::with_example_book(false)
+    }
+
+    fn with_example_book(examples: bool) -> Self {
         let root = tempfile::tempdir().unwrap();
         let input = tempfile::tempdir().unwrap();
         let users = UserRegistry::open(root.path()).unwrap();
@@ -62,13 +66,29 @@ impl Fixture {
         )
         .unwrap();
         fs::write(input.path().join("source.txt"), source).unwrap();
-        let reference = access
+        if examples {
+            fs::write(input.path().join("base.json"), include_str!("../../book-tool-contracts/fixtures/example-book/base.json")).unwrap();
+            fs::write(input.path().join("source.txt"), include_str!("../../book-tool-contracts/fixtures/example-book/source.txt")).unwrap();
+            fs::write(input.path().join("book_structure.json"), include_str!("../../book-tool-contracts/fixtures/example-book/book_structure.json")).unwrap();
+        }
+        let reference = if examples {
+            // Restore the recorded publication and its registry row so tools/list
+            // examples can be called byte-for-byte, including the published ref.
+            let manifest: crate::published_library::PublicationManifest = serde_json::from_str(include_str!("../../book-tool-contracts/fixtures/example-book/publication.json")).unwrap();
+            let reference = manifest.reference.clone();
+            let manifest_json = serde_json::to_string(&manifest).unwrap();
+            fs::write(input.path().join("publication.json"), &manifest_json).unwrap();
+            control.connection.execute("INSERT INTO book_publications(book_id,publication_id,directory,manifest) VALUES(?,?,?,?)",
+                rusqlite::params![reference.book_id, reference.publication_id, input.path().to_str().unwrap(), manifest_json]).unwrap();
+            access.library.lock().unwrap().set_default(&reference).unwrap();
+            reference
+        } else { access
             .library
             .lock()
             .unwrap()
             .publish(input.path())
             .unwrap()
-            .reference;
+            .reference };
         access
             .library
             .lock()
