@@ -1,14 +1,39 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { api as sharedApi, ApiError, type TutorActivity } from '../api';
+import { answerDisplayParts, sourceMarkedParts } from '../answer-markdown';
+import type { AgentAnswerSource } from '../generated/AgentAnswerSource';
 import { bindSceneApi } from '../network-context';
 const api = bindSceneApi(sharedApi);
 import type { PresentationRef } from '../generated/PresentationRef';
 import type { PresentationFollowUp } from '../generated/PresentationFollowUp';
 const props = withDefaults(defineProps<{ sessionId: string; turnId: string; reference?: PresentationRef;
-  snapshot?: () => Promise<PresentationFollowUp>; ready?: boolean }>(), { ready: true });
+  snapshot?: () => Promise<PresentationFollowUp>; ready?: boolean; sources?: AgentAnswerSource[];
+  answerText?: string; answerTarget?: () => HTMLElement | undefined }>(), { ready: true, sources: () => [] });
+const emit = defineEmits<{ (e: 'source', id: string, anchor: HTMLElement): void }>();
 const root = ref<HTMLElement>();
 const activities = ref<TutorActivity[]>([]);
+// A delivered follow-up may repeat the answer verbatim. Observe that answer instead of rendering it twice.
+function usesAnswer(activity: TutorActivity) {
+  const withoutSources = activity.move.prompt.replace(/\[\[source:([^\]]*)\]\]/g, (marker, id: string) =>
+    props.sources.some(source => source.source_ref_id === id.trim()) ? '' : marker).replace(/[ \t]+$/gm, '').trim();
+  return !!props.answerTarget && !!props.answerText?.trim() && activity.move.actions.length === 0
+    && withoutSources === props.answerText.replace(/[ \t]+$/gm, '').trim();
+}
+const visibleActivities = computed(() => activities.value.filter(activity => !usesAnswer(activity)));
+const answerDeliveries = new Map<Element, string[]>();
+function renderText(text: string) {
+  return answerDisplayParts(sourceMarkedParts(text, props.sources), props.sources)
+    .map(part => part.kind === 'html' ? part.html : '').join('');
+}
+function openSource(text: string, event: MouseEvent) {
+  const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('button[data-answer-source-index]') : null;
+  if (!button || !(event.currentTarget as Element).contains(button)) return;
+  const part = sourceMarkedParts(text, props.sources)[Number(button.dataset.answerSourceIndex)];
+  if (part?.kind !== 'sources') return;
+  event.stopPropagation();
+  emit('source', part.source_ref_ids[0], button);
+}
 const responses = ref<Record<string, string>>({});
 const helps = ref<Record<string, { event_id: string; text: string }>>({});
 const error = ref(''); const busy = ref(false);
@@ -99,18 +124,27 @@ async function retry() {
   finally { busy.value = false; }
 }
 watch(() => [props.sessionId, props.turnId, props.reference?.presentation_id, props.reference?.revision], () => {
-  visible.clear(); visibleHelp.clear(); displayed.clear(); observer?.disconnect();
+  visible.clear(); visibleHelp.clear(); displayed.clear(); answerDeliveries.clear(); observer?.disconnect();
   pending = null; activities.value = []; helps.value = {}; responses.value = {}; void load();
 }, { immediate: true });
 watch(() => props.ready, () => { void markDisplayed(); });
 async function observeVisibleContent() {
   await nextTick();
+  answerDeliveries.clear();
+  const answer = props.answerTarget?.();
+  const ids = activities.value.filter(usesAnswer).map(activity => activity.delivery_ref);
+  if (answer && ids.length) { answerDeliveries.set(answer, ids); observer?.observe(answer); }
   root.value?.querySelectorAll<HTMLElement>('[data-delivery-ref], [data-help-for], [data-feedback-ref]').forEach(node => observer?.observe(node));
 }
 onMounted(() => {
   observer = new IntersectionObserver(entries => {
     for (const entry of entries) {
       const node = entry.target as HTMLElement;
+      const deliveries = answerDeliveries.get(node);
+      if (deliveries) {
+        for (const id of deliveries) { if (entry.isIntersecting) visible.add(id); else visible.delete(id); }
+        continue;
+      }
       const feedback = node.dataset.feedbackRef;
       if (feedback && entry.isIntersecting && !feedbackSeen.has(feedback)) {
         feedbackSeen.add(feedback);
@@ -133,21 +167,21 @@ onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEvent
 <template>
   <section ref="root" class="tutor-activities" aria-label="教学活动">
     <p v-if="error" role="alert">{{ error }} <button :disabled="busy" @click="retry">重试</button></p>
-    <article v-for="activity in activities" :key="activity.delivery_ref" :data-delivery-ref="activity.delivery_ref">
-      <p>{{ activity.move.prompt }}</p>
+    <article v-for="activity in visibleActivities" :key="activity.delivery_ref" :data-delivery-ref="activity.delivery_ref">
+      <div class="activity-text md" v-html="renderText(activity.move.prompt)" @click="openSource(activity.move.prompt, $event)"></div>
       <p v-if="activity.status !== 'active'" role="status">{{ activity.status === 'paused' ? '学习已暂停，可查看已交付内容和帮助。' : '原教学来源不可用，暂不能提交。' }}</p>
       <textarea v-if="activity.move.actions.some(a => ['submit', 'revise', 'self_report'].includes(a))" v-model="responses[activity.delivery_ref]" aria-label="活动回答" rows="2" />
       <template v-for="action in activity.move.actions" :key="action">
         <button v-if="!(action === 'submit' && activity.attempted) && !(action === 'revise' && !activity.attempted)"
           :data-help-action="['request_hint', 'reveal'].includes(action) ? action : undefined" :disabled="busy || !!pending || (activity.status !== 'active' && ['submit', 'revise', 'skip'].includes(action))" @click="act(activity, action)">{{ labels[action] }}</button>
       </template>
-      <p v-if="helps[activity.delivery_ref]" class="help" :data-help-for="activity.delivery_ref" role="status">{{ helps[activity.delivery_ref].text }}</p>
+      <div v-if="helps[activity.delivery_ref]" class="help activity-text md" :data-help-for="activity.delivery_ref" role="status" v-html="renderText(helps[activity.delivery_ref].text)" @click="openSource(helps[activity.delivery_ref].text, $event)"></div>
       <small v-if="activity.move.actions.length && !activity.move.actions.some(a => ['request_hint', 'reveal'].includes(a))">当前题目未提供提示或直接讲解，可保留题目并返回原文阅读。</small>
       <small v-if="activity.help_seen.length">此活动已展示过帮助；重开页面会保留这项记录。</small>
       <small v-if="activity.attempted" role="status">{{ assessmentLabels[activity.assessment?.status ?? 'unassessed'] }}</small>
       <small v-if="activity.assessment?.assistance_count">本次回答前已展示帮助。</small>
       <small v-if="(activity.assessment?.attempt ?? 0) > 1">这是第 {{ activity.assessment?.attempt }} 次作答。</small>
-      <ul v-if="activity.assessment?.items?.length" :data-feedback-ref="activity.assessment.action_ref"><li v-for="item in activity.assessment.items" :key="item.id">{{ item.reason }}</li></ul>
+      <ul v-if="activity.assessment?.items?.length" :data-feedback-ref="activity.assessment.action_ref"><li v-for="item in activity.assessment.items" :key="item.id"><div class="activity-text md" v-html="renderText(item.reason)" @click="openSource(item.reason, $event)"></div></li></ul>
     </article>
   </section>
 </template>
@@ -157,5 +191,6 @@ article { padding: 12px 16px; border-top: 1px solid var(--line); }
 textarea { display: block; width: 100%; box-sizing: border-box; font: inherit; }
 button { min-height: 44px; margin: 4px; font: inherit; }
 small { display: block; margin-top: 8px; }
-.help { white-space: pre-wrap; }
+.activity-text { line-height: 1.58; overflow-wrap: anywhere; }
+.activity-text :deep(.agent-source-button) { display: inline-flex; align-items: center; gap: 0.3rem; max-width: 100%; margin: 0 0.2rem; padding: 0.18rem 0.42rem; border: 1px solid var(--line); border-radius: 6px; color: var(--accent); background: var(--canvas); font: inherit; font-size: 0.8em; cursor: pointer; }
 </style>

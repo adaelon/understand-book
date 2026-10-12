@@ -355,7 +355,7 @@ onBeforeUnmount(() => {
         referrerpolicy="no-referrer"
         @load="onFrameLoad"
       />
-      <TutorActivities ref="teachingHost" v-if="view && ready && teaching" :session-id="sessionId" :turn-id="turnId" :reference="reference" :snapshot="teachingSnapshot" :ready="ready" />
+      <TutorActivities ref="teachingHost" v-if="view && ready && teaching" :session-id="sessionId" :turn-id="turnId" :reference="reference" :snapshot="teachingSnapshot" :ready="ready" :sources="view.sources" @source="(id, anchor) => emit('source', id, anchor)" />
       <TutorContinuation v-if="view && ready && teaching && !noteMemId && chatHead !== undefined"
         :session-id="sessionId" :turn-id="turnId" :reference="reference" :snapshot="teachingSnapshot" :head="chatHead ?? null" :enabled="!!continuationEnabled" :busy="busy || saving"
         @available="emit('continuation-available', $event)"

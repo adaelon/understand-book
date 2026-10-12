@@ -3,6 +3,55 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import TutorActivities from './TutorActivities.vue';
 
+it('renders teaching Markdown, math and bound sources without exposing raw markers', async () => {
+  api.tutorActivities.mockResolvedValue({ activities: [{ delivery_ref: 'lesson', status: 'active', attempted: false, help_seen: [],
+    move: { move_id: 'explain', prompt: '## SmartNIC\n\n**卸载**\n\n> 原文\n\n$Q$ [[source:ref1]]\n\n[[source:missing]]', actions: [] } }] });
+  const wrapper = mount(TutorActivities, { props: { sessionId: 'chat', turnId: 'turn', sources: [{ source_ref_id: 'ref1', label: '正文 · SmartNIC' }] } });
+  try {
+    await flushPromises();
+    expect(wrapper.get('h2').text()).toBe('SmartNIC');
+    expect(wrapper.get('strong').text()).toBe('卸载');
+    expect(wrapper.get('blockquote').text()).toBe('原文');
+    expect(wrapper.find('.katex').exists()).toBe(true);
+    expect(wrapper.text()).not.toContain('[[source:');
+    expect(wrapper.text()).toContain('来源不可用');
+    const source = wrapper.get('button[data-answer-source-index]');
+    await source.trigger('click');
+    expect(wrapper.emitted('source')?.[0]).toEqual(['ref1', source.element]);
+  } finally { wrapper.unmount(); }
+});
+
+it.each(['## 已显示的讲解', '## 已显示的讲解 [[source:ref1]]'])('uses the visible answer for duplicate actionless delivery %s and still records its exposure', async prompt => {
+  const answer = document.createElement('div'); answer.textContent = '已显示的讲解'; document.body.append(answer);
+  api.tutorActivities.mockResolvedValue({ activities: [{ delivery_ref: 'followup', status: 'active', attempted: false, help_seen: [],
+    move: { move_id: 'followup', prompt, actions: [] } }] });
+  const wrapper = mount(TutorActivities, { props: { sessionId: 'chat', turnId: 'turn', answerText: '## 已显示的讲解', answerTarget: () => answer, sources: [{ source_ref_id: 'ref1', label: '正文 · 讲解' }] } });
+  try {
+    await flushPromises();
+    expect(wrapper.find('article').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('已显示的讲解');
+    expect(api.tutorDisplay).not.toHaveBeenCalled();
+    reveal(answer); await flushPromises();
+    expect(api.tutorDisplay).toHaveBeenCalledWith('followup', undefined);
+  } finally { wrapper.unmount(); answer.remove(); }
+});
+
+it('retains an answer-matching interactive question and formats its help', async () => {
+  api.tutorActivities.mockResolvedValue({ activities: [{ delivery_ref: 'question', status: 'active', attempted: false, help_seen: [],
+    move: { move_id: 'question', prompt: '**题目**', actions: ['submit', 'request_hint'] } }] });
+  api.tutorAction.mockResolvedValue({ help: { event_id: 'help', text: '## 提示\n\n**比较需求** [[source:ref1]]' } });
+  const wrapper = mount(TutorActivities, { props: { sessionId: 'chat', turnId: 'turn', answerText: '**题目**', sources: [{ source_ref_id: 'ref1', label: '正文 · 需求' }] } });
+  try {
+    await flushPromises();
+    expect(wrapper.get('article strong').text()).toBe('题目');
+    reveal(wrapper.get('article').element); await flushPromises();
+    await wrapper.get('[data-help-action="request_hint"]').trigger('click'); await flushPromises();
+    expect(wrapper.get('.help h2').text()).toBe('提示');
+    expect(wrapper.get('.help strong').text()).toBe('比较需求');
+    expect(wrapper.find('.help button[data-answer-source-index]').exists()).toBe(true);
+  } finally { wrapper.unmount(); }
+});
+
 const api = vi.hoisted(() => ({
   tutorActivities: vi.fn(), tutorDisplay: vi.fn(), tutorAction: vi.fn(),
   tutorHelpDisplayed: vi.fn(), tutorFeedbackDisplayed: vi.fn(),
