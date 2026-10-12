@@ -18,7 +18,20 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const diskFailure = vi.hoisted(() => ({ failNextWrite: false }));
+vi.mock("node:fs", async importOriginal => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  return { ...actual, writeFileSync: (...args: Parameters<typeof actual.writeFileSync>) => {
+    if (diskFailure.failNextWrite) {
+      diskFailure.failNextWrite = false;
+      actual.writeFileSync(args[0], Buffer.alloc(0), args[2]);
+      throw Object.assign(new Error("disk full"), { code: "ENOSPC" });
+    }
+    return actual.writeFileSync(...args);
+  } };
+});
 import {
   failAutomaticBuildExecutorSession,
   AutomaticBuildExecutorStaleGenerationSessionError,
@@ -511,6 +524,19 @@ describe("automatic build executor.open", () => {
       version: "automatic_build_opaque_handoff_record.v4",
       recovery_identity: currentRecoveryIdentity(value, "2026-08-08T06:00:03.000Z"),
     });
+    expectNoAttempts(value);
+  });
+
+  it("removes a newly created handoff record when disk exhaustion interrupts its write", () => {
+    const value = v3Fixture("disk-full-write");
+    const file = path.join(value.registryRoot, "opaque-handoffs", `${value.envelope.opaque_handoff_ref}.json`);
+    unlinkSync(file);
+    diskFailure.failNextWrite = true;
+    expect(() => issueCurrentRecoveryHandoff(value, "2026-08-08T06:00:03.000Z")).toThrow("disk full");
+    expect(existsSync(file)).toBe(false);
+    const recovered = issueCurrentRecoveryHandoff(value, "2026-08-08T06:00:04.000Z");
+    expect(recovered.opaque_handoff_ref).toBe(value.envelope.opaque_handoff_ref);
+    expect(JSON.parse(readFileSync(file, "utf8")).issued_at).toBe("2026-08-08T06:00:04.000Z");
     expectNoAttempts(value);
   });
 

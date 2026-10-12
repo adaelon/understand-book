@@ -189,6 +189,7 @@ import {
 import { issueAutomaticBuildOpaqueHandoff } from "../../packages/core/src/automatic-build-executor-session";
 import {
   composeAutomaticBuildExecutorPrompt,
+  packagedBuildAssets,
   type AutomaticBuildExecutorPromptMode,
 } from "./executor-prompt";
 import { resolveContentProfile } from "../../packages/core/src/content-profile";
@@ -359,6 +360,10 @@ export function resolveAutomaticBuildExecutorPrompt(
     } catch {
       throw new AutomaticBuildExecutorPromptResolutionError("prompt_provider_unavailable", source);
     }
+  } else if (packagedBuildAssets) {
+    prompt = composeAutomaticBuildExecutorPrompt({ mode, extractor_name: extractorName,
+      extractor_prompt: packagedBuildAssets.prompts[extractorName],
+      protocol_wrapper: mode === "dispatch" ? packagedBuildAssets.protocol_wrapper : "" });
   } else {
     const [command, ...args] = executorPromptCommand(extractorName, mode);
     const output = captureBuildProcessOutput(command, args, path.dirname(path.resolve(command)));
@@ -416,7 +421,7 @@ export function resolveAutomaticBuildPromptAsset(
   let bytes: Buffer;
   if (source === "packaged_sidecar") {
     const sidecar = process.env.UNDERSTAND_BOOK_SIDECAR_SELF!;
-    const output = captureBuildProcessOutput(
+    const output = packagedBuildAssets ? { stdout: packagedBuildAssets.prompts[extractorName], stderr: "", status: 0, error: undefined } : captureBuildProcessOutput(
       sidecar,
       ["prompt", extractorName],
       path.dirname(path.resolve(sidecar)),
@@ -454,7 +459,7 @@ function resolveBuildExecutorAgentTemplate(): string {
   let bytes: Buffer;
   const sidecar = process.env.UNDERSTAND_BOOK_SIDECAR_SELF;
   if (sidecar) {
-    const output = captureBuildProcessOutput(
+    const output = packagedBuildAssets ? { stdout: packagedBuildAssets.agent_template, stderr: "", status: 0, error: undefined } : captureBuildProcessOutput(
       sidecar,
       ["executor.agent-template"],
       path.dirname(path.resolve(sidecar)),
@@ -486,7 +491,8 @@ function resolveBuildExecutorBoundaryProjections(): {
   const sidecar = process.env.UNDERSTAND_BOOK_SIDECAR_SELF;
   if (sidecar) {
     const readPackagedAsset = (command: "executor.mcp-config" | "executor.mcp-launcher"): string => {
-      const output = captureBuildProcessOutput(
+      const output = packagedBuildAssets ? { stdout: command === "executor.mcp-config" ? packagedBuildAssets.mcp_config : packagedBuildAssets.mcp_launcher,
+        stderr: "", status: 0, error: undefined } : captureBuildProcessOutput(
         sidecar,
         [command],
         path.dirname(path.resolve(sidecar)),
@@ -1291,6 +1297,7 @@ export function automaticBuildPlan(
   const availableAgentSlots = options.available_agent_slots ?? requestedWorkers;
   const budget = options.budget ?? DEFAULT_AUTOMATIC_BUILD_BUDGET;
   const snapshotRoute = routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, execution_profile: options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1,
+    public_stage_closure: options.build_plan?.public_stage_closure,
     reuse: options.build_plan?.reuse, retrieval: options.build_plan?.retrieval?.selection });
   if (snapshotRoute.status === "blocked") {
     return {
@@ -1475,7 +1482,8 @@ function expandAction(
   const snapshotRoute = decisionSnapshot
     && canonicalAutomaticBuildJson(decisionSnapshot.target.target_ref) === canonicalAutomaticBuildJson(target.target_ref)
     ? { status: "ready" as const, value: decisionSnapshot }
-    : routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, execution_profile: executionProfile, reuse: buildPlan?.reuse, retrieval: buildPlan?.retrieval?.selection });
+    : routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, execution_profile: executionProfile,
+      public_stage_closure: buildPlan?.public_stage_closure, reuse: buildPlan?.reuse, retrieval: buildPlan?.retrieval?.selection });
   if (snapshotRoute.status === "blocked") {
     return {
       snapshot: { target, stages: [] },
@@ -1492,7 +1500,8 @@ function expandAction(
     && buildPlan.public_stage_closure.includes(stage.stage));
   for (const stage of preparationStages) {
     if (!stage.policy_set) throw new Error("preparation stage is missing policy set");
-    const prepared = prepareAutomaticBuildSnapshot(target, stage.policy_set.stage, { quality_profile: qualityProfile, execution_profile: executionProfile, reuse: buildPlan.reuse });
+    const prepared = prepareAutomaticBuildSnapshot(target, stage.policy_set.stage, { quality_profile: qualityProfile, execution_profile: executionProfile,
+      public_stage_closure: buildPlan.public_stage_closure, reuse: buildPlan.reuse });
     if (prepared.status === "blocked") return { snapshot, action: automaticBuildRecoveryAction(prepared.recovery) };
     snapshot = prepared.value;
   }
@@ -2239,12 +2248,13 @@ export async function automaticBuildNextWithPreparation(targetInput: string, roo
   if (!plan?.retrieval) return automaticBuildNext(targetInput, rootDir, maxParallel, options);
   const target = resolveAutomaticBuildTarget(targetInput, rootDir, { book_id: options.book_id });
   const snapshot = routeAutomaticBuildSnapshot(target, { quality_profile: options.quality_profile,
-    execution_profile: options.execution_profile, reuse: plan.reuse, retrieval: plan.retrieval.selection });
+    execution_profile: options.execution_profile, public_stage_closure: plan.public_stage_closure, reuse: plan.reuse, retrieval: plan.retrieval.selection });
   if (snapshot.status !== "ready") return automaticBuildNext(targetInput, rootDir, maxParallel, options);
   const reachable = snapshot.value.stages.find(s => !s.closed && (s.retrieval_preparation || s.preparation_required));
   if (!reachable || (reachable.stage !== "book_structure" && reachable.stage !== "formal_objects")) return automaticBuildNext(targetInput, rootDir, maxParallel, options);
   const prepared = await prepareAutomaticBuildSnapshot(target, reachable.stage, {
     quality_profile: options.quality_profile, execution_profile: options.execution_profile,
+    public_stage_closure: plan.public_stage_closure,
     authorization: { plan, runtime: options.retrieval_runtime ?? configuredBuildRetrievalRuntime(plan), signal: options.signal },
   });
   if (prepared.status !== "ready") return { version: "automatic_build_next.v1", snapshot: { target, stages: [] },
@@ -2332,7 +2342,7 @@ export function runAutomaticBuildCloseStage(
   }
 
   if (isTeachingStage(stage)) {
-    const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, reuse: options.build_plan?.reuse,
+    const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, public_stage_closure: options.build_plan?.public_stage_closure, reuse: options.build_plan?.reuse,
       retrieval: options.build_plan?.retrieval?.selection });
     const state = snapshot.stages.find(s => s.stage === stage);
     if (!state) throw new Error("teaching stage is not reachable");

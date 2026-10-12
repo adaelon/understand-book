@@ -1,0 +1,53 @@
+{
+  "scope": "Two-segment average-speed conditions; persisted target and public answer inspected separately. Exact arithmetic is in counterexamples.json.",
+  "findings": [
+    {
+      "group": "baseline", "run": "run-1",
+      "target": "目标要求用时间占比解释并比较具体情形，没有把等时直接写成必要条件。",
+      "public": "60/30 等距离得 40、等时间得 45 及加权式正确。正文论证等时间对应等权重，未给出等速不等时的数值相等边界。",
+      "target_quote": "能用「时间占比＝权重」重述平均速度",
+      "public_quote": "那么只有当两段时间相等时，等权重才名正言顺",
+      "counterexamples": ["equal_speed_unequal_time", "equal_time_unequal_speed", "original_unequal_time"]
+    },
+    {
+      "group": "baseline", "run": "run-2",
+      "target": "目标要求时间不等时不用算术平均，漏掉等速不等时仍相等的情形。",
+      "public": "公开正文把等时明确写成必要条件；两个数值例子本身正确。",
+      "target_quote": "在时间不等时仍坚持用总量相除而不用速度算术平均",
+      "public_quote": "只有时间相等时，两者才重合",
+      "counterexamples": ["equal_speed_unequal_time"]
+    },
+    {
+      "group": "baseline", "run": "run-3",
+      "target": "目标和 prompt 将等距离概括为简单平均失效；等速等距离反例可以否定。",
+      "public": "将不必等时改成必然不等时，并断言等距离时简单平均就是错的。",
+      "target_quote": "路程相等时失效",
+      "public_quote": "简单平均就是错的",
+      "counterexamples": ["equal_speed_equal_distance"]
+    },
+    {
+      "group": "on-demand", "run": "run-1",
+      "target": "两次 select 均被拒绝，无持久目标或教学交付；不能用尝试参数当作已保存目标。",
+      "public": "60/30 算例正确，但仍声称只有等时才可简单平均；先承认等速取等号，又写等时间结果总是更大。",
+      "target_quote": null,
+      "public_quote": "只有当**两段时间相等**时",
+      "counterexamples": ["equal_speed_unequal_time", "equal_speed_equal_distance"]
+    },
+    {
+      "group": "on-demand", "run": "run-2",
+      "target": "learning_focus 仍使用‘时间相等时才’的必要条件表述，缺少等速例外。",
+      "public": "两组数值例子与等距离调和平均正确，明确写出速度相同时取等号。公开正文的边界比目标完整。",
+      "target_quote": "时间相等时才退化为速度的算术平均",
+      "public_quote": "速度相同即 v₁ = v₂ 时取等号",
+      "counterexamples": ["equal_speed_unequal_time", "equal_time_unequal_speed", "original_unequal_time", "equal_speed_equal_distance"]
+    },
+    {
+      "group": "on-demand", "run": "run-3",
+      "target": "目标沿用‘等时间时才等于算术平均’概括，未说明等速情形。",
+      "public": "加权式和 60/30 的 40、45 算例正确；由时间可以不等就否定速度直接平均，仍遗漏等速不等时。",
+      "target_quote": "等时间时才等于算术平均",
+      "public_quote": "一旦承认时间可以不等,「把速度数值直接平均」就站不住了",
+      "counterexamples": ["equal_speed_unequal_time"]
+    }
+  ]
+}

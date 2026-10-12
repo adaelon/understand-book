@@ -7,6 +7,8 @@ import App from "./App.vue";
 import { network, installIdentity, installWorkspace, submittedRunDrafts } from './network-context';
 import { writeReaderSurfacePreference } from './reader-surface';
 import * as networkClient from './network-client';
+import { invoke } from '@tauri-apps/api/core';
+vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 
 const api = vi.hoisted(() => Object.fromEntries([
   "desktopStatus", "buildWorkbench", "manifest", "assetManifest", "sourceFingerprint",
@@ -71,12 +73,78 @@ it('enables continuous teaching without inventing a goal or sending a synthetic 
   api.tutorMutate.mockResolvedValue({ control: { enabled: true, revision: 1, current_tutor_session_id: null }, sessions: {} });
   api.tutorStart.mockResolvedValue({ started: true, message: '请从原文开始学习' });
   api.agentRunCreate.mockResolvedValue({ answer: '已开始', answer_view: { parts: [] }, effects: [] });
-  const w = mount(App, { shallow: true, global: { stubs: { TopBar: defineComponent({ template: '<div><slot name="tutor-control" /></div>' }) } } });
+  const w = mount(App, { shallow: true, global: { renderStubDefaultSlot:true, stubs: { RightRail: defineComponent({ template: '<div><slot name="tutor-control" /></div>' }) } } });
   wrappers.push(w);
   await flushPromises();
   w.findComponent({ name: 'TutorControl' }).vm.$emit('toggle');
   await flushPromises();
   expect(api.tutorStart).not.toHaveBeenCalled();
+  expect(api.agentRunCreate).not.toHaveBeenCalled();
+});
+
+it('shows material titles while opening the original directory', async () => {
+  api.bookLibrary.mockResolvedValue({ root: 'books', books: [
+    { name: 'paper-slug', title: '材料的完整标题', book_id: 'paper-slug', dir: 'books/paper-slug', route: 'reader' },
+    { name: 'paper-second-edition', title: '材料的完整标题', book_id: 'paper-second', dir: 'books/paper-second-edition', route: 'reader' },
+  ] });
+  const w = start(); await flushPromises();
+  w.getComponent({ name: 'TopBar' }).vm.$emit('open-book'); await flushPromises();
+  expect(w.get('.book-picker-card strong').text()).toBe('材料的完整标题');
+  expect(w.get('.book-picker-location').attributes('open')).toBeUndefined();
+  expect(w.findAll('.book-picker-variant').map(item => item.text())).toEqual(['paper-slug', 'paper-second-edition']);
+  await w.findAll('.book-picker-card')[1].trigger('click');
+  await w.get('.book-picker-actions .primary-action').trigger('click'); await flushPromises();
+  expect(api.openBook).toHaveBeenCalledWith('books/paper-second-edition');
+});
+
+it('keeps desktop connection settings and advanced protocol selection bound to the existing save command', async () => {
+  api.desktopStatus.mockResolvedValue({ desktop_host: true, reader_only: false, active_book: true, library_root_available: true });
+  vi.stubGlobal('__TAURI_INTERNALS__', {});
+  const provider = { configured: true, source: 'settings', mode: 'native', base_url: 'https://provider.example/v1', model: 'existing-model', api_key_configured: true };
+  vi.mocked(invoke).mockImplementation(async command => command === 'codex_plugin_status' ? { state: 'installed_externally' } : provider as never);
+  const w = start(); await flushPromises();
+  w.getComponent({ name: 'TopBar' }).vm.$emit('open-settings'); await flushPromises();
+  expect(w.text()).toContain('AI 服务连接');
+  expect(w.get('.desktop-provider-advanced').attributes('open')).toBeUndefined();
+  expect((w.get('input[type=password]').element as HTMLInputElement).value).toBe('');
+  await w.get('.desktop-provider-grid input[type=url]').setValue('https://example.test/v1');
+  await w.get('.desktop-provider-grid label:nth-child(2) input').setValue('selected-model');
+  await w.findAll('.desktop-provider-mode button').find(button => button.text().includes('ReAct'))!.trigger('click');
+  await w.get('.desktop-provider-save').trigger('click'); await flushPromises();
+  expect(invoke).toHaveBeenCalledWith('save_desktop_provider_settings', { input: {
+    mode: 'react', api_key: '', base_url: 'https://example.test/v1', model: 'selected-model',
+  } });
+});
+
+it.each([false,true])('resumes from the goal card only after enabling has been confirmed (enable failure: %s)', async failEnable => {
+  const session = { id:'learning',revision:1,status:'paused',user_intent:'理解原文',explicit_constraints:[],
+    current_focus:{interpretation:'',target_object_refs:[],capability_targets:[]},
+    material_scope:[{source_id:'startup',scope_refs:[],role:'primary'}],default_teaching_intent:null,path_instance_ref:null,progress_ref:null };
+  const state = {control:{enabled:false,revision:1,current_tutor_session_id:'learning'},sessions:{learning:session}};
+  api.tutorState.mockImplementation(async()=>structuredClone(state));
+  api.tutorMutate.mockImplementation(async request => {
+    if (request.action.kind === 'set_enabled') {
+      if (failEnable) throw new Error('保存失败');
+      state.control.enabled = true;
+    } else if (request.action.kind === 'resume') state.sessions.learning.status = 'active';
+    state.control.revision++; return structuredClone(state);
+  });
+  api.tutorStart.mockResolvedValue({started:false,reason:'测试已记录继续操作'});
+  const w = mount(App,{shallow:true,global:{renderStubDefaultSlot:true,stubs:{RightRail:defineComponent({template:'<div><slot name="learning-goal" /></div>'})}}});
+  wrappers.push(w); await flushPromises();
+  w.findComponent({name:'ConversationLearningGoal'}).vm.$emit('resume'); await flushPromises();
+  expect(api.tutorMutate.mock.calls.map(([request])=>request.action.kind)).toEqual(failEnable ? ['set_enabled'] : ['set_enabled','resume']);
+  expect(api.tutorStart).toHaveBeenCalledTimes(failEnable ? 0 : 1);
+  expect(api.agentRunCreate).not.toHaveBeenCalled();
+});
+
+it('opens understanding directly from the chat without changing teaching or the draft', async () => {
+  const w = mount(App,{props:{chatDraft:{message:'尚未发送',quote:null,goalId:null}},shallow:true,global:{renderStubDefaultSlot:true,
+    stubs:{RightRail:defineComponent({template:'<div><slot name="learning-actions" /></div>'})}}});
+  wrappers.push(w); await flushPromises();
+  await w.findAll('button').find(button=>button.text()==='我的理解')!.trigger('click');
+  expect(w.findComponent({name:'TutorPanel'}).props('initialView')).toBe('understanding');
+  expect(api.tutorMutate).not.toHaveBeenCalled();
   expect(api.agentRunCreate).not.toHaveBeenCalled();
 });
 afterEach(() => {
@@ -89,6 +157,31 @@ afterEach(() => {
 });
 
 describe("workspace startup", () => {
+  it.each(['new-chat', 'select-chat'])('unlocks %s as soon as history is ready, before profile refresh', async action => {
+    installIdentity({ user_id: 'A', csrf_token: 'csrf' });
+    installWorkspace({ workspace_id: 'w', generation: 1, revision: 1, selected_chat: 'startup-chat',
+      published_book_ref: { book_id: book, publication_id: 'p' }, reader: await api.state() });
+    const wrapper = start(); await flushPromises();
+    const rail = wrapper.getComponent({ name: 'RightRail' });
+    const response = deferred<ReturnType<typeof history>>();
+    const profile = deferred<object>();
+    api.agentNew.mockImplementation(async () => ({ ok: true, history: await response.promise }));
+    api.agentHistorySelect.mockReturnValue(response.promise);
+    api.profileMemory.mockReturnValueOnce(profile.promise);
+    rail.vm.$emit(action, 'next-chat'); await flushPromises();
+    expect(rail.props('historyLoading')).toBe(true);
+    response.resolve({ ...history(), active_session_id: 'next-chat', current: { ...history().current, id: 'next-chat' } });
+    await flushPromises();
+    try {
+      expect(rail.props('activeChatSessionId')).toBe('next-chat');
+      expect(rail.props('historyLoading')).toBe(false);
+      expect(rail.props('profileMemoryLoading')).toBe(true);
+      expect(wrapper.getComponent({ name: 'TopBar' }).props('chatUnavailable')).toBe(false);
+    } finally { profile.resolve({}); await flushPromises(); }
+    expect(rail.props('profileMemoryLoading')).toBe(false);
+    expect(rail.props('historyError')).toBeNull();
+  });
+
   it("shows the text-free page animation until the first reading window is ready", async () => {
     const text = deferred<{ lid: string; text: string }>();
     api.text.mockReturnValue(text.promise);

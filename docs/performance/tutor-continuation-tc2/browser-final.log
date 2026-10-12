@@ -1,0 +1,25 @@
+[WebServer] (node:3720) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:45280) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 13 tests using 1 worker
+
+(node:40808) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 playwright\tutor-continuation.spec.ts:5:3 › continuation_baseline_markdown_ready_manual_prompt (12.7s)
+  ok  2 playwright\tutor-continuation.spec.ts:20:3 › continuation_tc2_markdown_ready_direct_help (2.3s)
+  ok  3 playwright\tutor-continuation.spec.ts:5:3 › continuation_baseline_markdown_missing_foundation_manual_prompt (2.6s)
+  ok  4 playwright\tutor-continuation.spec.ts:20:3 › continuation_tc2_markdown_missing_foundation_direct_help (1.9s)
+  ok  5 playwright\tutor-continuation.spec.ts:5:3 › continuation_baseline_pdf_ready_manual_prompt (5.5s)
+  ok  6 playwright\tutor-continuation.spec.ts:20:3 › continuation_tc2_pdf_ready_direct_help (3.5s)
+  ok  7 playwright\tutor-continuation.spec.ts:5:3 › continuation_baseline_pdf_missing_foundation_manual_prompt (3.4s)
+  ok  8 playwright\tutor-continuation.spec.ts:20:3 › continuation_tc2_pdf_missing_foundation_direct_help (3.3s)
+  -   9 playwright\tutor-continuation.spec.ts:33:1 › continuation_red_answer_excerpt_is_sent_from_the_original_answer
+  ok 10 playwright\tutor-continuation.spec.ts:53:1 › continuation_tc2_first_help_enable_and_continue_preserves_draft (3.1s)
+  ok 11 playwright\tutor-continuation.spec.ts:79:1 › continuation_tc2_enable_failure_never_sends_answer_request (1.8s)
+  ok 12 playwright\tutor-continuation.spec.ts:88:1 › continuation_tc2_activity_help_does_not_leave_a_phantom_chat_turn (2.1s)
+  ok 13 playwright\tutor-continuation.spec.ts:100:1 › continuation_tc2_original_question_navigation_preserves_unsent_draft (2.2s)
+
+  1 skipped
+  12 passed (1.4m)

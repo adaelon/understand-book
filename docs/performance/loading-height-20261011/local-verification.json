@@ -1,0 +1,118 @@
+{
+  "verifiedAt": "2026-10-11T02:23:57.925Z",
+  "base": "http://127.0.0.1:2385",
+  "results": [
+    {
+      "engine": "chromium",
+      "phase": "before",
+      "width": 390,
+      "height": 844,
+      "areaHeight": 112,
+      "areaWidth": 390,
+      "centerX": 0,
+      "centerY": -366,
+      "overflow": 0
+    },
+    {
+      "engine": "chromium",
+      "phase": "after",
+      "width": 390,
+      "height": 844,
+      "areaHeight": 844,
+      "areaWidth": 390,
+      "centerX": 0,
+      "centerY": 0,
+      "overflow": 0
+    },
+    {
+      "engine": "chromium",
+      "phase": "after",
+      "width": 320,
+      "height": 640,
+      "areaHeight": 640,
+      "areaWidth": 320,
+      "centerX": 0,
+      "centerY": 0,
+      "overflow": 0
+    },
+    {
+      "engine": "chromium",
+      "phase": "after",
+      "width": 844,
+      "height": 390,
+      "areaHeight": 390,
+      "areaWidth": 844,
+      "centerX": 0,
+      "centerY": 0,
+      "overflow": 0
+    },
+    {
+      "engine": "chromium",
+      "phase": "after",
+      "width": 1440,
+      "height": 900,
+      "areaHeight": 900,
+      "areaWidth": 1440,
+      "centerX": 0,
+      "centerY": 0,
+      "overflow": 0
+    },
+    {
+      "engine": "webkit",
+      "phase": "before",
+      "width": 390,
+      "height": 844,
+      "areaHeight": 112,
+      "areaWidth": 390,
+      "centerX": 0,
+      "centerY": -366,
+      "overflow": 0
+    },
+    {
+      "engine": "webkit",
+      "phase": "after",
+      "width": 390,
+      "height": 844,
+      "areaHeight": 843.984375,
+      "areaWidth": 390,
+      "centerX": 0,
+      "centerY": -0.015625,
+      "overflow": 0
+    },
+    {
+      "engine": "webkit",
+      "phase": "after",
+      "width": 320,
+      "height": 640,
+      "areaHeight": 640,
+      "areaWidth": 320,
+      "centerX": 0,
+      "centerY": 0,
+      "overflow": 0
+    },
+    {
+      "engine": "webkit",
+      "phase": "after",
+      "width": 844,
+      "height": 390,
+      "areaHeight": 390,
+      "areaWidth": 844,
+      "centerX": 0,
+      "centerY": 0,
+      "overflow": 0
+    },
+    {
+      "engine": "webkit",
+      "phase": "after",
+      "width": 1440,
+      "height": 900,
+      "areaHeight": 900,
+      "areaWidth": 1440,
+      "centerX": 0,
+      "centerY": 0,
+      "overflow": 0
+    }
+  ],
+  "errors": [],
+  "loginTransition": true
+}

@@ -23,6 +23,9 @@ pub mod goldset;
 pub mod guided_read_replay;
 pub mod goal;
 pub mod tutor;
+pub mod tutor_continuation;
+#[cfg(test)]
+mod tutor_continuation_tests;
 pub mod memory_intent;
 pub mod memory_policy;
 pub mod memory_review;
@@ -5160,9 +5163,11 @@ mod tests {
             assert!(!budget.over_high_watermark);
             assert!(budget.fits);
             assert_eq!(author.active_context.remaining_tokens, ordinary.active_context.remaining_tokens
-                - i64::from(131_072 - 8_000)
+                - i64::from(131_072 - 32_768)
                 - i64::from(author.active_context.estimated_input_tokens - ordinary.active_context.estimated_input_tokens));
-            assert_eq!(ordinary.output_token_limit, None);
+            assert_eq!(ordinary.output_token_limit, Some(32_768));
+            assert_eq!(native_chat_request_projection(model, &ordinary).0["max_tokens"], 32_768);
+            assert_eq!(react_chat_request_projection(model, &ordinary)["max_tokens"], 32_768);
             assert_eq!(AgentRequestPlan::for_ad_hoc(profile.clone(), &messages, &tools).output_token_limit, None);
             let explicit = catalog.resolve(model, ProviderToolProtocol::Native, Some(profile));
             assert_eq!(AgentRequestPlan::for_agent_turn(explicit, &messages, &tools).output_token_limit, None);

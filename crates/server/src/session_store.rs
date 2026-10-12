@@ -80,7 +80,8 @@ impl SessionStore {
         log.append(event.clone())?;
         let index = history.sessions.iter().position(|s| s.id == id)
             .ok_or_else(|| agent_history_internal("session projection missing"))?;
-        if matches!(event.body, EventBody::TurnPrepared { .. }) {
+        if matches!(event.body, EventBody::TurnPrepared { .. })
+            && log.projection.inputs.contains_key(event.turn_id.as_ref().unwrap()) {
             history.sessions[index].updated_at = event.at;
         } else {
             // Apply the same sanitized delta without copying the existing transcript.

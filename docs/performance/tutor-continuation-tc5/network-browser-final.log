@@ -1,0 +1,67 @@
+
+[WebServer] (node:24268) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+[WebServer] (node:7776) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+
+(node:13624) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1/1] playwright\tutor-continuation-api.spec.ts:46:1 › tc5_actual_multi_user_browser_request_preserves_choice
+
+[WebServer] 21:58:50 [vite] http proxy error: /workspaces/ws-01a12b42-4bbd-7c22-95f3-880a4113fe27/tutor/activities
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8787
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+
+[WebServer] 21:58:50 [vite] http proxy error: /workspaces/ws-01a12b42-4bbd-7c22-95f3-880a4113fe27/profile/memory
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8787
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+
+[WebServer] 21:58:50 [vite] http proxy error: /workspaces/ws-01a12b42-4bbd-7c22-95f3-880a4113fe27
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8787
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+
+[WebServer] 21:58:50 [vite] http proxy error: /books/tc0-average-speed/publications/01a12b42-4b29-7d12-b523-5319fef883a7/tutor_readiness
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8787
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+
+[WebServer] 21:58:50 [vite] http proxy error: /tutor/state
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8787
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+
+[WebServer] 21:58:50 [vite] http proxy error: /workspaces/ws-01a12b42-4bbd-7c22-95f3-880a4113fe27
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8787
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+
+[WebServer] 21:58:50 [vite] http proxy error: /workspaces/ws-01a12b42-4bbd-7c22-95f3-880a4113fe27
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8787
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+
+[WebServer] 21:58:50 [vite] http proxy error: /workspaces/ws-01a12b42-4bbd-7c22-95f3-880a4113fe27
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8787
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+
+[WebServer] 21:58:50 [vite] http proxy error: /workspaces/ws-01a12b42-4bbd-7c22-95f3-880a4113fe27
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8787
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+
+[WebServer] 21:58:50 [vite] http proxy error: /workspaces/ws-01a12b42-4bbd-7c22-95f3-880a4113fe27
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8787
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+
+[WebServer] 21:58:50 [vite] http proxy error: /workspaces/ws-01a12b42-4bbd-7c22-95f3-880a4113fe27
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8787
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+
+[WebServer] 21:58:50 [vite] http proxy error: /workspaces/ws-01a12b42-4bbd-7c22-95f3-880a4113fe27
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8787
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+
+[WebServer] 21:58:50 [vite] http proxy error: /workspaces/ws-01a12b42-4bbd-7c22-95f3-880a4113fe27
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8787
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+  1 passed (18.4s)

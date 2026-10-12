@@ -1,0 +1,3467 @@
+{
+  "evidence": [
+    [
+      1,
+      {
+        "action_ref": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5",
+        "assessment_ref": null,
+        "assistance_refs": [],
+        "attempt": 0,
+        "capability": "explanation",
+        "correction": null,
+        "delivery_ref": null,
+        "evidence_id": "interpretation:tc6-prior",
+        "fact_refs": [
+          "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5"
+        ],
+        "interpretation": "读者当前在问除法定义与乘法回代的连接，可能需要拆开等式变形。",
+        "interpreter_version": "resident.hypothesis.v1",
+        "label": "average speed",
+        "learner_quote": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+        "map_revision": null,
+        "nature": "hypothesis",
+        "object_id": null,
+        "object_revision": null,
+        "session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+        "source_id": "tc0-average-speed",
+        "source_quotes": [],
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "status": "unassessed",
+        "supersedes": null,
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "Explain the denominator",
+          "learning_focus": "average speed",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "start_lid": "1.1"
+            }
+          ]
+        },
+        "teaching_implication": "先用除法与乘法互逆解释回代，再用一组数字演示。"
+      }
+    ],
+    [
+      2,
+      {
+        "action_ref": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc",
+        "assessment_ref": null,
+        "assistance_refs": [],
+        "attempt": 0,
+        "capability": "explanation",
+        "correction": null,
+        "delivery_ref": null,
+        "evidence_id": "interpretation:hyp:denominator-pause-turn_0b5fa49168f9eecc",
+        "fact_refs": [
+          "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc"
+        ],
+        "interpretation": "读者自述已掌握除法与乘法互逆的计算层面（“乘除互逆我已经明白了”），并把卡点明确定位在分母的口径上：“停下来时没走路，为什么停顿还要算进分母？”因此障碍不是代数变形，而是“总时间”这个量的指称——他默认分母应登记“产生路程的时长”，而定义用的是从出发到到达的总时长。前一轮“需要拆开等式变形”的假设与读者自述不符。",
+        "interpreter_version": "resident.hypothesis.v1",
+        "label": "average speed",
+        "learner_quote": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+        "map_revision": null,
+        "nature": "hypothesis",
+        "object_id": null,
+        "object_revision": null,
+        "session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+        "source_id": "tc0-average-speed",
+        "source_quotes": [],
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "status": "unassessed",
+        "supersedes": "interpretation:tc6-prior",
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "Explain the denominator",
+          "learning_focus": "average speed",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "start_lid": "1.1"
+            }
+          ]
+        },
+        "teaching_implication": "不要再做代数变形或回代演示；直接针对分母登记什么展开：分母登记的是时间账本而非距离账本，停顿在时间上真实发生，所以进分母；用“同一段路程被摊到更长时间上”讲清平均的含义，并说明排除停顿得到的是另一个量（骑行中的速度）。"
+      }
+    ]
+  ],
+  "facts": [
+    [
+      1,
+      {
+        "binding": {
+          "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_0b5fa79168f9f3e5",
+          "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+        },
+        "causal_refs": [],
+        "event_id": "assets:turn_0b5fa79168f9f3e5",
+        "kind": "turn_bound",
+        "occurred_at": "1000",
+        "payload": {}
+      }
+    ],
+    [
+      2,
+      {
+        "binding": {
+          "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_0b5fa79168f9f3e5",
+          "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+        },
+        "causal_refs": [],
+        "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5",
+        "kind": "usage_observed",
+        "occurred_at": "1000",
+        "payload": {
+          "interaction": null,
+          "original_ref": {
+            "book_id": "tc0-average-speed",
+            "kind": "chat_turn",
+            "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+            "turn_id": "turn_0b5fa79168f9f3e5"
+          },
+          "presentation_follow_up": null,
+          "question_anchor_lid": null,
+          "response": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+          "teaching_ref": null,
+          "usage": {
+            "kind": "user_message"
+          }
+        }
+      }
+    ],
+    [
+      3,
+      {
+        "binding": {
+          "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_0b5fa79168f9f3e5",
+          "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+        },
+        "causal_refs": [],
+        "event_id": "binding:turn_0b5fa79168f9f3e5",
+        "kind": "turn_bound",
+        "occurred_at": "1000",
+        "payload": {
+          "binding": {
+            "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "tc0-average-speed",
+            "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+            "turn_id": "turn_0b5fa79168f9f3e5",
+            "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+          },
+          "confirmed_preferences": [],
+          "constraints": [],
+          "current_request": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+          "default_teaching_intent": null,
+          "learner_context": {
+            "confirmed_background": [],
+            "confirmed_preferences": [],
+            "constraints": [],
+            "current_request": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+            "current_target": null,
+            "details": "tutor.step understanding with object_id and after",
+            "entries": [],
+            "evidence_watermark": 0,
+            "interpretations": [],
+            "path_progress": [],
+            "pending_activity": null,
+            "pending_assessment_refs": [],
+            "projection_watermark": 0,
+            "recent_facts": [
+              {
+                "action": null,
+                "answer_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "assistance_count": 0,
+                "attempt": null,
+                "binding": {
+                  "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "control_revision": 2,
+                  "session_revision": 1,
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "turn_id": "turn_0b5fa79168f9f3e5",
+                  "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                },
+                "causal_refs": [],
+                "continuation": null,
+                "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5",
+                "help_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "interaction": null,
+                "kind": "usage_observed",
+                "move_id": null,
+                "occurred_at": "1000",
+                "original_ref": {
+                  "book_id": "tc0-average-speed",
+                  "kind": "chat_turn",
+                  "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "turn_id": "turn_0b5fa79168f9f3e5"
+                },
+                "prompt_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "response_preview": {
+                  "text": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+                  "truncated": false
+                },
+                "target": null,
+                "usage": {
+                  "kind": "user_message"
+                }
+              }
+            ],
+            "session_focus": {
+              "capability_targets": [],
+              "interpretation": "",
+              "target_object_refs": []
+            },
+            "stale": false,
+            "uninterpreted_fact_refs": [
+              "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5"
+            ],
+            "unknown_when_absent": true,
+            "user_intent": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？"
+          },
+          "limitations": [],
+          "object_count": 0,
+          "objects": [],
+          "recent_facts": [
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_0b5fa79168f9f3e5",
+                "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+              },
+              "causal_refs": [],
+              "continuation": null,
+              "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "interaction": null,
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "1000",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "turn_id": "turn_0b5fa79168f9f3e5"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "user_message"
+              }
+            }
+          ],
+          "status": "active",
+          "teaching_assets": {
+            "cognitive_materials": {
+              "status": "missing"
+            },
+            "formal_objects": {
+              "status": "missing"
+            },
+            "limitations": [],
+            "reason": "正式教学素材尚未发布",
+            "source_id": "tc0-average-speed",
+            "status": "preparing",
+            "teaching_map_revision": null
+          },
+          "user_intent": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？"
+        }
+      }
+    ],
+    [
+      4,
+      {
+        "binding": {
+          "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_0b5fa79168f9f3e5",
+          "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+        },
+        "causal_refs": [
+          "binding:turn_0b5fa79168f9f3e5"
+        ],
+        "event_id": "move:turn_0b5fa79168f9f3e5:explain",
+        "kind": "move_selected",
+        "occurred_at": "2026-10-11T14:43:08.6015025Z",
+        "payload": {
+          "help_policy": "preserve_exposure",
+          "move": {
+            "actions": [],
+            "assessment": null,
+            "capability": "explanation",
+            "continuation": {
+              "options": [
+                {
+                  "label": "Compare two equal-distance journeys",
+                  "move_kind": "compare",
+                  "option_id": "compare",
+                  "purpose": "See why elapsed time changes the average"
+                },
+                {
+                  "label": "Work through one journey with numbers",
+                  "move_kind": "explain",
+                  "option_id": "example",
+                  "purpose": "Connect total distance to total time"
+                }
+              ],
+              "recommended_option_id": "compare"
+            },
+            "explanation": null,
+            "hint": null,
+            "intent_origin": "neutral",
+            "intent_quote": null,
+            "interaction_intent": "neutral",
+            "interpretation_refs": [
+              "interpretation:tc6-prior"
+            ],
+            "kind": "explain",
+            "move_id": "explain",
+            "object_ids": [],
+            "preference_ref": null,
+            "presentation": null,
+            "prompt": "Use total distance divided by total time.",
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Explain the denominator",
+              "learning_focus": "average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          },
+          "object_versions": [],
+          "retry_policy": "append_attempt",
+          "scorer_version": "assessment.v1",
+          "scoring_sources": {}
+        }
+      }
+    ],
+    [
+      5,
+      {
+        "binding": {
+          "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_0b5fa79168f9f3e5",
+          "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+        },
+        "causal_refs": [
+          "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5"
+        ],
+        "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:assistant:turn_0b5fa79168f9f3e5",
+        "kind": "usage_observed",
+        "occurred_at": "now",
+        "payload": {
+          "answer": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。",
+          "answer_view": {
+            "parts": [
+              {
+                "kind": "markdown",
+                "text": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。"
+              }
+            ],
+            "sources": []
+          },
+          "original_ref": {
+            "book_id": "tc0-average-speed",
+            "kind": "chat_turn",
+            "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+            "turn_id": "turn_0b5fa79168f9f3e5"
+          },
+          "source_bindings": [],
+          "usage": {
+            "kind": "assistant_delivery"
+          }
+        }
+      }
+    ],
+    [
+      6,
+      {
+        "binding": {
+          "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_0b5fa79168f9f3e5",
+          "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+        },
+        "causal_refs": [
+          "move:turn_0b5fa79168f9f3e5:explain"
+        ],
+        "event_id": "delivery:turn_0b5fa79168f9f3e5:explain",
+        "kind": "message_delivered",
+        "occurred_at": "now",
+        "payload": {
+          "answer": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。",
+          "answer_view": {
+            "parts": [
+              {
+                "kind": "markdown",
+                "text": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。"
+              }
+            ],
+            "sources": []
+          },
+          "assessment_contract_ref": null,
+          "move": {
+            "actions": [],
+            "capability": "explanation",
+            "continuation": {
+              "options": [
+                {
+                  "label": "Compare two equal-distance journeys",
+                  "move_kind": "compare",
+                  "option_id": "compare",
+                  "purpose": "See why elapsed time changes the average"
+                },
+                {
+                  "label": "Work through one journey with numbers",
+                  "move_kind": "explain",
+                  "option_id": "example",
+                  "purpose": "Connect total distance to total time"
+                }
+              ],
+              "recommended_option_id": "compare"
+            },
+            "intent_origin": "neutral",
+            "intent_quote": null,
+            "interaction_intent": "neutral",
+            "interpretation_refs": [
+              "interpretation:tc6-prior"
+            ],
+            "kind": "explain",
+            "move_id": "explain",
+            "object_ids": [],
+            "preference_ref": null,
+            "presentation": null,
+            "prompt": "Use total distance divided by total time.",
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Explain the denominator",
+              "learning_focus": "average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          },
+          "object_versions": [],
+          "presentation": null,
+          "source_bindings": []
+        }
+      }
+    ],
+    [
+      7,
+      {
+        "binding": {
+          "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_0b5fa49168f9eecc",
+          "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+        },
+        "causal_refs": [],
+        "event_id": "assets:turn_0b5fa49168f9eecc",
+        "kind": "turn_bound",
+        "occurred_at": "1000",
+        "payload": {}
+      }
+    ],
+    [
+      8,
+      {
+        "binding": {
+          "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_0b5fa49168f9eecc",
+          "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+        },
+        "causal_refs": [],
+        "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc",
+        "kind": "usage_observed",
+        "occurred_at": "1000",
+        "payload": {
+          "interaction": {
+            "accepted_request": "这一步没跟上",
+            "action": {
+              "entry_action": "clarify_answer",
+              "origin": "ui_entry"
+            },
+            "answer_ref": {
+              "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+              "turn_id": "turn_0b5fa79168f9f3e5"
+            },
+            "answer_text": "分母代表的时段，是不是正好覆盖了分子那段路程",
+            "expected_chat_head": "turn_0b5fa79168f9f3e5",
+            "presentation_follow_up": null,
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ],
+            "source_excerpt": "Average speed is total distance divided by total time.",
+            "target": null,
+            "user_supplement": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。"
+          },
+          "original_ref": {
+            "book_id": "tc0-average-speed",
+            "kind": "chat_turn",
+            "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+            "turn_id": "turn_0b5fa49168f9eecc"
+          },
+          "presentation_follow_up": null,
+          "question_anchor_lid": null,
+          "response": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+          "teaching_ref": null,
+          "usage": {
+            "kind": "reading_action"
+          }
+        }
+      }
+    ],
+    [
+      9,
+      {
+        "binding": {
+          "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_0b5fa49168f9eecc",
+          "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+        },
+        "causal_refs": [],
+        "event_id": "binding:turn_0b5fa49168f9eecc",
+        "kind": "turn_bound",
+        "occurred_at": "1000",
+        "payload": {
+          "binding": {
+            "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "tc0-average-speed",
+            "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+            "turn_id": "turn_0b5fa49168f9eecc",
+            "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+          },
+          "confirmed_preferences": [],
+          "constraints": [],
+          "current_action": {
+            "accepted_request": "这一步没跟上",
+            "action": {
+              "entry_action": "clarify_answer",
+              "origin": "ui_entry"
+            },
+            "answer_ref": {
+              "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+              "turn_id": "turn_0b5fa79168f9f3e5"
+            },
+            "answer_text": "分母代表的时段，是不是正好覆盖了分子那段路程",
+            "expected_chat_head": "turn_0b5fa79168f9f3e5",
+            "presentation_follow_up": null,
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ],
+            "source_excerpt": "Average speed is total distance divided by total time.",
+            "target": null,
+            "user_supplement": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。"
+          },
+          "current_request": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+          "default_teaching_intent": null,
+          "learner_context": {
+            "confirmed_background": [],
+            "confirmed_preferences": [],
+            "constraints": [],
+            "current_action": {
+              "accepted_request": "这一步没跟上",
+              "action": {
+                "entry_action": "clarify_answer",
+                "origin": "ui_entry"
+              },
+              "answer_ref": {
+                "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                "turn_id": "turn_0b5fa79168f9f3e5"
+              },
+              "answer_text": "分母代表的时段，是不是正好覆盖了分子那段路程",
+              "expected_chat_head": "turn_0b5fa79168f9f3e5",
+              "presentation_follow_up": null,
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "start_lid": "1.1"
+                }
+              ],
+              "source_excerpt": "Average speed is total distance divided by total time.",
+              "target": null,
+              "user_supplement": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。"
+            },
+            "current_request": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+            "current_target": {
+              "capability": "explanation",
+              "expected_performance": "Explain the denominator",
+              "learning_focus": "average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            "details": "tutor.step understanding with object_id and after",
+            "entries": [],
+            "evidence_watermark": 1,
+            "interpretations": [
+              {
+                "assistance_refs": [],
+                "attempt": 0,
+                "correction": null,
+                "evidence_ref": "interpretation:tc6-prior",
+                "fact_refs": [
+                  "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5"
+                ],
+                "interpretation": {
+                  "text": "读者当前在问除法定义与乘法回代的连接，可能需要拆开等式变形。",
+                  "truncated": false
+                },
+                "learner_quote": {
+                  "text": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+                  "truncated": false
+                },
+                "nature": "hypothesis",
+                "status": "unassessed",
+                "target": {
+                  "capability": "explanation",
+                  "expected_performance": "Explain the denominator",
+                  "learning_focus": "average speed",
+                  "object_refs": [],
+                  "source_bindings": [
+                    {
+                      "end_lid": "1.1",
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "start_lid": "1.1"
+                    }
+                  ]
+                },
+                "teaching_implication": {
+                  "text": "先用除法与乘法互逆解释回代，再用一组数字演示。",
+                  "truncated": false
+                }
+              }
+            ],
+            "path_progress": [],
+            "pending_activity": null,
+            "pending_assessment_refs": [],
+            "projection_watermark": 1,
+            "recent_facts": [
+              {
+                "action": null,
+                "answer_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "assistance_count": 0,
+                "attempt": null,
+                "binding": {
+                  "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "control_revision": 2,
+                  "session_revision": 1,
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "turn_id": "turn_0b5fa49168f9eecc",
+                  "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                },
+                "causal_refs": [],
+                "continuation": null,
+                "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc",
+                "help_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "interaction": {
+                  "accepted_request": {
+                    "text": "这一步没跟上",
+                    "truncated": false
+                  },
+                  "action": {
+                    "entry_action": "clarify_answer",
+                    "origin": "ui_entry"
+                  },
+                  "answer_origin": "assistant",
+                  "answer_preview": {
+                    "text": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                    "truncated": false
+                  },
+                  "answer_ref": {
+                    "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                    "turn_id": "turn_0b5fa79168f9f3e5"
+                  },
+                  "source_bindings": [
+                    {
+                      "end_lid": "1.1",
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "start_lid": "1.1"
+                    }
+                  ]
+                },
+                "kind": "usage_observed",
+                "move_id": null,
+                "occurred_at": "1000",
+                "original_ref": {
+                  "book_id": "tc0-average-speed",
+                  "kind": "chat_turn",
+                  "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "turn_id": "turn_0b5fa49168f9eecc"
+                },
+                "prompt_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "response_preview": {
+                  "text": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+                  "truncated": false
+                },
+                "target": null,
+                "usage": {
+                  "kind": "reading_action"
+                }
+              },
+              {
+                "action": null,
+                "answer_preview": {
+                  "text": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。",
+                  "truncated": false
+                },
+                "assistance_count": 0,
+                "attempt": null,
+                "binding": {
+                  "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "control_revision": 2,
+                  "session_revision": 1,
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "turn_id": "turn_0b5fa79168f9f3e5",
+                  "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                },
+                "causal_refs": [
+                  "move:turn_0b5fa79168f9f3e5:explain"
+                ],
+                "continuation": null,
+                "event_id": "delivery:turn_0b5fa79168f9f3e5:explain",
+                "help_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "interaction": null,
+                "kind": "message_delivered",
+                "move_id": "explain",
+                "occurred_at": "now",
+                "original_ref": null,
+                "prompt_preview": {
+                  "text": "Use total distance divided by total time.",
+                  "truncated": false
+                },
+                "response_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "target": {
+                  "capability": "explanation",
+                  "expected_performance": "Explain the denominator",
+                  "learning_focus": "average speed",
+                  "object_refs": [],
+                  "source_bindings": [
+                    {
+                      "end_lid": "1.1",
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "start_lid": "1.1"
+                    }
+                  ]
+                },
+                "usage": null
+              },
+              {
+                "action": null,
+                "answer_preview": {
+                  "text": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。",
+                  "truncated": false
+                },
+                "assistance_count": 0,
+                "attempt": null,
+                "binding": {
+                  "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "control_revision": 2,
+                  "session_revision": 1,
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "turn_id": "turn_0b5fa79168f9f3e5",
+                  "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                },
+                "causal_refs": [
+                  "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5"
+                ],
+                "continuation": null,
+                "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:assistant:turn_0b5fa79168f9f3e5",
+                "help_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "interaction": null,
+                "kind": "usage_observed",
+                "move_id": null,
+                "occurred_at": "now",
+                "original_ref": {
+                  "book_id": "tc0-average-speed",
+                  "kind": "chat_turn",
+                  "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "turn_id": "turn_0b5fa79168f9f3e5"
+                },
+                "prompt_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "response_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "target": null,
+                "usage": {
+                  "kind": "assistant_delivery"
+                }
+              },
+              {
+                "action": null,
+                "answer_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "assistance_count": 0,
+                "attempt": null,
+                "binding": {
+                  "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "control_revision": 2,
+                  "session_revision": 1,
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "turn_id": "turn_0b5fa79168f9f3e5",
+                  "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                },
+                "causal_refs": [],
+                "continuation": null,
+                "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5",
+                "help_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "interaction": null,
+                "kind": "usage_observed",
+                "move_id": null,
+                "occurred_at": "1000",
+                "original_ref": {
+                  "book_id": "tc0-average-speed",
+                  "kind": "chat_turn",
+                  "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "turn_id": "turn_0b5fa79168f9f3e5"
+                },
+                "prompt_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "response_preview": {
+                  "text": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+                  "truncated": false
+                },
+                "target": null,
+                "usage": {
+                  "kind": "user_message"
+                }
+              }
+            ],
+            "session_focus": {
+              "capability_targets": [],
+              "interpretation": "",
+              "target_object_refs": []
+            },
+            "stale": false,
+            "uninterpreted_fact_refs": [
+              "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc"
+            ],
+            "unknown_when_absent": true,
+            "user_intent": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？"
+          },
+          "limitations": [],
+          "object_count": 0,
+          "objects": [],
+          "recent_facts": [
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_0b5fa49168f9eecc",
+                "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+              },
+              "causal_refs": [],
+              "continuation": null,
+              "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "interaction": {
+                "accepted_request": {
+                  "text": "这一步没跟上",
+                  "truncated": false
+                },
+                "action": {
+                  "entry_action": "clarify_answer",
+                  "origin": "ui_entry"
+                },
+                "answer_origin": "assistant",
+                "answer_preview": {
+                  "text": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                  "truncated": false
+                },
+                "answer_ref": {
+                  "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                  "turn_id": "turn_0b5fa79168f9f3e5"
+                },
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "start_lid": "1.1"
+                  }
+                ]
+              },
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "1000",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "turn_id": "turn_0b5fa49168f9eecc"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "reading_action"
+              }
+            },
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_0b5fa79168f9f3e5",
+                "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+              },
+              "causal_refs": [
+                "move:turn_0b5fa79168f9f3e5:explain"
+              ],
+              "continuation": null,
+              "event_id": "delivery:turn_0b5fa79168f9f3e5:explain",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "interaction": null,
+              "kind": "message_delivered",
+              "move_id": "explain",
+              "occurred_at": "now",
+              "original_ref": null,
+              "prompt_preview": {
+                "text": "Use total distance divided by total time.",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Explain the denominator",
+                "learning_focus": "average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "start_lid": "1.1"
+                  }
+                ]
+              },
+              "usage": null
+            },
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_0b5fa79168f9f3e5",
+                "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+              },
+              "causal_refs": [
+                "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5"
+              ],
+              "continuation": null,
+              "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:assistant:turn_0b5fa79168f9f3e5",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "interaction": null,
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "now",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "turn_id": "turn_0b5fa79168f9f3e5"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "assistant_delivery"
+              }
+            },
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_0b5fa79168f9f3e5",
+                "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+              },
+              "causal_refs": [],
+              "continuation": null,
+              "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "interaction": null,
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "1000",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "turn_id": "turn_0b5fa79168f9f3e5"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "user_message"
+              }
+            }
+          ],
+          "status": "active",
+          "teaching_assets": {
+            "cognitive_materials": {
+              "status": "missing"
+            },
+            "formal_objects": {
+              "status": "missing"
+            },
+            "limitations": [],
+            "reason": "正式教学素材尚未发布",
+            "source_id": "tc0-average-speed",
+            "status": "preparing",
+            "teaching_map_revision": null
+          },
+          "user_intent": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？"
+        }
+      }
+    ],
+    [
+      10,
+      {
+        "binding": {
+          "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_0b5fa49168f9eecc",
+          "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+        },
+        "causal_refs": [
+          "binding:turn_0b5fa49168f9eecc"
+        ],
+        "event_id": "move:turn_0b5fa49168f9eecc:move:turn_0b5fa49168f9eecc:denominator-pause",
+        "kind": "move_selected",
+        "occurred_at": "2026-10-11T14:44:02.1921524Z",
+        "payload": {
+          "help_policy": "preserve_exposure",
+          "move": {
+            "actions": [],
+            "assessment": null,
+            "capability": "explanation",
+            "explanation": null,
+            "hint": null,
+            "intent_origin": "current_request",
+            "intent_quote": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+            "interaction_intent": "neutral",
+            "interpretation_refs": [
+              "interpretation:hyp:denominator-pause-turn_0b5fa49168f9eecc"
+            ],
+            "kind": "explain",
+            "move_id": "move:turn_0b5fa49168f9eecc:denominator-pause",
+            "object_ids": [],
+            "preference_ref": null,
+            "presentation": null,
+            "prompt": "只拆这一点：分母为什么收留“没走路的那段”。\n\n**1. 分子和分母记的不是同一本账**\n\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。\n\n**2. 分母的职责是“摊”，不是“奖励运动”**\n\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\n\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\n\n2 小时走 120 公里，中间停了半小时：\n\n- 分母写 2 小时 → 60 公里/小时\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\n\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\n\n**4. 所以“停顿没走路”并不构成矛盾**\n\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\n\n**5. 书里那句话的限定正好印证口径**\n\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。\n\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。",
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Explain the denominator",
+              "learning_focus": "average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          },
+          "object_versions": [],
+          "retry_policy": "append_attempt",
+          "scorer_version": "assessment.v1",
+          "scoring_sources": {}
+        }
+      }
+    ],
+    [
+      11,
+      {
+        "binding": {
+          "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_0b5fa49168f9eecc",
+          "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+        },
+        "causal_refs": [
+          "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc"
+        ],
+        "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:assistant:turn_0b5fa49168f9eecc",
+        "kind": "usage_observed",
+        "occurred_at": "1000",
+        "payload": {
+          "answer": "只拆这一点：分母为什么收留“没走路的那段”。\n\n**1. 分子和分母记的不是同一本账**\n\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。\n\n**2. 分母的职责是“摊”，不是“奖励运动”**\n\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\n\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\n\n2 小时走 120 公里，中间停了半小时：\n\n- 分母写 2 小时 → 60 公里/小时\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\n\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\n\n**4. 所以“停顿没走路”并不构成矛盾**\n\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\n\n**5. 书里那句话的限定正好印证口径**\n\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”（这三句是同一个 LID 里连着的原文）。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。\n\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。",
+          "answer_view": {
+            "parts": [
+              {
+                "kind": "markdown",
+                "text": "只拆这一点：分母为什么收留“没走路的那段”。\n\n**1. 分子和分母记的不是同一本账**\n\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。"
+              },
+              {
+                "kind": "sources",
+                "source_ref_ids": [
+                  "source_ref_46f9d90684b10a00"
+                ]
+              },
+              {
+                "kind": "markdown",
+                "text": "\n\n**2. 分母的职责是“摊”，不是“奖励运动”**\n\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\n\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\n\n2 小时走 120 公里，中间停了半小时：\n\n- 分母写 2 小时 → 60 公里/小时\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\n\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\n\n**4. 所以“停顿没走路”并不构成矛盾**\n\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\n\n**5. 书里那句话的限定正好印证口径**\n\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”（这三句是同一个 LID 里连着的原文）。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。"
+              },
+              {
+                "kind": "sources",
+                "source_ref_ids": [
+                  "source_ref_46f9d90684b10a00"
+                ]
+              },
+              {
+                "kind": "markdown",
+                "text": "\n\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。"
+              }
+            ],
+            "sources": [
+              {
+                "label": "正文 · Average speed",
+                "source_ref_id": "source_ref_46f9d90684b10a00"
+              }
+            ]
+          },
+          "original_ref": {
+            "book_id": "tc0-average-speed",
+            "kind": "chat_turn",
+            "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+            "turn_id": "turn_0b5fa49168f9eecc"
+          },
+          "source_bindings": [
+            {
+              "book_id": "tc0-average-speed",
+              "evidence_range": {
+                "end_lid": "1.1",
+                "ranges": [
+                  {
+                    "lid": "1.1",
+                    "range": {
+                      "end": 147,
+                      "start": 17
+                    }
+                  }
+                ],
+                "start_lid": "1.1"
+              },
+              "evidence_text_digest": "source-fnv1a64-16e3ce8bb6bde7b1",
+              "label_snapshot": "正文 · Average speed",
+              "preview_snapshot": "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.",
+              "source_ref_id": "source_ref_46f9d90684b10a00"
+            }
+          ],
+          "usage": {
+            "kind": "assistant_delivery"
+          }
+        }
+      }
+    ],
+    [
+      12,
+      {
+        "binding": {
+          "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_0b5fa49168f9eecc",
+          "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+        },
+        "causal_refs": [
+          "move:turn_0b5fa49168f9eecc:move:turn_0b5fa49168f9eecc:denominator-pause"
+        ],
+        "event_id": "delivery:turn_0b5fa49168f9eecc:move:turn_0b5fa49168f9eecc:denominator-pause",
+        "kind": "message_delivered",
+        "occurred_at": "1000",
+        "payload": {
+          "answer": "只拆这一点：分母为什么收留“没走路的那段”。\n\n**1. 分子和分母记的不是同一本账**\n\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。\n\n**2. 分母的职责是“摊”，不是“奖励运动”**\n\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\n\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\n\n2 小时走 120 公里，中间停了半小时：\n\n- 分母写 2 小时 → 60 公里/小时\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\n\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\n\n**4. 所以“停顿没走路”并不构成矛盾**\n\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\n\n**5. 书里那句话的限定正好印证口径**\n\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”（这三句是同一个 LID 里连着的原文）。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。\n\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。",
+          "answer_view": {
+            "parts": [
+              {
+                "kind": "markdown",
+                "text": "只拆这一点：分母为什么收留“没走路的那段”。\n\n**1. 分子和分母记的不是同一本账**\n\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。"
+              },
+              {
+                "kind": "sources",
+                "source_ref_ids": [
+                  "source_ref_46f9d90684b10a00"
+                ]
+              },
+              {
+                "kind": "markdown",
+                "text": "\n\n**2. 分母的职责是“摊”，不是“奖励运动”**\n\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\n\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\n\n2 小时走 120 公里，中间停了半小时：\n\n- 分母写 2 小时 → 60 公里/小时\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\n\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\n\n**4. 所以“停顿没走路”并不构成矛盾**\n\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\n\n**5. 书里那句话的限定正好印证口径**\n\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”（这三句是同一个 LID 里连着的原文）。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。"
+              },
+              {
+                "kind": "sources",
+                "source_ref_ids": [
+                  "source_ref_46f9d90684b10a00"
+                ]
+              },
+              {
+                "kind": "markdown",
+                "text": "\n\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。"
+              }
+            ],
+            "sources": [
+              {
+                "label": "正文 · Average speed",
+                "source_ref_id": "source_ref_46f9d90684b10a00"
+              }
+            ]
+          },
+          "assessment_contract_ref": null,
+          "move": {
+            "actions": [],
+            "capability": "explanation",
+            "intent_origin": "current_request",
+            "intent_quote": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+            "interaction_intent": "neutral",
+            "interpretation_refs": [
+              "interpretation:hyp:denominator-pause-turn_0b5fa49168f9eecc"
+            ],
+            "kind": "explain",
+            "move_id": "move:turn_0b5fa49168f9eecc:denominator-pause",
+            "object_ids": [],
+            "preference_ref": null,
+            "presentation": null,
+            "prompt": "只拆这一点：分母为什么收留“没走路的那段”。\n\n**1. 分子和分母记的不是同一本账**\n\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。\n\n**2. 分母的职责是“摊”，不是“奖励运动”**\n\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\n\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\n\n2 小时走 120 公里，中间停了半小时：\n\n- 分母写 2 小时 → 60 公里/小时\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\n\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\n\n**4. 所以“停顿没走路”并不构成矛盾**\n\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\n\n**5. 书里那句话的限定正好印证口径**\n\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。\n\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。",
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Explain the denominator",
+              "learning_focus": "average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          },
+          "object_versions": [],
+          "presentation": null,
+          "source_bindings": [
+            {
+              "book_id": "tc0-average-speed",
+              "evidence_range": {
+                "end_lid": "1.1",
+                "ranges": [
+                  {
+                    "lid": "1.1",
+                    "range": {
+                      "end": 147,
+                      "start": 17
+                    }
+                  }
+                ],
+                "start_lid": "1.1"
+              },
+              "evidence_text_digest": "source-fnv1a64-16e3ce8bb6bde7b1",
+              "label_snapshot": "正文 · Average speed",
+              "preview_snapshot": "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.",
+              "source_ref_id": "source_ref_46f9d90684b10a00"
+            }
+          ]
+        }
+      }
+    ]
+  ],
+  "http_status": 200,
+  "projection_after": [
+    {
+      "estimator_version": "learner.conditions.v2",
+      "evidence_watermark": 2,
+      "paths": {},
+      "rows": [],
+      "teaching_map_revision_refs": []
+    },
+    2
+  ],
+  "projection_before": [
+    {
+      "estimator_version": "learner.conditions.v2",
+      "evidence_watermark": 1,
+      "paths": {},
+      "rows": [],
+      "teaching_map_revision_refs": []
+    },
+    1
+  ],
+  "provider_calls": 6,
+  "reply": {
+    "answer": "只拆这一点：分母为什么收留“没走路的那段”。\n\n**1. 分子和分母记的不是同一本账**\n\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。\n\n**2. 分母的职责是“摊”，不是“奖励运动”**\n\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\n\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\n\n2 小时走 120 公里，中间停了半小时：\n\n- 分母写 2 小时 → 60 公里/小时\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\n\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\n\n**4. 所以“停顿没走路”并不构成矛盾**\n\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\n\n**5. 书里那句话的限定正好印证口径**\n\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”（这三句是同一个 LID 里连着的原文）。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。\n\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。",
+    "answer_view": {
+      "parts": [
+        {
+          "kind": "markdown",
+          "text": "只拆这一点：分母为什么收留“没走路的那段”。\n\n**1. 分子和分母记的不是同一本账**\n\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。"
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_46f9d90684b10a00"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": "\n\n**2. 分母的职责是“摊”，不是“奖励运动”**\n\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\n\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\n\n2 小时走 120 公里，中间停了半小时：\n\n- 分母写 2 小时 → 60 公里/小时\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\n\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\n\n**4. 所以“停顿没走路”并不构成矛盾**\n\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\n\n**5. 书里那句话的限定正好印证口径**\n\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”（这三句是同一个 LID 里连着的原文）。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。"
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_46f9d90684b10a00"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": "\n\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。"
+        }
+      ],
+      "sources": [
+        {
+          "label": "正文 · Average speed",
+          "source_ref_id": "source_ref_46f9d90684b10a00"
+        }
+      ]
+    },
+    "effects": [],
+    "incomplete": false,
+    "memory_updates": [],
+    "profile_usage": {
+      "claimed_used_fact_ids": [],
+      "influences": [],
+      "injected_fact_ids": [],
+      "snapshot_revision": 0
+    },
+    "tokens_spent": 135049,
+    "trace": [
+      {
+        "args": "{\"lid\": \"1.1\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"lid\":\"1.1\",\"text\":\"# Average speed\\n\\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"lid\": \"1.1\", \"granularity\": \"near\", \"k\": 8}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"anchor\":\"1.1\",\"items\":[{\"lid\":\"1\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"parent\"}},{\"lid\":\"1.2\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"next_sibling\"}}]}",
+        "tool": "book.context"
+      },
+      {
+        "args": "{\"lid\": \"1.2\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"lid\":\"1.2\",\"text\":\"A blue bicycle travels along the river.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"fact_refs\":[\"usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc\"],\"interpretation\":\"读者自述已掌握除法与乘法互逆的计算层面（“乘除互逆我已经明白了”），并把卡点明确定位在分母的口径上：“停下来时没走路，为什么停顿还要算进分母？”因此障碍不是代数变形，而是“总时间”这个量的指称——他默认分母应登记“产生路程的时长”，而定义用的是从出发到到达的总时长。前一轮“需要拆开等式变形”的假设与读者自述不符。\",\"nature\":\"hypothesis\",\"operation\":\"evidence\",\"operation_id\":\"hyp:denominator-pause-turn_0b5fa49168f9eecc\",\"supersedes\":\"interpretation:tc6-prior\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"Explain the denominator\",\"learning_focus\":\"average speed\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},\"teaching_implication\":\"不要再做代数变形或回代演示；直接针对分母登记什么展开：分母登记的是时间账本而非距离账本，停顿在时间上真实发生，所以进分母；用“同一段路程被摊到更长时间上”讲清平均的含义，并说明排除停顿得到的是另一个量（骑行中的速度）。\"}",
+        "model_tool_loop": 3,
+        "result_digest": "{\"evidence_ref\":\"interpretation:hyp:denominator-pause-turn_0b5fa49168f9eecc\",\"instruction\":\"Use this current interpretation when relevant to the move; record its reference in move.interpretation_refs.",
+        "tool": "tutor.step"
+      },
+      {
+        "args": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "model_tool_loop": 3,
+        "result_digest": "{\"source_ref_id\":\"source_ref_46f9d90684b10a00\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time ",
+        "tool": "source.present"
+      },
+      {
+        "args": "{\"move\":{\"intent_origin\":\"current_action\",\"intent_quote\":\"我卡的是：停下来时没走路，为什么停顿还要算进分母？\",\"interaction_intent\":\"direct_explanation\",\"interpretation_refs\":[\"interpretation:hyp:denominator-pause-turn_0b5fa49168f9eecc\"],\"kind\":\"explain\",\"move_id\":\"move:turn_0b5fa49168f9eecc:denominator-pause\",\"object_ids\":[],\"prompt\":\"只拆这一点：分母为什么收留“没走路的那段”。\\n\\n**1. 分子和分母记的不是同一本账**\\n\\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。\\n\\n**2. 分母的职责是“摊”，不是“奖励运动”**\\n\\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\\n\\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\\n\\n2 小时走 120 公里，中间停了半小时：\\n\\n- 分母写 2 小时 → 60 公里/小时\\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\\n\\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\\n\\n**4. 所以“停顿没走路”并不构成矛盾**\\n\\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\\n\\n**5. 书里那句话的限定正好印证口径**\\n\\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。\\n\\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"Explain the denominator\",\"learning_focus\":\"average speed\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+        "model_tool_loop": 4,
+        "result_digest": "{\"error_code\":\"TEACHING_INVALID\",\"category\":\"validation\",\"message\":\"教学意图需匹配当前原话或会话默认；直接讲解应采用解释动作\"}",
+        "tool": "tutor.step"
+      },
+      {
+        "args": "{\"move\":{\"intent_origin\":\"current_request\",\"intent_quote\":\"不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。\",\"interaction_intent\":\"neutral\",\"interpretation_refs\":[\"interpretation:hyp:denominator-pause-turn_0b5fa49168f9eecc\"],\"kind\":\"explain\",\"move_id\":\"move:turn_0b5fa49168f9eecc:denominator-pause\",\"object_ids\":[],\"prompt\":\"只拆这一点：分母为什么收留“没走路的那段”。\\n\\n**1. 分子和分母记的不是同一本账**\\n\\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。\\n\\n**2. 分母的职责是“摊”，不是“奖励运动”**\\n\\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\\n\\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\\n\\n2 小时走 120 公里，中间停了半小时：\\n\\n- 分母写 2 小时 → 60 公里/小时\\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\\n\\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\\n\\n**4. 所以“停顿没走路”并不构成矛盾**\\n\\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\\n\\n**5. 书里那句话的限定正好印证口径**\\n\\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。\\n\\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"Explain the denominator\",\"learning_focus\":\"average speed\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+        "model_tool_loop": 5,
+        "result_digest": "{\"instruction\":\"Deliver this move in the final answer. Saved candidate is not displayed.\",\"selected\":\"move:turn_0b5fa49168f9eecc:move:turn_0b5fa49168f9eecc:denominator-pause\"}",
+        "tool": "tutor.step"
+      }
+    ],
+    "turns": 6
+  },
+  "turn": {
+    "domain": {
+      "effects": [],
+      "interaction": {
+        "accepted_request": "这一步没跟上",
+        "action": {
+          "entry_action": "clarify_answer",
+          "origin": "ui_entry"
+        },
+        "answer_ref": {
+          "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+          "turn_id": "turn_0b5fa79168f9f3e5"
+        },
+        "answer_text": "分母代表的时段，是不是正好覆盖了分子那段路程",
+        "expected_chat_head": "turn_0b5fa79168f9f3e5",
+        "presentation_follow_up": null,
+        "source_bindings": [
+          {
+            "end_lid": "1.1",
+            "source_id": "tc0-average-speed",
+            "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+            "start_lid": "1.1"
+          }
+        ],
+        "source_excerpt": "Average speed is total distance divided by total time.",
+        "target": null,
+        "user_supplement": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。"
+      },
+      "local_action": {
+        "client_request_id": "tc6-correction",
+        "normalized": {
+          "answer_ref": {
+            "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+            "turn_id": "turn_0b5fa79168f9f3e5"
+          },
+          "attachment_id": null,
+          "display_user": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+          "entry_action": "clarify_answer",
+          "expected_chat_head": "turn_0b5fa79168f9f3e5",
+          "expected_revision": null,
+          "generation": null,
+          "goal_action": null,
+          "goal_id": null,
+          "message": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+          "note_mem_id": null,
+          "presentation_follow_up": null,
+          "published_book_ref": null,
+          "question_anchor_lid": null,
+          "question_quote": null,
+          "retry_of": null,
+          "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+          "teaching_ref": null,
+          "workspace_id": "local"
+        }
+      },
+      "local_preparation": {
+        "context": {
+          "binding": {
+            "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "tc0-average-speed",
+            "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+            "turn_id": "turn_0b5fa49168f9eecc",
+            "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+          },
+          "confirmed_preferences": [],
+          "constraints": [],
+          "current_action": {
+            "accepted_request": "这一步没跟上",
+            "action": {
+              "entry_action": "clarify_answer",
+              "origin": "ui_entry"
+            },
+            "answer_ref": {
+              "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+              "turn_id": "turn_0b5fa79168f9f3e5"
+            },
+            "answer_text": "分母代表的时段，是不是正好覆盖了分子那段路程",
+            "expected_chat_head": "turn_0b5fa79168f9f3e5",
+            "presentation_follow_up": null,
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ],
+            "source_excerpt": "Average speed is total distance divided by total time.",
+            "target": null,
+            "user_supplement": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。"
+          },
+          "current_request": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+          "default_teaching_intent": null,
+          "learner_context": {
+            "confirmed_background": [],
+            "confirmed_preferences": [],
+            "constraints": [],
+            "current_action": {
+              "accepted_request": "这一步没跟上",
+              "action": {
+                "entry_action": "clarify_answer",
+                "origin": "ui_entry"
+              },
+              "answer_ref": {
+                "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                "turn_id": "turn_0b5fa79168f9f3e5"
+              },
+              "answer_text": "分母代表的时段，是不是正好覆盖了分子那段路程",
+              "expected_chat_head": "turn_0b5fa79168f9f3e5",
+              "presentation_follow_up": null,
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "start_lid": "1.1"
+                }
+              ],
+              "source_excerpt": "Average speed is total distance divided by total time.",
+              "target": null,
+              "user_supplement": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。"
+            },
+            "current_request": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+            "current_target": {
+              "capability": "explanation",
+              "expected_performance": "Explain the denominator",
+              "learning_focus": "average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            "details": "tutor.step understanding with object_id and after",
+            "entries": [],
+            "evidence_watermark": 1,
+            "interpretations": [
+              {
+                "assistance_refs": [],
+                "attempt": 0,
+                "correction": null,
+                "evidence_ref": "interpretation:tc6-prior",
+                "fact_refs": [
+                  "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5"
+                ],
+                "interpretation": {
+                  "text": "读者当前在问除法定义与乘法回代的连接，可能需要拆开等式变形。",
+                  "truncated": false
+                },
+                "learner_quote": {
+                  "text": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+                  "truncated": false
+                },
+                "nature": "hypothesis",
+                "status": "unassessed",
+                "target": {
+                  "capability": "explanation",
+                  "expected_performance": "Explain the denominator",
+                  "learning_focus": "average speed",
+                  "object_refs": [],
+                  "source_bindings": [
+                    {
+                      "end_lid": "1.1",
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "start_lid": "1.1"
+                    }
+                  ]
+                },
+                "teaching_implication": {
+                  "text": "先用除法与乘法互逆解释回代，再用一组数字演示。",
+                  "truncated": false
+                }
+              }
+            ],
+            "path_progress": [],
+            "pending_activity": null,
+            "pending_assessment_refs": [],
+            "projection_watermark": 1,
+            "recent_facts": [
+              {
+                "action": null,
+                "answer_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "assistance_count": 0,
+                "attempt": null,
+                "binding": {
+                  "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "control_revision": 2,
+                  "session_revision": 1,
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "turn_id": "turn_0b5fa49168f9eecc",
+                  "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                },
+                "causal_refs": [],
+                "continuation": null,
+                "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc",
+                "help_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "interaction": {
+                  "accepted_request": {
+                    "text": "这一步没跟上",
+                    "truncated": false
+                  },
+                  "action": {
+                    "entry_action": "clarify_answer",
+                    "origin": "ui_entry"
+                  },
+                  "answer_origin": "assistant",
+                  "answer_preview": {
+                    "text": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                    "truncated": false
+                  },
+                  "answer_ref": {
+                    "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                    "turn_id": "turn_0b5fa79168f9f3e5"
+                  },
+                  "source_bindings": [
+                    {
+                      "end_lid": "1.1",
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "start_lid": "1.1"
+                    }
+                  ]
+                },
+                "kind": "usage_observed",
+                "move_id": null,
+                "occurred_at": "1000",
+                "original_ref": {
+                  "book_id": "tc0-average-speed",
+                  "kind": "chat_turn",
+                  "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "turn_id": "turn_0b5fa49168f9eecc"
+                },
+                "prompt_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "response_preview": {
+                  "text": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+                  "truncated": false
+                },
+                "target": null,
+                "usage": {
+                  "kind": "reading_action"
+                }
+              },
+              {
+                "action": null,
+                "answer_preview": {
+                  "text": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。",
+                  "truncated": false
+                },
+                "assistance_count": 0,
+                "attempt": null,
+                "binding": {
+                  "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "control_revision": 2,
+                  "session_revision": 1,
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "turn_id": "turn_0b5fa79168f9f3e5",
+                  "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                },
+                "causal_refs": [
+                  "move:turn_0b5fa79168f9f3e5:explain"
+                ],
+                "continuation": null,
+                "event_id": "delivery:turn_0b5fa79168f9f3e5:explain",
+                "help_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "interaction": null,
+                "kind": "message_delivered",
+                "move_id": "explain",
+                "occurred_at": "now",
+                "original_ref": null,
+                "prompt_preview": {
+                  "text": "Use total distance divided by total time.",
+                  "truncated": false
+                },
+                "response_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "target": {
+                  "capability": "explanation",
+                  "expected_performance": "Explain the denominator",
+                  "learning_focus": "average speed",
+                  "object_refs": [],
+                  "source_bindings": [
+                    {
+                      "end_lid": "1.1",
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "start_lid": "1.1"
+                    }
+                  ]
+                },
+                "usage": null
+              },
+              {
+                "action": null,
+                "answer_preview": {
+                  "text": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。",
+                  "truncated": false
+                },
+                "assistance_count": 0,
+                "attempt": null,
+                "binding": {
+                  "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "control_revision": 2,
+                  "session_revision": 1,
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "turn_id": "turn_0b5fa79168f9f3e5",
+                  "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                },
+                "causal_refs": [
+                  "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5"
+                ],
+                "continuation": null,
+                "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:assistant:turn_0b5fa79168f9f3e5",
+                "help_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "interaction": null,
+                "kind": "usage_observed",
+                "move_id": null,
+                "occurred_at": "now",
+                "original_ref": {
+                  "book_id": "tc0-average-speed",
+                  "kind": "chat_turn",
+                  "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "turn_id": "turn_0b5fa79168f9f3e5"
+                },
+                "prompt_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "response_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "target": null,
+                "usage": {
+                  "kind": "assistant_delivery"
+                }
+              },
+              {
+                "action": null,
+                "answer_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "assistance_count": 0,
+                "attempt": null,
+                "binding": {
+                  "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "control_revision": 2,
+                  "session_revision": 1,
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "turn_id": "turn_0b5fa79168f9f3e5",
+                  "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                },
+                "causal_refs": [],
+                "continuation": null,
+                "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5",
+                "help_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "interaction": null,
+                "kind": "usage_observed",
+                "move_id": null,
+                "occurred_at": "1000",
+                "original_ref": {
+                  "book_id": "tc0-average-speed",
+                  "kind": "chat_turn",
+                  "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                  "turn_id": "turn_0b5fa79168f9f3e5"
+                },
+                "prompt_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "response_preview": {
+                  "text": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+                  "truncated": false
+                },
+                "target": null,
+                "usage": {
+                  "kind": "user_message"
+                }
+              }
+            ],
+            "session_focus": {
+              "capability_targets": [],
+              "interpretation": "",
+              "target_object_refs": []
+            },
+            "stale": false,
+            "uninterpreted_fact_refs": [
+              "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc"
+            ],
+            "unknown_when_absent": true,
+            "user_intent": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？"
+          },
+          "limitations": [],
+          "object_count": 0,
+          "objects": [],
+          "recent_facts": [
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_0b5fa49168f9eecc",
+                "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+              },
+              "causal_refs": [],
+              "continuation": null,
+              "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "interaction": {
+                "accepted_request": {
+                  "text": "这一步没跟上",
+                  "truncated": false
+                },
+                "action": {
+                  "entry_action": "clarify_answer",
+                  "origin": "ui_entry"
+                },
+                "answer_origin": "assistant",
+                "answer_preview": {
+                  "text": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                  "truncated": false
+                },
+                "answer_ref": {
+                  "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                  "turn_id": "turn_0b5fa79168f9f3e5"
+                },
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "start_lid": "1.1"
+                  }
+                ]
+              },
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "1000",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "turn_id": "turn_0b5fa49168f9eecc"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "reading_action"
+              }
+            },
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_0b5fa79168f9f3e5",
+                "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+              },
+              "causal_refs": [
+                "move:turn_0b5fa79168f9f3e5:explain"
+              ],
+              "continuation": null,
+              "event_id": "delivery:turn_0b5fa79168f9f3e5:explain",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "interaction": null,
+              "kind": "message_delivered",
+              "move_id": "explain",
+              "occurred_at": "now",
+              "original_ref": null,
+              "prompt_preview": {
+                "text": "Use total distance divided by total time.",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Explain the denominator",
+                "learning_focus": "average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "start_lid": "1.1"
+                  }
+                ]
+              },
+              "usage": null
+            },
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_0b5fa79168f9f3e5",
+                "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+              },
+              "causal_refs": [
+                "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5"
+              ],
+              "continuation": null,
+              "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:assistant:turn_0b5fa79168f9f3e5",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "interaction": null,
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "now",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "turn_id": "turn_0b5fa79168f9f3e5"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "assistant_delivery"
+              }
+            },
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_0b5fa79168f9f3e5",
+                "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+              },
+              "causal_refs": [],
+              "continuation": null,
+              "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "interaction": null,
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "1000",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "turn_id": "turn_0b5fa79168f9f3e5"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "user_message"
+              }
+            }
+          ],
+          "status": "active",
+          "teaching_assets": {
+            "cognitive_materials": {
+              "status": "missing"
+            },
+            "formal_objects": {
+              "status": "missing"
+            },
+            "limitations": [],
+            "reason": "正式教学素材尚未发布",
+            "source_id": "tc0-average-speed",
+            "status": "preparing",
+            "teaching_map_revision": null
+          },
+          "user_intent": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？"
+        },
+        "events": [
+          {
+            "binding": {
+              "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_0b5fa49168f9eecc",
+              "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+            },
+            "causal_refs": [],
+            "event_id": "assets:turn_0b5fa49168f9eecc",
+            "kind": "turn_bound",
+            "occurred_at": "1000",
+            "payload": {}
+          },
+          {
+            "binding": {
+              "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_0b5fa49168f9eecc",
+              "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+            },
+            "causal_refs": [],
+            "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc",
+            "kind": "usage_observed",
+            "occurred_at": "1000",
+            "payload": {
+              "interaction": {
+                "accepted_request": "这一步没跟上",
+                "action": {
+                  "entry_action": "clarify_answer",
+                  "origin": "ui_entry"
+                },
+                "answer_ref": {
+                  "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                  "turn_id": "turn_0b5fa79168f9f3e5"
+                },
+                "answer_text": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                "expected_chat_head": "turn_0b5fa79168f9f3e5",
+                "presentation_follow_up": null,
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "start_lid": "1.1"
+                  }
+                ],
+                "source_excerpt": "Average speed is total distance divided by total time.",
+                "target": null,
+                "user_supplement": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。"
+              },
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "turn_id": "turn_0b5fa49168f9eecc"
+              },
+              "presentation_follow_up": null,
+              "question_anchor_lid": null,
+              "response": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+              "teaching_ref": null,
+              "usage": {
+                "kind": "reading_action"
+              }
+            }
+          },
+          {
+            "binding": {
+              "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_0b5fa49168f9eecc",
+              "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+            },
+            "causal_refs": [],
+            "event_id": "binding:turn_0b5fa49168f9eecc",
+            "kind": "turn_bound",
+            "occurred_at": "1000",
+            "payload": {
+              "binding": {
+                "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_0b5fa49168f9eecc",
+                "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+              },
+              "confirmed_preferences": [],
+              "constraints": [],
+              "current_action": {
+                "accepted_request": "这一步没跟上",
+                "action": {
+                  "entry_action": "clarify_answer",
+                  "origin": "ui_entry"
+                },
+                "answer_ref": {
+                  "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                  "turn_id": "turn_0b5fa79168f9f3e5"
+                },
+                "answer_text": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                "expected_chat_head": "turn_0b5fa79168f9f3e5",
+                "presentation_follow_up": null,
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "start_lid": "1.1"
+                  }
+                ],
+                "source_excerpt": "Average speed is total distance divided by total time.",
+                "target": null,
+                "user_supplement": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。"
+              },
+              "current_request": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+              "default_teaching_intent": null,
+              "learner_context": {
+                "confirmed_background": [],
+                "confirmed_preferences": [],
+                "constraints": [],
+                "current_action": {
+                  "accepted_request": "这一步没跟上",
+                  "action": {
+                    "entry_action": "clarify_answer",
+                    "origin": "ui_entry"
+                  },
+                  "answer_ref": {
+                    "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                    "turn_id": "turn_0b5fa79168f9f3e5"
+                  },
+                  "answer_text": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                  "expected_chat_head": "turn_0b5fa79168f9f3e5",
+                  "presentation_follow_up": null,
+                  "source_bindings": [
+                    {
+                      "end_lid": "1.1",
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "start_lid": "1.1"
+                    }
+                  ],
+                  "source_excerpt": "Average speed is total distance divided by total time.",
+                  "target": null,
+                  "user_supplement": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。"
+                },
+                "current_request": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+                "current_target": {
+                  "capability": "explanation",
+                  "expected_performance": "Explain the denominator",
+                  "learning_focus": "average speed",
+                  "object_refs": [],
+                  "source_bindings": [
+                    {
+                      "end_lid": "1.1",
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "start_lid": "1.1"
+                    }
+                  ]
+                },
+                "details": "tutor.step understanding with object_id and after",
+                "entries": [],
+                "evidence_watermark": 1,
+                "interpretations": [
+                  {
+                    "assistance_refs": [],
+                    "attempt": 0,
+                    "correction": null,
+                    "evidence_ref": "interpretation:tc6-prior",
+                    "fact_refs": [
+                      "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5"
+                    ],
+                    "interpretation": {
+                      "text": "读者当前在问除法定义与乘法回代的连接，可能需要拆开等式变形。",
+                      "truncated": false
+                    },
+                    "learner_quote": {
+                      "text": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+                      "truncated": false
+                    },
+                    "nature": "hypothesis",
+                    "status": "unassessed",
+                    "target": {
+                      "capability": "explanation",
+                      "expected_performance": "Explain the denominator",
+                      "learning_focus": "average speed",
+                      "object_refs": [],
+                      "source_bindings": [
+                        {
+                          "end_lid": "1.1",
+                          "source_id": "tc0-average-speed",
+                          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                          "start_lid": "1.1"
+                        }
+                      ]
+                    },
+                    "teaching_implication": {
+                      "text": "先用除法与乘法互逆解释回代，再用一组数字演示。",
+                      "truncated": false
+                    }
+                  }
+                ],
+                "path_progress": [],
+                "pending_activity": null,
+                "pending_assessment_refs": [],
+                "projection_watermark": 1,
+                "recent_facts": [
+                  {
+                    "action": null,
+                    "answer_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "assistance_count": 0,
+                    "attempt": null,
+                    "binding": {
+                      "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                      "control_revision": 2,
+                      "session_revision": 1,
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "turn_id": "turn_0b5fa49168f9eecc",
+                      "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                    },
+                    "causal_refs": [],
+                    "continuation": null,
+                    "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc",
+                    "help_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "interaction": {
+                      "accepted_request": {
+                        "text": "这一步没跟上",
+                        "truncated": false
+                      },
+                      "action": {
+                        "entry_action": "clarify_answer",
+                        "origin": "ui_entry"
+                      },
+                      "answer_origin": "assistant",
+                      "answer_preview": {
+                        "text": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                        "truncated": false
+                      },
+                      "answer_ref": {
+                        "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                        "turn_id": "turn_0b5fa79168f9f3e5"
+                      },
+                      "source_bindings": [
+                        {
+                          "end_lid": "1.1",
+                          "source_id": "tc0-average-speed",
+                          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                          "start_lid": "1.1"
+                        }
+                      ]
+                    },
+                    "kind": "usage_observed",
+                    "move_id": null,
+                    "occurred_at": "1000",
+                    "original_ref": {
+                      "book_id": "tc0-average-speed",
+                      "kind": "chat_turn",
+                      "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                      "turn_id": "turn_0b5fa49168f9eecc"
+                    },
+                    "prompt_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "response_preview": {
+                      "text": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+                      "truncated": false
+                    },
+                    "target": null,
+                    "usage": {
+                      "kind": "reading_action"
+                    }
+                  },
+                  {
+                    "action": null,
+                    "answer_preview": {
+                      "text": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。",
+                      "truncated": false
+                    },
+                    "assistance_count": 0,
+                    "attempt": null,
+                    "binding": {
+                      "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                      "control_revision": 2,
+                      "session_revision": 1,
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "turn_id": "turn_0b5fa79168f9f3e5",
+                      "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                    },
+                    "causal_refs": [
+                      "move:turn_0b5fa79168f9f3e5:explain"
+                    ],
+                    "continuation": null,
+                    "event_id": "delivery:turn_0b5fa79168f9f3e5:explain",
+                    "help_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "interaction": null,
+                    "kind": "message_delivered",
+                    "move_id": "explain",
+                    "occurred_at": "now",
+                    "original_ref": null,
+                    "prompt_preview": {
+                      "text": "Use total distance divided by total time.",
+                      "truncated": false
+                    },
+                    "response_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "target": {
+                      "capability": "explanation",
+                      "expected_performance": "Explain the denominator",
+                      "learning_focus": "average speed",
+                      "object_refs": [],
+                      "source_bindings": [
+                        {
+                          "end_lid": "1.1",
+                          "source_id": "tc0-average-speed",
+                          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                          "start_lid": "1.1"
+                        }
+                      ]
+                    },
+                    "usage": null
+                  },
+                  {
+                    "action": null,
+                    "answer_preview": {
+                      "text": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。",
+                      "truncated": false
+                    },
+                    "assistance_count": 0,
+                    "attempt": null,
+                    "binding": {
+                      "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                      "control_revision": 2,
+                      "session_revision": 1,
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "turn_id": "turn_0b5fa79168f9f3e5",
+                      "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                    },
+                    "causal_refs": [
+                      "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5"
+                    ],
+                    "continuation": null,
+                    "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:assistant:turn_0b5fa79168f9f3e5",
+                    "help_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "interaction": null,
+                    "kind": "usage_observed",
+                    "move_id": null,
+                    "occurred_at": "now",
+                    "original_ref": {
+                      "book_id": "tc0-average-speed",
+                      "kind": "chat_turn",
+                      "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                      "turn_id": "turn_0b5fa79168f9f3e5"
+                    },
+                    "prompt_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "response_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "target": null,
+                    "usage": {
+                      "kind": "assistant_delivery"
+                    }
+                  },
+                  {
+                    "action": null,
+                    "answer_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "assistance_count": 0,
+                    "attempt": null,
+                    "binding": {
+                      "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                      "control_revision": 2,
+                      "session_revision": 1,
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "turn_id": "turn_0b5fa79168f9f3e5",
+                      "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                    },
+                    "causal_refs": [],
+                    "continuation": null,
+                    "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5",
+                    "help_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "interaction": null,
+                    "kind": "usage_observed",
+                    "move_id": null,
+                    "occurred_at": "1000",
+                    "original_ref": {
+                      "book_id": "tc0-average-speed",
+                      "kind": "chat_turn",
+                      "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                      "turn_id": "turn_0b5fa79168f9f3e5"
+                    },
+                    "prompt_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "response_preview": {
+                      "text": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+                      "truncated": false
+                    },
+                    "target": null,
+                    "usage": {
+                      "kind": "user_message"
+                    }
+                  }
+                ],
+                "session_focus": {
+                  "capability_targets": [],
+                  "interpretation": "",
+                  "target_object_refs": []
+                },
+                "stale": false,
+                "uninterpreted_fact_refs": [
+                  "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc"
+                ],
+                "unknown_when_absent": true,
+                "user_intent": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？"
+              },
+              "limitations": [],
+              "object_count": 0,
+              "objects": [],
+              "recent_facts": [
+                {
+                  "action": null,
+                  "answer_preview": {
+                    "text": "null",
+                    "truncated": false
+                  },
+                  "assistance_count": 0,
+                  "attempt": null,
+                  "binding": {
+                    "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                    "control_revision": 2,
+                    "session_revision": 1,
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "turn_id": "turn_0b5fa49168f9eecc",
+                    "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                  },
+                  "causal_refs": [],
+                  "continuation": null,
+                  "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc",
+                  "help_preview": {
+                    "text": "null",
+                    "truncated": false
+                  },
+                  "interaction": {
+                    "accepted_request": {
+                      "text": "这一步没跟上",
+                      "truncated": false
+                    },
+                    "action": {
+                      "entry_action": "clarify_answer",
+                      "origin": "ui_entry"
+                    },
+                    "answer_origin": "assistant",
+                    "answer_preview": {
+                      "text": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                      "truncated": false
+                    },
+                    "answer_ref": {
+                      "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+                      "turn_id": "turn_0b5fa79168f9f3e5"
+                    },
+                    "source_bindings": [
+                      {
+                        "end_lid": "1.1",
+                        "source_id": "tc0-average-speed",
+                        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                        "start_lid": "1.1"
+                      }
+                    ]
+                  },
+                  "kind": "usage_observed",
+                  "move_id": null,
+                  "occurred_at": "1000",
+                  "original_ref": {
+                    "book_id": "tc0-average-speed",
+                    "kind": "chat_turn",
+                    "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                    "turn_id": "turn_0b5fa49168f9eecc"
+                  },
+                  "prompt_preview": {
+                    "text": "null",
+                    "truncated": false
+                  },
+                  "response_preview": {
+                    "text": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+                    "truncated": false
+                  },
+                  "target": null,
+                  "usage": {
+                    "kind": "reading_action"
+                  }
+                },
+                {
+                  "action": null,
+                  "answer_preview": {
+                    "text": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。",
+                    "truncated": false
+                  },
+                  "assistance_count": 0,
+                  "attempt": null,
+                  "binding": {
+                    "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                    "control_revision": 2,
+                    "session_revision": 1,
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "turn_id": "turn_0b5fa79168f9f3e5",
+                    "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                  },
+                  "causal_refs": [
+                    "move:turn_0b5fa79168f9f3e5:explain"
+                  ],
+                  "continuation": null,
+                  "event_id": "delivery:turn_0b5fa79168f9f3e5:explain",
+                  "help_preview": {
+                    "text": "null",
+                    "truncated": false
+                  },
+                  "interaction": null,
+                  "kind": "message_delivered",
+                  "move_id": "explain",
+                  "occurred_at": "now",
+                  "original_ref": null,
+                  "prompt_preview": {
+                    "text": "Use total distance divided by total time.",
+                    "truncated": false
+                  },
+                  "response_preview": {
+                    "text": "null",
+                    "truncated": false
+                  },
+                  "target": {
+                    "capability": "explanation",
+                    "expected_performance": "Explain the denominator",
+                    "learning_focus": "average speed",
+                    "object_refs": [],
+                    "source_bindings": [
+                      {
+                        "end_lid": "1.1",
+                        "source_id": "tc0-average-speed",
+                        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                        "start_lid": "1.1"
+                      }
+                    ]
+                  },
+                  "usage": null
+                },
+                {
+                  "action": null,
+                  "answer_preview": {
+                    "text": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。",
+                    "truncated": false
+                  },
+                  "assistance_count": 0,
+                  "attempt": null,
+                  "binding": {
+                    "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                    "control_revision": 2,
+                    "session_revision": 1,
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "turn_id": "turn_0b5fa79168f9f3e5",
+                    "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                  },
+                  "causal_refs": [
+                    "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5"
+                  ],
+                  "continuation": null,
+                  "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:assistant:turn_0b5fa79168f9f3e5",
+                  "help_preview": {
+                    "text": "null",
+                    "truncated": false
+                  },
+                  "interaction": null,
+                  "kind": "usage_observed",
+                  "move_id": null,
+                  "occurred_at": "now",
+                  "original_ref": {
+                    "book_id": "tc0-average-speed",
+                    "kind": "chat_turn",
+                    "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                    "turn_id": "turn_0b5fa79168f9f3e5"
+                  },
+                  "prompt_preview": {
+                    "text": "null",
+                    "truncated": false
+                  },
+                  "response_preview": {
+                    "text": "null",
+                    "truncated": false
+                  },
+                  "target": null,
+                  "usage": {
+                    "kind": "assistant_delivery"
+                  }
+                },
+                {
+                  "action": null,
+                  "answer_preview": {
+                    "text": "null",
+                    "truncated": false
+                  },
+                  "assistance_count": 0,
+                  "attempt": null,
+                  "binding": {
+                    "chat_session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                    "control_revision": 2,
+                    "session_revision": 1,
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "turn_id": "turn_0b5fa79168f9f3e5",
+                    "tutor_session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+                  },
+                  "causal_refs": [],
+                  "continuation": null,
+                  "event_id": "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5",
+                  "help_preview": {
+                    "text": "null",
+                    "truncated": false
+                  },
+                  "interaction": null,
+                  "kind": "usage_observed",
+                  "move_id": null,
+                  "occurred_at": "1000",
+                  "original_ref": {
+                    "book_id": "tc0-average-speed",
+                    "kind": "chat_turn",
+                    "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d",
+                    "turn_id": "turn_0b5fa79168f9f3e5"
+                  },
+                  "prompt_preview": {
+                    "text": "null",
+                    "truncated": false
+                  },
+                  "response_preview": {
+                    "text": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+                    "truncated": false
+                  },
+                  "target": null,
+                  "usage": {
+                    "kind": "user_message"
+                  }
+                }
+              ],
+              "status": "active",
+              "teaching_assets": {
+                "cognitive_materials": {
+                  "status": "missing"
+                },
+                "formal_objects": {
+                  "status": "missing"
+                },
+                "limitations": [],
+                "reason": "正式教学素材尚未发布",
+                "source_id": "tc0-average-speed",
+                "status": "preparing",
+                "teaching_map_revision": null
+              },
+              "user_intent": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？"
+            }
+          }
+        ]
+      },
+      "scene": {
+        "anchor_lid": "1.1",
+        "generation": 1,
+        "selection": null,
+        "workspace_id": "local"
+      },
+      "teaching": [
+        {
+          "receipt_ids": [
+            "assets:turn_0b5fa49168f9eecc",
+            "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc",
+            "binding:turn_0b5fa49168f9eecc"
+          ],
+          "revision": 1,
+          "session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+        },
+        {
+          "receipt_ids": [
+            "move:turn_0b5fa49168f9eecc:move:turn_0b5fa49168f9eecc:denominator-pause"
+          ],
+          "revision": 1,
+          "session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+        },
+        {
+          "receipt_ids": [
+            "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:assistant:turn_0b5fa49168f9eecc",
+            "delivery:turn_0b5fa49168f9eecc:move:turn_0b5fa49168f9eecc:denominator-pause"
+          ],
+          "revision": 1,
+          "session_id": "tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+        }
+      ]
+    },
+    "goal_ref": {
+      "id": "goal_turn_0b5fa49168f9eecc",
+      "revision": 2
+    },
+    "outcome": {
+      "answer": "只拆这一点：分母为什么收留“没走路的那段”。\n\n**1. 分子和分母记的不是同一本账**\n\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。\n\n**2. 分母的职责是“摊”，不是“奖励运动”**\n\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\n\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\n\n2 小时走 120 公里，中间停了半小时：\n\n- 分母写 2 小时 → 60 公里/小时\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\n\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\n\n**4. 所以“停顿没走路”并不构成矛盾**\n\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\n\n**5. 书里那句话的限定正好印证口径**\n\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”（这三句是同一个 LID 里连着的原文）。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。\n\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。",
+      "answer_view": {
+        "parts": [
+          {
+            "kind": "markdown",
+            "text": "只拆这一点：分母为什么收留“没走路的那段”。\n\n**1. 分子和分母记的不是同一本账**\n\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。"
+          },
+          {
+            "kind": "sources",
+            "source_ref_ids": [
+              "source_ref_46f9d90684b10a00"
+            ]
+          },
+          {
+            "kind": "markdown",
+            "text": "\n\n**2. 分母的职责是“摊”，不是“奖励运动”**\n\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\n\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\n\n2 小时走 120 公里，中间停了半小时：\n\n- 分母写 2 小时 → 60 公里/小时\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\n\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\n\n**4. 所以“停顿没走路”并不构成矛盾**\n\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\n\n**5. 书里那句话的限定正好印证口径**\n\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”（这三句是同一个 LID 里连着的原文）。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。"
+          },
+          {
+            "kind": "sources",
+            "source_ref_ids": [
+              "source_ref_46f9d90684b10a00"
+            ]
+          },
+          {
+            "kind": "markdown",
+            "text": "\n\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。"
+          }
+        ],
+        "sources": [
+          {
+            "label": "正文 · Average speed",
+            "source_ref_id": "source_ref_46f9d90684b10a00"
+          }
+        ]
+      },
+      "effects": [],
+      "incomplete": false,
+      "memory_updates": [],
+      "profile_usage": {
+        "claimed_used_fact_ids": [],
+        "influences": [],
+        "injected_fact_ids": [],
+        "snapshot_revision": 0
+      },
+      "tokens_spent": 135049,
+      "trace": [
+        {
+          "args": "{\"lid\": \"1.1\"}",
+          "model_tool_loop": 1,
+          "result_digest": "{\"lid\":\"1.1\",\"text\":\"# Average speed\\n\\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+          "tool": "book.text"
+        },
+        {
+          "args": "{\"lid\": \"1.1\", \"granularity\": \"near\", \"k\": 8}",
+          "model_tool_loop": 1,
+          "result_digest": "{\"anchor\":\"1.1\",\"items\":[{\"lid\":\"1\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"parent\"}},{\"lid\":\"1.2\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"next_sibling\"}}]}",
+          "tool": "book.context"
+        },
+        {
+          "args": "{\"lid\": \"1.2\"}",
+          "model_tool_loop": 2,
+          "result_digest": "{\"lid\":\"1.2\",\"text\":\"A blue bicycle travels along the river.\"}",
+          "tool": "book.text"
+        },
+        {
+          "args": "{\"fact_refs\":[\"usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc\"],\"interpretation\":\"读者自述已掌握除法与乘法互逆的计算层面（“乘除互逆我已经明白了”），并把卡点明确定位在分母的口径上：“停下来时没走路，为什么停顿还要算进分母？”因此障碍不是代数变形，而是“总时间”这个量的指称——他默认分母应登记“产生路程的时长”，而定义用的是从出发到到达的总时长。前一轮“需要拆开等式变形”的假设与读者自述不符。\",\"nature\":\"hypothesis\",\"operation\":\"evidence\",\"operation_id\":\"hyp:denominator-pause-turn_0b5fa49168f9eecc\",\"supersedes\":\"interpretation:tc6-prior\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"Explain the denominator\",\"learning_focus\":\"average speed\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},\"teaching_implication\":\"不要再做代数变形或回代演示；直接针对分母登记什么展开：分母登记的是时间账本而非距离账本，停顿在时间上真实发生，所以进分母；用“同一段路程被摊到更长时间上”讲清平均的含义，并说明排除停顿得到的是另一个量（骑行中的速度）。\"}",
+          "model_tool_loop": 3,
+          "result_digest": "{\"evidence_ref\":\"interpretation:hyp:denominator-pause-turn_0b5fa49168f9eecc\",\"instruction\":\"Use this current interpretation when relevant to the move; record its reference in move.interpretation_refs.",
+          "tool": "tutor.step"
+        },
+        {
+          "args": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+          "model_tool_loop": 3,
+          "result_digest": "{\"source_ref_id\":\"source_ref_46f9d90684b10a00\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time ",
+          "tool": "source.present"
+        },
+        {
+          "args": "{\"move\":{\"intent_origin\":\"current_action\",\"intent_quote\":\"我卡的是：停下来时没走路，为什么停顿还要算进分母？\",\"interaction_intent\":\"direct_explanation\",\"interpretation_refs\":[\"interpretation:hyp:denominator-pause-turn_0b5fa49168f9eecc\"],\"kind\":\"explain\",\"move_id\":\"move:turn_0b5fa49168f9eecc:denominator-pause\",\"object_ids\":[],\"prompt\":\"只拆这一点：分母为什么收留“没走路的那段”。\\n\\n**1. 分子和分母记的不是同一本账**\\n\\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。\\n\\n**2. 分母的职责是“摊”，不是“奖励运动”**\\n\\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\\n\\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\\n\\n2 小时走 120 公里，中间停了半小时：\\n\\n- 分母写 2 小时 → 60 公里/小时\\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\\n\\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\\n\\n**4. 所以“停顿没走路”并不构成矛盾**\\n\\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\\n\\n**5. 书里那句话的限定正好印证口径**\\n\\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。\\n\\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"Explain the denominator\",\"learning_focus\":\"average speed\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+          "model_tool_loop": 4,
+          "result_digest": "{\"error_code\":\"TEACHING_INVALID\",\"category\":\"validation\",\"message\":\"教学意图需匹配当前原话或会话默认；直接讲解应采用解释动作\"}",
+          "tool": "tutor.step"
+        },
+        {
+          "args": "{\"move\":{\"intent_origin\":\"current_request\",\"intent_quote\":\"不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。\",\"interaction_intent\":\"neutral\",\"interpretation_refs\":[\"interpretation:hyp:denominator-pause-turn_0b5fa49168f9eecc\"],\"kind\":\"explain\",\"move_id\":\"move:turn_0b5fa49168f9eecc:denominator-pause\",\"object_ids\":[],\"prompt\":\"只拆这一点：分母为什么收留“没走路的那段”。\\n\\n**1. 分子和分母记的不是同一本账**\\n\\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。\\n\\n**2. 分母的职责是“摊”，不是“奖励运动”**\\n\\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\\n\\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\\n\\n2 小时走 120 公里，中间停了半小时：\\n\\n- 分母写 2 小时 → 60 公里/小时\\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\\n\\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\\n\\n**4. 所以“停顿没走路”并不构成矛盾**\\n\\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\\n\\n**5. 书里那句话的限定正好印证口径**\\n\\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。\\n\\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"Explain the denominator\",\"learning_focus\":\"average speed\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+          "model_tool_loop": 5,
+          "result_digest": "{\"instruction\":\"Deliver this move in the final answer. Saved candidate is not displayed.\",\"selected\":\"move:turn_0b5fa49168f9eecc:move:turn_0b5fa49168f9eecc:denominator-pause\"}",
+          "tool": "tutor.step"
+        }
+      ],
+      "turns": 6
+    },
+    "question_anchor_lid": null,
+    "question_quote": null,
+    "run_summary": {
+      "activities": [
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 2056.7687,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "unknown-model",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 75.7013,
+          "status": "succeeded",
+          "step_id": 1,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": null,
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": 15105
+          },
+          "usage_total_tokens": 15105
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 10.005200000000059,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "读取原文",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "book.text",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 2151.6911,
+          "status": "succeeded",
+          "step_id": 2,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 11.241799999999785,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "查阅书籍",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "book.context",
+          "parent_step_id": null,
+          "result_count": 2,
+          "started_ms": 2199.2968,
+          "status": "succeeded",
+          "step_id": 3,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 1573.8331000000003,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "unknown-model",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 2278.0011999999997,
+          "status": "succeeded",
+          "step_id": 4,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": null,
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": 17178
+          },
+          "usage_total_tokens": 17178
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 7.725399999999809,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "读取原文",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "book.text",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 3870.5182000000004,
+          "status": "succeeded",
+          "step_id": 5,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 37991.173599999995,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "unknown-model",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 3930.9579000000003,
+          "status": "succeeded",
+          "step_id": 6,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": null,
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": 23238
+          },
+          "usage_total_tokens": 23238
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 79.83699999999953,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "选择教学动作",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "tutor.step",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 41950.467000000004,
+          "status": "succeeded",
+          "step_id": 7,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 10.998699999996461,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "整理来源",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "source.present",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 42058.2872,
+          "status": "succeeded",
+          "step_id": 8,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 5324.2539999999935,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "unknown-model",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 42131.973600000005,
+          "status": "succeeded",
+          "step_id": 9,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": null,
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": 25021
+          },
+          "usage_total_tokens": 25021
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 50.46779999999853,
+          "error_code": "TEACHING_INVALID",
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "选择教学动作",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "tutor.step",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 47473.252100000005,
+          "status": "rejected",
+          "step_id": 10,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 5628.430999999997,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "unknown-model",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 47584.6368,
+          "status": "succeeded",
+          "step_id": 11,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": null,
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": 26653
+          },
+          "usage_total_tokens": 26653
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 65.11460000000079,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "选择教学动作",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "tutor.step",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 53236.469399999994,
+          "status": "succeeded",
+          "step_id": 12,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 3094.1710999999923,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "unknown-model",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 53379.849200000004,
+          "status": "succeeded",
+          "step_id": 13,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": null,
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": 27854
+          },
+          "usage_total_tokens": 27854
+        }
+      ],
+      "effects": [],
+      "last_seq": null,
+      "trace": [
+        {
+          "args": "{\"lid\": \"1.1\"}",
+          "model_tool_loop": 1,
+          "result_digest": "{\"lid\":\"1.1\",\"text\":\"# Average speed\\n\\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+          "tool": "book.text"
+        },
+        {
+          "args": "{\"lid\": \"1.1\", \"granularity\": \"near\", \"k\": 8}",
+          "model_tool_loop": 1,
+          "result_digest": "{\"anchor\":\"1.1\",\"items\":[{\"lid\":\"1\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"parent\"}},{\"lid\":\"1.2\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"next_sibling\"}}]}",
+          "tool": "book.context"
+        },
+        {
+          "args": "{\"lid\": \"1.2\"}",
+          "model_tool_loop": 2,
+          "result_digest": "{\"lid\":\"1.2\",\"text\":\"A blue bicycle travels along the river.\"}",
+          "tool": "book.text"
+        },
+        {
+          "args": "{\"fact_refs\":[\"usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa49168f9eecc\"],\"interpretation\":\"读者自述已掌握除法与乘法互逆的计算层面（“乘除互逆我已经明白了”），并把卡点明确定位在分母的口径上：“停下来时没走路，为什么停顿还要算进分母？”因此障碍不是代数变形，而是“总时间”这个量的指称——他默认分母应登记“产生路程的时长”，而定义用的是从出发到到达的总时长。前一轮“需要拆开等式变形”的假设与读者自述不符。\",\"nature\":\"hypothesis\",\"operation\":\"evidence\",\"operation_id\":\"hyp:denominator-pause-turn_0b5fa49168f9eecc\",\"supersedes\":\"interpretation:tc6-prior\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"Explain the denominator\",\"learning_focus\":\"average speed\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},\"teaching_implication\":\"不要再做代数变形或回代演示；直接针对分母登记什么展开：分母登记的是时间账本而非距离账本，停顿在时间上真实发生，所以进分母；用“同一段路程被摊到更长时间上”讲清平均的含义，并说明排除停顿得到的是另一个量（骑行中的速度）。\"}",
+          "model_tool_loop": 3,
+          "result_digest": "{\"evidence_ref\":\"interpretation:hyp:denominator-pause-turn_0b5fa49168f9eecc\",\"instruction\":\"Use this current interpretation when relevant to the move; record its reference in move.interpretation_refs.",
+          "tool": "tutor.step"
+        },
+        {
+          "args": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+          "model_tool_loop": 3,
+          "result_digest": "{\"source_ref_id\":\"source_ref_46f9d90684b10a00\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time ",
+          "tool": "source.present"
+        },
+        {
+          "args": "{\"move\":{\"intent_origin\":\"current_action\",\"intent_quote\":\"我卡的是：停下来时没走路，为什么停顿还要算进分母？\",\"interaction_intent\":\"direct_explanation\",\"interpretation_refs\":[\"interpretation:hyp:denominator-pause-turn_0b5fa49168f9eecc\"],\"kind\":\"explain\",\"move_id\":\"move:turn_0b5fa49168f9eecc:denominator-pause\",\"object_ids\":[],\"prompt\":\"只拆这一点：分母为什么收留“没走路的那段”。\\n\\n**1. 分子和分母记的不是同一本账**\\n\\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。\\n\\n**2. 分母的职责是“摊”，不是“奖励运动”**\\n\\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\\n\\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\\n\\n2 小时走 120 公里，中间停了半小时：\\n\\n- 分母写 2 小时 → 60 公里/小时\\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\\n\\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\\n\\n**4. 所以“停顿没走路”并不构成矛盾**\\n\\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\\n\\n**5. 书里那句话的限定正好印证口径**\\n\\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。\\n\\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"Explain the denominator\",\"learning_focus\":\"average speed\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+          "model_tool_loop": 4,
+          "result_digest": "{\"error_code\":\"TEACHING_INVALID\",\"category\":\"validation\",\"message\":\"教学意图需匹配当前原话或会话默认；直接讲解应采用解释动作\"}",
+          "tool": "tutor.step"
+        },
+        {
+          "args": "{\"move\":{\"intent_origin\":\"current_request\",\"intent_quote\":\"不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。\",\"interaction_intent\":\"neutral\",\"interpretation_refs\":[\"interpretation:hyp:denominator-pause-turn_0b5fa49168f9eecc\"],\"kind\":\"explain\",\"move_id\":\"move:turn_0b5fa49168f9eecc:denominator-pause\",\"object_ids\":[],\"prompt\":\"只拆这一点：分母为什么收留“没走路的那段”。\\n\\n**1. 分子和分母记的不是同一本账**\\n\\n定义写的是：平均速度 = 总路程 ÷ 总时间。分子记“走了多远”，分母记“花了多久”。停顿在第二本账上有记录——那段时间确实被这趟行程花掉了。人停住时，分子不增加，分母照样增加。\\n\\n**2. 分母的职责是“摊”，不是“奖励运动”**\\n\\n“平均”要做的事只有一件：把整段行程压成一个数——如果全程都用同一个速度走，该是多少。既然要代表整段行程，它就得交代整段时间的去向，包括没动的那几分钟。把停顿剔出去，得到的不是“这趟行程多快”，而是“骑车的时候多快”，那是另一个量，回答另一个问题。\\n\\n**3. 用一组数字感觉分量（数字是我为演示设的，不是书里的原文）**\\n\\n2 小时走 120 公里，中间停了半小时：\\n\\n- 分母写 2 小时 → 60 公里/小时\\n- 分母只写 1.5 小时（只算轮子转动的时间）→ 80 公里/小时\\n\\n120 公里没变，变的是它被摊到多长的时间上。同样一段路程摊到更长时间，每小时分到的就少。停顿不改变你走了多远，它只把同一段路程摊薄；60 与 80 差的那 20，就是这半小时在分母里的分量。\\n\\n**4. 所以“停顿没走路”并不构成矛盾**\\n\\n它没走路，但它花了你的时间。8:00 出发、9:00 到达，这 1 小时抹不掉——到达时刻就是 9:00。分母要如实反映“从开始到结束总共经过了多久”，停顿属于这段经过。\\n\\n**5. 书里那句话的限定正好印证口径**\\n\\n书里写的是 total time（总时间），并紧接着规定它必须为正，同时提醒“相等距离不必用相等时间”。三句连起来看，分母按的是时间口径：只要是正的总时长，平均速度就存在；它不要求分母里全是“轮子转动的时间”。\\n\\n一句话收束：停顿不进分子，因为它没换来路程；它进分母，因为它换来的是这趟行程真实花掉的时间。平均速度量的不是“你动的时候多快”，而是“整段行程用了多久、换来了多远”。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"Explain the denominator\",\"learning_focus\":\"average speed\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+          "model_tool_loop": 5,
+          "result_digest": "{\"instruction\":\"Deliver this move in the final answer. Saved candidate is not displayed.\",\"selected\":\"move:turn_0b5fa49168f9eecc:move:turn_0b5fa49168f9eecc:denominator-pause\"}",
+          "tool": "tutor.step"
+        }
+      ]
+    },
+    "source_bindings": [
+      {
+        "book_id": "tc0-average-speed",
+        "evidence_range": {
+          "end_lid": "1.1",
+          "ranges": [
+            {
+              "lid": "1.1",
+              "range": {
+                "end": 147,
+                "start": 17
+              }
+            }
+          ],
+          "start_lid": "1.1"
+        },
+        "evidence_text_digest": "source-fnv1a64-16e3ce8bb6bde7b1",
+        "label_snapshot": "正文 · Average speed",
+        "preview_snapshot": "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.",
+        "source_ref_id": "source_ref_46f9d90684b10a00"
+      }
+    ],
+    "status": "completed",
+    "turn_id": "turn_0b5fa49168f9eecc",
+    "user": "操作：这一步没跟上\n不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+    "user_turn_ordinal": 2
+  }
+}

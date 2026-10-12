@@ -1,0 +1,10 @@
+{
+  "published_at_utc": "2026-10-11T03:49:57.513279+00:00",
+  "root": "/opt/understand-book/releases/ux-trace-20261011/packages/web/dist-multi",
+  "backup": "/opt/understand-book/backups/bookshelf-style-20261011T034956Z",
+  "script": "/assets/reader-CZ0ykojC.js",
+  "old_style": "/assets/reader-DNabvP0n-loading-height-20261011.css",
+  "new_style": "/assets/reader-CUvM77VD.css",
+  "change": "Pair the existing reader script with CSS from the same build",
+  "backend_restarted": false
+}

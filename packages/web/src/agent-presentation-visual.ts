@@ -34,6 +34,8 @@ createApp(defineComponent({ setup() {
   const tutor = useTutorControl();
   const showTutor = new URLSearchParams(location.search).has('tutor');
   const panel = ref(false);
+  const panelView = ref<'current' | 'understanding'>('current');
+  const openPanel = (view: 'current' | 'understanding') => { panelView.value = view; panel.value = true; };
   const tutorAction = async (action: import('./generated/TutorAction').TutorAction) => {
     await tutor.act(action);
     window.dispatchEvent(new Event('tutor-state-changed'));
@@ -41,7 +43,7 @@ createApp(defineComponent({ setup() {
   if (showTutor) void tutor.load();
   const control = () => showTutor ? h(TutorControl, { enabled: !!tutor.state.value?.control.enabled, label: tutor.label.value,
     busy: tutor.busy.value, unavailable: !tutor.state.value || !!tutor.pending.value, error: tutor.error.value,
-    onToggle: () => tutorAction({ kind: 'set_enabled', enabled: !tutor.state.value?.control.enabled }), onManage: () => { panel.value = true; } }) : null;
+    onToggle: () => tutorAction({ kind: 'set_enabled', enabled: !tutor.state.value?.control.enabled }), onRetry: tutor.retry }) : null;
   const chat = ref<any[]>([{ teachingRef: fixture.teaching_ref, turnId: fixture.turn_id, user: "解释证据召回率", outcome: fixture.outcome, pending: false,
     questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] }]);
   return () => h("main", { style: "max-width:760px;margin:24px auto;padding:8px" }, [
@@ -58,8 +60,8 @@ createApp(defineComponent({ setup() {
       saving: saving.value, error: noteError.value, 'onUpdate:content': (value: string) => { editing.value!.content = value; },
       onSave: saveNote, onCollapse: () => { collapsed.value = true; }, onDiscard: () => { editing.value = undefined; },
     })) : null,
-    control(),
     panel.value ? h(TutorPanel, { state: tutor.state.value, busy: tutor.busy.value, error: tutor.error.value,
+      initialView: panelView.value,
       pending: !!tutor.pending.value, sourceId: tutor.readiness.value?.source_id ?? 'fixture-book', label: tutor.label.value,
       readiness: tutor.readiness.value, readinessError: tutor.readinessError.value, onRefreshReadiness: tutor.loadReadiness,
       onAction: tutorAction, onRetry: tutor.retry, onClose: () => { panel.value = false; } }) : null,
@@ -72,7 +74,7 @@ createApp(defineComponent({ setup() {
       'onUpdate:presentationWorkspace': (value: PresentationWorkspace | null) => { workspace.value = value; },
       chatSessions: [], activeChatSessionId: selected.value, agentInput: input.value, sending: false,
       'onUpdate:agentInput': (value: string) => { input.value = value; },
-      showTrace: {}, latestTrace: [], selectedLid: null, selectedFormula: null, contextNotes: notes.value, contextHighlights: [],
+      selectedLid: null, selectedFormula: null, contextNotes: notes.value, contextHighlights: [],
       renderMarkdown, effLabel: () => "", effState: () => undefined, isGoto: () => false,
       showEffectPrimary: () => false, showEffectSecondary: () => false, effectPrimaryLabel: () => "", effectSecondaryLabel: () => "", gotoBack: () => "", askDraft: null,
       onRecordNote: (receipt: import('./generated/PresentationFollowUp').PresentationFollowUp, title: string, summary: string) => {
@@ -91,6 +93,9 @@ createApp(defineComponent({ setup() {
           presentationFollowUp: receipt, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] });
         followUp.value = "追问已完成";
       },
-    }, { 'tutor-control': control }),
+    }, { 'tutor-control': control, 'learning-actions': () => showTutor ? [
+      h('button', {onClick:()=>openPanel('understanding')}, '我的理解'),
+      h('button', {onClick:()=>openPanel('current')}, '学习详情'),
+    ] : null }),
   ]);
 } })).mount("#app");

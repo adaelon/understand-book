@@ -1,0 +1,9 @@
+
+running 1 test
+test tests::tutor_continuation_tests::continuation_tc2a_live_fixed_input_comparison ... TC2A repetition=1 status=200 output=E:\allwork\download\agent\understand-book\docs\performance\tutor-continuation-tc2a\recovery-20261011\runs\run-1
+TC2A repetition=2 status=200 output=E:\allwork\download\agent\understand-book\docs\performance\tutor-continuation-tc2a\recovery-20261011\runs\run-2
+TC2A repetition=3 status=200 output=E:\allwork\download\agent\understand-book\docs\performance\tutor-continuation-tc2a\recovery-20261011\runs\run-3
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 729 filtered out; finished in 72.44s
+

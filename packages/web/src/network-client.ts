@@ -163,8 +163,11 @@ async function createRun(body: Record<string, unknown>) {
   }
   const latest = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${w.workspace_id}`);
   if (latest.generation !== w.generation) { installWorkspace(latest); throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', '现场已更新'); }
+  if ((body.entry_action || body.teaching_choice) && (body.session_id !== w.selected_chat || latest.selected_chat !== w.selected_chat)) {
+    throw new ApiError(409, 'CHAT_SELECTION_CHANGED', 'conflict', '聊天已切换，请返回原聊天重新发起操作');
+  }
   installWorkspace(latest);
-  const key = crypto.randomUUID();
+  const key = typeof body.client_request_id === 'string' ? body.client_request_id : crypto.randomUUID();
   const input = { ...body, client_request_id: key, session_id: w.selected_chat, attachment_id: network.value.attachment,
     generation: latest.generation, expected_revision: latest.revision, published_book_ref: latest.published_book_ref };
   sessionStorage.setItem(pendingPrefix() + key, JSON.stringify({ key, body: input, workspace: w.workspace_id }));
@@ -210,8 +213,8 @@ export async function networkRequest<T>(method: 'GET' | 'POST', path: string, bo
     await workspaceAction('book/open', { published_book_ref: JSON.parse(String(input.dir)) });
     value = { ok: true, book_id: network.value.workspace!.published_book_ref.book_id };
   } else if (path === '/book/library') {
-    const result = await networkFetch<{ books: { published_book_ref: import('./network-context').PublishedBookRef; cover?: import('./api').BookCoverSource | null }[] }>('GET', '/library');
-    value = { root: '', books: result.books.map(b => ({ name: b.published_book_ref.book_id, book_id: b.published_book_ref.book_id, dir: JSON.stringify(b.published_book_ref), route: 'reader', cover: b.cover })) };
+    const result = await networkFetch<{ books: { published_book_ref: import('./network-context').PublishedBookRef; title?: string | null; cover?: import('./api').BookCoverSource | null }[] }>('GET', '/library');
+    value = { root: '', books: result.books.map(b => ({ name: b.published_book_ref.book_id, title: b.title, book_id: b.published_book_ref.book_id, dir: JSON.stringify(b.published_book_ref), route: 'reader', cover: b.cover })) };
   } else if (path.startsWith('/book/')) value = await networkFetch(method, publishedUrl(path.slice(6)), body);
   else if (path === '/tutor/state' || path === '/tutor/mutate') value = await networkFetch(method, path, body);
   else if (path === '/tutor/readiness') value = await networkFetch('GET', publishedUrl('tutor_readiness'));

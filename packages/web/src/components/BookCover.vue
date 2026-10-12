@@ -3,7 +3,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { BookCoverSource } from '../api';
 import { renderPdfCover } from '../pdf-cover';
 
-const props = defineProps<{ title: string; cover?: BookCoverSource | null }>();
+const props = defineProps<{ title: string; cover?: BookCoverSource | null; compact?: boolean }>();
 const root = ref<HTMLElement | null>(null), canvas = ref<HTMLCanvasElement | null>(null);
 const visible = ref(false), loaded = ref(false), failed = ref(false);
 let observer: IntersectionObserver | undefined;
@@ -30,7 +30,7 @@ watch([visible, () => props.cover?.url, () => props.cover?.kind], async (_, __, 
 </script>
 
 <template>
-  <div ref="root" class="book-cover" :class="{ 'book-cover-loaded': loaded && !failed }" aria-hidden="true">
+  <div ref="root" class="book-cover" :class="{ 'book-cover-loaded': loaded && !failed, 'book-cover-compact': compact }" aria-hidden="true">
     <div v-if="!loaded || failed" class="book-cover-fallback">
       <div class="book-cover-rule"></div>
       <div class="book-cover-name">{{ title }}</div>
@@ -51,4 +51,8 @@ watch([visible, () => props.cover?.url, () => props.cover?.kind], async (_, __, 
 .book-cover img, .book-cover canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
 .book-cover img { position: absolute; inset: 0; }
 .book-cover-loaded { background: #fff; }
+.book-cover-compact .book-cover-fallback { padding: 12px 7px; gap: 8px; border-left-width: 3px; }
+.book-cover-compact .book-cover-name { font-size: 10px; line-height: 1.5; -webkit-line-clamp: 3; }
+.book-cover-compact .book-cover-rule { width: 14px; height: 2px; }
+.book-cover-compact .book-cover-mark { display: none; }
 </style>

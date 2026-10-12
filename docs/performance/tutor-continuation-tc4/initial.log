@@ -1,0 +1,184 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling server v0.0.0 (E:\allwork\download\agent\understand-book\crates\server)
+warning: type `FrozenTeachingPreparation` is more private than the item `TurnDomain::local_preparation`
+   --> crates\server\src\session_event.rs:184:5
+    |
+184 |     pub local_preparation: Option<teaching::FrozenTeachingPreparation>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ field `TurnDomain::local_preparation` is reachable at visibility `pub`
+    |
+note: but type `FrozenTeachingPreparation` is only usable at visibility `pub(crate)`
+   --> crates\server\src\teaching.rs:329:1
+    |
+329 | pub(crate) struct FrozenTeachingPreparation {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: `#[warn(private_interfaces)]` on by default
+
+warning: `server` (lib test) generated 1 warning
+    Finished `test` profile [unoptimized] target(s) in 55.59s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\server-d6ca67c640d9d740.exe)
+
+running 4 tests
+test tests::tutor_continuation_tests::continuation_tc4_local_choice_boundaries_and_historical_answer ... FAILED
+test tests::tutor_continuation_tests::continuation_tc4_local_choice_is_consumed_once_and_keeps_goal ... FAILED
+test tests::tutor_continuation_tests::continuation_tc4_local_restarts_repair_facts_without_execution ... FAILED
+test tests::tutor_continuation_tests::continuation_tc4_network_choice_recovers_preparation_boundaries ... FAILED
+
+failures:
+
+---- tests::tutor_continuation_tests::continuation_tc4_local_choice_boundaries_and_historical_answer stdout ----
+
+thread 'tests::tutor_continuation_tests::continuation_tc4_local_choice_boundaries_and_historical_answer' (41324) panicked at crates\server\src\tests\tutor_continuation_tests.rs:654:82:
+{"error_code":"INTERACTION_INVALID","category":"validation","message":"原回答没有可接续的原文范围，请重新选择原文"}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- tests::tutor_continuation_tests::continuation_tc4_local_choice_is_consumed_once_and_keeps_goal stdout ----
+
+thread 'tests::tutor_continuation_tests::continuation_tc4_local_choice_is_consumed_once_and_keeps_goal' (45620) panicked at crates\server\src\tests\tutor_continuation_tests.rs:46:5:
+assertion `left == right` failed
+  left: "goal_turn_411b3cea01d5e9df"
+ right: "goal_turn_411b3dea01d5eb92"
+
+---- tests::tutor_continuation_tests::continuation_tc4_local_restarts_repair_facts_without_execution stdout ----
+
+thread 'tests::tutor_continuation_tests::continuation_tc4_local_restarts_repair_facts_without_execution' (19740) panicked at crates\server\src\tests\tutor_continuation_tests.rs:78:13:
+continue_answer/accepted
+
+---- tests::tutor_continuation_tests::continuation_tc4_network_choice_recovers_preparation_boundaries stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+
+thread 'tests::tutor_continuation_tests::continuation_tc4_network_choice_recovers_preparation_boundaries' (35868) panicked at crates\server\src\tests\tutor_continuation_tests.rs:167:61:
+assertion `left == right` failed: preparing: {"category":"validation","error_code":"INTERACTION_INVALID","message":"Invalid request"}
+  left: 400
+ right: 503
+
+
+failures:
+    tests::tutor_continuation_tests::continuation_tc4_local_choice_boundaries_and_historical_answer
+    tests::tutor_continuation_tests::continuation_tc4_local_choice_is_consumed_once_and_keeps_goal
+    tests::tutor_continuation_tests::continuation_tc4_local_restarts_repair_facts_without_execution
+    tests::tutor_continuation_tests::continuation_tc4_network_choice_recovers_preparation_boundaries
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 739 filtered out; finished in 11.45s
+
+error: test failed, to rerun pass `-p server --lib`

@@ -241,6 +241,7 @@ impl ObservabilityRuntime {
                 mapper: Mutex::new(ActivityMapper::new(config.max_trace_spans)),
                 content: Mutex::new(HashMap::new()),
                 answer_first_patch_ms: Mutex::new(None),
+                last_tool_error: Mutex::new(None),
                 active: AtomicBool::new(active),
                 finished: AtomicBool::new(false),
             }),
@@ -340,6 +341,7 @@ struct ObservationRunInner {
     mapper: Mutex<ActivityMapper>,
     content: Mutex<HashMap<u32, ActivityContent>>,
     answer_first_patch_ms: Mutex<Option<f64>>,
+    last_tool_error: Mutex<Option<(String, String)>>,
     active: AtomicBool,
     finished: AtomicBool,
 }
@@ -386,7 +388,9 @@ impl ObservationRun {
         }
         let (execution, delivery, incomplete) =
             business_states(outcome, cancelled, persistence_state);
-        let error_code = policy::safe_error_code(error_code);
+        let stop_reason = policy::safe_error_code(outcome.filter(|value| value.incomplete)
+            .map(|value| value.warning.as_deref().unwrap_or("AGENT_INCOMPLETE")));
+        let error_code = policy::safe_error_code(error_code).or_else(|| stop_reason.clone());
         let dropped = self
             .inner
             .runtime
@@ -407,6 +411,13 @@ impl ObservationRun {
         );
         if let Some(outcome) = outcome {
             enrich_root_metadata(&mut observation.metadata, outcome);
+        }
+        if incomplete {
+            observation.metadata.stop_reason = stop_reason;
+            if let Some((tool, code)) = self.inner.last_tool_error.lock().unwrap().as_ref() {
+                observation.metadata.last_tool_error_name = Some(tool.clone());
+                observation.metadata.last_tool_error_code = Some(code.clone());
+            }
         }
         let project = &self.inner.runtime.config.as_ref().unwrap().project;
         let mut item = export_item(observation, ExportOperation::Update, project);
@@ -431,6 +442,15 @@ impl ObservationRun {
         }
         let step_id = event.activity.step_id;
         let terminal = event.activity.status != runtime::run_events::ActivityStatus::Running;
+        if terminal && event.activity.kind == "tool" {
+            if let Some(code) = policy::safe_error_code(event.activity.error_code.as_deref()) {
+                // Keep the error that prompted recovery, rather than replacing it
+                // with the subsequent no-progress guard rejection.
+                if code != "AGENT_NO_PROGRESS" {
+                    *self.inner.last_tool_error.lock().unwrap() = Some((policy::safe_tool_name(&event.activity.name), code));
+                }
+            }
+        }
         let mapped = self
             .inner
             .mapper
@@ -984,6 +1004,43 @@ mod tests {
         assert!(update.payload.get("inputs").is_none());
         assert!(update.payload.get("outputs").is_none());
         assert!(run.inner.content.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn incomplete_root_exports_stop_reason_and_last_tool_error() {
+        use runtime::run_events::{ActivityStatus, RunEvents};
+        for (incomplete, warning, explicit_error, expected_error, expected_stop) in [
+            (true, Some("AGENT_NO_PROGRESS"), None, Some("AGENT_NO_PROGRESS"), Some("AGENT_NO_PROGRESS")),
+            (false, None, None, None, None),
+            (true, None, None, Some("AGENT_INCOMPLETE"), Some("AGENT_INCOMPLETE")),
+            (true, Some("AGENT_NO_PROGRESS"), Some("PERSISTENCE_FAILED"), Some("PERSISTENCE_FAILED"), Some("AGENT_NO_PROGRESS")),
+        ] {
+            let sent = Arc::new(Mutex::new(Vec::new()));
+            let runtime = ObservabilityRuntime::with_transport(config(),
+                Box::new(RecordingTransport { sent: sent.clone(), reject_root: false }));
+            let run = runtime.start_run("book", "session").unwrap();
+            let events = RunEvents::new(Some(run.sink()));
+            for code in ["TEACHING_INVALID", "TOOL_ARGUMENTS_INVALID", "AGENT_NO_PROGRESS"] {
+                let activity = events.begin("tool", "tutor.step", "select", false);
+                events.finish(activity, ActivityStatus::Rejected, None, Some(code.into()), None);
+            }
+            let outcome = serde_json::from_value(serde_json::json!({
+                "answer":"Delivered answer", "incomplete":incomplete, "warning":warning,
+                "turns":4, "tokens_spent":0, "effects":[], "trace":[]
+            })).unwrap();
+            run.finish(Some(&outcome), false, PersistenceState::Saved, explicit_error);
+            runtime.shutdown();
+            let sent = sent.lock().unwrap();
+            let root = sent.iter().find(|item| item.run_id == run.inner.identity.root_span_id
+                && item.operation == ExportOperation::Update).unwrap();
+            assert_eq!(root.payload["error"].as_str(), expected_error);
+            let observation = &root.payload["extra"]["metadata"]["ub_observation"];
+            assert_eq!(observation["metadata"]["incomplete"], incomplete);
+            assert_eq!(observation["metadata"]["stop_reason"].as_str(), expected_stop);
+            assert_eq!(observation["metadata"]["last_tool_error_code"].as_str(), incomplete.then_some("TOOL_ARGUMENTS_INVALID"));
+            assert_eq!(observation["metadata"]["last_tool_error_name"].as_str(), incomplete.then_some("tutor.step"));
+            assert_eq!(observation["delivery_state"], "delivered");
+        }
     }
 
     #[test]

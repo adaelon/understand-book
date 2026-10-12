@@ -9,8 +9,8 @@ import NetworkApp from './NetworkApp.vue';
 const identity = { user_id: 'reader', csrf_token: 'csrf' };
 let workspace: NetworkWorkspace, calls: string[], authorized: boolean, question: string | null;
 let wrapper: ReturnType<typeof mount> | undefined;
-const books = [{ published_book_ref: { book_id: '同一本书', publication_id: 'new' }, is_default: true },
-  { published_book_ref: { book_id: '同一本书', publication_id: 'original' } },
+const books = [{ published_book_ref: { book_id: '同一本书', publication_id: 'new' }, is_default: true, title: '能量守恒与变化' },
+  { published_book_ref: { book_id: '同一本书', publication_id: 'original' }, title: '能量守恒与变化' },
   { published_book_ref: { book_id: '另一窗口的书', publication_id: 'other' } }];
 beforeEach(() => {
   sessionStorage.clear(); calls = []; authorized = true; question = '为什么守恒？';
@@ -45,9 +45,52 @@ async function start() {
   wrapper = mount(NetworkApp, { global: { stubs: { BookCover: true } } });
   await flushPromises();
 }
+
+function holdResumption() {
+  let resolve!: (response: Response) => void;
+  const result = new Promise<Response>(done => { resolve = done; });
+  const original = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation((input, init) => String(input).endsWith('/resumption') ? result : original(input, init));
+  return () => resolve(Response.json({ workspace_id: workspace.workspace_id, published_book_ref: workspace.published_book_ref,
+    selected_chat: workspace.selected_chat, position_label: '更新后的位置', position_excerpt: '更新后的摘录', last_question: question }));
+}
+
+it('shows the ready catalog while the initial resumption is still loading', async () => {
+  const release = holdResumption();
+  await start();
+  try {
+    expect(wrapper!.find('.network-loading').exists()).toBe(false);
+    expect(wrapper!.findAll('.network-book-card')).toHaveLength(3);
+    expect(wrapper!.get('.resumption-status').text()).toContain('正在读取');
+  } finally { release(); await flushPromises(); }
+  expect(wrapper!.get('.reading-resumption').text()).toContain('更新后的位置');
+});
+
+it('retains the same resumption card during a background focus refresh', async () => {
+  await start();
+  const card = wrapper!.get('.reading-resumption').element;
+  const release = holdResumption();
+  window.dispatchEvent(new Event('focus')); await flushPromises();
+  try {
+    expect(wrapper!.get('.reading-resumption').element).toBe(card);
+    expect(wrapper!.get('.resumption-continue').attributes('disabled')).toBeDefined();
+  } finally { release(); await flushPromises(); }
+  expect(wrapper!.get('.reading-resumption').element).toBe(card);
+  expect(wrapper!.get('.reading-resumption').text()).toContain('更新后的位置');
+});
+
+it.each([500, 404])('preserves a card after transient failure but clears unavailable records (%s)', async status => {
+  await start();
+  const original = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation((input, init) => String(input).endsWith('/resumption')
+    ? Promise.resolve(Response.json({ error_code: 'NOT_FOUND', message: '读取失败' }, { status })) : original(input, init));
+  window.dispatchEvent(new Event('focus')); await flushPromises();
+  expect(wrapper!.find('.reading-resumption').exists()).toBe(status === 500);
+  expect(wrapper!.get('.resumption-status').text()).toContain(status === 404 ? '不可用' : '重试');
+});
 it('previews only this window, then restores the exact publication, chat and saved position on click', async () => {
   await start();
-  expect(wrapper!.get('[aria-label="阅读接续"]').text()).toContain('同一本书 · 版本 2');
+  expect(wrapper!.get('[aria-label="阅读接续"]').text()).toContain('能量守恒与变化 · 版本 2');
   expect(wrapper!.get('[aria-label="阅读接续"]').text()).toContain('为什么守恒？');
   expect(wrapper!.find('.reader').exists()).toBe(false);
   expect(calls).toEqual(['GET /api/auth/me', 'GET /api/library', 'GET /api/workspaces/this-window/resumption']);

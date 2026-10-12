@@ -1,5 +1,6 @@
 import { network } from './network-context';
 import { networkRequest, publishedUrl } from './network-client';
+import { createReadingAction, recoverReadingAction, type PendingReadingAction } from './local-reading-action';
 import type { RunDescriptor, RunSnapshot, RunActivity } from "./agent-run-state";
 // 类型化命令面 REST 客户端 `[ADR-0028]`:前端经 `/api` dev proxy 打到 tiny_http。
 // 端点名 = 命令名;book.*→GET、reader.*/memory.*/book.query→POST;错误透传 §4.4 信封。
@@ -229,6 +230,7 @@ export interface AssetManifest {
 }
 export interface BookCoverSource { kind: 'image' | 'pdf'; url: string }
 export interface BookLibraryEntry {
+  title?: string | null;
   name: string;
   book_id: string;
   dir: string;
@@ -1116,7 +1118,7 @@ export interface AgentQuestionQuoteView {
   status?: SelectionResolution;
 }
 export interface AgentChatTurn {
-  domain?: { effects: { effect_id: string; effect: { kind: "reader"; effect: AgentEffect } | { kind: "presentation"; reference: { presentation_id: string; revision: number } }; disposition: import("./effect-disposition").EffectDisposition | null }[] };
+  domain?: { teaching?: { session_id: string; revision: number; receipt_ids: string[] }[]; interaction?: import("./generated/ResolvedInteraction").ResolvedInteraction; effects: { effect_id: string; effect: { kind: "reader"; effect: AgentEffect } | { kind: "presentation"; reference: { presentation_id: string; revision: number } }; disposition: import("./effect-disposition").EffectDisposition | null }[] };
   teaching_ref?: string | null;
   presentation_follow_up?: import('./generated/PresentationFollowUp').PresentationFollowUp | null;
   goal_ref?: { id: string; revision: number } | null;
@@ -1174,6 +1176,7 @@ export interface AgentHistoryResponse {
   current: AgentChatSession;
 }
 export interface TutorActivity {
+  continuation?: import('./generated/TutorContinuationView').TutorContinuationView | null;
   delivery_ref: string; move: { move_id: string; prompt: string; actions: string[] }; status: string; attempted: boolean; help_seen: unknown[];
   assessment?: { action_ref?: string; status: string; attempt?: number; assistance_count?: number; items?: { id: string; reason: string }[] } | null;
 }
@@ -1194,6 +1197,14 @@ export interface LearningEvidenceView {
   source_quotes: { reason?: string; quote?: string; response_quote?: string; sources?: { quote: string }[] }[] | null;
 }
 export interface AgentChatMeta {
+  session_id?: string;
+  client_request_id?: string;
+  source_id?: string;
+  source_revision?: string;
+  entry_action?: import("./generated/EntryAction").EntryAction;
+  answer_ref?: import("./generated/AnswerRef").AnswerRef;
+  teaching_choice?: import("./generated/TeachingChoice").TeachingChoice;
+  expected_chat_head?: string | null;
   note_mem_id?: string;
   teaching_ref?: string;
   goal_id?: string;
@@ -1443,7 +1454,13 @@ export const api = {
   delete: (mem_id: string) => http<{ ok: boolean }>("POST", "/memory/delete", { mem_id }),
 
   // ── agent.*(外层 E agent,POST)`[ADR-0030]` ──
-  agentRunCreate: (message: string, meta: AgentChatMeta = {}) => http<RunDescriptor | OuterOutcome>("POST", "/agent/runs", { message, ...meta }),
+  agentRunCreate: (message: string, meta: AgentChatMeta = {}) => {
+    type Result = RunDescriptor | OuterOutcome | { kind: 'activity_help'; delivery_refs: string[]; activity?: { session_id: string; turn_id: string } };
+    const body = { message, ...meta };
+    return !network.value.enabled && (meta.entry_action || meta.teaching_choice)
+      ? createReadingAction<Result>(http, body) : http<Result>('POST', '/agent/runs', body);
+  },
+  recoverReadingAction: (item: PendingReadingAction, retry = false) => recoverReadingAction(http, item, retry),
   agentRun: (turn_id: string) => http<RunSnapshot>("GET", `/agent/runs/${encodeURIComponent(turn_id)}`),
   agentRunRetrySave: (turn_id: string) => http<RunSnapshot>("POST", `/agent/runs/${encodeURIComponent(turn_id)}/retry-save`, {}),
   agentRunCancel: (turn_id: string) => http<RunSnapshot>("POST", `/agent/runs/${encodeURIComponent(turn_id)}/cancel`, {}),
@@ -1471,6 +1488,7 @@ export const api = {
   tutorCorrect: (request: { evidence_ref: string; operation_id: string; text: string }) => http<{ evidence_ref: string }>('POST', '/tutor/correct', request),
   tutorStart: () => http<{ started: boolean; message?: string; reason?: string }>("POST", "/tutor/start", {}),
   tutorActivities: (session_id: string, turn_id: string, reference?: import("./generated/PresentationRef").PresentationRef) => http<{ activities: TutorActivity[] }>("POST", "/tutor/activities", { session_id, turn_id, reference }),
+  tutorContinuationDisplayed: (input: import('./generated/ContinuationDisplayed').ContinuationDisplayed) => http<{ event_id: string }>('POST', '/tutor/continuation-displayed', input),
   tutorDisplay: (delivery_ref: string, scene?: import("./generated/PresentationFollowUp").PresentationFollowUp) => http("POST", "/tutor/display", { delivery_ref, scene }),
   tutorAction: (request: { operation_id: string; delivery_ref: string; action: string; response?: string | null; scene?: import("./generated/PresentationFollowUp").PresentationFollowUp }) => http<{ event_id: string; assessment: string; help: { event_id: string; text: string } | null }>("POST", "/tutor/action", request),
   tutorHelpDisplayed: (help_ref: string) => http("POST", "/tutor/help-displayed", { help_ref }),

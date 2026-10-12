@@ -55,13 +55,16 @@ fn tutor_first_question_becomes_starting_intent_when_enabled() {
     assert_eq!(state.user.learning_store().unwrap().state().unwrap().sessions.len(),1);
 }
 fn fixture_with_assets(published: bool) -> (tempfile::TempDir, AppState) {
+    let source = "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. ".repeat(3);
+    fixture_with_book(published, Book::new(sample_base(), &source), &source)
+}
+fn fixture_with_book(published: bool, book: Book, source: &str) -> (tempfile::TempDir, AppState) {
     let root = tempfile::tempdir().unwrap();
     let mut state = state_named(&format!(
         "tutor-loop-{}",
         root.path().file_name().unwrap().to_string_lossy()
     ));
-    let source = "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. ".repeat(3);
-    state.workspace.book = Arc::new(Book::new(sample_base(), &source));
+    state.workspace.book = Arc::new(book);
     state.workspace.reader = Reader::new(&state.workspace.book, DEFAULT_RADIUS);
     state.user.store = MemoryStore::open(root.path().join("memory.json")).unwrap();
     state.user.history_path = Some(root.path().join("history.json"));
@@ -276,7 +279,9 @@ fn tutor_open_assessment_is_isolated_budgeted_and_contract_checked() {
         json!({"operation_id":"open","delivery_ref":id,"action":"submit","response":"all distance over all time"}),
     );
     assert_eq!(action["assessment"], "unassessed");
-    state.services.adapter = Box::new(ChatStubAdapter::scripted(vec![
+    let samples = Arc::new(std::sync::Mutex::new(Vec::new()));
+    state.services.adapter = Box::new(super::tutor_continuation_tests::TutorRequestRecorder {
+        samples:samples.clone(), directory:None, inner:Box::new(ChatStubAdapter::scripted(vec![
         call(
             "tutor.step",
             json!({"operation":"assess","action_ref":action["event_id"]}),
@@ -284,13 +289,18 @@ fn tutor_open_assessment_is_isolated_budgeted_and_contract_checked() {
         answer(&json!({"items":open_items()}).to_string()),
         call("tutor.step", json!({"operation":"outside"})),
         answer("Your response meets the criteria."),
-    ]));
+    ])) });
     let result = json_post(
         &mut state,
         "/agent/chat",
         json!({"message":"Please evaluate my response","teaching_ref":action["event_id"]}),
     );
     assert_eq!(result["tokens_spent"], 20);
+    let sampled = samples.lock().unwrap();
+    assert!(sampled[0]["instruction_assets"].as_array().unwrap().iter().any(|a| a["asset_id"] == "resident-agent.tutor.assessment"));
+    assert!(sampled[0].to_string().contains("action:open"));
+    assert!(!sampled[2]["instruction_assets"].as_array().unwrap().iter().any(|a| a["asset_id"] == "resident-agent.tutor.assessment"), "completed assessment expires at the next sampling");
+    drop(sampled);
     let assessment = state
         .user.learning_store()
         .unwrap()
@@ -1072,13 +1082,16 @@ fn tutor_t17b_resident_revises_and_adopts_ordinary_understanding() {
         let mut request = json!({"operation":"evidence","nature":"hypothesis","operation_id":id,"target":original["move"]["target"],
             "fact_refs":[fact],"interpretation":interpretation,"teaching_implication":implication});
         if let Some(previous) = &previous { request["supersedes"] = json!(previous); }
-        let adapter = ChatStubAdapter::scripted(vec![
+        let samples = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let adapter = super::tutor_continuation_tests::TutorRequestRecorder { samples:samples.clone(), directory:None,
+            inner:Box::new(ChatStubAdapter::scripted(vec![
             call("book.text",json!({"lid":"1.1","end_lid":"1.1"})), call("tutor.step",request),
             call("tutor.step",movement), answer(explanation),
-        ]);
+        ])) };
         let turn = run.turn_ref.clone();
         let result = agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)), &adapter, run, Default::default());
         assert_eq!(result.reply.status,200,"{}",result.reply.body);
+        assert!(samples.lock().unwrap()[0].to_string().contains("resident-agent.tutor.understanding"));
         let store = memory::learning::LearningStore::open(&root.path().join("learning.db"),false).unwrap();
         let accepted = store.evidence(&evidence_id).unwrap_or_else(|e|panic!("{e:?}; {}",result.reply.body));
         assert_eq!(accepted.learner_quote,message);
@@ -1269,6 +1282,92 @@ fn tutor_t18_publications_add_materials_without_rebinding_prior_activities() {
     assert_eq!(next["binding"]["tutor_session_id"], session_id);
     assert!(next["learner_context"]["interpretations"].as_array().unwrap().iter().any(|i|
         i["evidence_ref"] == corrected["evidence_ref"] && i["correction"] == "I understand the denominator; explain the conditions."));
+}
+
+#[test]
+fn tutor_target_coverage_accepts_split_paragraphs_but_rejects_unread_text() {
+    for (gap, accepted) in [("\n\n", true), ("XY", false)] {
+        let source = format!("{}{}{}", "A".repeat(48), gap, "B".repeat(50));
+        let mut base = sample_base();
+        base.lid_nodes[0].children.push("1.2".into());
+        let mut second = base.lid_nodes[1].clone();
+        second.lid = "1.2".into();
+        second.path = vec![1, 2];
+        second.span.start = 50;
+        base.lid_nodes[1].span.end = 48;
+        base.lid_nodes.push(second);
+        let (_root, mut state) = fixture_with_book(false, Book::new(base, &source), &source);
+        let run = prepare(&mut state);
+        let mut movement = source_move(&state);
+        movement["move"]["target"]["source_bindings"][0]["end_lid"] = json!("1.2");
+        let reads = [range(), EvidenceRange { start_lid: "1.2".into(), end_lid: "1.2".into(), ranges: vec![] }];
+        let result = teaching::step(&state.private_context(), &run.turn_ref, movement, &[], &reads);
+        assert_eq!(result.is_ok(), accepted, "gap {gap:?}: {result:?}");
+    }
+}
+
+#[test]
+fn tutor_target_binds_current_source_without_model_copying_revision() {
+    let (_root, mut state) = fixture_with_assets(false);
+    let mut movement = source_move(&state);
+    let source = movement["move"]["target"]["source_bindings"][0].as_object_mut().unwrap();
+    source.remove("source_id");
+    source.remove("source_revision");
+    state.services.adapter = Box::new(ChatStubAdapter::scripted(vec![
+        call("book.text", json!({"lid":"1.1"})), call("tutor.step", movement), answer("Use total time."),
+    ]));
+    let reply = json_post(&mut state, "/agent/chat", json!({"message":"Explain average speed"}));
+    assert_eq!(reply["incomplete"], false, "{reply}");
+    let session = state.user.agent_history.sessions.last().unwrap();
+    let turn = session.turns.last().unwrap();
+    let deliveries = state.user.learning_store().unwrap().teaching_deliveries(&session.id, &turn.turn_id).unwrap();
+    assert_eq!(deliveries.len(), 1, "{reply}");
+    assert_eq!(deliveries[0].payload["move"]["target"]["source_bindings"][0]["source_revision"], state.workspace.book.source_fingerprint());
+}
+
+#[test]
+fn tutor_target_reports_revision_mismatch_before_interpretation_scope() {
+    let (_root, mut state) = fixture_with_assets(false);
+    let run = prepare(&mut state);
+    let mut movement = source_move(&state);
+    movement["move"]["target"]["source_bindings"][0]["source_revision"] = json!("search-index-revision");
+    movement["move"]["interpretation_refs"] = json!(["interpretation:unread"]);
+    let error = teaching::step(&state.private_context(), &run.turn_ref, movement, &[], &[range()]).unwrap_err();
+    assert!(error.message.contains("source_revision"), "{error:?}");
+    assert!(error.message.contains("省略"), "{error:?}");
+}
+
+#[test]
+fn tutor_validation_recovery_allows_one_correction_then_stops_churn() {
+    for recover in [true, false] {
+        let (_root, mut state) = fixture_with_assets(false);
+        let movement = source_move(&state);
+        let mut bad_target = movement.clone();
+        bad_target["move"]["target"]["source_bindings"][0]["source_revision"] = json!("wrong-revision");
+        let mut missing_hint = movement.clone();
+        missing_hint["move"]["actions"] = json!(["request_hint"]);
+        let mut third = missing_hint.clone();
+        if recover { third["move"]["hint"] = json!("Compare elapsed times."); }
+        else { third["move"]["prompt"] = json!("Try another wording."); }
+        state.services.adapter = Box::new(ChatStubAdapter::scripted(vec![
+            call("tutor.step", json!({"operation":"trace"})),
+            call("book.text", json!({"lid":"1.1"})),
+            call("tutor.step", bad_target), call("tutor.step", missing_hint),
+            call("tutor.step", third), answer("Use total time."),
+        ]));
+        let reply = json_post(&mut state, "/agent/chat", json!({"message":"Explain average speed"}));
+        let trace = reply["trace"].as_array().unwrap();
+        for code in ["TEACHING_INVALID", "TOOL_ARGUMENTS_INVALID"] {
+            assert!(trace.iter().any(|step| step["result_digest"].as_str().is_some_and(|result| result.contains(code))),
+                "the correction scenario must actually hit {code}: {reply}");
+        }
+        assert_eq!(reply["incomplete"], !recover, "recover={recover}: {reply}");
+        if !recover { assert_eq!(reply["warning"], "AGENT_NO_PROGRESS", "{reply}"); }
+        let session = state.user.agent_history.sessions.last().unwrap();
+        let turn = session.turns.last().unwrap();
+        let deliveries = state.user.learning_store().unwrap().teaching_deliveries(&session.id, &turn.turn_id).unwrap();
+        assert_eq!(deliveries.len(), usize::from(recover), "{reply}");
+    }
 }
 
 #[test]

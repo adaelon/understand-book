@@ -174,6 +174,12 @@ pub struct ObservationMetadata {
     pub registered_tool_name: Option<String>,
     pub purpose: Option<String>,
     pub error_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_tool_error_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_tool_error_name: Option<String>,
     pub result_count: Option<u32>,
     pub model_first_text_ms: Option<f64>,
     pub model_first_text_at: Option<String>,

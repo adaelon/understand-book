@@ -1,0 +1,17 @@
+{
+  "phase": "after",
+  "verified_at_utc": "2026-10-11T02:09:48.076512+00:00",
+  "origin": "https://understandbook.top",
+  "checks": [
+    "anonymous identity returns 401",
+    "public home, reader, admin and referenced assets load",
+    "existing reader signs in and authorized publications remain available",
+    "published catalog returns actual material titles",
+    "account allowance loads",
+    "authenticated PDF and Tutor readiness load"
+  ],
+  "publication_count": 10,
+  "titled_publications": 8,
+  "model_requests": 0,
+  "test_session_logged_out": true
+}

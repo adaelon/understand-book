@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"平均速度\", \"page_size\": 20}",
+      "id": "call_00_PvlSoamJuMiApHpfvjAp7321",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"at\": null}",
+      "id": "call_01_UsJlnVWHLXGmBPblF8GR7306",
+      "name": "book.structure"
+    }
+  ],
+  "usage_total_tokens": 10809
+}

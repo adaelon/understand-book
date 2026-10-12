@@ -1,0 +1,74 @@
+[
+  {
+    "id": "equal_speed_unequal_time",
+    "speeds": [
+      10,
+      10
+    ],
+    "durations": [
+      1,
+      2
+    ],
+    "distances": [
+      10,
+      20
+    ],
+    "time_weighted_mean": "10",
+    "arithmetic_mean": "10",
+    "equal": true
+  },
+  {
+    "id": "equal_time_unequal_speed",
+    "speeds": [
+      10,
+      20
+    ],
+    "durations": [
+      1,
+      1
+    ],
+    "distances": [
+      10,
+      20
+    ],
+    "time_weighted_mean": "15",
+    "arithmetic_mean": "15",
+    "equal": true
+  },
+  {
+    "id": "original_unequal_time",
+    "speeds": [
+      60,
+      30
+    ],
+    "durations": [
+      1,
+      2
+    ],
+    "distances": [
+      60,
+      60
+    ],
+    "time_weighted_mean": "40",
+    "arithmetic_mean": "45",
+    "equal": false
+  },
+  {
+    "id": "equal_speed_equal_distance",
+    "speeds": [
+      10,
+      10
+    ],
+    "durations": [
+      1,
+      1
+    ],
+    "distances": [
+      10,
+      10
+    ],
+    "time_weighted_mean": "10",
+    "arithmetic_mean": "10",
+    "equal": true
+  }
+]

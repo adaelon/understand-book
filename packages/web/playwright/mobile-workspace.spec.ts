@@ -1,5 +1,26 @@
 import { expect, test } from "@playwright/test";
 
+for (const width of [1440, 390]) test(`reader hides saved tool diagnostics at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('/mobile-workspace-visual.html?long-chat');
+  if (width < 1024) {
+    const nav = page.locator('.workspace-mobile-nav');
+    await nav.getByRole('button', { name: '问答', exact: true }).click();
+    await nav.locator('summary').click();
+    await expect(nav.getByRole('button', { name: '轨迹', exact: true, includeHidden: true })).toHaveCount(0);
+    await nav.locator('summary').click();
+  } else {
+    await page.getByRole('button', { name: '阅读工具', exact: true }).click();
+  }
+  await expect(page.locator('.answer-markdown')).toContainText('请先写下预测');
+  await expect(page.locator('#reader-tab-trace, #reader-panel-trace, .trace-toggle, .query-audit')).toHaveCount(0);
+  for (const detail of ['模型—工具循环', '工具调用', 'book.query', 'fixture-tool-arguments', 'fixture-tool-result']) {
+    await expect(page.locator('body')).not.toContainText(detail);
+  }
+  await expect(page.locator('.agent-input textarea')).toHaveValue('未发送草稿');
+  await page.screenshot({ path: `../../tmp/reader-trace-removal-20261011/${width}.png` });
+});
+
 test('mobile QA gives long answers the screen and preserves reading through menus', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 669 });
   await page.goto('/mobile-workspace-visual.html?long-chat');
@@ -13,7 +34,9 @@ test('mobile QA gives long answers the screen and preserves reading through menu
   await nav.getByRole('button', { name: '阅读', exact: true }).click();
   await nav.getByRole('button', { name: '问答', exact: true }).click();
   expect(await transcript.evaluate(el => el.scrollTop)).toBeCloseTo(150, 0);
-  for (const [label, id] of [['成果', 'artifacts'], ['画像', 'profile'], ['轨迹', 'trace'], ['公式', 'formula']]) {
+  await expect(nav.getByRole('button', { name: '轨迹', exact: true, includeHidden: true })).toHaveCount(0);
+  await expect(page.locator('#reader-tab-trace, #reader-panel-trace, .trace-toggle')).toHaveCount(0);
+  for (const [label, id] of [['成果', 'artifacts'], ['画像', 'profile'], ['公式', 'formula']]) {
     await nav.locator('summary').click();
     await nav.getByRole('button', { name: label, exact: true }).click();
     await expect(page.locator(`#reader-panel-${id}`)).toBeVisible();
@@ -24,7 +47,7 @@ test('mobile QA gives long answers the screen and preserves reading through menu
   await expect(page.locator('.history-dialog')).toBeVisible();
   await page.getByRole('button', { name: '关闭历史', exact: true }).click();
   await nav.getByRole('button', { name: '菜单', exact: true }).click();
-  await expect(page.getByRole('button', { name: '管理教学会话', exact: true })).toBeVisible();
+  await expect(page.locator('.topbar').getByRole('button', { name: '新对话', exact: true })).toBeVisible();
   await page.locator('.topbar-mobile-close').click();
   const input = page.locator('.agent-input textarea');
   await expect(input).toHaveValue('未发送草稿');

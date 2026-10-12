@@ -80,7 +80,7 @@ Change type: 边界重构。
 - 按最旧优先删除或截断对话消息:会无提示地改变用户问题和约束。
 - 累加每轮 `usage.total_tokens` 后与 120k 比较:重复输入成本不代表当前窗口装不下。
 
-**命门**:回合前 compact 只压既有历史;回合中 compact 必须把当前用户原文、已验证选区和未完成 ToolCall 配对作为 raw 保留项,只摘要更早的 assistant/tool 历史。压缩提示词只要求任务交接状态,不得要求回答用户或输出思维过程;模型只能生成带 source item/ref 的语义草稿,`window_id`、history/context revision、Tool receipt 与 raw 保留项均由 Runtime 组装。动态画像等敏感片段由账本重新注入,不写进摘要。安装后的检查点作为 server-only synthetic context 投影,不得伪装成用户或 assistant 原话;当前 canonical context 与其后的 raw 原文优先。确定性预处理只可把已完成 Tool body 改为回执、去掉过期片段;单次压缩请求仍放不下时按完整回合分块分层压缩,不得无语义替代地丢消息。所有 local/remote 草稿必须通过同一 schema、引用、来源覆盖和 token 降幅闸后才原子安装并重算活动 token。失败保持原历史并返回 `COMPACTION_FAILED`;只有成功 compact 后仍物理放不下才返回 `ACTIVE_CONTEXT_EXHAUSTED`;轮数触顶单独返回 `TURN_LIMIT_EXCEEDED`。
+**命门**:回合前 compact 只压既有历史;回合中 compact 必须把当前用户原文、已验证选区和未完成 ToolCall 配对作为 raw 保留项,只摘要更早的 assistant/tool 历史。压缩提示词只要求任务交接状态,不得要求回答用户或输出思维过程;模型只能生成带 source item/ref 的语义草稿,`window_id`、history/context revision、Tool receipt 与 raw 保留项均由 Runtime 组装。动态画像等敏感片段由账本重新注入,不写进摘要。安装后的检查点作为 server-only synthetic context 投影,不得伪装成用户或 assistant 原话;当前 canonical context 与其后的 raw 原文优先。确定性预处理只可把已完成 Tool body 改为回执、去掉过期片段;单次压缩请求仍放不下时按完整回合分块分层压缩,不得无语义替代地丢消息。所有 local/remote 草稿必须通过同一 schema、引用和来源覆盖校验。Runtime 用同一次采样的实际请求投影比较压缩前后输入，包含相同工具正文策略、上下文片段、工具集合与输出预留；候选确实缩小且物理可容纳才原子安装，不要求一次降到软高水位以下。若旧历史连最小检查点固定开销都无法抵消，则跳过生成；同一用户回合内同一可压缩历史边界只尝试一次。有效候选无收益而原请求仍可容纳时保持原历史继续；原请求和候选均无法容纳时返回 `ACTIVE_CONTEXT_EXHAUSTED`。生成、schema、来源覆盖或安装失败保持原历史并返回 `COMPACTION_FAILED`；轮数触顶单独返回 `TURN_LIMIT_EXCEEDED`。
 **何时回头**:Provider 提供受信任的原生 remote compaction 时,可替换本地生成器,但必须继续满足同一检查点与原子安装契约。
 
 ### §8 修订与兼容边界

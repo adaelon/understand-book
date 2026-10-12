@@ -1,5 +1,8 @@
 # CONTEXT —— 术语表
 
+## 产品首页（Product home）
+面向初次了解产品的访客，说明持续阅读与学习的价值、展示学习接续方式并提供开始使用入口的公开介绍页面。页面中的情境示意用于解释产品思路，不构成读者的实际学习记录。状态：EXISTING，首版本地预览已实现（2026-10-10）。
+
 ## 阅读笔记（Reading note）
 读者主动保存的想法与所选阅读内容，以及促成这段记录的原文、助手回答或演示现场的关联。自己的文字、原文摘录和助手解释分别保留内容身份；正文批注是阅读笔记的一种呈现方式。旧记录继续按已有事实显示“阅读笔记”。状态：BOUNDARY_CHANGE，RN1 存储合同、RN2 演示保存／返回与 RN3 统一编辑已实现，RN4 检索与回看已实现、Web 验收通过，实体平台待验（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
@@ -491,7 +494,7 @@ runtime 在读者回合开始前从 `GlobalReaderProfile`、当前 `BookReadingS
 读者在某 LID 留下的不同 qa 记录数,只证明发生过提问并构成私人关注信号,不单独证明困惑、难度或掌握程度。`technical_learning` 可将其用于回看排序,`paper` 等其他 MemoryPolicy 按自己的语义解释;`puzzle_heat` 仅是旧实现字段名。状态:BOUNDARY_CHANGE(详见 [docs/adr/0041], [docs/adr/0075])。
 
 ## agent 可撤销提议 (agent reversible proposal)
-读时 E agent 在阅读器中对视图/标注的修改**是可撤销的提议、用户终裁** `[ADR-0030]`。agent **真执行**命令(守人机对称 [docs/adr/0007],命令面无特供),可撤销落**前端交互层**:用 effect 返回([docs/adr/0015])的反向命令 undo(goto 回原 anchor / `memory.delete(id)`)。**提议单元 = 一次对话回合**(`/agent/chat` 一次调用的全部副作用)= 事务性 undo。**agent 提议态 = 标注落 `layer=session`(临时),用户「保留」才升 `long_term`**(复用 memory 两层,零新字段;未处置走人则不污染长期记忆)。`orchestrator` 的 `OuterOutcome` 加 `effects[]`(副作用清单)+ `trace[]`(查询踪迹,对用户可见)承载之。状态:NEW(详见 [docs/adr/0030])。
+读时 E agent 在阅读器中对视图/标注的修改**是可撤销的提议、用户终裁** `[ADR-0030]`。agent **真执行**命令(守人机对称 [docs/adr/0007],命令面无特供),可撤销落**前端交互层**:用 effect 返回([docs/adr/0015])的反向命令 undo(goto 回原 anchor / `memory.delete(id)`)。**提议单元 = 一次对话回合**(`/agent/chat` 一次调用的全部副作用)= 事务性 undo。**agent 提议态 = 标注落 `layer=session`(临时),用户「保留」才升 `long_term`**(复用 memory 两层,零新字段;未处置走人则不污染长期记忆)。`orchestrator` 的 `OuterOutcome` 加 `effects[]`(副作用清单)+ `trace[]`(查询踪迹,保留作开发诊断；阅读器呈现见 [ADR-0160 §11](docs/adr/0160-reading-share-images-and-calm-surfaces.md#11-回答轨迹的展示边界))承载之。状态:NEW(详见 [docs/adr/0030])。
 
 ## 读时会话边界 (reading session boundary)
 对话会话的切分仍由用户显式控制 `[ADR-0030]`;idle 只触发 ReviewJob,不自动创建新对话。新对话、切书和 context compression 是记忆审核边界,新回合以自动 `ReaderProfileSnapshot` 冷启动而非依赖 agent 主动 recall。状态:BOUNDARY_CHANGE(详见 [docs/adr/0030], [docs/adr/0075])。
@@ -840,6 +843,18 @@ Agent 可理解、可观察、可行动并获得真实反馈的学习现场，�
 
 ## ResolvedInteractionIntent
 `TutorLoop` 对当前回合实际采用的有界交互意图，按“本回合显式需求 → 用户显式建立的 `TutorSessionMode` → 已确认 `ExplanationPreference` → 中性兜底”解析，并保留生效来源及有效教学会话的 revision 引用。它只支配本回合 `TeachingMove` 选择，可临时覆盖教法而不改写会话默认，不是 `TaskNeed`、长期偏好、会话合同或能力证据。状态:BOUNDARY_CHANGE(见 `grill.md` Q86/Q87)。
+
+## 下一步建议（TeachingContinuation）
+围绕本轮教学焦点提出的未来帮助选项，包含一个推荐项及至多一个备选项。它表达可以请求的解释、对比或观察方向，与本轮实际完成的教学动作、实际交付和学习表现分别表达。状态：EXISTING，设计已确认（[ADR-0163 §3](docs/adr/0163-tutor-continuation-and-contextual-reading-entry.md)）。
+
+## 建议选择（TeachingChoice）
+读者接受某次已交付建议中一个选项的明确请求。选择只表达本次希望获得的帮助，不代表已经执行、完成作答、掌握知识或确认长期偏好。状态：EXISTING，设计已确认（[ADR-0163 §4/§6](docs/adr/0163-tutor-continuation-and-contextual-reading-entry.md)）。
+
+## 回答接续与纠偏
+读者指向原聊天内已交付回答及可选连续片段，明确要求继续帮助或表示这一步仍没跟上。所引内容保持助手回答身份；纠偏本身不构成具体知识缺陷的诊断。状态：EXISTING，设计已确认（[ADR-0163 §2/§4](docs/adr/0163-tutor-continuation-and-contextual-reading-entry.md)）。
+
+## 已解析交互（ResolvedInteraction）
+本次请求采用的真实输入来源、读者补充、已接受的公开行动及所指阅读内容的固定解释。区分用户原话、界面操作和建议选择，为本回合交互意图提供依据；它不是新的学习目标、权限授予或能力证据。状态：EXISTING，设计已确认（[ADR-0163 §4](docs/adr/0163-tutor-continuation-and-contextual-reading-entry.md)）。
 
 ## ResidentGoal（住户任务目标）
 用户在当前 Resident 聊天内要求完成的一项任务，保留用户意图、范围、明确交付要求以及可修订的工作判断，并关联实际成果与尚未完成的义务；一次运行停止不等于任务完成。它与长期读者目标、构建目标及教学会话学习意图分别表达，完成交付不等于读者掌握。状态:BOUNDARY_CHANGE（任务保存、调整、投影和实际交付检查已实现，见 [ADR-0136](docs/adr/0136-resident-goal-lifecycle-and-delivery-completion.md)；工作计划扩展已实现，见 [ADR-0155](docs/adr/0155-goal-work-plan-and-version-centered-presentation-context.md)）。

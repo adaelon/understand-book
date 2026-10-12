@@ -1,0 +1,25 @@
+{
+  "phase": "after",
+  "status": "passed-with-recorded-limitations",
+  "origin": "https://understandbook.top",
+  "tls_verified": true,
+  "checked_at_utc": "2026-10-10T11:57:04.110880+00:00",
+  "checks": [
+    "Reader login, existing publications and Tutor readiness",
+    "Existing book opens and private notes read successfully",
+    "Reader refresh keeps saved resumption and Continue Reading restores the workspace",
+    "New saved reading resumption appears on the bookshelf",
+    "390px bookshelf has no horizontal overflow",
+    "Existing PDF original is authenticated and range-readable",
+    "Production PDF canvas and selectable text render successfully",
+    "Admin login, usage and invitation deep-link refresh"
+  ],
+  "page_errors": [],
+  "unexpected_server_errors": [],
+  "known_limitations": [
+    "Paper minimap localization returns 501 CAPABILITY_NOT_READY in multi-user mode; same route limitation exists in previous version.",
+    "The 16.5 MB agent-memory paper rendered after approximately 50 seconds in this browser check; earlier 30-second deadline was insufficient."
+  ],
+  "pdf_text_spans_observed": 677,
+  "model_requests": 0
+}

@@ -19,7 +19,8 @@ pub struct TeachingBinding {
 }
 
 /// A source-grounded focus; formal object identity is optional.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema, ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
 #[serde(deny_unknown_fields)]
 pub struct TeachingTarget {
     pub learning_focus: String,
@@ -30,7 +31,8 @@ pub struct TeachingTarget {
     pub object_refs: Vec<TeachingObjectRevision>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema, ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
 #[serde(deny_unknown_fields)]
 pub struct TeachingSourceBinding {
     pub source_id: String,
@@ -39,11 +41,13 @@ pub struct TeachingSourceBinding {
     pub end_lid: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema, ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
 #[serde(deny_unknown_fields)]
 pub struct TeachingObjectRevision {
     pub source_id: String,
     pub object_id: String,
+    #[ts(type = "number")]
     pub object_revision: u64,
 }
 
@@ -77,6 +81,27 @@ pub enum TeachingFact {
     HelpDelivered,
     HelpDisplayed,
     UsageObserved,
+    ContinuationDisplayed,
+    ContinuationChosen,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(deny_unknown_fields)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub struct ContinuationDisplayed {
+    pub delivery_ref: String,
+    /// Actual visible order, not all options in the offered set.
+    pub option_ids: Vec<String>,
+    pub recommended_option_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(deny_unknown_fields)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub struct ContinuationChosen {
+    pub delivery_ref: String,
+    pub option_id: String,
+    pub accepted_turn_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -89,6 +114,21 @@ pub struct TeachingEvent {
     pub occurred_at: String,
 }
 
+impl TeachingEvent {
+    /// Actual learner expression; UI labels and assistant quotations remain context.
+    pub fn learner_expression(&self) -> Option<&str> {
+        let text = match self.kind {
+            TeachingFact::UsageObserved if self.payload["usage"]["kind"] == "reading_action" =>
+                self.payload.get("interaction").filter(|v|v.is_object())
+                    .map(|v| &v["user_supplement"]).unwrap_or(&self.payload["response"]).as_str(),
+            TeachingFact::UsageObserved if self.payload["usage"]["kind"] == "user_message" => self.payload["response"].as_str(),
+            TeachingFact::LearnerAction => self.payload["response"].as_str(),
+            _ => None,
+        };
+        text.filter(|s| !s.trim().is_empty())
+    }
+}
+
 pub fn invalid(message: impl Into<String>) -> ToolError {
     ToolError {
         error_code: "TEACHING_INVALID".into(),
@@ -98,6 +138,12 @@ pub fn invalid(message: impl Into<String>) -> ToolError {
 }
 
 impl LearningStore {
+    pub fn latest_teaching_focus(&self, session: &str, source: &str) -> Result<Option<TeachingEvent>, ToolError> {
+        let event: Option<String> = self.connection.query_row(
+            "SELECT event FROM teaching_trace WHERE session_id=? AND json_extract(event,'$.kind')='message_delivered' AND json_extract(event,'$.binding.source_id')=? AND json_extract(event,'$.payload.assistance_for') IS NULL ORDER BY seq DESC LIMIT 1",
+            params![session,source], |r|r.get(0)).optional().map_err(storage)?;
+        event.map(|event|serde_json::from_str(&event).map_err(storage)).transpose()
+    }
     pub fn teaching_activity_events(
         &self,
         delivery: &str,
@@ -114,7 +160,7 @@ impl LearningStore {
         session: &str,
         limit: u32,
     ) -> Result<Vec<TeachingEvent>, ToolError> {
-        let mut query = self.connection.prepare("SELECT event FROM teaching_trace WHERE session_id=? AND json_extract(event,'$.kind') IN ('message_delivered','learner_action','help_displayed','usage_observed') ORDER BY seq DESC LIMIT ?").map_err(storage)?;
+        let mut query = self.connection.prepare("SELECT event FROM teaching_trace WHERE session_id=? AND json_extract(event,'$.kind') IN ('message_delivered','learner_action','help_displayed','usage_observed','continuation_displayed','continuation_chosen') ORDER BY seq DESC LIMIT ?").map_err(storage)?;
         let rows = query
             .query_map(params![session, limit.min(20)], |r| r.get::<_, String>(0))
             .map_err(storage)?;
@@ -248,6 +294,57 @@ impl LearningStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn continuation_events_roundtrip_without_becoming_performance() {
+        use ts_rs::TS;
+        assert!(TeachingObjectRevision::decl().contains("object_revision: number"));
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("learning.db");
+        let mut store = LearningStore::open(&path, false).unwrap();
+        let old = serde_json::json!({"event_id":"old","binding":{"tutor_session_id":"session",
+            "session_revision":1,"control_revision":1,"source_id":"book","source_revision":"rev",
+            "chat_session_id":"chat","turn_id":"old-turn"},"kind":"message_delivered","causal_refs":[],
+            "payload":{"answer":"original"},"occurred_at":"now"});
+        let original: TeachingEvent = serde_json::from_value(old.clone()).unwrap();
+        store.append_teaching(&original).unwrap();
+        for (id, kind, payload) in [
+            ("displayed",TeachingFact::ContinuationDisplayed,serde_json::to_value(ContinuationDisplayed {
+                delivery_ref:"old".into(),option_ids:vec!["a".into()],recommended_option_id:"a".into() }).unwrap()),
+            ("chosen",TeachingFact::ContinuationChosen,serde_json::to_value(ContinuationChosen {
+                delivery_ref:"old".into(),option_id:"a".into(),accepted_turn_id:"new-turn".into() }).unwrap()),
+            ("reading-action",TeachingFact::UsageObserved,serde_json::json!({"usage":{"kind":"reading_action"},"response":""}))] {
+            let mut binding=original.binding.clone();
+            if kind == TeachingFact::ContinuationChosen { binding.turn_id="new-turn".into(); }
+            let event = TeachingEvent { event_id:id.into(),kind,binding,causal_refs:vec!["old".into()],payload,occurred_at:"now".into() };
+            store.append_teaching(&event).unwrap();
+            assert_eq!(store.append_teaching(&event).unwrap(),event);
+        }
+        drop(store);
+        let mut store=LearningStore::open(&path,false).unwrap();
+        assert_eq!(serde_json::to_value(store.teaching_event("old").unwrap()).unwrap(),old);
+        assert_eq!(store.teaching_event("displayed").unwrap().kind,TeachingFact::ContinuationDisplayed);
+        assert_eq!(store.teaching_event("chosen").unwrap().kind,TeachingFact::ContinuationChosen);
+        store.derive_assessed_evidence("session").unwrap();
+        let count:i64=store.connection.query_row("SELECT COUNT(*) FROM learning_evidence",[],|r|r.get(0)).unwrap();
+        assert_eq!(count,0);
+        for fact in ["displayed", "chosen", "reading-action"] {
+            let evidence: crate::learning_evidence::LearningEvidence = serde_json::from_value(serde_json::json!({
+                "evidence_id":format!("hypothesis:{fact}"),"action_ref":fact,"session_id":"session",
+                "source_id":"book","source_revision":"rev","nature":"hypothesis","fact_refs":[fact],
+                "teaching_implication":"use an example","label":"speed","capability":"explanation",
+                "assistance_refs":[],"attempt":0,"status":"unassessed","interpretation":"needs examples",
+                "learner_quote":"","interpreter_version":"test","source_quotes":[],
+                "target":{"learning_focus":"speed","expected_performance":"explain time","capability":"explanation",
+                    "source_bindings":[{"source_id":"book","source_revision":"rev","start_lid":"1.1","end_lid":"1.1"}],"object_refs":[]}
+            })).unwrap();
+            let error = store.append_evidence(&evidence).unwrap_err();
+            assert_eq!(error.error_code,"TEACHING_INVALID");
+            if fact == "reading-action" { assert!(error.message.contains("无需创建理解假设")); }
+            else { assert_eq!(error.message,"理解依据不属于当前来源、会话或实际使用事实"); }
+        }
+        let raw:String=store.connection.query_row("SELECT event FROM teaching_trace WHERE event_id='old'",[],|r|r.get(0)).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&raw).unwrap(),old);
+    }
     #[test]
     fn teaching_facts_are_immutable_retryable_and_survive_projection_rebuild() {
         let dir = tempfile::tempdir().unwrap();

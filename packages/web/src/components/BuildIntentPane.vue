@@ -36,10 +36,10 @@ watch(
   },
 );
 
-const modeOptions: Array<{ id: BuildIntentMode; label: string }> = [
-  { id: "read_now", label: "先阅读" },
-  { id: "standard_deep", label: "标准深读" },
-  { id: "goal_directed", label: "围绕目标" },
+const modeOptions: Array<{ id: BuildIntentMode; label: string; description: string }> = [
+  { id: "read_now", label: "直接阅读", description: "使用现有资料，马上开始阅读与提问。" },
+  { id: "standard_deep", label: "深入理解", description: "补充段落理解与章节关联，帮助系统地读懂材料。" },
+  { id: "goal_directed", label: "围绕目标整理", description: "说明你想解决的问题，准备相应的摘要、关系图或对照表。" },
 ];
 
 const planningSourceLabels: Record<BuildPlanningSource, string> = {
@@ -170,7 +170,7 @@ function tokenText(estimate: BuildPlanV1["estimate"] | BuildPlanV2["estimate"]):
 
 function wallText(estimate: BuildPlanV1["estimate"] | BuildPlanV2["estimate"]): string {
   const { p50, p95, confidence } = estimate.wall_clock_minutes;
-  if (confidence === "none" || p50 === undefined) return "暂无可靠历史";
+  if (confidence === "none" || p50 === undefined) return "暂无法估计";
   if (p95 === undefined || p95 === p50) return `约 ${numberText(p50)} 分钟`;
   return `约 ${numberText(p50)}–${numberText(p95)} 分钟`;
 }
@@ -204,13 +204,13 @@ function reject() {
 </script>
 
 <template>
-  <aside class="build-intent-pane" role="complementary" aria-label="构建方案">
+  <aside class="build-intent-pane" role="complementary" aria-label="准备阅读资料">
     <header class="pane-head">
       <div>
-        <p>阅读准备</p>
-        <h2>构建方案</h2>
+        <p>让资料适合这次阅读</p>
+        <h2>准备阅读资料</h2>
       </div>
-      <button data-action="close" class="icon-button" title="关闭构建方案" aria-label="关闭构建方案" @click="emit('close')">
+      <button data-action="close" class="icon-button" title="关闭阅读准备" aria-label="关闭阅读准备" @click="emit('close')">
         <X :size="18" aria-hidden="true" />
       </button>
     </header>
@@ -225,7 +225,7 @@ function reject() {
           :aria-pressed="mode === option.id"
           :disabled="props.busy"
           @click="mode = option.id"
-        >{{ option.label }}</button>
+        ><strong>{{ option.label }}</strong><span>{{ option.description }}</span></button>
       </div>
 
       <label v-if="mode === 'goal_directed'" class="goal-field">
@@ -244,14 +244,14 @@ function reject() {
       >
         <RefreshCw :size="16" aria-hidden="true" />
         <span v-if="props.busy">处理中</span>
-        <span v-else-if="mode === 'read_now'">采用先阅读</span>
+        <span v-else-if="mode === 'read_now'">使用现有资料</span>
         <span v-else-if="selectionDirty">更新方案</span>
         <span v-else>预览方案</span>
       </button>
 
       <section v-if="props.selection?.mode === 'read_now' && !selectionDirty" class="plan-section read-now-state">
         <strong>可以直接开始阅读</strong>
-        <span>当前不创建额外产物。</span>
+        <span>现有资料已可用，关闭此面板即可继续阅读。</span>
       </section>
 
       <template v-if="currentPlan">
@@ -260,16 +260,7 @@ function reject() {
             <h3>预计投入</h3>
             <span :data-status="currentPlan.status">{{ currentPlan.status === "confirmed" ? "已确认" : "待确认" }}</span>
           </div>
-          <p
-            v-if="planningSourceLabel"
-            class="planning-source"
-            :data-planning-source="props.planningSource"
-          >规划来源：{{ planningSourceLabel }}</p>
           <dl class="estimate-grid">
-            <div>
-              <dt>Token</dt>
-              <dd>{{ tokenText(currentPlan.estimate) }}</dd>
-            </div>
             <div>
               <dt>时间</dt>
               <dd>{{ wallText(currentPlan.estimate) }}</dd>
@@ -278,18 +269,21 @@ function reject() {
               <dt>范围</dt>
               <dd>{{ scopeText }}</dd>
             </div>
-            <div>
-              <dt>估计完整度</dt>
-              <dd>{{ Math.round(Math.min(currentPlan.estimate.input_tokens.coverage, currentPlan.estimate.output_tokens.coverage) * 100) }}%</dd>
-            </div>
           </dl>
+          <details class="plan-details"><summary>估算详情</summary>
+            <p v-if="planningSourceLabel" class="planning-source" :data-planning-source="props.planningSource">规划来源：{{ planningSourceLabel }}</p>
+            <dl class="estimate-grid">
+              <div><dt>模型用量（Token）</dt><dd>{{ tokenText(currentPlan.estimate) }}</dd></div>
+              <div><dt>估计完整度</dt><dd>{{ Math.round(Math.min(currentPlan.estimate.input_tokens.coverage, currentPlan.estimate.output_tokens.coverage) * 100) }}%</dd></div>
+            </dl>
           <p v-if="currentPlan.estimate.unknown_stages.length" class="unknown-estimate">
             {{ currentPlan.estimate.unknown_stages.length }} 项暂无历史样本
           </p>
+          </details>
         </section>
 
         <section v-if="currentPlan.private_artifacts.length" class="plan-section">
-          <h3>目标产物</h3>
+          <h3>准备好后，你会得到</h3>
           <ul class="plan-list artifact-list">
             <li
               v-for="artifact in currentPlan.private_artifacts"
@@ -302,12 +296,12 @@ function reject() {
                 <span>{{ artifact.source_scope.whole_book ? "全书" : scopeText }}</span>
               </div>
               <p>{{ artifactPurpose(artifact) }}</p>
-              <dl class="artifact-contract">
+              <details class="plan-details"><summary>格式与用量上限</summary><dl class="artifact-contract">
                 <div><dt>形态</dt><dd>{{ artifactShape(artifact) }}</dd></div>
                 <div><dt>关键字段</dt><dd>{{ artifactFields(artifact) }}</dd></div>
                 <div><dt>来源</dt><dd>{{ artifactOrigin(artifact) }}</dd></div>
                 <div><dt>成本上限</dt><dd>{{ artifactCost(artifact) }}</dd></div>
-              </dl>
+              </dl></details>
             </li>
           </ul>
         </section>
@@ -429,29 +423,30 @@ function reject() {
 }
 .mode-control {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  overflow: hidden;
-  border: 1px solid var(--hairline);
-  border-radius: 6px;
+  grid-template-columns: 1fr;
+  gap: .6rem;
 }
 .mode-control button {
   min-width: 0;
-  min-height: 38px;
-  border: 0;
-  border-radius: 0;
-  padding: 0.35rem 0.3rem;
+  min-height: 64px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: .75rem .85rem;
   background: var(--reader-card);
   color: var(--steel);
   font-size: 0.78rem;
   white-space: normal;
+  text-align: left;
 }
-.mode-control button + button {
-  border-left: 1px solid var(--hairline);
-}
+.mode-control strong { display: block; margin-bottom: .25rem; font-size: .87rem; }
+.mode-control span { display: block; line-height: 1.6; opacity: .8; }
 .mode-control button.active {
-  background: var(--ink);
-  color: #fff;
+  background: color-mix(in srgb, var(--accent) 8%, var(--canvas));
+  border-color: var(--accent);
+  color: var(--ink);
 }
+.plan-details { margin-top: .75rem; font-size: .75rem; color: var(--muted); }
+.plan-details summary { cursor: pointer; padding: .2rem 0; }
 .goal-field {
   display: grid;
   gap: 0.35rem;

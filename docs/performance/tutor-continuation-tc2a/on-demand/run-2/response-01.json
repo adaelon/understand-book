@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"operation\": \"select\", \"move_id\": \"equal_distance_vs_equal_time_weighting\", \"move\": {\"kind\": \"compare\", \"move_id\": \"equal_distance_vs_equal_time_weighting\", \"prompt\": \"接上一条：先把 60/30 那个例子的答案收口为 40，并用「能否复现同样的总时间」做检验；再把「两段路程相等」和「两段时间相等」两种条件并排算一遍，说明 45 并非算错，而是回答了另一个问题——定义里的分母是时间，所以权重跟着时间走。\", \"object_ids\": [], \"target\": {\"capability\": \"从定义出发做量化推理：识别加权变量并用两种条件对照\", \"expected_performance\": \"能说明平均速度是「用一个恒定速度复现同样的总时间和总路程」，并在路程相等与时间相等两种条件下分别算出正确结果，解释 45 出现的原因\", \"learning_focus\": \"平均速度的时间加权结构：分母是总时间，所以『谁占时间多谁的快慢更有发言权』；路程相等时用 2v1v2/(v1+v2)，时间相等时才退化为速度的算术平均\", \"source_bindings\": [{\"source_id\": \"tc0-average-speed\", \"source_revision\": \"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e\", \"start_lid\": \"1.1\", \"end_lid\": \"1.1\"}]}}}",
+      "id": "call_00_DwQAmfQ9Ahxdc8USYrGJ6259",
+      "name": "tutor.step"
+    },
+    {
+      "arguments": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+      "id": "call_01_u83AWFJGg0rzYQOCErgq9828",
+      "name": "source.present"
+    }
+  ],
+  "usage_total_tokens": 17749
+}

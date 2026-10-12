@@ -1,0 +1,31 @@
+{
+  "model": "deepseek-v4-flash",
+  "prior_answer": "那一步是「平均速度 × 总时间 应当还原出总路程」。把它拆成最慢的几步重讲一遍。\n\n**第 1 步：它不是新公式，只是定义句换个写法**\n\n书的定义是：平均速度 = 总路程 ÷ 总时间 。\n\n既然这两边相等，就可以对等式两边同时乘「总时间」：\n\n- 左边：平均速度 × 总时间\n- 右边：（总路程 ÷ 总时间）× 总时间 = 总路程\n\n所以「平均速度 × 总时间 = 总路程」不是要你额外记的一条规则，它和定义句是同一句话，只是把除号搬到了另一边。同一个等式的两种写法，结果当然必须一致。\n\n**第 2 步：为什么「必须」正好还原，而不是碰巧**\n\n设总路程 s、总时间 t，那么 v̄ = s ÷ t。\n\n代回左边：v̄ × t =（s ÷ t）× t。\n\n先除以 t、再乘以 t，这两步互为逆运算，正好抵消，剩下 s 本身。所以「还原」是除法与乘法互逆带来的必然结果，和具体数字无关。\n\n**第 3 步：用一组具体数字走一遍（数字是我为演示设的，不是书里的原文）**\n\n2 小时走了 120 公里：v̄ = 120 ÷ 2 = 60（公里/小时）。\n\n回代：60 × 2 = 120，正好回到总路程。\n\n**第 4 步：这一步真正的用处——它是「分母写对了没有」的探针**\n\n假设分母写错了：只取其中 1 小时的时长，却配上全部 120 公里，得到 120 公里/小时。回代：120 × 2 = 240，不等于 120，立刻露馅。\n\n所以回代不是把同一个计算再算一遍，它检验的是：**分母代表的时段，是不是正好覆盖了分子那段路程**。只有两者指同一段行程，乘积才还原得回来。\n\n**第 5 步：这个检验在意义上为什么成立**\n\n平均速度的含义是「一个不变的等效速度，走完整段行程恰好花掉同样的总时间」。既然是「不变的等效速度」，它乘以总时间所走过的路程，就应该正好等于实际总路程；对不上，它就不「等效」。回代就是把「等效」这两个字兑现一次。\n\n**第 6 步：它成立的前提（书里同一段就给了）**\n\n同一段紧接着限定：Equal distances need not take equal times.（相等距离不必用相等时间）The total time must be positive.（总时间必须为正）\n\n- 分母必须是覆盖全程的时长：如果各段距离相同却用时不同，时间才是把各段「摊平」的那个量，不能拿别的东西当分母。\n- 分母必须严格为正：总时间为零时分母为零，平均速度根本不存在，也就无所谓回代还原。\n\n一句话收束：那一步没有隐藏机关，它只是把定义句两边同乘总时间，用来确认分母确实是整段行程的时长。",
+  "prior_hypothesis": {
+    "fact_refs": [
+      "usage:tutor-first-question:chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d:user:turn_0b5fa79168f9f3e5"
+    ],
+    "interpretation": "读者当前在问除法定义与乘法回代的连接，可能需要拆开等式变形。",
+    "nature": "hypothesis",
+    "operation": "evidence",
+    "operation_id": "tc6-prior",
+    "target": {
+      "capability": "explanation",
+      "expected_performance": "Explain the denominator",
+      "learning_focus": "average speed",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "end_lid": "1.1",
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "start_lid": "1.1"
+        }
+      ]
+    },
+    "teaching_implication": "先用除法与乘法互逆解释回代，再用一组数字演示。"
+  },
+  "reader": "scripted correction, no human participant",
+  "seed": "deterministic prior hypothesis and replayed TC5 real answer",
+  "source": "# Average speed\n\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\n\nA blue bicycle travels along the river.\n"
+}

@@ -1,0 +1,541 @@
+{
+  "events": [
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12aee-81cd-76b2-90dd-b684985af317",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_5871b8bbe51c626e",
+        "tutor_session_id": "tutor-first-question:chat-01a12aee-81cd-76b2-90dd-b684985af317"
+      },
+      "causal_refs": [],
+      "event_id": "assets:turn_5871b8bbe51c626e",
+      "kind": "turn_bound",
+      "occurred_at": "t0",
+      "payload": {}
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12aee-81cd-76b2-90dd-b684985af317",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_5871b8bbe51c626e",
+        "tutor_session_id": "tutor-first-question:chat-01a12aee-81cd-76b2-90dd-b684985af317"
+      },
+      "causal_refs": [],
+      "event_id": "usage:tutor-first-question:chat-01a12aee-81cd-76b2-90dd-b684985af317:user:turn_5871b8bbe51c626e",
+      "kind": "usage_observed",
+      "occurred_at": "t0",
+      "payload": {
+        "interaction": null,
+        "original_ref": {
+          "book_id": "tc0-average-speed",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12aee-81cd-76b2-90dd-b684985af317",
+          "turn_id": "turn_5871b8bbe51c626e"
+        },
+        "presentation_follow_up": null,
+        "question_anchor_lid": null,
+        "response": "请只用一句话说明平均速度的定义。这次回答到此为止，不要后续建议或练习。",
+        "teaching_ref": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12aee-81cd-76b2-90dd-b684985af317",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_5871b8bbe51c626e",
+        "tutor_session_id": "tutor-first-question:chat-01a12aee-81cd-76b2-90dd-b684985af317"
+      },
+      "causal_refs": [],
+      "event_id": "binding:turn_5871b8bbe51c626e",
+      "kind": "turn_bound",
+      "occurred_at": "t0",
+      "payload": {
+        "binding": {
+          "chat_session_id": "chat-01a12aee-81cd-76b2-90dd-b684985af317",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_5871b8bbe51c626e",
+          "tutor_session_id": "tutor-first-question:chat-01a12aee-81cd-76b2-90dd-b684985af317"
+        },
+        "confirmed_preferences": [],
+        "constraints": [],
+        "current_request": "请只用一句话说明平均速度的定义。这次回答到此为止，不要后续建议或练习。",
+        "default_teaching_intent": null,
+        "learner_context": {
+          "confirmed_background": [],
+          "confirmed_preferences": [],
+          "constraints": [],
+          "current_request": "请只用一句话说明平均速度的定义。这次回答到此为止，不要后续建议或练习。",
+          "current_target": null,
+          "details": "tutor.step understanding with object_id and after",
+          "entries": [],
+          "evidence_watermark": 0,
+          "interpretations": [],
+          "path_progress": [],
+          "pending_activity": null,
+          "pending_assessment_refs": [],
+          "projection_watermark": 0,
+          "recent_facts": [
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12aee-81cd-76b2-90dd-b684985af317",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_5871b8bbe51c626e",
+                "tutor_session_id": "tutor-first-question:chat-01a12aee-81cd-76b2-90dd-b684985af317"
+              },
+              "causal_refs": [],
+              "event_id": "usage:tutor-first-question:chat-01a12aee-81cd-76b2-90dd-b684985af317:user:turn_5871b8bbe51c626e",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "t0",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12aee-81cd-76b2-90dd-b684985af317",
+                "turn_id": "turn_5871b8bbe51c626e"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "请只用一句话说明平均速度的定义。这次回答到此为止，不要后续建议或练习。",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "user_message"
+              }
+            }
+          ],
+          "session_focus": {
+            "capability_targets": [],
+            "interpretation": "",
+            "target_object_refs": []
+          },
+          "stale": false,
+          "uninterpreted_fact_refs": [
+            "usage:tutor-first-question:chat-01a12aee-81cd-76b2-90dd-b684985af317:user:turn_5871b8bbe51c626e"
+          ],
+          "unknown_when_absent": true,
+          "user_intent": "请只用一句话说明平均速度的定义。这次回答到此为止，不要后续建议或练习。"
+        },
+        "limitations": [],
+        "object_count": 0,
+        "objects": [],
+        "recent_facts": [
+          {
+            "action": null,
+            "answer_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "assistance_count": 0,
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a12aee-81cd-76b2-90dd-b684985af317",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_5871b8bbe51c626e",
+              "tutor_session_id": "tutor-first-question:chat-01a12aee-81cd-76b2-90dd-b684985af317"
+            },
+            "causal_refs": [],
+            "event_id": "usage:tutor-first-question:chat-01a12aee-81cd-76b2-90dd-b684985af317:user:turn_5871b8bbe51c626e",
+            "help_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "kind": "usage_observed",
+            "move_id": null,
+            "occurred_at": "t0",
+            "original_ref": {
+              "book_id": "tc0-average-speed",
+              "kind": "chat_turn",
+              "session_id": "chat-01a12aee-81cd-76b2-90dd-b684985af317",
+              "turn_id": "turn_5871b8bbe51c626e"
+            },
+            "prompt_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "response_preview": {
+              "text": "请只用一句话说明平均速度的定义。这次回答到此为止，不要后续建议或练习。",
+              "truncated": false
+            },
+            "target": null,
+            "usage": {
+              "kind": "user_message"
+            }
+          }
+        ],
+        "status": "active",
+        "teaching_assets": {
+          "cognitive_materials": {
+            "status": "missing"
+          },
+          "formal_objects": {
+            "status": "missing"
+          },
+          "limitations": [],
+          "reason": "正式教学素材尚未发布",
+          "source_id": "tc0-average-speed",
+          "status": "preparing",
+          "teaching_map_revision": null
+        },
+        "user_intent": "请只用一句话说明平均速度的定义。这次回答到此为止，不要后续建议或练习。"
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12aee-81cd-76b2-90dd-b684985af317",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_5871b8bbe51c626e",
+        "tutor_session_id": "tutor-first-question:chat-01a12aee-81cd-76b2-90dd-b684985af317"
+      },
+      "causal_refs": [
+        "binding:turn_5871b8bbe51c626e"
+      ],
+      "event_id": "move:turn_5871b8bbe51c626e:move_average_speed_definition_oneline",
+      "kind": "move_selected",
+      "occurred_at": "2026-10-11T12:27:24.3063797Z",
+      "payload": {
+        "help_policy": "preserve_exposure",
+        "move": {
+          "actions": [],
+          "assessment": null,
+          "capability": "definition_recall",
+          "explanation": null,
+          "hint": null,
+          "intent_origin": "current_request",
+          "intent_quote": "请只用一句话说明平均速度的定义。这次回答到此为止，不要后续建议或练习。",
+          "interaction_intent": "direct_explanation",
+          "interpretation_refs": [],
+          "kind": "explain",
+          "move_id": "move_average_speed_definition_oneline",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "用一句话给出平均速度的定义：平均速度 = 总路程 ÷ 总时间（对应正文小节 \"Average speed\" 的原句 \"Average speed is total distance divided by total time.\"）。用户明确要求只用一句话、到此为止，不要后续建议或练习，因此最终答案只含这一句定义加一条来源引用，不展开例题、不推荐延伸内容，也不附加 continuation 选项。",
+          "target": {
+            "capability": "definition_recall",
+            "expected_performance": "能用一句完整的话说明平均速度的定义",
+            "learning_focus": "平均速度的定义：总路程除以总时间",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "retry_policy": "append_attempt",
+        "scorer_version": "assessment.v1",
+        "scoring_sources": {}
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12aee-81cd-76b2-90dd-b684985af317",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_5871b8bbe51c626e",
+        "tutor_session_id": "tutor-first-question:chat-01a12aee-81cd-76b2-90dd-b684985af317"
+      },
+      "causal_refs": [
+        "usage:tutor-first-question:chat-01a12aee-81cd-76b2-90dd-b684985af317:user:turn_5871b8bbe51c626e"
+      ],
+      "event_id": "usage:tutor-first-question:chat-01a12aee-81cd-76b2-90dd-b684985af317:assistant:turn_5871b8bbe51c626e",
+      "kind": "usage_observed",
+      "occurred_at": "t0",
+      "payload": {
+        "answer": "平均速度是总路程除以总时间。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "平均速度是总路程除以总时间。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_43d7e3797e6f3aea"
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文 · Average speed",
+              "source_ref_id": "source_ref_43d7e3797e6f3aea"
+            }
+          ]
+        },
+        "original_ref": {
+          "book_id": "tc0-average-speed",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12aee-81cd-76b2-90dd-b684985af317",
+          "turn_id": "turn_5871b8bbe51c626e"
+        },
+        "source_bindings": [
+          {
+            "book_id": "tc0-average-speed",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 71,
+                    "start": 17
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-b4c560a717856fe2",
+            "label_snapshot": "正文 · Average speed",
+            "preview_snapshot": "Average speed is total distance divided by total time.",
+            "source_ref_id": "source_ref_43d7e3797e6f3aea"
+          }
+        ],
+        "usage": {
+          "kind": "assistant_delivery"
+        }
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12aee-81cd-76b2-90dd-b684985af317",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_5871b8bbe51c626e",
+        "tutor_session_id": "tutor-first-question:chat-01a12aee-81cd-76b2-90dd-b684985af317"
+      },
+      "causal_refs": [
+        "move:turn_5871b8bbe51c626e:move_average_speed_definition_oneline"
+      ],
+      "event_id": "delivery:turn_5871b8bbe51c626e:move_average_speed_definition_oneline",
+      "kind": "message_delivered",
+      "occurred_at": "t0",
+      "payload": {
+        "answer": "平均速度是总路程除以总时间。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "平均速度是总路程除以总时间。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_43d7e3797e6f3aea"
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文 · Average speed",
+              "source_ref_id": "source_ref_43d7e3797e6f3aea"
+            }
+          ]
+        },
+        "assessment_contract_ref": null,
+        "move": {
+          "actions": [],
+          "capability": "definition_recall",
+          "intent_origin": "current_request",
+          "intent_quote": "请只用一句话说明平均速度的定义。这次回答到此为止，不要后续建议或练习。",
+          "interaction_intent": "direct_explanation",
+          "interpretation_refs": [],
+          "kind": "explain",
+          "move_id": "move_average_speed_definition_oneline",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "用一句话给出平均速度的定义：平均速度 = 总路程 ÷ 总时间（对应正文小节 \"Average speed\" 的原句 \"Average speed is total distance divided by total time.\"）。用户明确要求只用一句话、到此为止，不要后续建议或练习，因此最终答案只含这一句定义加一条来源引用，不展开例题、不推荐延伸内容，也不附加 continuation 选项。",
+          "target": {
+            "capability": "definition_recall",
+            "expected_performance": "能用一句完整的话说明平均速度的定义",
+            "learning_focus": "平均速度的定义：总路程除以总时间",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "presentation": null,
+        "source_bindings": [
+          {
+            "book_id": "tc0-average-speed",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 71,
+                    "start": 17
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-b4c560a717856fe2",
+            "label_snapshot": "正文 · Average speed",
+            "preview_snapshot": "Average speed is total distance divided by total time.",
+            "source_ref_id": "source_ref_43d7e3797e6f3aea"
+          }
+        ]
+      }
+    }
+  ],
+  "http_status": 200,
+  "provider_calls": 4,
+  "public_projection": {
+    "activities": [
+      {
+        "assessment": null,
+        "attempted": false,
+        "continuation": null,
+        "delivery_ref": "delivery:turn_5871b8bbe51c626e:move_average_speed_definition_oneline",
+        "help_seen": [],
+        "move": {
+          "actions": [],
+          "capability": "definition_recall",
+          "intent_origin": "current_request",
+          "intent_quote": "请只用一句话说明平均速度的定义。这次回答到此为止，不要后续建议或练习。",
+          "interaction_intent": "direct_explanation",
+          "interpretation_refs": [],
+          "kind": "explain",
+          "move_id": "move_average_speed_definition_oneline",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "用一句话给出平均速度的定义：平均速度 = 总路程 ÷ 总时间（对应正文小节 \"Average speed\" 的原句 \"Average speed is total distance divided by total time.\"）。用户明确要求只用一句话、到此为止，不要后续建议或练习，因此最终答案只含这一句定义加一条来源引用，不展开例题、不推荐延伸内容，也不附加 continuation 选项。",
+          "target": {
+            "capability": "definition_recall",
+            "expected_performance": "能用一句完整的话说明平均速度的定义",
+            "learning_focus": "平均速度的定义：总路程除以总时间",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "status": "active"
+      }
+    ]
+  },
+  "read_provider_calls": 0,
+  "reply": {
+    "answer": "平均速度是总路程除以总时间。",
+    "answer_view": {
+      "parts": [
+        {
+          "kind": "markdown",
+          "text": "平均速度是总路程除以总时间。"
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_43d7e3797e6f3aea"
+          ]
+        }
+      ],
+      "sources": [
+        {
+          "label": "正文 · Average speed",
+          "source_ref_id": "source_ref_43d7e3797e6f3aea"
+        }
+      ]
+    },
+    "effects": [],
+    "incomplete": false,
+    "memory_updates": [],
+    "profile_usage": {
+      "claimed_used_fact_ids": [],
+      "influences": [],
+      "injected_fact_ids": [],
+      "snapshot_revision": 0
+    },
+    "tokens_spent": 55986,
+    "trace": [
+      {
+        "args": "{\"lid\": \"1.1\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"lid\":\"1.1\",\"text\":\"# Average speed\\n\\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"quote\": \"Average speed is total distance divided by total time.\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"source_ref_id\":\"source_ref_43d7e3797e6f3aea\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time.\"}",
+        "tool": "source.present"
+      },
+      {
+        "args": "{\"capability\":\"definition_recall\",\"intent_origin\":\"current_request\",\"intent_quote\":\"请只用一句话说明平均速度的定义。这次回答到此为止，不要后续建议或练习。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"move_average_speed_definition_oneline\",\"object_ids\":[],\"operation\":\"select\",\"preference_ref\":null,\"prompt\":\"用一句话给出平均速度的定义：平均速度 = 总路程 ÷ 总时间（即全书小节 1.1 的原句 \\\"Average speed is total distance divided by total time.\\\"）。用户明确要求只用一句话、到此为止，不要后续建议或练习，因此答案只含这一句定义加一条来源引用，不展开例题、不提供延伸选项。\",\"target\":{\"capability\":\"definition_recall\",\"expected_performance\":\"能用一句完整的话说明平均速度的定义\",\"learning_focus\":\"平均速度的定义：总路程除以总时间\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"error_code\":\"TOOL_ARGUMENTS_INVALID\",\"category\":\"validation\",\"message\":\"$.move is required\"}",
+        "tool": "tutor.step"
+      },
+      {
+        "args": "{\"move\":{\"capability\":\"definition_recall\",\"intent_origin\":\"current_request\",\"intent_quote\":\"请只用一句话说明平均速度的定义。这次回答到此为止，不要后续建议或练习。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"move_average_speed_definition_oneline\",\"object_ids\":[],\"preference_ref\":null,\"prompt\":\"用一句话给出平均速度的定义：平均速度 = 总路程 ÷ 总时间（对应正文小节 \\\"Average speed\\\" 的原句 \\\"Average speed is total distance divided by total time.\\\"）。用户明确要求只用一句话、到此为止，不要后续建议或练习，因此最终答案只含这一句定义加一条来源引用，不展开例题、不推荐延伸内容，也不附加 continuation 选项。\",\"target\":{\"capability\":\"definition_recall\",\"expected_performance\":\"能用一句完整的话说明平均速度的定义\",\"learning_focus\":\"平均速度的定义：总路程除以总时间\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+        "model_tool_loop": 3,
+        "result_digest": "{\"instruction\":\"Deliver this move in the final answer. Saved candidate is not displayed.\",\"selected\":\"move:turn_5871b8bbe51c626e:move_average_speed_definition_oneline\"}",
+        "tool": "tutor.step"
+      }
+    ],
+    "turns": 4
+  }
+}

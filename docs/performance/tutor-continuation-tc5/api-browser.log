@@ -1,0 +1,69 @@
+
+[WebServer] (node:34484) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+[WebServer] (node:36248) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+
+(node:18180) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1/2] playwright\tutor-continuation-api.spec.ts:5:42 › tc5_actual_rust_api_ordinary
+  1) playwright\tutor-continuation-api.spec.ts:5:42 › tc5_actual_rust_api_ordinary ─────────────────
+
+    TypeError: Cannot read properties of undefined (reading 'action')
+
+      34 |   expect(evidence.history.current.turns).toHaveLength(2);
+      35 |   const turn=evidence.history.current.turns[1];
+    > 36 |   expect(turn.interaction.action.origin).toBe('ui_choice');
+         |                           ^
+      37 |   expect(turn.interaction.action.teaching_choice.option_id).toBe('compare');
+      38 |   expect(evidence.events.filter((e:any)=>e.kind==='continuation_chosen')).toHaveLength(1);
+      39 |   expect(evidence.provider_calls).toBe(3);
+        at E:\allwork\download\agent\understand-book\packages\web\playwright\tutor-continuation-api.spec.ts:36:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\tutor-continuation-api-tc5-actual-rust-api-ordinary\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\tutor-continuation-api-tc5-actual-rust-api-ordinary\error-context.md
+
+
+
+(node:2892) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[2/2] playwright\tutor-continuation-api.spec.ts:5:42 › tc5_actual_rust_api_presentation
+  2) playwright\tutor-continuation-api.spec.ts:5:42 › tc5_actual_rust_api_presentation ─────────────
+
+    Error: expect(received).toHaveLength(expected)
+
+    Expected length: 2
+    Received length: 1
+    Received array:  [{"domain": {"effects": [{"disposition": null, "effect": {"kind": "presentation", "reference": {"presentation_id": "presentation-1791726614903101400-0", "revision": 1}}, "effect_id": "presentation:presentation-1791726614903101400-0:1"}], "scene": {"anchor_lid": "1.1", "generation": 1, "selection": null, "workspace_id": "local"}, "teaching": [{"receipt_ids": ["assets:turn_119967a8decd7138", "usage:tutor-first-question:chat-01a12b3a-78a9-71d3-92fe-fc17acdcf096:user:turn_119967a8decd7138", "binding:turn_119967a8decd7138"], "revision": 1, "session_id": "tutor-first-question:chat-01a12b3a-78a9-71d3-92fe-fc17acdcf096"}, {"receipt_ids": ["move:turn_119967a8decd7138:explain"], "revision": 1, "session_id": "tutor-first-question:chat-01a12b3a-78a9-71d3-92fe-fc17acdcf096"}]}, "effect_labels": [], "goal_ref": {"id": "goal_turn_119967a8decd7138", "revision": 2}, "outcome": {"answer": "Compare total distance and total time.", "answer_view": {"parts": [{"kind": "markdown", "text": "Compare total distance and total time."}, {"kind": "presentation", "presentation_id": "presentation-1791726614903101400-0", "revision": 1}], "sources": []}, "effects": [], "incomplete": false, "memory_updates": [], "profile_usage": {"claimed_used_fact_ids": [], "influences": [], "injected_fact_ids": [], "snapshot_revision": 0}, "tokens_spent": 0, "trace": [{"args": "{}", "result_digest": "selected", "tool": "tutor.step"}], "turns": 1}, "presentation_follow_up": null, "published_book_ref": null, "question_quote": {"label": "正文 · Average speed", "quote": "Average speed is total distance divided by total time.", "status": "resolved"}, "question_source_label": "正文 · Average speed", "status": "completed", "teaching_ref": null, "turn_id": "turn_119967a8decd7138", "user": "Explain average speed", "user_turn_ordinal": 1}]
+
+      32 |   await expect.poll(async()=>{const r=await request.get('http://127.0.0.1:4196/evidence');return (await r.json()).history.current.turns.at(-1).status;}).toBe('completed');
+      33 |   const evidence=await (await request.get('http://127.0.0.1:4196/evidence')).json();
+    > 34 |   expect(evidence.history.current.turns).toHaveLength(2);
+         |                                          ^
+      35 |   const turn=evidence.history.current.turns[1];
+      36 |   expect(turn.interaction.action.origin).toBe('ui_choice');
+      37 |   expect(turn.interaction.action.teaching_choice.option_id).toBe('compare');
+        at E:\allwork\download\agent\understand-book\packages\web\playwright\tutor-continuation-api.spec.ts:34:42
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\tutor-continuation-api-tc5-actual-rust-api-presentation\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\tutor-continuation-api-tc5-actual-rust-api-presentation\error-context.md
+
+
+  2 failed
+    playwright\tutor-continuation-api.spec.ts:5:42 › tc5_actual_rust_api_ordinary ──────────────────
+    playwright\tutor-continuation-api.spec.ts:5:42 › tc5_actual_rust_api_presentation ──────────────
+undefined
+E:\allwork\download\agent\understand-book\packages\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: playwright test playwright/tutor-continuation-api.spec.ts --workers=1 --reporter=line

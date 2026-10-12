@@ -948,6 +948,7 @@ fn admit_reply(
     wait: bool,
 ) -> Result<HttpReply, ToolError> {
     let mut accepted = reader_run_view(access, context, access.runs.admit(access, context, workspace, input, now)?)?;
+    if accepted["kind"] == "activity_help" { return Ok(HttpReply::json(accepted)); }
     if accepted["dispatch_state"] == "admission_failed" {
         accepted["error_code"] = json!("ADMISSION_FAILED");
         let mut reply = HttpReply::json(accepted);

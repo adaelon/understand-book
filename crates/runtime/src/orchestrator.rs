@@ -567,7 +567,7 @@ pub struct PaperMinimapAgentContext {
     pub allowed_actions: Vec<String>,
 }
 
-/// 查询踪迹一步 `[ADR-0030 决策5]`:tool_calls 序列摘要,对用户可见(book.query 的检索范围 + citations 链在 `result_digest` 里)。
+/// 查询踪迹一步：保留 tool_calls 序列摘要用于开发诊断；阅读器展示边界见 `[ADR-0160 §11]`。
 /// `model_tool_loop` 是 1-based 模型—工具循环序号；同一采样批次的并行调用共享该值。
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
@@ -4394,6 +4394,7 @@ fn tool_progress_signature(
     port: &mut impl ResidentStatePort,
     effect_count: usize,
     authoring: Option<&crate::presentation_author::PresentationAuthoringContext>,
+    tutor_resolved: bool,
 ) -> String {
     let reader_view = port.read_live_reader(|reader| reader_state_value(book, reader)).unwrap_or_else(|error| serde_json::json!({"error_code":error.error_code}));
     let projection_revision = port.submit_private(|store| store.projection_revision()).ok();
@@ -4411,6 +4412,7 @@ fn tool_progress_signature(
         "reader": reader_view,
         "effect_count": effect_count,
         "presentation_authoring": authoring,
+        "tutor_resolved": tutor_resolved,
     });
     opaque_tool_result_digest(&serde_json::to_string(&state).unwrap_or_default())
 }
@@ -4423,6 +4425,7 @@ struct ProgressPhaseGuard {
     consecutive_stalled_batches: usize,
     recovery_pending: bool,
     recovery_used: bool,
+    teaching_correction_pending: bool,
 }
 
 impl ProgressPhaseGuard {
@@ -4430,12 +4433,18 @@ impl ProgressPhaseGuard {
         self.recovery_pending && !self.recovery_used
     }
 
-    fn observe_error(&mut self, result: &str) {
+    fn observe_error(&mut self, tool: &str, result: &str) {
         if matches!(
             tool_result_error_code(result).as_deref(),
             Some("LID_NOT_FOUND" | "LID_PROVENANCE_REQUIRED" | "LID_RECOVERY_REQUIRED")
         ) {
             self.recovery_pending = true;
+        }
+        if tool == "tutor.step" && matches!(tool_result_error_code(result).as_deref(),
+            Some("TEACHING_INVALID" | "TOOL_ARGUMENTS_INVALID"))
+        {
+            self.recovery_pending = true;
+            self.teaching_correction_pending = true;
         }
     }
     fn blocks(&self, progress_signature: &str) -> bool {
@@ -4449,6 +4458,7 @@ impl ProgressPhaseGuard {
             self.consecutive_stalled_batches = 0;
             self.recovery_pending = false;
             self.recovery_used = false;
+            self.teaching_correction_pending = false;
             return;
         }
         if self.stalled_signature.as_deref() == Some(after_signature) {
@@ -4769,6 +4779,7 @@ fn build_sample_request(
     excluded_tools: &[&str],
     authoring: Option<&crate::presentation_author::PresentationAuthoringContext>,
     authoring_finished: bool,
+    tutor: Option<&serde_json::Value>,
 ) -> Result<(ToolExposurePlan, AgentRequestPlan), ToolError> {
     let mut tool_exposure_plan = ToolExposurePlan::build(
         tool_registry,
@@ -4802,6 +4813,9 @@ fn build_sample_request(
         .partition(crate::agent_prompt::presentation::is_sampling_module);
     if guidance.is_none() {
         selected.clear();
+    }
+    if let Some(tutor) = tutor {
+        selected.extend(crate::tutor::instruction_modules(tutor, messages, guidance.as_ref()));
     }
     let mut current_messages = Vec::new();
     if author_visible || authoring.is_some() || authoring_finished {
@@ -4914,6 +4928,8 @@ fn maybe_auto_compact(
     effects: &[AgentEffect],
     active_checkpoint: &mut Option<CompactionCheckpoint>,
     sink: &mut dyn CompactionCheckpointSink,
+    attempted_boundary: &mut Option<String>,
+    candidate_budget: impl Fn(&[Message], &CompactionCheckpoint) -> Result<ActiveContextBudget, ToolError>,
 ) -> Result<bool, ToolError> {
     if !budget.over_high_watermark {
         return Ok(false);
@@ -4958,6 +4974,13 @@ fn maybe_auto_compact(
         };
     }
 
+    let boundary = prepared.request().eligible_items.last().map(|item| item.source_item_id.clone());
+    let wrapper = runtime_profile.compaction.consumption_wrapper_asset.resolve(COMPACTION_CONSUMPTION_WRAPPER);
+    if *attempted_boundary == boundary || !prepared.can_reduce(runtime_profile, &wrapper).map_err(compaction_error)? {
+        return if budget.fits { Ok(false) } else { Err(active_context_exhausted(budget)) };
+    }
+    *attempted_boundary = boundary;
+
     let generation_input_limit_tokens = runtime_profile
         .context_window_tokens
         .saturating_sub(crate::compaction::compaction_output_token_limit(runtime_profile))
@@ -4977,6 +5000,10 @@ fn maybe_auto_compact(
         .map(crate::model_spend::SpendStop::tool_error).unwrap_or(ToolError {
             error_code: COMPACTION_FAILED.into(), category: "provider".into(), message: error.message,
         }))?;
+    let replacement = candidate_budget(&persisted_messages, &checkpoint)?;
+    if replacement.estimated_input_tokens >= budget.estimated_input_tokens || !replacement.fits {
+        return if budget.fits { Ok(false) } else { Err(active_context_exhausted(budget)) };
+    }
     sink.install(&checkpoint, &persisted_messages)
         .map_err(|error| ToolError {
             error_code: COMPACTION_FAILED.into(),
@@ -5529,7 +5556,7 @@ fn run_context_inner(
     let messages = &mut context.messages;
     context.cancellation.check()?;
     let mut tool_registry = crate::experiment::registry(book, resident_tool_registry());
-    if context.tutor.is_none() { tool_registry = tool_registry.without_tutor(); }
+    tool_registry = tool_registry.with_tutor_context(context.tutor.as_ref());
     if context.goal.is_none() {
         tool_registry = tool_registry.without_goal_update();
     }
@@ -5551,6 +5578,12 @@ fn run_context_inner(
         question,
     );
     let mut context_fragments = ContextFragmentLedger::default();
+    if let Some(tutor) = &context.tutor {
+        context_fragments.upsert(ContextFragment::new(
+            "agent.tutor_context", FragmentScope::TurnFrozen, Role::System,
+            crate::tutor::instructions(tutor), FragmentSensitivity::Private,
+        )).map_err(context_fragment_error)?;
+    }
     context_fragments
         .upsert(ContextFragment::new(
             READER_PROFILE_FRAGMENT_KEY,
@@ -5643,6 +5676,7 @@ fn run_context_inner(
     let mut presentation_delivery_grace: Option<String> = None;
     let mut presentation_delivery_grace_used = false;
     let mut tutor_selection_retry = false;
+    let mut compaction_attempted_boundary = None;
     let mut goal_completion_retry: Option<&'static str> = None;
 
     // Pre-turn pressure includes the new user message, but the compactable source
@@ -5666,7 +5700,7 @@ fn run_context_inner(
         context.evidence_ledger.evidence_state(),
         &[],
         context.presentation_authoring.as_ref(),
-        context.presentation_authoring_finished,
+        context.presentation_authoring_finished, context.tutor.as_ref(),
     )?;
     let planned_budget = ActiveContextBudget::from_plan(&planned_request);
     let compacted = maybe_auto_compact(
@@ -5680,8 +5714,24 @@ fn run_context_inner(
         &effects,
         &mut active_checkpoint,
         checkpoint_sink,
+        &mut compaction_attempted_boundary,
+        &|persisted: &[Message], checkpoint: &CompactionCheckpoint| {
+                let mut projected_messages = persisted.to_vec();
+                projected_messages.push(Message::user(question));
+                let mut fragments = planned_context_fragments.clone();
+                let (_, plan) = build_sample_request(
+                    &projected_messages, &mut fragments, book, &context.active_tool_results,
+                    Some(checkpoint), &consumption_wrapper, &tool_registry, &runtime_profile,
+                    tool_permissions, &context.tool_exposure_state, artifact_tools.exposure(),
+                    context.evidence_ledger.evidence_state(), &[],
+                    context.presentation_authoring.as_ref(), context.presentation_authoring_finished, context.tutor.as_ref(),
+                )?;
+                Ok(ActiveContextBudget::from_plan(&plan))
+        },
     )?;
     if compacted {
+        planned_messages = messages.clone();
+        planned_messages.push(Message::user(question));
         let (_, compacted_request) = build_sample_request(
             &planned_messages,
             &mut planned_context_fragments,
@@ -5697,7 +5747,7 @@ fn run_context_inner(
             context.evidence_ledger.evidence_state(),
             &[],
             context.presentation_authoring.as_ref(),
-            context.presentation_authoring_finished,
+            context.presentation_authoring_finished, context.tutor.as_ref(),
         )?;
         let compacted_budget = ActiveContextBudget::from_plan(&compacted_request);
         if !compacted_budget.fits {
@@ -5740,7 +5790,7 @@ fn run_context_inner(
         let mut sampling_context_fragments = context_fragments.clone();
         if let Some(tutor) = &context.tutor {
             sampling_context_fragments.upsert(ContextFragment::new("agent.tutor", FragmentScope::Dynamic,
-                Role::System, crate::tutor::instructions(tutor), FragmentSensitivity::Private)).map_err(context_fragment_error)?;
+                Role::System, crate::tutor::control_instructions(tutor), FragmentSensitivity::Private)).map_err(context_fragment_error)?;
         }
         if let Some(goal) = &context.goal {
             sampling_context_fragments.upsert(ContextFragment::new(
@@ -5802,7 +5852,7 @@ fn run_context_inner(
             context.evidence_ledger.evidence_state(),
             sampled_excluded_tools,
             context.presentation_authoring.as_ref(),
-            context.presentation_authoring_finished,
+            context.presentation_authoring_finished, context.tutor.as_ref(),
         )?;
         let request_budget = ActiveContextBudget::from_plan(&request_plan);
         if maybe_auto_compact(
@@ -5816,6 +5866,18 @@ fn run_context_inner(
             &effects,
             &mut active_checkpoint,
             checkpoint_sink,
+            &mut compaction_attempted_boundary,
+            &|persisted: &[Message], checkpoint: &CompactionCheckpoint| {
+                let mut fragments = sampling_context_fragments.clone();
+                let (_, plan) = build_sample_request(
+                    persisted, &mut fragments, book, &context.active_tool_results,
+                    Some(checkpoint), &consumption_wrapper, &tool_registry, &runtime_profile,
+                    tool_permissions, &context.tool_exposure_state, artifact_tools.exposure(),
+                    context.evidence_ledger.evidence_state(), sampled_excluded_tools,
+                    context.presentation_authoring.as_ref(), context.presentation_authoring_finished, context.tutor.as_ref(),
+                )?;
+                Ok(ActiveContextBudget::from_plan(&plan))
+            },
         )? {
             (tool_exposure_plan, request_plan) = build_sample_request(
                 messages,
@@ -5832,7 +5894,7 @@ fn run_context_inner(
                 context.evidence_ledger.evidence_state(),
                 sampled_excluded_tools,
                 context.presentation_authoring.as_ref(),
-                context.presentation_authoring_finished,
+                context.presentation_authoring_finished, context.tutor.as_ref(),
             )?;
         }
         context_fragments.retain_sampling_history(&sampling_context_fragments);
@@ -6005,6 +6067,7 @@ fn run_context_inner(
                     state,
                     effects.len(),
                     context.presentation_authoring.as_ref(),
+                    context.tutor_resolved,
                 );
                 phase_progress_guard.observe_batch(&progress, &progress);
                 if !cfg.turn_limit_reached(turns)
@@ -6117,6 +6180,7 @@ fn run_context_inner(
                 state,
                 effects.len(),
                 context.presentation_authoring.as_ref(),
+                context.tutor_resolved,
             );
         let phase_stalled = phase_progress_guard.blocks(&batch_progress_before);
         let recovery_batch = phase_stalled && phase_progress_guard.recovery_available();
@@ -6151,6 +6215,7 @@ fn run_context_inner(
                     state,
                     effects.len(),
                     context.presentation_authoring.as_ref(),
+                    context.tutor_resolved,
                 );
             let repeated_without_progress = handler.is_some()
                 && tool_call_progress.is_repeat(&tc.name, &tc.arguments, &progress_before);
@@ -6174,7 +6239,7 @@ fn run_context_inner(
                         .as_ref()
                         .is_some_and(|result| result.is_ok()),
                     Some(ToolHandlerId::ToolSearch) => true,
-                    _ => false,
+                    _ => matches!(handler, Some(ToolHandlerId::TutorStep)) && phase_progress_guard.teaching_correction_pending,
                 };
             let phase_blocked = phase_stalled && !recovery_call;
             let blocked_without_progress = phase_blocked || repeated_without_progress;
@@ -6292,6 +6357,8 @@ fn run_context_inner(
                 }
                 Some(ToolHandlerId::TutorStep) => {
                     let request: Result<serde_json::Value, _> = serde_json::from_str(&tc.arguments);
+                    let assessing = request.as_ref().ok().filter(|r| r["operation"] == "assess")
+                        .and_then(|r| r["action_ref"].as_str()).map(str::to_owned);
                     let resolving = request.as_ref().ok().is_some_and(|r| matches!(r["operation"].as_str(), Some("select" | "outside")));
                     let result = request.map_err(|e| memory::teaching::invalid(format!("{e}"))).and_then(|request| {
                         if request["operation"] != "assess" { return state.tutor_step(request, &context.evidence_ledger.bindings(), &context.evidence_ledger.teaching_source_ranges()); }
@@ -6309,6 +6376,13 @@ fn run_context_inner(
                         state.tutor_assessment_accept(id,parsed["items"].clone())
                     });
                     if result.is_ok() && resolving { context.tutor_resolved = true; goal_completion_retry = None; }
+                    if result.is_ok() {
+                        if let (Some(id), Some(tutor)) = (assessing, context.tutor.as_mut()) {
+                            if let Some(pending) = tutor["learner_context"]["pending_assessment_refs"].as_array_mut() {
+                                pending.retain(|value| value.as_str() != Some(id.as_str()));
+                            }
+                        }
+                    }
                     (result.map(|value| value.to_string()).unwrap_or_else(|error| to_json(&error)), None, None)
                 }
                 Some(ToolHandlerId::GoalUpdate) => {
@@ -6550,7 +6624,7 @@ fn run_context_inner(
                 batch_synthesis_observed = true;
             }
             let result = attach_lid_recovery_requirement(result);
-            phase_progress_guard.observe_error(&result);
+            phase_progress_guard.observe_error(&tc.name, &result);
             let output_policy = registered
                 .map(|registration| registration.output_policy)
                 .unwrap_or_else(crate::tool_registry::ToolOutputPolicy::bounded_error);
@@ -6630,6 +6704,7 @@ fn run_context_inner(
                         state,
                         effects.len() + usize::from(effect.is_some()),
                         context.presentation_authoring.as_ref(),
+                        context.tutor_resolved,
                     );
                 tool_call_progress.observe(
                     &tc.name,
@@ -6707,6 +6782,7 @@ fn run_context_inner(
                 state,
                 effects.len(),
                 context.presentation_authoring.as_ref(),
+                context.tutor_resolved,
             );
         phase_progress_guard.observe_batch(&batch_progress_before, &batch_progress_after);
         for (tool, arguments) in batch_progress_calls {
@@ -6740,7 +6816,7 @@ fn run_context_inner(
             };
             let mut finalization_context_fragments = context_fragments.clone();
             if let Some(tutor) = &context.tutor {
-                finalization_context_fragments.upsert(ContextFragment::new("agent.tutor", FragmentScope::Dynamic, Role::System, crate::tutor::instructions(tutor), FragmentSensitivity::Private)).map_err(context_fragment_error)?;
+                finalization_context_fragments.upsert(ContextFragment::new("agent.tutor", FragmentScope::Dynamic, Role::System, crate::tutor::control_instructions(tutor), FragmentSensitivity::Private)).map_err(context_fragment_error)?;
             }
             if let Some(goal) = &context.goal {
                 finalization_context_fragments.upsert(ContextFragment::new(
@@ -6778,7 +6854,7 @@ fn run_context_inner(
                 context.evidence_ledger.evidence_state(),
                 &excluded_tools,
                 context.presentation_authoring.as_ref(),
-                context.presentation_authoring_finished,
+                context.presentation_authoring_finished, context.tutor.as_ref(),
             )?;
             let finalization_budget = ActiveContextBudget::from_plan(&finalization_plan);
             if maybe_auto_compact(
@@ -6792,6 +6868,18 @@ fn run_context_inner(
                 &effects,
                 &mut active_checkpoint,
                 checkpoint_sink,
+                &mut compaction_attempted_boundary,
+                &|persisted: &[Message], checkpoint: &CompactionCheckpoint| {
+                let mut fragments = finalization_context_fragments.clone();
+                let (_, plan) = build_sample_request(
+                    persisted, &mut fragments, book, &context.active_tool_results,
+                    Some(checkpoint), &consumption_wrapper, &tool_registry, &runtime_profile,
+                    tool_permissions, &context.tool_exposure_state, artifact_tools.exposure(),
+                    context.evidence_ledger.evidence_state(), &excluded_tools,
+                    context.presentation_authoring.as_ref(), context.presentation_authoring_finished, context.tutor.as_ref(),
+                )?;
+                Ok(ActiveContextBudget::from_plan(&plan))
+                },
             )? {
                 (_, finalization_plan) = build_sample_request(
                     messages,
@@ -6808,7 +6896,7 @@ fn run_context_inner(
                     context.evidence_ledger.evidence_state(),
                     &excluded_tools,
                     context.presentation_authoring.as_ref(),
-                    context.presentation_authoring_finished,
+                    context.presentation_authoring_finished, context.tutor.as_ref(),
                 )?;
             }
             let finalization_budget = ActiveContextBudget::from_plan(&finalization_plan);
@@ -6945,6 +7033,7 @@ fn run_context_inner(
 #[cfg(test)]
 mod tests {
     mod adm6 { include!("adm6_tests.rs"); }
+    mod turn_failures { include!("turn_failure_tests.rs"); }
     use super::*;
 
     mod presentation_authoring {
@@ -8463,7 +8552,7 @@ mod tests {
             EvidenceState::Unlocated,
             &[],
             None,
-            false,
+            false, None,
         )
         .unwrap();
         let pressure = ActiveContextBudget::from_plan(&plan).pressure_tokens;
@@ -15228,7 +15317,12 @@ user_question={}",
             let mut sink = CleaningSink { installed: None, fail_install: case == "install_failed" };
             let mut checkpoint = None;
             let result = maybe_auto_compact(CompactionPhase::MidTurn, budget, &b, &mut messages, &adapter,
-                &profile, &ContextFragmentLedger::default(), &[], &mut checkpoint, &mut sink);
+                &profile, &ContextFragmentLedger::default(), &[], &mut checkpoint, &mut sink,
+                &mut None, &|raw: &[Message], candidate: &CompactionCheckpoint| {
+                    let projected = messages_with_context_fragments(raw, &ContextFragmentLedger::default(), &b,
+                        &ActiveToolResultLedger::default(), Some(candidate), COMPACTION_CONSUMPTION_WRAPPER).map_err(compaction_error)?;
+                    Ok(ActiveContextBudget::from_plan(&AgentRequestPlan::for_agent_turn(profile.clone(), &projected, &[])))
+                });
             match case {
                 "installed" | "already_covered" => {
                     assert!(result.unwrap());
@@ -15238,7 +15332,12 @@ user_question={}",
                     if case == "already_covered" {
                         messages = original.clone();
                         let result = maybe_auto_compact(CompactionPhase::MidTurn, budget, &b, &mut messages, &adapter,
-                            &profile, &ContextFragmentLedger::default(), &[], &mut checkpoint, &mut sink);
+                            &profile, &ContextFragmentLedger::default(), &[], &mut checkpoint, &mut sink,
+                &mut None, &|raw: &[Message], candidate: &CompactionCheckpoint| {
+                    let projected = messages_with_context_fragments(raw, &ContextFragmentLedger::default(), &b,
+                        &ActiveToolResultLedger::default(), Some(candidate), COMPACTION_CONSUMPTION_WRAPPER).map_err(compaction_error)?;
+                    Ok(ActiveContextBudget::from_plan(&AgentRequestPlan::for_agent_turn(profile.clone(), &projected, &[])))
+                });
                         assert!(!result.unwrap());
                         assert_eq!(messages, original, "covered precheck must not change active history");
                     }
@@ -15675,7 +15774,7 @@ user_question={}",
             EvidenceState::Unlocated,
             &[],
             None,
-            false,
+            false, None,
         )
         .unwrap();
         profile.context_window_tokens = legacy_unseeded_plan
@@ -15697,7 +15796,7 @@ user_question={}",
             EvidenceState::Unlocated,
             &[],
             None,
-            false,
+            false, None,
         )
         .unwrap();
         assert!(legacy_unseeded_plan.active_context.fits);
@@ -15754,7 +15853,7 @@ user_question={}",
             evidence_state,
             &["book.text"],
             None,
-            false,
+            false, None,
         )
         .unwrap();
 

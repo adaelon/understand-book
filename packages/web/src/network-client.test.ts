@@ -9,6 +9,24 @@ const json = (value: unknown, status = 200) => new Response(JSON.stringify(value
 beforeEach(() => { sessionStorage.clear(); localStorage.clear(); installIdentity({ user_id: 'A', csrf_token: 'csrf-A' }); installWorkspace(scene); });
 afterEach(() => { vi.unstubAllGlobals(); network.value = { ...network.value, enabled: false }; });
 describe('MU8 authorized browser context', () => {
+  it('keeps the original choice head and key on lost-response recovery', async () => {
+    const input = { session_id:'chat', client_request_id:'tc5-choice', expected_chat_head:'original', teaching_choice:{delivery_ref:'delivery',option_id:'compare'} };
+    let saved: any;
+    const fetch=vi.fn(async (url: string, init?: RequestInit) => {
+      if(url.includes('client_request_id=')) return json({turn_id:'accepted',session_id:'chat',book_id:'b',dispatch_state:'completed'});
+      if(url.endsWith('/agent/runs')) {saved=JSON.parse(String(init?.body)); throw new Error('lost');}
+      return json(scene);
+    });
+    vi.stubGlobal('fetch',fetch);
+    expect(await api.agentRunCreate('',input)).toMatchObject({turn_id:'accepted'});
+    expect(saved).toMatchObject(input); expect(pendingSubmissions()).toEqual([]);
+    expect(fetch.mock.calls.filter(([url])=>url.endsWith('/agent/runs'))).toHaveLength(1);
+  });
+  it('rejects a typed action captured in a different chat before posting it', async () => {
+    const fetch=vi.fn(async () => json(scene)); vi.stubGlobal('fetch',fetch);
+    await expect(api.agentRunCreate('',{session_id:'old-chat',client_request_id:'tc5-old',entry_action:'clarify_answer',answer_ref:{turn_id:'old-answer'},expected_chat_head:'old-answer'})).rejects.toMatchObject({errorCode:'CHAT_SELECTION_CHANGED'});
+    expect(fetch).toHaveBeenCalledTimes(1); expect(pendingSubmissions()).toEqual([]);
+  });
   it('does not put selection translation in the reader write queue', async () => {
     let release!: (value: Response) => void;
     const fetch = vi.fn(async (url: string) => {

@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"lid\": \"1.1\"}",
+      "id": "call_00_LeFILMnKE8qlw5QUIbbr8096",
+      "name": "book.text"
+    },
+    {
+      "arguments": "{\"quote\": \"Average speed is total distance divided by total time.\"}",
+      "id": "call_01_C7G20MpT5wFBOM6F7fmw2700",
+      "name": "source.present"
+    }
+  ],
+  "usage_total_tokens": 12604
+}

@@ -1,0 +1,107 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized] target(s) in 3.08s
+     Running unittests src\lib.rs (C:/Users/Lenovo/.codex/tmp/understand-book-tc2-target\debug\deps\server-070113c35a7a65a3.exe)
+
+running 1 test
+TC2_LIVE_MODEL deepseek-v4-flash
+TC2_LIVE_FIRST {"answer":"这段话只有三句，但每一句都在补一个容易出错的前提。\n\n**第一句：定义式**——平均速度 = 总路程 ÷ 总时间。注意分子分母都是\"整体量\"，不是某一段的量。所以算平均速度时，必须先把各段路程加起来、各段时间加起来，再做一次除法，而不是把各段速度拿来平均。\n\n**第二句：为什么不能\"取各段速度的平均\"**——\"Equal distances need not take equal times.\"（同样的距离，花的时间可以不一样。）[source_ref_e85701c84b34a511] 只要有两段路长度相同、用时不同，这两段的快慢就不一样；此时若把两个速度简单相加除以 2，得到的是\"每段速度各占一半权重\"的结果，与\"总路程 ÷ 总时间\"给出的权重（时间长的段自然在总时间里占比大）不一致。\n\n举个假设的例子（不是书中数据）：骑行 3 km 用了 10 分钟，接着 3 km 用了 20 分钟。两段距离相等但用时不等。总路程 6 km，总时间 30 分钟 = 0.5 h，平均速度 = 6 ÷ 0.5 = 12 km/h。而两段速度分别是 18 km/h 和 9 km/h，算术平均是 13.5 km/h——比正确值偏高，因为慢的那段占据了更长的时间。\n\n**第三句：分母的限制**——\"The total time must be positive.\"（总时间必须为正。）[source_ref_e85701c84b34a511] 因为总时间做除数：若总时间为 0，除法没有意义；若取负值，算出的\"平均速度\"也不符合速度的含义。\n\n一句话串起来：先用\"总距 ÷ 总时\"确定定义，再用\"等距未必等时\"提醒你别退回成各段速度的算术平均，最后用\"总时为正\"保证这个除法真的可以执行。\n\n要不要我换一个带坡道路段的例子，或者把这三步整理成一张可对照的清单？","answer_view":{"parts":[{"kind":"markdown","text":"这段话只有三句，但每一句都在补一个容易出错的前提。\n\n**第一句：定义式**——平均速度 = 总路程 ÷ 总时间。注意分子分母都是\"整体量\"，不是某一段的量。所以算平均速度时，必须先把各段路程加起来、各段时间加起来，再做一次除法，而不是把各段速度拿来平均。\n\n**第二句：为什么不能\"取各段速度的平均\"**——\"Equal distances need not take equal times.\"（同样的距离，花的时间可以不一样。）[source_ref_e85701c84b34a511] 只要有两段路长度相同、用时不同，这两段的快慢就不一样；此时若把两个速度简单相加除以 2，得到的是\"每段速度各占一半权重\"的结果，与\"总路程 ÷ 总时间\"给出的权重（时间长的段自然在总时间里占比大）不一致。\n\n举个假设的例子（不是书中数据）：骑行 3 km 用了 10 分钟，接着 3 km 用了 20 分钟。两段距离相等但用时不等。总路程 6 km，总时间 30 分钟 = 0.5 h，平均速度 = 6 ÷ 0.5 = 12 km/h。而两段速度分别是 18 km/h 和 9 km/h，算术平均是 13.5 km/h——比正确值偏高，因为慢的那段占据了更长的时间。\n\n**第三句：分母的限制**——\"The total time must be positive.\"（总时间必须为正。）[source_ref_e85701c84b34a511] 因为总时间做除数：若总时间为 0，除法没有意义；若取负值，算出的\"平均速度\"也不符合速度的含义。\n\n一句话串起来：先用\"总距 ÷ 总时\"确定定义，再用\"等距未必等时\"提醒你别退回成各段速度的算术平均，最后用\"总时为正\"保证这个除法真的可以执行。\n\n要不要我换一个带坡道路段的例子，或者把这三步整理成一张可对照的清单？"}],"sources":[]},"effects":[],"incomplete":false,"memory_updates":[],"profile_usage":{"claimed_used_fact_ids":[],"influences":[],"injected_fact_ids":[],"snapshot_revision":0},"tokens_spent":43530,"trace":[{"args":"{\"lid\": \"1.1\"}","model_tool_loop":1,"result_digest":"{\"lid\":\"1.1\",\"text\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}","tool":"book.text"},{"args":"{\"lid\": \"1.1\", \"granularity\": \"mid\"}","model_tool_loop":1,"result_digest":"{\"anchor\":\"1.1\",\"items\":[{\"lid\":\"1\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"parent\"}},{\"lid\":\"1.2\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"next_sibling\"}}]}","tool":"book.context"},{"args":"{\"lid\": \"1.2\"}","model_tool_loop":2,"result_digest":"{\"lid\":\"1.2\",\"text\":\"A blue bicycle travels along the river.\"}","tool":"book.text"},{"args":"{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}","model_tool_loop":3,"result_digest":"{\"source_ref_id\":\"source_ref_e85701c84b34a511\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time ","tool":"source.present"}],"turns":4}
+TC2_LIVE_CONTINUE {"answer":"接着上一段往下走一步：把\"总路程 ÷ 总时间\"这个定义**展开**，你会看到它到底在做什么运算。\n\n**一、定义式展开**\n\n设行程分成若干段，第 i 段速度是 vᵢ、用时是 tᵢ，那么这一段的路程就是 vᵢ·tᵢ。于是\n\n平均速度 = (v₁t₁ + v₂t₂ + … ) ÷ (t₁ + t₂ + …) = Σvᵢtᵢ ÷ Σtᵢ\n\n（这是把定义式按\"每段路程 = 速度 × 时间\"展开得到的，前提是各段内部速度不变。）\n\n这个式子说明：**平均速度不是\"各段速度的平均\"，而是以时间为权重的加权平均**。用时长的段，它的速度在结果里占的份量大。而\"各段速度相加除以段数\"，等于给每一段硬塞了相同的权重——除非各段用时恰好相等，否则两者不会相等。\n\n**二、坡道例子（假设数据，不是书中数字）**\n\n上坡 3 km，速度 9 km/h → 用时 20 min；下坡 3 km，速度 18 km/h → 用时 10 min。\n\n- 总路程 6 km，总时间 30 min = 0.5 h → 平均速度 = 12 km/h\n- 两段速度的算术平均 = (9 + 18) ÷ 2 = 13.5 km/h\n\n差在哪：下坡段只用了一半的时间，却和上坡段拿到同样的权重，于是\"快的那段\"被高估了。12 恰好落在两段速度之间偏慢的一侧，因为慢的那段占的时间更长。\n\n**三、边界情况：什么时候算术平均确实可以用**\n\n如果各段用时相等（t₁ = t₂ = …），加权权重就变成均等的，此时 Σvᵢtᵢ ÷ Σtᵢ 正好退化成各段速度的算术平均。所以\"不能简单平均\"不是绝对禁令，而是**条件**：等距、等时才会碰巧一致；距离相等但用时不等时就会出错——这正是文中的\"Equal distances need not take equal times.\"所指的陷阱。[source_ref_e85701c84b34a511]\n\n**四、回到第三句**\n\n\"The total time must be positive.\"不只是一句防零的提醒：总时间同时是上面那个加权结构的**分母兼权重总量**。总时间为 0 时除法无定义；总时间为负，则既破坏了除法、也使\"时间权重\"失去意义。[source_ref_e85701c84b34a511]\n\n**想自己验证一下吗？** 上坡 2 km 用 15 min、下坡 2 km 用 5 min，平均速度是多少？先按 Σvᵢtᵢ ÷ Σtᵢ 算，再和两段速度的算术平均比一比，看差多少。","answer_view":{"parts":[{"kind":"markdown","text":"接着上一段往下走一步：把\"总路程 ÷ 总时间\"这个定义**展开**，你会看到它到底在做什么运算。\n\n**一、定义式展开**\n\n设行程分成若干段，第 i 段速度是 vᵢ、用时是 tᵢ，那么这一段的路程就是 vᵢ·tᵢ。于是\n\n平均速度 = (v₁t₁ + v₂t₂ + … ) ÷ (t₁ + t₂ + …) = Σvᵢtᵢ ÷ Σtᵢ\n\n（这是把定义式按\"每段路程 = 速度 × 时间\"展开得到的，前提是各段内部速度不变。）\n\n这个式子说明：**平均速度不是\"各段速度的平均\"，而是以时间为权重的加权平均**。用时长的段，它的速度在结果里占的份量大。而\"各段速度相加除以段数\"，等于给每一段硬塞了相同的权重——除非各段用时恰好相等，否则两者不会相等。\n\n**二、坡道例子（假设数据，不是书中数字）**\n\n上坡 3 km，速度 9 km/h → 用时 20 min；下坡 3 km，速度 18 km/h → 用时 10 min。\n\n- 总路程 6 km，总时间 30 min = 0.5 h → 平均速度 = 12 km/h\n- 两段速度的算术平均 = (9 + 18) ÷ 2 = 13.5 km/h\n\n差在哪：下坡段只用了一半的时间，却和上坡段拿到同样的权重，于是\"快的那段\"被高估了。12 恰好落在两段速度之间偏慢的一侧，因为慢的那段占的时间更长。\n\n**三、边界情况：什么时候算术平均确实可以用**\n\n如果各段用时相等（t₁ = t₂ = …），加权权重就变成均等的，此时 Σvᵢtᵢ ÷ Σtᵢ 正好退化成各段速度的算术平均。所以\"不能简单平均\"不是绝对禁令，而是**条件**：等距、等时才会碰巧一致；距离相等但用时不等时就会出错——这正是文中的\"Equal distances need not take equal times.\"所指的陷阱。[source_ref_e85701c84b34a511]\n\n**四、回到第三句**\n\n\"The total time must be positive.\"不只是一句防零的提醒：总时间同时是上面那个加权结构的**分母兼权重总量**。总时间为 0 时除法无定义；总时间为负，则既破坏了除法、也使\"时间权重\"失去意义。[source_ref_e85701c84b34a511]\n\n**想自己验证一下吗？** 上坡 2 km 用 15 min、下坡 2 km 用 5 min，平均速度是多少？先按 Σvᵢtᵢ ÷ Σtᵢ 算，再和两段速度的算术平均比一比，看差多少。"}],"sources":[]},"effects":[],"incomplete":false,"memory_updates":[],"profile_usage":{"claimed_used_fact_ids":[],"influences":[],"injected_fact_ids":[],"snapshot_revision":0},"tokens_spent":83272,"trace":[{"args":"{\"lid\": \"1.1\"}","model_tool_loop":1,"result_digest":"{\"lid\":\"1.1\",\"text\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}","tool":"book.text"},{"args":"{\"at\": \"1.1\"}","model_tool_loop":1,"result_digest":"{\"available\":false,\"at\":\"1.1\",\"spine_index\":null,\"spine_unit\":null,\"key_stops\":[],\"throughlines\":[],\"warning\":\"book_structure.json not attached\"}","tool":"book.structure"},{"args":"{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}","model_tool_loop":2,"result_digest":"{\"source_ref_id\":\"source_ref_e85701c84b34a511\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time ","tool":"source.present"},{"args":"{\"move\":{\"capability\":\"source_explanation\",\"kind\":\"explain\",\"move_id\":\"mv_avg_speed_time_weighting\",\"object_ids\":[],\"prompt\":\"把定义式展开成 Σv_i t_i / Σt_i，说明为什么正确算法是按时间加权，并给出等距不等时的坡道算例与'时长相等时算术平均才成立'的边界。\",\"target\":{\"capability\":\"quantitative_reasoning\",\"expected_performance\":\"能用总路程÷总时间算出分段行程的平均速度，并说明为什么直接对各段速度取算术平均一般不对、何时才恰好相等\",\"learning_focus\":\"平均速度是按时间加权的整体量：总路程÷总时间 = Σ(每段速度×该段用时)÷Σ各段用时，而非各段速度的算术平均\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"source_id\":\"tc0-average-speed\",\"source_revision\":\"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}","model_tool_loop":2,"result_digest":"{\"error_code\":\"TEACHING_INVALID\",\"category\":\"validation\",\"message\":\"教学目标的能力、对象与所用修订不一致\"}","tool":"tutor.step"},{"args":"{\"move\":{\"capability\":\"explain\",\"kind\":\"explain\",\"move_id\":\"mv_avg_speed_time_weighting\",\"object_ids\":[],\"prompt\":\"把定义式展开成 Σ(v_i·t_i)/Σt_i，说明平均速度是按时间加权，并给出等距不等时的坡道算例与\\\"各段用时相等时算术平均才正确\\\"的边界。\",\"target\":{\"capability\":\"explain\",\"expected_performance\":\"能用总路程÷总时间算出分段行程的平均速度，并说明为什么直接对各段速度取算术平均一般不对、何时才恰好相等\",\"learning_focus\":\"平均速度是按时间加权的整体量：总路程÷总时间 = Σ(每段速度×该段用时)÷Σ各段用时，而不是各段速度的算术平均\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"source_id\":\"tc0-average-speed\",\"source_revision\":\"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}","model_tool_loop":3,"result_digest":"{\"instruction\":\"Deliver this move in the final answer. Saved candidate is not displayed.\",\"selected\":\"move:turn_0329e5bb05f8a65e:mv_avg_speed_time_weighting\"}","tool":"tutor.step"}],"turns":4}
+TC2_LIVE_TOOL_ACTIVE [false,false,false,false,true,true,true,true]
+test tests::tutor_continuation_tests::continuation_tc2_live_first_help_enable_then_continue ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 720 filtered out; finished in 27.99s
+

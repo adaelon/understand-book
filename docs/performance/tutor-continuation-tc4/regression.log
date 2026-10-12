@@ -1,0 +1,232 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling runtime v0.0.0 (E:\allwork\download\agent\understand-book\crates\runtime)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling server v0.0.0 (E:\allwork\download\agent\understand-book\crates\server)
+    Finished `test` profile [unoptimized] target(s) in 1m 41s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\server-d6ca67c640d9d740.exe)
+
+running 62 tests
+test session_event::tests::session_event_failed_suffix_and_result_are_one_record ... ok
+test session_event::tests::session_event_preserves_teaching_presentation_and_review_watermarks ... ok
+test session_event::tests::session_event_question_tool_result_and_terminal_match_legacy_view ... ok
+test session_store::tests::jl7_startup_ignores_old_snapshot_and_recovers_only_jsonl_selection ... ok
+test session_store::tests::session_store_colon_identity_selection_restart_and_delete ... ok
+test session_store::tests::session_store_missing_or_stale_selection_uses_existing_recent_chat ... ok
+test session_store::tests::session_store_selection_write_failure_preserves_previous_selection_and_log ... ok
+test session_store::tests::session_store_two_users_same_id_eviction_and_original_presentation_root ... ok
+test tests::mu10_tests::mu10_real_host_kill_commit_windows ... FAILED
+test tests::mu10_tests::mu10_recovery_100_unclaimed_turns_keeps_original_inputs ... ok
+test tests::mu6_tests::session_event_queued_claimed_keep_original_frozen_input ... ok
+test tests::mu6_tests::session_event_real_note_result_survives_reopen_without_reexecution ... ok
+test tests::tutor_continuation_tests::continuation_baseline_foundation_and_selection_are_shared_across_ready_states ... ok
+test tests::tutor_continuation_tests::continuation_baseline_local_blank_chat_is_rejected ... ok
+test tests::tutor_continuation_tests::continuation_baseline_local_jsonl_replays_delivered_answer_and_quote ... ok
+test tests::tutor_continuation_tests::continuation_baseline_network_lost_acceptance_recovers_one_execution ... ok
+test tests::tutor_continuation_tests::continuation_baseline_original_help_preserves_assisted_conditions ... ok
+test tests::tutor_continuation_tests::continuation_contract_candidate_snapshot_freezes_before_chat_acceptance ... ok
+test tests::tutor_continuation_tests::continuation_contract_input_shapes_and_normalized_identity ... ok
+test tests::tutor_continuation_tests::continuation_contract_no_action_cannot_claim_current_action ... ok
+test tests::tutor_continuation_tests::continuation_contract_references_reject_invalid_clarification ... ok
+test tests::tutor_continuation_tests::continuation_contract_snapshot_survives_jsonl_and_drives_current_action ... ok
+test tests::tutor_continuation_tests::continuation_contract_unknown_choice_is_rejected_before_admission ... ok
+test tests::tutor_continuation_tests::continuation_red_answer_excerpt_reaches_model_input ... ok
+test tests::tutor_continuation_tests::continuation_red_choice_cannot_record_chat_response ... ok
+test tests::tutor_continuation_tests::continuation_red_clarification_cannot_record_chat_response ... ok
+test tests::tutor_continuation_tests::continuation_red_local_lost_result_does_not_execute_twice ... ok
+test tests::tutor_continuation_tests::continuation_red_object_question_help_is_assisted ... ok
+test tests::tutor_continuation_tests::continuation_red_paused_choice_is_not_an_ordinary_request ... ignored, TC4 red: paused Tutor must reject stale choice before accepting a turn (E03/E09)
+test tests::tutor_continuation_tests::continuation_red_source_question_help_is_assisted ... ok
+test tests::tutor_continuation_tests::continuation_tc2_actual_tools_and_delivered_intent_follow_the_accepted_action ... ok
+test tests::tutor_continuation_tests::continuation_tc2_cross_lid_and_direct_help_require_full_source_before_select ... ok
+test tests::tutor_continuation_tests::continuation_tc2_current_question_routes_answer_and_source_without_recording_help ... ok
+test tests::tutor_continuation_tests::continuation_tc2_default_off_enable_then_continue_is_explicit_and_bounded ... ok
+test tests::tutor_continuation_tests::continuation_tc2_live_first_help_enable_then_continue ... ignored, configured real model; two-action TC2 first-help and continuation acceptance
+test tests::tutor_continuation_tests::continuation_tc2_local_restart_marks_unknown_execution_without_replay ... ok
+test tests::tutor_continuation_tests::continuation_tc2_network_action_recovers_each_preparation_boundary ... ok
+test tests::tutor_continuation_tests::continuation_tc2_network_continue_uses_original_answer_and_same_key ... ok
+test tests::tutor_continuation_tests::continuation_tc2_network_question_help_returns_location_without_run ... ok
+test tests::tutor_continuation_tests::continuation_tc2_rejects_stale_and_unresolved_source_before_acceptance ... ok
+test tests::tutor_continuation_tests::continuation_tc2_selection_freezes_action_without_inventing_user_text_or_session ... ok
+test tests::tutor_continuation_tests::continuation_tc2_unready_paused_ended_and_other_material_keep_session_boundary ... ok
+test tests::tutor_continuation_tests::continuation_tc2a_continue_omits_assessment_workflow ... ok
+test tests::tutor_continuation_tests::continuation_tc2a_live_fixed_input_comparison ... ignored, TC2A fixed-input real-model comparison: three continuations; set TC2A_OUTPUT
+test tests::tutor_continuation_tests::continuation_tc2a_selection_omits_navigation_workflow ... ok
+test tests::tutor_continuation_tests::continuation_tc2a_understanding_read_opens_update_workflow_without_enabling_teaching ... ok
+test tests::tutor_continuation_tests::continuation_tc3_current_assessment_and_unrelated_history_are_distinct ... ok
+test tests::tutor_continuation_tests::continuation_tc3_delivery_failure_and_pause_do_not_offer_executable_candidates ... ok
+test tests::tutor_continuation_tests::continuation_tc3_failed_or_cancelled_delivery_keeps_candidates_private ... ok
+test tests::tutor_continuation_tests::continuation_tc3_fixture_supports_lexical_source_discovery ... ok
+test tests::tutor_continuation_tests::continuation_tc3_incomplete_and_empty_answers_cannot_publish_suggestions ... ok
+test tests::tutor_continuation_tests::continuation_tc3_live_answer_and_optional_suggestions ... ignored, TC3 fixed two-scenario model observation; set fresh TC3_OUTPUT
+test tests::tutor_continuation_tests::continuation_tc3_optional_set_delivers_once_and_reads_without_provider ... ok
+test tests::tutor_continuation_tests::continuation_tc3_pending_formal_activity_suppresses_related_suggestions ... ok
+test tests::tutor_continuation_tests::continuation_tc3_rejects_second_set_and_unread_or_missing_target ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_answer_identity_and_open_goal ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_choice_boundaries_and_historical_answer ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_choice_is_consumed_once_and_keeps_goal ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_restarts_repair_facts_without_execution ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_started_execution_is_not_replayed ... ok
+test tests::tutor_continuation_tests::continuation_tc4_network_choice_recovers_preparation_boundaries ... ok
+test tests::tutor_continuation_tests::continuation_tc4_network_two_choices_conflicts_and_unknown_execution ... ok
+
+failures:
+
+---- tests::mu10_tests::mu10_real_host_kill_commit_windows stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+MU10 kill point=preparing recovery_ms=63 state=null model_calls=0
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+MU10 kill point=pending recovery_ms=150 state="settled" model_calls=1
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+
+thread 'tests::mu10_tests::mu10_real_host_kill_commit_windows' (31812) panicked at crates\server\src\tests\mu10_tests.rs:418:81:
+called `Option::unwrap()` on a `None` value
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tests::mu10_tests::mu10_real_host_kill_commit_windows
+
+test result: FAILED. 57 passed; 1 failed; 4 ignored; 0 measured; 684 filtered out; finished in 188.80s
+
+error: test failed, to rerun pass `-p server --lib`

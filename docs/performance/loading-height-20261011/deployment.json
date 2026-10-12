@@ -1,0 +1,14 @@
+{
+  "published_at_utc": "2026-10-11T02:24:38.677420+00:00",
+  "url": "https://understandbook.top/index.html?login=1",
+  "release": "/opt/understand-book/releases/ux-trace-20261011",
+  "backup": "/opt/understand-book/backups/loading-height-20261011T022436Z",
+  "change": "Add height: 100% to .network-loading only",
+  "new_asset": "/assets/reader-DNabvP0n-loading-height-20261011.css",
+  "source_path": "/opt/understand-book/releases/ux-trace-20261011/packages/web/src/NetworkApp.vue",
+  "service_before": "MainPID=513730\nActiveState=active",
+  "service_after": "MainPID=513730\nActiveState=active",
+  "backend_restarted": false,
+  "old_assets_retained": true,
+  "loading_flow_changed": false
+}

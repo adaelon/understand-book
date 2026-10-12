@@ -1,0 +1,15 @@
+{
+  "model": "deepseek-v4-flash",
+  "scenarios": [
+    [
+      "explain",
+      "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。"
+    ],
+    [
+      "answer-only",
+      "请只用一句话说明平均速度的定义。这次回答到此为止，不要后续建议或练习。"
+    ]
+  ],
+  "source": "# Average speed\n\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\n\nA blue bicycle travels along the river.\n",
+  "temperature": 0
+}

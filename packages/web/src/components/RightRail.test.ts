@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from "@vue/test-utils";
+import { nextTick, reactive } from 'vue';
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import RightRail from "./RightRail.vue";
@@ -16,8 +17,6 @@ const baseProps = {
   sending: false,
   unquotedNotePlacementAvailable: false,
   askDraft: null,
-  showTrace: {},
-  latestTrace: [],
   selectedLid: "1.1",
   selectedFormula: null,
   contextNotes: [],
@@ -37,7 +36,24 @@ it('puts the first-question learning entry in the conversation', () => {
   const wrapper = mount(RightRail, { props: baseProps, shallow: true,
     slots: { 'learning-goal': '<p>这次想弄懂什么？</p>' } });
   expect(wrapper.get('#reader-panel-agent').text()).toContain('这次想弄懂什么？');
-  expect(wrapper.get('textarea[data-workspace-input="agent"]').attributes('placeholder')).toContain('想弄懂什么');
+  expect(wrapper.get('textarea[data-workspace-input="agent"]').attributes('placeholder')).toContain('学习目标');
+  wrapper.unmount();
+});
+
+it('keeps learning actions in the chat and the teaching switch next to the composer', async () => {
+  const wrapper = mount(RightRail, { props:baseProps, shallow:true, slots:{
+    'learning-actions':'<button>我的理解</button><button>学习详情</button>',
+    'tutor-control':'<button role="switch">连续教学</button>',
+  } });
+  expect(wrapper.get('#reader-panel-agent .conversation-learning-actions').text()).toContain('我的理解');
+  expect(wrapper.findAll('[role=switch]')).toHaveLength(1);
+  expect(wrapper.get('.agent-input [role=switch]').text()).toBe('连续教学');
+  await wrapper.get('.question-example').trigger('click');
+  expect(wrapper.emitted('update:agentInput')).toEqual([['帮我梳理当前这一节的核心概念。']]);
+  expect(wrapper.emitted('send-agent')).toBeUndefined();
+  await wrapper.setProps({agentInput:'已经写下的问题',fullscreen:true});
+  expect(wrapper.find('.question-example').exists()).toBe(false);
+  expect(wrapper.findAll('[role=switch]')).toHaveLength(1);
   wrapper.unmount();
 });
 
@@ -75,10 +91,10 @@ describe("RightRail history visibility", () => {
     try {
       expect(wrapper.get(".chat-actions .history-button span").text()).toBe(String(count));
       if (count === 0) {
-        expect(wrapper.get(".transcript .empty").text()).toContain("本书还没有保存的对话");
+        expect(wrapper.get(".transcript .empty").text()).toContain("哪里还没读懂");
         expect(wrapper.find(".empty-history-button").exists()).toBe(false);
       } else {
-        expect(wrapper.get(".transcript .empty").text()).toContain("本书有 1 段已保存的历史对话");
+        expect(wrapper.get(".transcript .empty").text()).toContain("1 段历史对话");
         expect(wrapper.get(".empty-history-button").text()).toContain("1 段历史对话");
       }
       await wrapper.get(".chat-actions .history-button").trigger("click");
@@ -131,7 +147,7 @@ describe("RightRail history visibility", () => {
 });
 
 describe("RightRail history recovery", () => {
-  it('shows oldest turns first while effect and trace actions retain their original turn indexes', async () => {
+  it('shows oldest turns first while effect actions retain their original turn indexes', async () => {
     const effect = { kind: 'Note' as const, mem_id: 'new-note', lid: '1.1', text: '笔记' };
     const turns = ['old', 'new'].map(turnId => ({ turnId, user: turnId, pending: false,
       questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
@@ -142,8 +158,7 @@ describe("RightRail history recovery", () => {
       expect(wrapper.findAll('.turn').map(t => t.attributes('data-turn-id'))).toEqual(['old', 'new']);
       await wrapper.findAll('.turn')[1].get('.undo').trigger('click');
       expect(wrapper.emitted('undo-effect')).toEqual([[1, 0, effect]]);
-      await wrapper.findAll('.turn')[1].get('.trace-toggle').trigger('click');
-      expect(wrapper.emitted('toggle-trace')).toEqual([[1]]);
+      expect(wrapper.find('.trace-toggle').exists()).toBe(false);
       expect(turns.map(t => t.turnId)).toEqual(['old', 'new']);
     } finally { wrapper.unmount(); }
   });
@@ -404,6 +419,60 @@ function sourceOutcome(stale = false) {
     stale,
   };
 }
+
+describe('answer rendering on local UI changes', () => {
+  it('reuses unchanged answers across menus, history, input and hidden tabs', async () => {
+    const render = vi.fn(renderMarkdown);
+    const chat = reactive(Array.from({ length: 10 }, (_, index) => ({
+      turnId: `cached-${index}`, user: '问题', pending: false, outcome: sourceOutcome(),
+      questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+    })));
+    const wrapper = mount(RightRail, { props: { ...baseProps, chat, renderMarkdown: render } });
+    try {
+      const initial = render.mock.calls.length;
+      expect(initial).toBe(10);
+      await wrapper.get('.context-menu-toggle').trigger('click');
+      await wrapper.get('.context-menu-toggle').trigger('click');
+      await wrapper.get('.history-button').trigger('click');
+      (document.querySelector('.history-close') as HTMLButtonElement).click();
+      await nextTick();
+      await wrapper.setProps({ agentInput: '新问题' });
+      await wrapper.get('#reader-tab-notes').trigger('click');
+      await wrapper.setProps({ agentInput: '继续输入' });
+      await wrapper.get('#reader-tab-agent').trigger('click');
+      expect(render).toHaveBeenCalledTimes(initial);
+
+      chat[0].outcome.answer_view.parts[0] = { kind: 'markdown', text: '已经修订的回答。' };
+      await nextTick();
+      expect(render).toHaveBeenCalledTimes(initial + 1);
+      expect(wrapper.get('.answer-markdown').text()).toContain('已经修订');
+      chat[0].outcome.answer_view.sources[0].label = '更新后的来源';
+      await nextTick();
+      expect(render).toHaveBeenCalledTimes(initial + 2);
+      expect(wrapper.get('.agent-source-button').text()).toContain('更新后的来源');
+    } finally { wrapper.unmount(); }
+  });
+
+  it('updates only the growing draft and invalidates when the renderer changes', async () => {
+    const render = vi.fn(renderMarkdown);
+    const saved = { turnId: 'saved', user: '旧问题', pending: false, outcome: sourceOutcome(),
+      questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] };
+    const draft = reactive({ ...saved, turnId: 'draft', pending: true, outcome: null,
+      draft: { message_id: 1, revision: 1, operation: 'replace', view: { parts: [{ kind: 'markdown', text: '第一段草稿' }], sources: [] } } });
+    const wrapper = mount(RightRail, { props: { ...baseProps, chat: [saved, draft] as never, renderMarkdown: render } });
+    try {
+      render.mockClear();
+      draft.draft.revision++;
+      draft.draft.view.parts[0].text = '第一段草稿，继续解释';
+      await nextTick();
+      expect(render.mock.calls.map(([text]) => text)).toEqual(['第一段草稿，继续解释']);
+      expect(wrapper.get('.answer-draft').text()).toContain('继续解释');
+      const replacement = vi.fn(renderMarkdown);
+      await wrapper.setProps({ renderMarkdown: replacement });
+      expect(replacement).toHaveBeenCalledTimes(2);
+    } finally { wrapper.unmount(); }
+  });
+});
 
 describe("RightRail agent sources", () => {
   it.each(["completed", "draft"])("keeps a %s table intact when sources occur inside cells", async (state) => {
@@ -867,13 +936,13 @@ describe("RightRail AskQuote", () => {
   it("exposes every auxiliary surface as a labelled keyboard-operable tab", async () => {
     const wrapper = mount(RightRail, { attachTo: document.body, props: baseProps });
     const tabs = wrapper.findAll('.context-tabs [role="tab"]');
-    expect(tabs.map((tab) => tab.text().trim())).toEqual(["问答", "成果", "画像", "轨迹", "公式", "笔记"]);
+    expect(tabs.map((tab) => tab.text().trim())).toEqual(["问答", "成果", "画像", "公式", "笔记"]);
     expect(tabs[0].attributes("aria-selected")).toBe("true");
     expect(wrapper.get('.secondary-tabs').isVisible()).toBe(false);
     await wrapper.get('[aria-label="阅读工具"]').trigger('click');
     expect(wrapper.get('.secondary-tabs').isVisible()).toBe(true);
-    await tabs[4].trigger("click");
-    expect(tabs[4].attributes("aria-selected")).toBe("true");
+    await tabs[3].trigger("click");
+    expect(tabs[3].attributes("aria-selected")).toBe("true");
     expect(wrapper.get("#reader-panel-formula").attributes("role")).toBe("tabpanel");
     wrapper.unmount();
   });
@@ -975,7 +1044,7 @@ describe("RightRail AskQuote", () => {
     expect(wrapper.get(".profile-memory-panel").isVisible()).toBe(true);
   });
 
-  it("renders persisted QueryAudit without placing it in the result digest", async () => {
+  it("keeps saved and live tool diagnostics out of the reader while retaining the answer", async () => {
     const audit = {
       budget_version: "referent-first-v1",
       model_calls: 2,
@@ -1054,26 +1123,37 @@ describe("RightRail AskQuote", () => {
       props: {
         ...baseProps,
         askDraft: null,
-        latestTrace: [{
-          tool: "book.query",
-          args: "typed request",
-          result_digest: "complete response only",
-          model_tool_loop: 2,
-          query_audit: audit,
+        chat: [{
+          turnId: 'saved-trace', user: '问题', pending: false,
+          questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+          outcome: { answer: '给读者的解释', effects: [], memory_updates: [], turns: 2, tokens_spent: 0, incomplete: false, warning: null,
+            profile_usage: { snapshot_revision: 0, injected_fact_ids: [], claimed_used_fact_ids: [], influences: [] },
+            trace: [{
+              tool: "book.query",
+              args: "typed request",
+              result_digest: "complete response only",
+              model_tool_loop: 2,
+              query_audit: audit,
+            }],
+          },
+        }, {
+          turnId: 'live-trace', user: '继续解释', pending: true, outcome: null,
+          questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+          runTrace: [{ tool: 'book.text', args: 'live request', result_digest: 'live diagnostic' }],
         }],
       },
     });
-    const traceTab = wrapper.findAll(".tab").find((tab) => tab.text().includes("轨迹"));
-    await traceTab!.trigger("click");
-    expect(wrapper.get(".panel-head h3").text()).toBe("2 个模型—工具循环 · 1 次工具调用");
-    expect(wrapper.get(".trace-loop").text()).toBe("循环 2");
-    expect(wrapper.get(".trace-result").text()).toBe("complete response only");
-    const panel = wrapper.get(".query-audit");
-    expect(panel.text()).toContain("QueryAudit");
-    await panel.get("summary").trigger("click");
-    expect(panel.text()).toContain("entity:command");
-    expect(panel.text()).toContain("seed: 1.1");
-    expect(panel.text()).toContain("citations=true");
+    try {
+      expect(wrapper.get('.answer-markdown').text()).toContain('给读者的解释');
+      await wrapper.get('[aria-label="阅读工具"]').trigger('click');
+      expect(wrapper.find('#reader-tab-trace').exists()).toBe(false);
+      expect(wrapper.find('#reader-panel-trace').exists()).toBe(false);
+      expect(wrapper.find('.trace-toggle').exists()).toBe(false);
+      expect(wrapper.find('.query-audit').exists()).toBe(false);
+      for (const detail of ['模型—工具循环', '工具调用', 'book.query', 'typed request', 'complete response only', 'entity:command', 'live request', 'live diagnostic']) {
+        expect(wrapper.text()).not.toContain(detail);
+      }
+    } finally { wrapper.unmount(); }
   });
 
   it("opens the active target artifacts without coupling their refresh or evidence navigation to chat", async () => {
@@ -1117,15 +1197,16 @@ describe("RightRail AskQuote", () => {
 });
 
 describe("Resident activities", () => {
-  it("shares live steps with trace, emits stop and preserves upward scrolling", async () => {
+  it("retains live progress, emits stop and preserves upward scrolling without diagnostics", async () => {
     const activity = { step_id: 1, parent_step_id: null, kind: "model", name: "outer", label: "生成回答", status: "running" as const, started_ms: 0, duration_ms: null, result_count: null, error_code: null, usage_total_tokens: null, usage: null, model_first_text_ms: null, model_name: null, model_name_source: null, accepted_evidence_count: null, evidence_refs: [] };
     const turn = { turnId: "turn", user: "问题", outcome: null, pending: true, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [], activities: [activity], runStatus: "正在运行" };
     const wrapper = mount(RightRail, { props: { ...baseProps, chat: [turn], sending: true, canStop: true } });
     expect(wrapper.find(".transcript .agent-activity").attributes("data-status")).toBe("running");
     await wrapper.find(".stop-agent").trigger("click");
     expect(wrapper.emitted("stop-agent")).toHaveLength(1);
-    await wrapper.findAll("button.tab").find(button => button.text().includes("轨迹"))!.trigger("click");
-    expect(wrapper.findAll('.agent-activity[data-step-id="1"]')).toHaveLength(2);
+    expect(wrapper.find('#reader-panel-trace').exists()).toBe(false);
+    expect(wrapper.findAll('.agent-activity[data-step-id="1"]')).toHaveLength(1);
+    expect(wrapper.find('.activity-group.diagnostic').exists()).toBe(false);
     const transcript = wrapper.find(".transcript");
     const el = transcript.element as HTMLElement;
     Object.defineProperty(el, "scrollHeight", { value: 1000, configurable: true });
@@ -1136,7 +1217,7 @@ describe("Resident activities", () => {
     expect(el.scrollTop).toBe(50);
     expect(wrapper.find(".pending").exists()).toBe(false);
     expect(wrapper.find(".run-status").text()).toBe("已停止");
-    expect(wrapper.findAll('.agent-activity[data-status="cancelled"]')).toHaveLength(2);
+    expect(wrapper.findAll('.agent-activity[data-status="cancelled"]')).toHaveLength(1);
     wrapper.unmount();
   });
 });

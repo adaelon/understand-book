@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+      "id": "call_00_KU7MsDZynJonab3h0UHU8950",
+      "name": "source.present"
+    },
+    {
+      "arguments": "{\"operation\": \"select\", \"move\": {\"move_id\": \"mv-avg-speed-time-weight\", \"object_ids\": [], \"kind\": \"explain\", \"prompt\": \"两段路各走 30 分钟，第一段 60 km/h，第二段 30 km/h，全程平均速度是多少？为什么这次可以直接把 60 和 30 平均？\", \"target\": {\"capability\": \"applying_a_rate_definition\", \"expected_performance\": \"能按 speed=distance/time 的定义算出总时间相等情形的平均速度，并说明此时算术平均恰好成立的原因是两段的时间权重相等；在时间不等时仍坚持用总量相除而不用速度算术平均。\", \"learning_focus\": \"把「平均速度 = 按时间加权的平均」这一步从定义里推出来：先写出 v̄ = (v1·t1 + v2·t2)/(t1+t2)，再看出时间相等时它就退化成 (v1+v2)/2，从而解释为什么上面 60/30 等路程的例子不能这样平均。\", \"source_bindings\": [{\"source_id\": \"tc0-average-speed\", \"source_revision\": \"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e\", \"start_lid\": \"1.1\", \"end_lid\": \"1.1\"}]}}}",
+      "id": "call_01_DFxbBnrmbGPqNAW2xS6G8855",
+      "name": "tutor.step"
+    }
+  ],
+  "usage_total_tokens": 20344
+}

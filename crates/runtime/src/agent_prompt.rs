@@ -44,6 +44,7 @@ const TOOL_DISCOVERY: &str = "Capability discovery:
 - tool.search returns metadata and activates capabilities only. A newly activated tool becomes visible in the next sampling; never call it immediately in the same tool_calls batch. Activation lasts only for the current run: a discovery receipt in conversation history does not activate anything now. If the current tool list still lacks a required capability, call tool.search again. Capability discovery needs no additional user confirmation; continue the already requested task after activation.";
 
 const NAVIGATION_REVISION: &str = "v5";
+const NAVIGATION_DISCOVERY: &str = "Navigation discovery: ordinary quotation explanations need no route. When the user explicitly requests guided reading, a route or a Reader jump, discover navigation_plan, structural_index and reader_read with tool.search operation=navigate; reader_write requires the user's explicit request. Discovery activates tools and the full navigation workflow for the next sampling, and performs no Reader action. Explicit guided reading must follow the structure route, verify source and deliver one actual stop before pausing, not end with a one-shot summary.";
 const NAVIGATION: &str = "Navigation and guided reading:
 - Continue to answer ordinary quotation explanations through evidence routing. This policy does not force navigation tools for an ordinary section summary. Enter guided reading only when the user explicitly asks to be guided, walked through the material step by step, or to continue the guided explanation. Explicit guided reading is not a section summary, and you must not finish immediately after merely locating or reading one source passage.
 - When establishing a new explicit guided-reading route, the available steps must be strictly sequential: first use reader.state to obtain the current reading position, then call book.structure to inspect the structural map. If structure is available, call book.guide_path to obtain the macro route; only after these steps may you use book.guided_route_from when a local teaching frontier is needed. Never call book.guide_path or any route tool before book.structure, and never batch these steps in parallel. If structure reports unavailable, skip guide_path and use a located section and its actual text to guide one local stop. On continuation, use the selected reading position and already established route; do not repeat unavailable structure or guide_path calls. route_from, guided_route_from, route_to, and unvisited_back are for navigation, guided reading, prerequisites, and paths, not ordinary explanation.
@@ -143,10 +144,13 @@ pub fn policy_modules_for_tools_with_presentation(
         ));
     }
     modules.push(InstructionModule::new(
-        "resident-agent.policy.navigation",
-        NAVIGATION_REVISION,
-        NAVIGATION,
+        "resident-agent.policy.navigation-discovery", "tc2a.v1", NAVIGATION_DISCOVERY,
     ));
+    if has_any(&names, &["book.guide_path", "book.guided_route_from", "book.route_from", "book.route_to", "book.unvisited_back", "reader.gotoLid"]) {
+        modules.push(InstructionModule::new(
+            "resident-agent.policy.navigation", NAVIGATION_REVISION, NAVIGATION,
+        ));
+    }
     if has_any(
         &names,
         &[
@@ -194,6 +198,7 @@ pub(crate) fn canonical_policy_text() -> String {
         SOURCE_PRESENT_CONTRACT,
         SOURCE_DELIVERY_EXAMPLES,
         TOOL_DISCOVERY,
+        NAVIGATION_DISCOVERY,
         NAVIGATION,
         READER_EFFECTS,
         PAPER_WORKBENCH,
@@ -340,7 +345,7 @@ mod tests {
                 "resident-agent.policy.evidence-routing",
                 "resident-agent.policy.source-delivery",
                 "resident-agent.policy.tool-discovery",
-                "resident-agent.policy.navigation",
+                "resident-agent.policy.navigation-discovery",
                 "resident-agent.policy.finish",
             ]
         );
@@ -375,6 +380,7 @@ mod tests {
         for module in &activated {
             let expected = match module.asset_id.as_str() {
                 "resident-agent.policy.navigation" => NAVIGATION_REVISION,
+                "resident-agent.policy.navigation-discovery" => "tc2a.v1",
                 "resident-agent.policy.finish" => FINISH_POLICY_REVISION,
                 _ => POLICY_REVISION,
             };

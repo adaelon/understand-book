@@ -38,7 +38,7 @@ pub(crate) fn read(user: &user_runtime::UserRuntime, workspace: &reader_workspac
                 Err(_) => json!({"source_ref_id":binding.source_ref_id,"label":binding.label_snapshot,"material_title":material_title,"highlighted_quote":binding.preview_snapshot,"context_before":"","context_after":"","stale":true,"can_open_in_reader":false}),
             })
         })(),
-        "tutor/understanding" | "tutor/evidence" | "tutor/evidence-list" | "tutor/correct" | "tutor/start" | "tutor/activities" | "tutor/display" | "tutor/action" | "tutor/help-displayed" | "tutor/feedback-displayed" => {
+        "tutor/understanding" | "tutor/evidence" | "tutor/evidence-list" | "tutor/correct" | "tutor/start" | "tutor/activities" | "tutor/continuation-displayed" | "tutor/display" | "tutor/action" | "tutor/help-displayed" | "tutor/feedback-displayed" => {
             reply(teaching::route(&private, Req { method: "POST", url: &format!("/{action}"), body: &input.to_string(), now }))
         }
         _ => return None,

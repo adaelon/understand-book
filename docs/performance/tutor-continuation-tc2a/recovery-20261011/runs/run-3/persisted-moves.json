@@ -1,0 +1,33 @@
+[
+  {
+    "actions": [],
+    "assessment": null,
+    "capability": "概念理解与应用（定义驱动的计算与反例判别）",
+    "explanation": null,
+    "hint": null,
+    "intent_origin": "current_action",
+    "intent_quote": null,
+    "interaction_intent": "neutral",
+    "interpretation_refs": [],
+    "kind": "explain",
+    "move_id": "mv-continue-avg-speed-weighting",
+    "object_ids": [],
+    "preference_ref": null,
+    "presentation": null,
+    "prompt": "继续讲这段：从「总路程÷总时间」推出分段合并的标准动作，再用「两段速度 60/30」与「两段时间相等」的对照，说明能否直接平均速度取决于哪个量相等。",
+    "target": {
+      "capability": "概念理解与应用（定义驱动的计算与反例判别）",
+      "expected_performance": "能对给定分段行程正确写出总路程与总时间并相除；能判断「路程相等」与「时间相等」两种情形下速度平均是否成立，并说出原因（分母是时间总量）",
+      "learning_focus": "把平均速度的定义从「记住公式」推进到「知道什么时候可以直接平均速度、什么时候不能」，并能自己按总量法算分段行程",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "end_lid": "1.1",
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "start_lid": "1.1"
+        }
+      ]
+    }
+  }
+]

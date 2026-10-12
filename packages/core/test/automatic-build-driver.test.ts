@@ -28,6 +28,8 @@ import {
 } from "../src/automatic-build-dispatch-runtime";
 import { failAutomaticBuildTask, submitAutomaticBuildCandidate } from "../src/automatic-build-mailbox";
 import { claimAutomaticBuildTask, startAutomaticBuildLease } from "../src/automatic-build-lease";
+import { freezeAutomaticBuildStagePolicySet } from "../src/automatic-build-policy-generation";
+import { freezePass1ShadowTask } from "../src/pass1-reduction";
 import {
   failAutomaticBuildExecutorSession,
   openAutomaticBuildExecutorSessionV3,
@@ -1920,6 +1922,75 @@ describe("S0 deterministic automatic-build driver protocol", () => {
       const recoveries = readdirSync(automaticBuildTaskStoreRoot(target), { recursive: true })
         .map(String).filter(file => file.endsWith("recovery.json"));
       expect(recoveries).toHaveLength(1);
+    } finally {
+      if (priorRoot === undefined) delete process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
+      else process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = priorRoot;
+    }
+  }, 30_000);
+
+  it.each([false, true])("retries after sibling progress while enforcing the current wall budget (limited=%s)", async limited => {
+    const value = fixture("retry-sibling-progress", { body: `# Guide\n\n${Array.from({ length: 500 }, (_, i) => `Paragraph ${i} contains source evidence for concurrent recovery and remaining work.`).join("\n\n")}` });
+    const priorRoot = process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
+    process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = path.join(value.root, "driver-registry");
+    try {
+      const driver = expectedDriver();
+      exhaustFirstPublicTask(value, createAutomaticBuildFailureDiagnosticV3({
+        category: "schema", code: "schema_invalid", phase: "artifact_writer",
+        json_pointer: "/unit_card/candidate_key_stops/4/type", expected: "definition | example | claim",
+      }));
+      const invocation = await createInvocation(driver, value, {
+        created_at: "2026-08-10T02:08:10.000Z", max_parallel: 3,
+        ...(limited ? { wall_budget: { version: "automatic_build_wall_budget.v1" as const, max_agent_starts: 1, on_exceed: "needs_user" as const } } : {}),
+      });
+      const exhausted = await driver.automaticBuildStep({ version: "automatic_build_step_request.v1",
+        invocation_ref: invocation.invocation_ref, available_agent_slots: 3 });
+      expect(exhausted.action).toMatchObject({ kind: "NEEDS_USER", reason: "retry_exhausted" });
+      const retryDecision = firstDecision(exhausted);
+      const target = resolveAutomaticBuildTarget(value.source, value.root);
+      const before = taskTreeBytes(target);
+      const plan = automaticBuildPlan(value.source, value.root, {
+        requested_workers: 3, available_agent_slots: 3, build_plan: value.buildPlan,
+      });
+      const stage = plan.snapshot.stages.find(candidate => candidate.stage === "pass1")!;
+      expect(stage.work_units!.length).toBeGreaterThan(3);
+      freezeAutomaticBuildStagePolicySet(target, stage.policy_set!);
+      for (const descriptor of stage.work_units!.slice(1, 3)) {
+        const generation = stage.generation_tasks![descriptor.work_unit_id];
+        if (generation.kind !== "pass1") throw new Error("expected sibling Pass1 task");
+        freezePass1ShadowTask(target, generation.task);
+        const claim = claimAutomaticBuildTask(target, "pass1", descriptor.work_unit_id, {
+          owner: `driver-sibling-${descriptor.work_unit_id}`, now: "2026-08-10T02:08:11.000Z",
+          descriptor, binding: stage.task_bindings![descriptor.work_unit_id], policy_generation: "v3_only",
+        });
+        if (claim.status !== "leased") throw new Error("expected sibling lease");
+        recordAutomaticBuildInputObservation(target, claim.lease_ref, claim.lease.token, {
+          started_at: claim.lease.issued_at, finished_at: claim.lease.issued_at,
+          input_bytes: 0, input_sha256: descriptor.input_hash, render_contract_version: MODEL_INPUT_RENDER_CONTRACT_VERSION,
+        });
+        const candidatePath = path.join(path.dirname(claim.lease_ref), "candidate.json");
+        writeFileSync(candidatePath, JSON.stringify({ content_hash: descriptor.input_hash, nodes: [], edges: [] }));
+        const receipt = submitAutomaticBuildCandidate(target, claim.lease_ref, claim.lease.token, candidatePath,
+          () => writePass1ProductionTaskArtifact({ target, policy_generation_id: claim.lease.policy_generation_id!,
+            work_unit_id: descriptor.work_unit_id, marker: "sibling-progress", generated_at: claim.lease.issued_at }),
+          { now: claim.lease.issued_at, completed_at: claim.lease.issued_at });
+        expect(receipt.state).toBe("committed");
+      }
+      const progressed = automaticBuildPlan(value.source, value.root, {
+        requested_workers: 3, available_agent_slots: 3, build_plan: value.buildPlan,
+      });
+      expect(progressed.preflight!.descriptor_plan_digest).toBe(plan.preflight!.descriptor_plan_digest);
+      expect(progressed.preflight!.cost_scope.remaining.work_units).toBe(plan.preflight!.cost_scope.remaining.work_units - 2);
+      const recovered = await driver.automaticBuildStep({ version: "automatic_build_step_request.v1",
+        invocation_ref: invocation.invocation_ref, available_agent_slots: 3, decision: retryDecision });
+      if (limited) expect(recovered.action).toMatchObject({ kind: "NEEDS_USER", reason: "low_confidence_wall_budget" });
+      else expect(recovered.action.kind).toBe("SPAWN_EXECUTORS");
+      for (const [file, bytes] of Object.entries(before)) {
+        if (bytes && /(?:failure|result)\.json$/.test(file)) {
+          expect(readFileSync(path.join(automaticBuildTaskStoreRoot(target), file))).toEqual(bytes);
+        }
+      }
+      expect(readdirSync(automaticBuildTaskStoreRoot(target), { recursive: true })
+        .map(String).filter(file => file.endsWith("recovery.json"))).toHaveLength(1);
     } finally {
       if (priorRoot === undefined) delete process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
       else process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = priorRoot;

@@ -1,0 +1,136 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling server v0.0.0 (E:\allwork\download\agent\understand-book\crates\server)
+    Finished `test` profile [unoptimized] target(s) in 49.44s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\server-d6ca67c640d9d740.exe)
+
+running 18 tests
+test tests::tutor_continuation_tests::continuation_contract_references_reject_invalid_clarification ... ok
+test tests::tutor_continuation_tests::continuation_red_answer_excerpt_reaches_model_input ... ok
+test tests::tutor_continuation_tests::continuation_tc2_current_question_routes_answer_and_source_without_recording_help ... ok
+test tests::tutor_continuation_tests::continuation_tc4_both_hosts_execute_chosen_action_to_delivery ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_answer_identity_and_open_goal ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_choice_boundaries_and_historical_answer ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_choice_is_consumed_once_and_keeps_goal ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_restarts_repair_facts_without_execution ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_started_execution_is_not_replayed ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_two_tabs_accept_only_one_choice ... ok
+test tests::tutor_continuation_tests::continuation_tc4_network_choice_recovers_preparation_boundaries ... ok
+test tests::tutor_continuation_tests::continuation_tc4_network_restart_keeps_choice_snapshot_and_authorization ... ok
+test tests::tutor_continuation_tests::continuation_tc4_network_two_choices_conflicts_and_unknown_execution ... ok
+test tests::tutor_continuation_tests::continuation_tc5_browser_api ... ignored, TC5 bounded real API browser fixture; set TC5_BROWSER_OUTPUT
+test tests::tutor_continuation_tests::continuation_tc5_display_records_visible_subset_once_without_consuming ... ok
+test tests::tutor_continuation_tests::continuation_tc5_live_correction ... ignored, TC5 real material correction; set fresh TC5_LIVE_OUTPUT
+test tests::tutor_continuation_tests::continuation_tc5_local_status_never_accepts_or_executes ... ok
+test tests::tutor_continuation_tests::continuation_tc5_network_display_uses_original_workspace_authority ... ok
+
+test result: ok. 16 passed; 0 failed; 2 ignored; 0 measured; 736 filtered out; finished in 56.60s
+

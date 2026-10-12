@@ -507,6 +507,14 @@ impl ToolRegistration {
             | ToolValidatorId::ProfileUsage
             | ToolValidatorId::JsonSchema => {
                 validate_schema(&self.spec.parameters, &value, "$")?;
+                if self.handler == ToolHandlerId::TutorStep {
+                    if let Some(continuation) = value["move"].get("continuation").filter(|v| !v.is_null()) {
+                        let continuation: crate::tutor_continuation::TeachingContinuation =
+                            serde_json::from_value(continuation.clone())
+                                .map_err(|e| ToolArgumentError { message: e.to_string() })?;
+                        continuation.validate().map_err(|message| ToolArgumentError { message })?;
+                    }
+                }
             }
         }
         Ok(())
@@ -520,6 +528,17 @@ pub struct ToolRegistry {
 }
 
 impl ToolRegistry {
+    pub(crate) fn with_tutor_context(mut self, context: Option<&Value>) -> Self {
+        let Some(spec) = context.and_then(crate::tutor::spec_for_context) else {
+            return self.without_tutor();
+        };
+        if let Some(registration) = self.registrations.iter_mut().find(|r| r.handler == ToolHandlerId::TutorStep) {
+            registration.routing_card.description = spec.description.clone();
+            registration.routing_card.use_when = vec![spec.description.clone()];
+            registration.spec = spec;
+        }
+        self
+    }
     pub(crate) fn without_tutor(mut self) -> Self {
         self.registrations.retain(|r| r.handler != ToolHandlerId::TutorStep);
         self.by_name = self.registrations.iter().enumerate().map(|(i, r)| (r.spec.name.clone(), i)).collect();

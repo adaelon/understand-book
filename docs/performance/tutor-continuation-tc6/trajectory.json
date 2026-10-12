@@ -1,0 +1,33 @@
+{
+  "model": "deepseek-v4-flash",
+  "guidance_revision": "tc6.v1",
+  "provider_calls": 6,
+  "usage_tokens": 135049.0,
+  "status": "completed",
+  "incomplete": false,
+  "evidence": [
+    {
+      "id": "interpretation:tc6-prior",
+      "nature": "hypothesis",
+      "supersedes": null,
+      "learner_quote": "我没看明白，平均速度是除法，为什么乘回总时间就能还原路程？",
+      "teaching_implication": "先用除法与乘法互逆解释回代，再用一组数字演示。"
+    },
+    {
+      "id": "interpretation:hyp:denominator-pause-turn_0b5fa49168f9eecc",
+      "nature": "hypothesis",
+      "supersedes": "interpretation:tc6-prior",
+      "learner_quote": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+      "teaching_implication": "不要再做代数变形或回代演示；直接针对分母登记什么展开：分母登记的是时间账本而非距离账本，停顿在时间上真实发生，所以进分母；用“同一段路程被摊到更长时间上”讲清平均的含义，并说明排除停顿得到的是另一个量（骑行中的速度）。"
+    }
+  ],
+  "before_rows": [],
+  "after_rows": [],
+  "validation_errors": [
+    {
+      "tool": "tutor.step",
+      "result_digest": "{\"error_code\":\"TEACHING_INVALID\",\"category\":\"validation\",\"message\":\"教学意图需匹配当前原话或会话默认；直接讲解应采用解释动作\"}"
+    }
+  ],
+  "human_readers": 0
+}

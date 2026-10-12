@@ -1,0 +1,11 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"平均速度 定义\", \"limit\": 12}",
+      "id": "call_00_AReGVXEYIogsVAZUIEme5931",
+      "name": "book.concept"
+    }
+  ],
+  "usage_total_tokens": 11564
+}

@@ -355,16 +355,16 @@ impl AgentRequestPlan {
         modules: &[InstructionModule],
         use_profile_instructions: bool,
     ) -> Self {
-        // Complete page sources can exceed Flash's default completion budget.
+        // Flash reasoning and the final answer share the completion budget.
+        // Page authoring keeps its larger, explicit allowance.
         // Preserve the application's input compaction threshold while reserving
         // the same output allowance that is sent to the provider.
         let output_token_limit = if use_profile_instructions
             && runtime_profile.resolution == ModelProfileResolution::CatalogMatch
             && runtime_profile.profile_id == "resident-agent-deepseek-flash-v1"
-            && tools.iter().any(|tool| tool.name == "presentation.author")
         {
-            let limit = 131_072;
-            let extra = limit - runtime_profile.output_reserve_tokens;
+            let limit = if tools.iter().any(|tool| tool.name == "presentation.author") { 131_072 } else { 32_768 };
+            let extra = i64::from(limit) - i64::from(runtime_profile.output_reserve_tokens);
             runtime_profile.compaction.high_watermark_ratio +=
                 extra as f32 / runtime_profile.context_window_tokens as f32;
             runtime_profile.output_reserve_tokens = limit;
@@ -542,7 +542,9 @@ mod tests {
             assert_eq!(profile.context_window_tokens, 1_000_000);
             let plan = AgentRequestPlan::for_agent_turn(profile, &[Message::user("question")], &[]);
             let budget = crate::auto_compaction::ActiveContextBudget::from_plan(&plan);
-            assert_eq!(budget.high_watermark_tokens, 96_000);
+            assert_eq!(plan.output_token_limit, Some(32_768));
+            assert_eq!(plan.active_context.output_reserve_tokens, 32_768);
+            assert!(budget.target_input_tokens.abs_diff(84_000) <= 1);
         }
     }
 

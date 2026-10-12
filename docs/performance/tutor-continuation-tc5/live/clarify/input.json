@@ -1,0 +1,11 @@
+{
+  "answer_ref": {
+    "excerpt": "平均速度 × 总时间 应当还原出总路程",
+    "turn_id": "turn_19171724429ede07"
+  },
+  "client_request_id": "clarify",
+  "entry_action": "clarify_answer",
+  "expected_chat_head": "turn_19171724429ede07",
+  "message": "",
+  "session_id": "chat-01a12b3a-157e-7073-8ec5-93b0cc3640eb"
+}

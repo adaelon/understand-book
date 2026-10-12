@@ -1,0 +1,104 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling memory v0.0.0 (E:\allwork\download\agent\understand-book\crates\memory)
+   Compiling reader v0.0.0 (E:\allwork\download\agent\understand-book\crates\reader)
+   Compiling runtime v0.0.0 (E:\allwork\download\agent\understand-book\crates\runtime)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+rustc-LLVM ERROR: IO failure on output stream: no space on device
+rustc-LLVM ERROR: IO failure on output stream: no space on device
+error: could not compile `runtime` (lib)
+
+Caused by:
+  process didn't exit successfully: `C:\Users\Lenovo\.rustup\toolchains\stable-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name runtime --edition=2021 crates\runtime\src\lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg cfg(docsrs,test) --check-cfg "cfg(feature, values())" -C metadata=a68c760773155832 -C extra-filename=-e578382d5009a0ee --out-dir E:\allwork\download\agent\understand-book\target\debug\deps -C incremental=E:\allwork\download\agent\understand-book\target\debug\incremental -L dependency=E:\allwork\download\agent\understand-book\target\debug\deps --extern artifact_tools=E:\allwork\download\agent\understand-book\target\debug\deps\libartifact_tools-1908a711434fed12.rmeta --extern base_schema=E:\allwork\download\agent\understand-book\target\debug\deps\libbase_schema-8865b3a84671dd12.rmeta --extern book_tool_contracts=E:\allwork\download\agent\understand-book\target\debug\deps\libbook_tool_contracts-beddc1d9ea958296.rmeta --extern dotenvy=E:\allwork\download\agent\understand-book\target\debug\deps\libdotenvy-c0a35e6bb1f904e8.rmeta --extern memory=E:\allwork\download\agent\understand-book\target\debug\deps\libmemory-e252609e7d66ec22.rmeta --extern read_tools=E:\allwork\download\agent\understand-book\target\debug\deps\libread_tools-e9ce912c53cc16fa.rmeta --extern reader=E:\allwork\download\agent\understand-book\target\debug\deps\libreader-6f47cfc5dbbf1875.rmeta --extern serde=E:\allwork\download\agent\understand-book\target\debug\deps\libserde-622d7c9c98b4b86c.rmeta --extern serde_json=E:\allwork\download\agent\understand-book\target\debug\deps\libserde_json-d73639ea71df739e.rmeta --extern sha2=E:\allwork\download\agent\understand-book\target\debug\deps\libsha2-185b2368692165fa.rmeta --extern ts_rs=E:\allwork\download\agent\understand-book\target\debug\deps\libts_rs-1672d2501d8be6ea.rmeta --extern ureq=E:\allwork\download\agent\understand-book\target\debug\deps\libureq-8701119d620eef4c.rmeta --extern url=E:\allwork\download\agent\understand-book\target\debug\deps\liburl-b4fc6a6412b81a05.rmeta --extern uuid=E:\allwork\download\agent\understand-book\target\debug\deps\libuuid-a0551802889e297c.rmeta -L native=E:\allwork\download\agent\understand-book\target\debug\build\libsqlite3-sys-3605a303ca6aca75\out -L native=E:\allwork\download\agent\understand-book\target\debug\build\ring-fbfe8c6ca11f2580\out` (exit code: 101)

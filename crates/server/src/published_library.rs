@@ -577,8 +577,9 @@ impl PublishedLibrary {
             let (manifest, is_default, directory) = row.map_err(|_| storage())?;
             let manifest: PublicationManifest = serde_json::from_str(&manifest).map_err(|_| invalid())?;
             let cover = crate::book_cover::published(Path::new(&directory), &manifest);
+            let title = crate::book_title::read(Path::new(&directory), None);
             Ok(json!({"published_book_ref":manifest.reference,"is_default":is_default,
-                "source_fingerprint":manifest.source_fingerprint,"teaching_readiness":manifest.teaching_readiness,"cover":cover}))
+                "source_fingerprint":manifest.source_fingerprint,"teaching_readiness":manifest.teaching_readiness,"cover":cover,"title":title}))
         }).collect()
     }
     pub fn grant(&mut self, owner: &str, reference: &PublishedBookRef) -> Result<(), ToolError> {

@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { answerShareSource, deliveredAnswerText, shareSections, excerptShareSource, noteShareSource, type ShareDraft } from './reading-share';
 import type { MemoryRecord } from './api';
+import { shareSize } from './reading-share-layout';
 
 const record: MemoryRecord = { mem_id: 'private-id', book_id: 'private-book', type: 'note', layer: 'long_term', anchor: {}, content: '先提出自己的解释，再用证据核对。' };
 const draft = (): ShareDraft => ({ source: noteShareSource(record, ['无已记录出处']), selected: ['body'], title: '阅读与理解', reflection: '', layout: 'understanding', palette: 'paper' });
@@ -75,6 +76,20 @@ it('RS7 keeps the diagram and its state readable in both orientations', () => {
     expect(sections[0].querySelector('img')?.src).toBe(source.diagram.png);
     expect(sections[1].textContent).toContain('步骤 2：参数 3');
   }
-  source.diagram.height = 3000;
-  expect(() => shareSections({ source, selected: ['body'], title: '图解', reflection: '', layout: 'diagram', palette: 'blue' })).toThrow('难以阅读');
+});
+
+it.each([[960, 3000], [2400, 900]])('exports a %i × %i diagram without reducing it below readable scale', (width, height) => {
+  const source = { parts: [{ id: 'body' as const, label: '图解现场', text: '完整保留参数与结果' }], sources: ['原材料'], association: '图解与说明',
+    diagram: { png: 'data:image/png;base64,AA==', width, height, title: '长图解' } };
+  for (const orientation of ['landscape', 'portrait'] as const) {
+    const input: ShareDraft = { source, selected: ['body'], title: '长图解', reflection: '', layout: 'diagram', palette: 'blue', orientation };
+    const sections = shareSections(input);
+    const image = sections[0].querySelector('img')!;
+    expect(image.width / width).toBeGreaterThanOrEqual(.75);
+    expect(image.height / height).toBeGreaterThanOrEqual(.75);
+    expect(image.width / image.height).toBeCloseTo(width / height, 2);
+    expect(image.width).toBeLessThanOrEqual(shareSize(input).width - 192);
+    expect(image.src).toBe(source.diagram.png);
+    expect(sections[1].textContent).toContain('完整保留参数与结果');
+  }
 });

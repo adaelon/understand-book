@@ -47,6 +47,13 @@ server {
         gzip_types text/css application/javascript text/javascript application/json image/svg+xml;
         add_header Cache-Control "public, max-age=31536000, immutable";
     }
+    # The public root is the product homepage; existing account/window links
+    # keep their query on the reader entry so refresh stays in the reader.
+    location = / {
+        if ($args != "") { return 302 /index.html$is_args$args; }
+        try_files /home.html =404;
+        add_header Cache-Control "no-store" always;
+    }
     location / {
         try_files $uri $uri/ /index.html;
         add_header Cache-Control "no-store" always;

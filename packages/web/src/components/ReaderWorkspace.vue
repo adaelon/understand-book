@@ -10,7 +10,7 @@ import {
 import { useViewportEnvironment } from "../useViewportEnvironment";
 import type { ReaderSurface } from "../reader-surface";
 
-export type WorkspaceAuxTab = "agent" | "artifacts" | "profile" | "trace" | "formula" | "notes";
+export type WorkspaceAuxTab = "agent" | "artifacts" | "profile" | "formula" | "notes";
 
 const props = withDefaults(defineProps<{
   logical: WorkspaceLogicalState;
@@ -245,7 +245,6 @@ defineExpose({ showReader, showAssistant, toggleOutline, toggleFocus });
         <div class="workspace-more-items" aria-label="更多阅读功能">
           <button type="button" @click="showAssistant('artifacts')">成果</button>
           <button type="button" @click="showAssistant('profile')">画像</button>
-          <button type="button" @click="showAssistant('trace')">轨迹</button>
           <button type="button" @click="showAssistant('formula')">公式</button>
           <button type="button" :aria-pressed="preference === 'compare'" @click="toggleCompare(); closeMoreMenu()">对照</button>
         </div>

@@ -127,12 +127,21 @@ impl LearningStore {
                 || evidence.assessment_ref.is_some() || evidence.status != AssessmentStatus::Unassessed
                 || evidence.delivery_ref.is_some() || evidence.object_id.is_some() || evidence.object_revision.is_some()
             { return Err(invalid("理解假设需要事实与教学影响，不附加评分或对象能力")); }
+            let mut has_learner_expression = false;
             for id in &evidence.fact_refs {
                 let fact = self.teaching_event(id)?;
+                has_learner_expression |= fact.learner_expression().is_some();
+                if fact.payload["usage"]["kind"] == "reading_action" && fact.learner_expression().is_none() {
+                    return Err(invalid("纯阅读操作没有用户补充，不能作为理解假设依据；保留理解未知并继续原请求，无需创建理解假设"));
+                }
                 if fact.binding.source_id != evidence.source_id || fact.binding.source_revision != evidence.source_revision
                     || fact.binding.tutor_session_id != evidence.session_id
-                    || matches!(fact.kind, TeachingFact::TurnBound | TeachingFact::MoveSelected | TeachingFact::HelpDelivered)
+                    || matches!(fact.kind, TeachingFact::TurnBound | TeachingFact::MoveSelected | TeachingFact::HelpDelivered
+                        | TeachingFact::ContinuationDisplayed | TeachingFact::ContinuationChosen)
                 { return Err(invalid("理解依据不属于当前来源、会话或实际使用事实")); }
+            }
+            if !has_learner_expression {
+                return Err(invalid("理解假设需要真实用户表达；助手交付或内容展示不能单独支持知识诊断"));
             }
             let target = evidence.target.as_ref().ok_or_else(||invalid("理解假设缺少适用目标"))?;
             target.validate(&action.binding)?;

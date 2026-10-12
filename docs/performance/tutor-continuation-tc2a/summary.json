@@ -1,0 +1,478 @@
+{
+  "same_configuration": true,
+  "same_sampled_tool_tables": false,
+  "same_business_sampling_tool_tables": true,
+  "tool_table_note": "On-demand run 1 enters an extra tool-free finalization after failed selects; retain it as a failed-run outcome, with its request and cost. Normal pre-read/post-read tool tables are identical across groups.",
+  "groups": {
+    "baseline": {
+      "configuration": {
+        "base_url": "https://api.deepseek.com",
+        "entry_action": "continue_answer",
+        "model": "deepseek-v4-flash",
+        "original_answer": "这段其实是「平均速度」的定义，一共三句话，每句各管一件事。原文是：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 第一句：定义本身\n\n平均速度 = 总路程 ÷ 总时间。\n\n关键在这个「总」字上：分子是把整段行程走过的所有路程加起来，分母是把整段行程花掉的所有时间加起来。它描述的是**整段行程的一个整体结果**，不是某一时刻你跑多快。所以哪怕中途快慢变来变去，只要有这两个总量，就能算出这趟的平均速度。\n\n## 第二句：这句才是真正的提醒\n\n「Equal distances need not take equal times」——相等的路程不一定花相等的时间。它是在拦住一个非常自然的错误做法:把两段的**速度数值**拿来平均。\n\n举一个我自己的例子来说明(这是按上面定义推出来的，不是原文的例子)：你开车走两段各 60 公里的路，第一段速度 60 km/h，第二段 30 km/h。如果直接把速度平均，(60+30)/2 = 45 km/h，这是错的。按定义算：\n\n- 总路程 = 60 + 60 = 120 km\n- 总时间 = 60/60 + 60/30 = 1 + 2 = 3 小时\n- 平均速度 = 120 ÷ 3 = 40 km/h\n\n差出来的原因正是第二句说的：路程一样(都是 60 km)，但时间不一样(1 小时 vs 2 小时)，而定义里做分母的是**时间**。走得慢的那段占用了更多时间，所以在时间上「权重」更大，把平均速度往下拉。可见平均速度的天平是按时间倾斜的，不是按路程均分的。\n\n## 第三句：为什么必须要求总时间大于 0\n\n因为它在分母上。定义本身就是一次除法,除数不能为零，所以整趟行程的总时间必须是正数。反过来说，如果总时间是 0(比如既没动、也没花时间)，这个式子根本没有意义，平均速度无从谈起。反过来看，分子(总路程)没有这个限制——路程可以是 0，那平均速度就是 0。\n\n## 一句话抓手\n\n分母是**时间**、并且是**总量**，所以「平均速度」是被时间加权的结果：谁占的时间多，谁的快慢就更有发言权。\n\n想确认一下你现在的感觉：上面那个 60/30 的例子，你觉得答案是 45 还是 40？说说你的理由，我再针对你的思路补一段。",
+        "provider": "Native",
+        "repetitions": 3,
+        "selection_timing": "production select persists before public final delivery; unchanged in both groups",
+        "source": "# Average speed\n\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\n\nA blue bicycle travels along the river.\n",
+        "temperature": 0,
+        "user_supplement": ""
+      },
+      "runs": [
+        {
+          "run": "run-1",
+          "http_status": 200,
+          "incomplete": false,
+          "samples": 3,
+          "estimated_input_tokens_per_sample": [
+            17250,
+            20970,
+            23292
+          ],
+          "cumulative_tokens_spent": 61633,
+          "tool_trace": [
+            "book.text",
+            "book.structure",
+            "tutor.step",
+            "source.present"
+          ],
+          "tool_errors": [],
+          "persisted_moves": 1,
+          "deliveries": 1,
+          "initial_instruction_assets": [
+            {
+              "asset_id": "resident-agent.base.v2",
+              "revision": "v1"
+            },
+            {
+              "asset_id": "resident-agent.policy.goal",
+              "revision": "v4"
+            },
+            {
+              "asset_id": "resident-agent.policy.evidence-routing",
+              "revision": "v4"
+            },
+            {
+              "asset_id": "resident-agent.policy.tool-discovery",
+              "revision": "v7"
+            },
+            {
+              "asset_id": "resident-agent.policy.navigation",
+              "revision": "v5"
+            },
+            {
+              "asset_id": "resident-agent.policy.finish",
+              "revision": "v7"
+            }
+          ],
+          "tool_tables": 2,
+          "tool_free_samples": []
+        },
+        {
+          "run": "run-2",
+          "http_status": 200,
+          "incomplete": false,
+          "samples": 3,
+          "estimated_input_tokens_per_sample": [
+            17250,
+            20347,
+            22544
+          ],
+          "cumulative_tokens_spent": 59693,
+          "tool_trace": [
+            "book.text",
+            "book.context",
+            "source.present",
+            "tutor.step"
+          ],
+          "tool_errors": [],
+          "persisted_moves": 1,
+          "deliveries": 1,
+          "initial_instruction_assets": [
+            {
+              "asset_id": "resident-agent.base.v2",
+              "revision": "v1"
+            },
+            {
+              "asset_id": "resident-agent.policy.goal",
+              "revision": "v4"
+            },
+            {
+              "asset_id": "resident-agent.policy.evidence-routing",
+              "revision": "v4"
+            },
+            {
+              "asset_id": "resident-agent.policy.tool-discovery",
+              "revision": "v7"
+            },
+            {
+              "asset_id": "resident-agent.policy.navigation",
+              "revision": "v5"
+            },
+            {
+              "asset_id": "resident-agent.policy.finish",
+              "revision": "v7"
+            }
+          ],
+          "tool_tables": 2,
+          "tool_free_samples": []
+        },
+        {
+          "run": "run-3",
+          "http_status": 200,
+          "incomplete": false,
+          "samples": 5,
+          "estimated_input_tokens_per_sample": [
+            17250,
+            19888,
+            21272,
+            25239,
+            26872
+          ],
+          "cumulative_tokens_spent": 107793,
+          "tool_trace": [
+            "book.text",
+            "book.context",
+            "book.text",
+            "source.present",
+            "tutor.step",
+            "tutor.step"
+          ],
+          "tool_errors": [
+            {
+              "tool": "tutor.step",
+              "result": "{\"error_code\":\"TOOL_ARGUMENTS_INVALID\",\"category\":\"validation\",\"message\":\"$.move must be a JSON \\\"object\\\"\"}"
+            }
+          ],
+          "persisted_moves": 1,
+          "deliveries": 1,
+          "initial_instruction_assets": [
+            {
+              "asset_id": "resident-agent.base.v2",
+              "revision": "v1"
+            },
+            {
+              "asset_id": "resident-agent.policy.goal",
+              "revision": "v4"
+            },
+            {
+              "asset_id": "resident-agent.policy.evidence-routing",
+              "revision": "v4"
+            },
+            {
+              "asset_id": "resident-agent.policy.tool-discovery",
+              "revision": "v7"
+            },
+            {
+              "asset_id": "resident-agent.policy.navigation",
+              "revision": "v5"
+            },
+            {
+              "asset_id": "resident-agent.policy.finish",
+              "revision": "v7"
+            }
+          ],
+          "tool_tables": 2,
+          "tool_free_samples": []
+        }
+      ]
+    },
+    "on-demand": {
+      "configuration": {
+        "base_url": "https://api.deepseek.com",
+        "entry_action": "continue_answer",
+        "model": "deepseek-v4-flash",
+        "original_answer": "这段其实是「平均速度」的定义，一共三句话，每句各管一件事。原文是：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 第一句：定义本身\n\n平均速度 = 总路程 ÷ 总时间。\n\n关键在这个「总」字上：分子是把整段行程走过的所有路程加起来，分母是把整段行程花掉的所有时间加起来。它描述的是**整段行程的一个整体结果**，不是某一时刻你跑多快。所以哪怕中途快慢变来变去，只要有这两个总量，就能算出这趟的平均速度。\n\n## 第二句：这句才是真正的提醒\n\n「Equal distances need not take equal times」——相等的路程不一定花相等的时间。它是在拦住一个非常自然的错误做法:把两段的**速度数值**拿来平均。\n\n举一个我自己的例子来说明(这是按上面定义推出来的，不是原文的例子)：你开车走两段各 60 公里的路，第一段速度 60 km/h，第二段 30 km/h。如果直接把速度平均，(60+30)/2 = 45 km/h，这是错的。按定义算：\n\n- 总路程 = 60 + 60 = 120 km\n- 总时间 = 60/60 + 60/30 = 1 + 2 = 3 小时\n- 平均速度 = 120 ÷ 3 = 40 km/h\n\n差出来的原因正是第二句说的：路程一样(都是 60 km)，但时间不一样(1 小时 vs 2 小时)，而定义里做分母的是**时间**。走得慢的那段占用了更多时间，所以在时间上「权重」更大，把平均速度往下拉。可见平均速度的天平是按时间倾斜的，不是按路程均分的。\n\n## 第三句：为什么必须要求总时间大于 0\n\n因为它在分母上。定义本身就是一次除法,除数不能为零，所以整趟行程的总时间必须是正数。反过来说，如果总时间是 0(比如既没动、也没花时间)，这个式子根本没有意义，平均速度无从谈起。反过来看，分子(总路程)没有这个限制——路程可以是 0，那平均速度就是 0。\n\n## 一句话抓手\n\n分母是**时间**、并且是**总量**，所以「平均速度」是被时间加权的结果：谁占的时间多，谁的快慢就更有发言权。\n\n想确认一下你现在的感觉：上面那个 60/30 的例子，你觉得答案是 45 还是 40？说说你的理由，我再针对你的思路补一段。",
+        "provider": "Native",
+        "repetitions": 3,
+        "selection_timing": "production select persists before public final delivery; unchanged in both groups",
+        "source": "# Average speed\n\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\n\nA blue bicycle travels along the river.\n",
+        "temperature": 0,
+        "user_supplement": ""
+      },
+      "runs": [
+        {
+          "run": "run-1",
+          "http_status": 200,
+          "incomplete": true,
+          "samples": 4,
+          "estimated_input_tokens_per_sample": [
+            14020,
+            16473,
+            19159,
+            12792
+          ],
+          "cumulative_tokens_spent": 60385,
+          "tool_trace": [
+            "book.text",
+            "tutor.step",
+            "tutor.step"
+          ],
+          "tool_errors": [
+            {
+              "tool": "tutor.step",
+              "result": "{\"error_code\":\"TOOL_ARGUMENTS_INVALID\",\"category\":\"validation\",\"message\":\"$.move is required\"}"
+            },
+            {
+              "tool": "tutor.step",
+              "result": "{\"error_code\":\"TEACHING_INVALID\",\"category\":\"validation\",\"message\":\"评分活动必须允许提交\"}"
+            }
+          ],
+          "persisted_moves": 0,
+          "deliveries": 0,
+          "initial_instruction_assets": [
+            {
+              "asset_id": "resident-agent.base.v2",
+              "revision": "v1"
+            },
+            {
+              "asset_id": "resident-agent.policy.goal",
+              "revision": "v4"
+            },
+            {
+              "asset_id": "resident-agent.policy.evidence-routing",
+              "revision": "v4"
+            },
+            {
+              "asset_id": "resident-agent.policy.tool-discovery",
+              "revision": "v7"
+            },
+            {
+              "asset_id": "resident-agent.policy.navigation-discovery",
+              "revision": "tc2a.v1"
+            },
+            {
+              "asset_id": "resident-agent.policy.finish",
+              "revision": "v7"
+            },
+            {
+              "asset_id": "resident-agent.tutor.common",
+              "revision": "tc2a.v1"
+            },
+            {
+              "asset_id": "resident-agent.tutor.discovery",
+              "revision": "tc2a.v1"
+            },
+            {
+              "asset_id": "resident-agent.tutor.select",
+              "revision": "tc2a.v1"
+            }
+          ],
+          "tool_tables": 3,
+          "tool_free_samples": [
+            3
+          ]
+        },
+        {
+          "run": "run-2",
+          "http_status": 200,
+          "incomplete": false,
+          "samples": 4,
+          "estimated_input_tokens_per_sample": [
+            14020,
+            16950,
+            19803,
+            20849
+          ],
+          "cumulative_tokens_spent": 70685,
+          "tool_trace": [
+            "book.text",
+            "book.structure",
+            "tutor.step",
+            "source.present",
+            "tutor.step"
+          ],
+          "tool_errors": [
+            {
+              "tool": "tutor.step",
+              "result": "{\"error_code\":\"TOOL_ARGUMENTS_INVALID\",\"category\":\"validation\",\"message\":\"$.move_id is not allowed\"}"
+            }
+          ],
+          "persisted_moves": 1,
+          "deliveries": 1,
+          "initial_instruction_assets": [
+            {
+              "asset_id": "resident-agent.base.v2",
+              "revision": "v1"
+            },
+            {
+              "asset_id": "resident-agent.policy.goal",
+              "revision": "v4"
+            },
+            {
+              "asset_id": "resident-agent.policy.evidence-routing",
+              "revision": "v4"
+            },
+            {
+              "asset_id": "resident-agent.policy.tool-discovery",
+              "revision": "v7"
+            },
+            {
+              "asset_id": "resident-agent.policy.navigation-discovery",
+              "revision": "tc2a.v1"
+            },
+            {
+              "asset_id": "resident-agent.policy.finish",
+              "revision": "v7"
+            },
+            {
+              "asset_id": "resident-agent.tutor.common",
+              "revision": "tc2a.v1"
+            },
+            {
+              "asset_id": "resident-agent.tutor.discovery",
+              "revision": "tc2a.v1"
+            },
+            {
+              "asset_id": "resident-agent.tutor.select",
+              "revision": "tc2a.v1"
+            }
+          ],
+          "tool_tables": 2,
+          "tool_free_samples": []
+        },
+        {
+          "run": "run-3",
+          "http_status": 200,
+          "incomplete": false,
+          "samples": 4,
+          "estimated_input_tokens_per_sample": [
+            14020,
+            16749,
+            20696,
+            21851
+          ],
+          "cumulative_tokens_spent": 73871,
+          "tool_trace": [
+            "book.text",
+            "source.present",
+            "tutor.step",
+            "tutor.step"
+          ],
+          "tool_errors": [
+            {
+              "tool": "tutor.step",
+              "result": "{\"error_code\":\"TOOL_ARGUMENTS_INVALID\",\"category\":\"validation\",\"message\":\"$.move is required\"}"
+            }
+          ],
+          "persisted_moves": 1,
+          "deliveries": 1,
+          "initial_instruction_assets": [
+            {
+              "asset_id": "resident-agent.base.v2",
+              "revision": "v1"
+            },
+            {
+              "asset_id": "resident-agent.policy.goal",
+              "revision": "v4"
+            },
+            {
+              "asset_id": "resident-agent.policy.evidence-routing",
+              "revision": "v4"
+            },
+            {
+              "asset_id": "resident-agent.policy.tool-discovery",
+              "revision": "v7"
+            },
+            {
+              "asset_id": "resident-agent.policy.navigation-discovery",
+              "revision": "tc2a.v1"
+            },
+            {
+              "asset_id": "resident-agent.policy.finish",
+              "revision": "v7"
+            },
+            {
+              "asset_id": "resident-agent.tutor.common",
+              "revision": "tc2a.v1"
+            },
+            {
+              "asset_id": "resident-agent.tutor.discovery",
+              "revision": "tc2a.v1"
+            },
+            {
+              "asset_id": "resident-agent.tutor.select",
+              "revision": "tc2a.v1"
+            }
+          ],
+          "tool_tables": 2,
+          "tool_free_samples": []
+        }
+      ]
+    }
+  },
+  "counterexamples": [
+    {
+      "id": "equal_speed_unequal_time",
+      "speeds": [
+        10,
+        10
+      ],
+      "durations": [
+        1,
+        2
+      ],
+      "distances": [
+        10,
+        20
+      ],
+      "time_weighted_mean": "10",
+      "arithmetic_mean": "10",
+      "equal": true
+    },
+    {
+      "id": "equal_time_unequal_speed",
+      "speeds": [
+        10,
+        20
+      ],
+      "durations": [
+        1,
+        1
+      ],
+      "distances": [
+        10,
+        20
+      ],
+      "time_weighted_mean": "15",
+      "arithmetic_mean": "15",
+      "equal": true
+    },
+    {
+      "id": "original_unequal_time",
+      "speeds": [
+        60,
+        30
+      ],
+      "durations": [
+        1,
+        2
+      ],
+      "distances": [
+        60,
+        60
+      ],
+      "time_weighted_mean": "40",
+      "arithmetic_mean": "45",
+      "equal": false
+    },
+    {
+      "id": "equal_speed_equal_distance",
+      "speeds": [
+        10,
+        10
+      ],
+      "durations": [
+        1,
+        1
+      ],
+      "distances": [
+        10,
+        10
+      ],
+      "time_weighted_mean": "10",
+      "arithmetic_mean": "10",
+      "equal": true
+    }
+  ],
+  "cost_note": "estimated_input_tokens_per_sample is a single request estimate; tokens_spent is cumulative provider usage, not context length or money."
+}

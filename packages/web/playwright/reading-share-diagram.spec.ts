@@ -148,3 +148,59 @@ test('RS7 missing resources and media report concrete failures, then retry succe
   await expect(page.getByRole('dialog',{name:'生成分享图'})).toBeVisible();
   expect((await page.evaluate(()=>(window as any).lastShare)).sources).toEqual(['原材料 · 第 2 页（来源暂不可用）']);
 });
+
+test('long diagrams expand the image page and preserve both ends, attribution and downloaded pixels', async ({ page }, info) => {
+  test.setTimeout(90000);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await setup(page);
+  await page.frameLocator('.agent-presentation iframe').locator('body').evaluate(body => {
+    const first = document.createElement('div'); first.style.cssText = 'height:60px;background:rgb(17,99,177)'; first.textContent = '图解开头'; body.prepend(first);
+    const space = document.createElement('div'); space.style.height = '1800px'; body.append(space);
+    const last = document.createElement('div'); last.style.cssText = 'height:60px;background:rgb(177,99,17)'; last.textContent = '图解结尾'; body.append(last);
+  });
+  await page.getByRole('button', { name: '导出当前图解' }).click();
+  const panel = page.getByRole('dialog', { name: '生成分享图' });
+  await expect(panel).toBeVisible();
+  await panel.getByLabel('标题', { exact: true }).fill('加请求为什么几乎不花时间：完整保留长图中的参数、推导与最终结果');
+  await panel.getByRole('button', { name: '预览图片', exact: true }).click();
+  await expect(panel.locator('.share-preview img')).toBeVisible({ timeout: 45000 });
+  await expect(panel.getByRole('alert')).toHaveCount(0);
+  const preview = await panel.locator('.share-preview img').evaluate(async (image: HTMLImageElement) => {
+    await image.decode();
+    const canvas = document.createElement('canvas'); canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
+    const ctx = canvas.getContext('2d')!; ctx.drawImage(image, 0, 0);
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    let first = 0, last = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (pixels[i] === 17 && pixels[i + 1] === 99 && pixels[i + 2] === 177) first++;
+      if (pixels[i] === 177 && pixels[i + 1] === 99 && pixels[i + 2] === 17) last++;
+    }
+    return { width: image.naturalWidth, height: image.naturalHeight, first, last,
+      bytes: Array.from(new Uint8Array(await (await fetch(image.src)).arrayBuffer())) };
+  });
+  expect(preview.width).toBe(1440); expect(preview.height).toBeGreaterThan(1080);
+  expect(preview.first).toBeGreaterThan(10000); expect(preview.last).toBeGreaterThan(10000);
+  const downloading = page.waitForEvent('download'); await panel.getByRole('button', { name: '下载 PNG', exact: true }).click();
+  const download = await downloading; const path = info.outputPath('long-diagram.png'); await download.saveAs(path);
+  expect([...readFileSync(path)]).toEqual(preview.bytes);
+  const layout = await page.evaluate(async () => {
+    const { paginateShare } = await import('/src/reading-share.ts');
+    const source = (window as any).lastShare;
+    const result = await paginateShare({ source, selected: source.parts.map((part: any) => part.id),
+      title: '完整保留长图中的参数、推导与最终结果'.repeat(4), reflection: '', layout: 'diagram', palette: 'blue', orientation: 'portrait' });
+    try { return result.pages.map(sheet => ({ width: sheet.offsetWidth, height: sheet.offsetHeight, text: sheet.textContent,
+      contentBottom: sheet.querySelector('.content')!.getBoundingClientRect().bottom,
+      footerTop: sheet.querySelector('footer')!.getBoundingClientRect().top,
+      footerBottom: sheet.querySelector('footer')!.getBoundingClientRect().bottom, pageBottom: sheet.getBoundingClientRect().bottom })); }
+    finally { result.dispose(); }
+  });
+  expect(layout.length).toBeGreaterThan(1);
+  expect(layout[0].width).toBe(1080); expect(layout[0].height).toBeGreaterThan(1440);
+  for (const sheet of layout) {
+    expect(sheet.contentBottom).toBeLessThanOrEqual(sheet.footerTop - 27);
+    expect(sheet.footerBottom).toBeLessThan(sheet.pageBottom);
+    expect(sheet.text).toContain('《原来的书》');
+  }
+  await panel.getByRole('button', { name: '下一页' }).click();
+  await expect(panel.locator('.share-preview img')).toHaveJSProperty('naturalHeight', 1080);
+});

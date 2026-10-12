@@ -7,7 +7,7 @@ import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 // Real tiny_http host, real history/Reader storage, controlled HTTP model responses.
-for (const mode of ["native", "react"]) test(`${mode}: running activities survive reload and share the trace timeline; stop and saved completion settle`, async ({ page: defaultPage }) => {
+for (const mode of ["native", "react"]) test(`${mode}: running progress survives reload without tool diagnostics; stop and saved completion settle`, async ({ page: defaultPage }) => {
   let page = defaultPage;
   let webview: Awaited<ReturnType<typeof chromium.connectOverCDP>> | undefined;
   const root = await mkdtemp(join(tmpdir(), "ub-as5-browser-"));
@@ -122,9 +122,7 @@ for (const mode of ["native", "react"]) test(`${mode}: running activities surviv
     const readerResponse = await page.request.post(`${url}/api/reader/state`, { data: {}, timeout: 4000 });
     expect(readerResponse.status()).toBe(200);
     expect(requestCount).toBe(countBeforeReload);
-    await page.getByRole("button", { name: "轨迹", exact: true }).click();
-    await expect(page.locator('.tab-panel:visible .agent-activity[data-status="running"]')).toHaveCount(2);
-    await page.getByRole("button", { name: "问答", exact: true }).click();
+    await expect(page.locator('#reader-tab-trace, #reader-panel-trace, .trace-toggle')).toHaveCount(0);
     const cancellationResponse = page.waitForResponse(response => response.url().endsWith("/cancel"), { timeout: 8000 });
     await page.getByRole("button", { name: "停止", exact: true }).click();
     const cancellation = await cancellationResponse;
@@ -142,10 +140,8 @@ for (const mode of ["native", "react"]) test(`${mode}: running activities surviv
     await page.locator(".agent-input textarea").fill("继续解释");
     await page.getByRole("button", { name: "发送", exact: true }).click();
     const continued = await next();
-    await page.getByRole("button", { name: "轨迹", exact: true }).click();
-    await expect(page.locator('.tab-panel:visible .agent-activity[data-status="running"]')).toHaveCount(1);
-    await expect(page.locator('.tab-panel:visible .trace-card')).toHaveCount(0);
-    await page.getByRole("button", { name: "问答", exact: true }).click();
+    await expect(page.locator('.transcript .agent-activity[data-status="running"]')).toHaveCount(1);
+    await expect(page.locator('#reader-panel-trace, .trace-card, .trace-toggle')).toHaveCount(0);
     expect(continued.body.stream).toBe(true);
     continued.response.setHeader("Content-Type", "text/event-stream");
     const delta = (content: string) => continued.response.write(`data: ${JSON.stringify({ choices: [{ index: 0, delta: { content }, finish_reason: null }] })}\n\n`);

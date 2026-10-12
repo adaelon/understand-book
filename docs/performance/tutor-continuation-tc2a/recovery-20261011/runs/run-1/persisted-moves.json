@@ -1,0 +1,53 @@
+[
+  {
+    "actions": [
+      "submit"
+    ],
+    "assessment": {
+      "feedback": "after_submit",
+      "rule": {
+        "choices": [
+          "只有情形①的平均速度等于 45 km/h",
+          "只有情形②的平均速度等于 45 km/h",
+          "两种情形的平均速度都等于 45 km/h",
+          "两种情形的平均速度都不等于 45 km/h"
+        ],
+        "correct": [
+          "只有情形②的平均速度等于 45 km/h"
+        ],
+        "kind": "choice_set"
+      },
+      "source_lids": [
+        "1.1"
+      ],
+      "source_sufficient": true
+    },
+    "capability": "reasoning_with_definition",
+    "explanation": null,
+    "hint": null,
+    "intent_origin": "current_action",
+    "intent_quote": null,
+    "interaction_intent": "neutral",
+    "interpretation_refs": [],
+    "kind": "explain",
+    "move_id": "m_avg_speed_equal_time_contrast",
+    "object_ids": [],
+    "preference_ref": null,
+    "presentation": null,
+    "prompt": "接上一段:两段行程的速度分别是 60 km/h 和 30 km/h。情形①:两段路程相同,各 60 公里。情形②:两段用时相同,各 1 小时。下面哪种说法对?",
+    "target": {
+      "capability": "reasoning_with_definition",
+      "expected_performance": "能说出只有『两段用时相同』时平均速度才等于速度的算术平均 45 km/h,而路程相同时是 40 km/h,并把差别归到『分母是总时间』上",
+      "learning_focus": "把『分母是时间』这条机制用到等时间与等路程两种情形的对照:看清算术平均只在时间等权时成立",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "end_lid": "1.1",
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "start_lid": "1.1"
+        }
+      ]
+    }
+  }
+]

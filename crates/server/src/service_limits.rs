@@ -566,6 +566,17 @@ mod tests {
         }
     }
     #[test]
+    fn flash_agent_limit_survives_website_adapter() {
+        let inner = RecordingProvider { total_tokens: None, output_limits: Mutex::new(Vec::new()) };
+        let adapter = recording_adapter(&inner);
+        let profile = runtime::ModelRuntimeCatalog::default().resolve(
+            "deepseek-flash", runtime::ProviderToolProtocol::Native, None);
+        let plan = AgentRequestPlan::for_agent_turn(profile, &[runtime::Message::user("继续学习")], &[]);
+        assert_eq!(plan.active_context.output_reserve_tokens, 32_768);
+        assert_eq!(adapter.chat(&plan).unwrap_err().message, "timeout");
+        assert_eq!(*inner.output_limits.lock().unwrap(), vec![Some(32_768)]);
+    }
+    #[test]
     fn mu6c_saved_usage_with_old_budget_flag_remains_readable() {
         let usage: RunUsage = serde_json::from_value(serde_json::json!({
             "calls": [{"total_tokens": 122686}],

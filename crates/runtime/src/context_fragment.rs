@@ -221,10 +221,10 @@ impl ContextFragmentLedger {
         let mut snapshot = vec![Message::system(content)];
         if self.sampling_instructions != instructions {
             let mut content = String::from(
-                "sampling_guidance.v1\nThis selection replaces all earlier sampling guidance. It remains active until the next sampling_guidance selection; runtime state snapshots do not expire it. Only the selected phase and references apply.\n",
+                "sampling_guidance.v1\nThis selection replaces all earlier sampling guidance. It remains active until the next sampling_guidance selection; runtime state snapshots do not expire it. Only the selected workflows, phase and references apply.\n",
             );
             if instructions.is_empty() {
-                content.push_str("No presentation phase or technical references are active. Earlier presentation guidance and design data have expired.\n");
+                content.push_str("No task workflows, presentation phase or technical references are active. Earlier sampling guidance and design data have expired.\n");
             }
             for module in instructions {
                 content.push_str(&format!("\nasset={}\nrevision={}\n{}\n", module.asset_id, module.revision, module.text));
@@ -390,7 +390,7 @@ mod tests {
         ledger.record_sampling(12, &modules, Vec::new());
         assert_eq!(ledger.sampling_snapshots[1].1.len(), 2, "same selection re-appended guidance");
         ledger.record_sampling(14, &[], Vec::new());
-        assert!(ledger.sampling_snapshots[2].1.iter().any(|m| m.content.as_deref().unwrap().contains("Earlier presentation guidance and design data have expired")));
+        assert!(ledger.sampling_snapshots[2].1.iter().any(|m| m.content.as_deref().unwrap().contains("Earlier sampling guidance and design data have expired")));
     }
 
     #[test]

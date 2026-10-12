@@ -1,0 +1,145 @@
+{
+  "live": [
+    {
+      "scenario": "answer-only",
+      "http_status": 200,
+      "incomplete": true,
+      "warning": "AGENT_NO_PROGRESS",
+      "provider_calls": 4,
+      "read_provider_calls": 0,
+      "tokens_spent": 40630,
+      "errors": [
+        {
+          "tool": "book.search_text",
+          "loop": 1,
+          "error_code": "SEARCH_SOURCE_INVALID",
+          "category": "internal",
+          "message": "non-whitespace source gap before leaf 1.1"
+        },
+        {
+          "tool": "book.concept",
+          "loop": 2,
+          "error_code": "CONCEPT_NOT_FOUND",
+          "category": "not_found",
+          "message": "未找到相关概念/实体候选: 平均速度 定义"
+        },
+        {
+          "tool": "book.search_text",
+          "loop": 3,
+          "error_code": "SEARCH_SOURCE_INVALID",
+          "category": "internal",
+          "message": "non-whitespace source gap before leaf 1.1"
+        }
+      ],
+      "selected": 0,
+      "delivered": 0,
+      "offered_sets": 0,
+      "offered_options": 0
+    },
+    {
+      "scenario": "explain",
+      "http_status": 200,
+      "incomplete": false,
+      "warning": null,
+      "provider_calls": 8,
+      "read_provider_calls": 0,
+      "tokens_spent": 135042,
+      "errors": [
+        {
+          "tool": "book.search_text",
+          "loop": 1,
+          "error_code": "SEARCH_SOURCE_INVALID",
+          "category": "internal",
+          "message": "non-whitespace source gap before leaf 1.1"
+        },
+        {
+          "tool": "book.concept",
+          "loop": 2,
+          "error_code": "CONCEPT_NOT_FOUND",
+          "category": "not_found",
+          "message": "未找到相关概念/实体候选: 平均速度"
+        },
+        {
+          "tool": "book.concept",
+          "loop": 2,
+          "error_code": "CONCEPT_NOT_FOUND",
+          "category": "not_found",
+          "message": "未找到相关概念/实体候选: 总时间 路程 平均速度 定义"
+        },
+        {
+          "tool": "tutor.step",
+          "loop": 6,
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "category": "validation",
+          "message": "$.move is required"
+        }
+      ],
+      "selected": 1,
+      "delivered": 1,
+      "offered_sets": 1,
+      "offered_options": 2
+    }
+  ],
+  "live-v2": [
+    {
+      "scenario": "answer-only",
+      "http_status": 200,
+      "incomplete": false,
+      "warning": null,
+      "provider_calls": 4,
+      "read_provider_calls": 0,
+      "tokens_spent": 55986,
+      "errors": [
+        {
+          "tool": "tutor.step",
+          "loop": 2,
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "category": "validation",
+          "message": "$.move is required"
+        }
+      ],
+      "selected": 1,
+      "delivered": 1,
+      "offered_sets": 0,
+      "offered_options": 0
+    },
+    {
+      "scenario": "explain",
+      "http_status": 200,
+      "incomplete": false,
+      "warning": null,
+      "provider_calls": 5,
+      "read_provider_calls": 0,
+      "tokens_spent": 82933,
+      "errors": [],
+      "selected": 1,
+      "delivered": 1,
+      "offered_sets": 1,
+      "offered_options": 2
+    }
+  ],
+  "live-v3": [
+    {
+      "scenario": "explain",
+      "http_status": 200,
+      "incomplete": false,
+      "warning": null,
+      "provider_calls": 6,
+      "read_provider_calls": 0,
+      "tokens_spent": 120996,
+      "errors": [
+        {
+          "tool": "tutor.step",
+          "loop": 3,
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "category": "validation",
+          "message": "$.target must be a JSON \"object\""
+        }
+      ],
+      "selected": 1,
+      "delivered": 1,
+      "offered_sets": 1,
+      "offered_options": 2
+    }
+  ]
+}

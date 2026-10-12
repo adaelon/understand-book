@@ -1,0 +1,73 @@
+{
+  "model": "deepseek-v4-flash",
+  "source": "crates/server/src/tests/fixtures/tutor-continuation/source.md",
+  "attempt": "final-current-action-neutral-guidance",
+  "engineering_result": "passed_two_action_flow",
+  "content_quality": "not_accepted",
+  "quality_findings": [
+    "First help attempted select while Tutor was off; the server rejected it and no session was created.",
+    "Continuation used neutral/current_action and delivered one teaching move after reading the original text.",
+    "The answer incorrectly presented equal durations as necessary for arithmetic equality; equal speeds also suffice.",
+    "The equal-distance derivation has a formula typo d=d/v where t1=d/v1 is intended."
+  ],
+  "reader_participants": 0,
+  "cost_note": "Outcome tokens_spent recorded; monetary cost was not returned by this test.",
+  "first": {
+    "answer": "## 这段在说什么\n\n原文只有三句，但每一句都在防一个常见误解。\n\n**1. 定义：平均速度 = 总路程 ÷ 总时间**\n\n即 $\\bar v = \\dfrac{d_{\\text{总}}}{t_{\\text{总}}}$。它描述的是**整段行程的一个整体比值**：如果让物体从头到尾都用这个速度匀速走，它会在同样的总时间里走完同样的总路程。所以它读作\"平均\"，实际是\"整体折算\"的恒定速度，不是把旅途中每个瞬间的速度拿出来做算术平均。\n\n**2. 为什么要强调\"总\"：等距离不必花等时间**\n\n这句话是公式的护栏。一段路上的速度是会变的（前半程快、后半程慢很常见），所以不能拿各段速度相加再除以段数。原文明确点出：**距离相等，用时也可以不相等**——一旦用时不等，各段速度在\"整段行程\"里的分量就不对等了。\n\n*举个假设的例子（用来说明这条原则，不是书上原有的数字）*：某车 120 km 的行程，前 60 km 用 1 小时走完（60 km/h），后 60 km 用了 2 小时（30 km/h）。\n- 按原文公式：总路程 120 km，总时间 3 h，平均速度 = 120 ÷ 3 = **40 km/h**。\n- 若错误地把各段速度求算术平均：(60 + 30) ÷ 2 = 45 km/h，与公式结果不符。\n\n差别来自\"时间权重\"：慢的那一段占了 3 小时里的 2 小时，自然把整体拉向它。这也正是原文\"等距离不必花等时间\"要挡住的那个坑——只有当各段用时相同时，算术平均才碰巧等于公式结果。\n\n**3. 总时间必须为正**\n\n因为总时间出现在**分母**上。若总时间为 0（例如\"位移发生了但没花时间\"这种情形），除法无定义，公式给不出任何数。要求 $\\bar v = \\dfrac{d}{t}$ 中的 $t>0$，公式才是一个有意义的数；在这条前提下，非负的总路程除以正的总时间得到的结果也非负。\n\n## 一句话概括\n\n平均速度不是\"每段的平均值\"，而是**整段行程折算出的那个恒定速度**，由总路程和总时间两个总量决定，并且总时间必须为正才能算。\n\n> 用法提示（我的补充，非本段原文）：代入时路程与时间的单位要一致，否则比值没有意义。\n\n\n\n如果想继续，我可以就\"什么时候算术平均恰好等于平均速度\"或\"总时间为正排除了哪些情形\"再展开。",
+    "tokens_spent": 54020,
+    "turns": 4,
+    "incomplete": false,
+    "trace": [
+      {
+        "args": "{\"lid\": \"1.1\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"lid\":\"1.1\",\"text\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"capability\":\"explain\",\"intent_origin\":\"current_action\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"m1\",\"object_ids\":[],\"operation\":\"select\",\"prompt\":\"用中文讲解 LID 1.1：平均速度 = 总路程 ÷ 总时间，为什么是“总”而不是“每段”，等距离不等于等时间，以及总时间必须为正的含义与例子。\",\"target\":{\"capability\":\"explain\",\"expected_performance\":\"能用总路程/总时间算出平均速度，并解释为什么不能用各段速度简单平均，以及总时间为正的必要性\",\"learning_focus\":\"平均速度是整体比值（总路程÷总时间），不是分段速度的平均；等距离可以花不等时间；总时间须为正\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"source_id\":\"tc0-average-speed\",\"source_revision\":\"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e\",\"start_lid\":\"1.1\"}]}}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"error_code\":\"TOOL_ARGUMENTS_INVALID\",\"category\":\"validation\",\"message\":\"$.move is required\"}",
+        "tool": "tutor.step"
+      },
+      {
+        "args": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"source_ref_id\":\"source_ref_e85701c84b34a511\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time ",
+        "tool": "source.present"
+      },
+      {
+        "args": "{\"move\":{\"capability\":\"explain\",\"intent_origin\":\"current_action\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"m1\",\"object_ids\":[],\"prompt\":\"讲解 LID 1.1：平均速度=总路程÷总时间，为什么强调“总”而不能把分段速度简单平均，等距离为何可以不等时间，以及总时间必须为正的含义与例子。\",\"target\":{\"capability\":\"explain\",\"expected_performance\":\"能用总路程÷总时间算出平均速度，并解释为何它不是各段速度的平均值，以及总时间为正的必要性\",\"learning_focus\":\"平均速度是整体比值（总路程÷总时间），不是分段速度的平均；等距离不必花等时间；总时间必须为正\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"source_id\":\"tc0-average-speed\",\"source_revision\":\"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+        "model_tool_loop": 3,
+        "result_digest": "{\"error_code\":\"TEACHING_INVALID\",\"category\":\"validation\",\"message\":\"教学已暂停或切换，请完成普通请求并停止自动教学推进\"}",
+        "tool": "tutor.step"
+      }
+    ]
+  },
+  "continue": {
+    "answer": "## 上一轮的结论，再拧紧一圈\n\n先把原文三句摆在这里：平均速度等于总路程除以总时间；距离相等并不必然用时相等；总时间必须为正。\n\n上一轮我们说\"不能拿各段速度做算术平均\"。这一轮把原因**算出来**——不是靠直觉，靠把公式拆开。\n\n## 把两段行程代进公式\n\n设前半段的路程 $d_1$、用时 $t_1$、速度 $v_1$；后半段 $d_2$、$t_2$、$v_2$。因为 $d_1 = v_1 t_1$、$d_2 = v_2 t_2$，代入 $\\bar v = \\dfrac{d_{\\text{总}}}{t_{\\text{总}}}$：\n\n$$\\bar v = \\frac{v_1t_1 + v_2t_2}{t_1+t_2} = v_1\\cdot\\frac{t_1}{t_1+t_2} + v_2\\cdot\\frac{t_2}{t_1+t_2}$$\n\n（这一步是我从原文公式推的，不是书上的新句子。）\n\n这个式子把结构摊开了：**每段速度乘的权重，是它占用的时间份额**，不是它的路程份额。\n\n- 某项速度 $v_i$ 所占的时间越长，权重 $\\dfrac{t_i}{t_1+t_2}$ 越大，它把整体拉向自己的力气就越大。\n- 所以\"慢的那段拖后腿\"不是修辞，而是权重更大造成的算术后果。\n\n## 什么时候算术平均才碰巧对\n\n让 $t_1 = t_2 = t$ 代入上面的式子：\n\n$$\\bar v = \\frac{v_1t+v_2t}{2t} = \\frac{v_1+v_2}{2}$$\n\n**各段用时相等，就是算术平均成立的全部条件**——与两段路程是否相等无关。这也正好解释了为什么原文要专门写\"距离相等并不必然用时相等\"：距离相等听起来很对称，但它保证的偏偏不是用时相等，所以挡不住\"直接平均速度\"这个错。\n\n## 顺手验证上一轮的例子\n\n上一轮那个例子里，两段是**等距离**（各 60 km）、用时不等（1 h 与 2 h）。把 $d_1=d_2=d$ 代入，得到 $d=\\dfrac{d}{v}$、$t_2=\\dfrac{d}{v_2}$：\n\n$$\\bar v = \\frac{2d}{\\frac{d}{v_1}+\\frac{d}{v_2}} = \\frac{2v_1v_2}{v_1+v_2}$$\n\n代入 $v_1=60,\\ v_2=30$：$\\dfrac{2\\times60\\times30}{90} = \\dfrac{3600}{90} = 40$ km/h，与上一轮 $\\dfrac{120}{3}=40$ 完全一致。等距离时被拉低，是因为 30 km/h 那一段占了 3 小时中的 2 小时。\n\n> 提醒一句：这只是刚才那个例子的验算，$\\dfrac{2v_1v_2}{v_1+v_2}$ 这个形式是我的推导，原文只给了 $\\bar v = \\dfrac{d_{\\text{总}}}{t_{\\text{总}}}$。\n\n## 一句话抓住这一层\n\n$\\bar v = \\dfrac{d_{\\text{总}}}{t_{\\text{总}}}$ 是一个**以时间为权的加权平均**；算术平均只是\"各段用时恰好相同\"这个特例。\n\n**留个小问题给你**：同一条 90 km 的路，去程 45 km/h、返程 90 km/h。往返的总平均速度是多少？是 $67.5$ 还是 $60$？想一下再答——这一问考的就是你刚看到的那套权重。",
+    "tokens_spent": 66336,
+    "turns": 3,
+    "incomplete": false,
+    "trace": [
+      {
+        "args": "{\"lid\": \"1.1\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"lid\":\"1.1\",\"text\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"source_ref_id\":\"source_ref_e85701c84b34a511\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time ",
+        "tool": "source.present"
+      },
+      {
+        "args": "{\"move\":{\"capability\":\"explanation\",\"intent_origin\":\"current_action\",\"interaction_intent\":\"neutral\",\"kind\":\"explain\",\"move_id\":\"m-continue-average-speed-weighting\",\"object_ids\":[],\"presentation\":null,\"prompt\":\"承上一轮：既然平均速度是「总路程÷总时间」，请把它拆成两段来算 v̄=(v1t1+v2t2)/(t1+t2)，指出每段速度是按「用时」加权的；再说明为什么只有 t1=t2 时算术平均才碰巧等于 v̄，以及等距离情形应得到什么结果。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"能把两段行程的平均速度写成 (v1t1+v2t2)/(t1+t2)，说出各段速度以时间份额加权，并判定 t1=t2 是算术平均成立的条件；对等距离情形能说明结果被较慢的一段拉低（时间权重更大）。\",\"learning_focus\":\"平均速度公式的加权结构：总路程÷总时间不是段速度的算术平均，而是以各段用时为权重的加权平均；算术平均只是各段用时相等的特例。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"source_id\":\"tc0-average-speed\",\"source_revision\":\"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"instruction\":\"Deliver this move in the final answer. Saved candidate is not displayed.\",\"selected\":\"move:turn_2626647698803364:m-continue-average-speed-weighting\"}",
+        "tool": "tutor.step"
+      }
+    ]
+  }
+}

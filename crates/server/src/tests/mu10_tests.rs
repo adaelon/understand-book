@@ -342,7 +342,8 @@ fn mu10_real_host_kill_commit_windows() {
             let handle = access.users.lock().unwrap().get("A", "now").unwrap();
             let user = handle.lock().unwrap();
             let turn = &user.agent_history.sessions[0].turns[0];
-            let frozen = serde_json::to_value(turn.admission_input.as_ref().unwrap()).unwrap();
+            let session = &user.agent_history.sessions[0];
+            let frozen = serde_json::to_value(&user.session_store.as_ref().unwrap().logs[&session.id].projection.inputs[&turn.turn_id]).unwrap();
             assert_eq!(frozen["preparation_complete"], false);
             let learning = user.learning_store().unwrap();
             let original = learning
@@ -414,7 +415,8 @@ fn mu10_real_host_kill_commit_windows() {
                     &learning.teaching_event(&original.event_id).unwrap(),
                     original
                 );
-                let frozen = serde_json::to_value(turn.admission_input.as_ref().unwrap()).unwrap();
+                let session = &user.agent_history.sessions[0];
+                let frozen = serde_json::to_value(&user.session_store.as_ref().unwrap().logs[&session.id].projection.inputs[&turn.turn_id]).unwrap();
                 assert_eq!(frozen["preparation_complete"], true);
                 for event in frozen["teaching"]["events"].as_array().unwrap() {
                     assert_eq!(
@@ -915,14 +917,14 @@ fn mu10_recovery_100_unclaimed_turns_keeps_original_inputs() {
         100
     );
     let user = access.users.lock().unwrap().get("A", "now").unwrap();
+    let user = user.lock().unwrap();
     assert_eq!(
-        user.lock()
-            .unwrap()
+        user
             .agent_history
             .sessions
             .iter()
-            .flat_map(|s| &s.turns)
-            .filter(|t| t.admission_input.is_some()
+            .flat_map(|s| s.turns.iter().map(move |t| (s, t)))
+            .filter(|(s, t)| user.session_store.as_ref().unwrap().logs[&s.id].projection.inputs.contains_key(&t.turn_id)
                 && t.status == AgentAssistantStatus::PendingAssistant)
             .count(),
         100

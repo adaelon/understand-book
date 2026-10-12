@@ -1,0 +1,23 @@
+{
+  "model": "deepseek-v4-flash",
+  "prior_answer": "按你说的顺序来：先把这段定义讲清楚，再重点回答“总时间为什么在分母”。\r\n\r\n**一、这一定义在说什么**\r\n\r\n平均速度 = 总路程 ÷ 总时间。\r\n\r\n它说的不是行程中某一刻的速度，而是把整段行程“摊平”成一个假想的匀速运动：假如全程都用一个不变的速度走完，并且恰好也用了这么多时间，那这个速度就是平均速度。它是一个被倒推出来的等效速度，不是某次读数。\r\n\r\n**二、为什么总时间在分母**\r\n\r\n关键在于平均速度是一个“率”，它回答的问题是：每单位时间对应多少路程。\r\n\r\n分子记的是路程累积了多少，分母则必须记这些路程是在多长的时间里累积出来的；两者相除，才得到“单位时间对应多少路程”这一含义。所以时间在分母不是位置放错，而是因为时间在这里扮演“运动的舞台”：这段行程里发生的一切——快骑、慢骑、停下来——都消耗了真实时间，因而都进入分母。\r\n\r\n可以用**回代检验**来确认分母必须是全程时长：平均速度 × 总时间 应当还原出总路程。只有分母取整段行程的全部时长，这个乘积才等于实际走过的总路程；一旦分母不代表全程时长，得到的商就不再描述这段行程了。\r\n\r\n**三、为什么分母不是“段数”**\r\n\r\n紧接定义的这一句正是针对最容易犯的错误：Equal distances need not take equal times.  相等距离不必用相等的时间——同样的路程，一段可能很快走完，另一段可能很慢。既然距离相同而时间不同，就不能把各段的速度直接算术平均，也不能按“走了几段”来分摊。定义选择的是按时间累积：这段时间里走过的全部路程进分子，这段行程消耗的全部时间进分母。\r\n\r\n**四、第三句：总时间必须为正**\r\n\r\n同一句还有：The total time must be positive.  一方面，分母不能为 0，否则除法没有定义，“平均速度”这件事根本不存在；另一方面，只有时间严格为正，“用一段时间去摊平一段路程”这个说法才有意义。\r\n\r\n**五、一个假设例子（数字是我为演示设的，不是书里的原文）**\r\n\r\n假设自行车 2 小时骑了 120 公里：平均速度 = 120 ÷ 2 = 60 公里/小时。回代检验：60 × 2 = 120，正好还原总路程。如果把分母换成别的东西（比如只按段数、或按某个不足全程的时长），这个回代就会失败。",
+  "prior_continuation": {
+    "options": [
+      {
+        "label": "Compare two equal-distance journeys",
+        "move_kind": "compare",
+        "option_id": "compare",
+        "purpose": "See why elapsed time changes the average"
+      },
+      {
+        "label": "Work through one journey with numbers",
+        "move_kind": "explain",
+        "option_id": "example",
+        "purpose": "Connect total distance to total time"
+      }
+    ],
+    "recommended_option_id": "compare"
+  },
+  "reader": "scripted correction, no human participant",
+  "source": "# Average speed\n\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\n\nA blue bicycle travels along the river.\n"
+}

@@ -1,0 +1,11 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"operation\": \"select\", \"move\": {\"move_id\": \"move_average_speed_definition_oneline\", \"object_ids\": [], \"capability\": \"definition_recall\", \"kind\": \"explain\", \"prompt\": \"用一句话给出平均速度的定义：平均速度 = 总路程 ÷ 总时间（对应正文小节 \\\"Average speed\\\" 的原句 \\\"Average speed is total distance divided by total time.\\\"）。用户明确要求只用一句话、到此为止，不要后续建议或练习，因此最终答案只含这一句定义加一条来源引用，不展开例题、不推荐延伸内容，也不附加 continuation 选项。\", \"interaction_intent\": \"direct_explanation\", \"intent_origin\": \"current_request\", \"intent_quote\": \"请只用一句话说明平均速度的定义。这次回答到此为止，不要后续建议或练习。\", \"preference_ref\": null, \"target\": {\"capability\": \"definition_recall\", \"expected_performance\": \"能用一句完整的话说明平均速度的定义\", \"learning_focus\": \"平均速度的定义：总路程除以总时间\", \"object_refs\": [], \"source_bindings\": [{\"start_lid\": \"1.1\", \"end_lid\": \"1.1\"}]}}}",
+      "id": "call_00_E52vjY56kcdoCJSeePf57622",
+      "name": "tutor.step"
+    }
+  ],
+  "usage_total_tokens": 14568
+}

@@ -955,7 +955,8 @@ fn copy_historical_backfill_input(
         turn: ReviewTurnInput {
             turn_id: turn.turn_id.clone(),
             user_turn_ordinal: turn.user_turn_ordinal,
-            user: turn.user.clone(),
+            user: turn.user_authored_text().into(),
+            input_action: turn.domain.interaction.as_ref().map(|a|a.action.clone()),
             assistant_status: match turn.status {
                 AgentAssistantStatus::PendingAssistant => ReviewTurnStatus::PendingAssistant,
                 AgentAssistantStatus::Completed => ReviewTurnStatus::Completed,
@@ -997,7 +998,8 @@ pub(crate) fn copy_user_review_input(
         .map(|turn| ReviewTurnInput {
             turn_id: turn.turn_id.clone(),
             user_turn_ordinal: turn.user_turn_ordinal,
-            user: turn.user.clone(),
+            user: turn.user_authored_text().into(),
+            input_action: turn.domain.interaction.as_ref().map(|a|a.action.clone()),
             assistant_status: match turn.status {
                 AgentAssistantStatus::PendingAssistant => ReviewTurnStatus::PendingAssistant,
                 AgentAssistantStatus::Completed => ReviewTurnStatus::Completed,
@@ -1321,6 +1323,9 @@ fn start_server_with_memory_path(
         let mut guard = state.lock().unwrap();
         let AppState { workspace, user, .. } = &mut *guard;
         user.session_store = session_store;
+        for turn in user.agent_history.sessions.iter().flat_map(|s| &s.turns).filter(|t| t.domain.local_action.is_some()) {
+            crate::interaction_input::resume_local_facts(&user, turn).map_err(|e| e.message)?;
+        }
         workspace.restore_chat(&mut user.agent_history, "server-start");
     }
     let observability = crate::observability::ObservabilityRuntime::from_env();
@@ -2596,6 +2601,29 @@ mod tests {
         assert_eq!(state.user.store.review_state().reviewed_through.len(), 2);
         assert!(state.user.store.review_state().last_error.is_none());
         assert_eq!(state.user.store.profile_facts().len(), 2);
+    }
+
+    #[test]
+    fn tc6_historical_backfill_copies_only_authored_supplement() {
+        let state=review_test_state_with("tc6-backfill",1,1);
+        let mut state=state.lock().unwrap();
+        let book_id=state.workspace.book.base.book_id.clone();
+        let job=state.user.store.start_historical_backfill_job(HistoricalBackfillRange {
+            session_id:"review-session-0".into(),book_id,from_turn_exclusive:0,to_turn_inclusive:1,
+        },"start").unwrap();
+        for supplement in ["","Across books I prefer concise explanations."] {
+            let turn=&mut state.user.agent_history.sessions[0].turns[0];
+            turn.user="选择：请用例子解释".into();
+            turn.domain.interaction=Some(serde_json::from_value(serde_json::json!({
+                "action":{"origin":"ui_choice","teaching_choice":{"delivery_ref":"delivery","option_id":"example"},"move_kind":"explain"},
+                "user_supplement":supplement,"accepted_request":"请用例子解释","source_bindings":[],
+                "answer_ref":null,"answer_text":"助手的说明","source_excerpt":null,"target":null,
+                "expected_chat_head":null,"presentation_follow_up":null})).unwrap());
+            let input=copy_historical_backfill_input(&state,&job).unwrap();
+            assert_eq!(input.turn.user,supplement);
+            assert!(input.turn.input_action.is_some());
+            assert!(input.review_input().is_ok());
+        }
     }
 
     #[test]

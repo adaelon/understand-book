@@ -93,7 +93,7 @@ impl SessionProjection {
             }
             EventBody::TurnPrepared { .. } => {
                 self.turn(event)?;
-                if !self.inputs.contains_key(event.turn_id.as_ref().unwrap()) {
+                if !self.inputs.contains_key(event.turn_id.as_ref().unwrap()) && self.turn(event)?.domain.local_action.is_none() {
                     return Err(invalid("prepared turn has no frozen input"));
                 }
             }
@@ -234,11 +234,12 @@ impl SessionProjection {
                         }
                     }
                     EventBody::TurnPrepared { teaching } => {
-                        let input = self
-                            .inputs
-                            .get_mut(event.turn_id.as_ref().unwrap())
-                            .unwrap();
-                        input.set_prepared(teaching.clone());
+                        if let Some(input) = self.inputs.get_mut(event.turn_id.as_ref().unwrap()) {
+                            input.set_prepared(teaching.clone());
+                        } else {
+                            session.turns.iter_mut().find(|t| Some(&t.turn_id) == event.turn_id.as_ref()).unwrap()
+                                .domain.local_preparation = Some(teaching.clone());
+                        }
                     }
                     EventBody::SourcesBound { bindings } => {
                         session

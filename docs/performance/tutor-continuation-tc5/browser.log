@@ -1,0 +1,31 @@
+
+[WebServer] (node:20660) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+[WebServer] (node:42268) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 17 tests using 1 worker
+
+
+(node:26608) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1/17] playwright\tutor-continuation.spec.ts:5:3 › continuation_baseline_markdown_ready_manual_prompt
+[2/17] playwright\tutor-continuation.spec.ts:20:3 › continuation_tc2_markdown_ready_direct_help
+[3/17] playwright\tutor-continuation.spec.ts:5:3 › continuation_baseline_markdown_missing_foundation_manual_prompt
+[4/17] playwright\tutor-continuation.spec.ts:20:3 › continuation_tc2_markdown_missing_foundation_direct_help
+[5/17] playwright\tutor-continuation.spec.ts:5:3 › continuation_baseline_pdf_ready_manual_prompt
+[6/17] playwright\tutor-continuation.spec.ts:20:3 › continuation_tc2_pdf_ready_direct_help
+[7/17] playwright\tutor-continuation.spec.ts:5:3 › continuation_baseline_pdf_missing_foundation_manual_prompt
+[8/17] playwright\tutor-continuation.spec.ts:20:3 › continuation_tc2_pdf_missing_foundation_direct_help
+[9/17] playwright\tutor-continuation.spec.ts:33:1 › continuation_tc5_answer_excerpt_is_sent_from_the_original_answer
+[10/17] playwright\tutor-continuation.spec.ts:52:33 › continuation_tc5_keyboard_choice_and_correction_1440
+[11/17] playwright\tutor-continuation.spec.ts:52:33 › continuation_tc5_keyboard_choice_and_correction_390
+[12/17] playwright\tutor-continuation.spec.ts:74:1 › continuation_tc5_free_question_never_inherits_choice
+[13/17] playwright\tutor-continuation.spec.ts:85:1 › continuation_tc5_local_refresh_queries_unknown_action_before_retry
+[14/17] playwright\tutor-continuation.spec.ts:106:1 › continuation_tc2_first_help_enable_and_continue_preserves_draft
+[15/17] playwright\tutor-continuation.spec.ts:132:1 › continuation_tc2_enable_failure_never_sends_answer_request
+[16/17] playwright\tutor-continuation.spec.ts:141:1 › continuation_tc2_activity_help_does_not_leave_a_phantom_chat_turn
+[17/17] playwright\tutor-continuation.spec.ts:153:1 › continuation_tc2_original_question_navigation_preserves_unsent_draft
+  17 passed (39.1s)

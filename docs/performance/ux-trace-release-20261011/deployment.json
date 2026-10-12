@@ -1,0 +1,32 @@
+{
+  "status": "deployed-and-verified",
+  "deployed_at_utc": "2026-10-11T02:08:27.677968+00:00",
+  "origin": "https://understandbook.top",
+  "release": "/opt/understand-book/releases/ux-trace-20261011",
+  "previous_backend": "/opt/understand-book/releases/tutor-turn-fix-20261011",
+  "previous_web": "/opt/understand-book/releases/main-12b765b-20261010",
+  "backup": "/opt/understand-book/backups/ux-trace-20261011",
+  "data_root": "/opt/understand-book/data/multi-reader-main-12b765b-20261010",
+  "data_migrated": false,
+  "control_schema": 9,
+  "active_or_unsaved_before_stop": 0,
+  "service_pid": 513730,
+  "running_binary_matches": true,
+  "old_assets_retained": true,
+  "model_requests": 0,
+  "verified_at_utc": "2026-10-11T02:21:06.582395+00:00",
+  "frontend_tests_passed": 175,
+  "backend_tests_passed": 2,
+  "public_verification": "public-after.json",
+  "browser_verified": [
+    "real book titles and versions",
+    "allowance summary",
+    "existing reading workspace",
+    "desktop trace tab absent",
+    "390px more menu trace absent",
+    "reading resumption",
+    "logout"
+  ],
+  "browser_errors": 0,
+  "browser_test_session_logged_out": true
+}

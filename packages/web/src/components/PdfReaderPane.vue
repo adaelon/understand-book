@@ -133,9 +133,11 @@ let selectionRequestSequence = 0;
 let containerWidth = 0;
 let containerHeight = 0;
 let containerDpr = 0;
+let containerHidden = false;
 let renderScrollTop = 0;
 let renderDirection: 1 | -1 = 1;
-const renderIdentities = new Map<number, string>();
+type PageRenderIdentity = { key: string };
+const renderIdentities = new Map<number, PageRenderIdentity>();
 
 const activeNoteMarker = computed(() => {
   if (!noteMarkersVisible.value) return null;
@@ -296,19 +298,25 @@ async function reconcileContainerGeometry() {
   const width = root.clientWidth;
   const height = root.clientHeight;
   const dpr = window.devicePixelRatio || 1;
+  if (width <= 0 || height <= 0) {
+    containerHidden = true;
+    renderPlanRequest += 1;
+    // Keep completed pages at their last visible size; only unfinished work is cancelled.
+    for (const pageIndex of [...renderIdentities.keys()]) {
+      if (!renderStates.value[pageIndex]?.rendered) releaseRenderedPage(pageIndex);
+    }
+    return;
+  }
+  const wasHidden = containerHidden;
+  containerHidden = false;
   const widthChanged = width !== containerWidth;
   const heightChanged = height !== containerHeight;
   const dprChanged = dpr !== containerDpr;
-  if (!widthChanged && !heightChanged && !dprChanged) return;
+  if (!widthChanged && !heightChanged && !dprChanged && !wasHidden) return;
   const anchor = captureZoomAnchor();
   containerWidth = width;
   containerHeight = height;
   containerDpr = dpr;
-  if (width <= 0 || height <= 0) {
-    renderToken += 1;
-    await resetRenderedPages();
-    return;
-  }
   if (widthChanged || dprChanged) {
     renderToken += 1;
     const token = renderToken;
@@ -755,7 +763,7 @@ async function renderPage(
   rasterScale: number,
 ) {
   if (!pdfDoc.value || token !== renderToken) return;
-  const identity = pdfRenderIdentity({
+  const key = pdfRenderIdentity({
     source: renderSourceIdentity(),
     pageIndex: pageInfo.pageIndex,
     cssWidth: planPage.cssWidth,
@@ -764,11 +772,13 @@ async function renderPage(
     generation: token,
   });
   const state = renderStates.value[pageInfo.pageIndex];
-  if (renderIdentities.get(pageInfo.pageIndex) === identity && (state?.rendered || state?.rendering)) return;
+  if (renderIdentities.get(pageInfo.pageIndex)?.key === key && (state?.rendered || state?.rendering)) return;
   if (renderIdentities.has(pageInfo.pageIndex)) releaseRenderedPage(pageInfo.pageIndex);
   const canvas = canvasEls.get(pageInfo.pageIndex);
   const textLayer = textLayerEls.get(pageInfo.pageIndex);
   if (!canvas || !textLayer) return;
+  // A canceled attempt must stay stale even when its replacement has the same geometry.
+  const identity = { key };
   renderIdentities.set(pageInfo.pageIndex, identity);
   setRenderState(pageInfo.pageIndex, { rendering: true, error: null });
   let renderTask: PdfRenderTask | null = null;
@@ -839,7 +849,7 @@ async function renderTextLayer(
   viewport: ReturnType<PdfPage["getViewport"]>,
   layer: HTMLElement,
   token: number,
-  identity: string,
+  identity: PageRenderIdentity,
 ) {
   layer.replaceChildren();
   layer.style.setProperty("--scale-factor", String(viewport.scale));
@@ -887,6 +897,8 @@ function observePages() {
 }
 
 async function reconcileRenderedPages() {
+  const root = pageList.value;
+  if (!root || root.clientWidth <= 0 || root.clientHeight <= 0) return;
   const token = renderToken;
   const request = ++renderPlanRequest;
   const plan = currentRenderPlan();

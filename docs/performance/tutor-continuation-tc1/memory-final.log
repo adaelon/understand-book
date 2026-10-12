@@ -1,0 +1,185 @@
+   Compiling syn v2.0.118
+   Compiling serde_json v1.0.150
+   Compiling thiserror-impl v2.0.18
+   Compiling serde_derive v1.0.228
+   Compiling serde_derive_internals v0.29.1
+   Compiling schemars_derive v0.8.22
+   Compiling serde v1.0.228
+   Compiling thiserror v2.0.18
+   Compiling ts-rs-macros v10.1.0
+   Compiling schemars v0.8.22
+   Compiling ts-rs v10.1.0
+   Compiling book-tool-contracts v0.0.0 (E:\allwork\download\agent\understand-book\crates\book-tool-contracts)
+   Compiling base-schema v0.0.0 (E:\allwork\download\agent\understand-book\crates\base-schema)
+   Compiling smallvec v1.15.2
+   Compiling once_cell v1.21.4
+   Compiling tempfile v3.27.0
+   Compiling rusqlite v0.40.2
+   Compiling read-tools v0.0.0 (E:\allwork\download\agent\understand-book\crates\read-tools)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling memory v0.0.0 (E:\allwork\download\agent\understand-book\crates\memory)
+    Finished `test` profile [unoptimized] target(s) in 1m 33s
+     Running unittests src\lib.rs (tmp\tutor-continuation-tc1\target\debug\deps\memory-f0afa95339bfcc36.exe)
+
+running 149 tests
+test assessment::tests::open_rubric_requires_complete_exact_evidence_and_preserves_uncertainty ... ok
+test assessment::tests::frozen_choice_rules_distinguish_equivalence_partial_error_and_uncertainty ... ok
+test export_bindings_pdfsourcemapversion ... ok
+test export_bindings_notebodyplacement ... ok
+test backfill::tests::restart_requeues_only_interrupted_running_jobs_without_scanning_history ... ok
+test backfill::tests::selected_turn_and_collection_rule_are_hard_boundaries ... ok
+test backfill::tests::overlapping_ranges_are_rejected_until_the_first_job_is_cleared ... ok
+test governance::tests::governance_commit_failure_preserves_fact_receipt_and_disk ... ok
+test governance::tests::scope_change_creates_user_confirmed_successor_without_in_place_edit ... ok
+test global_consolidation::tests::review_commits_trigger_consolidation_without_transcript_rescan ... ok
+test governance::tests::reject_and_rule_removal_persist_with_the_correct_revision_semantics ... ok
+test learning::export_bindings_tutorcontrol ... ok
+test learning::export_bindings_tutorfocus ... ok
+test backfill::tests::forget_scrubs_backfill_candidates_that_share_excluded_evidence ... ok
+test global_consolidation::tests::two_books_three_evidence_create_pending_then_confirmed_snapshot ... ok
+test governance::tests::hard_forget_receipt_is_content_free_and_replayable ... ok
+test backfill::tests::cancel_and_failure_keep_partial_progress_while_retry_fills_only_remainder ... ok
+test backfill::tests::explicit_job_freezes_range_and_forces_source_preserving_pending_facts ... ok
+test learning::export_bindings_tutormaterialrole ... ok
+test learning::export_bindings_tutorsessionmode ... ok
+test learning::export_bindings_tutoraction ... ok
+test learning::export_bindings_tutormaterial ... ok
+test global_consolidation::tests::one_book_repetition_never_promotes ... ok
+test governance::tests::stale_unseen_mutation_is_rejected_but_exact_replay_wins_after_revision_advances ... ok
+test learning::export_bindings_tutorsessionstatus ... ok
+test learning::export_bindings_tutormutation ... ok
+test learning::export_bindings_tutorsession ... ok
+test learning::export_bindings_tutorstate ... ok
+test global_consolidation::tests::rejected_candidate_stays_inactive_until_its_evidence_basis_changes ... ok
+test global_consolidation::tests::explicit_memory_ops_trigger_and_reverse_consolidation_atomically ... ok
+test governance::tests::collection_rule_preserves_preexisting_promotion_until_its_evidence_becomes_ineligible ... ok
+test learning::tests::mode_is_separate_from_enable_and_empty_intent_is_rejected ... ok
+test learning::tests::retry_returns_original_result_and_stale_or_invalid_actions_do_not_write ... ok
+test note::export_bindings_noteassociationinput ... ok
+test governance::tests::collection_rule_blocks_review_and_global_promotion_but_not_explicit_remember ... ok
+test learning::tests::failed_sqlite_write_rolls_back_event_and_projection ... ok
+test note::export_bindings_noteexcerpt ... ok
+test note::export_bindings_notematerial ... ok
+test note::export_bindings_notepresentationref ... ok
+test note::export_bindings_noteassociation ... ok
+test note::export_bindings_notepresentationreceipt ... ok
+test note::export_bindings_notecreaterequest ... ok
+test markdown::tests::materialization_failure_preserves_truth_and_reports_stale_unreadable ... ok
+test markdown::tests::forget_removes_values_from_both_materialized_views ... ok
+test note::export_bindings_notesourcebinding ... ok
+test note::export_bindings_notedata ... ok
+test operation::tests::reducer_rejects_secret_and_upgrades_sensitive_content_from_normal ... ok
+test learning::tests::mu2_learning_versions_preserve_legacy_events_and_reject_foreign_databases ... ok
+test operation::tests::failed_memory_op_commit_preserves_in_memory_document ... ok
+test note_tests::rn1_v3_fixture_preserves_every_stored_field_and_failed_upgrade ... ok
+test privacy::tests::classifier_covers_the_frozen_privacy_policy ... ok
+test privacy::tests::payload_can_only_raise_the_evidence_privacy_class ... ok
+test private_storage::tests::gate_fails_closed_when_private_directory_is_a_file ... ok
+test operation::tests::remember_atomically_writes_confirmed_fact_and_hidden_evidence ... ok
+test private_storage::tests::gate_secures_and_verifies_existing_private_files ... ok
+test private_storage::tests::unavailable_store_exposes_diagnostic_and_never_writes ... ok
+test operation::tests::sensitive_requires_ack_and_extension_is_rejected_without_mutation ... ok
+test operation::tests::remember_retry_is_idempotent_and_changed_evidence_conflicts ... ok
+test profile::tests::persisted_fact_without_capture_defaults_to_current_interaction ... ok
+test operation::tests::correct_is_atomic_and_resolver_selects_replacement ... ok
+test note_tests::rn1_failed_edits_collisions_and_writes_keep_original ... ok
+test backfill::tests::clear_removes_only_unconfirmed_candidates_and_forget_removes_confirmed_fact ... ok
+test note_tests::rn4_returning_to_prior_content_keeps_navigation_acyclic ... ok
+test profile::tests::correction_supersedes_old_fact_and_resolver_selects_replacement ... ok
+test operation::tests::forget_deletes_correction_chain_evidence_and_disk_values ... ok
+test learning::tests::lifecycle_survives_restart_and_replays_one_current_session ... ok
+test profile::tests::stable_fact_id_is_evidence_order_independent_and_create_is_idempotent ... ok
+test projection::tests::profile_candidates_sort_each_priority_dimension_deterministically ... ok
+test projection::tests::prompt_serialization_escapes_values_and_reports_injected_ids ... ok
+test note_tests::rn4_note_navigation_survives_edits_reanchor_reopen_and_delete ... ok
+test profile::tests::confirm_and_expire_follow_the_fact_state_machine ... ok
+test learning_evidence::tests::learning_evidence_replays_conditions_corrections_and_interrupted_projection ... ok
+test review::tests::failed_atomic_result_persistence_keeps_facts_observations_and_watermark_unchanged ... ok
+test review::tests::completed_job_is_terminal_and_watermark_never_moves_backwards ... ok
+test profile::tests::hard_forget_deletes_value_excludes_evidence_and_removes_inferred_dependents ... ok
+test review::tests::failed_review_commit_preserves_memory_and_disk ... ok
+test review::tests::illegal_transitions_are_rejected_without_mutation ... ok
+test projection::tests::explicit_explanation_preference_survives_book_snapshot_pressure ... ok
+test review::tests::open_rejects_tampered_job_identity ... ok
+test projection::tests::correction_authority_outranks_a_newer_user_statement ... ok
+test projection::tests::every_section_honors_its_independent_budget_without_splitting_items ... ok
+test review::tests::ineligible_review_evidence_rejects_the_whole_result_without_mutation ... ok
+test review::tests::reconciliation_recovers_cross_file_crash_orders_with_one_job ... ok
+test review::tests::one_time_baseline_skips_pre_upgrade_history_but_not_new_turns ... ok
+test profile::tests::resolver_matches_all_applicability_variants_and_validity_window ... ok
+test profile::tests::trust_matrix_derives_status_and_rejects_invalid_combinations ... ok
+test global_consolidation::tests::source_expiry_correction_and_forget_reverse_recompute_promotions ... ok
+test teaching::export_bindings_teachingobjectrevision ... ok
+test review::tests::repeated_reconciliation_is_idempotent_and_merges_unclaimed_tail ... ok
+test profile::tests::resolver_prefers_book_scope_specific_applicability_and_authority ... ok
+test teaching::export_bindings_teachingsourcebinding ... ok
+test review::tests::open_rejects_completed_job_ahead_of_watermark ... ok
+test teaching::export_bindings_continuationchosen ... ok
+test review::tests::resume_requeues_interrupted_running_job ... ok
+test teaching::export_bindings_continuationdisplayed ... ok
+test teaching::export_bindings_teachingtarget ... ok
+test review::tests::running_job_can_retry_and_is_durable ... ok
+test tests::deferred_read_ledger_retains_batch_after_flush_failure ... ok
+test review::tests::review_result_atomically_applies_trust_status_observation_and_watermark ... ok
+test tests::deferred_read_ledger_coalesces_touches_and_flushes_once ... ok
+test review::tests::repeated_intent_observations_do_not_change_profile_snapshot ... ok
+test tests::failed_save_and_delete_preserve_memory_and_disk_document ... ok
+test note_tests::rn1_four_kinds_and_retained_content_admission ... ok
+test teaching::t15_tests::teaching_t15_targets_and_optional_maps_survive_reopen_and_preserve_legacy_json ... ok
+test teaching::tests::continuation_events_roundtrip_without_becoming_performance ... ok
+test tests::content_addressed_upsert_is_idempotent ... ok
+test tests::note_body_placement_roundtrips_both_variants ... ok
+test tests::delete_removes_and_missing_errors ... ok
+test tests::legacy_migration_write_failure_preserves_original_file ... ok
+test tests::legacy_vec_fixture_opens_and_derives_current_views ... ok
+test tests::legacy_record_roundtrip_omits_selection_context_and_keeps_mem_id ... ok
+test tests::placement_canonical_hash_is_stable_and_absence_keeps_legacy_identity ... ok
+test teaching::tests::teaching_facts_are_immutable_retryable_and_survive_projection_rebuild ... ok
+test tests::note_auto_derives_lid_citation ... ok
+test markdown::tests::v2_render_is_revision_stable_partitioned_and_sensitive_safe ... ok
+test tests::legacy_open_migrates_losslessly_once_to_v3_document ... ok
+test tests::note_create_only_returns_existing_without_any_mutation ... ok
+test note_tests::rn1_association_identity_edit_placement_promote_and_reopen ... ok
+test tests::position_no_auto_citation ... ok
+test tests::persists_to_isolated_file_and_reloads ... ok
+test tests::promote_changes_only_layer_keeps_mem_id_and_is_idempotent ... ok
+test projection::tests::resolver_and_sorting_put_explicit_preferences_before_inferences ... ok
+test tests::reader_profile_md_renders_qa_questions ... ok
+test tests::read_ledger_persists_across_reopen ... ok
+test tests::legacy_vec_fixture_preserves_save_replace_delete_and_reopen ... ok
+test tests::replace_persistence_failure_preserves_memory_and_disk_record ... ok
+test tests::highlight_range_persists_and_distinguishes_by_position ... ok
+test tests::recall_dimensions_filter ... ok
+test tests::replace_content_inherits_selection_context_anchor_citations_and_envelope ... ok
+test tests::selection_context_rejects_non_note_empty_ranges_invalid_ranges_and_anchor_mismatch ... ok
+test projection::tests::partitions_active_facts_and_excludes_pending_expired_and_extensions ... ok
+test tests::selection_context_resolution_basis_is_backward_compatible_and_fail_closed ... ok
+test tests::strict_note_create_requires_exactly_one_structural_source ... ok
+test tests::reanchor_conflict_and_persistence_failure_preserve_authoritative_records ... ok
+test tests::save_recall_roundtrip ... ok
+test tests::read_ledger_marks_and_lists_deterministically ... ok
+test tests::reanchor_rejects_selection_note_but_allows_explicit_legacy_upgrade ... ok
+test tests::reanchor_atomically_replaces_identity_and_preserves_note_envelope ... ok
+test tests::v3_open_rejects_unknown_schema_and_invalid_revision_order ... ok
+test tests::replace_content_inherits_body_placement_without_refreshing_position ... ok
+test tests::profile_files_materialize_and_overwrite_on_delete ... ok
+test tests::v2_migration_write_failure_preserves_original_document ... ok
+test tests::record_mutations_increment_both_revisions_and_persist_document ... ok
+test tests::derive_book_reading_state_aggregates_deterministically ... ok
+test tests::replace_rejects_missing_empty_and_target_id_conflict_without_mutation ... ok
+test tests::v2_document_with_profile_review_and_governance_migrates_losslessly_once ... ok
+test tests::selection_context_derives_ordered_unique_citations_and_enters_mem_id ... ok
+test tests::derive_book_reading_state_keeps_engagement_dimensions_separate ... ok
+test tests::replace_with_explicit_selection_context_reanchors_and_rederives_citations ... ok
+
+test result: ok. 149 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.46s
+

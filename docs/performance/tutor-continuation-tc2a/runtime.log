@@ -1,0 +1,176 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling runtime v0.0.0 (E:\allwork\download\agent\understand-book\crates\runtime)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized] target(s) in 1m 07s
+     Running unittests src\lib.rs (C:/Users/Lenovo/.codex/tmp/understand-book-tc2-target\debug\deps\runtime-eb4e79b44a341ada.exe)
+
+running 59 tests
+test agent_prompt::presentation::tests::common_frontmatter_is_removed_for_both_line_endings ... ok
+test agent_prompt::presentation::tests::common_modules_are_identical_across_sampling_selections ... ok
+test agent_prompt::presentation::tests::continuous_scene_brings_state_contract_once_and_no_media ... ok
+test agent_prompt::presentation::tests::global_design_gets_directory_but_no_engineering_references ... ok
+test agent_prompt::presentation::tests::konva_does_not_imply_timeline_and_custom_state_is_explicit ... ok
+test agent_prompt::presentation::tests::media_local_includes_decoding_paused_restore_and_resource_contracts ... ok
+test agent_prompt::presentation::tests::ordinary_answer_never_loads_presentation_even_with_supplied_context ... ok
+test agent_prompt::presentation::tests::review_replaces_local_responsibility_and_keeps_selected_contracts ... ok
+test agent_prompt::presentation::tests::selection_order_and_provider_protocol_do_not_change_guidance ... ok
+test agent_prompt::presentation::tests::static_local_and_local_edit_do_not_require_interaction_or_seek ... ok
+test agent_prompt::presentation::tests::unphased_resident_preserves_all_contracts_without_claiming_phase_switching ... ok
+test agent_prompt::tests::agent_tool_policy_base_allows_zero_tool_answers_and_runtime_owns_qa_bookkeeping ... ok
+test agent_prompt::tests::agent_tool_policy_modules_follow_the_current_visible_capabilities ... ok
+test agent_prompt::tests::cr10_evidence_policy_forbids_derived_lids_and_failed_source_retries ... ok
+test agent_prompt::tests::resident_authored_instruction_assets_are_english ... ok
+test agent_prompt::tests::task_need_capability_directory_is_small_resident_and_evidence_aware ... ok
+test context_fragment::tests::context_fragment_ledger_keeps_one_latest_revision_per_key_in_stable_order ... ok
+test context_fragment::tests::context_fragment_projection_is_repeatable_and_revision_collisions_fail_closed ... ok
+test context_fragment::tests::sampling_rebuild_keeps_guidance_once_and_task_data_at_its_role ... FAILED
+test context_fragment::tests::sampling_snapshots_survive_compacted_prefix_and_do_not_enter_frozen_context ... ok
+test guided_read_replay::tests::replay_builder_emits_bounded_private_free_receipt_and_verifier_accepts ... ok
+test guided_read_replay::tests::replay_parser_rejects_unknown_sensitive_payload_fields ... ok
+test guided_read_replay::tests::replay_verifier_rejects_early_stop_duplicate_goto_and_visitor_tool ... ok
+test guided_read_replay::tests::replay_verifier_requires_expected_stop_in_observed_guide_path ... ok
+test orchestrator::tests::adm6::adm6_tutor_and_observation_keep_typed_reason_without_text_matching ... ok
+test orchestrator::tests::adm6::adm6_tutor_tool_stops_run_before_next_tool_and_leaves_response_unassessed ... ok
+test orchestrator::tests::context_fragment_paper_minimap_is_frozen_while_effects_mutate_reader_state ... ok
+test orchestrator::tests::context_fragment_profile_snapshot_is_ephemeral_and_frozen_across_the_tool_loop ... ok
+test orchestrator::tests::guided_read_answer_repair_receives_the_original_task_and_current_execution ... ok
+test orchestrator::tests::guided_read_continue_keeps_the_original_topic_and_navigation_tools ... ok
+test orchestrator::tests::guided_read_one_stop_pipeline_records_agent_request_plan_and_reader_effect ... ok
+test orchestrator::tests::guided_read_plain_summary_does_not_seed_or_create_goto ... ok
+test orchestrator::tests::guided_read_real_provider_replay ... ignored, requires a real book plus configured Provider credentials
+test orchestrator::tests::guided_read_without_structure_can_advance_one_located_stop ... ok
+test orchestrator::tests::turn_failures::tutor_pause_overrides_frozen_context_at_next_sample ... ok
+test orchestrator::tests::turn_failures::tutor_tc2a_navigation_discovery_loads_workflow_on_next_sample ... ok
+test orchestrator::tests::turn_failures::tutor_turn_context_appears_once_across_five_samples ... ok
+test orchestrator::tests::turn_intent_guided_read_seeds_first_tool_exposure_request_without_mutation ... ok
+test orchestrator::tests::tutor_t16_literal_occurrence_requires_original_read_for_teaching ... ok
+test tool_exposure::tests::turn_intent_v1_classifies_only_the_frozen_guided_read_phrases ... ok
+test tool_registry::contract_tests::tutor_operations_require_their_payloads ... ok
+test tutor::t15_tests::tutor_t15_move_roundtrips_source_target_and_historical_objects ... ok
+test tutor_continuation::export_bindings_answerref ... ok
+test tutor_continuation::export_bindings_continuationavailability ... ok
+test tutor_continuation::export_bindings_continuationmovekind ... ok
+test tutor_continuation::export_bindings_continuationoption ... ok
+test tutor_continuation::export_bindings_entryaction ... ok
+test tutor_continuation::export_bindings_interactionaction ... ok
+test tutor_continuation::export_bindings_interactionresolution ... ok
+test tutor_continuation::export_bindings_resolvedinteraction ... ok
+test tutor_continuation::export_bindings_teachingchoice ... ok
+test tutor_continuation::export_bindings_teachingcontinuation ... ok
+test tutor_continuation::export_bindings_tutorcontinuationview ... ok
+test tutor_continuation_tests::continuation_contract_action_origins_and_direction_are_distinct ... ok
+test tutor_continuation_tests::continuation_contract_legacy_move_and_public_allowlist ... ok
+test tutor_continuation_tests::continuation_contract_runtime_and_schema_reject_invalid_options ... ok
+test tutor_continuation_tests::tutor_action_intent_preserves_request_default_and_preference_precedence ... ok
+test tutor_continuation_tests::tutor_projection_exposes_only_current_operations ... ok
+test tutor_continuation_tests::tutor_projection_pure_click_owns_intent_and_hides_unreleased_continuation ... ok
+
+failures:
+
+---- context_fragment::tests::sampling_rebuild_keeps_guidance_once_and_task_data_at_its_role stdout ----
+
+thread 'context_fragment::tests::sampling_rebuild_keeps_guidance_once_and_task_data_at_its_role' (21180) panicked at crates\runtime\src\context_fragment.rs:393:9:
+assertion failed: ledger.sampling_snapshots[2].1.iter().any(|m|
+        m.content.as_deref().unwrap().contains("Earlier presentation guidance and design data have expired"))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    context_fragment::tests::sampling_rebuild_keeps_guidance_once_and_task_data_at_its_role
+
+test result: FAILED. 57 passed; 1 failed; 1 ignored; 0 measured; 453 filtered out; finished in 1.27s
+
+error: test failed, to rerun pass `-p runtime --lib`

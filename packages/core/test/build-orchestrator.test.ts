@@ -632,6 +632,22 @@ describe("automatic build orchestrator", () => {
       "v4", "policies", "book_structure", member.policy_generation_id, "policy.json"))).toEqual(before[index]));
   });
 
+  it("omits Pass2 projection for a confirmed plan that excludes it and retains explicit inspection", () => {
+    const root = tempDir();
+    const { workspace } = writeTechnicalLearningWorkspace(root, "plan-scoped-pass2");
+    const target = resolveAutomaticBuildTarget(workspace, root);
+    writeJson(path.join(workspace, "long_range_candidates.json"), { candidates: [] });
+    closeV3Pass1(target);
+    closeV3ProfileSidecar(target);
+    const plan = prepareExplicitLegacyBuildPlan(target.source_path, root, { book_id: target.book_id, pass2: "disabled" }).plan;
+    const planned = automaticBuildPlan(target.source_path, root, { book_id: target.book_id, build_plan: plan });
+    expect(planned.snapshot.stages.some(stage => stage.stage === "pass2")).toBe(false);
+    expect(planned.snapshot.stages.some(stage => stage.stage === "book_structure")).toBe(true);
+    const inspected = buildAutomaticBuildSnapshot(target, { public_stage_closure: [...plan.public_stage_closure, "pass2"] });
+    expect(inspected.stages.some(stage => stage.stage === "pass2")).toBe(true);
+    expect(inspected.stages.find(stage => stage.stage === "book_structure")?.pending_tasks)
+      .toEqual(planned.snapshot.stages.find(stage => stage.stage === "book_structure")?.pending_tasks);
+  }, 30000);
   it("exposes BookStructure without Pass2 and invalidates it when a Pass2 audit arrives later", () => {
     const root = tempDir();
     const { workspace, sourceFile, source } = writeTechnicalLearningWorkspace(root, "optional-pass2");

@@ -22,14 +22,16 @@ export function useTutorControl() {
     catch { if (request === readinessRequest) readinessError.value = '学习就绪状态读取失败，请重试'; }
   }
   const current = computed(() => state.value?.sessions[state.value.control.current_tutor_session_id ?? ''] ?? null);
-  const label = computed(() => !state.value ? 'Tutor 状态未加载' : !state.value.control.enabled ? 'Tutor 已关闭'
-    : current.value?.status === 'ended' ? 'Tutor 已开启 · 本次学习已结束'
-    : current.value?.status === 'paused' ? 'Tutor 已开启 · 学习已暂停'
-    : readinessError.value ? 'Tutor 已开启 · 就绪状态读取失败'
-    : !readiness.value ? 'Tutor 已开启 · 正在读取学习状态'
-    : current.value && !current.value.material_scope.some(material => material.source_id === readiness.value?.source_id) ? 'Tutor 已开启 · 当前书籍不属于本次学习'
-    : !current.value && readiness.value.status === 'ready' ? 'Tutor 已开启 · 输入第一个问题即可开始'
-    : readiness.value.status === 'ready' ? 'Tutor 已开启 · 可以开始或继续学习' : 'Tutor 已开启 · 学习基础准备中');
+  const currentForSource = computed(() => current.value?.material_scope.some(material => material.source_id === readiness.value?.source_id) ? current.value : null);
+  const hasOtherSourceSession = computed(() => !!readiness.value?.source_id && !!current.value && !currentForSource.value);
+  const label = computed(() => !state.value ? '连续教学状态未加载' : !state.value.control.enabled ? '围绕你的目标逐步学'
+    : readinessError.value ? '学习就绪状态读取失败'
+    : !readiness.value ? '正在读取学习状态'
+    : hasOtherSourceSession.value ? '当前书籍不属于本次学习'
+    : current.value?.status === 'ended' ? '本次学习已结束'
+    : current.value?.status === 'paused' ? '本次学习已暂停'
+    : !current.value && readiness.value.status === 'ready' ? '输入第一个问题即可开始'
+    : readiness.value.status === 'ready' ? '可以开始或继续学习' : '学习基础准备中');
   async function load() {
     void loadReadiness();
     busy.value = true;
@@ -56,5 +58,5 @@ export function useTutorControl() {
     if (pending.value) { await submit(pending.value); if (!pending.value) await load(); }
     else await load();
   }
-  return { state, busy, error, pending, current, label, load, act, retry, readiness, readinessError, loadReadiness };
+  return { state, busy, error, pending, current, currentForSource, hasOtherSourceSession, label, load, act, retry, readiness, readinessError, loadReadiness };
 }

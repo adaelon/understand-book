@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const output = resolve('../../docs/performance/reading-share-rs8-20261010');
+const output = resolve('../../docs/performance/tutor-session-design-20261010/understanding');
 const longExplanation = '平均速度把整个过程的总距离与总时间对应起来，不能在耗时不同的路段直接平均速度。\n\n' + '先比较每一段所用的时间，再说明为什么分母应当是总时间。'.repeat(18) + '\n解释末尾：还要考虑总时间为零时的适用边界。';
 const longQuote = '我已经理解总时间是分母，我的问题是两个路段的时间不同，能否直接平均它们的速度？\n' + '我尝试用一小时和两小时的行程比较结果。'.repeat(12) + '\n原话末尾：请用整个过程说明。';
 async function setup(page: Page) {
@@ -40,6 +40,7 @@ async function setup(page: Page) {
   </script></body></html>` }));
   await page.goto('/rs8-test');
   await page.getByRole('button', { name: '打开学习会话' }).click();
+  await page.getByRole('tab', { name: '我的理解', exact: true }).click();
   await expect(page.locator('.concept')).toHaveCount(3);
   return requests;
 }
@@ -67,6 +68,7 @@ for (const width of [320, 390, 1280]) {
     await detail.getByText('查看详细依据', { exact: true }).click();
     await expect(detail).toContainText('此条记录未附详细引用');
     if (width < 500) await page.setViewportSize({ width, height: 500 });
+    await detail.locator('.correction-editor > summary').click();
     await detail.getByRole('textbox', { name: '纠正这条解释' }).fill('我理解分母，请解释适用边界。');
     await detail.getByRole('button', { name: '保存纠正' }).click();
     await expect(detail).toContainText('你的纠正：我理解分母，请解释适用边界。');

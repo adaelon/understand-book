@@ -1,0 +1,28 @@
+[
+  {
+    "availability": {
+      "status": "offered"
+    },
+    "continuation": {
+      "options": [
+        {
+          "label": "用「一段快、一段慢（路程相同）」的一组数字，对比时间加权与速度算术平均的结果差别",
+          "move_kind": "compare",
+          "option_id": "cmp_time_weighted",
+          "purpose": "看清分母取总时间带来的具体数值后果"
+        },
+        {
+          "label": "解释「The total time must be positive」这条限制在什么情形下会不成立",
+          "move_kind": "explain",
+          "option_id": "why_positive",
+          "purpose": "把分母的正数条件与定义成立的前提联系起来"
+        }
+      ],
+      "recommended_option_id": "cmp_time_weighted"
+    },
+    "delivery_ref": "delivery:turn_8df56370e863f0a3:mv_avg_speed_total_time_denominator",
+    "expected_chat_head": "turn_8df56370e863f0a3",
+    "origin_turn_id": "turn_8df56370e863f0a3",
+    "target_summary": "平均速度的分母为什么是总时间"
+  }
+]

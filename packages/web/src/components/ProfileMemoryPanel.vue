@@ -262,7 +262,7 @@ function forgetFact(fact: ProfileFact) {
 }
 
 function scopeLabel(scope: ProfileScopeTab): string {
-  return scope === "book" ? "本书" : "全局";
+  return scope === "book" ? "这本书" : "所有书籍";
 }
 
 function ruleScopeLabel(scopeKind: string | null, scopeValue: string | null): string {
@@ -316,8 +316,8 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
   <section class="profile-memory-panel" aria-label="读者画像">
     <header class="profile-panel-head">
       <div>
-        <p class="profile-kicker">Reader profile</p>
-        <h3>画像</h3>
+        <p class="profile-kicker">阅读偏好与学习记录</p>
+        <h3>助手记住了什么</h3>
       </div>
       <button
         class="profile-icon-button"
@@ -330,16 +330,9 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
         <RefreshCw :size="16" :class="{ spinning: props.loading }" aria-hidden="true" />
       </button>
     </header>
+    <p class="profile-intro">这些记录帮助助手更了解你。记错了可以纠正，也可以让它忘记。</p>
 
-    <div v-if="props.state" class="profile-status-row">
-      <span class="profile-status" :data-status="props.state.status.profile_status">
-        {{ props.state.status.profile_status === "current" ? "已同步" : "待刷新" }}
-      </span>
-      <span>版本 {{ props.state.status.document_revision }}</span>
-      <span v-if="props.state.status.pending_review_jobs">
-        后台整理 {{ props.state.status.pending_review_jobs }}
-      </span>
-    </div>
+
 
     <p v-if="props.error" class="profile-message error" role="alert">{{ props.error }}</p>
     <p v-else-if="props.notice" class="profile-message notice" role="status">{{ props.notice }}</p>
@@ -360,9 +353,169 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
       </button>
     </div>
 
+
+
+    <section v-if="pendingCandidates.length" class="pending-section">
+      <div class="profile-section-head">
+        <h4>待确认</h4>
+        <span>{{ pendingCandidates.length }}</span>
+      </div>
+      <article v-for="fact in pendingCandidates" :key="fact.fact_id" class="pending-fact">
+        <div class="fact-heading">
+          <div>
+            <small>
+              <span v-if="fact.capture === 'historical_backfill'">历史对话 · </span>
+              {{ payloadLabel(fact.payload_kind) }}
+            </small>
+            <strong>{{ fact.payload_value }}</strong>
+          </div>
+          <span v-if="fact.scope_kind === 'global'" class="scope-chip">全局</span>
+        </div>
+        <details class="fact-detail"><summary>记录详情</summary><p>记录项：{{ fact.payload_key }}</p></details>
+        <details v-if="factEvidence(fact).length" class="fact-evidence">
+          <summary>来源 {{ factEvidence(fact).length }}</summary>
+          <ul>
+            <li v-for="evidence in factEvidence(fact)" :key="evidence.evidence_id">
+              <button
+                v-if="evidence.kind === 'book_location' && evidence.lid"
+                type="button"
+                class="evidence-link"
+                @click="emit('goto', evidence.lid)"
+              >
+                <MapPin :size="14" aria-hidden="true" />
+                {{ evidenceLabel(evidence) }}
+              </button>
+              <span v-else>{{ evidenceLabel(evidence) }}</span>
+              <blockquote v-if="evidence.text">{{ evidence.text }}</blockquote>
+            </li>
+          </ul>
+        </details>
+        <div class="pending-actions">
+          <button type="button" :disabled="props.busy" @click="confirmCandidate(fact)">
+            <Check :size="15" aria-hidden="true" />
+            确认
+          </button>
+          <button type="button" class="secondary" :disabled="props.busy" @click="rejectCandidate(fact)">
+            <X :size="15" aria-hidden="true" />
+            忽略
+          </button>
+        </div>
+      </article>
+    </section>
+
+    <div class="scope-tabs" role="tablist" aria-label="画像范围">
+      <button
+        v-for="scope in (['book', 'global'] as ProfileScopeTab[])"
+        :key="scope"
+        type="button"
+        role="tab"
+        :aria-selected="activeScope === scope"
+        :class="{ active: activeScope === scope }"
+        @click="activeScope = scope"
+      >
+        {{ scopeLabel(scope) }}
+        <span>{{ scopeCounts[scope] }}</span>
+      </button>
+    </div>
+
+    <div v-if="props.loading && !props.state" class="profile-empty">正在读取画像...</div>
+    <div v-else-if="!activeFacts.length" class="profile-empty">
+      {{ activeScope === "book" ? "还没有记住这本书中的阅读偏好。继续阅读和对话后，可以在这里查看。" : "还没有跨书通用的偏好记录。" }}
+    </div>
+    <div v-else class="fact-list">
+      <article v-for="fact in activeFacts" :key="fact.fact_id" class="profile-fact-card">
+        <div class="fact-heading">
+          <div>
+            <small>{{ payloadLabel(fact.payload_kind) }}</small>
+            <strong v-if="editingFactId !== fact.fact_id">{{ fact.payload_value }}</strong>
+          </div>
+          <span class="fact-status" :data-status="fact.status">{{ statusLabel(fact.status) }}</span>
+        </div>
+
+        <div v-if="editingFactId === fact.fact_id" class="fact-editor">
+          <textarea v-model="editValue" rows="3" aria-label="画像内容" @keydown.ctrl.enter="saveEdit(fact)" />
+          <div>
+            <button type="button" :disabled="props.busy || !editValue.trim()" @click="saveEdit(fact)">
+              <Save :size="15" aria-hidden="true" />
+              保存
+            </button>
+            <button type="button" class="secondary" @click="cancelEdit">
+              <X :size="15" aria-hidden="true" />
+              取消
+            </button>
+          </div>
+        </div>
+
+        <div class="fact-meta">
+          <span>{{ sourceLabel(fact.source) }}</span>
+          <span v-if="fact.sensitivity === 'sensitive'" class="sensitive-chip">敏感</span>
+          <span v-if="fact.applicability_kind !== 'any'">
+            {{ fact.applicability_value ?? fact.applicability_kind }}
+          </span>
+        </div>
+
+        <details class="fact-detail"><summary>记录详情</summary><p>记录项：{{ fact.payload_key }}</p></details>
+        <details v-if="factEvidence(fact).length" class="fact-evidence">
+          <summary>来源 {{ factEvidence(fact).length }}</summary>
+          <ul>
+            <li v-for="evidence in factEvidence(fact)" :key="evidence.evidence_id">
+              <button
+                v-if="evidence.kind === 'book_location' && evidence.lid"
+                type="button"
+                class="evidence-link"
+                @click="emit('goto', evidence.lid)"
+              >
+                <MapPin :size="14" aria-hidden="true" />
+                {{ evidenceLabel(evidence) }}
+              </button>
+              <span v-else>{{ evidenceLabel(evidence) }}</span>
+              <blockquote v-if="evidence.text">{{ evidence.text }}</blockquote>
+            </li>
+          </ul>
+        </details>
+
+        <div class="fact-actions">
+          <button
+            type="button"
+            class="profile-icon-button"
+            title="纠正"
+            aria-label="纠正"
+            :disabled="props.busy"
+            @click="startEdit(fact)"
+          ><Pencil :size="15" aria-hidden="true" /><span>纠正</span></button>
+          <details class="fact-more"><summary>更多</summary>
+          <button
+            type="button"
+            class="profile-icon-button"
+            :title="fact.scope_kind === 'global' ? '改为仅本书' : '改为全局'"
+            :aria-label="fact.scope_kind === 'global' ? '改为仅本书' : '改为全局'"
+            :disabled="props.busy"
+            @click="changeScope(fact)"
+          ><ArrowLeftRight :size="15" aria-hidden="true" /><span>{{ fact.scope_kind === "global" ? "仅用于这本书" : "用于所有书" }}</span></button>
+          <button
+            type="button"
+            class="profile-icon-button"
+            title="不再自动收集同类信息"
+            aria-label="不再自动收集同类信息"
+            :disabled="props.busy"
+            @click="stopCollecting(fact)"
+          ><CircleOff :size="15" aria-hidden="true" /><span>停止收集同类信息</span></button>
+          </details>
+          <button
+            type="button"
+            class="profile-icon-button danger"
+            title="忘记"
+            aria-label="忘记"
+            :disabled="props.busy"
+            @click="forgetFact(fact)"
+          ><Trash2 :size="15" aria-hidden="true" /><span>忘记</span></button>
+        </div>
+      </article>
+    </div>
+
     <details class="profile-backfill">
       <summary>
-        <span><History :size="15" aria-hidden="true" />历史会话回填</span>
+        <span><History :size="15" aria-hidden="true" />从以前的对话整理</span>
         <small v-if="activeBackfillJobs">进行中 {{ activeBackfillJobs }}</small>
         <small v-else-if="backfillJobs.length">任务 {{ backfillJobs.length }}</small>
       </summary>
@@ -375,7 +528,7 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
       </p>
 
       <div v-if="props.backfillLoading && !props.backfill" class="profile-empty">正在读取历史会话...</div>
-      <div v-else-if="!props.backfill?.sessions.length" class="profile-empty">暂无可回填的历史会话。</div>
+      <div v-else-if="!props.backfill?.sessions.length" class="profile-empty">暂无可整理的历史对话。</div>
       <form v-else class="backfill-form" @submit.prevent="startBackfill">
         <label class="backfill-session-field">
           <span>会话</span>
@@ -422,7 +575,7 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
         >
           <RefreshCw v-if="props.backfillBusy" :size="15" class="spinning" aria-hidden="true" />
           <Play v-else :size="15" aria-hidden="true" />
-          构建画像
+          整理这段对话
         </button>
       </form>
 
@@ -480,159 +633,17 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
       </ol>
     </details>
 
-    <section v-if="pendingCandidates.length" class="pending-section">
-      <div class="profile-section-head">
-        <h4>待确认</h4>
-        <span>{{ pendingCandidates.length }}</span>
-      </div>
-      <article v-for="fact in pendingCandidates" :key="fact.fact_id" class="pending-fact">
-        <div class="fact-heading">
-          <div>
-            <small>
-              <span v-if="fact.capture === 'historical_backfill'">历史回填 · </span>
-              {{ payloadLabel(fact.payload_kind) }} · {{ fact.payload_key }}
-            </small>
-            <strong>{{ fact.payload_value }}</strong>
-          </div>
-          <span v-if="fact.scope_kind === 'global'" class="scope-chip">全局</span>
-        </div>
-        <details v-if="factEvidence(fact).length" class="fact-evidence">
-          <summary>来源 {{ factEvidence(fact).length }}</summary>
-          <ul>
-            <li v-for="evidence in factEvidence(fact)" :key="evidence.evidence_id">
-              <button
-                v-if="evidence.kind === 'book_location' && evidence.lid"
-                type="button"
-                class="evidence-link"
-                @click="emit('goto', evidence.lid)"
-              >
-                <MapPin :size="14" aria-hidden="true" />
-                {{ evidenceLabel(evidence) }}
-              </button>
-              <span v-else>{{ evidenceLabel(evidence) }}</span>
-              <blockquote v-if="evidence.text">{{ evidence.text }}</blockquote>
-            </li>
-          </ul>
-        </details>
-        <div class="pending-actions">
-          <button type="button" :disabled="props.busy" @click="confirmCandidate(fact)">
-            <Check :size="15" aria-hidden="true" />
-            确认
-          </button>
-          <button type="button" class="secondary" :disabled="props.busy" @click="rejectCandidate(fact)">
-            <X :size="15" aria-hidden="true" />
-            忽略
-          </button>
-        </div>
-      </article>
-    </section>
-
-    <div class="scope-tabs" role="tablist" aria-label="画像范围">
-      <button
-        v-for="scope in (['book', 'global'] as ProfileScopeTab[])"
-        :key="scope"
-        type="button"
-        role="tab"
-        :aria-selected="activeScope === scope"
-        :class="{ active: activeScope === scope }"
-        @click="activeScope = scope"
-      >
-        {{ scopeLabel(scope) }}
-        <span>{{ scopeCounts[scope] }}</span>
-      </button>
+    <details class="profile-sync"><summary>同步详情</summary>
+    <div v-if="props.state" class="profile-status-row">
+      <span class="profile-status" :data-status="props.state.status.profile_status">
+        {{ props.state.status.profile_status === "current" ? "已同步" : "待刷新" }}
+      </span>
+      <span>版本 {{ props.state.status.document_revision }}</span>
+      <span v-if="props.state.status.pending_review_jobs">
+        后台整理 {{ props.state.status.pending_review_jobs }}
+      </span>
     </div>
-
-    <div v-if="props.loading && !props.state" class="profile-empty">正在读取画像...</div>
-    <div v-else-if="!activeFacts.length" class="profile-empty">
-      {{ activeScope === "book" ? "本书暂无画像条目。" : "暂无全局画像条目。" }}
-    </div>
-    <div v-else class="fact-list">
-      <article v-for="fact in activeFacts" :key="fact.fact_id" class="profile-fact-card">
-        <div class="fact-heading">
-          <div>
-            <small>{{ payloadLabel(fact.payload_kind) }} · {{ fact.payload_key }}</small>
-            <strong v-if="editingFactId !== fact.fact_id">{{ fact.payload_value }}</strong>
-          </div>
-          <span class="fact-status" :data-status="fact.status">{{ statusLabel(fact.status) }}</span>
-        </div>
-
-        <div v-if="editingFactId === fact.fact_id" class="fact-editor">
-          <textarea v-model="editValue" rows="3" aria-label="画像内容" @keydown.ctrl.enter="saveEdit(fact)" />
-          <div>
-            <button type="button" :disabled="props.busy || !editValue.trim()" @click="saveEdit(fact)">
-              <Save :size="15" aria-hidden="true" />
-              保存
-            </button>
-            <button type="button" class="secondary" @click="cancelEdit">
-              <X :size="15" aria-hidden="true" />
-              取消
-            </button>
-          </div>
-        </div>
-
-        <div class="fact-meta">
-          <span>{{ sourceLabel(fact.source) }}</span>
-          <span v-if="fact.sensitivity === 'sensitive'" class="sensitive-chip">敏感</span>
-          <span v-if="fact.applicability_kind !== 'any'">
-            {{ fact.applicability_value ?? fact.applicability_kind }}
-          </span>
-        </div>
-
-        <details v-if="factEvidence(fact).length" class="fact-evidence">
-          <summary>来源 {{ factEvidence(fact).length }}</summary>
-          <ul>
-            <li v-for="evidence in factEvidence(fact)" :key="evidence.evidence_id">
-              <button
-                v-if="evidence.kind === 'book_location' && evidence.lid"
-                type="button"
-                class="evidence-link"
-                @click="emit('goto', evidence.lid)"
-              >
-                <MapPin :size="14" aria-hidden="true" />
-                {{ evidenceLabel(evidence) }}
-              </button>
-              <span v-else>{{ evidenceLabel(evidence) }}</span>
-              <blockquote v-if="evidence.text">{{ evidence.text }}</blockquote>
-            </li>
-          </ul>
-        </details>
-
-        <div class="fact-actions">
-          <button
-            type="button"
-            class="profile-icon-button"
-            title="纠正"
-            aria-label="纠正"
-            :disabled="props.busy"
-            @click="startEdit(fact)"
-          ><Pencil :size="15" aria-hidden="true" /></button>
-          <button
-            type="button"
-            class="profile-icon-button"
-            :title="fact.scope_kind === 'global' ? '改为仅本书' : '改为全局'"
-            :aria-label="fact.scope_kind === 'global' ? '改为仅本书' : '改为全局'"
-            :disabled="props.busy"
-            @click="changeScope(fact)"
-          ><ArrowLeftRight :size="15" aria-hidden="true" /></button>
-          <button
-            type="button"
-            class="profile-icon-button"
-            title="不再自动收集同类信息"
-            aria-label="不再自动收集同类信息"
-            :disabled="props.busy"
-            @click="stopCollecting(fact)"
-          ><CircleOff :size="15" aria-hidden="true" /></button>
-          <button
-            type="button"
-            class="profile-icon-button danger"
-            title="忘记"
-            aria-label="忘记"
-            :disabled="props.busy"
-            @click="forgetFact(fact)"
-          ><Trash2 :size="15" aria-hidden="true" /></button>
-        </div>
-      </article>
-    </div>
+    </details>
 
     <details v-if="historicalFacts.length" class="profile-history">
       <summary>历史记录 {{ historicalFacts.length }}</summary>
@@ -1233,4 +1244,13 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
     flex-basis: 38px;
   }
 }
+.profile-intro { margin: 0 0 1rem; font-size: .8rem; line-height: 1.75; color: var(--muted); }
+.profile-sync { margin-top: 1rem; color: var(--muted); font-size: .75rem; }
+.profile-sync summary, .fact-detail summary, .fact-more summary { cursor: pointer; }
+.fact-detail { margin-top: .5rem; color: var(--muted); font-size: .72rem; }
+.fact-detail p { overflow-wrap: anywhere; }
+.fact-actions .profile-icon-button:has(span) { display: inline-flex; flex: 0 0 auto; width: auto; gap: .4rem; padding: .35rem .6rem; font-size: .75rem; }
+.fact-more { margin-left: auto; order: 1; font-size: .75rem; color: var(--muted); }
+.fact-more[open] { flex-basis: 100%; }
+.fact-more[open] summary { margin-bottom: .5rem; }
 </style>

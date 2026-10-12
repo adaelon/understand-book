@@ -1,0 +1,136 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling server v0.0.0 (E:\allwork\download\agent\understand-book\crates\server)
+    Finished `test` profile [unoptimized] target(s) in 1m 20s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\server-d6ca67c640d9d740.exe)
+
+running 3 tests
+test tests::tutor_continuation_tests::continuation_tc2_selection_freezes_action_without_inventing_user_text_or_session ... ok
+test tests::tutor_continuation_tests::continuation_tc4_both_hosts_execute_chosen_action_to_delivery ... TC4_EVIDENCE {"accepted_turn":"turn_527e9f8409bcc7b4","action":"choice","chosen_event":{"binding":{"chat_session_id":"chat-01a12b22-e1f8-7452-a6e7-e09af8c174cb","control_revision":2,"session_revision":1,"source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e","turn_id":"turn_527e9f8409bcc7b4","tutor_session_id":"tutor-first-question:chat-01a12b22-e1f8-7452-a6e7-e09af8c174cb"},"causal_refs":["delivery:turn_527ea28409bccccd:explain"],"event_id":"chosen:turn_527e9f8409bcc7b4","kind":"continuation_chosen","occurred_at":"t0","payload":{"accepted_turn_id":"turn_527e9f8409bcc7b4","delivery_ref":"delivery:turn_527ea28409bccccd:explain","option_id":"compare"}},"execution_starts":1,"host":"local","incomplete":false,"provider_calls":3,"request":{"client_request_id":"choice","expected_chat_head":"turn_527ea28409bccccd","message":"","session_id":"chat-01a12b22-e1f8-7452-a6e7-e09af8c174cb","teaching_choice":{"delivery_ref":"delivery:turn_527ea28409bccccd:explain","option_id":"compare"}},"terminal":"completed"}
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+TC4_EVIDENCE {"accepted_turn":"turn_01a12b22-f56f-71b1-a31b-e60bc7133c54","action":"choice","chosen_event":{"binding":{"chat_session_id":"chat-01a12b22-f34e-76d3-8943-7526ed05ba6a","control_revision":2,"session_revision":1,"source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e","turn_id":"turn_01a12b22-f56f-71b1-a31b-e60bc7133c54","tutor_session_id":"tutor-first-question:chat-01a12b22-f34e-76d3-8943-7526ed05ba6a"},"causal_refs":["delivery:turn_01a12b22-f380-7733-b187-e7dcdb9d6943:explain"],"event_id":"chosen:turn_01a12b22-f56f-71b1-a31b-e60bc7133c54","kind":"continuation_chosen","occurred_at":"1791725073","payload":{"accepted_turn_id":"turn_01a12b22-f56f-71b1-a31b-e60bc7133c54","delivery_ref":"delivery:turn_01a12b22-f380-7733-b187-e7dcdb9d6943:explain","option_id":"compare"}},"execution_starts":1,"host":"network","incomplete":false,"provider_calls":3,"request":{"attachment_id":"tc0-page","client_request_id":"choice","expected_chat_head":"turn_01a12b22-f380-7733-b187-e7dcdb9d6943","expected_revision":2,"generation":2,"message":"","session_id":"chat-01a12b22-f34e-76d3-8943-7526ed05ba6a","teaching_choice":{"delivery_ref":"delivery:turn_01a12b22-f380-7733-b187-e7dcdb9d6943:explain","option_id":"compare"}},"terminal":"completed"}
+ok
+test tests::tutor_continuation_tests::continuation_tc4_local_answer_identity_and_open_goal ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 746 filtered out; finished in 7.79s
+

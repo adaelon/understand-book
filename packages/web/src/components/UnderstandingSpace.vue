@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, nextTick, ref, watch } from 'vue';
+import { ChevronRight, CornerDownRight, Lightbulb, MessageSquareText, PencilLine, Shapes } from '@lucide/vue';
 import { api as sharedApi, ApiError, type UnderstandingView, type UnderstandingRow, type LearningEvidenceView } from '../api';
 import { bindSceneApi } from '../network-context';
 const api = bindSceneApi(sharedApi);
@@ -154,8 +155,7 @@ onBeforeUnmount(() => { disposed = true; observer?.disconnect(); window.removeEv
 
 <template>
   <section aria-label="我的理解" class="understanding-space" :aria-busy="busy">
-    <header class="space-heading"><h3>我的理解</h3><span>从原话看见理解的变化</span></header>
-    <p class="intro">选择一项，查看解释与依据。没有依据的能力保持未知。</p>
+    <header v-show="!active" class="space-heading"><h3>看见理解的变化</h3><p>从你的原话出发，让每一次理解都有迹可循。</p></header>
     <p v-if="error" role="alert">{{ error }} <button :disabled="busy" @click="retryAction?.()">重试</button></p>
     <p v-if="feedbackFailure" role="alert">{{ feedbackFailure.message }} <button :disabled="locked || feedbackBusy" @click="recordFeedback(feedbackFailure.action)">重试反馈记录</button></p>
     <p v-if="busy" role="status">正在读取或保存…</p>
@@ -165,23 +165,28 @@ onBeforeUnmount(() => { disposed = true; observer?.disconnect(); window.removeEv
       <section v-if="view?.interpretations?.length" aria-label="当前理解解释" class="concept-list">
         <h4>当前解释</h4>
         <button v-for="item in view.interpretations" :key="item.evidence_id" class="concept" :disabled="locked" @click="openItem({ kind: 'interpretation', id: item.evidence_id }, $event)">
+          <span class="concept-icon"><Lightbulb aria-hidden="true" /></span><span class="concept-copy">
           <span class="concept-heading"><strong>{{ item.label }}</strong><span class="nature">{{ item.nature === 'hypothesis' ? '暂定理解' : '活动表现' }}</span></span>
           <span class="preview">{{ item.interpretation }}</span>
           <span v-if="item.correction" class="revision-label">有你的纠正</span>
+          </span><ChevronRight class="concept-chevron" aria-hidden="true" />
         </button>
       </section>
       <section v-if="view?.rows.length" aria-label="概念与能力" class="concept-list">
         <h4>概念与能力</h4>
         <button v-for="item in view.rows" :key="rowKey(item)" class="concept" :disabled="locked" @click="openItem({ kind: 'object', row: item }, $event)">
+          <span class="concept-icon"><Shapes aria-hidden="true" /></span><span class="concept-copy">
           <span class="concept-heading"><strong>{{ item.label }}</strong><span v-if="item.historical" class="nature">历史版本</span></span>
           <span class="preview">{{ capability[item.capability] ?? (item.capability || '尚未观察能力') }} · {{ item.state === 'unknown' ? '未知' : '已有表现依据' }}</span>
+          </span><ChevronRight class="concept-chevron" aria-hidden="true" />
         </button>
       </section>
       <button v-if="view?.next != null" :disabled="locked" @click="load(false, true)">查看更多对象</button>
+      <p v-if="view?.rows.length || view?.interpretations?.length" class="list-note"><MessageSquareText aria-hidden="true" />点开一项，查看原话与解释，也可以补充你的理解。</p>
     </div>
     <section v-if="active" ref="reading" tabindex="-1" aria-label="单项理解" class="reading">
       <button class="back" :disabled="locked" @click="back">← 返回概念列表</button>
-      <h4 class="reading-title">{{ row?.label ?? selected?.label }}</h4>
+      <div class="reading-heading"><h4 class="reading-title">{{ row?.label ?? selected?.label }}</h4><span v-if="selected" class="nature">{{ selected.nature === 'hypothesis' ? '暂定理解' : '活动表现' }}<span v-if="historicalEvidence"> · 历史记录</span></span></div>
       <p v-if="row?.historical" class="nature">历史版本 · 对象版本 {{ row.object_revision }}</p>
       <section v-if="row" aria-label="能力依据概况" class="summary">
         <p>{{ capability[row.capability] ?? (row.capability || '尚未观察能力') }}：{{ row.state === 'unknown' ? '未知' : '已有表现依据' }}</p>
@@ -191,7 +196,6 @@ onBeforeUnmount(() => { disposed = true; observer?.disconnect(); window.removeEv
         <p v-if="!row.evidence_count">尚无这项能力的表现依据。</p>
       </section>
       <article v-if="selected" aria-label="表现依据" class="evidence">
-        <p class="nature">{{ selected.nature === 'hypothesis' ? '暂定理解' : '活动表现' }}<span v-if="historicalEvidence"> · 历史记录</span></p>
         <section class="explanation"><h5>{{ explanationTitle }} · 系统解释</h5><p>{{ selected.interpretation }}</p></section>
         <section class="quote"><h5>你的原话</h5><blockquote>{{ selected.learner_quote || '此条记录未保留原话。' }}</blockquote></section>
         <p v-if="selected.nature === 'hypothesis'" class="conditions">这是依据实际使用形成的暂定判断，可随你的纠正和新表现修订。</p>
@@ -200,7 +204,7 @@ onBeforeUnmount(() => { disposed = true; observer?.disconnect(); window.removeEv
           <p v-if="status[selected.status]">{{ status[selected.status] }}</p>
         </template>
         <p v-if="selected.correction" class="correction">你的纠正：{{ selected.correction }}</p>
-        <section v-if="selected.teaching_implication" class="implication"><h5>后续教学</h5><p>{{ selected.teaching_implication }}</p></section>
+        <section v-if="selected.teaching_implication" class="implication"><CornerDownRight aria-hidden="true" /><div><h5>接下来可以学</h5><p>{{ selected.teaching_implication }}</p></div></section>
         <details :key="selected.evidence_id" :open="detailsOpen" class="facts" @toggle="detailsOpen = ($event.target as HTMLDetailsElement).open">
           <summary>查看详细依据</summary>
           <div v-if="detailsOpen">
@@ -212,10 +216,13 @@ onBeforeUnmount(() => { disposed = true; observer?.disconnect(); window.removeEv
             <p v-else>此条记录未附详细引用。</p>
           </div>
         </details>
-        <form class="correction-form" @submit.prevent="correct">
+        <details class="correction-editor">
+          <summary><PencilLine aria-hidden="true" />纠正这条解释</summary>
+          <form class="correction-form" @submit.prevent="correct">
           <label>纠正这条解释<textarea v-model="correction" :disabled="!!pending" rows="3" placeholder="写下你的实际理解或需要更正的地方" /></label>
           <button class="save" :disabled="locked || !correction.trim()">保存纠正</button>
-        </form>
+          </form>
+        </details>
       </article>
       <details v-if="row?.evidence_count" class="history">
         <summary>依据与解释历史</summary>
@@ -228,48 +235,36 @@ onBeforeUnmount(() => { disposed = true; observer?.disconnect(); window.removeEv
 </template>
 
 <style scoped>
-.understanding-space { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 24px; min-width: 0; overflow-wrap: anywhere; color: var(--ink); line-height: 1.7; }
-.space-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; }
+.understanding-space { min-width: 0; overflow-wrap: anywhere; color: var(--reader-ink, var(--ink)); font: 14px/1.7 var(--sans); }
 .space-heading h3, h4, h5, p { margin: 0; }
-.space-heading span, .intro, .preview, .conditions { color: var(--slate); }
-.space-heading span, .intro, .nature, .revision-label { font-size: 13px; }
-.intro { margin: 8px 0 20px; }
-.concept-list + .concept-list { margin-top: 24px; }
-.concept-list h4 { font-size: 14px; margin-bottom: 8px; }
-button { font: inherit; min-height: 44px; max-width: 100%; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); color: var(--ink); cursor: pointer; white-space: normal; overflow-wrap: anywhere; }
+.space-heading { margin: 4px 0 25px; }.space-heading h3 { font-size: 24px; line-height: 1.45; font-weight: 650; margin-bottom: 7px; }.space-heading p, .preview, .conditions { color: var(--tutor-muted, var(--reader-muted)); }.space-heading p { font-size: 13px; }
+svg { width: 18px; height: 18px; stroke-width: 1.7; flex-shrink: 0; }
+button { font: inherit; font-size: 13px; min-height: 40px; max-width: 100%; padding: 8px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--reader-card); color: inherit; cursor: pointer; white-space: normal; overflow-wrap: anywhere; }
 button:disabled { opacity: .55; cursor: default; }
 button:focus-visible, summary:focus-visible, textarea:focus-visible { outline: 2px solid var(--focus-blue); outline-offset: 3px; }
-.concept { display: block; width: 100%; text-align: left; margin: 8px 0; padding: 14px 16px; }
-.concept:hover:not(:disabled) { background: var(--surface-soft); border-color: var(--reader-coral); }
-.concept-heading { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
-.concept-heading strong { font-size: 16px; }
-.nature { color: var(--brand-green-deep); }
-.preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; font-size: 14px; }
-.revision-label { display: block; color: var(--slate); margin-top: 4px; }
-.reading, .listing { min-width: 0; outline: none; }
-.back { border: 0; padding-left: 0; color: var(--brand-green-deep); }
-.reading-title { font-size: 22px; line-height: 1.5; margin: 16px 0 8px; }
-.summary { padding: 12px 0 20px; }
-.summary p + p { margin-top: 8px; font-size: 14px; }
-.evidence { border: 1px solid var(--line); background: var(--reader-card); border-radius: 20px; padding: 24px; }
-.evidence > * + * { margin-top: 20px; }
-h5 { font-size: 13px; font-weight: 600; color: var(--slate); margin-bottom: 8px; }
-.explanation p { font-size: 17px; line-height: 1.85; }
-.evidence p, blockquote { white-space: pre-wrap; }
-blockquote { margin: 0; padding: 8px 0 8px 14px; border-left: 3px solid var(--reader-coral); }
-.correction { padding: 12px; border-radius: 10px; background: var(--surface-soft); }
-.conditions, .implication { font-size: 14px; }
-details { border-top: 1px solid var(--line); padding-top: 8px; }
-summary { min-height: 44px; padding: 8px 0; cursor: pointer; font-weight: 600; }
-.facts ul { padding-left: 20px; }
-.facts li + li, .facts blockquote { margin-top: 12px; }
-.correction-form label { display: block; font-size: 14px; }
-textarea { display: block; width: 100%; box-sizing: border-box; font: inherit; line-height: 1.6; padding: 12px; margin: 8px 0; resize: vertical; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); color: var(--ink); }
-.save { background: var(--brand-green-deep); color: #fff; }
-.history { margin-top: 24px; }
-.history h5 { margin-top: 16px; }
-.evidence-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
-[aria-pressed='true'] { border-color: var(--brand-green-deep); background: var(--surface-soft); }
-[role='alert'], [role='status'], .empty { margin: 12px 0; }
-@media (max-width: 480px) { .evidence { padding: 16px; border-radius: 16px; } .concept { padding: 12px; } .reading-title { font-size: 20px; } }
+.concept-list + .concept-list { margin-top: 25px; }.concept-list h4 { font-size: 11px; letter-spacing: .5px; font-weight: 500; color: var(--tutor-muted, var(--reader-muted)); margin-bottom: 8px; }
+.concept { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; margin: 0; padding: 18px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
+.concept:hover:not(:disabled) .concept-heading strong { color: var(--brand-green-deep); }.concept-icon { display: grid; place-items: center; width: 36px; height: 40px; border: 1px solid var(--line); background: var(--surface-soft); color: var(--brand-green-deep); border-radius: 9px; flex-shrink: 0; }.concept-copy { min-width: 0; flex: 1; }.concept-chevron { width: 15px; height: 15px; color: var(--tutor-muted, var(--reader-muted)); }
+.concept-heading { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }.concept-heading strong { font-size: 14px; font-weight: 600; }
+.nature { display: inline-block; color: var(--tutor-green, #56725a); background: var(--tutor-green-soft, #edf2e9); padding: 2px 7px; border-radius: 5px; font-size: 11px; font-weight: 400; flex-shrink: 0; }
+.preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 5px; font-size: 12px; }.revision-label { display: block; color: var(--tutor-muted, var(--reader-muted)); font-size: 11px; margin-top: 4px; }
+.list-note { display: flex; align-items: flex-start; gap: 8px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--tutor-muted, var(--reader-muted)); font-size: 12px; }.list-note svg { width: 16px; height: 16px; margin-top: 2px; }
+.reading, .listing { min-width: 0; outline: none; }.back { border: 0; background: transparent; padding-left: 0; color: var(--tutor-muted, var(--reader-muted)); font-size: 12px; min-height: 32px; }
+.reading-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 17px 0 24px; }.reading-title { font-size: 25px; line-height: 1.45; font-weight: 650; }
+.summary { padding: 0 0 20px; font-size: 13px; }.summary p + p { margin-top: 8px; font-size: 12px; }
+.evidence { padding: 0; }.evidence > * + * { margin-top: 22px; }
+h5 { font-size: 11px; font-weight: 500; color: var(--tutor-muted, var(--reader-muted)); margin-bottom: 9px; letter-spacing: .5px; }
+.explanation p { font-size: 15px; line-height: 1.85; }.evidence p, blockquote { white-space: pre-wrap; }
+.quote { background: var(--surface-soft); border-radius: 11px; padding: 18px 20px; }blockquote { margin: 0; padding: 0; border: 0; font-size: 16px; line-height: 1.85; }
+.correction { padding: 14px 16px; border-left: 2px solid var(--reader-coral); background: var(--reader-coral-soft); border-radius: 0 8px 8px 0; font-size: 13px; }
+.conditions { font-size: 12px; }.implication { display: flex; align-items: flex-start; gap: 12px; font-size: 13px; }.implication > svg { color: var(--brand-green-deep); margin-top: 1px; }.implication > div { min-width: 0; }
+details { border-top: 1px solid var(--line); padding-top: 8px; }summary { min-height: 44px; padding: 8px 0; cursor: pointer; font-size: 12px; color: var(--tutor-muted, var(--reader-muted)); }
+.facts ul { padding-left: 20px; }.facts li + li, .facts blockquote { margin-top: 12px; }.facts blockquote { font-size: 13px; padding-left: 12px; border-left: 2px solid var(--line); }.facts p { font-size: 13px; }
+.correction-editor > summary { display: flex; align-items: center; gap: 7px; color: var(--reader-ink); }.correction-editor > summary svg { width: 16px; height: 16px; }
+.correction-form { padding-top: 8px; }.correction-form label { display: block; font-size: 13px; }
+textarea { display: block; width: 100%; box-sizing: border-box; font: inherit; line-height: 1.7; padding: 14px; margin: 8px 0; resize: vertical; border: 1px solid var(--line); border-radius: 10px; background: var(--reader-card); color: inherit; }
+.save { background: var(--brand-green-deep); color: var(--reader-card); border-color: var(--brand-green-deep); min-height: 44px; }
+.history { margin-top: 24px; }.history h5 { margin-top: 16px; }.evidence-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }[aria-pressed='true'] { border-color: var(--brand-green-deep); background: var(--reader-coral-soft); }
+[role='alert'], [role='status'], .empty { margin: 12px 0; font-size: 13px; }[role='alert'] { color: var(--brand-error); }.empty { padding: 28px 0; color: var(--tutor-muted, var(--reader-muted)); }
+@media (max-width: 480px) { .space-heading h3 { font-size: 22px; }.reading-title { font-size: 23px; }.quote { padding: 16px; }.concept { gap: 10px; }.concept-icon { width: 32px; height: 36px; }textarea { font-size: 16px; } }
 </style>

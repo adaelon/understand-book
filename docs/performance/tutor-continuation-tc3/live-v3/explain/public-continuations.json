@@ -1,0 +1,28 @@
+[
+  {
+    "availability": {
+      "status": "offered"
+    },
+    "continuation": {
+      "options": [
+        {
+          "label": "把两段等长路程的速度直接算术平均,和用总路程÷总时间算出的值对比一下",
+          "move_kind": "compare",
+          "option_id": "compare_naive_mean",
+          "purpose": "算出两种算法的具体数值差异,看到分母按时间累积而不是按段数分摊"
+        },
+        {
+          "label": "在行程中加一段长时间停顿,看平均速度怎么变",
+          "move_kind": "observe",
+          "option_id": "observe_added_stop",
+          "purpose": "看到总路程不变而总时间增大时平均速度下降,并解释这个下降在物理上意味着什么"
+        }
+      ],
+      "recommended_option_id": "compare_naive_mean"
+    },
+    "delivery_ref": "delivery:turn_e2bdaa9de54a6be4:move-explain-avg-speed-time-denominator",
+    "expected_chat_head": "turn_e2bdaa9de54a6be4",
+    "origin_turn_id": "turn_e2bdaa9de54a6be4",
+    "target_summary": "平均速度定义中“总时间作为分母”的量的含义"
+  }
+]

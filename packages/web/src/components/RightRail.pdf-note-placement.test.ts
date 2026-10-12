@@ -13,8 +13,6 @@ const baseProps = {
   notePlacementSurface: "pdf" as const,
   noteSourceFingerprint: "a".repeat(64),
   askDraft: null,
-  showTrace: {},
-  latestTrace: [],
   selectedLid: "1.1",
   selectedFormula: null,
   contextHighlights: [],

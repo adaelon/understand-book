@@ -100,8 +100,6 @@ const VisualHarness = defineComponent({
         fullscreen: fullscreen.value,
         agentInput: agentInput.value,
         sending: false,
-        showTrace: {},
-        latestTrace: [],
         selectedLid: null,
         selectedFormula: null,
         contextNotes: [],

@@ -5,8 +5,8 @@ import { bindSceneApi } from '../network-context';
 const api = bindSceneApi(sharedApi);
 import type { PresentationRef } from '../generated/PresentationRef';
 import type { PresentationFollowUp } from '../generated/PresentationFollowUp';
-const props = defineProps<{ sessionId: string; turnId: string; reference?: PresentationRef;
-  snapshot?: () => Promise<PresentationFollowUp>; ready?: boolean }>();
+const props = withDefaults(defineProps<{ sessionId: string; turnId: string; reference?: PresentationRef;
+  snapshot?: () => Promise<PresentationFollowUp>; ready?: boolean }>(), { ready: true });
 const root = ref<HTMLElement>();
 const activities = ref<TutorActivity[]>([]);
 const responses = ref<Record<string, string>>({});
@@ -139,9 +139,10 @@ onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEvent
       <textarea v-if="activity.move.actions.some(a => ['submit', 'revise', 'self_report'].includes(a))" v-model="responses[activity.delivery_ref]" aria-label="活动回答" rows="2" />
       <template v-for="action in activity.move.actions" :key="action">
         <button v-if="!(action === 'submit' && activity.attempted) && !(action === 'revise' && !activity.attempted)"
-          :disabled="busy || !!pending || (activity.status !== 'active' && ['submit', 'revise', 'skip'].includes(action))" @click="act(activity, action)">{{ labels[action] }}</button>
+          :data-help-action="['request_hint', 'reveal'].includes(action) ? action : undefined" :disabled="busy || !!pending || (activity.status !== 'active' && ['submit', 'revise', 'skip'].includes(action))" @click="act(activity, action)">{{ labels[action] }}</button>
       </template>
       <p v-if="helps[activity.delivery_ref]" class="help" :data-help-for="activity.delivery_ref" role="status">{{ helps[activity.delivery_ref].text }}</p>
+      <small v-if="activity.move.actions.length && !activity.move.actions.some(a => ['request_hint', 'reveal'].includes(a))">当前题目未提供提示或直接讲解，可保留题目并返回原文阅读。</small>
       <small v-if="activity.help_seen.length">此活动已展示过帮助；重开页面会保留这项记录。</small>
       <small v-if="activity.attempted" role="status">{{ assessmentLabels[activity.assessment?.status ?? 'unassessed'] }}</small>
       <small v-if="activity.assessment?.assistance_count">本次回答前已展示帮助。</small>

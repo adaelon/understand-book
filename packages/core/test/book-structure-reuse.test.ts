@@ -1,10 +1,22 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { tmpdir } from "node:os";
-import { expect, it, onTestFinished } from "vitest";
+import { expect, it, onTestFinished, vi } from "vitest";
+const diskFailure = vi.hoisted(() => ({ failNextWrite: false }));
+vi.mock("node:fs", async importOriginal => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  return { ...actual, writeFileSync: (...args: Parameters<typeof actual.writeFileSync>) => {
+    if (diskFailure.failNextWrite) {
+      diskFailure.failNextWrite = false;
+      actual.writeFileSync(args[0], String(args[1]).slice(0, 16), args[2]);
+      throw Object.assign(new Error("disk full"), { code: "ENOSPC" });
+    }
+    return actual.writeFileSync(...args);
+  } };
+});
 import { BOOK_STRUCTURE_EXECUTION_BUDGET_V2, BOOK_STRUCTURE_EXECUTION_PROMPTS_V2, createBookStructureExecutionContractsV2,
   evaluateBookStructureExecution, proofBoundBookStructureDescriptor, type BookStructureCandidate, type BookStructureStitchFragmentInputV1 } from "../src/book-structure";
-import { createBookStructureGenerationTask, freezeBookStructureGenerationTask, readBookStructureGenerationArtifact,
+import { bookStructureGenerationTaskPath, createBookStructureGenerationTask, freezeBookStructureGenerationTask, readBookStructureGenerationTask, readBookStructureGenerationArtifact,
   writeBookStructureGenerationCandidate } from "../src/book-structure-generation";
 import { materializeBookStructureContributions } from "../src/book-structure-materialization";
 import { bookStructureRelationContracts, routeBookStructureRelationSelections } from "../src/book-structure-relation-routing";
@@ -63,6 +75,17 @@ function fixture() {
   });
   return { target, contracts, member, task, tasks, files, before, children };
 }
+
+it("removes a partial frozen task after disk exhaustion so the same task can be retried", () => {
+  const f = fixture(), task = f.task(29);
+  const file = bookStructureGenerationTaskPath(f.target, task.policy_generation_id, task.descriptor.work_unit_id);
+  diskFailure.failNextWrite = true;
+  expect(() => freezeBookStructureGenerationTask(f.target, task)).toThrow("disk full");
+  expect(existsSync(file)).toBe(false);
+  expect(freezeBookStructureGenerationTask(f.target, task)).toBe(file);
+  expect(readBookStructureGenerationTask(f.target, task.policy_generation_id, task.descriptor.work_unit_id)).toEqual(task);
+  expect(freezeBookStructureGenerationTask(f.target, task)).toBe(file);
+});
 
 it("admits 29 v4 local results after adding only post-stitch policies and reconstructs the same selection plan", () => {
   const f = fixture();

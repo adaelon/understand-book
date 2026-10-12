@@ -3,8 +3,13 @@ import katexCss from 'katex/dist/katex.min.css?inline';
 import type { ShareDraft } from './reading-share';
 import slowerArtwork from './assets/share-slower.svg?raw';
 
+const minimumDiagramScale = .75;
+const diagramHorizontalSpace = 192;
+
 export function shareSize(draft: ShareDraft) {
-  return draft.source.diagram && draft.orientation === 'landscape' ? { width: 1440, height: 1080 } : { width: 1080, height: 1440 };
+  const size = draft.source.diagram && draft.orientation === 'landscape' ? { width: 1440, height: 1080 } : { width: 1080, height: 1440 };
+  if (draft.source.diagram) size.width = Math.max(size.width, Math.ceil(draft.source.diagram.width * minimumDiagramScale) + diagramHorizontalSpace);
+  return size;
 }
 const css = `
 .share-sheet { --accent:#a64735; --bright:#c56e54; --stage:#d9c5ac; --paper:#fff3df; --ink:#4f4639; box-sizing:border-box; width:1080px; height:1440px; background:#fff9ef; color:var(--ink); font:400 32px/1.8 "Noto Serif SC Variable"; position:relative; }
@@ -84,8 +89,7 @@ export function shareSections(draft: ShareDraft): HTMLElement[] {
     const graph = draft.source.diagram, { width, height } = shareSize(draft);
     const section = element('section'); section.append(element('div', '图解 · 助手呈现', 'identity'));
     const image = document.createElement('img'); image.src = graph.png; image.className = 'diagram-image';
-    const scale = Math.min((width - 192) / graph.width, (height - 510) / graph.height);
-    if (scale < .75) throw new Error('图解过长或过宽，缩放后难以阅读；请选择竖版或调整演示布局后重新取图。');
+    const scale = Math.max(minimumDiagramScale, Math.min((width - diagramHorizontalSpace) / graph.width, (height - 510) / graph.height));
     image.width = Math.round(graph.width * scale); image.height = Math.round(graph.height * scale);
     section.append(image); sections.push(section);
   }
@@ -220,6 +224,14 @@ export async function paginateShare(draft: ShareDraft) {
       }
       sectionContent.append(block);
       if (fits()) return;
+      if (block.matches('img.diagram-image')) {
+        // Keep the complete frozen scene at readable scale; measure title and sources too.
+        const page = sectionContent.closest<HTMLElement>('.share-sheet')!;
+        const requiredHeight = content.getBoundingClientRect().bottom - page.getBoundingClientRect().top
+          + 28 + footer.getBoundingClientRect().height + 32;
+        page.style.height = `${Math.ceil(requiredHeight)}px`;
+        return;
+      }
       block.remove();
       if (hasPreviousContent()) continuePage(label);
       sectionContent.append(block);
@@ -254,7 +266,7 @@ export async function paginateShare(draft: ShareDraft) {
         (page.querySelector('.page-number') as HTMLElement).style.display = 'none';
         const pageFooter = page.querySelector<HTMLElement>('footer')!;
         const top = page.querySelector('.content')!.getBoundingClientRect().bottom - page.getBoundingClientRect().top + 36;
-        pageFooter.style.top = `${Math.min(top, height - 64 - pageFooter.getBoundingClientRect().height)}px`;
+        pageFooter.style.top = `${Math.min(top, page.offsetHeight - 64 - pageFooter.getBoundingClientRect().height)}px`;
         pageFooter.style.bottom = 'auto';
       }
       // Detect actual wide objects before rasterizing, rather than cropping them.
@@ -302,12 +314,12 @@ async function embeddedFonts(text: string, includeMath: boolean): Promise<string
 }
 
 export async function renderShare(draft: ShareDraft): Promise<Blob[]> {
-  const { width, height } = shareSize(draft);
   const result = await paginateShare(draft);
   try {
     const fonts = await embeddedFonts(result.pages.map(page => page.textContent).join(''), result.pages.some(page => !!page.querySelector('.katex')));
     const blobs: Blob[] = [];
     for (const page of result.pages) {
+      const width = page.offsetWidth, height = page.offsetHeight;
       const clone = page.cloneNode(true) as HTMLElement;
       // Replay the same explicit layout rules and embedded fonts used for pagination.
       clone.prepend(element('style', `${katexCss.replace(/@font-face\s*\{[^}]*\}/g, '')}\n${css}\n${fonts}`));

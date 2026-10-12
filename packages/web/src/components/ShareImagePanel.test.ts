@@ -7,6 +7,8 @@ vi.mock('../reading-share', async original => ({ ...await original<typeof import
 const source = { parts: [{ id: 'body' as const, label: '阅读笔记', text: '保留的原笔记' }], sources: ['无已记录出处'], association: '' };
 let wrapper: ReturnType<typeof mount>;
 beforeEach(() => {
+  vi.useFakeTimers();
+  vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(() => {});
   vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(() => {});
   vi.spyOn(HTMLDialogElement.prototype, 'close').mockImplementation(() => {});
   vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preview');
@@ -14,8 +16,50 @@ beforeEach(() => {
   vi.mocked(renderShare).mockReset(); vi.mocked(saveShare).mockReset();
   wrapper = mount(ShareImagePanel, { props: { source } });
 });
-afterEach(() => { wrapper.unmount(); vi.restoreAllMocks(); });
+afterEach(() => { wrapper.unmount(); vi.restoreAllMocks(); vi.useRealTimers(); });
 const button = (name: string) => wrapper.findAll('button').find(b => b.text() === name)!;
+it('generates on opening, batches typing, and keeps the previous image until the updated image is ready', async () => {
+  vi.mocked(renderShare).mockResolvedValue([new Blob(['first'])]);
+  await vi.advanceTimersByTimeAsync(0); await flushPromises();
+  expect(renderShare).toHaveBeenCalledTimes(1);
+  expect(wrapper.get('img').attributes('src')).toBe('blob:preview');
+  await wrapper.get('textarea').setValue('思');
+  await vi.advanceTimersByTimeAsync(150);
+  await wrapper.get('textarea').setValue('思考之后');
+  await vi.advanceTimersByTimeAsync(150);
+  expect(renderShare).toHaveBeenCalledTimes(1);
+  expect(wrapper.get('img').attributes('src')).toBe('blob:preview');
+  expect(button('下载 PNG').attributes('disabled')).toBeDefined();
+  expect(wrapper.find('a').exists()).toBe(false);
+  await vi.advanceTimersByTimeAsync(100); await flushPromises();
+  expect(renderShare).toHaveBeenCalledTimes(2);
+  expect(renderShare).toHaveBeenLastCalledWith(expect.objectContaining({ reflection: '思考之后' }));
+  expect(button('下载 PNG').attributes('disabled')).toBeUndefined();
+  await button('预览图片').trigger('click'); await flushPromises();
+  expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalled();
+  expect(renderShare).toHaveBeenCalledTimes(2);
+});
+it('waits for source loading and ignores an older render that finishes after the newest one', async () => {
+  await wrapper.setProps({ loading: true });
+  await vi.advanceTimersByTimeAsync(500);
+  expect(renderShare).not.toHaveBeenCalled();
+  const resolves: ((blobs: Blob[]) => void)[] = [];
+  vi.mocked(renderShare).mockImplementation(() => new Promise(resolve => resolves.push(resolve)));
+  await wrapper.setProps({ loading: false });
+  await vi.advanceTimersByTimeAsync(250);
+  await wrapper.get('textarea').setValue('最新版');
+  await vi.advanceTimersByTimeAsync(250);
+  const latest = new Blob(['latest']);
+  resolves[1]([latest]); await flushPromises();
+  resolves[0]([new Blob(['old'])]); await flushPromises();
+  expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+  await button('下载 PNG').trigger('click'); await flushPromises();
+  expect(saveShare).toHaveBeenCalledWith(latest, 'blob:preview', expect.any(Function), undefined);
+  await wrapper.get('textarea').setValue('离开前编辑');
+  wrapper.unmount();
+  await vi.advanceTimersByTimeAsync(500);
+  expect(renderShare).toHaveBeenCalledTimes(2);
+});
 it('RS6 adjusts a frozen answer excerpt while preserving edits and invalidating its preview', async () => {
   wrapper.unmount();
   const full = '仅当条件成立时，结论才成立。另一段解释。';
@@ -33,7 +77,8 @@ it('RS6 adjusts a frozen answer excerpt while preserving edits and invalidating 
   const field = wrapper.get('[aria-label="原回答文字"]').element as HTMLTextAreaElement;
   field.setSelectionRange(0, full.indexOf('另一段'));
   await button('使用选中文字').trigger('click');
-  expect(wrapper.find('img').exists()).toBe(false);
+  expect(wrapper.find('img').exists()).toBe(true);
+  expect(button('下载 PNG').attributes('disabled')).toBeDefined();
   await button('预览图片').trigger('click'); await flushPromises();
   expect(renderShare).toHaveBeenLastCalledWith(expect.objectContaining({ title: '我的标题', reflection: '我的感想',
     source: expect.objectContaining({ parts: [expect.objectContaining({ text: '仅当条件成立时，结论才成立。' })] }) }));
@@ -66,6 +111,7 @@ it('invalidates preview immediately after an edit and ignores late render after 
   await button('预览图片').trigger('click');
   await wrapper.get('textarea').setValue('新感想');
   resolve([new Blob(['old'])]); await flushPromises(); expect(wrapper.find('img').exists()).toBe(false);
+  expect(button('下载 PNG').attributes('disabled')).toBeDefined();
   await button('预览图片').trigger('click'); wrapper.unmount();
   resolve([new Blob(['late'])]); await flushPromises(); expect(URL.createObjectURL).not.toHaveBeenCalled();
 });
@@ -81,7 +127,9 @@ it('previews and saves each generated page with a distinct filename, then invali
   await button('下载 PNG').trigger('click'); await flushPromises();
   expect(saveShare).toHaveBeenLastCalledWith(blobs[1], 'blob:second', expect.any(Function), 2);
   await wrapper.get('textarea').setValue('修改后');
-  expect(wrapper.find('img').exists()).toBe(false);
+  expect(wrapper.find('img').exists()).toBe(true);
+  expect(button('下载 PNG').attributes('disabled')).toBeDefined();
+  await vi.advanceTimersByTimeAsync(250); await flushPromises();
   expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:first');
   expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:second');
 });
@@ -116,10 +164,12 @@ it('RS7 fixes scene context and changes orientation without recapturing the diag
   await button('预览图片').trigger('click'); await flushPromises();
   expect(renderShare).toHaveBeenLastCalledWith(expect.objectContaining({ orientation: 'landscape', layout: 'diagram' }));
   await wrapper.findAll('select').find(select => select.find('option[value="portrait"]').exists())!.setValue('portrait');
-  expect(wrapper.find('img').exists()).toBe(false);
+  expect(wrapper.find('img').exists()).toBe(true);
+  expect(button('下载 PNG').attributes('disabled')).toBeDefined();
   await button('预览图片').trigger('click'); await flushPromises();
   expect(renderShare).toHaveBeenLastCalledWith(expect.objectContaining({ orientation: 'portrait', source: diagram }));
   vi.mocked(renderShare).mockRejectedValueOnce(new Error('图解过长'));
+  await wrapper.get('textarea').setValue('更新说明');
   await button('预览图片').trigger('click'); await flushPromises();
   await button('返回图解').trigger('click');
   expect(wrapper.emitted('close')).toHaveLength(1);

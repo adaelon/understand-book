@@ -26,6 +26,40 @@ function resolveAll(work: ObjectAlignmentWork) {
   }
 }
 describe("bounded cross-fragment object alignment", () => {
+  it("keeps earlier evidence and proposals immutable while sharing unrelated resolved records", () => {
+    let work = newObjectAlignment([fragment("f", proposal)]);
+    const focus = alignmentFocus(work);
+    if (focus.kind !== "candidate") throw new Error("fixture needs a candidate");
+    const lid = focus.object.source_bindings[0].lid;
+    const partial = advance(work, { kind: "read", lid, start: 0, end: 1 });
+    const expanded = advance(partial, { kind: "read", lid, start: 1, end: 2 });
+    expect(partial.read_ranges[0].end).toBe(1);
+    expect(expanded.read_ranges[0].end).toBe(2);
+    work = readBindings(work, focus.object.source_bindings);
+    const before = structuredClone(work);
+    const unrelated = work.proposal.objects.find(o => o.key !== focus.key)!;
+    const next = advance(work, { kind: "resolve", keys: [focus.key], object: focus.object });
+    expect(work).toEqual(before);
+    expect(next.proposal.objects.find(o => o.key === unrelated.key)).toBe(unrelated);
+  });
+  it("ranks broad lookup pages without dropping matches and preserves historical six-item pages", () => {
+    const work = newObjectAlignment([fragment("f", { ...proposal, objects: Array.from({ length: 30 }, (_, i) => ({
+      ...proposal.objects[0], key: `item-${i}`, meaning: i === 29 ? "special target" : `other ${i}`, aliases: ["target"],
+    })) })]);
+    const action = { kind: "search", query: "target", offset: 0 };
+    const old = advance(work, action);
+    expect(old.search!.keys).toHaveLength(6);
+    const current = advanceObjectAlignment({ work, action, source, operation_id: "ranked",
+      lookup: { page_size: 24, order: "meaning_first" } });
+    expect(current.search!.keys[0]).toBe("f/item-29");
+    expect(current.search!.keys).toHaveLength(24);
+    const next = advanceObjectAlignment({ work: current, action: { ...action, offset: current.search!.next_offset },
+      source, operation_id: "ranked-next", lookup: { page_size: 24, order: "meaning_first" } });
+    expect(new Set([...current.search!.keys, ...next.search!.keys]).size).toBe(30);
+    expect(next.search!.next_offset).toBeNull();
+    expect(current.proposal).toBe(work.proposal);
+    expect(work.search).toBeUndefined();
+  });
   it("supplements only missing inspected evidence after exhaustion, including gaps and the last pending search", () => {
     let work = newObjectAlignment([fragment("f", proposal)]);
     const focus = alignmentFocus(work);

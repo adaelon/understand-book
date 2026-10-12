@@ -178,9 +178,23 @@ pub struct DispositionReceipt {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TurnDomain {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub choice_event: Option<memory::teaching::TeachingEvent>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) local_preparation: Option<teaching::FrozenTeachingPreparation>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_action: Option<LocalActionInput>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub interaction: Option<runtime::tutor_continuation::ResolvedInteraction>,
     pub scene: Option<ReadingScene>,
     pub teaching: Vec<TeachingLink>,
     pub effects: Vec<EffectRecord>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LocalActionInput {
+    pub client_request_id: String,
+    pub normalized: Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

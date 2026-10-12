@@ -1,0 +1,43 @@
+{
+  "status": "deployed-and-verified",
+  "published_at_utc": "2026-10-10T13:34:11.016495+00:00",
+  "url": "https://understandbook.top/",
+  "home_url": "https://understandbook.top/home.html",
+  "release": "/opt/understand-book/releases/main-12b765b-20261010",
+  "backup": "/opt/understand-book/backups/learning-home-20261010T133401Z",
+  "source_files": [
+    "packages/web/src/App.vue",
+    "packages/web/src/components/ConversationLearningGoal.vue",
+    "packages/web/src/components/RightRail.vue",
+    "packages/web/src/components/ShareImagePanel.vue",
+    "packages/web/src/components/TopBar.vue",
+    "packages/web/src/components/TutorControl.vue",
+    "packages/web/src/components/TutorPanel.vue",
+    "packages/web/src/components/UnderstandingSpace.vue",
+    "packages/web/src/reading-share-layout.ts",
+    "packages/web/src/useTutorControl.ts",
+    "packages/web/vite.config.ts",
+    "packages/web/home.html",
+    "packages/web/src/home.ts",
+    "packages/web/src/home.css",
+    "packages/web/src/components/ProductHome.vue",
+    "packages/web/src/assets/home/interactive-explanation.png",
+    "packages/web/src/assets/home/reading-workspace.png"
+  ],
+  "uploaded_assets": [
+    "home-4Wj2D3Vv.css",
+    "home-Dk_xTn4q.js",
+    "interactive-explanation-C30axrXJ.png",
+    "reader-CWWI3ysS.css",
+    "reader-DkESXGBd.js",
+    "reading-workspace-BVYP9pPg.png",
+    "x-DYmTJ8__.js"
+  ],
+  "service_before": "MainPID=456214\nWorkingDirectory=/opt/understand-book/releases/main-12b765b-20261010\nActiveState=active\n",
+  "service_after": "MainPID=456214\nWorkingDirectory=/opt/understand-book/releases/main-12b765b-20261010\nActiveState=active\n",
+  "old_assets_retained": true,
+  "backend_restarted": false,
+  "data_migrated": false,
+  "verified_at_utc": "2026-10-10T13:35:35.391Z",
+  "verification": "live-verification.json"
+}

@@ -1,0 +1,30 @@
+
+> @understand-book/web@0.0.0 test E:\allwork\download\agent\understand-book\packages\web
+> vitest run "src/network-client.test.ts" "src/App.startup.test.ts" "src/components/RightRail.test.ts" "src/components/ConversationLearningGoal.test.ts" "src/useTutorControl.test.ts"
+
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/web
+
+ ✓ src/useTutorControl.test.ts (4 tests) 19ms
+ ✓ src/components/ConversationLearningGoal.test.ts (6 tests) 102ms
+ ✓ src/network-client.test.ts (17 tests) 133ms
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/RightRail.test.ts (50 tests) 2157ms
+ ✓ src/App.startup.test.ts (65 tests) 1575ms
+
+ Test Files  5 passed (5)
+      Tests  142 passed (142)
+   Start at  09:24:32
+   Duration  21.91s (transform 5.77s, setup 0ms, collect 15.84s, tests 3.99s, environment 33.16s, prepare 16.94s)
+

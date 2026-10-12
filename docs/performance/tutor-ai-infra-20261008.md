@@ -325,3 +325,61 @@ tutor_725、726 也返回 retryable_failure，全部终止通知已消费。引�
 2026-10-10 用户继续后，恢复中断点：原 tutor_731 已由上一轮引擎确认接纳；tutor_732 的 spawn 成功但中断发生于保存归属之前，补记该已知 launch 归属并将无活跃 native agent 的终止观察交给 refill。原 invocation 确認 committed=417,total_tasks=420,pending=3，为未接纳工作签发新 ref，未重新计入已接纳项。当前宿主只有 root，capacity_limit 恢复为 3；tutor_733、734、735 三路全部提交成功并由引擎确认接纳，committed=420,total_tasks=423,pending=3，remaining=1260/resolved=4/total_objects=1264。回读期间晚到的两个终止通知在派发前再经 refill 消费，全部名额正确释放；tutor_736、737、738 已三路启动。未更改计划或候选正文，仍未 DONE。
 
 tutor_736 至 741 六项动作由引擎确认接纳，最新 committed=426,total_tasks=429,pending=3，remaining=1260/resolved=4/total_objects=1264。晚到终止通知按原归属逐次经 refill 消费，旧 ref 保留于 completed_refs，未释放替换子执行器的名额。tutor_742、743、744 三路已启动；没有候选失败或用户确认边界。
+
+tutor_744 返回零调用 bootstrap_unavailable；仅以原 owned ref 的 bootstrap_failure 交给引擎恢复，没有 root 探测 executor 接口。tutor_742、743 已提交并由引擎确认接纳，committed=428,total_tasks=431,pending=3；启动失败观察得到结构化恢复后从队列移除，两个晚到成功终止通知在派发前消费。引擎继续 SPAWN_EXECUTORS，tutor_745、746、747 已三路启动，remaining=1260/resolved=4/total_objects=1264。该启动故障没有被记为语义接纳或候选失败。
+
+tutor_745 至 748 及 750 五项动作已由引擎确认接纳，最新 committed=433,total_tasks=436,pending=3，remaining=1260/resolved=4/total_objects=1264。tutor_749 仍活跃，两个空位已派发 tutor_751、752，实际三路并发持续。没有等待全部执行器才补位，没有以尚未完成的生命周期推定接纳。
+
+tutor_749、751、752、753 四项动作由引擎确认接纳，最新 committed=437,total_tasks=440,pending=3，remaining=1260/resolved=4/total_objects=1264。晚到终止通知在派发前按原 owned slot 消费；tutor_754、755、756 三路已启动。当前无候选失败或用户边界。
+
+tutor_754、755、756 全部由引擎确认接纳，committed=440,total_tasks=441,pending=1；冻结轮次两支已完成，最后一支继续，shared remaining=1260/resolved=4/total_objects=1264 尚未整轮归并。tutor_757 已启动，无失败或用户确认边界。
+
+tutor_757 已由引擎确认接纳，committed=441,total_tasks=442,pending=1；最后一支尚需后续动作，tutor_758 已启动。shared remaining=1260/resolved=4/total_objects=1264，当前无失败或用户确认边界。
+
+tutor_758 已由引擎确认接纳，committed=442,total_tasks=443,pending=1；tutor_759 继续本轮最后一支。shared remaining=1260/resolved=4/total_objects=1264，当前仍为 SPAWN_EXECUTORS，无失败或用户确认边界。
+
+tutor_759、760 两项已由引擎确认接纳，committed=444,total_tasks=445,pending=1；tutor_761 继续本轮最后一支。shared remaining=1260/resolved=4/total_objects=1264，当前无失败或用户确认边界。
+
+tutor_761 已由引擎确认接纳，committed=445,total_tasks=446,pending=1；tutor_762 继续本轮最后一支。shared remaining=1260/resolved=4/total_objects=1264，当前仍为正常 SPAWN_EXECUTORS。
+
+tutor_762、763 两项已由引擎确认接纳，committed=447,total_tasks=448,pending=1；tutor_764 继续本轮最后一支。shared remaining=1260/resolved=4/total_objects=1264，未出现失败或用户边界。
+
+tutor_764 已由引擎确认接纳，冻结轮次完成归并：committed=448,total_tasks=451,pending=3，shared remaining 从 1260 降至 1257，resolved 从 4 增至 7,total_objects=1264。下一轮 tutor_765、766、767 已三路启动；未出现候选失败或用户确认边界。
+
+tutor_765、766、767 全部由引擎确认接纳，committed=451,total_tasks=454,pending=3，remaining=1257/resolved=7/total_objects=1264。晚到终止通知在派发前消费；tutor_768、769、770 三路已启动。没有失败或用户确认边界。
+
+tutor_768、769、770 全部由引擎确认接纳，committed=454,total_tasks=457,pending=3，remaining=1257/resolved=7/total_objects=1264。晚到终止通知在派发前消费；tutor_771、772、773 三路已启动，当前无失败或用户边界。
+
+tutor_771、772、773 全部由引擎确认接纳，committed=457,total_tasks=460,pending=3，remaining=1257/resolved=7/total_objects=1264。晚到终止通知在派发前消费；tutor_774、775、776 三路已启动，当前无失败或用户确认边界。
+
+tutor_774、775、776 全部由引擎确认接纳，committed=460,total_tasks=463,pending=3，remaining=1257/resolved=7/total_objects=1264。晚到终止通知在派发前消费；tutor_777、778、779 三路已启动，当前无失败或用户边界。
+
+- 继续构建：tutor_777 返回 retryable_failure，恢复派发 tutor_780 已成功；tutor_778、779、780、781、782 均由引擎确认接纳。committed=465,total_tasks=468,pending=3，remaining=1257/resolved=7/total_objects=1264。晚到终止通知在派发前消费；tutor_783、784、785 三路已启动。
+
+- tutor_783 至 tutor_787 全部由引擎确认接纳，committed=470,total_tasks=472,pending=2，remaining=1257/resolved=7/total_objects=1264。本轮两个可执行任务 tutor_788、789 已启动；capacity_limit 仍为 3。
+
+- tutor_788 至 tutor_791 全部由引擎确认接纳，committed=474,total_tasks=476,pending=2，remaining=1257/resolved=7/total_objects=1264。tutor_792、793 两个可执行任务已启动，capacity_limit=3，当前无失败或用户边界。
+
+- tutor_792、793、794 全部由引擎确认接纳，本轮已合并：committed=477,total_tasks=480,pending=3；remaining_objects 从 1257 降至 1253，resolved_objects 从 7 增至 10，total_objects 从 1264 降至 1263。tutor_795、796、797 三路已启动，当前无失败或用户边界。
+
+- tutor_795 返回 interrupted；仅作为 terminal_children 交由引擎，不臆造零调用 bootstrap_failure。tutor_796、797 均由引擎确认接纳，committed=479,total_tasks=482,pending=3；remaining=1253/resolved=10/total_objects=1263。恢复及后续派发 tutor_798、799、800 三路已启动，无用户边界。
+
+- tutor_798、799、800 全部由引擎确认接纳，tutor_795 中断后的恢复派发成功。committed=482,total_tasks=485,pending=3，remaining=1253/resolved=10/total_objects=1263。tutor_801、802、803 三路已启动，无失败或用户边界。
+
+- tutor_801、802、803 全部由引擎确认接纳，committed=485,total_tasks=488,pending=3，remaining=1253/resolved=10/total_objects=1263。tutor_804、805、806 三路已启动，当前无失败或用户边界。
+
+- tutor_804、805、806 全部由引擎确认接纳，committed=488,total_tasks=491,pending=3，remaining=1253/resolved=10/total_objects=1263。tutor_807、808、809 三路已启动，当前无失败或用户边界。
+
+- tutor_807、808、809 全部由引擎确认接纳，三个终止通知在同一次 refill 中消费。committed=491,total_tasks=494,pending=3，remaining=1253/resolved=10/total_objects=1263。tutor_810、811、812 三路已启动，无失败或用户边界。
+
+- tutor_810、811、812 全部由引擎确认接纳，committed=494,total_tasks=497,pending=3，remaining=1253/resolved=10/total_objects=1263。tutor_813、814、815 三路已启动，当前无失败或用户边界。
+
+- tutor_813、814、815 全部由引擎确认接纳，committed=497,total_tasks=500,pending=3，remaining=1253/resolved=10/total_objects=1263。tutor_816、817、818 三路已启动，当前无失败或用户边界。
+
+- tutor_816、817、818 都返回 committed，但携带 tutor_816、817 终止通知的 refill 返回 NEEDS_USER(build_engine_failed)，projection={category:internal,code:build_step_failed}，choices=[]，request_id=abreq1_6fe5abe7312b0f65069b4c3e1cc98abedcb317225b303e5a1828fd17e3a17043。检查自己的控制请求未见明显字段或类型错误。最后引擎确认进度仍是 committed=497,total_tasks=500,pending=3，remaining=1253/resolved=10/total_objects=1263。tutor_818 晚到终止通知及完整 pre-release live_by_slot 保存在 control.json；没有把三个 child committed 当作 durable 接纳，没有臆造恢复 choice，没有读取原始诊断或语义文件。遵守 Build skill 无选择内部错误边界，构建待维护。
+
+- 内部错误响应未返回 refill 的 ownership projection，故已把本次发送的 tutor_816、817 终止通知和晚到 tutor_818 通知一起保留在 pending_terminal_children。维护后可按同一 invocation 幂等回读，无须猜测名额释放结果。
+
+## 2026-10-10 流水线修复验收
+
+新版引擎已安装。完整回读在相同进度从 261.18 秒降到 27.58 秒；冻结任务从约 4.8 MB 降到 8–11 KB，共享材料首次建立约 3.5 MB。引擎确认 committed=500、pending=3；对象对齐 resolved=10、remaining=1253。终止通知已消费，live slots=0、completed refs=818、next_child=819，三个待派发引用在 control.json 的 ready_after_repair。本轮未启动新的语义执行器。详细修改、根因采样与限制见 [2026-10-10 修复记录](tutor-ai-infra-20261010-repair.md)。

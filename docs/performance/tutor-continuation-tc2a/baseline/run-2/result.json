@@ -1,0 +1,843 @@
+{
+  "deliveries": [
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_19e93dd242cb60fc",
+        "tutor_session_id": "tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be"
+      },
+      "causal_refs": [
+        "move:turn_19e93dd242cb60fc:mv-avg-speed-time-weight"
+      ],
+      "event_id": "delivery:turn_19e93dd242cb60fc:mv-avg-speed-time-weight",
+      "kind": "message_delivered",
+      "occurred_at": "t0",
+      "payload": {
+        "answer": "接着上一段往下走一步。上一段停在「等路程不能平均、答案是 40」，这次把那条规则一般化，你就会知道**什么时候**偷懒平均反而是对的。\n\n## 把定义写成「加权」的样子\n\n原文的三句话是这样的：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n如果一段行程只有两段，速度分别是 $v_1$、$v_2$，各花时间 $t_1$、$t_2$，那么第 1 段走了 $v_1 t_1$，第 2 段走了 $v_2 t_2$。套回定义：\n\n$$\\bar v=\\frac{v_1t_1+v_2t_2}{t_1+t_2}$$\n\n这式子并不是新公式，它只是把「总路程 ÷ 总时间」换成用速度和时间写出来而已。但它把「时间」摆到了明面上：**分子里每个速度都乘上了自己那段时间**，分母是两段时间之和。所以速度在结果里占多少分量，由它占用了多少时间决定——时间长的那个速度说话更响。\n\n用上一段的例子核对一遍：$v_1=60$、$t_1=1$；$v_2=30$、$t_2=2$。\n\n$$\\bar v=\\frac{60\\times1+30\\times2}{1+2}=\\frac{120}{3}=40$$\n\n和逐段加路程再相除的结果一致。慢的那段占了 $\\frac{2}{3}$ 的时间，所以它把结果往 40 拖，而不是停在 45。\n\n## 什么时候可以直接平均（这是本次的新一步）\n\n看那个分母 $t_1+t_2$。如果两段时间**相等**，也就是 $t_1=t_2$，那么\n\n$$\\bar v=\\frac{v_1t+v_2t}{2t}=\\frac{v_1+v_2}{2}$$\n\n权重相等，加权平均就退化成普通的算术平均。也就是说，「把两个速度加起来除以 2」不是永远错，它只是在**等时间**的场合恰好正确。\n\n举个数（按上面的式子算出来的，不是原文的例子）：两段各走 30 分钟，第一段 60 km/h，第二段 30 km/h。\n\n- 第 1 段走 $60\\times0.5=30$ km，第 2 段走 $30\\times0.5=15$ km\n- 总路程 $45$ km，总时间 $1$ 小时\n- 平均速度 $45$ km/h\n\n而 $(60+30)/2=45$，这次一模一样。\n\n## 于是原句的真正分工清楚了\n\n- 「Equal distances need not take equal times」堵的是**等路程**：路程一样，时间可以不一样（1 小时 vs 2 小时），所以等路程**不能**被当成「权重相等」来用。\n- 反过来，算术平均需要的是等时间。作者没有说「不许平均」，而是通过提醒你路程和时间不绑定，让你回到定义去。\n- 第三句「The total time must be positive」也顺带说得通了：分母 $t_1+t_2$ 就是全部权重之和，它必须为正，这个除法才立得住、权重才有意义。\n\n一句话：**平均速度不是两个速度的平均，而是两个速度按时间加权的结果；只有时间相等时，两者才重合。**\n\n现在请你用这条规则判断一下（这是上面的式子直接推出来的，不需要新知识）：两段各走 30 分钟，速度分别是 60 和 30，为什么这次可以放心地写成 $(60+30)/2$？说说你的理由，我看看你是否抓到了「权重」这一层。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "接着上一段往下走一步。上一段停在「等路程不能平均、答案是 40」，这次把那条规则一般化，你就会知道**什么时候**偷懒平均反而是对的。\n\n## 把定义写成「加权」的样子\n\n原文的三句话是这样的：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. "
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_e85701c84b34a511"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n如果一段行程只有两段，速度分别是 $v_1$、$v_2$，各花时间 $t_1$、$t_2$，那么第 1 段走了 $v_1 t_1$，第 2 段走了 $v_2 t_2$。套回定义：\n\n$$\\bar v=\\frac{v_1t_1+v_2t_2}{t_1+t_2}$$\n\n这式子并不是新公式，它只是把「总路程 ÷ 总时间」换成用速度和时间写出来而已。但它把「时间」摆到了明面上：**分子里每个速度都乘上了自己那段时间**，分母是两段时间之和。所以速度在结果里占多少分量，由它占用了多少时间决定——时间长的那个速度说话更响。\n\n用上一段的例子核对一遍：$v_1=60$、$t_1=1$；$v_2=30$、$t_2=2$。\n\n$$\\bar v=\\frac{60\\times1+30\\times2}{1+2}=\\frac{120}{3}=40$$\n\n和逐段加路程再相除的结果一致。慢的那段占了 $\\frac{2}{3}$ 的时间，所以它把结果往 40 拖，而不是停在 45。\n\n## 什么时候可以直接平均（这是本次的新一步）\n\n看那个分母 $t_1+t_2$。如果两段时间**相等**，也就是 $t_1=t_2$，那么\n\n$$\\bar v=\\frac{v_1t+v_2t}{2t}=\\frac{v_1+v_2}{2}$$\n\n权重相等，加权平均就退化成普通的算术平均。也就是说，「把两个速度加起来除以 2」不是永远错，它只是在**等时间**的场合恰好正确。\n\n举个数（按上面的式子算出来的，不是原文的例子）：两段各走 30 分钟，第一段 60 km/h，第二段 30 km/h。\n\n- 第 1 段走 $60\\times0.5=30$ km，第 2 段走 $30\\times0.5=15$ km\n- 总路程 $45$ km，总时间 $1$ 小时\n- 平均速度 $45$ km/h\n\n而 $(60+30)/2=45$，这次一模一样。\n\n## 于是原句的真正分工清楚了\n\n- 「Equal distances need not take equal times」堵的是**等路程**：路程一样，时间可以不一样（1 小时 vs 2 小时），所以等路程**不能**被当成「权重相等」来用。\n- 反过来，算术平均需要的是等时间。作者没有说「不许平均」，而是通过提醒你路程和时间不绑定，让你回到定义去。\n- 第三句「The total time must be positive」也顺带说得通了：分母 $t_1+t_2$ 就是全部权重之和，它必须为正，这个除法才立得住、权重才有意义。\n\n一句话：**平均速度不是两个速度的平均，而是两个速度按时间加权的结果；只有时间相等时，两者才重合。**\n\n现在请你用这条规则判断一下（这是上面的式子直接推出来的，不需要新知识）：两段各走 30 分钟，速度分别是 60 和 30，为什么这次可以放心地写成 $(60+30)/2$？说说你的理由，我看看你是否抓到了「权重」这一层。"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文 · Average speed",
+              "source_ref_id": "source_ref_e85701c84b34a511"
+            }
+          ]
+        },
+        "assessment_contract_ref": null,
+        "move": {
+          "actions": [],
+          "capability": "applying_a_rate_definition",
+          "intent_origin": "current_action",
+          "intent_quote": null,
+          "interaction_intent": "neutral",
+          "interpretation_refs": [],
+          "kind": "explain",
+          "move_id": "mv-avg-speed-time-weight",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "两段路各走 30 分钟，第一段 60 km/h，第二段 30 km/h，全程平均速度是多少？为什么这次可以直接把 60 和 30 平均？",
+          "target": {
+            "capability": "applying_a_rate_definition",
+            "expected_performance": "能按 speed=distance/time 的定义算出总时间相等情形的平均速度，并说明此时算术平均恰好成立的原因是两段的时间权重相等；在时间不等时仍坚持用总量相除而不用速度算术平均。",
+            "learning_focus": "把「平均速度 = 按时间加权的平均」这一步从定义里推出来：先写出 v̄ = (v1·t1 + v2·t2)/(t1+t2)，再看出时间相等时它就退化成 (v1+v2)/2，从而解释为什么上面 60/30 等路程的例子不能这样平均。",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "presentation": null,
+        "source_bindings": [
+          {
+            "book_id": "tc0-average-speed",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-b424e86ec1298781",
+            "label_snapshot": "正文 · Average speed",
+            "preview_snapshot": "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.",
+            "source_ref_id": "source_ref_e85701c84b34a511"
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_19e93dd242cb60fc",
+        "tutor_session_id": "tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be"
+      },
+      "causal_refs": [],
+      "event_id": "assets:turn_19e93dd242cb60fc",
+      "kind": "turn_bound",
+      "occurred_at": "t0",
+      "payload": {}
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_19e93dd242cb60fc",
+        "tutor_session_id": "tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be"
+      },
+      "causal_refs": [
+        "usage:tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be:assistant:turn_19e940d242cb6615"
+      ],
+      "event_id": "usage:tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be:user:turn_19e93dd242cb60fc",
+      "kind": "usage_observed",
+      "occurred_at": "t0",
+      "payload": {
+        "interaction": {
+          "accepted_request": "继续理解这段",
+          "action": {
+            "entry_action": "continue_answer",
+            "origin": "ui_entry"
+          },
+          "answer_ref": {
+            "turn_id": "turn_19e940d242cb6615"
+          },
+          "answer_text": "这段其实是「平均速度」的定义，一共三句话，每句各管一件事。原文是：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 第一句：定义本身\n\n平均速度 = 总路程 ÷ 总时间。\n\n关键在这个「总」字上：分子是把整段行程走过的所有路程加起来，分母是把整段行程花掉的所有时间加起来。它描述的是**整段行程的一个整体结果**，不是某一时刻你跑多快。所以哪怕中途快慢变来变去，只要有这两个总量，就能算出这趟的平均速度。\n\n## 第二句：这句才是真正的提醒\n\n「Equal distances need not take equal times」——相等的路程不一定花相等的时间。它是在拦住一个非常自然的错误做法:把两段的**速度数值**拿来平均。\n\n举一个我自己的例子来说明(这是按上面定义推出来的，不是原文的例子)：你开车走两段各 60 公里的路，第一段速度 60 km/h，第二段 30 km/h。如果直接把速度平均，(60+30)/2 = 45 km/h，这是错的。按定义算：\n\n- 总路程 = 60 + 60 = 120 km\n- 总时间 = 60/60 + 60/30 = 1 + 2 = 3 小时\n- 平均速度 = 120 ÷ 3 = 40 km/h\n\n差出来的原因正是第二句说的：路程一样(都是 60 km)，但时间不一样(1 小时 vs 2 小时)，而定义里做分母的是**时间**。走得慢的那段占用了更多时间，所以在时间上「权重」更大，把平均速度往下拉。可见平均速度的天平是按时间倾斜的，不是按路程均分的。\n\n## 第三句：为什么必须要求总时间大于 0\n\n因为它在分母上。定义本身就是一次除法,除数不能为零，所以整趟行程的总时间必须是正数。反过来说，如果总时间是 0(比如既没动、也没花时间)，这个式子根本没有意义，平均速度无从谈起。反过来看，分子(总路程)没有这个限制——路程可以是 0，那平均速度就是 0。\n\n## 一句话抓手\n\n分母是**时间**、并且是**总量**，所以「平均速度」是被时间加权的结果：谁占的时间多，谁的快慢就更有发言权。\n\n想确认一下你现在的感觉：上面那个 60/30 的例子，你觉得答案是 45 还是 40？说说你的理由，我再针对你的思路补一段。",
+          "expected_chat_head": "turn_19e940d242cb6615",
+          "presentation_follow_up": null,
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "start_lid": "1.1"
+            }
+          ],
+          "source_excerpt": "Average speed is total distance divided by total time.",
+          "target": null,
+          "user_supplement": ""
+        },
+        "original_ref": {
+          "book_id": "tc0-average-speed",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+          "turn_id": "turn_19e93dd242cb60fc"
+        },
+        "presentation_follow_up": null,
+        "question_anchor_lid": null,
+        "response": "",
+        "teaching_ref": null,
+        "usage": {
+          "kind": "reading_action"
+        }
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_19e93dd242cb60fc",
+        "tutor_session_id": "tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be"
+      },
+      "causal_refs": [],
+      "event_id": "binding:turn_19e93dd242cb60fc",
+      "kind": "turn_bound",
+      "occurred_at": "t0",
+      "payload": {
+        "binding": {
+          "chat_session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_19e93dd242cb60fc",
+          "tutor_session_id": "tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be"
+        },
+        "confirmed_preferences": [],
+        "constraints": [],
+        "current_action": {
+          "accepted_request": "继续理解这段",
+          "action": {
+            "entry_action": "continue_answer",
+            "origin": "ui_entry"
+          },
+          "answer_ref": {
+            "turn_id": "turn_19e940d242cb6615"
+          },
+          "answer_text": "这段其实是「平均速度」的定义，一共三句话，每句各管一件事。原文是：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 第一句：定义本身\n\n平均速度 = 总路程 ÷ 总时间。\n\n关键在这个「总」字上：分子是把整段行程走过的所有路程加起来，分母是把整段行程花掉的所有时间加起来。它描述的是**整段行程的一个整体结果**，不是某一时刻你跑多快。所以哪怕中途快慢变来变去，只要有这两个总量，就能算出这趟的平均速度。\n\n## 第二句：这句才是真正的提醒\n\n「Equal distances need not take equal times」——相等的路程不一定花相等的时间。它是在拦住一个非常自然的错误做法:把两段的**速度数值**拿来平均。\n\n举一个我自己的例子来说明(这是按上面定义推出来的，不是原文的例子)：你开车走两段各 60 公里的路，第一段速度 60 km/h，第二段 30 km/h。如果直接把速度平均，(60+30)/2 = 45 km/h，这是错的。按定义算：\n\n- 总路程 = 60 + 60 = 120 km\n- 总时间 = 60/60 + 60/30 = 1 + 2 = 3 小时\n- 平均速度 = 120 ÷ 3 = 40 km/h\n\n差出来的原因正是第二句说的：路程一样(都是 60 km)，但时间不一样(1 小时 vs 2 小时)，而定义里做分母的是**时间**。走得慢的那段占用了更多时间，所以在时间上「权重」更大，把平均速度往下拉。可见平均速度的天平是按时间倾斜的，不是按路程均分的。\n\n## 第三句：为什么必须要求总时间大于 0\n\n因为它在分母上。定义本身就是一次除法,除数不能为零，所以整趟行程的总时间必须是正数。反过来说，如果总时间是 0(比如既没动、也没花时间)，这个式子根本没有意义，平均速度无从谈起。反过来看，分子(总路程)没有这个限制——路程可以是 0，那平均速度就是 0。\n\n## 一句话抓手\n\n分母是**时间**、并且是**总量**，所以「平均速度」是被时间加权的结果：谁占的时间多，谁的快慢就更有发言权。\n\n想确认一下你现在的感觉：上面那个 60/30 的例子，你觉得答案是 45 还是 40？说说你的理由，我再针对你的思路补一段。",
+          "expected_chat_head": "turn_19e940d242cb6615",
+          "presentation_follow_up": null,
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "start_lid": "1.1"
+            }
+          ],
+          "source_excerpt": "Average speed is total distance divided by total time.",
+          "target": null,
+          "user_supplement": ""
+        },
+        "current_request": "",
+        "default_teaching_intent": null,
+        "learner_context": {
+          "confirmed_background": [],
+          "confirmed_preferences": [],
+          "constraints": [],
+          "current_action": {
+            "accepted_request": "继续理解这段",
+            "action": {
+              "entry_action": "continue_answer",
+              "origin": "ui_entry"
+            },
+            "answer_ref": {
+              "turn_id": "turn_19e940d242cb6615"
+            },
+            "answer_text": "这段其实是「平均速度」的定义，一共三句话，每句各管一件事。原文是：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 第一句：定义本身\n\n平均速度 = 总路程 ÷ 总时间。\n\n关键在这个「总」字上：分子是把整段行程走过的所有路程加起来，分母是把整段行程花掉的所有时间加起来。它描述的是**整段行程的一个整体结果**，不是某一时刻你跑多快。所以哪怕中途快慢变来变去，只要有这两个总量，就能算出这趟的平均速度。\n\n## 第二句：这句才是真正的提醒\n\n「Equal distances need not take equal times」——相等的路程不一定花相等的时间。它是在拦住一个非常自然的错误做法:把两段的**速度数值**拿来平均。\n\n举一个我自己的例子来说明(这是按上面定义推出来的，不是原文的例子)：你开车走两段各 60 公里的路，第一段速度 60 km/h，第二段 30 km/h。如果直接把速度平均，(60+30)/2 = 45 km/h，这是错的。按定义算：\n\n- 总路程 = 60 + 60 = 120 km\n- 总时间 = 60/60 + 60/30 = 1 + 2 = 3 小时\n- 平均速度 = 120 ÷ 3 = 40 km/h\n\n差出来的原因正是第二句说的：路程一样(都是 60 km)，但时间不一样(1 小时 vs 2 小时)，而定义里做分母的是**时间**。走得慢的那段占用了更多时间，所以在时间上「权重」更大，把平均速度往下拉。可见平均速度的天平是按时间倾斜的，不是按路程均分的。\n\n## 第三句：为什么必须要求总时间大于 0\n\n因为它在分母上。定义本身就是一次除法,除数不能为零，所以整趟行程的总时间必须是正数。反过来说，如果总时间是 0(比如既没动、也没花时间)，这个式子根本没有意义，平均速度无从谈起。反过来看，分子(总路程)没有这个限制——路程可以是 0，那平均速度就是 0。\n\n## 一句话抓手\n\n分母是**时间**、并且是**总量**，所以「平均速度」是被时间加权的结果：谁占的时间多，谁的快慢就更有发言权。\n\n想确认一下你现在的感觉：上面那个 60/30 的例子，你觉得答案是 45 还是 40？说说你的理由，我再针对你的思路补一段。",
+            "expected_chat_head": "turn_19e940d242cb6615",
+            "presentation_follow_up": null,
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ],
+            "source_excerpt": "Average speed is total distance divided by total time.",
+            "target": null,
+            "user_supplement": ""
+          },
+          "current_request": "",
+          "current_target": null,
+          "details": "tutor.step understanding with object_id and after",
+          "entries": [],
+          "evidence_watermark": 0,
+          "interpretations": [],
+          "path_progress": [],
+          "projection_watermark": 0,
+          "recent_facts": [
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_19e93dd242cb60fc",
+                "tutor_session_id": "tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be"
+              },
+              "causal_refs": [
+                "usage:tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be:assistant:turn_19e940d242cb6615"
+              ],
+              "event_id": "usage:tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be:user:turn_19e93dd242cb60fc",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "t0",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+                "turn_id": "turn_19e93dd242cb60fc"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "reading_action"
+              }
+            },
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "这段其实是「平均速度」的定义，一共三句话，每句各管一件事。原文是：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 第一句：定义本身\n\n平均速度 = 总路程 ÷ 总时间。\n\n关键在这个「总」字上：分子是把整段行程走过的所有路程加起来，分母是把整段行程花掉的所有时间加起来。它描述的是**整段行程的一个整体结果**，不是某一时刻你跑多快。所以哪怕中途快慢变来变去，只要有这两个总量，就能算出这趟的平均速度。\n\n## 第二句：这句才是真正的提醒\n\n「Equal distances need not take equal times」——相等的路程不一定花相等的时间。它是在拦住一个非常自然的错误做法:把两段的**速度数值**拿来平均。\n\n举一个我自己的例子来说明(这是按上面定义推出来的，不是原文的例子)：你开车走两段各 60 公里的路，第一段速度 60 km/h，第二段 30 km/h。如果直接把速度平均，(60+30)/2 = 45 km/h，这是错的。按定义算：\n\n- 总路程 = 60 + 60 = 120 km\n- 总时间 = 60/60 + 60/30 = 1 + 2 = 3 小时\n- 平均速度 = 120 ÷ 3 = 40 km/h\n\n差出来的原因正是第二句说的：路程一样(都是 60 km)，但时间不一样(1 小时 vs 2 小时)，而定义里做分母的是**时间**。走得慢的那段占用了更多时间，所以在时间上「权重」更大，把平均速度往下拉。可见平均速度的天平是按时间倾斜的，不是按路程均分的。\n\n## 第三句：为什么必须要求总时间大于 0\n\n因为它在分母上。定义本身就是一次除法,除数不能为零，所以整趟行程的总时间必须是正数。反过来说，如果总时间是 0(比如既没动、也没花时间)，这个式子根本没有意义，平均速度无从谈起。反过来看，分子(总路程)没有这个限制——路程可以是 0，那平均速度就是 0。\n\n## 一句话抓手\n\n分母是**时间**、并且是**总量**，所以「平均速度」是被时间加权的结果：谁占的时间多，谁的快慢就更有发言权。\n\n想确认一下你现在的感觉：上面那个 60/30 的例子，你觉得答案是 45 还是 40？说说你的理由，我再针对你的思路补一段。",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_19e940d242cb6615",
+                "tutor_session_id": "tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be"
+              },
+              "causal_refs": [
+                "usage:tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be:user:turn_19e940d242cb6615"
+              ],
+              "event_id": "usage:tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be:assistant:turn_19e940d242cb6615",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "t0",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+                "turn_id": "turn_19e940d242cb6615"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "assistant_delivery"
+              }
+            },
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_19e940d242cb6615",
+                "tutor_session_id": "tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be"
+              },
+              "causal_refs": [],
+              "event_id": "usage:tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be:user:turn_19e940d242cb6615",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "t0",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+                "turn_id": "turn_19e940d242cb6615"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "reading_action"
+              }
+            }
+          ],
+          "session_focus": {
+            "capability_targets": [],
+            "interpretation": "",
+            "target_object_refs": []
+          },
+          "stale": false,
+          "uninterpreted_fact_refs": [
+            "usage:tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be:assistant:turn_19e940d242cb6615"
+          ],
+          "unknown_when_absent": true,
+          "user_intent": "继续理解这段：Average speed is total distance divided by total time."
+        },
+        "limitations": [],
+        "object_count": 0,
+        "objects": [],
+        "recent_facts": [
+          {
+            "action": null,
+            "answer_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "assistance_count": 0,
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_19e93dd242cb60fc",
+              "tutor_session_id": "tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be"
+            },
+            "causal_refs": [
+              "usage:tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be:assistant:turn_19e940d242cb6615"
+            ],
+            "event_id": "usage:tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be:user:turn_19e93dd242cb60fc",
+            "help_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "kind": "usage_observed",
+            "move_id": null,
+            "occurred_at": "t0",
+            "original_ref": {
+              "book_id": "tc0-average-speed",
+              "kind": "chat_turn",
+              "session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+              "turn_id": "turn_19e93dd242cb60fc"
+            },
+            "prompt_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "response_preview": {
+              "text": "",
+              "truncated": false
+            },
+            "target": null,
+            "usage": {
+              "kind": "reading_action"
+            }
+          },
+          {
+            "action": null,
+            "answer_preview": {
+              "text": "这段其实是「平均速度」的定义，一共三句话，每句各管一件事。原文是：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 第一句：定义本身\n\n平均速度 = 总路程 ÷ 总时间。\n\n关键在这个「总」字上：分子是把整段行程走过的所有路程加起来，分母是把整段行程花掉的所有时间加起来。它描述的是**整段行程的一个整体结果**，不是某一时刻你跑多快。所以哪怕中途快慢变来变去，只要有这两个总量，就能算出这趟的平均速度。\n\n## 第二句：这句才是真正的提醒\n\n「Equal distances need not take equal times」——相等的路程不一定花相等的时间。它是在拦住一个非常自然的错误做法:把两段的**速度数值**拿来平均。\n\n举一个我自己的例子来说明(这是按上面定义推出来的，不是原文的例子)：你开车走两段各 60 公里的路，第一段速度 60 km/h，第二段 30 km/h。如果直接把速度平均，(60+30)/2 = 45 km/h，这是错的。按定义算：\n\n- 总路程 = 60 + 60 = 120 km\n- 总时间 = 60/60 + 60/30 = 1 + 2 = 3 小时\n- 平均速度 = 120 ÷ 3 = 40 km/h\n\n差出来的原因正是第二句说的：路程一样(都是 60 km)，但时间不一样(1 小时 vs 2 小时)，而定义里做分母的是**时间**。走得慢的那段占用了更多时间，所以在时间上「权重」更大，把平均速度往下拉。可见平均速度的天平是按时间倾斜的，不是按路程均分的。\n\n## 第三句：为什么必须要求总时间大于 0\n\n因为它在分母上。定义本身就是一次除法,除数不能为零，所以整趟行程的总时间必须是正数。反过来说，如果总时间是 0(比如既没动、也没花时间)，这个式子根本没有意义，平均速度无从谈起。反过来看，分子(总路程)没有这个限制——路程可以是 0，那平均速度就是 0。\n\n## 一句话抓手\n\n分母是**时间**、并且是**总量**，所以「平均速度」是被时间加权的结果：谁占的时间多，谁的快慢就更有发言权。\n\n想确认一下你现在的感觉：上面那个 60/30 的例子，你觉得答案是 45 还是 40？说说你的理由，我再针对你的思路补一段。",
+              "truncated": false
+            },
+            "assistance_count": 0,
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_19e940d242cb6615",
+              "tutor_session_id": "tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be"
+            },
+            "causal_refs": [
+              "usage:tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be:user:turn_19e940d242cb6615"
+            ],
+            "event_id": "usage:tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be:assistant:turn_19e940d242cb6615",
+            "help_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "kind": "usage_observed",
+            "move_id": null,
+            "occurred_at": "t0",
+            "original_ref": {
+              "book_id": "tc0-average-speed",
+              "kind": "chat_turn",
+              "session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+              "turn_id": "turn_19e940d242cb6615"
+            },
+            "prompt_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "response_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "target": null,
+            "usage": {
+              "kind": "assistant_delivery"
+            }
+          },
+          {
+            "action": null,
+            "answer_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "assistance_count": 0,
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_19e940d242cb6615",
+              "tutor_session_id": "tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be"
+            },
+            "causal_refs": [],
+            "event_id": "usage:tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be:user:turn_19e940d242cb6615",
+            "help_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "kind": "usage_observed",
+            "move_id": null,
+            "occurred_at": "t0",
+            "original_ref": {
+              "book_id": "tc0-average-speed",
+              "kind": "chat_turn",
+              "session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+              "turn_id": "turn_19e940d242cb6615"
+            },
+            "prompt_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "response_preview": {
+              "text": "",
+              "truncated": false
+            },
+            "target": null,
+            "usage": {
+              "kind": "reading_action"
+            }
+          }
+        ],
+        "status": "active",
+        "teaching_assets": {
+          "cognitive_materials": {
+            "status": "missing"
+          },
+          "formal_objects": {
+            "status": "missing"
+          },
+          "limitations": [],
+          "reason": "正式教学素材尚未发布",
+          "source_id": "tc0-average-speed",
+          "status": "preparing",
+          "teaching_map_revision": null
+        },
+        "user_intent": "继续理解这段：Average speed is total distance divided by total time."
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_19e93dd242cb60fc",
+        "tutor_session_id": "tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be"
+      },
+      "causal_refs": [
+        "binding:turn_19e93dd242cb60fc"
+      ],
+      "event_id": "move:turn_19e93dd242cb60fc:mv-avg-speed-time-weight",
+      "kind": "move_selected",
+      "occurred_at": "2026-10-11T08:46:59.1820941Z",
+      "payload": {
+        "help_policy": "preserve_exposure",
+        "move": {
+          "actions": [],
+          "assessment": null,
+          "capability": "applying_a_rate_definition",
+          "explanation": null,
+          "hint": null,
+          "intent_origin": "current_action",
+          "intent_quote": null,
+          "interaction_intent": "neutral",
+          "interpretation_refs": [],
+          "kind": "explain",
+          "move_id": "mv-avg-speed-time-weight",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "两段路各走 30 分钟，第一段 60 km/h，第二段 30 km/h，全程平均速度是多少？为什么这次可以直接把 60 和 30 平均？",
+          "target": {
+            "capability": "applying_a_rate_definition",
+            "expected_performance": "能按 speed=distance/time 的定义算出总时间相等情形的平均速度，并说明此时算术平均恰好成立的原因是两段的时间权重相等；在时间不等时仍坚持用总量相除而不用速度算术平均。",
+            "learning_focus": "把「平均速度 = 按时间加权的平均」这一步从定义里推出来：先写出 v̄ = (v1·t1 + v2·t2)/(t1+t2)，再看出时间相等时它就退化成 (v1+v2)/2，从而解释为什么上面 60/30 等路程的例子不能这样平均。",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "retry_policy": "append_attempt",
+        "scorer_version": "assessment.v1",
+        "scoring_sources": {}
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_19e93dd242cb60fc",
+        "tutor_session_id": "tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be"
+      },
+      "causal_refs": [
+        "usage:tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be:user:turn_19e93dd242cb60fc"
+      ],
+      "event_id": "usage:tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be:assistant:turn_19e93dd242cb60fc",
+      "kind": "usage_observed",
+      "occurred_at": "t0",
+      "payload": {
+        "answer": "接着上一段往下走一步。上一段停在「等路程不能平均、答案是 40」，这次把那条规则一般化，你就会知道**什么时候**偷懒平均反而是对的。\n\n## 把定义写成「加权」的样子\n\n原文的三句话是这样的：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n如果一段行程只有两段，速度分别是 $v_1$、$v_2$，各花时间 $t_1$、$t_2$，那么第 1 段走了 $v_1 t_1$，第 2 段走了 $v_2 t_2$。套回定义：\n\n$$\\bar v=\\frac{v_1t_1+v_2t_2}{t_1+t_2}$$\n\n这式子并不是新公式，它只是把「总路程 ÷ 总时间」换成用速度和时间写出来而已。但它把「时间」摆到了明面上：**分子里每个速度都乘上了自己那段时间**，分母是两段时间之和。所以速度在结果里占多少分量，由它占用了多少时间决定——时间长的那个速度说话更响。\n\n用上一段的例子核对一遍：$v_1=60$、$t_1=1$；$v_2=30$、$t_2=2$。\n\n$$\\bar v=\\frac{60\\times1+30\\times2}{1+2}=\\frac{120}{3}=40$$\n\n和逐段加路程再相除的结果一致。慢的那段占了 $\\frac{2}{3}$ 的时间，所以它把结果往 40 拖，而不是停在 45。\n\n## 什么时候可以直接平均（这是本次的新一步）\n\n看那个分母 $t_1+t_2$。如果两段时间**相等**，也就是 $t_1=t_2$，那么\n\n$$\\bar v=\\frac{v_1t+v_2t}{2t}=\\frac{v_1+v_2}{2}$$\n\n权重相等，加权平均就退化成普通的算术平均。也就是说，「把两个速度加起来除以 2」不是永远错，它只是在**等时间**的场合恰好正确。\n\n举个数（按上面的式子算出来的，不是原文的例子）：两段各走 30 分钟，第一段 60 km/h，第二段 30 km/h。\n\n- 第 1 段走 $60\\times0.5=30$ km，第 2 段走 $30\\times0.5=15$ km\n- 总路程 $45$ km，总时间 $1$ 小时\n- 平均速度 $45$ km/h\n\n而 $(60+30)/2=45$，这次一模一样。\n\n## 于是原句的真正分工清楚了\n\n- 「Equal distances need not take equal times」堵的是**等路程**：路程一样，时间可以不一样（1 小时 vs 2 小时），所以等路程**不能**被当成「权重相等」来用。\n- 反过来，算术平均需要的是等时间。作者没有说「不许平均」，而是通过提醒你路程和时间不绑定，让你回到定义去。\n- 第三句「The total time must be positive」也顺带说得通了：分母 $t_1+t_2$ 就是全部权重之和，它必须为正，这个除法才立得住、权重才有意义。\n\n一句话：**平均速度不是两个速度的平均，而是两个速度按时间加权的结果；只有时间相等时，两者才重合。**\n\n现在请你用这条规则判断一下（这是上面的式子直接推出来的，不需要新知识）：两段各走 30 分钟，速度分别是 60 和 30，为什么这次可以放心地写成 $(60+30)/2$？说说你的理由，我看看你是否抓到了「权重」这一层。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "接着上一段往下走一步。上一段停在「等路程不能平均、答案是 40」，这次把那条规则一般化，你就会知道**什么时候**偷懒平均反而是对的。\n\n## 把定义写成「加权」的样子\n\n原文的三句话是这样的：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. "
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_e85701c84b34a511"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n如果一段行程只有两段，速度分别是 $v_1$、$v_2$，各花时间 $t_1$、$t_2$，那么第 1 段走了 $v_1 t_1$，第 2 段走了 $v_2 t_2$。套回定义：\n\n$$\\bar v=\\frac{v_1t_1+v_2t_2}{t_1+t_2}$$\n\n这式子并不是新公式，它只是把「总路程 ÷ 总时间」换成用速度和时间写出来而已。但它把「时间」摆到了明面上：**分子里每个速度都乘上了自己那段时间**，分母是两段时间之和。所以速度在结果里占多少分量，由它占用了多少时间决定——时间长的那个速度说话更响。\n\n用上一段的例子核对一遍：$v_1=60$、$t_1=1$；$v_2=30$、$t_2=2$。\n\n$$\\bar v=\\frac{60\\times1+30\\times2}{1+2}=\\frac{120}{3}=40$$\n\n和逐段加路程再相除的结果一致。慢的那段占了 $\\frac{2}{3}$ 的时间，所以它把结果往 40 拖，而不是停在 45。\n\n## 什么时候可以直接平均（这是本次的新一步）\n\n看那个分母 $t_1+t_2$。如果两段时间**相等**，也就是 $t_1=t_2$，那么\n\n$$\\bar v=\\frac{v_1t+v_2t}{2t}=\\frac{v_1+v_2}{2}$$\n\n权重相等，加权平均就退化成普通的算术平均。也就是说，「把两个速度加起来除以 2」不是永远错，它只是在**等时间**的场合恰好正确。\n\n举个数（按上面的式子算出来的，不是原文的例子）：两段各走 30 分钟，第一段 60 km/h，第二段 30 km/h。\n\n- 第 1 段走 $60\\times0.5=30$ km，第 2 段走 $30\\times0.5=15$ km\n- 总路程 $45$ km，总时间 $1$ 小时\n- 平均速度 $45$ km/h\n\n而 $(60+30)/2=45$，这次一模一样。\n\n## 于是原句的真正分工清楚了\n\n- 「Equal distances need not take equal times」堵的是**等路程**：路程一样，时间可以不一样（1 小时 vs 2 小时），所以等路程**不能**被当成「权重相等」来用。\n- 反过来，算术平均需要的是等时间。作者没有说「不许平均」，而是通过提醒你路程和时间不绑定，让你回到定义去。\n- 第三句「The total time must be positive」也顺带说得通了：分母 $t_1+t_2$ 就是全部权重之和，它必须为正，这个除法才立得住、权重才有意义。\n\n一句话：**平均速度不是两个速度的平均，而是两个速度按时间加权的结果；只有时间相等时，两者才重合。**\n\n现在请你用这条规则判断一下（这是上面的式子直接推出来的，不需要新知识）：两段各走 30 分钟，速度分别是 60 和 30，为什么这次可以放心地写成 $(60+30)/2$？说说你的理由，我看看你是否抓到了「权重」这一层。"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文 · Average speed",
+              "source_ref_id": "source_ref_e85701c84b34a511"
+            }
+          ]
+        },
+        "original_ref": {
+          "book_id": "tc0-average-speed",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+          "turn_id": "turn_19e93dd242cb60fc"
+        },
+        "source_bindings": [
+          {
+            "book_id": "tc0-average-speed",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-b424e86ec1298781",
+            "label_snapshot": "正文 · Average speed",
+            "preview_snapshot": "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.",
+            "source_ref_id": "source_ref_e85701c84b34a511"
+          }
+        ],
+        "usage": {
+          "kind": "assistant_delivery"
+        }
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12a24-a441-71c0-b93d-46f7040d60be",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_19e93dd242cb60fc",
+        "tutor_session_id": "tutor-first-question:chat-01a12a24-a441-71c0-b93d-46f7040d60be"
+      },
+      "causal_refs": [
+        "move:turn_19e93dd242cb60fc:mv-avg-speed-time-weight"
+      ],
+      "event_id": "delivery:turn_19e93dd242cb60fc:mv-avg-speed-time-weight",
+      "kind": "message_delivered",
+      "occurred_at": "t0",
+      "payload": {
+        "answer": "接着上一段往下走一步。上一段停在「等路程不能平均、答案是 40」，这次把那条规则一般化，你就会知道**什么时候**偷懒平均反而是对的。\n\n## 把定义写成「加权」的样子\n\n原文的三句话是这样的：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n如果一段行程只有两段，速度分别是 $v_1$、$v_2$，各花时间 $t_1$、$t_2$，那么第 1 段走了 $v_1 t_1$，第 2 段走了 $v_2 t_2$。套回定义：\n\n$$\\bar v=\\frac{v_1t_1+v_2t_2}{t_1+t_2}$$\n\n这式子并不是新公式，它只是把「总路程 ÷ 总时间」换成用速度和时间写出来而已。但它把「时间」摆到了明面上：**分子里每个速度都乘上了自己那段时间**，分母是两段时间之和。所以速度在结果里占多少分量，由它占用了多少时间决定——时间长的那个速度说话更响。\n\n用上一段的例子核对一遍：$v_1=60$、$t_1=1$；$v_2=30$、$t_2=2$。\n\n$$\\bar v=\\frac{60\\times1+30\\times2}{1+2}=\\frac{120}{3}=40$$\n\n和逐段加路程再相除的结果一致。慢的那段占了 $\\frac{2}{3}$ 的时间，所以它把结果往 40 拖，而不是停在 45。\n\n## 什么时候可以直接平均（这是本次的新一步）\n\n看那个分母 $t_1+t_2$。如果两段时间**相等**，也就是 $t_1=t_2$，那么\n\n$$\\bar v=\\frac{v_1t+v_2t}{2t}=\\frac{v_1+v_2}{2}$$\n\n权重相等，加权平均就退化成普通的算术平均。也就是说，「把两个速度加起来除以 2」不是永远错，它只是在**等时间**的场合恰好正确。\n\n举个数（按上面的式子算出来的，不是原文的例子）：两段各走 30 分钟，第一段 60 km/h，第二段 30 km/h。\n\n- 第 1 段走 $60\\times0.5=30$ km，第 2 段走 $30\\times0.5=15$ km\n- 总路程 $45$ km，总时间 $1$ 小时\n- 平均速度 $45$ km/h\n\n而 $(60+30)/2=45$，这次一模一样。\n\n## 于是原句的真正分工清楚了\n\n- 「Equal distances need not take equal times」堵的是**等路程**：路程一样，时间可以不一样（1 小时 vs 2 小时），所以等路程**不能**被当成「权重相等」来用。\n- 反过来，算术平均需要的是等时间。作者没有说「不许平均」，而是通过提醒你路程和时间不绑定，让你回到定义去。\n- 第三句「The total time must be positive」也顺带说得通了：分母 $t_1+t_2$ 就是全部权重之和，它必须为正，这个除法才立得住、权重才有意义。\n\n一句话：**平均速度不是两个速度的平均，而是两个速度按时间加权的结果；只有时间相等时，两者才重合。**\n\n现在请你用这条规则判断一下（这是上面的式子直接推出来的，不需要新知识）：两段各走 30 分钟，速度分别是 60 和 30，为什么这次可以放心地写成 $(60+30)/2$？说说你的理由，我看看你是否抓到了「权重」这一层。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "接着上一段往下走一步。上一段停在「等路程不能平均、答案是 40」，这次把那条规则一般化，你就会知道**什么时候**偷懒平均反而是对的。\n\n## 把定义写成「加权」的样子\n\n原文的三句话是这样的：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. "
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_e85701c84b34a511"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n如果一段行程只有两段，速度分别是 $v_1$、$v_2$，各花时间 $t_1$、$t_2$，那么第 1 段走了 $v_1 t_1$，第 2 段走了 $v_2 t_2$。套回定义：\n\n$$\\bar v=\\frac{v_1t_1+v_2t_2}{t_1+t_2}$$\n\n这式子并不是新公式，它只是把「总路程 ÷ 总时间」换成用速度和时间写出来而已。但它把「时间」摆到了明面上：**分子里每个速度都乘上了自己那段时间**，分母是两段时间之和。所以速度在结果里占多少分量，由它占用了多少时间决定——时间长的那个速度说话更响。\n\n用上一段的例子核对一遍：$v_1=60$、$t_1=1$；$v_2=30$、$t_2=2$。\n\n$$\\bar v=\\frac{60\\times1+30\\times2}{1+2}=\\frac{120}{3}=40$$\n\n和逐段加路程再相除的结果一致。慢的那段占了 $\\frac{2}{3}$ 的时间，所以它把结果往 40 拖，而不是停在 45。\n\n## 什么时候可以直接平均（这是本次的新一步）\n\n看那个分母 $t_1+t_2$。如果两段时间**相等**，也就是 $t_1=t_2$，那么\n\n$$\\bar v=\\frac{v_1t+v_2t}{2t}=\\frac{v_1+v_2}{2}$$\n\n权重相等，加权平均就退化成普通的算术平均。也就是说，「把两个速度加起来除以 2」不是永远错，它只是在**等时间**的场合恰好正确。\n\n举个数（按上面的式子算出来的，不是原文的例子）：两段各走 30 分钟，第一段 60 km/h，第二段 30 km/h。\n\n- 第 1 段走 $60\\times0.5=30$ km，第 2 段走 $30\\times0.5=15$ km\n- 总路程 $45$ km，总时间 $1$ 小时\n- 平均速度 $45$ km/h\n\n而 $(60+30)/2=45$，这次一模一样。\n\n## 于是原句的真正分工清楚了\n\n- 「Equal distances need not take equal times」堵的是**等路程**：路程一样，时间可以不一样（1 小时 vs 2 小时），所以等路程**不能**被当成「权重相等」来用。\n- 反过来，算术平均需要的是等时间。作者没有说「不许平均」，而是通过提醒你路程和时间不绑定，让你回到定义去。\n- 第三句「The total time must be positive」也顺带说得通了：分母 $t_1+t_2$ 就是全部权重之和，它必须为正，这个除法才立得住、权重才有意义。\n\n一句话：**平均速度不是两个速度的平均，而是两个速度按时间加权的结果；只有时间相等时，两者才重合。**\n\n现在请你用这条规则判断一下（这是上面的式子直接推出来的，不需要新知识）：两段各走 30 分钟，速度分别是 60 和 30，为什么这次可以放心地写成 $(60+30)/2$？说说你的理由，我看看你是否抓到了「权重」这一层。"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文 · Average speed",
+              "source_ref_id": "source_ref_e85701c84b34a511"
+            }
+          ]
+        },
+        "assessment_contract_ref": null,
+        "move": {
+          "actions": [],
+          "capability": "applying_a_rate_definition",
+          "intent_origin": "current_action",
+          "intent_quote": null,
+          "interaction_intent": "neutral",
+          "interpretation_refs": [],
+          "kind": "explain",
+          "move_id": "mv-avg-speed-time-weight",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "两段路各走 30 分钟，第一段 60 km/h，第二段 30 km/h，全程平均速度是多少？为什么这次可以直接把 60 和 30 平均？",
+          "target": {
+            "capability": "applying_a_rate_definition",
+            "expected_performance": "能按 speed=distance/time 的定义算出总时间相等情形的平均速度，并说明此时算术平均恰好成立的原因是两段的时间权重相等；在时间不等时仍坚持用总量相除而不用速度算术平均。",
+            "learning_focus": "把「平均速度 = 按时间加权的平均」这一步从定义里推出来：先写出 v̄ = (v1·t1 + v2·t2)/(t1+t2)，再看出时间相等时它就退化成 (v1+v2)/2，从而解释为什么上面 60/30 等路程的例子不能这样平均。",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "presentation": null,
+        "source_bindings": [
+          {
+            "book_id": "tc0-average-speed",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-b424e86ec1298781",
+            "label_snapshot": "正文 · Average speed",
+            "preview_snapshot": "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.",
+            "source_ref_id": "source_ref_e85701c84b34a511"
+          }
+        ]
+      }
+    }
+  ],
+  "http_status": 200,
+  "reply": {
+    "answer": "接着上一段往下走一步。上一段停在「等路程不能平均、答案是 40」，这次把那条规则一般化，你就会知道**什么时候**偷懒平均反而是对的。\n\n## 把定义写成「加权」的样子\n\n原文的三句话是这样的：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n如果一段行程只有两段，速度分别是 $v_1$、$v_2$，各花时间 $t_1$、$t_2$，那么第 1 段走了 $v_1 t_1$，第 2 段走了 $v_2 t_2$。套回定义：\n\n$$\\bar v=\\frac{v_1t_1+v_2t_2}{t_1+t_2}$$\n\n这式子并不是新公式，它只是把「总路程 ÷ 总时间」换成用速度和时间写出来而已。但它把「时间」摆到了明面上：**分子里每个速度都乘上了自己那段时间**，分母是两段时间之和。所以速度在结果里占多少分量，由它占用了多少时间决定——时间长的那个速度说话更响。\n\n用上一段的例子核对一遍：$v_1=60$、$t_1=1$；$v_2=30$、$t_2=2$。\n\n$$\\bar v=\\frac{60\\times1+30\\times2}{1+2}=\\frac{120}{3}=40$$\n\n和逐段加路程再相除的结果一致。慢的那段占了 $\\frac{2}{3}$ 的时间，所以它把结果往 40 拖，而不是停在 45。\n\n## 什么时候可以直接平均（这是本次的新一步）\n\n看那个分母 $t_1+t_2$。如果两段时间**相等**，也就是 $t_1=t_2$，那么\n\n$$\\bar v=\\frac{v_1t+v_2t}{2t}=\\frac{v_1+v_2}{2}$$\n\n权重相等，加权平均就退化成普通的算术平均。也就是说，「把两个速度加起来除以 2」不是永远错，它只是在**等时间**的场合恰好正确。\n\n举个数（按上面的式子算出来的，不是原文的例子）：两段各走 30 分钟，第一段 60 km/h，第二段 30 km/h。\n\n- 第 1 段走 $60\\times0.5=30$ km，第 2 段走 $30\\times0.5=15$ km\n- 总路程 $45$ km，总时间 $1$ 小时\n- 平均速度 $45$ km/h\n\n而 $(60+30)/2=45$，这次一模一样。\n\n## 于是原句的真正分工清楚了\n\n- 「Equal distances need not take equal times」堵的是**等路程**：路程一样，时间可以不一样（1 小时 vs 2 小时），所以等路程**不能**被当成「权重相等」来用。\n- 反过来，算术平均需要的是等时间。作者没有说「不许平均」，而是通过提醒你路程和时间不绑定，让你回到定义去。\n- 第三句「The total time must be positive」也顺带说得通了：分母 $t_1+t_2$ 就是全部权重之和，它必须为正，这个除法才立得住、权重才有意义。\n\n一句话：**平均速度不是两个速度的平均，而是两个速度按时间加权的结果；只有时间相等时，两者才重合。**\n\n现在请你用这条规则判断一下（这是上面的式子直接推出来的，不需要新知识）：两段各走 30 分钟，速度分别是 60 和 30，为什么这次可以放心地写成 $(60+30)/2$？说说你的理由，我看看你是否抓到了「权重」这一层。",
+    "answer_view": {
+      "parts": [
+        {
+          "kind": "markdown",
+          "text": "接着上一段往下走一步。上一段停在「等路程不能平均、答案是 40」，这次把那条规则一般化，你就会知道**什么时候**偷懒平均反而是对的。\n\n## 把定义写成「加权」的样子\n\n原文的三句话是这样的：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. "
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_e85701c84b34a511"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": "\n\n如果一段行程只有两段，速度分别是 $v_1$、$v_2$，各花时间 $t_1$、$t_2$，那么第 1 段走了 $v_1 t_1$，第 2 段走了 $v_2 t_2$。套回定义：\n\n$$\\bar v=\\frac{v_1t_1+v_2t_2}{t_1+t_2}$$\n\n这式子并不是新公式，它只是把「总路程 ÷ 总时间」换成用速度和时间写出来而已。但它把「时间」摆到了明面上：**分子里每个速度都乘上了自己那段时间**，分母是两段时间之和。所以速度在结果里占多少分量，由它占用了多少时间决定——时间长的那个速度说话更响。\n\n用上一段的例子核对一遍：$v_1=60$、$t_1=1$；$v_2=30$、$t_2=2$。\n\n$$\\bar v=\\frac{60\\times1+30\\times2}{1+2}=\\frac{120}{3}=40$$\n\n和逐段加路程再相除的结果一致。慢的那段占了 $\\frac{2}{3}$ 的时间，所以它把结果往 40 拖，而不是停在 45。\n\n## 什么时候可以直接平均（这是本次的新一步）\n\n看那个分母 $t_1+t_2$。如果两段时间**相等**，也就是 $t_1=t_2$，那么\n\n$$\\bar v=\\frac{v_1t+v_2t}{2t}=\\frac{v_1+v_2}{2}$$\n\n权重相等，加权平均就退化成普通的算术平均。也就是说，「把两个速度加起来除以 2」不是永远错，它只是在**等时间**的场合恰好正确。\n\n举个数（按上面的式子算出来的，不是原文的例子）：两段各走 30 分钟，第一段 60 km/h，第二段 30 km/h。\n\n- 第 1 段走 $60\\times0.5=30$ km，第 2 段走 $30\\times0.5=15$ km\n- 总路程 $45$ km，总时间 $1$ 小时\n- 平均速度 $45$ km/h\n\n而 $(60+30)/2=45$，这次一模一样。\n\n## 于是原句的真正分工清楚了\n\n- 「Equal distances need not take equal times」堵的是**等路程**：路程一样，时间可以不一样（1 小时 vs 2 小时），所以等路程**不能**被当成「权重相等」来用。\n- 反过来，算术平均需要的是等时间。作者没有说「不许平均」，而是通过提醒你路程和时间不绑定，让你回到定义去。\n- 第三句「The total time must be positive」也顺带说得通了：分母 $t_1+t_2$ 就是全部权重之和，它必须为正，这个除法才立得住、权重才有意义。\n\n一句话：**平均速度不是两个速度的平均，而是两个速度按时间加权的结果；只有时间相等时，两者才重合。**\n\n现在请你用这条规则判断一下（这是上面的式子直接推出来的，不需要新知识）：两段各走 30 分钟，速度分别是 60 和 30，为什么这次可以放心地写成 $(60+30)/2$？说说你的理由，我看看你是否抓到了「权重」这一层。"
+        }
+      ],
+      "sources": [
+        {
+          "label": "正文 · Average speed",
+          "source_ref_id": "source_ref_e85701c84b34a511"
+        }
+      ]
+    },
+    "effects": [],
+    "incomplete": false,
+    "memory_updates": [],
+    "profile_usage": {
+      "claimed_used_fact_ids": [],
+      "influences": [],
+      "injected_fact_ids": [],
+      "snapshot_revision": 0
+    },
+    "tokens_spent": 59693,
+    "trace": [
+      {
+        "args": "{\"lid\": \"1.1\", \"end_lid\": \"1.1\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"lid\":\"1.1\",\"text\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"lid\": \"1.1\", \"granularity\": \"mid\", \"k\": 8}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"anchor\":\"1.1\",\"items\":[{\"lid\":\"1\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"parent\"}},{\"lid\":\"1.2\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"next_sibling\"}}]}",
+        "tool": "book.context"
+      },
+      {
+        "args": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"source_ref_id\":\"source_ref_e85701c84b34a511\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time ",
+        "tool": "source.present"
+      },
+      {
+        "args": "{\"move\":{\"kind\":\"explain\",\"move_id\":\"mv-avg-speed-time-weight\",\"object_ids\":[],\"prompt\":\"两段路各走 30 分钟，第一段 60 km/h，第二段 30 km/h，全程平均速度是多少？为什么这次可以直接把 60 和 30 平均？\",\"target\":{\"capability\":\"applying_a_rate_definition\",\"expected_performance\":\"能按 speed=distance/time 的定义算出总时间相等情形的平均速度，并说明此时算术平均恰好成立的原因是两段的时间权重相等；在时间不等时仍坚持用总量相除而不用速度算术平均。\",\"learning_focus\":\"把「平均速度 = 按时间加权的平均」这一步从定义里推出来：先写出 v̄ = (v1·t1 + v2·t2)/(t1+t2)，再看出时间相等时它就退化成 (v1+v2)/2，从而解释为什么上面 60/30 等路程的例子不能这样平均。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"source_id\":\"tc0-average-speed\",\"source_revision\":\"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"instruction\":\"Deliver this move in the final answer. Saved candidate is not displayed.\",\"selected\":\"move:turn_19e93dd242cb60fc:mv-avg-speed-time-weight\"}",
+        "tool": "tutor.step"
+      }
+    ],
+    "turns": 3
+  },
+  "turn_status": "completed"
+}

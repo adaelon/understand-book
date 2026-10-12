@@ -1,39 +1,51 @@
-# SESSION_CHECKPOINT — 2026-10-10（Asia/Hong_Kong）
+# SESSION_CHECKPOINT — 2026-10-11 22:45（Asia/Hong_Kong）
 
 ## 新鲜度自检
-- 写入时功能提交：`68ebf4f feat: improve PDF reading, presentation interaction and conversation memory`；同步的 main 为 `de6376d`。
-- 本次合并将 PDF、演示即时交互、对话理解与多人后台记忆并入本地 main，同时保留 RN1–RN4、RS1–RS8。
-- 读入时对比 `git log -3`；以实际 Git 和工作树为准。main 目录其他未提交工作独立保留。
+
+- 写入时最新 commit：`12b765bb33fe42fcd30fcda743187241ed56d1f3`，`merge: integrate PDF and conversation improvements with reading notes and sharing`。
+- 读入时对比 `git log -3`；TC0–TC6、无进展修复及其他工作包含未提交／未跟踪文件，不能只读 HEAD。
+- 用户本次授权“阅读 checkpoint，实现 TC6，完成后刷新 checkpoint”。**TC6 已完成，未提交、未部署。** 保留其他在途修改与既有 Computer Use 停止状态。
 
 ## 当前在做什么
-本地功能整合：PDF 可见页优先读取与选区翻译、演示即时交互、对话理解和多人后台记忆，与阅读笔记／分享主线共同接续。未部署。
+
+TC6 交互事实进入讲法、理解证据与画像防污染已完成；下一片为 TC7 全链路与自然请求质量验收。见 [TC6 实施记录](docs/performance/tutor-continuation-tc6.md)、[切片方案](docs/切片方案-Tutor下一步协商与低门槛阅读入口.md)、[ADR-0163](docs/adr/0163-tutor-continuation-and-contextual-reading-entry.md)。
+
+- `teaching_recent` 纳入建议展示／选择；摘要保留原选项、回答引用、有界摘录和助手身份，精确内容沿 trace 回读。当前动作、原回答、来源及真实补充继续冻结在 LearnerContext。
+- `TeachingEvent::learner_expression` 提取真实用户表达；active／observing 认知待办只收当前来源版本下未解释的用户表达。纯选择／继续／纠偏、助手交付和曝光不成为认知待办；假设至少需要真实用户表达。
+- `AgentChatTurn::user_authored_text` 用于画像审核、历史回填、待审核上下文和教学原话；ReviewTurnInput 单列 input_action，无文字操作保留序号，按钮文案与助手摘录不能充当用户引文。
+- 理解假设仍沿原 fact_refs／teaching_implication／supersedes；旧假设被替换后不可 adopted，换来源版本不可沿用。正式表现和帮助条件沿原合同；无新增用户模型。
+- 实现前 2 项失败已复现；最终 Server 定向 20 通过／2 默认忽略，Memory 全量 149 通过，Runtime Tutor／画像审核 34 通过。新增确定性测试 8 项；本地／多人选择快照、连续选择、无文字动作、真实补充、历史回填、原题帮助和关闭 Tutor 普通观察均覆盖。
+- 单独执行 TC6 实模入口通过：deepseek-v4-flash，6 次采样，累计 usage 135,049 token，completed／incomplete=false。真实补充将旧“等式变形”假设替换为“停顿为何计入总时长”，Move 采用新假设，实际回答改变重点；source-only 对象投影前后均为空。轨迹、一次意图校验失败后的恢复均保留；真实读者仍为 0。
 
 ## 下一步（可直接接手）
-1. 用 `git log -3` 确认 main 集成状态，查看下列验收记录中的功能与平台边界。
-2. 如整理服务端扩展测试，修复 `tests/mu4_tests.rs:Fixture::seed_private` 的旧历史写法及 `tests/mu10_tests.rs` 读取冻结输入的旧假设，见对话理解验收。
-3. 如接续平台验收，先读 RS3 已知限制与 RN4 验收，准备原生保存／取消／切现场的隔离实测；Computer Use 保持用户停止状态。
-4. 如接续新功能，从阅读分享方案 §7 确定下一切片；停读意图、理解前后对照与问题回看尚未排期。
+
+1. 阅读切片方案 TC7、第 9／11 节，TC6 实施记录与 `tutor-continuation-tc6/trajectory.json`，明确工程矩阵与真实读者验收的剩余项。
+2. 沿 `crates/server/src/tests/tutor_continuation_tests.rs` 和 `packages/web/playwright/tutor-continuation*.spec.ts`，按第 9 节矩阵补齐本地／多人、Markdown／PDF、额度／取消及完整首问→选择→纠偏路径的缺项。
+3. 在固定真实材料上记录完整接续轨迹与手写 prompt 基线；保存原文版本、实际请求、工具调用、交付、错误和累计费用数据，核对公开内容而非只看 completed。
+4. 完成真实读者的默认关闭→开始→继续→纠偏验证；把未验证／失败项写入 `docs/performance/tutor-continuation-tc7-acceptance.md`，不以脚本样本替代读者结果。
+5. TC7 通过后进入 TC8：旧二进制读取、同版本撤入口／指导的降级演练及发布准备；实际部署另行授权。
 
 ## 未提交 / 未完成
-- 本工作区原有 71 个变更文件已纳入 `68ebf4f`；本次合并处理演示导出协议与新版理解空间刷新衔接。
-- 本次集成验证结果见 `docs/代码链路.md` 的“PDF、演示与对话理解集成”条目。
-- 对话理解与多人后台记忆的定向验证、恢复／费用归属和既有扩大回归失败见 [验收记录](docs/验收-对话理解与多人后台记忆.md)。普通理解由对话模型根据证据选择保存；尚未进行在线模型质量验收。
-- PDF 原件保持不变；读取性能、翻译、来源限制及既有 MU4 夹具问题见 [PDF 验收](docs/performance/pdf-reader-fixes-20261010.md)。
-- 演示本地控件即时更新；保存／追问与记录图解导出沿服务端校验；原演示文案笔误及验证边界见 [即时交互验收](docs/performance/presentation-immediate-20261010.md)。
-- RN1–RN4、RS1–RS8 功能／Web 已完成，原生保存、实体手机、安装后的 Release 与 RN4 平台连续性仍待实测；Windows Debug NSIS 候选未安装、未发布，见 [RS3](docs/performance/reading-share-rs3-20261010/README.md)、[RN4](docs/performance/reading-notes-rn4-20261010/README.md)。
-- RS8 当前解释沿服务端最近 20 条；无对象暂定解释没有新增历史接口，纠正草稿驻留当前组件，见 [RS8](docs/performance/reading-share-rs8-20261010/README.md)。
-- RS7 视频／音频、WebGL、嵌入页、Shadow DOM、未展开滚动区及无法完整恢复的旧现场不能导出；分享草稿／PNG 驻留当前页面，见 [RS7](docs/performance/reading-share-rs7-20261010/README.md)。
-- MU10 百回合恢复 queued 0／预期 100 为原主线既有失败；旧笔记历史 ID、未知旧记录与删除聊天限制沿 RN4。
-- 普通文字内嵌媒体、过宽对象与不可分过高内容沿 RS2 报错；回顾分享在关闭回顾时结束。
-- Tutor T19 真实体验待验，见 [Tutor 方案](docs/切片方案-Tutor预构建不阻塞教学.md)。
-- 其他入口：[EX](checkpoint_ex.md)、[JSONL](SESSION_CHECKPOINT_JSONL.md)、[DSH](SESSION_CHECKPOINT_DSH.md)、[运营后台](SESSION_CHECKPOINT_ADMIN.md)、[ADM](checkpoint_ADM.md)、[INV](checkpoint_INV.md)、[工具契约](SESSION_CHECKPOINT_TOOL_CONTRACTS.md)、[LangSmith](SESSION_CHECKPOINT_LANGSMITH_FULL.md)；视频以其方案与验收记录为准。
+
+- TC6 源码、8 项确定性测试、1 项实模入口、实施证据、架构／代码链路／ADR／切片状态及本 checkpoint 已落盘，未提交。
+- TC0–TC5 与其他任务既有修改保持。TC2 真实模型稳定交付、公开内容质量与真实读者验收仍未完成；TC5／TC6 局部成功不关闭这些问题。
+- TC7–TC8 未实施。真实模型本次仅一条纠正轨迹，输出仍偏长；不能声明通用教学质量或学习收益通过。
+- 本地原请求恢复限原标签页会话存储；关标签页后沿服务端历史。外部 Provider 未知结果不保证 exactly-once。旧二进制对新增事件／Move／本地准备记录的读取不可假定兼容。
 
 ## 冷启动读序
-1. [对话理解 ADR](docs/adr/0161-conversation-first-learning-and-multi-user-memory.md)、[实施方案](docs/切片方案-对话理解与多人后台记忆.md)、[验收](docs/验收-对话理解与多人后台记忆.md)。
-2. [PDF 验收](docs/performance/pdf-reader-fixes-20261010.md)、[演示即时交互验收](docs/performance/presentation-immediate-20261010.md)。
-3. [阅读分享方案](docs/切片方案-阅读分享与安静呈现.md) §2、§5、RS8、§7–§8；[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md) §1／§5；[RS8 验收](docs/performance/reading-share-rs8-20261010/README.md)。
-4. `CONTEXT.md` 会话学习意图、理解假设、TutorLoop、ProfileFact、ReviewJob、理解空间相关术语；[架构](docs/架构.md) 对话理解与多人后台画像、阅读笔记与分享；[代码链路](docs/代码链路.md) 本次集成条目。
 
-## 本会话决策摘要
-- 演示恢复完成发送 ready；记录图解在取图后校验同一现场文字与来源，保留 RS7 导出与参数一致性校验。
-- 新版理解空间继续按单项阅读；对话完成时刷新列表，卸载时停止监听。
+1. 本 checkpoint → 切片方案 TC7、第 7／9／11 节 → ADR-0163 §4–§7；CONTEXT 的 TeachingChoice／回答接续与纠偏／ResolvedInteraction／LearnerContext／LearningEvidence。
+2. `docs/performance/tutor-continuation-tc6.md`、`tutor-continuation-tc6/trajectory.json`、`live/learner-context.json` 与 `live/answer.md`；按需回读 `live/result.json` 的 facts／evidence／projection。
+3. `crates/server/src/teaching.rs:trace_summary/uninterpreted_facts/usage_facts/accept_hypothesis`、`crates/memory/src/teaching.rs:learner_expression/teaching_recent`、`learning_evidence.rs:append_evidence/current_interpretations`；Runtime `tutor.rs:COMMON/instruction_modules`。
+4. `crates/server/src/lib.rs:user_authored_text/pending_review_context`、`host.rs:copy_user_review_input/copy_historical_backfill_input`、`crates/runtime/src/memory_review.rs`；TC6 测试及既有 T17 修订、原题帮助测试；架构／代码链路 TC6 条目。
+5. TC7 涉及界面时读 TC5 实施记录及 `TutorContinuation.vue`、`RightRail.vue`、`AgentPresentation.vue`、`App.vue`、`local-reading-action.ts`、`network-client.ts` 与两份 `playwright/tutor-continuation*.spec.ts`；接纳故障回归读 TC4 实施记录及 evidence.json。
+
+## 环境与前序证据
+
+- Rust `+1.95.0`，`CARGO_TARGET_DIR=D:/codex-build/understand-book-no-progress-195`，dev/test debug=0、incremental=0，TEMP/TMP=`D:/codex-build/tmp`，`-j 2`。源码变化后重新编译；默认 1.96 旧 Windows 构建问题未处理。
+- TC6 指导 revision=`tc6.v1`；当前 TC6 实模使用已有 `.env` Provider 配置和显式模型，观测上传关闭。精确测试命令见 TC6 记录；默认忽略实模入口须显式执行，不能将 ignored 计为通过。
+- [TC5](docs/performance/tutor-continuation-tc5.md)：17 项浏览器、3 条真实 Rust API 路径；两次脚本化实模纠偏，累计 usage 261,827 token。普通／演示唯一建议宿主，草稿和原请求恢复保持。
+- [TC4](docs/performance/tutor-continuation-tc4.md)：27 条接纳／恢复操作证据；chosen 从原接纳幂等投影；历史回答用当前 head，新选择用原 head。
+- [TC3](docs/performance/tutor-continuation-tc3.md)：五次实模累计 usage 435,587 token；旧 offered 投影现为 eligible／consumed。[TC2A](docs/performance/tutor-continuation-tc2a.md)和[无进展修复](docs/performance/agent-no-progress-20261011.md)保留原对照与失败输出。
+- 用户确认口径：公开回答正确性优先；内部目标错误、公开回答正确且无后续影响证据时记内部质量观察。两段平均相等条件为 `(v1-v2)*(t1-t2)=0`；正式评分按冻结 assessment 合同。
+- 其他入口：[对话理解验收](docs/验收-对话理解与多人后台记忆.md)、[RN4](docs/performance/reading-notes-rn4-20261010/README.md)、[Tutor 原方案](docs/切片方案-Tutor预构建不阻塞教学.md)、[回合失败](SESSION_CHECKPOINT_TURN_FAILURES.md)。其他 checkpoint 原入口保持。

@@ -141,6 +141,8 @@ fn adm6_compaction_stop_keeps_original_history_and_checkpoint() {
         &[],
         &mut checkpoint,
         &mut sink,
+        &mut None,
+        |_, _| panic!("a spend stop must return before candidate adoption"),
     )
     .unwrap_err();
     assert_eq!(error.error_code, SpendStop::InsufficientAllowance.code());
