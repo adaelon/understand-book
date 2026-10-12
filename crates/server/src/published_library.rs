@@ -587,6 +587,39 @@ impl PublishedLibrary {
         self.control.connection.execute("INSERT OR IGNORE INTO book_grants(owner_user_id,book_id,publication_id) VALUES(?,?,?)", params![owner, reference.book_id, reference.publication_id]).map_err(|_| storage())?;
         Ok(())
     }
+    /// Bounded, stable publication order for MCP discovery; no private Reader state.
+    pub(crate) fn list_manifests_page(
+        &self,
+        owner: &str,
+        after: Option<&PublishedBookRef>,
+        limit: usize,
+    ) -> Result<Vec<(PublicationManifest, bool, String)>, ToolError> {
+        let mut query = self.control.connection.prepare(
+            "SELECT p.manifest,COALESCE(d.publication_id=p.publication_id,0),p.directory
+             FROM book_publications p JOIN book_grants g USING(book_id,publication_id)
+             JOIN users u ON u.user_id=g.owner_user_id LEFT JOIN book_defaults d USING(book_id)
+             WHERE g.owner_user_id=? AND u.disabled=0 AND (p.book_id,p.publication_id)>(?,?)
+             ORDER BY p.book_id,p.publication_id LIMIT ?",
+        ).map_err(|_| storage())?;
+        let rows = query.query_map(
+            params![owner, after.map_or("", |r| r.book_id.as_str()),
+                after.map_or("", |r| r.publication_id.as_str()), limit as i64],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, bool>(1)?, row.get::<_, String>(2)?)),
+        ).map_err(|_| storage())?;
+        rows.map(|row| {
+            let (manifest, is_default, directory) = row.map_err(|_| storage())?;
+            let manifest: PublicationManifest = serde_json::from_str(&manifest).map_err(|_| invalid())?;
+            let name = if manifest.files.contains_key("paper_metadata.json") {
+                read_json(&Path::new(&directory).join("paper_metadata.json"))?["title"]["value"]
+                    .as_str()
+                    .map(str::to_owned)
+                    .unwrap_or_else(|| manifest.reference.book_id.clone())
+            } else {
+                manifest.reference.book_id.clone()
+            };
+            Ok((manifest, is_default, name))
+        }).collect()
+    }
     pub fn authorize(&self, owner: &str, reference: &PublishedBookRef) -> Result<(), ToolError> {
         let allowed: bool = self.control.connection.query_row("SELECT EXISTS(SELECT 1 FROM book_grants g JOIN users u ON u.user_id=g.owner_user_id WHERE u.disabled=0 AND g.owner_user_id=? AND g.book_id=? AND g.publication_id=?)", params![owner, reference.book_id, reference.publication_id], |r| r.get(0)).map_err(|_| storage())?;
         if allowed {

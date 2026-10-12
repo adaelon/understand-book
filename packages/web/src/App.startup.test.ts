@@ -9,7 +9,7 @@ import { writeReaderSurfacePreference } from './reader-surface';
 import * as networkClient from './network-client';
 
 const api = vi.hoisted(() => Object.fromEntries([
-  "desktopStatus", "buildWorkbench", "manifest", "assetManifest", "sourceFingerprint",
+  "goto", "desktopStatus", "buildWorkbench", "manifest", "assetManifest", "sourceFingerprint",
   "sourceManifest", "state", "profileManifest", "text", "recall", "agentHistory",
   "profileMemory", "profileBackfill", "intentUsageEvent", "intentArtifacts", "bookLibrary", "paperMetadata",
   "openBook", "agentNew", "disposeEffect", "agentRunCreate", "agentRun", "agentRunRetrySave",
@@ -769,4 +769,42 @@ describe('RS7 shared diagram lifetime', () => {
     else expect(w.findComponent({ name: 'ShareImagePanel' }).exists()).toBe(false);
     expect(api.save).not.toHaveBeenCalled(); expect(api.agentRunCreate).not.toHaveBeenCalled();
   });
+});
+
+
+it('MCP7 opens exact UTF-16 evidence in canonical text without saving a highlight', async () => {
+  installIdentity({ user_id: 'alice', csrf_token: 'csrf' });
+  const reader = await api.state();
+  installWorkspace({ workspace_id: 'mcp-source', generation: 1, revision: 0, selected_chat: null,
+    published_book_ref: { book_id: 'startup', publication_id: 'original' }, reader });
+  api.goto.mockResolvedValue({ ok: true, viewport: reader.viewport });
+  const scroll = vi.fn(async () => true);
+  const wrapper = mount(App, { shallow: true, props: { mcpSource: {
+    published_book_ref: { book_id: 'startup', publication_id: 'original' },
+    start_lid: '1', end_lid: '1', start_utf16: 7, end_utf16: 11,
+  } }, global: { renderStubDefaultSlot: true, stubs: { ReaderWorkspace: { methods: { showReader() {} }, template: '<div><slot /></div>' }, ReaderPane: {
+    name: 'ReaderPane', props: ['segments', 'renderSeg'], methods: { cancelTypographyRestore() {}, scrollLidIntoView: scroll, scrollSourceIntoView: scroll },
+    template: '<div><div v-for="seg in segments" :key="seg.lid" v-html="renderSeg(seg)" /></div>',
+  } } } });
+  wrappers.push(wrapper); await flushPromises();
+  expect(wrapper.emitted('mcp-source-error')).toBeUndefined();
+  expect(api.goto).toHaveBeenCalledWith('1.1');
+  expect(wrapper.get('.source-focus-mark').text()).toBe('即阅读的');
+  expect(wrapper.emitted('mcp-source-consumed')).toHaveLength(1);
+  expect(scroll).toHaveBeenCalledWith('1.1');
+  expect(api.save).not.toHaveBeenCalled();
+});
+
+
+it.each(['publication', 'range'])('MCP7 reports an invalid %s instead of navigating to unrelated text', async kind => {
+  installIdentity({ user_id: 'alice', csrf_token: 'csrf' });
+  installWorkspace({ workspace_id: 'source-invalid', generation: 1, revision: 0, selected_chat: null,
+    published_book_ref: { book_id: 'startup', publication_id: 'original' }, reader: await api.state() });
+  const wrapper = mount(App, { shallow: true, props: { mcpSource: {
+    published_book_ref: { book_id: 'startup', publication_id: kind === 'publication' ? 'wrong' : 'original' },
+    start_lid: '1', end_lid: '1', start_utf16: 7, end_utf16: kind === 'range' ? 99 : 11,
+  } }, global: { renderStubDefaultSlot: true } });
+  wrappers.push(wrapper); await flushPromises();
+  expect(wrapper.emitted('mcp-source-error')).toHaveLength(1);
+  expect(wrapper.emitted('mcp-source-consumed')).toBeUndefined(); expect(api.goto).not.toHaveBeenCalled();
 });

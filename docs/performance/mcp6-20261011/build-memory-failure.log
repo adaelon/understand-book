@@ -1,0 +1,82 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling server v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\server)
+rustc-LLVM ERROR: out of memory
+Allocation failed
+error: could not compile `server` (lib test)
+
+Caused by:
+  process didn't exit successfully: `C:\Users\Lenovo\.rustup\toolchains\stable-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name server --edition=2021 crates\server\src\lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no --test --check-cfg cfg(docsrs,test) --check-cfg "cfg(feature, values())" -C metadata=e2c0e66064dc78ba -C extra-filename=-6b365f9831000c84 --out-dir E:\allwork\download\agent\understand-book-reading-share\target\debug\deps -C strip=debuginfo -L dependency=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps --extern argon2=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libargon2-274d4965c4dd761c.rlib --extern artifact_tools=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libartifact_tools-f67f3a3e7c75f6b8.rlib --extern base_schema=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libbase_schema-96b829275a3027c7.rlib --extern base64=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libbase64-d8f47b9e6ba8245b.rlib --extern book_tool_contracts=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libbook_tool_contracts-fa02b437b6ff767b.rlib --extern httpdate=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libhttpdate-b44058c60fa9e9ab.rlib --extern memory=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libmemory-1c6d86270b1b01ad.rlib --extern png=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libpng-cd389fb7c331ca8b.rlib --extern rand_core=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\librand_core-8267a927a94432bf.rlib --extern read_tools=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libread_tools-0a567a57a9ccb692.rlib --extern reader=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libreader-3eb379f64027a2b5.rlib --extern runtime=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libruntime-16332a1a1fa7bb88.rlib --extern rusqlite=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\librusqlite-a500c773a18af635.rlib --extern serde=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libserde-10560b216fcf1c87.rlib --extern serde_json=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libserde_json-8798cccf7e1611f5.rlib --extern sha2=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libsha2-cc95e2c063db6e1a.rlib --extern tempfile=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libtempfile-8b3c66e9f0230ee7.rlib --extern time=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libtime-085aa92f6e85fcf9.rlib --extern tiny_http=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libtiny_http-9130cad6648d15d8.rlib --extern tungstenite=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libtungstenite-03d189c7ecd9fc6e.rlib --extern ureq=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libureq-d07637b5723d82e9.rlib --extern url=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\liburl-b10b1b321d6777f9.rlib --extern uuid=E:\allwork\download\agent\understand-book-reading-share\target\debug\deps\libuuid-c2c4108a84fe3009.rlib -C link-arg=/DEBUG:NONE -L native=E:\allwork\download\agent\understand-book-reading-share\target\debug\build\libsqlite3-sys-cd6b17ded62366a0\out -L native=E:\allwork\download\agent\understand-book-reading-share\target\debug\build\ring-2f829a8012e2cdc3\out` (exit code: 0xc0000409, STATUS_STACK_BUFFER_OVERRUN)

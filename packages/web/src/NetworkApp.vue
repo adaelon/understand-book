@@ -5,6 +5,8 @@ import BookCover from './components/BookCover.vue';
 import LoadingAnimation from './components/LoadingAnimation.vue';
 import AccountAllowance from './components/AccountAllowance.vue';
 import AccountSettings from './components/AccountSettings.vue';
+import AccountMcp from './components/AccountMcp.vue';
+import { readMcpSource, sourceParams, type McpSource } from './mcp-source';
 import AccountAccess from './components/AccountAccess.vue';
 import { takeAccountLink, type AccountView } from './account-forms';
 import AgentPresentation from './components/AgentPresentation.vue';
@@ -15,6 +17,10 @@ import { network, installIdentity, installWorkspace, forgetNetwork, sceneKey, re
 import { networkFetch, recoverWorkspaceBinding, recoverSubmissions, pendingSubmissions, retrySubmission, readReadingResumption, type ReadingResumption, type PendingSubmission } from './network-client';
 import { targetPublication, type RecapTarget } from './session-recap';
 const username = ref(''), password = ref(''), error = ref(''), busy = ref(false), checking = ref(true);
+const sourceTarget = ref<McpSource | null>(null), sourceError = ref('');
+let pendingSource: McpSource | null = null;
+try { pendingSource = readMcpSource(location.search); } catch (failure) { sourceError.value = (failure as Error).message; }
+let mcpRequested = new URLSearchParams(location.search).get('account') === 'mcp';
 const accountLink = takeAccountLink();
 const accountView = ref<AccountView | null>(accountLink.view), resetToken = ref(accountLink.token);
 accountLink.token = '';
@@ -76,8 +82,45 @@ const readerApp = ref<InstanceType<typeof App> | null>(null);
 const key = computed(sceneKey);
 const appKey = computed(readerKey);
 const chatDraft = ref<ChatDraft | null>(null);
-const allowanceOpen = ref(false), settingsOpen = ref(false);
-watch([() => network.value.epoch, () => network.value.identity?.user_id, () => network.value.identity?.csrf_token], () => { allowanceOpen.value = false; settingsOpen.value = false; }, { flush: 'sync' });
+const allowanceOpen = ref(false), settingsOpen = ref(false), mcpOpen = ref(false);
+function showMcp() {
+  mcpOpen.value = true;
+  const url = new URL(location.href); url.searchParams.set('account', 'mcp'); history.replaceState(history.state, '', url);
+}
+function closeMcp() {
+  mcpOpen.value = false; mcpRequested = false;
+  const url = new URL(location.href); if (url.searchParams.get('account') === 'mcp') url.searchParams.delete('account');
+  history.replaceState(history.state, '', url);
+}
+function sourceConsumed() {
+  pendingSource = null; sourceTarget.value = null; sourceError.value = '';
+  const url = new URL(location.href); sourceParams.forEach(key => url.searchParams.delete(key));
+  history.replaceState(history.state, '', url);
+}
+function sourceFailed(message: string) { sourceTarget.value = null; sourceError.value = message; }
+async function openPendingSource() {
+  if (!pendingSource || sourceTarget.value || linkedRequested) return;
+  const source = pendingSource;
+  if (readerApp.value && !await readerApp.value.beforeNoteLeave('打开来源')) return;
+  busy.value = true; sourceError.value = '';
+  try {
+    if (network.value.workspace) await api.openBook(JSON.stringify(source.published_book_ref));
+    else installWorkspace(await networkFetch<NetworkWorkspace>('POST', '/workspaces', {
+      attachment_id: network.value.attachment, published_book_ref: source.published_book_ref,
+    }));
+    sourceTarget.value = source; libraryOpen.value = false; suspended.value = false;
+  } catch (failure) {
+    if (failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE') return;
+    sourceError.value = failure instanceof ApiError && [403, 404].includes(failure.status)
+      ? '该来源材料未获授权或该版本已不可用，请联系管理员开通，或选择其他材料。'
+      : '来源暂时无法打开，请重试。';
+  } finally { busy.value = false; }
+}
+async function openAccountDestination() {
+  if (mcpRequested) { showMcp(); mcpRequested = false; }
+  if (pendingSource && !sourceError.value) await openPendingSource();
+}
+watch([() => network.value.epoch, () => network.value.identity?.user_id, () => network.value.identity?.csrf_token], () => { allowanceOpen.value = false; settingsOpen.value = false; mcpOpen.value = false; sourceTarget.value = null; }, { flush: 'sync' });
 // A transport generation changes on reattachment; the user's unsent question does not.
 watch(() => {
   const n = network.value, w = n.workspace;
@@ -189,6 +232,7 @@ async function checkIdentity() {
         installWorkspace(current); await recover();
       }
       window.dispatchEvent(new Event('workspace-recovered'));
+      await openAccountDestination();
     } catch (failure) {
       if (network.value.identity) error.value = failure instanceof Error ? failure.message : String(failure);
     } finally { checking.value = false; identityCheck = null; }
@@ -202,7 +246,7 @@ async function login() {
     await networkFetch('POST', '/auth/login', { username: username.value, password: password.value });
     password.value = '';
     installIdentity(await networkFetch<NetworkIdentity>('GET', '/auth/me'));
-    channel?.postMessage('changed'); await catalog(); await loadResumption();
+    channel?.postMessage('changed'); await catalog(); await loadResumption(); await openAccountDestination();
   } catch { error.value = '登录失败，请核对账号、密码或稍后重试。'; }
   finally { password.value = ''; busy.value = false; checking.value = false; }
 }
@@ -277,25 +321,26 @@ onBeforeUnmount(() => {
       <summary>账号</summary>
       <div class="network-account-menu">
         <span>{{ network.identity.email || network.identity.user_id }}</span>
-        <button @click="settingsOpen = true">个人设置</button> <button @click="allowanceOpen = true">使用额度</button>
+        <button @click="settingsOpen = true">个人设置</button> <button @click="showMcp">MCP 接入</button> <button @click="allowanceOpen = true">使用额度</button>
         <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a>
         <button @click="logout">退出登录</button>
       </div>
     </details>
-    <div v-if="pending || error" class="network-notices">
+    <div v-if="pending || error || sourceError" class="network-notices">
+      <span v-if="sourceError" role="alert">{{ sourceError }} <button v-if="pendingSource" :disabled="busy" @click="openPendingSource">重试打开来源</button></span>
       <span v-if="pending" role="status">{{ pending }} 个问题提交待核对 <button @click="recover">核对原问题</button></span>
       <span v-for="item in pendingItems" :key="item.key">{{ item.body.display_user || item.body.message }} <button @click="retryOriginal(item.key)">重试原提交</button></span>
       <span v-if="error" role="alert">{{ error }}</span>
     </div>
     <AgentPresentation v-if="!suspended && network.linked && linkedPresentation && network.workspace" :key="key" :session-id="linkedPresentation.session_id" :turn-id="linkedPresentation.turn_id" :reference="linkedPresentation.reference" @follow-up="followUp" @source="showLinkedSource" />
     <main v-else-if="openingRecap" class="network-loading"><LoadingAnimation /></main>
-    <App ref="readerApp" v-else-if="!suspended && network.workspace" v-show="!libraryOpen" :key="appKey" v-model:chat-draft="chatDraft" :recap-target="recapTarget" @show-library="showLibrary" @show-allowance="allowanceOpen = true" @recap-consumed="recapTarget = null" @recap-publication="openRecapPublication">
+    <App ref="readerApp" v-else-if="!suspended && network.workspace" v-show="!libraryOpen" :key="appKey" v-model:chat-draft="chatDraft" :recap-target="recapTarget" :mcp-source="sourceTarget" @mcp-source-consumed="sourceConsumed" @mcp-source-error="sourceFailed" @show-library="showLibrary" @show-allowance="allowanceOpen = true" @recap-consumed="recapTarget = null" @recap-publication="openRecapPublication">
       <template #account>
         <details class="network-account">
           <summary>账号</summary>
           <div class="network-account-menu">
             <span>{{ network.identity.email || network.identity.user_id }}</span>
-            <button @click="settingsOpen = true">个人设置</button> <button @click="allowanceOpen = true">使用额度</button>
+            <button @click="settingsOpen = true">个人设置</button> <button @click="showMcp">MCP 接入</button> <button @click="allowanceOpen = true">使用额度</button>
             <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a>
             <span v-if="network.identity.capabilities?.presentation.authoring === false">演示制作暂不可用</span>
             <button @click="logout">退出登录</button>
@@ -307,7 +352,7 @@ onBeforeUnmount(() => {
     <main v-if="!linkedRequested && (libraryOpen || !network.workspace)" class="network-library">
       <header class="network-library-head">
         <div><p class="network-library-kicker">你的书架</p><h1>选择阅读材料</h1></div>
-        <p><span class="account-email">{{ network.identity.email || network.identity.user_id }}</span> <button @click="settingsOpen = true">个人设置</button> <button @click="allowanceOpen = true">使用额度</button> <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a> <button @click="logout">退出登录</button></p>
+        <p><span class="account-email">{{ network.identity.email || network.identity.user_id }}</span> <button @click="settingsOpen = true">个人设置</button> <button @click="showMcp">MCP 接入</button> <button @click="allowanceOpen = true">使用额度</button> <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a> <button @click="logout">退出登录</button></p>
       </header>
       <section v-if="resumption && resumptionBook" class="reading-resumption" aria-label="阅读接续">
         <div class="resumption-cover"><BookCover :title="resumption.published_book_ref.book_id" :cover="resumptionBook.cover" /></div>
@@ -330,6 +375,7 @@ onBeforeUnmount(() => {
       </div>
       <p v-if="!books.length">账号已创建，等待管理员开通材料。</p>
     </main>
+    <AccountMcp v-if="mcpOpen" @close="closeMcp" />
     <AccountSettings v-if="settingsOpen" @close="settingsOpen = false" @bound="channel?.postMessage('profile-changed')" @password-changed="passwordChanged" />
     <AccountAllowance v-if="allowanceOpen" :key="key" @close="allowanceOpen = false" />
     <aside v-if="linkedSource" class="network-source" aria-label="演示来源">

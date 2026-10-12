@@ -4,6 +4,32 @@ export interface Page<T> {
   limit: number;
   offset: number;
 }
+export interface McpCallPack {
+  pack_id: string;
+  receipt_id: string;
+  pack_count: number;
+  unit_price_fen: number;
+  units_per_pack: number;
+  price_fen: number;
+  total_units: number;
+  adjusted_units: number;
+  used_units: number;
+  remaining_units: number;
+  available_units: number;
+  opened_at: string;
+  expires_at: string;
+  revision: number;
+}
+export interface McpUsage {
+  month_hk: string;
+  free_granted: number;
+  free_used: number;
+  free_remaining: number;
+  free_resets_at: string;
+  paid_remaining: number;
+  paid_next_expires_at: string | null;
+  call_packs: McpCallPack[];
+}
 export interface BookRef {
   book_id: string;
   publication_id: string;

@@ -1,0 +1,335 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling server v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 37.56s
+     Running unittests src\lib.rs (target\debug\deps\server-e6140f0c20c22aad.exe)
+
+running 37 tests
+test control_store::tests::mu2_writer_child ... ok
+test auth::tests::mu4_global_attempt_budget_resets_and_does_not_grow_unbounded ... ok
+test control_store::tests::mu2_control_future_or_unversioned_foreign_schema_is_not_rewritten ... ok
+test control_store::tests::mu2_control_schema_pragmas_owner_constraints_and_reopen ... ok
+test control_store::admin_schema_tests::adm1_new_schema_enforces_ownership_money_periods_and_charge_facts ... ok
+test control_store::admin_schema_tests::adm1_failed_upgrade_rolls_back_role_and_version ... ok
+test control_store::account_registration_schema_tests::inv1_failed_upgrade_rolls_back_email_tables_and_version ... ok
+test control_store::account_registration_schema_tests::inv1_email_invite_and_request_constraints_persist_on_reopen ... ok
+
+running 1 test
+test control_store::tests::mu2_writer_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 686 filtered out; finished in 0.01s
+
+test control_store::admin_schema_tests::adm1_upgrades_every_supported_schema_and_preserves_existing_data_on_reopen ... ok
+test mcp_access::tests::mcp_access_schema_v9_upgrade_preserves_accounts_and_rolls_back_on_failure ... ok
+
+running 1 test
+test control_store::tests::mu2_exclusive_writer_survives_handles_and_releases_on_process_exit ... ok
+test control_store::account_registration_schema_tests::inv1_upgrades_preserve_old_fields_and_match_fresh_schema_on_reopen ... ok
+test mcp_access::tests::mcp_access_rejects_missing_wrong_credentials_and_stale_web_sessions ... ok
+test mcp_access::tests::mcp_access_owner_isolation_one_time_secret_and_reopen ... ok
+test control_store::tests::mu2_database_busy_returns_storage_error_without_partial_user ... ok
+test tests::mu4_tests::mu4_identity_origin_csrf_and_directory_injection_fail_before_side_effects ... FAILED
+test auth::tests::inv5_email_and_legacy_login_share_identity_role_and_attempt_budget ... ok
+test tests::mu4_tests::mu4_login_limiter_and_mode_are_bounded_and_explicit ... FAILED
+test mcp_access::tests::mcp_access_account_routes_keep_cookie_csrf_and_private_state_boundaries ... ok
+test tests::mu4_tests::mu4_mu0_inventory_has_no_anonymous_or_legacy_bypass ... FAILED
+test tests::inv7_tests::inv7_reset_competing_connections_commit_once_and_forgot_storage_failure_keeps_old_link ... ok
+test tests::mu4_tests::mu4_open_sse_closes_on_logout_disable_and_material_revocation ... FAILED
+test auth::tests::adm1_admin_role_is_current_and_obeys_all_session_revocations ... ok
+test tests::inv7_tests::inv7_mail_failure_timeout_keeps_token_and_sends_outside_transaction ... ok
+test tests::mu4_tests::mu4_real_host_login_cookie_rotation_csrf_logout_and_no_static_fallback ... FAILED
+test tests::mu4_tests::mu4_pdf_real_host_is_bound_and_private_storage_failure_is_sanitized ... FAILED
+test tests::mu4_tests::mu4_private_objects_are_owner_scoped_at_real_host ... FAILED
+test tests::mu4_tests::mu4_resources_authorize_before_head_range_conditionals_cache_and_revoke ... FAILED
+test tests::inv7_tests::inv7_reset_is_one_use_persistent_and_get_does_not_change_credentials ... ok
+test tests::mu4_tests::mu4_same_legacy_ids_and_delivered_presentation_stay_in_user_root ... FAILED
+test tests::mu4_tests::mu4_sessions_survive_restart_expire_and_revoke_without_plaintext_storage ... FAILED
+test tests::inv7_tests::inv7_forgot_uniform_response_and_precise_host_contract ... ok
+test auth::tests::mu4_session_cap_prunes_expired_and_hash_slot_does_not_block_validation ... ok
+test tests::inv7_tests::inv7_change_revokes_all_sessions_and_preserves_workspace_role_material_and_allowance ... ok
+test mcp_access::tests::mcp_access_account_revocations_never_revive_old_credentials ... ok
+test tests::inv7_tests::inv7_transaction_failures_restore_password_token_and_sessions ... ok
+test tests::inv7_tests::inv7_expired_revoked_disabled_and_superseded_tokens_are_rejected ... ok
+
+failures:
+
+---- tests::mu4_tests::mu4_identity_origin_csrf_and_directory_injection_fail_before_side_effects stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+
+thread 'tests::mu4_tests::mu4_identity_origin_csrf_and_directory_injection_fail_before_side_effects' (19416) panicked at crates\server\src\tests\mu4_tests.rs:76:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- tests::mu4_tests::mu4_login_limiter_and_mode_are_bounded_and_explicit stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+
+thread 'tests::mu4_tests::mu4_login_limiter_and_mode_are_bounded_and_explicit' (5084) panicked at crates\server\src\tests\mu4_tests.rs:76:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+---- tests::mu4_tests::mu4_mu0_inventory_has_no_anonymous_or_legacy_bypass stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+
+thread 'tests::mu4_tests::mu4_mu0_inventory_has_no_anonymous_or_legacy_bypass' (28940) panicked at crates\server\src\tests\mu4_tests.rs:76:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+---- tests::mu4_tests::mu4_open_sse_closes_on_logout_disable_and_material_revocation stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+
+thread 'tests::mu4_tests::mu4_open_sse_closes_on_logout_disable_and_material_revocation' (38744) panicked at crates\server\src\tests\mu4_tests.rs:76:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+---- tests::mu4_tests::mu4_real_host_login_cookie_rotation_csrf_logout_and_no_static_fallback stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+
+thread 'tests::mu4_tests::mu4_real_host_login_cookie_rotation_csrf_logout_and_no_static_fallback' (36108) panicked at crates\server\src\tests\mu4_tests.rs:76:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+---- tests::mu4_tests::mu4_pdf_real_host_is_bound_and_private_storage_failure_is_sanitized stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+
+thread 'tests::mu4_tests::mu4_pdf_real_host_is_bound_and_private_storage_failure_is_sanitized' (38336) panicked at crates\server\src\tests\mu4_tests.rs:76:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+---- tests::mu4_tests::mu4_private_objects_are_owner_scoped_at_real_host stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+
+thread 'tests::mu4_tests::mu4_private_objects_are_owner_scoped_at_real_host' (38600) panicked at crates\server\src\tests\mu4_tests.rs:76:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+---- tests::mu4_tests::mu4_resources_authorize_before_head_range_conditionals_cache_and_revoke stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+
+thread 'tests::mu4_tests::mu4_resources_authorize_before_head_range_conditionals_cache_and_revoke' (36000) panicked at crates\server\src\tests\mu4_tests.rs:76:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+---- tests::mu4_tests::mu4_same_legacy_ids_and_delivered_presentation_stay_in_user_root stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+
+thread 'tests::mu4_tests::mu4_same_legacy_ids_and_delivered_presentation_stay_in_user_root' (29268) panicked at crates\server\src\tests\mu4_tests.rs:76:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+---- tests::mu4_tests::mu4_sessions_survive_restart_expire_and_revoke_without_plaintext_storage stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=10
+
+thread 'tests::mu4_tests::mu4_sessions_survive_restart_expire_and_revoke_without_plaintext_storage' (5084) panicked at crates\server\src\tests\mu4_tests.rs:76:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+
+failures:
+    tests::mu4_tests::mu4_identity_origin_csrf_and_directory_injection_fail_before_side_effects
+    tests::mu4_tests::mu4_login_limiter_and_mode_are_bounded_and_explicit
+    tests::mu4_tests::mu4_mu0_inventory_has_no_anonymous_or_legacy_bypass
+    tests::mu4_tests::mu4_open_sse_closes_on_logout_disable_and_material_revocation
+    tests::mu4_tests::mu4_pdf_real_host_is_bound_and_private_storage_failure_is_sanitized
+    tests::mu4_tests::mu4_private_objects_are_owner_scoped_at_real_host
+    tests::mu4_tests::mu4_real_host_login_cookie_rotation_csrf_logout_and_no_static_fallback
+    tests::mu4_tests::mu4_resources_authorize_before_head_range_conditionals_cache_and_revoke
+    tests::mu4_tests::mu4_same_legacy_ids_and_delivered_presentation_stay_in_user_root
+    tests::mu4_tests::mu4_sessions_survive_restart_expire_and_revoke_without_plaintext_storage
+
+test result: FAILED. 27 passed; 10 failed; 0 ignored; 0 measured; 650 filtered out; finished in 29.10s
+
+error: test failed, to rerun pass `-p server --lib`

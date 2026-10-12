@@ -1,0 +1,47 @@
+
+running 2 tests
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+test remote_mcp::tests::mcp_acceptance::mcp9_small_concurrent_reads_measure_bytes_and_ledger ... MCP9_METRIC {"calls":1,"clients":1,"max_us":62419,"median_us":62419,"response_bytes":50950,"wall_us":64720}
+MCP9_METRIC {"calls":5,"clients":4,"max_us":21813,"median_us":19684,"response_bytes":203800,"wall_us":30935}
+MCP9_METRIC {"calls":13,"clients":8,"max_us":37725,"median_us":28415,"response_bytes":407600,"wall_us":39553}
+ok
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+
+thread 'remote_mcp::tests::mcp_acceptance::mcp9_two_accounts_purchase_recovery_and_source_evidence' (23220) panicked at crates\server\src\mcp_acceptance_tests.rs:31:10:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "LOGIN_RATE_LIMITED", category: "rate_limit", message: "Too many sign-in attempts; try again later" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test remote_mcp::tests::mcp_acceptance::mcp9_two_accounts_purchase_recovery_and_source_evidence ... FAILED
+
+failures:
+
+failures:
+    remote_mcp::tests::mcp_acceptance::mcp9_two_accounts_purchase_recovery_and_source_evidence
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 719 filtered out; finished in 12.57s
+

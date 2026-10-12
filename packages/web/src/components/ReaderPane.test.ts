@@ -310,3 +310,24 @@ describe("ReaderPane Note rendering", () => {
     wrapper.unmount();
   });
 });
+
+
+it('MCP7 scrolls to the exact source mark inside a long paragraph', async () => {
+  const wrapper = mount(ReaderPane, { props: {
+    segments: [segment('1.1', 'paragraph')], viewportAnchor: null, selectedLid: null,
+    renderSeg: () => 'before <mark class="source-focus-mark">evidence</mark> after',
+    renderMarkdown: source => source, markdownHeadingLevel: () => null,
+    isAsset: () => false, isHighlighted: () => false, highlightsOf: () => [],
+    highlightCardsOf: () => [], visibleNotes: [], hlExcerpt: () => '', imageMeta: () => null, imageAsset: () => null,
+  } });
+  try {
+    const pane = wrapper.get('.reader-pane').element as HTMLElement;
+    pane.scrollTop = 0;
+    vi.spyOn(pane, 'getBoundingClientRect').mockReturnValue({ top: 0 } as DOMRect);
+    vi.spyOn(wrapper.get('[data-lid="1.1"]').element, 'getBoundingClientRect').mockReturnValue({ top: 0 } as DOMRect);
+    vi.spyOn(wrapper.get('mark').element, 'getBoundingClientRect').mockReturnValue({ top: 400 } as DOMRect);
+    expect(await wrapper.vm.scrollSourceIntoView('1.1')).toBe(true);
+    expect(pane.scrollTop).toBe(400);
+    expect(await wrapper.vm.scrollSourceIntoView('missing')).toBe(false);
+  } finally { wrapper.unmount(); }
+});

@@ -1107,8 +1107,12 @@ mod tests {
         assert_eq!(schema("book_concept")["properties"]["limit"]["minimum"], 1);
         assert_eq!(schema("book_concept")["properties"]["limit"]["maximum"], 50);
         assert_eq!(
-            schema("book_context")["properties"]["granularity"]["enum"],
+            schema("book_context")["properties"]["granularity"]["anyOf"][0]["enum"],
             json!(["near", "mid", "far"])
+        );
+        assert_eq!(
+            schema("book_context")["properties"]["granularity"]["anyOf"][1],
+            json!({"type":"null"})
         );
         assert_eq!(schema("book_search_text")["required"], json!(["query"]));
         assert_eq!(

@@ -1,0 +1,120 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.18s
+     Running unittests src\lib.rs (target\debug\deps\server-e6140f0c20c22aad.exe)
+
+running 30 tests
+test control_store::tests::mu2_writer_child ... ok
+test control_store::tests::mu2_control_future_or_unversioned_foreign_schema_is_not_rewritten ... ok
+test control_store::tests::mu2_control_schema_pragmas_owner_constraints_and_reopen ... ok
+
+running 1 test
+test control_store::tests::mu2_writer_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 699 filtered out; finished in 0.02s
+
+test control_store::admin_schema_tests::adm1_new_schema_enforces_ownership_money_periods_and_charge_facts ... ok
+
+running 1 test
+test control_store::tests::mu2_exclusive_writer_survives_handles_and_releases_on_process_exit ... ok
+test control_store::admin_schema_tests::adm1_failed_upgrade_rolls_back_role_and_version ... ok
+test control_store::account_registration_schema_tests::inv1_failed_upgrade_rolls_back_email_tables_and_version ... ok
+test control_store::account_registration_schema_tests::inv1_email_invite_and_request_constraints_persist_on_reopen ... ok
+test mcp_access::tests::mcp_access_schema_v9_upgrade_preserves_accounts_and_rolls_back_on_failure ... ok
+test control_store::admin_schema_tests::adm1_upgrades_every_supported_schema_and_preserves_existing_data_on_reopen ... ok
+test mcp_access::tests::mcp_access_real_http_create_list_and_revoke_without_reader_workspace ... ok
+test control_store::account_registration_schema_tests::inv1_upgrades_preserve_old_fields_and_match_fresh_schema_on_reopen ... ok
+test mcp_access::tests::mcp_access_rejects_missing_wrong_credentials_and_stale_web_sessions ... ok
+test control_store::tests::mu2_database_busy_returns_storage_error_without_partial_user ... ok
+test tests::adm3_tests::adm3_schema5_upgrade_keeps_original_receipts_and_failure_is_atomic ... ok
+test mcp_access::tests::mcp_access_owner_isolation_one_time_secret_and_reopen ... ok
+test mcp_read::tests::mcp_read_catalog_isolates_accounts_pages_versions_and_avoids_private_or_resident_state ... ok
+test mcp_read::tests::mcp_read_nested_structure_and_paper_collections_reassemble_without_omissions ... ok
+test tests::adm2_tests::adm2_permission_csrf_validation_pagination_and_actor_scoped_replay ... ok
+test tests::adm3_tests::adm3_concurrent_same_operation_and_revision_commit_once ... ok
+test tests::adm2_tests::adm2_real_http_host_concurrent_create_and_current_role ... ok
+test tests::adm3_tests::adm3_conflicts_overlap_ownership_and_occupied_allowance ... ok
+test mcp_read::tests::mcp_read_text_pages_keep_exact_source_and_recheck_cached_grants_on_continuation ... ok
+test mcp_access::tests::mcp_access_account_routes_keep_cookie_csrf_and_private_state_boundaries ... ok
+test tests::adm2_tests::adm2_receipt_failure_rolls_back_account_password_sessions_and_material ... ok
+test mcp_read::tests::mcp_read_search_context_empty_results_and_remote_parameter_validation ... ok
+test tests::adm3_tests::adm3_failure_rolls_back_receipt_grant_revision_and_operation ... ok
+test tests::adm3_tests::adm3_receipt_grant_replay_corrections_and_reopen ... ok
+test tests::adm2_tests::adm2_online_lifecycle_receipts_and_other_reader_workspace ... ok
+test mcp_access::tests::mcp_access_account_revocations_never_revive_old_credentials ... ok
+
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 670 filtered out; finished in 24.62s
+

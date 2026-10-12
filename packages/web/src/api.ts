@@ -100,6 +100,17 @@ export type {
 };
 
 const BASE = "/api";
+export interface McpCredential {
+  credential_id: string; label: string; created_at: number; revoked_at: number | null; active: boolean;
+}
+export interface McpUsage {
+  month_hk: string; free_granted: number; free_used: number; free_remaining: number; free_resets_at: string;
+  paid_remaining: number; paid_next_expires_at: string | null;
+  call_packs: Array<{ pack_id: string; pack_count: number; total_units: number; adjusted_units: number;
+    used_units: number; remaining_units: number; available_units: number; opened_at: string; expires_at: string }>;
+  top_up_url: string; top_up_instruction: string;
+}
+export interface AccountMcpState { credentials: McpCredential[]; usage: McpUsage; mcp_url: string }
 export const agentRunEventsUrl = (turnId: string, cursor?: string) => `${BASE}/agent/runs/${encodeURIComponent(turnId)}/events${cursor ? `?after=${encodeURIComponent(cursor)}` : ""}`;
 
 /** reader.* 会话态(符 V3 §4.2),与 Rust `Viewport`/`ReaderState` 对齐(memory 类型未走 ts-rs,在此手定)。 */

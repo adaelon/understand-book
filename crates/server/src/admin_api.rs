@@ -42,6 +42,13 @@ struct InviteBatch {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
+struct McpGift {
+    operation_id: String,
+    units: i64,
+    reason: String,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Empty {}
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -88,6 +95,10 @@ pub(crate) fn dispatch(
     now: i64,
 ) -> Result<Value, ToolError> {
     let parts: Vec<_> = path.trim_start_matches('/').split('/').collect();
+    if method == "GET" && matches!(parts.as_slice(), ["admin", "users", _, "mcp"]) {
+        if !query.is_empty() { return Err(admin_store::invalid()); }
+        return serde_json::to_value(access.mcp_usage.status(parts[2])?).map_err(|_|admin_store::invalid());
+    }
     if method == "GET" && parts.as_slice() == ["admin", "invites"] {
         let mut pagination = query.clone();
         let state = pagination.remove("state");
@@ -156,6 +167,21 @@ pub(crate) fn dispatch(
         return Err(admin_store::invalid());
     }
     let (owner, id, command) = match parts.as_slice() {
+        ["admin", "users", owner, "mcp", "gifts"] => {
+            let body: McpGift = parse(input)?;
+            return access.mcp_usage.gift(principal, &body.operation_id, owner, body.units, &body.reason);
+        }
+        ["admin", "users", owner, "mcp", action @ ("packs" | "corrections")] => {
+            let mut input = input;
+            let id = input.as_object_mut().and_then(|v|v.remove("operation_id"))
+                .and_then(|v|v.as_str().map(str::to_owned)).ok_or_else(admin_store::invalid)?;
+            let mutation = if *action == "packs" {
+                crate::mcp_pack::Mutation::Purchase(parse(input)?)
+            } else {
+                crate::mcp_pack::Mutation::Correction(parse(input)?)
+            };
+            ((*owner).to_owned(), id, Command::Mcp(mutation))
+        }
         ["admin", "invite-batches"] => {
             let body: InviteBatch = parse(input)?;
             return access.admin.create_invites(principal.user_id(), &body.operation_id, body.count, now);

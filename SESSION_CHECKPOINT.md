@@ -1,42 +1,44 @@
-# SESSION_CHECKPOINT — 2026-10-10 17:45（Asia/Hong_Kong）
+# SESSION_CHECKPOINT — 2026-10-11 12:11（Asia/Hong_Kong）
 
 ## 新鲜度自检
-- 写入时最新 commit：`7fd8a08 docs: carry forward reading notes and sharing plan`。
+- 写入时最新 commit：`de6376d feat: integrate reading notes RN1-RN4 and sharing RS1-RS8`。
 - 读入时对比 `git log -3`；若不同，以实际 Git 和工作树为准。
-- RN1–RN4、RS1–RS8 本次整理为 `codex/reading-share` 集成提交，目标为本地 main；未发布。main 其他工作线的未提交改动继续保留。
+- 工作树：`E:/allwork/download/agent/understand-book-reading-share`；分支 `codex/reading-share`。MCP0–MCP9 尚未提交／发布。
 
 ## 当前在做什么
-**RS8「理解空间的单项阅读」功能／Web 已完成；RN1–RN4、RS1–RS8 功能主线已实现，平台待验项与后续新功能独立接续。**
+**MCP9「集成与新 Agent 验收」已完成，下一片是 MCP10「发布与运行单」。**
 
-理解空间已采用短预览列表与单项详情；原话、系统解释、暂定理解、实际表现、帮助条件及历史版本分别显示。依据按需展开且可见才记录反馈展示；纠正沿原证据及幂等命令，历史沿原对象分页。见 [RS8 验收](docs/performance/reading-share-rs8-20261010/README.md)。
+双账号、真实 HTTP 购包／回执恢复、来源到 Reader 的 UTF-16 解析、并发消费与实际客户端阅读已验收。生产模块和 schema 12 未变；本轮新增验收路径，并修正本机 MCP 过时 nullable schema 测试。[MCP9 实现](docs/内测MCP-MCP9实现.md)、[证据与命令](docs/performance/beta-mcp/README.md)。
 
 ## 下一步（可直接接手）
-1. RN／RS 功能已整理提交；接续时用 `git log -3` 确认 main 集成状态，保留 main 中产品首页与构建重试等独立在途改动。
-2. 若接续平台验收，先读 [RS3 已知限制](docs/performance/reading-share-rs3-20261010/README.md) 与 [RN4 验收](docs/performance/reading-notes-rn4-20261010/README.md)，按隔离目录准备原生保存／取消／切现场的实测；Computer Use 仍处于用户停止状态，不自行恢复。
-3. 若接续新功能，从实施方案 §7 选择并明确下一切片；停读意图、理解前后对照与问题回看尚未排期。
+1. 按冷启动读序接手；保留 MCP0–MCP9 未提交成果，读取切片方案 MCP10 与 MCP9 已知限制。
+2. 编写 `docs/内测MCP-发布运行单.md`，基于 `ControlStore::open`、schema 12 和既有 Linux 脚本写成套备份／升级／恢复步骤。
+3. 在临时目录验证备份恢复及旧服务对 schema 12 的行为，核对旧账号、材料和模型费用；不得覆盖丢失新收款／消费。
+4. 在目标 Linux／HTTPS 代理验证 `/mcp` 的认证／协议头及明确赠送次数的实际扣次；按 4 个活跃读取任务起步复测容量。
+5. 完成 MCP10 发布验收后同步切片表与上线状态；本次仍是未发布状态。
 
 ## 未提交 / 未完成
-- RN1–RN4、RS1–RS8 的代码、测试、合同及验收记录已纳入本次集成提交；临时运行目录与 test-results 留在原工作区。
-- 集成验证：Web 20 文件 182 项、memory 143 项、server 定向 52 项通过（5 项按原设置忽略），Web 类型及生产构建通过。
-- RS8 最终 Web 2 文件 9 项通过；Chromium 4 项通过，覆盖 320／390／1280px 长文、纠正、未知状态、依据可见性、帮助条件和历史。最终类型／生产构建通过；日志与 PNG 见 RS8 验收。
-- RS8 已复现并修复反馈回执延迟失败覆盖纠正重试的问题；两类错误分别保留。当前解释仍沿服务端最近 20 条；无对象暂定解释没有新增历史接口，纠正草稿仅驻留当前组件。
-- RS7 图解分享功能／Web 已完成，见 [RS7 验收](docs/performance/reading-share-rs7-20261010/README.md)。当前图解同次固定图面和参数；笔记图解在独立 960×640 页恢复核对，不重置原演示。
-- RS7 视频／音频、WebGL、嵌入页、Shadow DOM、未展开滚动区及无法完整恢复的旧现场明确拒绝；原生保存／实体手机仍待验。
-- RS6 回答分享、RS5 只读接续及 RS4 固定选材／截点已完成；原来源、Reader、未发送文字及原导航保持，见 [RS6](docs/performance/reading-share-rs6-20261010/README.md)、[RS5](docs/performance/reading-share-rs5-20261010/README.md)、[RS4](docs/performance/reading-share-rs4-20261010/README.md)。
-- RN1–RN4、RS1–RS3 功能已实现。RS3 用户确认的无配图纸页与精简弹窗保持；原生保存和实体手机验收延期仍有效。
-- Windows Debug NSIS 候选已构建，未安装、未覆盖原安装、未发布。原生逐页保存／取消／切现场、安装后资源路径与 Release 行为、RN4 平台连续性均未实测完成。
-- 用户已停止 Computer Use，后续不得自行恢复。隔离窗口 PID／目录与重启隔离变量见 [RS3 验收](docs/performance/reading-share-rs3-20261010/README.md)。
-- MU10 百回合恢复 queued 0／预期 100 为既有独立失败，本轮未修改或复验；旧笔记历史 ID、未知旧记录与删除聊天限制沿 RN4。
-- 分享草稿／PNG 驻留当前页面；回顾分享另在关闭回顾时结束。普通文字内嵌媒体、过宽对象与不可分过高内容沿 RS2 报错。
-- Tutor T19 真实体验待验，见 [Tutor 方案](docs/切片方案-Tutor预构建不阻塞教学.md)。
-- 其他工作线入口：[EX](checkpoint_ex.md)、[JSONL](SESSION_CHECKPOINT_JSONL.md)、[DSH](SESSION_CHECKPOINT_DSH.md)、[运营后台](SESSION_CHECKPOINT_ADMIN.md)、[ADM](checkpoint_ADM.md)、[INV](checkpoint_INV.md)、[工具契约](SESSION_CHECKPOINT_TOOL_CONTRACTS.md)、[LangSmith](SESSION_CHECKPOINT_LANGSMITH_FULL.md)。
+- MCP9 已测待提交：`mcp_acceptance_tests.rs` 与测试模块接线、`mcp-source.integration.test.ts`、两种客户端启动脚本及引用／账本校验脚本、验收记录；`mcp.rs` 仅更新 `granularity.anyOf` 枚举及 null 断言。
+- 最终自动验证：2 项新增集成／并发用例、87 项既有 Server 受影响回归通过；Web 13 文件 126 项、Admin 6 文件 30 项及两端类型检查／生产构建通过。首轮夹具重复登录触发限流，改复用 Cookie 后通过，产品断言未放宽。
+- 真实 Agent：Codex CLI `0.162.0-alpha.2`（桌面自带）、用户配置 `gpt-6-astra`、协议 `2025-11-25`；两个无项目背景的新进程。alice 获赠 12 次，选材／检索／两页读取成功，2 条引用解析正确，SQLite 3 条消费、剩 9 次；bob 从免费目录的零余额停止，没有内容消费。[原始回合与账本](docs/performance/beta-mcp/README.md#真实-agent-结果)。
+- 用户已明确允许**仅本次临时验收进程**预批准测试 MCP 的 11 工具；未修改全局配置。测试宿主均已退出，临时凭证配置移除、临时库关闭。资料保留于 `D:/codex-build-cache/understand-book-reading-share-mcp9/agent-approved/`，可复跑校验脚本。
+- 客户端限制：Claude Code `2.1.196` 初始化和 11 工具发现成功，但模型服务凭证 401，完整阅读未验；系统 Codex `0.147.0` 不支持当前模型。可用客户端证据与上述失败分别记录，不等同于 HTTPS 上线。
+- 小规模测量：1／4／8 同时读取均成功，8 请求最慢 37.725 ms，每请求约 50,950 字节；单个小型缓存材料、本机 TCP，不推算生产 QPS。MCP10 在目标环境复测。
+- 既有 MU4 10 项本轮复现仍在 `mu4_tests.rs:76` 旧 snapshot 写 JSONL 时触发 `SESSION_EVENT_WRITE_REQUIRED`，业务断言未运行；需另片将样本改为事件写入，保留门禁。本机 MCP 旧 schema 失败已修复并通过。
+- MCP0–MCP8 成果保留：凭证、获准读取、免费／付费次数、Streamable HTTP、Agent 自述、读者接入与来源定位、运营后台购包／赠送／更正。[实施入口](docs/内测MCP-实施入口.md)。账号 MCP 查询仍仅支持启用账号；金额更正不代表外部退款。
+- 构建沿 `CARGO_INCREMENTAL=0`、`CARGO_PROFILE_TEST_DEBUG=0`、D 盘 TEMP、单并发 `cargo rustc -j 1 -p server --lib --profile test -- -C link-arg=/DEBUG:NONE`。本轮将 `target/debug/incremental/runtime-2eogrjxmh0z0p` 移到 `D:/codex-build-cache/understand-book-reading-share-mcp9/preserved/` 保留，未删除；其他历史缓存位置见 MCP4–MCP6 验证记录。
+- MCP10 未实施；实际 Nginx／HTTPS、Linux 发布、备份恢复未验。本机无可用 Nginx／WSL；精确 `/mcp` 代理配置已保留凭证／协议／Origin 头。Rust ts-rs 属性警告、Web／Admin 大 chunk 提示保留。
+- RN1–RN4、RS1–RS8 已集成于 HEAD；RN4 实体平台及 RS3 原生保存、安装后资源／Release 待验；Windows Debug NSIS 候选未安装／发布。[RS3](docs/performance/reading-share-rs3-20261010/README.md)、[RN4](docs/performance/reading-notes-rn4-20261010/README.md)。
+- Computer Use 保持用户停止状态；本轮无实体浏览器视觉验收。原 `tmp/`、`packages/web/test-results/` 保留。真实书籍样本在忽略目录 `.understand-book/quantification-essence`。
+- MU10 百回合恢复 queued 0／预期 100 为先前独立失败，本轮未复验；Tutor T19 真实体验待验。
+- 其他工作线：[EX](checkpoint_ex.md)、[JSONL](SESSION_CHECKPOINT_JSONL.md)、[DSH](SESSION_CHECKPOINT_DSH.md)、[运营后台](SESSION_CHECKPOINT_ADMIN.md)、[ADM](checkpoint_ADM.md)、[INV](checkpoint_INV.md)、[工具契约](SESSION_CHECKPOINT_TOOL_CONTRACTS.md)、[LangSmith](SESSION_CHECKPOINT_LANGSMITH_FULL.md)。
 
 ## 冷启动读序
-1. [实施切片](docs/切片方案-阅读分享与安静呈现.md) §2、§5、RS8、§7–§8；[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md) §1／§5；`CONTEXT.md` 理解空间／LearningEvidence 相关术语。
-2. [RS8 验收](docs/performance/reading-share-rs8-20261010/README.md)、`packages/web/src/components/UnderstandingSpace.vue` 及其组件／浏览器测试；`TutorPanel.vue` 与 App／RightRail 原入口。
-3. `packages/web/src/api.ts` 理解投影／证据／纠正接口；`crates/server/src/teaching.rs` 的 understanding／evidence_view／纠正路由；`crates/memory/src/learning_evidence.rs` 的 correct_evidence／对象历史。服务端合同本轮保持。
-4. [架构](docs/架构.md)「阅读笔记与分享」「普通使用驱动的理解接续」；[代码链路](docs/代码链路.md) RS8；[RS3 待验项](docs/performance/reading-share-rs3-20261010/README.md)。
+1. [MCP 实施入口](docs/内测MCP-实施入口.md)、[产品约定](docs/内测MCP-产品约定.md)、[ADR-0162](docs/adr/0162-beta-remote-mcp-and-prepaid-call-credits.md)；`CONTEXT.md` 开头五项 MCP 术语、ManualReceipt、ReaderAdmin 与 PublishedBookRef。
+2. [切片方案](docs/切片方案-内测MCP与调用额度.md) §3–§7、MCP9／MCP10 与第 9–10 节；[MCP 接入](docs/MCP接入.md)全文。
+3. [MCP9 实现](docs/内测MCP-MCP9实现.md)、[验收记录](docs/performance/beta-mcp/README.md)全文；[MCP4](docs/内测MCP-MCP4实现.md)持久化／更正合同与 [MCP5](docs/内测MCP-MCP5实现.md)HTTP／代理合同。
+4. `crates/server/src/control_store.rs:ControlStore::open`、`mcp_access.sql`、`mcp_usage.sql`、`mcp_packs.sql`；`scripts/linux/nginx-multi-reader.conf.example` 及拟沿用的 Linux 备份／发布脚本。
+5. [架构](docs/架构.md) MCP4–MCP8 与 [代码链路](docs/代码链路.md) MCP9；需要复跑时读 `mcp_acceptance_tests.rs`、`scripts/mcp9-codex-acceptance.mjs` 与 `scripts/verify-mcp9-agent.mjs`。
 
 ## 本会话决策摘要
-- RS8 沿 ADR-0160 §1／§5 完成局部呈现，不增加能力判定或新存储；实现与验证落于 RS8 验收和架构。
-- RN／RS 功能主线完成；RS3／RN4 平台延期与用户停止 Computer Use 的约束继续保留。
+- MCP9 落实既有 ADR-0162；新增测试与客户端证据，生产模块／schema 保持原合同。首批按 4 个活跃读取任务规划，实际 Linux 容量在 MCP10 复测。[验收记录](docs/performance/beta-mcp/README.md)。

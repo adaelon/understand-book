@@ -515,7 +515,14 @@ async function scrollLidIntoView(lid: string): Promise<boolean> {
   return true;
 }
 
-defineExpose({ captureScrollAnchor, restoreScrollAnchor, scrollLidIntoView, cancelTypographyRestore });
+async function scrollSourceIntoView(lid: string): Promise<boolean> {
+  if (!await scrollLidIntoView(lid)) return false;
+  const mark = lidElement(lid)?.querySelector<HTMLElement>('.source-focus-mark');
+  if (mark && pane.value) pane.value.scrollTop += mark.getBoundingClientRect().top - pane.value.getBoundingClientRect().top;
+  return true;
+}
+
+defineExpose({ captureScrollAnchor, restoreScrollAnchor, scrollLidIntoView, scrollSourceIntoView, cancelTypographyRestore });
 
 onMounted(() => {
   annotationResize = new ResizeObserver(updateAnnotationGeometry);
