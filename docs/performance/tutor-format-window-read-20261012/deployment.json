@@ -1,0 +1,28 @@
+{
+  "source_commit": "3ee9e351e2e3d211ab02245fc20b8c72def332af",
+  "source_base": "3090b0e",
+  "release": "/opt/understand-book/releases/to-tb-20261012",
+  "web_root": "/opt/understand-book/releases/to-tb-20261012/packages/web/dist-multi",
+  "service_before": "MainPID=642476\nWorkingDirectory=/opt/understand-book/releases/to-tb-20261012\nActiveState=active\n",
+  "base_files_compared": 458,
+  "published_at_utc": "2026-10-12T15:31:35.570422+00:00",
+  "backup": "/opt/understand-book/backups/tutor-format-window-read-20261012T153130Z",
+  "assets_uploaded": [],
+  "assets_reused": 269,
+  "source_files_updated": [
+    "packages/web/playwright/tutor-format.spec.ts",
+    "packages/web/src/App.startup.test.ts",
+    "packages/web/src/App.vue",
+    "packages/web/src/agent-source-visual.ts",
+    "packages/web/src/answer-markdown.ts",
+    "packages/web/src/components/AgentPresentation.vue",
+    "packages/web/src/components/RightRail.vue",
+    "packages/web/src/components/TutorActivities.test.ts",
+    "packages/web/src/components/TutorActivities.vue",
+    "packages/web/src/reader-window-text.test.ts",
+    "packages/web/src/reader-window-text.ts"
+  ],
+  "backend_restarted": false,
+  "old_assets_retained": true,
+  "service_after": "MainPID=642476\nWorkingDirectory=/opt/understand-book/releases/to-tb-20261012\nActiveState=active\n"
+}
