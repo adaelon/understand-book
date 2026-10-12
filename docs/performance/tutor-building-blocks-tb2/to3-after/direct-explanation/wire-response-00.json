@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": "I'll locate the borrowing passage first.",
+        "redacted_reasoning_chars": 1062,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"query\": \"&foo\", \"page_size\": 20}",
+              "name": "book_search_text"
+            },
+            "id": "call_00_Fior0PGteAC9rMIverTc0791",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{}",
+              "name": "book_structure"
+            },
+            "id": "call_01_KIjWN72Rnd0TKCmKDUeC5848",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 334,
+    "completion_tokens_details": {
+      "reasoning_tokens": 258
+    },
+    "prompt_cache_hit_tokens": 10112,
+    "prompt_cache_miss_tokens": 3421,
+    "prompt_tokens": 13533,
+    "prompt_tokens_details": {
+      "cached_tokens": 10112
+    },
+    "total_tokens": 13867
+  }
+}

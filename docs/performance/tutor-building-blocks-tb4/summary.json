@@ -1,0 +1,84 @@
+{
+  "guidance_revision": "tb4.v1",
+  "model": "gpt-6.1-sol",
+  "authorized_runs": 2,
+  "completed_runs": 2,
+  "fork_turns": "none",
+  "reasoning": "model default; override omitted",
+  "token_usage": null,
+  "monetary_cost": null,
+  "model_elapsed_seconds": null,
+  "deepseek_calls": 0,
+  "human_readers": 0,
+  "production_provider_loop_verified": false,
+  "input_utf8_bytes": {
+    "author": 188166,
+    "followup": 153051
+  },
+  "guidance_utf8_byte_delta_from_tb3": {
+    "Global": 488,
+    "Local": 543,
+    "Review": 465,
+    "Understanding": 486
+  },
+  "runtime_tests": 29,
+  "server_related_tests": 4,
+  "browser_scenarios": 1,
+  "preview_calls_final_candidate": 5,
+  "rust_code_cases": 4,
+  "delivered_reference": {
+    "presentation_id": "presentation-1791796901012250600-0",
+    "revision": 1
+  },
+  "followup_receipt": {
+    "reference": {
+      "presentation_id": "presentation-1791796901012250600-0",
+      "revision": 1
+    },
+    "saved_state_ref": "state-1791797049691668300-10",
+    "session_id": "chat-01a12f6a-edcc-76f2-859b-677d679d9818",
+    "state_revision": 9,
+    "turn_id": "turn_1bf5797f58d14a49"
+  },
+  "scene_receipt_rebinding": {
+    "answer_changed": false,
+    "changed_field": "evidence.interpretation",
+    "new": "revision 1、state_revision 9",
+    "old": "revision 1、state_revision 9",
+    "same_conditions_and_results": true
+  },
+  "author_output_repaired": {
+    "origin": "root agent deterministic repair; no additional model experiment",
+    "failure": "content-original.json state_restore.passed=false",
+    "changed_field": "write.html",
+    "old_text": "if(typeof saved.values?.[k]==='boolean')s[k]=saved.values[k]",
+    "new_text": "if(typeof saved.values?.page?.[k]==='boolean')s[k]=saved.values.page[k]",
+    "style_repair": {
+      "failure": "browser-before-source-color-fix/followup-desktop.png: authored button background equals host source-label foreground",
+      "old_text": "button{background:var(--accent);color:white}",
+      "new_text": "button:not([data-source-ref]){background:var(--accent);color:white}"
+    },
+    "teaching_text_changed": false
+  },
+  "followup_output_repaired": {
+    "changed_field": "select.move.interpretation_refs",
+    "added": "interpretation:tb4-followup-copy-shared-access-observation",
+    "source": "browser-before-ref-completion/followup-result.json evidence.evidence_id",
+    "answer_changed": false,
+    "external_model_calls": 0
+  },
+  "new_interpretation": {
+    "evidence_id": "interpretation:tb4-followup-copy-shared-access-observation",
+    "nature": "hypothesis",
+    "status": "unassessed",
+    "supersedes": null,
+    "interpretation": "学习者原话：“我现在选的 A 是 Copy 加 &a，B 是没有 Copy 加 &a，两组都显示 E0594。我还试过 B 的 &mut a，看到 Foo(8)。这些结果是教具给的；我推断 Copy 本身没有让共享引用能写入。下一步让我自己选一个对照说明理由，先别讲完整结论。”。实际保存的 revision 1、state_revision 9 场景显示 A 为 Copy + &a、B 为非 Copy + &a，两组已展开的预设结果均为 E0594。其曾试 B 的 &mut a 并见 Foo(8) 属于学习者报告，当前保存场景没有显示该先前状态，不能补造操作记录。学习者在此前讲解以及教具提供代码、预设结果和错误原因的支持下，明确表达了 Copy 没有使共享引用可写的正确局部推断，并区分结果来源和自己的推断；显示结果和点击行为不算独立推断，也尚未说明为什么所选对照能够支撑理由，不据此推断掌握可变借用全部条件或广泛迁移。当前明确要求自行选对照、先不讲完整结论，作为本轮约束。",
+    "teaching_implication": "认可已表达的局部推断，不重讲借用基础，不再给完整结论或指定对照；沿用实际教具，让学习者自行选两组、指出相同和变化条件并把结果与理由连接。限定讨论在现有 let mut a、u32、先 b 后 a 的代码条件内。"
+  },
+  "observations_are_performance": false,
+  "limitations": [
+    "Fixed source reads and tool replay; no autonomous Provider loop",
+    "Authored learner expression; no human learning outcome",
+    "Two cases have no control group and do not establish improvement or stability"
+  ]
+}

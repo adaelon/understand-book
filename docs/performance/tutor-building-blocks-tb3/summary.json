@@ -1,0 +1,273 @@
+{
+  "model": "gpt-6.1-sol",
+  "fork_turns": "none",
+  "reasoning": "model default; override omitted",
+  "temperature": "not exposed",
+  "runs": 16,
+  "deepseek_calls": 0,
+  "human_readers": 0,
+  "token_usage": null,
+  "monetary_cost": null,
+  "model_elapsed_seconds": null,
+  "paired_inputs": true,
+  "cases": [
+    {
+      "variant": "after",
+      "case": "cannot-start",
+      "input_utf8_bytes": 117124,
+      "intent_origin": "current_request",
+      "supersedes": null,
+      "delivered": true,
+      "tool_errors": [],
+      "replay_present": true,
+      "new_hypothesis": true,
+      "source_count": 3
+    },
+    {
+      "variant": "after",
+      "case": "independent-step",
+      "input_utf8_bytes": 123482,
+      "intent_origin": "user_request",
+      "supersedes": null,
+      "delivered": false,
+      "tool_errors": [
+        {
+          "category": "validation",
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "message": "$.move.intent_origin is not an allowed value"
+        }
+      ],
+      "replay_present": true,
+      "new_hypothesis": true,
+      "source_count": 0
+    },
+    {
+      "variant": "after",
+      "case": "missing-reason",
+      "input_utf8_bytes": 106741,
+      "intent_origin": "current_request",
+      "supersedes": null,
+      "delivered": true,
+      "tool_errors": [],
+      "replay_present": true,
+      "new_hypothesis": true,
+      "source_count": 3
+    },
+    {
+      "variant": "after",
+      "case": "support-mismatch",
+      "input_utf8_bytes": 98195,
+      "intent_origin": "current_request",
+      "supersedes": [
+        "interpretation:tb3-prior-copy"
+      ],
+      "delivered": false,
+      "tool_errors": [
+        {
+          "category": "validation",
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "message": "$.supersedes must be a JSON \"string\""
+        },
+        {
+          "category": "validation",
+          "error_code": "TEACHING_INVALID",
+          "message": "学习证据不存在"
+        }
+      ],
+      "replay_present": true,
+      "new_hypothesis": true,
+      "source_count": 0
+    },
+    {
+      "variant": "before",
+      "case": "cannot-start",
+      "input_utf8_bytes": 114949,
+      "intent_origin": "current_request",
+      "supersedes": null,
+      "delivered": true,
+      "tool_errors": [],
+      "replay_present": true,
+      "new_hypothesis": true,
+      "source_count": 3
+    },
+    {
+      "variant": "before",
+      "case": "independent-step",
+      "input_utf8_bytes": 121307,
+      "intent_origin": "user_request",
+      "supersedes": null,
+      "delivered": false,
+      "tool_errors": [
+        {
+          "category": "validation",
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "message": "$.move.intent_origin is not an allowed value"
+        }
+      ],
+      "replay_present": true,
+      "new_hypothesis": true,
+      "source_count": 0
+    },
+    {
+      "variant": "before",
+      "case": "missing-reason",
+      "input_utf8_bytes": 104566,
+      "intent_origin": "current_request",
+      "supersedes": null,
+      "delivered": true,
+      "tool_errors": [],
+      "replay_present": true,
+      "new_hypothesis": true,
+      "source_count": 3
+    },
+    {
+      "variant": "before",
+      "case": "support-mismatch",
+      "input_utf8_bytes": 96020,
+      "intent_origin": "current_request",
+      "supersedes": [
+        "interpretation:tb3-prior-copy"
+      ],
+      "delivered": false,
+      "tool_errors": [
+        {
+          "category": "validation",
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "message": "$.supersedes must be a JSON \"string\""
+        },
+        {
+          "category": "validation",
+          "error_code": "TEACHING_INVALID",
+          "message": "学习证据不存在"
+        }
+      ],
+      "replay_present": true,
+      "new_hypothesis": true,
+      "source_count": 0
+    },
+    {
+      "variant": "reopen",
+      "case": "cannot-start",
+      "input_utf8_bytes": 155171,
+      "intent_origin": "user_request",
+      "supersedes": null,
+      "delivered": false,
+      "tool_errors": [
+        {
+          "category": "validation",
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "message": "$.move.intent_origin is not an allowed value"
+        }
+      ],
+      "replay_present": true,
+      "new_hypothesis": false,
+      "source_count": 0
+    },
+    {
+      "variant": "reopen",
+      "case": "independent-step",
+      "input_utf8_bytes": 151961,
+      "intent_origin": "user_request",
+      "supersedes": null,
+      "delivered": false,
+      "tool_errors": [
+        {
+          "category": "validation",
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "message": "$.move.intent_origin is not an allowed value"
+        }
+      ],
+      "replay_present": true,
+      "new_hypothesis": false,
+      "source_count": 0
+    },
+    {
+      "variant": "reopen",
+      "case": "missing-reason",
+      "input_utf8_bytes": 144883,
+      "intent_origin": "current_request",
+      "supersedes": null,
+      "delivered": true,
+      "tool_errors": [],
+      "replay_present": true,
+      "new_hypothesis": false,
+      "source_count": 1
+    },
+    {
+      "variant": "reopen",
+      "case": "support-mismatch",
+      "input_utf8_bytes": 132269,
+      "intent_origin": "current_request",
+      "supersedes": null,
+      "delivered": true,
+      "tool_errors": [],
+      "replay_present": true,
+      "new_hypothesis": false,
+      "source_count": 3
+    },
+    {
+      "variant": "reopen-repair",
+      "case": "cannot-start",
+      "input_utf8_bytes": 157605,
+      "intent_origin": "current_request",
+      "supersedes": null,
+      "delivered": true,
+      "tool_errors": [],
+      "replay_present": true,
+      "new_hypothesis": false,
+      "repair_changed_fields": [
+        "select.move.intent_origin",
+        "select.move.intent_quote"
+      ],
+      "source_count": 3
+    },
+    {
+      "variant": "reopen-repair",
+      "case": "independent-step",
+      "input_utf8_bytes": 153691,
+      "intent_origin": "current_request",
+      "supersedes": null,
+      "delivered": true,
+      "tool_errors": [],
+      "replay_present": true,
+      "new_hypothesis": false,
+      "repair_changed_fields": [
+        "select.move.intent_origin",
+        "select.move.intent_quote"
+      ],
+      "source_count": 0
+    },
+    {
+      "variant": "repair",
+      "case": "independent-step",
+      "input_utf8_bytes": 127346,
+      "intent_origin": "current_request",
+      "supersedes": null,
+      "delivered": true,
+      "tool_errors": [],
+      "replay_present": true,
+      "new_hypothesis": true,
+      "repair_changed_fields": [
+        "select.move.intent_origin",
+        "select.move.intent_quote"
+      ],
+      "source_count": 1
+    },
+    {
+      "variant": "repair",
+      "case": "support-mismatch",
+      "input_utf8_bytes": 102695,
+      "intent_origin": "current_request",
+      "supersedes": "interpretation:tb3-prior-copy",
+      "delivered": true,
+      "tool_errors": [],
+      "replay_present": true,
+      "new_hypothesis": true,
+      "repair_changed_fields": [
+        "evidence.fact_refs",
+        "evidence.supersedes"
+      ],
+      "source_count": 3
+    }
+  ]
+}

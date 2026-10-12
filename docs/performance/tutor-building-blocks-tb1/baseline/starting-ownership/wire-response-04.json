@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "redacted_reasoning_chars": 840,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"query\": \"Foo(0)\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_00_7xrEw9xyH2lYncx4X0s22085",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"query\": \"所有权\", \"page_size\": 50}",
+              "name": "book_search_text"
+            },
+            "id": "call_01_qi2lG4g7vlGJq2EIyVJV7179",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 305,
+    "completion_tokens_details": {
+      "reasoning_tokens": 218
+    },
+    "prompt_cache_hit_tokens": 17280,
+    "prompt_cache_miss_tokens": 715,
+    "prompt_tokens": 17995,
+    "prompt_tokens_details": {
+      "cached_tokens": 17280
+    },
+    "total_tokens": 18300
+  }
+}

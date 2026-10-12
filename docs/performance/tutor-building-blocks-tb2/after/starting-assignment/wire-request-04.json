@@ -1,0 +1,22 @@
+{
+  "max_tokens": 32768,
+  "messages": [
+    {
+      "content": "You are the bounded PlanGate and referent resolver. Return one JSON object. Check that query, targets, and obligations preserve the same request. Classify every candidate as direct_match, semantic_match, plausible, or reject. Do not infer from anchor-neighbor text. If lexical recall failed, emit at most three short lexical probes total. Reasons must be short verdict summaries, never hidden chain-of-thought.",
+      "role": "system"
+    },
+    {
+      "content": "{\"candidate_groups\":[{\"candidates\":[],\"target\":\"所有权 example with Foo\",\"target_index\":0},{\"candidates\":[],\"target\":\"move of a value into another variable\",\"target_index\":1}],\"request\":{\"anchor_lid\":\"1.1\",\"intent\":\"explanation\",\"obligations\":[{\"requirement\":\"State what the earlier ownership-section example did with foo and bar, and whether that version compiled.\"},{\"requirement\":\"State what happens to foo after it is assigned/moved (can foo still be printed?).\"}],\"query\":\"What happens in the earlier ownership example where a Foo value is assigned from one variable to another without using &, and why does the resulting program fail to compile?\",\"targets\":[\"所有权 example with Foo\",\"move of a value into another variable\"]},\"response_schema\":{\"candidate_fits\":[{\"candidate_id\":\"id\",\"fit\":\"direct_match\",\"reason\":\"short\",\"target_index\":0}],\"plan_gate\":{\"missing_requirements\":[],\"target_issues\":[],\"valid\":true},\"probes\":[{\"query\":\"lexical probe\",\"target_index\":0}]}}",
+      "role": "user"
+    }
+  ],
+  "model": "deepseek-v4-flash",
+  "response_format": {
+    "type": "json_object"
+  },
+  "stream": true,
+  "stream_options": {
+    "include_usage": true
+  },
+  "temperature": 0
+}

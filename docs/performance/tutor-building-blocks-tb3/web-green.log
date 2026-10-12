@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+ ✓ src/components/UnderstandingSpace.test.ts (10 tests) 490ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  16:02:21
+   Duration  10.07s (transform 775ms, setup 0ms, collect 1.48s, tests 490ms, environment 5.29s, prepare 1.39s)
+

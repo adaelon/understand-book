@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"let bar = foo;\"}",
+      "id": "call_00_4WccOcl7MiZRECqdSdov7616",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"query\": \"Foo is {:?}\"}",
+      "id": "call_01_5O4bQnli9LHKLLkIn1670178",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 16468
+}

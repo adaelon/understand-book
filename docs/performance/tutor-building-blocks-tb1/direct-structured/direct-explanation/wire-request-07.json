@@ -1,0 +1,22 @@
+{
+  "max_tokens": 32768,
+  "messages": [
+    {
+      "content": "You are the bounded PlanGate and referent resolver. Return one JSON object. Check that query, targets, and obligations preserve the same request. Classify every candidate as direct_match, semantic_match, plausible, or reject. Do not infer from anchor-neighbor text. If lexical recall failed, emit at most three short lexical probes total. Reasons must be short verdict summaries, never hidden chain-of-thought.",
+      "role": "system"
+    },
+    {
+      "content": "{\"candidate_groups\":[{\"candidates\":[],\"target\":\"不可变借用\",\"target_index\":0},{\"candidates\":[],\"target\":\"所有权\",\"target_index\":1}],\"request\":{\"anchor_lid\":\"1.1\",\"intent\":\"explanation\",\"obligations\":[{\"requirement\":\"说明不可变借用的效果：不取得所有权，只是临时访问值。\"},{\"requirement\":\"说明被借用的变量（foo）之后仍可被使用的原因。\"},{\"requirement\":\"说明不写 & 时赋值语句在所有权上的后果。\"}],\"query\":\"对值创建不可变借用（共享引用）之后，原来的所有者变量为什么仍然可以被使用；如果没有写 & 而直接赋值，所有权会发生什么变化？\",\"targets\":[\"不可变借用\",\"所有权\"]},\"response_schema\":{\"candidate_fits\":[{\"candidate_id\":\"id\",\"fit\":\"direct_match\",\"reason\":\"short\",\"target_index\":0}],\"plan_gate\":{\"missing_requirements\":[],\"target_issues\":[],\"valid\":true},\"probes\":[{\"query\":\"lexical probe\",\"target_index\":0}]}}",
+      "role": "user"
+    }
+  ],
+  "model": "deepseek-v4-flash",
+  "response_format": {
+    "type": "json_object"
+  },
+  "stream": true,
+  "stream_options": {
+    "include_usage": true
+  },
+  "temperature": 0
+}

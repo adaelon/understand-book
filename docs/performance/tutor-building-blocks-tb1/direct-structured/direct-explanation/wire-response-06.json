@@ -1,0 +1,26 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "message": {
+        "content": "{\"candidate_fits\":[],\"plan_gate\":{\"missing_requirements\":[],\"target_issues\":[],\"valid\":true},\"probes\":[{\"query\":\"不可变借用 共享引用 不取得所有权\",\"target_index\":0},{\"query\":\"借用后 原变量 仍可使用\",\"target_index\":0},{\"query\":\"& 赋值 所有权 移动\",\"target_index\":1}]}",
+        "redacted_reasoning_chars": 1778,
+        "role": "assistant",
+        "tool_calls": []
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 515,
+    "completion_tokens_details": {
+      "reasoning_tokens": 431
+    },
+    "prompt_cache_hit_tokens": 0,
+    "prompt_cache_miss_tokens": 366,
+    "prompt_tokens": 366,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 881
+  }
+}

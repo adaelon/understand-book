@@ -1,0 +1,21 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{}",
+      "id": "call_00_QGyodqg41szCtif4zVVh7836",
+      "name": "book.structure"
+    },
+    {
+      "arguments": "{\"query\": \"bar\"}",
+      "id": "call_01_zhgiVBNq1ltD9EUC36YE6052",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"query\": \"println!\"}",
+      "id": "call_02_2qd4oyvnvGSbBZasJoNZ2117",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 12791
+}

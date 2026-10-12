@@ -1,0 +1,16 @@
+{
+  "text": "I'll locate the original passage first.",
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"let bar = &foo\", \"match_mode\": \"normalized\"}",
+      "id": "call_00_3InwfqIB10n6HF3eSjfS9541",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"query\": \"&foo\", \"match_mode\": \"exact\"}",
+      "id": "call_01_XnQ1ROv2oAHtryYSUNQw8140",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 13991
+}

@@ -1,0 +1,39 @@
+{
+  "auxiliary_output_token_limit": 32768,
+  "base_url": "https://api.deepseek.com",
+  "cases": {
+    "cases": [
+      {
+        "background": "我知道非 Copy 值移动后旧变量不能再用，但引用还没弄清。",
+        "id": "direct-explanation",
+        "observe": "覆盖明确请求的五点并正确解释；当前请求覆盖 guided_inquiry 默认，不用未作答来推断掌握。",
+        "request": "请直接完整讲解这段借用代码：&foo 做了什么，foo 和 bar 分别是什么，为什么都能打印，去掉 & 会怎样，以及能不能通过 bar 修改 Foo。不要先让我回答问题。"
+      }
+    ],
+    "initial_state": "Fresh isolated memory and chat for each case; Tutor enabled; guided_inquiry session; no prior learner evidence, assessment, or TeachingMap.",
+    "question": "原文里 let bar = &foo; 后面为什么还能分别打印 foo 和 bar？帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
+    "reader_origin": "All inputs are authored test scenarios, not observations of human readers. No learner reply is simulated after model delivery.",
+    "version": "tb1.borrowing.v1"
+  },
+  "common_code_baseline": "93b476da49b005def3f52b7b95bdaff4867e6e7b",
+  "http_calls_per_case": 12,
+  "http_calls_total": 48,
+  "material_version": "tb1.mastering-rust.borrowing.v1",
+  "model": "deepseek-v4-flash",
+  "prior_budget": {
+    "http_calls": 31,
+    "monetary_cost": null,
+    "stopped": false,
+    "token_limit": 2000000,
+    "tokens_or_reserved": 683143
+  },
+  "prior_output": "E:/allwork/download/agent/understand-book-reading-share/docs/performance/tutor-building-blocks-tb1/baseline",
+  "provider": "native",
+  "reader_origin": "scripted; no human participant or post-delivery learner response",
+  "repetitions": 1,
+  "request_timeout_seconds": 120,
+  "reserve_input_tokens": 1000000,
+  "scenario_count": 1,
+  "temperature": 0,
+  "token_limit": 2000000
+}

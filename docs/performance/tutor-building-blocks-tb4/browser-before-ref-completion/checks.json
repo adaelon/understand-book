@@ -1,0 +1,16 @@
+{
+  "reference": {
+    "presentation_id": "presentation-1791795847617059600-0",
+    "revision": 1
+  },
+  "session_id": "chat-01a12f5a-dae1-7063-b20b-a03002a34014",
+  "errors": [],
+  "initial_results_hidden": true,
+  "control_change_hides_old_result": true,
+  "shared_copy_and_noncopy": "E0594",
+  "mutable_noncopy": "b = Foo(8); a = Foo(8)",
+  "reloaded_conditions_and_result": true,
+  "original_chat_continued": true,
+  "learner_identity": "scripted",
+  "external_provider_calls": 0
+}

@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"let bar = &foo;\", \"match_mode\": \"normalized\"}",
+      "id": "call_00_InfYhXEgMK947OhNpTLa6925",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{}",
+      "id": "call_01_U3VFvEGO3tA5tui5qYnW3177",
+      "name": "book.structure"
+    }
+  ],
+  "usage_total_tokens": 12462
+}

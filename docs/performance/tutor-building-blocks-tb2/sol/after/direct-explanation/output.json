@@ -1,0 +1,28 @@
+{
+  "select": {
+    "operation": "select",
+    "move": {
+      "move_id": "explain-borrowing-foo-bar",
+      "object_ids": [],
+      "capability": "explanation",
+      "kind": "explain",
+      "prompt": "直接完整讲解这段借用代码：从已知的非 Copy 值移动规则出发，说明 &foo 创建共享引用而不转移所有权、foo 与 bar 的值及类型、两次打印成立的原因、去掉 & 后的移动及编译失败，以及不能通过 bar 修改 Foo；补充 println! 的借用行为，不要求读者先回答。",
+      "interaction_intent": "direct_explanation",
+      "intent_origin": "current_request",
+      "intent_quote": "请直接完整讲解这段借用代码：&foo 做了什么，foo 和 bar 分别是什么，为什么都能打印，去掉 & 会怎样，以及能不能通过 bar 修改 Foo。不要先让我回答问题。",
+      "target": {
+        "capability": "explanation",
+        "expected_performance": "在完整讲解支持下，能解释拥有 Foo 的变量与借用 Foo 的引用之间的关系，并区分 &foo 与 foo 赋值对后续使用和修改权限的影响。",
+        "learning_focus": "这段代码中共享借用、所有权与引用的关系",
+        "source_bindings": [
+          {
+            "start_lid": "1.1",
+            "end_lid": "1.1"
+          }
+        ],
+        "object_refs": []
+      }
+    }
+  },
+  "answer": "你已经知道非 `Copy` 值移动后旧变量不能再用。这段代码的关键是：`let bar = &foo;` 给 `bar` 一个引用，`Foo` 的所有权仍留在 `foo`，所以这里没有发生你熟悉的那种移动。借用是所有权模型的一部分，让代码在不取得所有权的情况下临时访问值。[[source:source_ref_b7cdf804a5f27a0d]]\n\n```rust\n#[derive(Debug)]\nstruct Foo(u32);\n\nfn main() {\n    let foo = Foo(0);\n    let bar = &foo;\n    println!(\"Foo is {:?}\", foo);\n    println!(\"Bar is {:?}\", bar);\n}\n```\n\n**`&foo` 做了什么？**\n\n这里的 `&` 是借用运算符：`&foo` 创建对 `foo` 中那个值的共享借用，也称不可变借用。得到的是引用，代码把这个引用存进 `bar`。它没有把 `Foo(0)` 搬到 `bar`，也没有复制出另一个 `Foo(0)`。原文强调，Rust 的 `&` 不能简单等同于 C 中不带有效性约束的取地址操作。[[source:source_ref_b7cdf804a5f27a0d]]\n\n**`foo` 和 `bar` 分别是什么？**\n\n| 变量 | 类型 | 这里保存的内容与角色 |\n|---|---|---|\n| `foo` | `Foo` | 保存 `Foo(0)`，拥有这个值 |\n| `bar` | `&Foo` | 保存指向同一个 `Foo` 的不可变引用，借用这个值 |\n\n`bar` 本身也是一个变量；它存的是引用，引用所指的 `Foo` 仍由 `foo` 拥有。读 `bar` 可以访问那个 `Foo`，但不能通过这个引用修改它。[[source:source_ref_9af277d1d3d785d4]]\n\n**为什么两者都能打印？**\n\n首先，`&foo` 没有转移所有权，因而 `foo` 仍可使用；`bar` 则提供对同一个值的共享访问。代码中的两次打印因此可以同时成立。[[source:source_ref_e2f1f69dfb7b32e3]]\n\n再补充一个这段代码用到的 Rust 规则：`println!` 的格式化会借用这些参数来读取内容，并不会把这里的 `foo` 移走。`{:?}` 使用调试格式，`#[derive(Debug)]` 为 `Foo` 生成相应的格式化实现；`&Foo` 也能用调试格式展示所引用的内容。因此输出是：\n\n```text\nFoo is Foo(0)\nBar is Foo(0)\n```\n\n两行内容相同，是因为它们展示同一个 `Foo` 的内容，并不表示 `foo` 和 `bar` 的类型相同。\n\n**去掉 `&` 会怎样？**\n\n把那一行改成：\n\n```rust\nlet bar = foo;\n```\n\n就回到了你已经知道的移动规则。这里补充判断条件：本例的 `Foo` 只派生了 `Debug`，没有实现 `Copy`；因此这次赋值会将 `Foo` 从 `foo` 移到 `bar`。此时 `bar` 的类型变成 `Foo`，它拥有原来的值，`foo` 则不能继续使用。\n\n所以后面的这一行会导致编译失败：\n\n```rust\nprintln!(\"Foo is {:?}\", foo);\n```\n\n如果删掉对已移动的 `foo` 的使用，打印 `bar` 仍然可以。原文中使原程序能够编译的关键改动，正是使用 `let bar = &foo;`。[[source:source_ref_1a3ec5f7971d4632]]\n\n**能不能通过 `bar` 修改 `Foo`？**\n\n在原代码中不能，因为 `bar` 的类型是 `&Foo`，提供的是不可变访问。例如下面的写法不允许：\n\n```rust\nbar.0 = 1;\n```\n\n限制来自引用提供的访问权限：这个 `bar` 可以读取所指的 `Foo`，不能通过它修改 `Foo` 中的值。[[source:source_ref_9af277d1d3d785d4]] 原文提到，可变借用使用 `&mut`；那是另一种借用，原代码中的 `&foo` 没有提供这种权限。[[source:source_ref_b7cdf804a5f27a0d]]\n\n把关系串起来就是：`foo` 拥有 `Foo(0)` → `&foo` 创建共享引用 → `bar` 保存这个引用 → 两者都能读取并打印同一个值，而 `bar` 不能修改它。去掉 `&` 则把“借用”改成了“移动”，后续再使用 `foo` 就会失败。"
+}

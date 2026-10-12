@@ -1,0 +1,40 @@
+{
+  "evidence": {
+    "operation": "evidence",
+    "nature": "hypothesis",
+    "operation_id": "tb3-support-mismatch-update",
+    "supersedes": ["interpretation:tb3-prior-copy"],
+    "target": {
+      "learning_focus": "let bar = &foo 创建对原值的不可变引用，而非复制 Foo",
+      "expected_performance": "在逐行代码和变量类型对照的支持下，解释两个 println 为什么可以使用。",
+      "capability": "explanation",
+      "source_bindings": [{"start_lid": "1.1", "end_lid": "1.1"}],
+      "object_refs": []
+    },
+    "fact_refs": ["usage:tutor-begin-1:user:turn_720d5814930e318a"],
+    "interpretation": "用户明确纠正先前理解状态：‘我已经不认为有两份 Foo 了’，并说明‘我看不懂箭头图，不是还在坚持复制’。因此不能继续把图示理解困难解释为坚持复制误解。用户自述能逐行读代码、看变量类型对照，并请求用这种支持自己解释两个打印；这尚不是独立解释借用关系的表现，也不建立长期偏好。",
+    "teaching_implication": "本轮换成逐行代码和变量类型对照，提供打印所需的读取规则，再把两个打印的具体理由留给用户解释。"
+  },
+  "select": {
+    "operation": "select",
+    "move": {
+      "move_id": "tb3-line-type-support",
+      "kind": "explain",
+      "capability": "explanation",
+      "interaction_intent": "guided_inquiry",
+      "intent_origin": "current_request",
+      "intent_quote": "请换成这种方式，让我自己解释两个打印。",
+      "interpretation_refs": ["interpretation:tb3-support-mismatch-update"],
+      "object_ids": [],
+      "target": {
+        "learning_focus": "let bar = &foo 创建对原值的不可变引用，而非复制 Foo",
+        "expected_performance": "在逐行代码和变量类型对照的支持下，解释两个 println 为什么可以使用。",
+        "capability": "explanation",
+        "source_bindings": [{"start_lid": "1.1", "end_lid": "1.1"}],
+        "object_refs": []
+      },
+      "prompt": "回应用户对图示支持不适用的纠正，按 let foo 与 let bar 两行建立变量类型和所有权对照，明确补充本例 Debug 打印只读取而不取走值的规则，再请用户将这些关系用于原例两个 println 的解释，不替用户完成解释。"
+    }
+  },
+  "answer": "明白，你已经说明不再认为有两份 `Foo`。我们换成逐行代码和类型对照。\n\n先读这两行：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\n```\n\n第一行把 `Foo(0)` 绑定给 `foo`。第二行先计算右侧 `&foo`，得到对这个值的不可变引用，再把引用绑定给 `bar`。借用不取得原值的所有权。[[source:source_ref_b7cdf804a5f27a0d]][[source:source_ref_9af277d1d3d785d4]]\n\n| 变量 | 类型 | 此时保存什么 |\n|---|---|---|\n| `foo` | `Foo` | 原来的 `Foo(0)`，仍由它拥有 |\n| `bar` | `&Foo` | 对该值的不可变引用，可读取，不能通过它修改原值 |\n\n这个对照对应原例的两行绑定和正文对 `bar` 类型的说明。[[source:source_ref_e2f1f69dfb7b32e3]][[source:source_ref_9af277d1d3d785d4]]\n\n补充一条用于读后面代码的 Rust 规则：本例 `println!` 中的 `{:?}` 做 Debug 格式化时，只借用参数来读取，不把参数中的值取走，也不修改它。共享借用允许这种读取；所以判断一行是否还能使用某个变量，要看它的值或引用是否仍有效，以及这一行要读取还是修改。\n\n现在请你用自己的话解释原例这两行为什么都能使用：\n\n```rust\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n按代码顺序说：创建 `bar` 后，`foo` 的所有权发生了什么？第一行打印会不会取走它的值？第二行的 `bar` 又凭什么能读到那个值？把这几处连接成你的解释即可。"
+}

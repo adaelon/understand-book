@@ -1,0 +1,32 @@
+{
+  "evidence": null,
+  "select": {
+    "operation": "select",
+    "move": {
+      "move_id": "tb3-reopen-line-type-support",
+      "kind": "explain",
+      "capability": "explanation",
+      "interaction_intent": "guided_inquiry",
+      "intent_origin": "current_request",
+      "intent_quote": "接着上次，用我能跟上的方式让我解释这个例子。",
+      "object_ids": [],
+      "interpretation_refs": [
+        "interpretation:tb3-support-mismatch-update"
+      ],
+      "prompt": "接续已修正的支持方式，沿用逐行代码和 Foo / &Foo 对照，简短恢复借用不取得所有权及打印只读借用的依据，将两个 println 各读取什么及为何都能使用的具体解释留给学习者，不重新纠正已撤回的复制说法，不用箭头图。",
+      "target": {
+        "capability": "explanation",
+        "expected_performance": "在逐行代码、变量类型对照和打印规则的支持下，自己解释原例两个 println 的使用依据",
+        "learning_focus": "不可变借用保留原值所有权，引用类型与值类型的区别",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "start_lid": "1.1",
+            "end_lid": "1.1"
+          }
+        ]
+      }
+    }
+  },
+  "answer": "接着上次，我们沿用你说能跟上的逐行代码和类型对照，先把判断依据放在旁边。\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\n```\n\n第一行创建 `Foo(0)`，绑定给 `foo`；第二行的右侧 `&foo` 创建不可变引用，再把引用绑定给 `bar`。正文明确说 `bar` 的类型是 `&Foo`，不能通过它修改原值。[[source:source_ref_9af277d1d3d785d4]]\n\n| 变量 | 类型 | 这一行执行后保存的内容 |\n|---|---|---|\n| `foo` | `Foo` | 原来的 `Foo(0)` 值 |\n| `bar` | `&Foo` | 对原值的不可变引用 |\n\n借用允许临时访问原值，却不取得原值的所有权。[[source:source_ref_b7cdf804a5f27a0d]]\n\n再沿用上次补充的打印规则：这里 `println!(\"… {:?}\", ...)` 为格式化而借用参数读取，不拿走参数的所有权；已有共享借用时，仍允许这样的共享只读访问。这是解释打印语句所需的补充规则。\n\n现在只处理原例中的两个打印：[[source:source_ref_e2f1f69dfb7b32e3]]\n\n```rust\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n请按这两行的顺序，用自己的话解释：**每行使用的变量是什么类型、通过它读取什么；结合“借用不取得所有权”和“打印只读借用”，为什么两行都能使用？** 可以直接写两句话，用变量名和类型串起理由。"
+}

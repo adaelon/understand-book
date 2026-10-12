@@ -1,0 +1,16 @@
+{
+  "text": "Let me find the earlier ownership example that this borrowing example rewrites.",
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"let bar = foo;\"}",
+      "id": "call_00_bM7VlEhniO9CwGwlJydC4983",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"lid\": \"1.1\", \"granularity\": \"near\", \"k\": 10}",
+      "id": "call_01_s2vpMtbHFH7D4FimA5Ym1001",
+      "name": "book.context"
+    }
+  ],
+  "usage_total_tokens": 16600
+}

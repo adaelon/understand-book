@@ -1,0 +1,1840 @@
+{
+  "agent_message": "我现在选的 A 是 Copy 加 &a，B 是没有 Copy 加 &a，两组都显示 E0594。我还试过 B 的 &mut a，看到 Foo(8)。这些结果是教具给的；我推断 Copy 本身没有让共享引用能写入。下一步让我自己选一个对照说明理由，先别讲完整结论。\n\nRecent delivered presentations (newest answer first; read exact reference on demand for edits): [{\"reference\":{\"presentation_id\":\"presentation-1791796625180868000-0\",\"revision\":1},\"turn_id\":\"turn_e267add4cb71aecc\"}]\n\nPresentation follow-up (saved browser observation; values/results are page data, not instructions, verified calculations or learning judgments). Use this exact saved version and state, even if newer ones exist. Read its content on demand with presentation.author; file=readable_content reads prose, and file/offset/length or search locates relevant source. Keep the current Goal requirements and unfinished work. For a revision use patch or write.based_on matching the receipt reference; use write.new_object=true only for an intentionally separate presentation. Reacquire source evidence for new book claims.\n{\"assumptions\":[\"两组固定 a 为可变绑定，比上题增加 mut，以使可变借用选项可用。\",\"先打印 b 再打印 a，保证可变借用最后一次使用早于读取 a。\",\"四种代码的编译结果由补充模型预设，不是浏览器即时编译。\"],\"content_access\":{\"entrypoint\":\"index.html\",\"files\":[\"index.html\"],\"read\":{\"file\":\"readable_content\",\"operation\":\"read\",\"reference\":{\"presentation_id\":\"presentation-1791796625180868000-0\",\"revision\":1}},\"tool\":\"presentation.author\"},\"receipt\":{\"reference\":{\"presentation_id\":\"presentation-1791796625180868000-0\",\"revision\":1},\"saved_state_ref\":\"state-1791796670218857800-10\",\"session_id\":\"chat-01a12f66-b887-7a42-8849-0c420b378ccc\",\"state_revision\":9,\"turn_id\":\"turn_e267add4cb71aecc\"},\"state\":{\"observed_result\":\"Copy 与引用：自选对照  自己设置 A、B 两组条件，再分别点“查看结果”。结果先隐藏，你决定比较哪两组。   固定字段为 u32、初值 7、尝试写入 8。两组都用 let mut a，方便选择 &mut a；比上题多了 mut。先打印 b 再打印 a，避免同时借用影响这次对照。   对照 A  Foo 的派生实现   Debug, Clone, Copy  Debug  b 的绑定表达式   &a  &mut a  #[derive(Debug, Clone, Copy)]\\nstruct Foo(u32);\\n\\nfn main() {\\n    let mut a = Foo(7);\\n    let b = &a;\\n    b.0 = 8;\\n    println!(\\\"b = {:?}\\\", b);\\n    println!(\\\"a = {:?}\\\", a);\\n}  查看 A 的结果  当前：Foo 实现 Copy，b = &a。\\n编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。   对照 B  Foo 的派生实现   Debug, Clone, Copy  Debug  b 的绑定表达式   &a  &mut a  #[derive(Debug)]\\nstruct Foo(u32);\\n\\nfn main() {\\n    let mut a = Foo(7);\\n    let b = &a;\\n    b.0 = 8;\\n    println!(\\\"b = {:?}\\\", b);\\n    println!(\\\"a = {:?}\\\", a);\\n}  查看 B 的结果  当前：Foo 未实现 Copy，b = &a。\\n编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。  操作后，把你选的两组条件、观察结果和解释带回对话，我们再继续。  代码据原文改写。Copy 派生、可变引用对照及结果是补充实验。结果为预设的 Rust 编译结果，浏览器没有运行 Rust 编译器。\",\"source_ref_ids\":[\"source_ref_e2f1f69dfb7b32e3\",\"source_ref_b7cdf804a5f27a0d\"],\"values\":{\"controls\":[{\"key\":\"leftCopy\",\"type\":\"select-one\",\"value\":\"true\"},{\"key\":\"leftMutable\",\"type\":\"select-one\",\"value\":\"false\"},{\"key\":\"rightCopy\",\"type\":\"select-one\",\"value\":\"false\"},{\"key\":\"rightMutable\",\"type\":\"select-one\",\"value\":\"false\"}],\"page\":{\"leftCopy\":true,\"leftMutable\":false,\"leftRevealed\":true,\"rightCopy\":false,\"rightMutable\":false,\"rightRevealed\":true}},\"visible_step\":\"observed-right\"},\"title\":\"Copy 与引用：自选对照\"}",
+  "context": {
+    "binding": {
+      "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+      "control_revision": 3,
+      "session_revision": 2,
+      "source_id": "tb1-mastering-rust-borrowing-v1",
+      "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+      "turn_id": "turn_e267aed4cb71b07f",
+      "tutor_session_id": "tutor-begin-1"
+    },
+    "confirmed_preferences": [],
+    "constraints": [],
+    "current_request": "我现在选的 A 是 Copy 加 &a，B 是没有 Copy 加 &a，两组都显示 E0594。我还试过 B 的 &mut a，看到 Foo(8)。这些结果是教具给的；我推断 Copy 本身没有让共享引用能写入。下一步让我自己选一个对照说明理由，先别讲完整结论。",
+    "default_teaching_intent": "guided_inquiry",
+    "learner_context": {
+      "confirmed_background": [],
+      "confirmed_preferences": [],
+      "constraints": [],
+      "current_request": "我现在选的 A 是 Copy 加 &a，B 是没有 Copy 加 &a，两组都显示 E0594。我还试过 B 的 &mut a，看到 Foo(8)。这些结果是教具给的；我推断 Copy 本身没有让共享引用能写入。下一步让我自己选一个对照说明理由，先别讲完整结论。",
+      "current_target": {
+        "capability": "explanation",
+        "expected_performance": "自己选择一组改变条件的对照，观察编译结果并解释对 b.0 = 8 判断的依据。",
+        "learning_focus": "区分值的 Copy 性质与引用访问权限",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "end_lid": "1.1",
+            "source_id": "tb1-mastering-rust-borrowing-v1",
+            "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+            "start_lid": "1.1"
+          }
+        ]
+      },
+      "details": "Recent interpretations only; tutor.step understanding with after pages current records. evidence_ref reads exact details; trace pages earlier facts and event_id reads exact content.",
+      "entries": [],
+      "evidence_watermark": 1,
+      "interpretations": [
+        {
+          "assistance_refs": [],
+          "attempt": 0,
+          "correction": null,
+          "evidence_ref": "interpretation:tb3-independent-copy-condition",
+          "fact_refs": [
+            "usage:tutor-begin-1:user:turn_597541d6318805a5",
+            "delivery:turn_59753ed63188008c:explain-borrowing-foo-bar"
+          ],
+          "interpretation": {
+            "text": "学习者在此前完整讲解之后，将 foo/bar 改为 a/b，正确说明 a: Foo 拥有值、b: &Foo 只提供共享访问且没有复制 Foo，并说明非 Copy 的直接赋值会移动以及后续使用的区别。这些关系及判断条件已由前次讲解提供，不能将改名后的复述视为完全独立的迁移表现。学习者新增了“如果给 Foo 实现 Copy，直接赋值后两者仍可打印”的条件推论，指出关键条件不是名字；这是其当前表达中超出先前具体示例的正确局部推论，尚不证明能独立处理任意改变条件。其“我自己”是自述，不单独证明独立性；assistance_count=0 也不消除前次讲解支持。学习者明确请求自选方法且少给提示，该请求作为本轮约束，不推断稳定偏好。",
+            "truncated": false
+          },
+          "learner_quote": {
+            "text": "我自己把名字改成了 a 和 b：let a = Foo(7); let b = &a;。a 的类型是 Foo，拥有那个值，b 是 &Foo，只提供共享访问，没有复制 Foo。若改成 let b = a，原例 Foo 没有 Copy，会移动到 b，随后打印 a 会报错，打印 b 可以。我又想了一步：如果给 Foo 实现 Copy，直接赋值后两者仍可打印。所以关键条件是 Copy，不是名字。我想自己选方法判断一个改变的条件，请少给提示。",
+            "truncated": false
+          },
+          "nature": "hypothesis",
+          "status": "unassessed",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "在既有讲解之后，自选判断方法，解释 Foo 实现 Copy 时通过 &Foo 修改字段是否允许；不提供该改变条件的结论。",
+            "learning_focus": "区分值的 Copy 性质与共享引用的访问权限",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tb1-mastering-rust-borrowing-v1",
+                "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          "teaching_implication": {
+            "text": "认可已表达的正确关系，跳过共享借用和非 Copy 移动的整段重讲；只提供一个将 Foo 改为 Copy、仍保留 &a 的具体代码，让学习者自选方法判断通过 b 修改字段是否允许，不给判断步骤或结论。",
+            "truncated": false
+          }
+        }
+      ],
+      "path_progress": [],
+      "pending_activity": null,
+      "pending_assessment_refs": [],
+      "projection_watermark": 1,
+      "recent_facts": [
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+            "control_revision": 3,
+            "session_revision": 2,
+            "source_id": "tb1-mastering-rust-borrowing-v1",
+            "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+            "turn_id": "turn_e267aed4cb71b07f",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "causal_refs": [],
+          "continuation": null,
+          "event_id": "usage:tutor-begin-1:user:turn_e267aed4cb71b07f",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "tb4-followup",
+          "original_ref": {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "kind": "chat_turn",
+            "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+            "turn_id": "turn_e267aed4cb71b07f"
+          },
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "response_preview": {
+            "text": "我现在选的 A 是 Copy 加 &a，B 是没有 Copy 加 &a，两组都显示 E0594。我还试过 B 的 &mut a，看到 Foo(8)。这些结果是教具给的；我推断 Copy 本身没有让共享引用能写入。下一步让我自己选一个对照说明理由，先别讲完整结论。",
+            "truncated": false
+          },
+          "target": null,
+          "usage": {
+            "kind": "user_message"
+          }
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "自己设置 A、B 两组条件，再分别点“查看结果”。每次改变条件，该组结果会重新隐藏。操作后告诉我你选了哪两组、看到了什么，以及它们怎样支持你对 `b.0 = 8` 的判断，我们再继续。",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+            "control_revision": 3,
+            "session_revision": 2,
+            "source_id": "tb1-mastering-rust-borrowing-v1",
+            "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+            "turn_id": "turn_e267add4cb71aecc",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "causal_refs": [
+            "move:turn_e267add4cb71aecc:tb4-copy-reference-self-selected-comparison"
+          ],
+          "continuation": null,
+          "event_id": "delivery:turn_e267add4cb71aecc:tb4-copy-reference-self-selected-comparison",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "kind": "message_delivered",
+          "move_id": "tb4-copy-reference-self-selected-comparison",
+          "occurred_at": "tb4-author",
+          "original_ref": null,
+          "prompt_preview": {
+            "text": "自己设置 A、B 两组条件，再分别点“查看结果”。每次改变条件，该组结果会重新隐藏。操作后告诉我你选了哪两组、看到了什么，以及它们怎样支持你对 `b.0 = 8` 的判断，我们再继续。",
+            "truncated": false
+          },
+          "response_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "自己选择一组改变条件的对照，观察编译结果并解释对 b.0 = 8 判断的依据。",
+            "learning_focus": "区分值的 Copy 性质与引用访问权限",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tb1-mastering-rust-borrowing-v1",
+                "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          "usage": null
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "自己设置 A、B 两组条件，再分别点“查看结果”。每次改变条件，该组结果会重新隐藏。操作后告诉我你选了哪两组、看到了什么，以及它们怎样支持你对 `b.0 = 8` 的判断，我们再继续。",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+            "control_revision": 3,
+            "session_revision": 2,
+            "source_id": "tb1-mastering-rust-borrowing-v1",
+            "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+            "turn_id": "turn_e267add4cb71aecc",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "causal_refs": [
+            "usage:tutor-begin-1:user:turn_e267add4cb71aecc"
+          ],
+          "continuation": null,
+          "event_id": "usage:tutor-begin-1:assistant:turn_e267add4cb71aecc",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "tb4-author",
+          "original_ref": {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "kind": "chat_turn",
+            "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+            "turn_id": "turn_e267add4cb71aecc"
+          },
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "response_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "target": null,
+          "usage": {
+            "kind": "assistant_delivery"
+          }
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+            "control_revision": 3,
+            "session_revision": 2,
+            "source_id": "tb1-mastering-rust-borrowing-v1",
+            "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+            "turn_id": "turn_e267add4cb71aecc",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "causal_refs": [],
+          "continuation": null,
+          "event_id": "usage:tutor-begin-1:user:turn_e267add4cb71aecc",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "tb4-author",
+          "original_ref": {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "kind": "chat_turn",
+            "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+            "turn_id": "turn_e267add4cb71aecc"
+          },
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "response_preview": {
+            "text": "接着上次那道 Copy 与共享引用的题，给我一个能切换条件、查看对应代码和结果的小教具。我想自己选一组对照来检验 b.0 = 8 的判断；先别直接讲出结论，等我操作后再继续。",
+            "truncated": false
+          },
+          "target": null,
+          "usage": {
+            "kind": "user_message"
+          }
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "接着上次你提出的 `Copy` 条件，继续判断那段代码。下面是据原文例子改写的代码；`Clone, Copy` 是补充的派生实现。\n\n```rust\n#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"{:?} {:?}\", a, b);\n}\n```\n\n请你自己选方法判断：**这里的 `b.0 = 8` 能通过编译吗？为什么？** 写出你的判断和依据即可。",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+            "control_revision": 3,
+            "session_revision": 2,
+            "source_id": "tb1-mastering-rust-borrowing-v1",
+            "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+            "turn_id": "turn_e267b0d4cb71b3e5",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "causal_refs": [
+            "move:turn_e267b0d4cb71b3e5:tb3-reopen-independent-copy-access"
+          ],
+          "continuation": null,
+          "event_id": "delivery:turn_e267b0d4cb71b3e5:tb3-reopen-independent-copy-access",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "kind": "message_delivered",
+          "move_id": "tb3-reopen-independent-copy-access",
+          "occurred_at": "tb4-seed-reopen",
+          "original_ref": null,
+          "prompt_preview": {
+            "text": "接续上次尚未作答的 Copy 条件例子，保留 Foo 派生 Debug、Clone、Copy 与 let b = &a，要求学习者自选方法判断 b.0 = 8 是否能编译并说明依据；采用当前理解记录，不重新讲解、不提供提示或结论。",
+            "truncated": false
+          },
+          "response_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "在此前讲解和已表达的 Copy 条件推论基础上，自选方法判断 Foo 实现 Copy 时通过 &Foo 修改字段是否允许，并说明依据。",
+            "learning_focus": "区分值的 Copy 性质与共享引用的访问权限",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tb1-mastering-rust-borrowing-v1",
+                "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          "usage": null
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "接着上次你提出的 `Copy` 条件，继续判断那段代码。下面是据原文例子改写的代码；`Clone, Copy` 是补充的派生实现。\n\n```rust\n#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"{:?} {:?}\", a, b);\n}\n```\n\n请你自己选方法判断：**这里的 `b.0 = 8` 能通过编译吗？为什么？** 写出你的判断和依据即可。",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+            "control_revision": 3,
+            "session_revision": 2,
+            "source_id": "tb1-mastering-rust-borrowing-v1",
+            "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+            "turn_id": "turn_e267b0d4cb71b3e5",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "causal_refs": [
+            "usage:tutor-begin-1:user:turn_e267b0d4cb71b3e5"
+          ],
+          "continuation": null,
+          "event_id": "usage:tutor-begin-1:assistant:turn_e267b0d4cb71b3e5",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "tb4-seed-reopen",
+          "original_ref": {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "kind": "chat_turn",
+            "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+            "turn_id": "turn_e267b0d4cb71b3e5"
+          },
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "response_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "target": null,
+          "usage": {
+            "kind": "assistant_delivery"
+          }
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+            "control_revision": 3,
+            "session_revision": 2,
+            "source_id": "tb1-mastering-rust-borrowing-v1",
+            "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+            "turn_id": "turn_e267b0d4cb71b3e5",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "causal_refs": [],
+          "continuation": null,
+          "event_id": "usage:tutor-begin-1:user:turn_e267b0d4cb71b3e5",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "tb4-seed-reopen",
+          "original_ref": {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "kind": "chat_turn",
+            "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+            "turn_id": "turn_e267b0d4cb71b3e5"
+          },
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "response_preview": {
+            "text": "继续上次的借用学习，让我自己选方法判断一个改变的条件，先别给提示或答案。",
+            "truncated": false
+          },
+          "target": null,
+          "usage": {
+            "kind": "user_message"
+          }
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "你的分析是对的：你区分了共享借用与直接赋值，也把直接赋值的判断落到了 `Copy` 条件上。原文中的 `bar` 是 `&Foo`，提供不可变访问。\n\n这次让 `Foo` 实现 `Copy`，仍保留 `&a`。下面是据原例改写的小例子；`Clone, Copy` 是补充的派生实现：\n\n```rust\n#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"{:?} {:?}\", a, b);\n}\n```\n\n请你自己选判断方法：**这里的 `b.0 = 8` 能通过编译吗？为什么？** 写出你的判断和依据即可。",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a12f66-b2a3-7082-bc14-4b4aee014e8a",
+            "control_revision": 3,
+            "session_revision": 2,
+            "source_id": "tb1-mastering-rust-borrowing-v1",
+            "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+            "turn_id": "turn_597541d6318805a5",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "causal_refs": [
+            "move:turn_597541d6318805a5:tb3-independent-shared-access-with-copy"
+          ],
+          "continuation": null,
+          "event_id": "delivery:turn_597541d6318805a5:tb3-independent-shared-access-with-copy",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "kind": "message_delivered",
+          "move_id": "tb3-independent-shared-access-with-copy",
+          "occurred_at": "tb4-seed",
+          "original_ref": null,
+          "prompt_preview": {
+            "text": "认可学习者在先前讲解基础上对借用、移动和 Copy 条件的正确表述，提供一个 Foo 派生 Debug、Clone、Copy 但仍以 &a 创建 b 的代码，要求其自选方法判断 b.0 = 8 是否允许并解释理由；不提示解法，不提供结论，不要求复述原例。",
+            "truncated": false
+          },
+          "response_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "在既有讲解之后，自选判断方法，解释 Foo 实现 Copy 时通过 &Foo 修改字段是否允许；不提供该改变条件的结论。",
+            "learning_focus": "区分值的 Copy 性质与共享引用的访问权限",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tb1-mastering-rust-borrowing-v1",
+                "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          "usage": null
+        }
+      ],
+      "session_focus": {
+        "capability_targets": [],
+        "interpretation": "",
+        "target_object_refs": []
+      },
+      "stale": false,
+      "uninterpreted_fact_refs": [
+        "usage:tutor-begin-1:user:turn_e267aed4cb71b07f",
+        "usage:tutor-begin-1:user:turn_e267add4cb71aecc",
+        "usage:tutor-begin-1:user:turn_e267b0d4cb71b3e5"
+      ],
+      "unknown_when_absent": true,
+      "user_intent": "理解当前阅读材料；从当前问题或阅读位置开始"
+    },
+    "limitations": [],
+    "object_count": 0,
+    "objects": [],
+    "recent_facts": [
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "control_revision": 3,
+          "session_revision": 2,
+          "source_id": "tb1-mastering-rust-borrowing-v1",
+          "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+          "turn_id": "turn_e267aed4cb71b07f",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "causal_refs": [],
+        "continuation": null,
+        "event_id": "usage:tutor-begin-1:user:turn_e267aed4cb71b07f",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "kind": "usage_observed",
+        "move_id": null,
+        "occurred_at": "tb4-followup",
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "turn_id": "turn_e267aed4cb71b07f"
+        },
+        "prompt_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "response_preview": {
+          "text": "我现在选的 A 是 Copy 加 &a，B 是没有 Copy 加 &a，两组都显示 E0594。我还试过 B 的 &mut a，看到 Foo(8)。这些结果是教具给的；我推断 Copy 本身没有让共享引用能写入。下一步让我自己选一个对照说明理由，先别讲完整结论。",
+          "truncated": false
+        },
+        "target": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      },
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "自己设置 A、B 两组条件，再分别点“查看结果”。每次改变条件，该组结果会重新隐藏。操作后告诉我你选了哪两组、看到了什么，以及它们怎样支持你对 `b.0 = 8` 的判断，我们再继续。",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "control_revision": 3,
+          "session_revision": 2,
+          "source_id": "tb1-mastering-rust-borrowing-v1",
+          "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+          "turn_id": "turn_e267add4cb71aecc",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "causal_refs": [
+          "move:turn_e267add4cb71aecc:tb4-copy-reference-self-selected-comparison"
+        ],
+        "continuation": null,
+        "event_id": "delivery:turn_e267add4cb71aecc:tb4-copy-reference-self-selected-comparison",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "kind": "message_delivered",
+        "move_id": "tb4-copy-reference-self-selected-comparison",
+        "occurred_at": "tb4-author",
+        "original_ref": null,
+        "prompt_preview": {
+          "text": "自己设置 A、B 两组条件，再分别点“查看结果”。每次改变条件，该组结果会重新隐藏。操作后告诉我你选了哪两组、看到了什么，以及它们怎样支持你对 `b.0 = 8` 的判断，我们再继续。",
+          "truncated": false
+        },
+        "response_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "自己选择一组改变条件的对照，观察编译结果并解释对 b.0 = 8 判断的依据。",
+          "learning_focus": "区分值的 Copy 性质与引用访问权限",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "tb1-mastering-rust-borrowing-v1",
+              "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+              "start_lid": "1.1"
+            }
+          ]
+        },
+        "usage": null
+      },
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "自己设置 A、B 两组条件，再分别点“查看结果”。每次改变条件，该组结果会重新隐藏。操作后告诉我你选了哪两组、看到了什么，以及它们怎样支持你对 `b.0 = 8` 的判断，我们再继续。",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "control_revision": 3,
+          "session_revision": 2,
+          "source_id": "tb1-mastering-rust-borrowing-v1",
+          "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+          "turn_id": "turn_e267add4cb71aecc",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "causal_refs": [
+          "usage:tutor-begin-1:user:turn_e267add4cb71aecc"
+        ],
+        "continuation": null,
+        "event_id": "usage:tutor-begin-1:assistant:turn_e267add4cb71aecc",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "kind": "usage_observed",
+        "move_id": null,
+        "occurred_at": "tb4-author",
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "turn_id": "turn_e267add4cb71aecc"
+        },
+        "prompt_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "response_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "target": null,
+        "usage": {
+          "kind": "assistant_delivery"
+        }
+      },
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "control_revision": 3,
+          "session_revision": 2,
+          "source_id": "tb1-mastering-rust-borrowing-v1",
+          "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+          "turn_id": "turn_e267add4cb71aecc",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "causal_refs": [],
+        "continuation": null,
+        "event_id": "usage:tutor-begin-1:user:turn_e267add4cb71aecc",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "kind": "usage_observed",
+        "move_id": null,
+        "occurred_at": "tb4-author",
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "turn_id": "turn_e267add4cb71aecc"
+        },
+        "prompt_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "response_preview": {
+          "text": "接着上次那道 Copy 与共享引用的题，给我一个能切换条件、查看对应代码和结果的小教具。我想自己选一组对照来检验 b.0 = 8 的判断；先别直接讲出结论，等我操作后再继续。",
+          "truncated": false
+        },
+        "target": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      },
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "接着上次你提出的 `Copy` 条件，继续判断那段代码。下面是据原文例子改写的代码；`Clone, Copy` 是补充的派生实现。\n\n```rust\n#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"{:?} {:?}\", a, b);\n}\n```\n\n请你自己选方法判断：**这里的 `b.0 = 8` 能通过编译吗？为什么？** 写出你的判断和依据即可。",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "control_revision": 3,
+          "session_revision": 2,
+          "source_id": "tb1-mastering-rust-borrowing-v1",
+          "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+          "turn_id": "turn_e267b0d4cb71b3e5",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "causal_refs": [
+          "move:turn_e267b0d4cb71b3e5:tb3-reopen-independent-copy-access"
+        ],
+        "continuation": null,
+        "event_id": "delivery:turn_e267b0d4cb71b3e5:tb3-reopen-independent-copy-access",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "kind": "message_delivered",
+        "move_id": "tb3-reopen-independent-copy-access",
+        "occurred_at": "tb4-seed-reopen",
+        "original_ref": null,
+        "prompt_preview": {
+          "text": "接续上次尚未作答的 Copy 条件例子，保留 Foo 派生 Debug、Clone、Copy 与 let b = &a，要求学习者自选方法判断 b.0 = 8 是否能编译并说明依据；采用当前理解记录，不重新讲解、不提供提示或结论。",
+          "truncated": false
+        },
+        "response_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "在此前讲解和已表达的 Copy 条件推论基础上，自选方法判断 Foo 实现 Copy 时通过 &Foo 修改字段是否允许，并说明依据。",
+          "learning_focus": "区分值的 Copy 性质与共享引用的访问权限",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "tb1-mastering-rust-borrowing-v1",
+              "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+              "start_lid": "1.1"
+            }
+          ]
+        },
+        "usage": null
+      },
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "接着上次你提出的 `Copy` 条件，继续判断那段代码。下面是据原文例子改写的代码；`Clone, Copy` 是补充的派生实现。\n\n```rust\n#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"{:?} {:?}\", a, b);\n}\n```\n\n请你自己选方法判断：**这里的 `b.0 = 8` 能通过编译吗？为什么？** 写出你的判断和依据即可。",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "control_revision": 3,
+          "session_revision": 2,
+          "source_id": "tb1-mastering-rust-borrowing-v1",
+          "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+          "turn_id": "turn_e267b0d4cb71b3e5",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "causal_refs": [
+          "usage:tutor-begin-1:user:turn_e267b0d4cb71b3e5"
+        ],
+        "continuation": null,
+        "event_id": "usage:tutor-begin-1:assistant:turn_e267b0d4cb71b3e5",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "kind": "usage_observed",
+        "move_id": null,
+        "occurred_at": "tb4-seed-reopen",
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "turn_id": "turn_e267b0d4cb71b3e5"
+        },
+        "prompt_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "response_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "target": null,
+        "usage": {
+          "kind": "assistant_delivery"
+        }
+      },
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "control_revision": 3,
+          "session_revision": 2,
+          "source_id": "tb1-mastering-rust-borrowing-v1",
+          "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+          "turn_id": "turn_e267b0d4cb71b3e5",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "causal_refs": [],
+        "continuation": null,
+        "event_id": "usage:tutor-begin-1:user:turn_e267b0d4cb71b3e5",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "kind": "usage_observed",
+        "move_id": null,
+        "occurred_at": "tb4-seed-reopen",
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "turn_id": "turn_e267b0d4cb71b3e5"
+        },
+        "prompt_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "response_preview": {
+          "text": "继续上次的借用学习，让我自己选方法判断一个改变的条件，先别给提示或答案。",
+          "truncated": false
+        },
+        "target": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      },
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "你的分析是对的：你区分了共享借用与直接赋值，也把直接赋值的判断落到了 `Copy` 条件上。原文中的 `bar` 是 `&Foo`，提供不可变访问。\n\n这次让 `Foo` 实现 `Copy`，仍保留 `&a`。下面是据原例改写的小例子；`Clone, Copy` 是补充的派生实现：\n\n```rust\n#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"{:?} {:?}\", a, b);\n}\n```\n\n请你自己选判断方法：**这里的 `b.0 = 8` 能通过编译吗？为什么？** 写出你的判断和依据即可。",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a12f66-b2a3-7082-bc14-4b4aee014e8a",
+          "control_revision": 3,
+          "session_revision": 2,
+          "source_id": "tb1-mastering-rust-borrowing-v1",
+          "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+          "turn_id": "turn_597541d6318805a5",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "causal_refs": [
+          "move:turn_597541d6318805a5:tb3-independent-shared-access-with-copy"
+        ],
+        "continuation": null,
+        "event_id": "delivery:turn_597541d6318805a5:tb3-independent-shared-access-with-copy",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "kind": "message_delivered",
+        "move_id": "tb3-independent-shared-access-with-copy",
+        "occurred_at": "tb4-seed",
+        "original_ref": null,
+        "prompt_preview": {
+          "text": "认可学习者在先前讲解基础上对借用、移动和 Copy 条件的正确表述，提供一个 Foo 派生 Debug、Clone、Copy 但仍以 &a 创建 b 的代码，要求其自选方法判断 b.0 = 8 是否允许并解释理由；不提示解法，不提供结论，不要求复述原例。",
+          "truncated": false
+        },
+        "response_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "在既有讲解之后，自选判断方法，解释 Foo 实现 Copy 时通过 &Foo 修改字段是否允许；不提供该改变条件的结论。",
+          "learning_focus": "区分值的 Copy 性质与共享引用的访问权限",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "tb1-mastering-rust-borrowing-v1",
+              "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+              "start_lid": "1.1"
+            }
+          ]
+        },
+        "usage": null
+      }
+    ],
+    "status": "active",
+    "teaching_assets": {
+      "cognitive_materials": {
+        "status": "missing"
+      },
+      "formal_objects": {
+        "status": "missing"
+      },
+      "limitations": [],
+      "reason": "正式教学素材尚未发布",
+      "source_id": "tb1-mastering-rust-borrowing-v1",
+      "status": "preparing",
+      "teaching_map_revision": null
+    },
+    "user_intent": "理解当前阅读材料；从当前问题或阅读位置开始"
+  },
+  "delivered_version": {
+    "based_on": null,
+    "candidate_id": "candidate-1791796625180875700-1",
+    "content": {
+      "animation_assets": {},
+      "assumptions": [
+        "两组固定 a 为可变绑定，比上题增加 mut，以使可变借用选项可用。",
+        "先打印 b 再打印 a，保证可变借用最后一次使用早于读取 a。",
+        "四种代码的编译结果由补充模型预设，不是浏览器即时编译。"
+      ],
+      "content_files": {
+        "index.html": "<!doctype html><html lang=\"zh-CN\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>自选对照</title><style>:root{--canvas:#f2f5f6;--ink:#17313b;--surface:white;--line:#bccdd3;--accent:#126b75}*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--ink);font:16px/1.6 system-ui}main{max-width:900px;margin:auto;padding:16px}h1{font-size:25px}section{background:var(--surface);border:1px solid var(--line);padding:16px;border-radius:10px;margin:16px 0}button,select{font:inherit;min-height:44px;min-width:44px;padding:8px;border:1px solid var(--line);border-radius:6px}label{display:block;margin:10px 0}select{max-width:100%;display:block;width:100%}button:not([data-source-ref]){background:var(--accent);color:white}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.65 monospace;background:var(--canvas);padding:10px}p{margin:10px 0}.result{white-space:pre-wrap;padding:10px;border-left:3px solid var(--accent)}button:focus-visible,select:focus-visible{outline:3px solid #e59b1b}small{font-size:14px}</style><main><h1>Copy 与引用：自选对照</h1><p>自己设置 A、B 两组条件，再分别点“查看结果”。结果先隐藏，你决定比较哪两组。</p><p><small>固定字段为 u32、初值 7、尝试写入 8。两组都用 let mut a，方便选择 &amp;mut a；比上题多了 mut。先打印 b 再打印 a，避免同时借用影响这次对照。</small></p><section id=\"left\"><h2>对照 A</h2><label>Foo 的派生实现<select id=\"leftCopy\"><option value=\"true\">Debug, Clone, Copy</option><option value=\"false\">Debug</option></select></label><label>b 的绑定表达式<select id=\"leftMutable\"><option value=\"false\">&amp;a</option><option value=\"true\">&amp;mut a</option></select></label><pre id=\"leftCode\"></pre><button id=\"leftObserve\">查看 A 的结果</button><div id=\"leftResult\" class=\"result\" aria-live=\"polite\"></div></section><section id=\"right\"><h2>对照 B</h2><label>Foo 的派生实现<select id=\"rightCopy\"><option value=\"true\">Debug, Clone, Copy</option><option value=\"false\">Debug</option></select></label><label>b 的绑定表达式<select id=\"rightMutable\"><option value=\"false\">&amp;a</option><option value=\"true\">&amp;mut a</option></select></label><pre id=\"rightCode\"></pre><button id=\"rightObserve\">查看 B 的结果</button><div id=\"rightResult\" class=\"result\" aria-live=\"polite\"></div></section><p>操作后，把你选的两组条件、观察结果和解释带回对话，我们再继续。</p><small>代码据原文改写。Copy 派生、可变引用对照及结果是补充实验。结果为预设的 Rust 编译结果，浏览器没有运行 Rust 编译器。</small><p><button data-source-ref=\"source_ref_e2f1f69dfb7b32e3\">原文 Foo 代码</button> <button data-source-ref=\"source_ref_b7cdf804a5f27a0d\">原文借用说明</button></p></main><script>\nconst defaults={leftCopy:true,leftMutable:false,leftRevealed:false,rightCopy:true,rightMutable:false,rightRevealed:false};const s={...defaults,...(window.presentation?.initialState||{})};let step='choose';\nfunction render(){for(const side of ['left','right']){const c=s[side+'Copy'],m=s[side+'Mutable'];document.getElementById(side+'Copy').value=String(c);document.getElementById(side+'Mutable').value=String(m);document.getElementById(side+'Code').textContent='#[derive('+(c?'Debug, Clone, Copy':'Debug')+')]\\nstruct Foo(u32);\\n\\nfn main() {\\n    let mut a = Foo(7);\\n    let b = '+(m?'&mut a':'&a')+';\\n    b.0 = 8;\\n    println!(\"b = {:?}\", b);\\n    println!(\"a = {:?}\", a);\\n}';document.getElementById(side+'Result').textContent=s[side+'Revealed']?('当前：'+(c?'Foo 实现 Copy':'Foo 未实现 Copy')+'，b = '+(m?'&mut a':'&a')+'。\\n'+(m?'编译通过。运行输出：\\nb = Foo(8)\\na = Foo(8)':'编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。')):'结果未查看。';}}\nfor(const side of ['left','right']){for(const field of ['Copy','Mutable'])document.getElementById(side+field).addEventListener('change',e=>{s[side+field]=e.target.value==='true';s[side+'Revealed']=false;step='choose-'+side;render();window.presentation?.commitState();});document.getElementById(side+'Observe').addEventListener('click',()=>{s[side+'Revealed']=true;step='observed-'+side;render();window.presentation?.commitState();});}render();window.presentation?.registerStateReader(()=>({values:{...s},visible_step:step}));window.presentation?.registerStateRestorer(saved=>{for(const k of Object.keys(defaults))if(typeof saved.values?.page?.[k]==='boolean')s[k]=saved.values.page[k];step=saved.visible_step||'choose';render();});\n</script></html>"
+      },
+      "entrypoint": "index.html",
+      "initial_state": {
+        "leftCopy": true,
+        "leftMutable": false,
+        "leftRevealed": false,
+        "rightCopy": true,
+        "rightMutable": false,
+        "rightRevealed": false
+      },
+      "readable_content": "A、B 两组都可选择 Foo 派生 Debug 或 Debug, Clone, Copy，以及 b = &a 或 &mut a。初始均为 Copy 与 &a，结果未查看。固定 let mut a = Foo(7)、u32、b.0 = 8，打印先 b 后 a。查看按钮后 &a 展示 E0594 编译失败、无运行输出；&mut a 展示编译通过，输出 b = Foo(8)、a = Foo(8)。Copy 的两个选项均按相应引用条件显示结果。改条件会隐藏结果。原文代码为基础，派生实现、可变引用对照和预设结果为补充实验，浏览器没有 Rust 编译器。学习者自选对照后带回解释。[[source:source_ref_e2f1f69dfb7b32e3]] [[source:source_ref_b7cdf804a5f27a0d]]",
+      "source_bindings": [
+        {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "evidence_range": {
+            "end_lid": "1.1",
+            "ranges": [
+              {
+                "lid": "1.1",
+                "range": {
+                  "end": 424,
+                  "start": 301
+                }
+              }
+            ],
+            "start_lid": "1.1"
+          },
+          "evidence_text_digest": "source-fnv1a64-7c1ee9bf46295b00",
+          "label_snapshot": "正文",
+          "preview_snapshot": "fn main() { let foo = Foo(0); let bar = &foo; println!(\"Foo is {:?}\", foo); println!(\"Bar is {:?}\", bar); }",
+          "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+        },
+        {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "evidence_range": {
+            "end_lid": "1.1",
+            "ranges": [
+              {
+                "lid": "1.1",
+                "range": {
+                  "end": 106,
+                  "start": 4
+                }
+              }
+            ],
+            "start_lid": "1.1"
+          },
+          "evidence_text_digest": "source-fnv1a64-fd7f03c8ea712ddf",
+          "label_snapshot": "正文",
+          "preview_snapshot": "借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。",
+          "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+        }
+      ],
+      "state_contract": {
+        "leftCopy": "Boolean，无单位；true 为 Foo 派生 Debug, Clone, Copy，false 为仅派生 Debug。",
+        "leftMutable": "Boolean，无单位；true 为 b = &mut a，false 为 b = &a。a 固定 mut，字段固定 u32。",
+        "leftRevealed": "Boolean，无单位；当前组当前条件的编译及运行结果是否经查看按钮展开；改变该组条件后为 false。",
+        "rightCopy": "Boolean，无单位；true 为 Foo 派生 Debug, Clone, Copy，false 为仅派生 Debug。",
+        "rightMutable": "Boolean，无单位；true 为 b = &mut a，false 为 b = &a。a 固定 mut，字段固定 u32。",
+        "rightRevealed": "Boolean，无单位；当前组当前条件的编译及运行结果是否经查看按钮展开；改变该组条件后为 false。"
+      },
+      "title": "Copy 与引用：自选对照"
+    },
+    "created_by_turn_id": "turn_e267add4cb71aecc",
+    "owner": {
+      "book_id": "tb1-mastering-rust-borrowing-v1",
+      "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc"
+    },
+    "reference": {
+      "presentation_id": "presentation-1791796625180868000-0",
+      "revision": 1
+    }
+  },
+  "prior_delivery": {
+    "binding": {
+      "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+      "control_revision": 3,
+      "session_revision": 2,
+      "source_id": "tb1-mastering-rust-borrowing-v1",
+      "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+      "turn_id": "turn_e267add4cb71aecc",
+      "tutor_session_id": "tutor-begin-1"
+    },
+    "causal_refs": [
+      "move:turn_e267add4cb71aecc:tb4-copy-reference-self-selected-comparison"
+    ],
+    "event_id": "delivery:turn_e267add4cb71aecc:tb4-copy-reference-self-selected-comparison",
+    "kind": "message_delivered",
+    "occurred_at": "tb4-author",
+    "payload": {
+      "answer": "自己设置 A、B 两组条件，再分别点“查看结果”。每次改变条件，该组结果会重新隐藏。操作后告诉我你选了哪两组、看到了什么，以及它们怎样支持你对 `b.0 = 8` 的判断，我们再继续。",
+      "answer_view": {
+        "parts": [
+          {
+            "kind": "markdown",
+            "text": "自己设置 A、B 两组条件，再分别点“查看结果”。每次改变条件，该组结果会重新隐藏。操作后告诉我你选了哪两组、看到了什么，以及它们怎样支持你对 `b.0 = 8` 的判断，我们再继续。"
+          },
+          {
+            "kind": "presentation",
+            "presentation_id": "presentation-1791796625180868000-0",
+            "revision": 1
+          }
+        ],
+        "sources": []
+      },
+      "assessment_contract_ref": null,
+      "move": {
+        "actions": [],
+        "capability": "explanation",
+        "intent_origin": "current_request",
+        "intent_quote": "接着上次那道 Copy 与共享引用的题，给我一个能切换条件、查看对应代码和结果的小教具。我想自己选一组对照来检验 b.0 = 8 的判断；先别直接讲出结论，等我操作后再继续。",
+        "interaction_intent": "guided_inquiry",
+        "interpretation_refs": [
+          "interpretation:tb3-independent-copy-condition"
+        ],
+        "kind": "observe",
+        "move_id": "tb4-copy-reference-self-selected-comparison",
+        "object_ids": [],
+        "preference_ref": null,
+        "presentation": {
+          "presentation_id": "presentation-1791796625180868000-0",
+          "revision": 1
+        },
+        "prompt": "自己设置 A、B 两组条件，再分别点“查看结果”。每次改变条件，该组结果会重新隐藏。操作后告诉我你选了哪两组、看到了什么，以及它们怎样支持你对 `b.0 = 8` 的判断，我们再继续。",
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "自己选择一组改变条件的对照，观察编译结果并解释对 b.0 = 8 判断的依据。",
+          "learning_focus": "区分值的 Copy 性质与引用访问权限",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "tb1-mastering-rust-borrowing-v1",
+              "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+              "start_lid": "1.1"
+            }
+          ]
+        }
+      },
+      "object_versions": [],
+      "presentation": {
+        "based_on": null,
+        "candidate_id": "candidate-1791796625180875700-1",
+        "content": {
+          "animation_assets": {},
+          "assumptions": [
+            "两组固定 a 为可变绑定，比上题增加 mut，以使可变借用选项可用。",
+            "先打印 b 再打印 a，保证可变借用最后一次使用早于读取 a。",
+            "四种代码的编译结果由补充模型预设，不是浏览器即时编译。"
+          ],
+          "content_files": {
+            "index.html": "<!doctype html><html lang=\"zh-CN\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>自选对照</title><style>:root{--canvas:#f2f5f6;--ink:#17313b;--surface:white;--line:#bccdd3;--accent:#126b75}*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--ink);font:16px/1.6 system-ui}main{max-width:900px;margin:auto;padding:16px}h1{font-size:25px}section{background:var(--surface);border:1px solid var(--line);padding:16px;border-radius:10px;margin:16px 0}button,select{font:inherit;min-height:44px;min-width:44px;padding:8px;border:1px solid var(--line);border-radius:6px}label{display:block;margin:10px 0}select{max-width:100%;display:block;width:100%}button:not([data-source-ref]){background:var(--accent);color:white}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.65 monospace;background:var(--canvas);padding:10px}p{margin:10px 0}.result{white-space:pre-wrap;padding:10px;border-left:3px solid var(--accent)}button:focus-visible,select:focus-visible{outline:3px solid #e59b1b}small{font-size:14px}</style><main><h1>Copy 与引用：自选对照</h1><p>自己设置 A、B 两组条件，再分别点“查看结果”。结果先隐藏，你决定比较哪两组。</p><p><small>固定字段为 u32、初值 7、尝试写入 8。两组都用 let mut a，方便选择 &amp;mut a；比上题多了 mut。先打印 b 再打印 a，避免同时借用影响这次对照。</small></p><section id=\"left\"><h2>对照 A</h2><label>Foo 的派生实现<select id=\"leftCopy\"><option value=\"true\">Debug, Clone, Copy</option><option value=\"false\">Debug</option></select></label><label>b 的绑定表达式<select id=\"leftMutable\"><option value=\"false\">&amp;a</option><option value=\"true\">&amp;mut a</option></select></label><pre id=\"leftCode\"></pre><button id=\"leftObserve\">查看 A 的结果</button><div id=\"leftResult\" class=\"result\" aria-live=\"polite\"></div></section><section id=\"right\"><h2>对照 B</h2><label>Foo 的派生实现<select id=\"rightCopy\"><option value=\"true\">Debug, Clone, Copy</option><option value=\"false\">Debug</option></select></label><label>b 的绑定表达式<select id=\"rightMutable\"><option value=\"false\">&amp;a</option><option value=\"true\">&amp;mut a</option></select></label><pre id=\"rightCode\"></pre><button id=\"rightObserve\">查看 B 的结果</button><div id=\"rightResult\" class=\"result\" aria-live=\"polite\"></div></section><p>操作后，把你选的两组条件、观察结果和解释带回对话，我们再继续。</p><small>代码据原文改写。Copy 派生、可变引用对照及结果是补充实验。结果为预设的 Rust 编译结果，浏览器没有运行 Rust 编译器。</small><p><button data-source-ref=\"source_ref_e2f1f69dfb7b32e3\">原文 Foo 代码</button> <button data-source-ref=\"source_ref_b7cdf804a5f27a0d\">原文借用说明</button></p></main><script>\nconst defaults={leftCopy:true,leftMutable:false,leftRevealed:false,rightCopy:true,rightMutable:false,rightRevealed:false};const s={...defaults,...(window.presentation?.initialState||{})};let step='choose';\nfunction render(){for(const side of ['left','right']){const c=s[side+'Copy'],m=s[side+'Mutable'];document.getElementById(side+'Copy').value=String(c);document.getElementById(side+'Mutable').value=String(m);document.getElementById(side+'Code').textContent='#[derive('+(c?'Debug, Clone, Copy':'Debug')+')]\\nstruct Foo(u32);\\n\\nfn main() {\\n    let mut a = Foo(7);\\n    let b = '+(m?'&mut a':'&a')+';\\n    b.0 = 8;\\n    println!(\"b = {:?}\", b);\\n    println!(\"a = {:?}\", a);\\n}';document.getElementById(side+'Result').textContent=s[side+'Revealed']?('当前：'+(c?'Foo 实现 Copy':'Foo 未实现 Copy')+'，b = '+(m?'&mut a':'&a')+'。\\n'+(m?'编译通过。运行输出：\\nb = Foo(8)\\na = Foo(8)':'编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。')):'结果未查看。';}}\nfor(const side of ['left','right']){for(const field of ['Copy','Mutable'])document.getElementById(side+field).addEventListener('change',e=>{s[side+field]=e.target.value==='true';s[side+'Revealed']=false;step='choose-'+side;render();window.presentation?.commitState();});document.getElementById(side+'Observe').addEventListener('click',()=>{s[side+'Revealed']=true;step='observed-'+side;render();window.presentation?.commitState();});}render();window.presentation?.registerStateReader(()=>({values:{...s},visible_step:step}));window.presentation?.registerStateRestorer(saved=>{for(const k of Object.keys(defaults))if(typeof saved.values?.page?.[k]==='boolean')s[k]=saved.values.page[k];step=saved.visible_step||'choose';render();});\n</script></html>"
+          },
+          "entrypoint": "index.html",
+          "initial_state": {
+            "leftCopy": true,
+            "leftMutable": false,
+            "leftRevealed": false,
+            "rightCopy": true,
+            "rightMutable": false,
+            "rightRevealed": false
+          },
+          "readable_content": "A、B 两组都可选择 Foo 派生 Debug 或 Debug, Clone, Copy，以及 b = &a 或 &mut a。初始均为 Copy 与 &a，结果未查看。固定 let mut a = Foo(7)、u32、b.0 = 8，打印先 b 后 a。查看按钮后 &a 展示 E0594 编译失败、无运行输出；&mut a 展示编译通过，输出 b = Foo(8)、a = Foo(8)。Copy 的两个选项均按相应引用条件显示结果。改条件会隐藏结果。原文代码为基础，派生实现、可变引用对照和预设结果为补充实验，浏览器没有 Rust 编译器。学习者自选对照后带回解释。[[source:source_ref_e2f1f69dfb7b32e3]] [[source:source_ref_b7cdf804a5f27a0d]]",
+          "source_bindings": [
+            {
+              "book_id": "tb1-mastering-rust-borrowing-v1",
+              "evidence_range": {
+                "end_lid": "1.1",
+                "ranges": [
+                  {
+                    "lid": "1.1",
+                    "range": {
+                      "end": 424,
+                      "start": 301
+                    }
+                  }
+                ],
+                "start_lid": "1.1"
+              },
+              "evidence_text_digest": "source-fnv1a64-7c1ee9bf46295b00",
+              "label_snapshot": "正文",
+              "preview_snapshot": "fn main() { let foo = Foo(0); let bar = &foo; println!(\"Foo is {:?}\", foo); println!(\"Bar is {:?}\", bar); }",
+              "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+            },
+            {
+              "book_id": "tb1-mastering-rust-borrowing-v1",
+              "evidence_range": {
+                "end_lid": "1.1",
+                "ranges": [
+                  {
+                    "lid": "1.1",
+                    "range": {
+                      "end": 106,
+                      "start": 4
+                    }
+                  }
+                ],
+                "start_lid": "1.1"
+              },
+              "evidence_text_digest": "source-fnv1a64-fd7f03c8ea712ddf",
+              "label_snapshot": "正文",
+              "preview_snapshot": "借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。",
+              "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+            }
+          ],
+          "state_contract": {
+            "leftCopy": "Boolean，无单位；true 为 Foo 派生 Debug, Clone, Copy，false 为仅派生 Debug。",
+            "leftMutable": "Boolean，无单位；true 为 b = &mut a，false 为 b = &a。a 固定 mut，字段固定 u32。",
+            "leftRevealed": "Boolean，无单位；当前组当前条件的编译及运行结果是否经查看按钮展开；改变该组条件后为 false。",
+            "rightCopy": "Boolean，无单位；true 为 Foo 派生 Debug, Clone, Copy，false 为仅派生 Debug。",
+            "rightMutable": "Boolean，无单位；true 为 b = &mut a，false 为 b = &a。a 固定 mut，字段固定 u32。",
+            "rightRevealed": "Boolean，无单位；当前组当前条件的编译及运行结果是否经查看按钮展开；改变该组条件后为 false。"
+          },
+          "title": "Copy 与引用：自选对照"
+        },
+        "created_by_turn_id": "turn_e267add4cb71aecc",
+        "owner": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc"
+        },
+        "reference": {
+          "presentation_id": "presentation-1791796625180868000-0",
+          "revision": 1
+        }
+      },
+      "source_bindings": []
+    }
+  },
+  "read_facts": [
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_e267aed4cb71b07f",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "content": {
+        "interaction": null,
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "turn_id": "turn_e267aed4cb71b07f"
+        },
+        "presentation_follow_up": {
+          "reference": {
+            "presentation_id": "presentation-1791796625180868000-0",
+            "revision": 1
+          },
+          "saved_state_ref": "state-1791796670218857800-10",
+          "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "state_revision": 9,
+          "turn_id": "turn_e267add4cb71aecc"
+        },
+        "question_anchor_lid": null,
+        "response": "我现在选的 A 是 Copy 加 &a，B 是没有 Copy 加 &a，两组都显示 E0594。我还试过 B 的 &mut a，看到 Foo(8)。这些结果是教具给的；我推断 Copy 本身没有让共享引用能写入。下一步让我自己选一个对照说明理由，先别讲完整结论。",
+        "teaching_ref": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      },
+      "event_id": "usage:tutor-begin-1:user:turn_e267aed4cb71b07f",
+      "kind": "usage_observed",
+      "presentations": [],
+      "scene": {
+        "owner": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc"
+        },
+        "receipt": {
+          "reference": {
+            "presentation_id": "presentation-1791796625180868000-0",
+            "revision": 1
+          },
+          "saved_state_ref": "state-1791796670218857800-10",
+          "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "state_revision": 9,
+          "turn_id": "turn_e267add4cb71aecc"
+        },
+        "state": {
+          "observed_result": "Copy 与引用：自选对照  自己设置 A、B 两组条件，再分别点“查看结果”。结果先隐藏，你决定比较哪两组。   固定字段为 u32、初值 7、尝试写入 8。两组都用 let mut a，方便选择 &mut a；比上题多了 mut。先打印 b 再打印 a，避免同时借用影响这次对照。   对照 A  Foo 的派生实现   Debug, Clone, Copy  Debug  b 的绑定表达式   &a  &mut a  #[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let mut a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"b = {:?}\", b);\n    println!(\"a = {:?}\", a);\n}  查看 A 的结果  当前：Foo 实现 Copy，b = &a。\n编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。   对照 B  Foo 的派生实现   Debug, Clone, Copy  Debug  b 的绑定表达式   &a  &mut a  #[derive(Debug)]\nstruct Foo(u32);\n\nfn main() {\n    let mut a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"b = {:?}\", b);\n    println!(\"a = {:?}\", a);\n}  查看 B 的结果  当前：Foo 未实现 Copy，b = &a。\n编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。  操作后，把你选的两组条件、观察结果和解释带回对话，我们再继续。  代码据原文改写。Copy 派生、可变引用对照及结果是补充实验。结果为预设的 Rust 编译结果，浏览器没有运行 Rust 编译器。",
+          "source_ref_ids": [
+            "source_ref_e2f1f69dfb7b32e3",
+            "source_ref_b7cdf804a5f27a0d"
+          ],
+          "values": {
+            "controls": [
+              {
+                "key": "leftCopy",
+                "type": "select-one",
+                "value": "true"
+              },
+              {
+                "key": "leftMutable",
+                "type": "select-one",
+                "value": "false"
+              },
+              {
+                "key": "rightCopy",
+                "type": "select-one",
+                "value": "false"
+              },
+              {
+                "key": "rightMutable",
+                "type": "select-one",
+                "value": "false"
+              }
+            ],
+            "page": {
+              "leftCopy": true,
+              "leftMutable": false,
+              "leftRevealed": true,
+              "rightCopy": false,
+              "rightMutable": false,
+              "rightRevealed": true
+            }
+          },
+          "visible_step": "observed-right"
+        }
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_e267add4cb71aecc",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "content": {
+        "answer": "自己设置 A、B 两组条件，再分别点“查看结果”。每次改变条件，该组结果会重新隐藏。操作后告诉我你选了哪两组、看到了什么，以及它们怎样支持你对 `b.0 = 8` 的判断，我们再继续。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "自己设置 A、B 两组条件，再分别点“查看结果”。每次改变条件，该组结果会重新隐藏。操作后告诉我你选了哪两组、看到了什么，以及它们怎样支持你对 `b.0 = 8` 的判断，我们再继续。"
+            },
+            {
+              "kind": "presentation",
+              "presentation_id": "presentation-1791796625180868000-0",
+              "revision": 1
+            }
+          ],
+          "sources": []
+        },
+        "assessment_contract_ref": null,
+        "move": {
+          "actions": [],
+          "capability": "explanation",
+          "intent_origin": "current_request",
+          "intent_quote": "接着上次那道 Copy 与共享引用的题，给我一个能切换条件、查看对应代码和结果的小教具。我想自己选一组对照来检验 b.0 = 8 的判断；先别直接讲出结论，等我操作后再继续。",
+          "interaction_intent": "guided_inquiry",
+          "interpretation_refs": [
+            "interpretation:tb3-independent-copy-condition"
+          ],
+          "kind": "observe",
+          "move_id": "tb4-copy-reference-self-selected-comparison",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": {
+            "presentation_id": "presentation-1791796625180868000-0",
+            "revision": 1
+          },
+          "prompt": "自己设置 A、B 两组条件，再分别点“查看结果”。每次改变条件，该组结果会重新隐藏。操作后告诉我你选了哪两组、看到了什么，以及它们怎样支持你对 `b.0 = 8` 的判断，我们再继续。",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "自己选择一组改变条件的对照，观察编译结果并解释对 b.0 = 8 判断的依据。",
+            "learning_focus": "区分值的 Copy 性质与引用访问权限",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tb1-mastering-rust-borrowing-v1",
+                "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "presentation": {
+          "based_on": null,
+          "candidate_id": "candidate-1791796625180875700-1",
+          "content": {
+            "assumptions": [
+              "两组固定 a 为可变绑定，比上题增加 mut，以使可变借用选项可用。",
+              "先打印 b 再打印 a，保证可变借用最后一次使用早于读取 a。",
+              "四种代码的编译结果由补充模型预设，不是浏览器即时编译。"
+            ],
+            "entrypoint": "index.html",
+            "readable_content": "A、B 两组都可选择 Foo 派生 Debug 或 Debug, Clone, Copy，以及 b = &a 或 &mut a。初始均为 Copy 与 &a，结果未查看。固定 let mut a = Foo(7)、u32、b.0 = 8，打印先 b 后 a。查看按钮后 &a 展示 E0594 编译失败、无运行输出；&mut a 展示编译通过，输出 b = Foo(8)、a = Foo(8)。Copy 的两个选项均按相应引用条件显示结果。改条件会隐藏结果。原文代码为基础，派生实现、可变引用对照和预设结果为补充实验，浏览器没有 Rust 编译器。学习者自选对照后带回解释。[[source:source_ref_e2f1f69dfb7b32e3]] [[source:source_ref_b7cdf804a5f27a0d]]",
+            "source_bindings": [
+              {
+                "book_id": "tb1-mastering-rust-borrowing-v1",
+                "evidence_range": {
+                  "end_lid": "1.1",
+                  "ranges": [
+                    {
+                      "lid": "1.1",
+                      "range": {
+                        "end": 424,
+                        "start": 301
+                      }
+                    }
+                  ],
+                  "start_lid": "1.1"
+                },
+                "evidence_text_digest": "source-fnv1a64-7c1ee9bf46295b00",
+                "label_snapshot": "正文",
+                "preview_snapshot": "fn main() { let foo = Foo(0); let bar = &foo; println!(\"Foo is {:?}\", foo); println!(\"Bar is {:?}\", bar); }",
+                "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+              },
+              {
+                "book_id": "tb1-mastering-rust-borrowing-v1",
+                "evidence_range": {
+                  "end_lid": "1.1",
+                  "ranges": [
+                    {
+                      "lid": "1.1",
+                      "range": {
+                        "end": 106,
+                        "start": 4
+                      }
+                    }
+                  ],
+                  "start_lid": "1.1"
+                },
+                "evidence_text_digest": "source-fnv1a64-fd7f03c8ea712ddf",
+                "label_snapshot": "正文",
+                "preview_snapshot": "借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。",
+                "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+              }
+            ],
+            "title": "Copy 与引用：自选对照"
+          },
+          "created_by_turn_id": "turn_e267add4cb71aecc",
+          "owner": {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc"
+          },
+          "reference": {
+            "presentation_id": "presentation-1791796625180868000-0",
+            "revision": 1
+          }
+        },
+        "source_bindings": []
+      },
+      "event_id": "delivery:turn_e267add4cb71aecc:tb4-copy-reference-self-selected-comparison",
+      "kind": "message_delivered"
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_e267add4cb71aecc",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "content": {
+        "answer": "自己设置 A、B 两组条件，再分别点“查看结果”。每次改变条件，该组结果会重新隐藏。操作后告诉我你选了哪两组、看到了什么，以及它们怎样支持你对 `b.0 = 8` 的判断，我们再继续。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "自己设置 A、B 两组条件，再分别点“查看结果”。每次改变条件，该组结果会重新隐藏。操作后告诉我你选了哪两组、看到了什么，以及它们怎样支持你对 `b.0 = 8` 的判断，我们再继续。"
+            },
+            {
+              "kind": "presentation",
+              "presentation_id": "presentation-1791796625180868000-0",
+              "revision": 1
+            }
+          ],
+          "sources": []
+        },
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "turn_id": "turn_e267add4cb71aecc"
+        },
+        "source_bindings": [],
+        "usage": {
+          "kind": "assistant_delivery"
+        }
+      },
+      "event_id": "usage:tutor-begin-1:assistant:turn_e267add4cb71aecc",
+      "kind": "usage_observed",
+      "presentations": [
+        {
+          "owner": {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc"
+          },
+          "readable_content": "A、B 两组都可选择 Foo 派生 Debug 或 Debug, Clone, Copy，以及 b = &a 或 &mut a。初始均为 Copy 与 &a，结果未查看。固定 let mut a = Foo(7)、u32、b.0 = 8，打印先 b 后 a。查看按钮后 &a 展示 E0594 编译失败、无运行输出；&mut a 展示编译通过，输出 b = Foo(8)、a = Foo(8)。Copy 的两个选项均按相应引用条件显示结果。改条件会隐藏结果。原文代码为基础，派生实现、可变引用对照和预设结果为补充实验，浏览器没有 Rust 编译器。学习者自选对照后带回解释。[[source:source_ref_e2f1f69dfb7b32e3]] [[source:source_ref_b7cdf804a5f27a0d]]",
+          "reference": {
+            "presentation_id": "presentation-1791796625180868000-0",
+            "revision": 1
+          },
+          "source_bindings": [
+            {
+              "book_id": "tb1-mastering-rust-borrowing-v1",
+              "evidence_range": {
+                "end_lid": "1.1",
+                "ranges": [
+                  {
+                    "lid": "1.1",
+                    "range": {
+                      "end": 424,
+                      "start": 301
+                    }
+                  }
+                ],
+                "start_lid": "1.1"
+              },
+              "evidence_text_digest": "source-fnv1a64-7c1ee9bf46295b00",
+              "label_snapshot": "正文",
+              "preview_snapshot": "fn main() { let foo = Foo(0); let bar = &foo; println!(\"Foo is {:?}\", foo); println!(\"Bar is {:?}\", bar); }",
+              "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+            },
+            {
+              "book_id": "tb1-mastering-rust-borrowing-v1",
+              "evidence_range": {
+                "end_lid": "1.1",
+                "ranges": [
+                  {
+                    "lid": "1.1",
+                    "range": {
+                      "end": 106,
+                      "start": 4
+                    }
+                  }
+                ],
+                "start_lid": "1.1"
+              },
+              "evidence_text_digest": "source-fnv1a64-fd7f03c8ea712ddf",
+              "label_snapshot": "正文",
+              "preview_snapshot": "借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。",
+              "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_e267add4cb71aecc",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "content": {
+        "interaction": null,
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "turn_id": "turn_e267add4cb71aecc"
+        },
+        "presentation_follow_up": null,
+        "question_anchor_lid": null,
+        "response": "接着上次那道 Copy 与共享引用的题，给我一个能切换条件、查看对应代码和结果的小教具。我想自己选一组对照来检验 b.0 = 8 的判断；先别直接讲出结论，等我操作后再继续。",
+        "teaching_ref": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      },
+      "event_id": "usage:tutor-begin-1:user:turn_e267add4cb71aecc",
+      "kind": "usage_observed",
+      "presentations": []
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_e267b0d4cb71b3e5",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "content": {
+        "answer": "接着上次你提出的 `Copy` 条件，继续判断那段代码。下面是据原文例子改写的代码；`Clone, Copy` 是补充的派生实现。\n\n```rust\n#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"{:?} {:?}\", a, b);\n}\n```\n\n请你自己选方法判断：**这里的 `b.0 = 8` 能通过编译吗？为什么？** 写出你的判断和依据即可。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "接着上次你提出的 `Copy` 条件，继续判断那段代码。下面是据原文例子改写的代码；`Clone, Copy` 是补充的派生实现。\n\n```rust\n#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"{:?} {:?}\", a, b);\n}\n```\n\n请你自己选方法判断：**这里的 `b.0 = 8` 能通过编译吗？为什么？** 写出你的判断和依据即可。"
+            }
+          ],
+          "sources": []
+        },
+        "assessment_contract_ref": null,
+        "move": {
+          "actions": [],
+          "capability": "explanation",
+          "intent_origin": "current_request",
+          "intent_quote": "继续上次的借用学习，让我自己选方法判断一个改变的条件，先别给提示或答案。",
+          "interaction_intent": "guided_inquiry",
+          "interpretation_refs": [
+            "interpretation:tb3-independent-copy-condition"
+          ],
+          "kind": "question",
+          "move_id": "tb3-reopen-independent-copy-access",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "接续上次尚未作答的 Copy 条件例子，保留 Foo 派生 Debug、Clone、Copy 与 let b = &a，要求学习者自选方法判断 b.0 = 8 是否能编译并说明依据；采用当前理解记录，不重新讲解、不提供提示或结论。",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "在此前讲解和已表达的 Copy 条件推论基础上，自选方法判断 Foo 实现 Copy 时通过 &Foo 修改字段是否允许，并说明依据。",
+            "learning_focus": "区分值的 Copy 性质与共享引用的访问权限",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tb1-mastering-rust-borrowing-v1",
+                "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "presentation": null,
+        "source_bindings": []
+      },
+      "event_id": "delivery:turn_e267b0d4cb71b3e5:tb3-reopen-independent-copy-access",
+      "kind": "message_delivered"
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_e267b0d4cb71b3e5",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "content": {
+        "answer": "接着上次你提出的 `Copy` 条件，继续判断那段代码。下面是据原文例子改写的代码；`Clone, Copy` 是补充的派生实现。\n\n```rust\n#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"{:?} {:?}\", a, b);\n}\n```\n\n请你自己选方法判断：**这里的 `b.0 = 8` 能通过编译吗？为什么？** 写出你的判断和依据即可。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "接着上次你提出的 `Copy` 条件，继续判断那段代码。下面是据原文例子改写的代码；`Clone, Copy` 是补充的派生实现。\n\n```rust\n#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"{:?} {:?}\", a, b);\n}\n```\n\n请你自己选方法判断：**这里的 `b.0 = 8` 能通过编译吗？为什么？** 写出你的判断和依据即可。"
+            }
+          ],
+          "sources": []
+        },
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "turn_id": "turn_e267b0d4cb71b3e5"
+        },
+        "source_bindings": [],
+        "usage": {
+          "kind": "assistant_delivery"
+        }
+      },
+      "event_id": "usage:tutor-begin-1:assistant:turn_e267b0d4cb71b3e5",
+      "kind": "usage_observed",
+      "presentations": []
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_e267b0d4cb71b3e5",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "content": {
+        "interaction": null,
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+          "turn_id": "turn_e267b0d4cb71b3e5"
+        },
+        "presentation_follow_up": null,
+        "question_anchor_lid": null,
+        "response": "继续上次的借用学习，让我自己选方法判断一个改变的条件，先别给提示或答案。",
+        "teaching_ref": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      },
+      "event_id": "usage:tutor-begin-1:user:turn_e267b0d4cb71b3e5",
+      "kind": "usage_observed",
+      "presentations": []
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12f66-b2a3-7082-bc14-4b4aee014e8a",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_597541d6318805a5",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "content": {
+        "answer": "你的分析是对的：你区分了共享借用与直接赋值，也把直接赋值的判断落到了 `Copy` 条件上。原文中的 `bar` 是 `&Foo`，提供不可变访问。\n\n这次让 `Foo` 实现 `Copy`，仍保留 `&a`。下面是据原例改写的小例子；`Clone, Copy` 是补充的派生实现：\n\n```rust\n#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"{:?} {:?}\", a, b);\n}\n```\n\n请你自己选判断方法：**这里的 `b.0 = 8` 能通过编译吗？为什么？** 写出你的判断和依据即可。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "你的分析是对的：你区分了共享借用与直接赋值，也把直接赋值的判断落到了 `Copy` 条件上。原文中的 `bar` 是 `&Foo`，提供不可变访问。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_9af277d1d3d785d4"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n这次让 `Foo` 实现 `Copy`，仍保留 `&a`。下面是据原例改写的小例子；`Clone, Copy` 是补充的派生实现：\n\n```rust\n#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"{:?} {:?}\", a, b);\n}\n```\n\n请你自己选判断方法：**这里的 `b.0 = 8` 能通过编译吗？为什么？** 写出你的判断和依据即可。"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_9af277d1d3d785d4"
+            }
+          ]
+        },
+        "assessment_contract_ref": null,
+        "move": {
+          "actions": [],
+          "capability": "explanation",
+          "intent_origin": "current_request",
+          "intent_quote": "我想自己选方法判断一个改变的条件，请少给提示。",
+          "interaction_intent": "guided_inquiry",
+          "interpretation_refs": [
+            "interpretation:tb3-independent-copy-condition"
+          ],
+          "kind": "question",
+          "move_id": "tb3-independent-shared-access-with-copy",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "认可学习者在先前讲解基础上对借用、移动和 Copy 条件的正确表述，提供一个 Foo 派生 Debug、Clone、Copy 但仍以 &a 创建 b 的代码，要求其自选方法判断 b.0 = 8 是否允许并解释理由；不提示解法，不提供结论，不要求复述原例。",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "在既有讲解之后，自选判断方法，解释 Foo 实现 Copy 时通过 &Foo 修改字段是否允许；不提供该改变条件的结论。",
+            "learning_focus": "区分值的 Copy 性质与共享引用的访问权限",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tb1-mastering-rust-borrowing-v1",
+                "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "presentation": null,
+        "source_bindings": [
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 589,
+                    "start": 499
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-f5cd22051d5a642d",
+            "label_snapshot": "正文",
+            "preview_snapshot": "注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。",
+            "source_ref_id": "source_ref_9af277d1d3d785d4"
+          }
+        ]
+      },
+      "event_id": "delivery:turn_597541d6318805a5:tb3-independent-shared-access-with-copy",
+      "kind": "message_delivered"
+    }
+  ],
+  "scene": {
+    "owner": {
+      "book_id": "tb1-mastering-rust-borrowing-v1",
+      "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc"
+    },
+    "receipt": {
+      "reference": {
+        "presentation_id": "presentation-1791796625180868000-0",
+        "revision": 1
+      },
+      "saved_state_ref": "state-1791796670218857800-10",
+      "session_id": "chat-01a12f66-b887-7a42-8849-0c420b378ccc",
+      "state_revision": 9,
+      "turn_id": "turn_e267add4cb71aecc"
+    },
+    "state": {
+      "observed_result": "Copy 与引用：自选对照  自己设置 A、B 两组条件，再分别点“查看结果”。结果先隐藏，你决定比较哪两组。   固定字段为 u32、初值 7、尝试写入 8。两组都用 let mut a，方便选择 &mut a；比上题多了 mut。先打印 b 再打印 a，避免同时借用影响这次对照。   对照 A  Foo 的派生实现   Debug, Clone, Copy  Debug  b 的绑定表达式   &a  &mut a  #[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let mut a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"b = {:?}\", b);\n    println!(\"a = {:?}\", a);\n}  查看 A 的结果  当前：Foo 实现 Copy，b = &a。\n编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。   对照 B  Foo 的派生实现   Debug, Clone, Copy  Debug  b 的绑定表达式   &a  &mut a  #[derive(Debug)]\nstruct Foo(u32);\n\nfn main() {\n    let mut a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"b = {:?}\", b);\n    println!(\"a = {:?}\", a);\n}  查看 B 的结果  当前：Foo 未实现 Copy，b = &a。\n编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。  操作后，把你选的两组条件、观察结果和解释带回对话，我们再继续。  代码据原文改写。Copy 派生、可变引用对照及结果是补充实验。结果为预设的 Rust 编译结果，浏览器没有运行 Rust 编译器。",
+      "source_ref_ids": [
+        "source_ref_e2f1f69dfb7b32e3",
+        "source_ref_b7cdf804a5f27a0d"
+      ],
+      "values": {
+        "controls": [
+          {
+            "key": "leftCopy",
+            "type": "select-one",
+            "value": "true"
+          },
+          {
+            "key": "leftMutable",
+            "type": "select-one",
+            "value": "false"
+          },
+          {
+            "key": "rightCopy",
+            "type": "select-one",
+            "value": "false"
+          },
+          {
+            "key": "rightMutable",
+            "type": "select-one",
+            "value": "false"
+          }
+        ],
+        "page": {
+          "leftCopy": true,
+          "leftMutable": false,
+          "leftRevealed": true,
+          "rightCopy": false,
+          "rightMutable": false,
+          "rightRevealed": true
+        }
+      },
+      "visible_step": "observed-right"
+    }
+  },
+  "understanding": {
+    "estimator_version": "learner.conditions.v2",
+    "evidence_watermark": 1,
+    "interpretations": [
+      {
+        "assistance_refs": [],
+        "attempt": 0,
+        "correction": null,
+        "evidence_id": "interpretation:tb3-independent-copy-condition",
+        "fact_refs": [
+          "usage:tutor-begin-1:user:turn_597541d6318805a5",
+          "delivery:turn_59753ed63188008c:explain-borrowing-foo-bar"
+        ],
+        "interpretation": "学习者在此前完整讲解之后，将 foo/bar 改为 a/b，正确说明 a: Foo 拥有值、b: &Foo 只提供共享访问且没有复制 Foo，并说明非 Copy 的直接赋值会移动以及后续使用的区别。这些关系及判断条件已由前次讲解提供，不能将改名后的复述视为完全独立的迁移表现。学习者新增了“如果给 Foo 实现 Copy，直接赋值后两者仍可打印”的条件推论，指出关键条件不是名字；这是其当前表达中超出先前具体示例的正确局部推论，尚不证明能独立处理任意改变条件。其“我自己”是自述，不单独证明独立性；assistance_count=0 也不消除前次讲解支持。学习者明确请求自选方法且少给提示，该请求作为本轮约束，不推断稳定偏好。",
+        "interpretation_truncated": false,
+        "label": "区分值的 Copy 性质与共享引用的访问权限",
+        "learner_quote": "我自己把名字改成了 a 和 b：let a = Foo(7); let b = &a;。a 的类型是 Foo，拥有那个值，b 是 &Foo，只提供共享访问，没有复制 Foo。若改成 let b = a，原例 Foo 没有 Copy，会移动到 b，随后打印 a 会报错，打印 b 可以。我又想了一步：如果给 Foo 实现 Copy，直接赋值后两者仍可打印。所以关键条件是 Copy，不是名字。我想自己选方法判断一个改变的条件，请少给提示。",
+        "learner_quote_truncated": false,
+        "nature": "hypothesis",
+        "status": "unassessed",
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "在既有讲解之后，自选判断方法，解释 Foo 实现 Copy 时通过 &Foo 修改字段是否允许；不提供该改变条件的结论。",
+          "learning_focus": "区分值的 Copy 性质与共享引用的访问权限",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "tb1-mastering-rust-borrowing-v1",
+              "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+              "start_lid": "1.1"
+            }
+          ]
+        },
+        "teaching_implication": "认可已表达的正确关系，跳过共享借用和非 Copy 移动的整段重讲；只提供一个将 Foo 改为 Copy、仍保留 &a 的具体代码，让学习者自选方法判断通过 b 修改字段是否允许，不给判断步骤或结论。",
+        "teaching_implication_truncated": false
+      }
+    ],
+    "next": null,
+    "projection_watermark": 1,
+    "rows": [],
+    "stale": false
+  }
+}

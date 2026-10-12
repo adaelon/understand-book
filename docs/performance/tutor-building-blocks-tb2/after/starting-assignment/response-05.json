@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"所有权\", \"page_size\": 50}",
+      "id": "call_00_WAj8RUhi546Je2uqvYRF4428",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"query\": \"移动\", \"page_size\": 50}",
+      "id": "call_01_V1VT8VILtPZrjQF3oXgU7948",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 20136
+}

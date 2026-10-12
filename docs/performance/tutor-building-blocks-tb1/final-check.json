@@ -1,0 +1,7 @@
+{
+  "local_links_resolve": 71,
+  "checkpoint_lines": 44,
+  "all_runs_http_calls": 54,
+  "all_runs_known_total_tokens": 1187623,
+  "unchanged_first_three_have_no_structured_auxiliary_call": true
+}

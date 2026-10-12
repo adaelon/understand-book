@@ -240,7 +240,7 @@ fn continuation_tc6_live_correction_trajectory() {
     assert_eq!(saved.status,AgentAssistantStatus::Completed);
     assert!(!saved.outcome.as_ref().unwrap().incomplete);
     assert!(store.evidence_is_superseded(old_ref).unwrap(),"real correction must revise the previous hypothesis");
-    let current=store.current_interpretations(&source,state.workspace.book.source_fingerprint(),None,20).unwrap();
+    let current=store.current_interpretations(&source,state.workspace.book.source_fingerprint(),0,20).unwrap();
     assert!(current.iter().all(|(_,e)|e.evidence_id!=old_ref));
     let deliveries=store.teaching_deliveries(&state.user.agent_history.sessions[0].id,&saved.turn_id).unwrap();
     assert!(deliveries.iter().any(|d| d.payload["move"]["interpretation_refs"].as_array().is_some_and(|refs|
@@ -1316,6 +1316,34 @@ fn continuation_tc2_actual_tools_and_delivered_intent_follow_the_accepted_action
     action_contract_samples();
 }
 
+#[test]
+fn tutor_to3_projected_ui_examples_execute_with_runtime_bound_fields() {
+    use super::tutor_loop_tests::tool_examples::PublishedExample;
+    let (_root, mut state) = fixture(true);
+    enable(&mut state);
+    let example = runtime::tutor::spec().parameters["examples"].as_array().unwrap().iter()
+        .find(|e| e["operation"] == "select").unwrap().clone();
+    for action in ["explain_selection", "continue_answer", "clarify_answer"] {
+        let observed = Arc::new(std::sync::Mutex::new(Vec::new()));
+        state.services.adapter = Box::new(PublishedExample { example:example.clone(), stage:AtomicUsize::new(0), observed:observed.clone() });
+        let input = if action == "explain_selection" { selection_input(&state, "to3-selection") } else {
+            let turn = &state.user.agent_history.sessions[0].turns.last().unwrap().turn_id;
+            json!({"message":"","session_id":state.workspace.selected_chat,"client_request_id":format!("to3-{action}"),
+                "entry_action":action,"answer_ref":{"turn_id":turn},"expected_chat_head":turn})
+        };
+        let result = post_ok(&mut state, "/agent/chat", input);
+        assert_eq!(result["incomplete"], false, "{action}: {result}");
+        let sent = observed.lock().unwrap();
+        for key in ["capability", "interaction_intent", "intent_origin"] { assert!(sent[0]["move"].get(key).is_none()); }
+        let chat = &state.user.agent_history.sessions[0];
+        let deliveries = state.user.learning_store().unwrap().teaching_deliveries(&chat.id, &chat.turns.last().unwrap().turn_id).unwrap();
+        assert_eq!(deliveries.len(), 1);
+        assert_eq!(deliveries[0].payload["move"]["intent_origin"], "current_action");
+        assert_eq!(deliveries[0].payload["move"]["interaction_intent"], if action == "continue_answer" { "neutral" } else { "direct_explanation" });
+        assert_eq!(deliveries[0].payload["move"]["target"]["source_bindings"][0]["source_revision"], state.workspace.book.source_fingerprint());
+    }
+}
+
 fn action_contract_samples() -> Vec<Value> {
     let (_root,mut state) = fixture(true);
     let tool_call = |name: &str, arguments: Value| AssistantTurn {
@@ -1367,6 +1395,7 @@ pub(super) struct TutorRequestRecorder {
 impl ModelAdapter for TutorRequestRecorder {
     fn model_runtime_profile(&self) -> runtime::ModelRuntimeProfile { self.inner.model_runtime_profile() }
     fn complete(&self, request: CompletionRequest) -> Result<ParsedResponse, AdapterError> { self.inner.complete(request) }
+    fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> { self.inner.complete_structured(request) }
     fn chat(&self, request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
         let mut input = serde_json::to_value(&request.input).unwrap();
         for message in input.as_array_mut().into_iter().flatten() {

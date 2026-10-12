@@ -1,0 +1,21 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"match_mode\": \"exact\", \"page_size\": 20, \"query\": \"let bar = foo;\"}",
+      "id": "call_00_5PFs71wDW4LC5RmbXaje9268",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"match_mode\": \"exact\", \"page_size\": 30, \"query\": \"所有权\"}",
+      "id": "call_01_YE7hfbMmqYwW2g0NN7Xa4219",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"match_mode\": \"normalized\", \"page_size\": 20, \"query\": \"moved\"}",
+      "id": "call_02_bbJFcYuPvq3w7Qr5YaXn2340",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 20759
+}

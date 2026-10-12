@@ -1,0 +1,54 @@
+{
+  "evidence": {
+    "operation_id": "missing-reason-hypothesis",
+    "nature": "hypothesis",
+    "interpretation": "学习者先前自述知道非 Copy 移动规则，但本次明确说第一条打印失败是根据问题猜的，并说不出 bar 的类型及所有权归属。因此此次选择不支持独立理解；当前需要连接右侧表达式类型、赋值转移与旧绑定可用性。并无证据推断其整体能力或否定其此前全部自述。",
+    "teaching_implication": "将此前的移动规则作为可纠正的起点，明确类型推断规则并用 String 的小例子演示移动后仍可使用的新绑定，再让学习者自行把关系应用到 Foo 原目标。",
+    "operation": "evidence",
+    "target": {
+      "expected_performance": "在右侧类型与非 Copy 移动规则的支持下，自行说明 let bar = foo 后 bar 的类型、所有权归属和打印 foo 失败的理由",
+      "learning_focus": "把右侧表达式类型、值的转移和绑定能否使用连接成理由",
+      "capability": "explanation",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "end_lid": "1.1",
+          "start_lid": "1.1"
+        }
+      ]
+    },
+    "fact_refs": [
+      "usage:tutor-begin-1:user:turn_a9e39c59d9a45693",
+      "usage:tutor-begin-1:user:turn_a9e39d59d9a45846"
+    ]
+  },
+  "select": {
+    "operation": "select",
+    "move": {
+      "interpretation_refs": [
+        "interpretation:missing-reason-hypothesis"
+      ],
+      "intent_quote": "请帮我接上理由，再让我自己说。",
+      "prompt": "回接原文 &foo 创建 &Foo 而保留 Foo 所有权的关系，补充无类型标注绑定由右侧决定及非 Copy 移动后旧绑定不可用的规则，用 String 新旧绑定例子演示规则；随后让学习者自己填写去掉 & 的 Foo 目标中右侧、bar 类型、所有权与打印失败的完整理由，不代填目标答案。",
+      "target": {
+        "expected_performance": "在右侧类型与非 Copy 移动规则的支持下，自行说明 let bar = foo 后 bar 的类型、所有权归属和打印 foo 失败的理由",
+        "learning_focus": "把右侧表达式类型、值的转移和绑定能否使用连接成理由",
+        "capability": "explanation",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "end_lid": "1.1",
+            "start_lid": "1.1"
+          }
+        ]
+      },
+      "object_ids": [],
+      "interaction_intent": "guided_inquiry",
+      "kind": "explain",
+      "move_id": "connect-missing-reason",
+      "capability": "explanation",
+      "intent_origin": "current_request"
+    }
+  },
+  "answer": "你说这次是猜的，那我们就把“选哪一行”接成一条能用的理由。\n\n先看原文的 `let bar = &foo;`：`&foo` 创建的是引用，类型为 `&Foo`；`bar` 接收这个引用，`foo` 仍拥有原来的 `Foo`。因此可以借助 `foo` 访问值，也可以借助 `bar` 的不可变引用访问同一个值，但不能通过 `bar` 修改它。[[source:source_ref_9af277d1d3d785d4]] 原文的两次打印都成立。[[source:source_ref_1a3ec5f7971d4632]]\n\n接下来补上一个用于判断赋值的规则：**在这里没有显式类型标注时，新绑定的类型由右侧决定；把一个非 Copy 的值交给新绑定，会转移这个值的所有权，原绑定随后不能再用来访问这个已移出的值。** 这是补充的 Rust 规则。原文的 `Foo` 只派生了 `Debug`，没有实现 `Copy`，所以这里适用非 Copy 的移动规则。[[source:source_ref_4c3de5a75d5bc2f7]]\n\n用一个不同的例子把规则走通：\n\n```rust\nlet old = String::from(\"hello\");\nlet new = old;\n```\n\n这是补充例子。第二行右侧是 `old` 中的 `String` 值，没有 `&` 来创建引用，所以 `new` 的类型是 `String`。`String` 是非 Copy 类型，这次赋值把值交给 `new`；之后可以使用 `new`，却不能再通过 `old` 使用那个值。注意：移动改变所有权归属，不把 `String` 变成 `&String`。\n\n现在请你把这条链用于你刚才的例子：\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n请用自己的话接完一句：**“第二行右侧是___，因此 `bar` 的类型是___；因为 `Foo` 是非 Copy，赋值后值由___拥有，所以打印___的那一行不能成立。”** 这次先从右侧表达式往下推，不从刚才选中的行倒猜。"
+}

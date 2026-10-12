@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"match_mode\": \"exact\", \"page_size\": 30, \"query\": \"&mut\"}",
+      "id": "call_00_zFnUSYPQZ0E7bxQ2pgyn2943",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"match_mode\": \"exact\", \"page_size\": 30, \"query\": \"Copy\"}",
+      "id": "call_01_OoXndA5YZbwH9smbZMtF3157",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 21602
+}

@@ -1,0 +1,101 @@
+{
+  "animation_assets": {},
+  "assumptions": [
+    "两组固定 a 为可变绑定，比上题增加 mut，以使可变借用选项可用。",
+    "先打印 b 再打印 a，保证可变借用最后一次使用早于读取 a。",
+    "四种代码的编译结果由补充模型预设，不是浏览器即时编译。"
+  ],
+  "content_files": {
+    "index.html": "<!doctype html><html lang=\"zh-CN\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>自选对照</title><style>:root{--canvas:#f2f5f6;--ink:#17313b;--surface:white;--line:#bccdd3;--accent:#126b75}*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--ink);font:16px/1.6 system-ui}main{max-width:900px;margin:auto;padding:16px}h1{font-size:25px}section{background:var(--surface);border:1px solid var(--line);padding:16px;border-radius:10px;margin:16px 0}button,select{font:inherit;min-height:44px;min-width:44px;padding:8px;border:1px solid var(--line);border-radius:6px}label{display:block;margin:10px 0}select{max-width:100%;display:block;width:100%}button{background:var(--accent);color:white}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.65 monospace;background:var(--canvas);padding:10px}p{margin:10px 0}.result{white-space:pre-wrap;padding:10px;border-left:3px solid var(--accent)}button:focus-visible,select:focus-visible{outline:3px solid #e59b1b}small{font-size:14px}</style><main><h1>Copy 与引用：自选对照</h1><p>自己设置 A、B 两组条件，再分别点“查看结果”。结果先隐藏，你决定比较哪两组。</p><p><small>固定字段为 u32、初值 7、尝试写入 8。两组都用 let mut a，方便选择 &amp;mut a；比上题多了 mut。先打印 b 再打印 a，避免同时借用影响这次对照。</small></p><section id=\"left\"><h2>对照 A</h2><label>Foo 的派生实现<select id=\"leftCopy\"><option value=\"true\">Debug, Clone, Copy</option><option value=\"false\">Debug</option></select></label><label>b 的绑定表达式<select id=\"leftMutable\"><option value=\"false\">&amp;a</option><option value=\"true\">&amp;mut a</option></select></label><pre id=\"leftCode\"></pre><button id=\"leftObserve\">查看 A 的结果</button><div id=\"leftResult\" class=\"result\" aria-live=\"polite\"></div></section><section id=\"right\"><h2>对照 B</h2><label>Foo 的派生实现<select id=\"rightCopy\"><option value=\"true\">Debug, Clone, Copy</option><option value=\"false\">Debug</option></select></label><label>b 的绑定表达式<select id=\"rightMutable\"><option value=\"false\">&amp;a</option><option value=\"true\">&amp;mut a</option></select></label><pre id=\"rightCode\"></pre><button id=\"rightObserve\">查看 B 的结果</button><div id=\"rightResult\" class=\"result\" aria-live=\"polite\"></div></section><p>操作后，把你选的两组条件、观察结果和解释带回对话，我们再继续。</p><small>代码据原文改写。Copy 派生、可变引用对照及结果是补充实验。结果为预设的 Rust 编译结果，浏览器没有运行 Rust 编译器。</small><p><button data-source-ref=\"source_ref_e2f1f69dfb7b32e3\">原文 Foo 代码</button> <button data-source-ref=\"source_ref_b7cdf804a5f27a0d\">原文借用说明</button></p></main><script>\nconst defaults={leftCopy:true,leftMutable:false,leftRevealed:false,rightCopy:true,rightMutable:false,rightRevealed:false};const s={...defaults,...(window.presentation?.initialState||{})};let step='choose';\nfunction render(){for(const side of ['left','right']){const c=s[side+'Copy'],m=s[side+'Mutable'];document.getElementById(side+'Copy').value=String(c);document.getElementById(side+'Mutable').value=String(m);document.getElementById(side+'Code').textContent='#[derive('+(c?'Debug, Clone, Copy':'Debug')+')]\\nstruct Foo(u32);\\n\\nfn main() {\\n    let mut a = Foo(7);\\n    let b = '+(m?'&mut a':'&a')+';\\n    b.0 = 8;\\n    println!(\"b = {:?}\", b);\\n    println!(\"a = {:?}\", a);\\n}';document.getElementById(side+'Result').textContent=s[side+'Revealed']?('当前：'+(c?'Foo 实现 Copy':'Foo 未实现 Copy')+'，b = '+(m?'&mut a':'&a')+'。\\n'+(m?'编译通过。运行输出：\\nb = Foo(8)\\na = Foo(8)':'编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。')):'结果未查看。';}}\nfor(const side of ['left','right']){for(const field of ['Copy','Mutable'])document.getElementById(side+field).addEventListener('change',e=>{s[side+field]=e.target.value==='true';s[side+'Revealed']=false;step='choose-'+side;render();window.presentation?.commitState();});document.getElementById(side+'Observe').addEventListener('click',()=>{s[side+'Revealed']=true;step='observed-'+side;render();window.presentation?.commitState();});}render();window.presentation?.registerStateReader(()=>({values:{...s},visible_step:step}));window.presentation?.registerStateRestorer(saved=>{for(const k of Object.keys(defaults))if(typeof saved.values?.page?.[k]==='boolean')s[k]=saved.values.page[k];step=saved.visible_step||'choose';render();});\n</script></html>"
+  },
+  "entrypoint": "index.html",
+  "initial_state": {
+    "leftCopy": true,
+    "leftMutable": false,
+    "leftRevealed": false,
+    "rightCopy": true,
+    "rightMutable": false,
+    "rightRevealed": false
+  },
+  "readable_view": {
+    "parts": [
+      {
+        "kind": "markdown",
+        "text": "A、B 两组都可选择 Foo 派生 Debug 或 Debug, Clone, Copy，以及 b = &a 或 &mut a。初始均为 Copy 与 &a，结果未查看。固定 let mut a = Foo(7)、u32、b.0 = 8，打印先 b 后 a。查看按钮后 &a 展示 E0594 编译失败、无运行输出；&mut a 展示编译通过，输出 b = Foo(8)、a = Foo(8)。Copy 的两个选项均按相应引用条件显示结果。改条件会隐藏结果。原文代码为基础，派生实现、可变引用对照和预设结果为补充实验，浏览器没有 Rust 编译器。学习者自选对照后带回解释。"
+      },
+      {
+        "kind": "sources",
+        "source_ref_ids": [
+          "source_ref_e2f1f69dfb7b32e3",
+          "source_ref_b7cdf804a5f27a0d"
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "label": "正文",
+        "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+      },
+      {
+        "label": "正文",
+        "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+      }
+    ]
+  },
+  "reference": {
+    "presentation_id": "presentation-1791795847617059600-0",
+    "revision": 1
+  },
+  "restored_state": {
+    "observed_result": "Copy 与引用：自选对照  自己设置 A、B 两组条件，再分别点“查看结果”。结果先隐藏，你决定比较哪两组。   固定字段为 u32、初值 7、尝试写入 8。两组都用 let mut a，方便选择 &mut a；比上题多了 mut。先打印 b 再打印 a，避免同时借用影响这次对照。   对照 A  Foo 的派生实现   Debug, Clone, Copy  Debug  b 的绑定表达式   &a  &mut a  #[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let mut a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"b = {:?}\", b);\n    println!(\"a = {:?}\", a);\n}  查看 A 的结果  当前：Foo 实现 Copy，b = &a。\n编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。   对照 B  Foo 的派生实现   Debug, Clone, Copy  Debug  b 的绑定表达式   &a  &mut a  #[derive(Debug)]\nstruct Foo(u32);\n\nfn main() {\n    let mut a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"b = {:?}\", b);\n    println!(\"a = {:?}\", a);\n}  查看 B 的结果  当前：Foo 未实现 Copy，b = &a。\n编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。  操作后，把你选的两组条件、观察结果和解释带回对话，我们再继续。  代码据原文改写。Copy 派生、可变引用对照及结果是补充实验。结果为预设的 Rust 编译结果，浏览器没有运行 Rust 编译器。",
+    "source_ref_ids": [
+      "source_ref_e2f1f69dfb7b32e3",
+      "source_ref_b7cdf804a5f27a0d"
+    ],
+    "values": {
+      "controls": [
+        {
+          "key": "leftCopy",
+          "type": "select-one",
+          "value": "true"
+        },
+        {
+          "key": "leftMutable",
+          "type": "select-one",
+          "value": "false"
+        },
+        {
+          "key": "rightCopy",
+          "type": "select-one",
+          "value": "false"
+        },
+        {
+          "key": "rightMutable",
+          "type": "select-one",
+          "value": "false"
+        }
+      ],
+      "page": {
+        "leftCopy": true,
+        "leftMutable": false,
+        "leftRevealed": true,
+        "rightCopy": false,
+        "rightMutable": false,
+        "rightRevealed": true
+      }
+    },
+    "visible_step": "observed-right"
+  },
+  "restored_state_revision": 8,
+  "sources": [
+    {
+      "label": "正文",
+      "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+    },
+    {
+      "label": "正文",
+      "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+    }
+  ],
+  "title": "Copy 与引用：自选对照"
+}

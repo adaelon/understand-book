@@ -1,0 +1,47 @@
+{
+  "action_ref": "usage:tutor-begin-1:user:turn_1bf5787f58d14896",
+  "assessment_ref": null,
+  "assistance_count": 0,
+  "assistance_refs": [],
+  "attempt": 0,
+  "capability": "explanation",
+  "correction": "我只能说明这两组的结果，还需要帮助把理由接起来。",
+  "delivery_ref": null,
+  "evidence_id": "correction:ba668a38-ddf4-4912-92d5-0349a564664c",
+  "fact_refs": [
+    "usage:tutor-begin-1:user:turn_1bf5787f58d14896",
+    "delivery:turn_1bf5797f58d14a49:tb4-copy-reference-self-selected-comparison",
+    "delivery:turn_215f0a6e2d59ed86:tb3-independent-shared-access-with-copy"
+  ],
+  "feedback_hidden": false,
+  "interpretation": "原解释已被用户纠正，等待新的表现依据",
+  "interpreter_version": "learner.correction.v1",
+  "label": "区分值的 Copy 性质与引用访问权限",
+  "learner_quote": "我现在选的 A 是 Copy 加 &a，B 是没有 Copy 加 &a，两组都显示 E0594。我还试过 B 的 &mut a，看到 Foo(8)。这些结果是教具给的；我推断 Copy 本身没有让共享引用能写入。下一步让我自己选一个对照说明理由，先别讲完整结论。",
+  "map_revision": null,
+  "nature": "hypothesis",
+  "object_id": null,
+  "object_revision": null,
+  "prompt": "在此前讲解和教具已显示结果的支持下，自选两组条件，说明对照怎样支持对 b.0 = 8 的判断；区分观察结果与解释依据。",
+  "session_id": "tutor-begin-1",
+  "source_id": "tb1-mastering-rust-borrowing-v1",
+  "source_quotes": [],
+  "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+  "status": "unassessed",
+  "supersedes": "interpretation:tb4-followup-copy-shared-access-observation",
+  "target": {
+    "capability": "explanation",
+    "expected_performance": "在此前讲解和教具已显示结果的支持下，自选两组条件，说明对照怎样支持对 b.0 = 8 的判断；区分观察结果与解释依据。",
+    "learning_focus": "区分值的 Copy 性质与引用访问权限",
+    "object_refs": [],
+    "source_bindings": [
+      {
+        "end_lid": "1.1",
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "start_lid": "1.1"
+      }
+    ]
+  },
+  "teaching_implication": "采用用户纠正重新确定讲解起点：我只能说明这两组的结果，还需要帮助把理由接起来。"
+}

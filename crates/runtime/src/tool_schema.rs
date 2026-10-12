@@ -124,7 +124,8 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
             }
             movement["allOf"] = json!([
                 {"if":{"required":["actions"],"properties":{"actions":{"contains":{"enum":["request_hint"]}}}},"then":{"required":["hint"],"properties":{"hint":{"type":"string","minLength":1}}}},
-                {"if":{"required":["actions"],"properties":{"actions":{"contains":{"enum":["reveal"]}}}},"then":{"required":["explanation"],"properties":{"explanation":{"type":"string","minLength":1}}}}
+                {"if":{"required":["actions"],"properties":{"actions":{"contains":{"enum":["reveal"]}}}},"then":{"required":["explanation"],"properties":{"explanation":{"type":"string","minLength":1}}}},
+                {"if":{"required":["assessment"],"properties":{"assessment":{"type":"object"}}},"then":{"required":["actions"],"properties":{"actions":{"contains":{"enum":["submit"]}}}}}
             ]);
         }
         "presentation.author" => {

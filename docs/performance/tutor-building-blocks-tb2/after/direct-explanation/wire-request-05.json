@@ -1,0 +1,22 @@
+{
+  "max_tokens": 32768,
+  "messages": [
+    {
+      "content": "You are the bounded PlanGate and referent resolver. Return one JSON object. Check that query, targets, and obligations preserve the same request. Classify every candidate as direct_match, semantic_match, plausible, or reject. Do not infer from anchor-neighbor text. If lexical recall failed, emit at most three short lexical probes total. Reasons must be short verdict summaries, never hidden chain-of-thought.",
+      "role": "system"
+    },
+    {
+      "content": "{\"candidate_groups\":[{\"candidates\":[],\"target\":\"移动\",\"target_index\":0},{\"candidates\":[],\"target\":\"不可变借用 &T\",\"target_index\":1}],\"request\":{\"anchor_lid\":\"1.1\",\"intent\":\"comparison\",\"obligations\":[{\"requirement\":\"说明把 Foo 值直接赋给另一个变量（不带 &）时发生了什么，原变量之后能否使用。\"},{\"requirement\":\"说明带 & 的借用创建了什么，为什么借用后原变量和引用都能使用。\"},{\"requirement\":\"说明共享引用 &T 下能否通过该引用修改被借用的值。\"}],\"query\":\"借用示例之前的代码是 let foo = Foo(0); let bar = foo; 若去掉 & 直接赋值会怎样？移动语义与共享借用 &T 有何区别？\",\"targets\":[\"移动\",\"不可变借用 &T\"]},\"response_schema\":{\"candidate_fits\":[{\"candidate_id\":\"id\",\"fit\":\"direct_match\",\"reason\":\"short\",\"target_index\":0}],\"plan_gate\":{\"missing_requirements\":[],\"target_issues\":[],\"valid\":true},\"probes\":[{\"query\":\"lexical probe\",\"target_index\":0}]}}",
+      "role": "user"
+    }
+  ],
+  "model": "deepseek-v4-flash",
+  "response_format": {
+    "type": "json_object"
+  },
+  "stream": true,
+  "stream_options": {
+    "include_usage": true
+  },
+  "temperature": 0
+}

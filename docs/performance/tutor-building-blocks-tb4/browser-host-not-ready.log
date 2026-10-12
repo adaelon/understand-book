@@ -1,0 +1,31 @@
+
+Running 1 test using 1 worker
+
+(node:10716) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  1 playwright\tutor-building-blocks-tb4.spec.ts:8:1 › TB4 actual code comparison restores its state and continues the original Tutor chat (369ms)
+
+
+  1) playwright\tutor-building-blocks-tb4.spec.ts:8:1 › TB4 actual code comparison restores its state and continues the original Tutor chat 
+
+    Error: apiRequestContext.get: connect ECONNREFUSED 127.0.0.1:4185
+    Call log:
+      - → GET http://127.0.0.1:4185/fixture
+        - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/149.0.7827.55 Safari/537.36
+        - accept: */*
+        - accept-encoding: gzip,deflate,br
+
+
+      14 |     await route.fulfill({ response });
+      15 |   });
+    > 16 |   const fixture = await page.request.get(`${host}/fixture`).then(r => r.json());
+         |                                      ^
+      17 |   await page.goto('/agent-presentation-visual.html');
+      18 |   const frame = page.frameLocator('.agent-presentation iframe');
+      19 |   await expect(frame.locator('#leftResult')).toHaveText('结果未查看。');
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\tutor-building-blocks-tb4.spec.ts:16:38
+
+    Error Context: test-results\tutor-building-blocks-tb4--5be3a-ues-the-original-Tutor-chat\error-context.md
+
+  1 failed
+    playwright\tutor-building-blocks-tb4.spec.ts:8:1 › TB4 actual code comparison restores its state and continues the original Tutor chat 

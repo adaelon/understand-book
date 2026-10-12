@@ -12907,6 +12907,10 @@ mod tests {
     mod tutor_tests;
     mod tutor_loop_tests;
     mod tutor_continuation_tests;
+    mod tutor_building_blocks_tests;
+    mod tutor_adaptation_tests;
+    mod tutor_presentation_tests;
+    mod tutor_understanding_view_tests;
     use super::*;
     use base_schema::{
         sample_base, FormulaComposition, FormulaParameter, FormulaSemantics, LidNode, NodeKind,

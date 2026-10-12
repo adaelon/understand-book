@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"lid\": \"1.1\", \"granularity\": \"near\", \"k\": 12}",
+      "id": "call_00_4uK1YpHMmlVXUQ0vwCVt4376",
+      "name": "book.context"
+    },
+    {
+      "arguments": "{\"anchor_lid\": \"1.1\", \"intent\": \"explanation\", \"query\": \"在这本书中，为什么把 let bar = foo; 改成 let bar = &foo; 之后程序可以编译，而原来的版本不能编译？原本在所有权一节中这个例子发生了什么？\", \"targets\": [\"所有权与移动\", \"不可变借用\"], \"obligations\": [{\"requirement\": \"说明不带 & 时 foo 的所有权如何转移，以及之后再用 foo 会怎样\"}, {\"requirement\": \"说明带 & 时 foo 的所有权保持不变，bar 得到的是什么\"}, {\"requirement\": \"指出原例编译失败的报错或原因\"}]}",
+      "id": "call_01_0QH0Ehh4ZEMZ3OPx1hoO6437",
+      "name": "book.query"
+    }
+  ],
+  "usage_total_tokens": 18003
+}

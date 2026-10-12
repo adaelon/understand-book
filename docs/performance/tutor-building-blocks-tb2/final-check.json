@@ -1,0 +1,18 @@
+{
+  "existing_local_link_targets": 633,
+  "preexisting_missing_links": [
+    {
+      "file": "CONTEXT.md",
+      "target": "docs/adr/0109-browser-owned-native-prose-flow.md",
+      "present_in_HEAD": true
+    },
+    {
+      "file": "docs\\代码链路.md",
+      "target": "performance/account-layout-20261009/live-verification.json",
+      "present_in_HEAD": true
+    }
+  ],
+  "checkpoint_lines": 43,
+  "current_guidance_matches_frozen_v4": true,
+  "literal_markdown_examples_excluded": 3
+}

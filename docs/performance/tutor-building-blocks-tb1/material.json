@@ -1,0 +1,65 @@
+{
+  "scope": "借用、不可变借用与 borrowing_basics.rs；不含可变借用后文",
+  "original_utf16_range": {
+    "start": 134450,
+    "end": 135041
+  },
+  "observed_at": "2026-10-12",
+  "book_id": "mastering-rust",
+  "normalization": "none; exact UTF-16 slice of imported Chinese reading source",
+  "edition_note": "本机已有中文阅读版本，含译注修订；并非英文原版逐字摘录",
+  "fixture_lid": "1.1",
+  "source_path": "E:/allwork/download/agent/understand-book/.understand-book/mastering-rust/source.txt",
+  "material_version": "tb1.mastering-rust.borrowing.v1",
+  "original_leaf_ranges": [
+    {
+      "lid": "127.1",
+      "span": {
+        "start": 134450,
+        "end": 134452
+      }
+    },
+    {
+      "lid": "127.2",
+      "span": {
+        "start": 134454,
+        "end": 134619
+      }
+    },
+    {
+      "lid": "127.3",
+      "span": {
+        "start": 134621,
+        "end": 134686
+      }
+    },
+    {
+      "lid": "127.4",
+      "span": {
+        "start": 134688,
+        "end": 134882
+      }
+    },
+    {
+      "lid": "127.5",
+      "span": {
+        "start": 134884,
+        "end": 134912
+      }
+    },
+    {
+      "lid": "127.6",
+      "span": {
+        "start": 134914,
+        "end": 134947
+      }
+    },
+    {
+      "lid": "127.7",
+      "span": {
+        "start": 134949,
+        "end": 135039
+      }
+    }
+  ]
+}

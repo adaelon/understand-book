@@ -1,0 +1,32 @@
+{
+  "evidence": null,
+  "select": {
+    "operation": "select",
+    "move": {
+      "move_id": "reopen-complete-move-reason",
+      "kind": "explain",
+      "capability": "explanation",
+      "interaction_intent": "guided_inquiry",
+      "intent_origin": "current_request",
+      "intent_quote": "继续上次那一步，让我试着把理由说完整。",
+      "interpretation_refs": [
+        "interpretation:missing-reason-local-connection"
+      ],
+      "object_ids": [],
+      "prompt": "接续已实际提供的 a/b 移动示例，承认第一条打印失败的结论正确，仅提醒类型不因移动改变、非 Copy 移动后旧绑定不可使用的已提供规则；给出 let bar = foo 的目标代码与未填答案的因果链句式，让学习者自己说明右侧结果、bar 类型、所有权转移及 foo 打印失败的原因，不重讲完整借用课，不替学习者填答案。",
+      "target": {
+        "learning_focus": "把右侧表达式的类型与非 Copy 值移动后的所有权和可用绑定连接起来",
+        "expected_performance": "在此前改名移动示例及本轮简短规则提醒、句式支持下，自行说完整 let bar = foo 的类型—所有权—第一条打印失败因果链",
+        "capability": "explanation",
+        "source_bindings": [
+          {
+            "start_lid": "1.1",
+            "end_lid": "1.1"
+          }
+        ],
+        "object_refs": []
+      }
+    }
+  },
+  "answer": "继续上次留下的因果链。你已经选对第一条打印不能编译；这次由你把理由接完整。\n\n上次的 `a → b` 小例子给了两条可用的规则：**移动不改变值的类型；非 `Copy` 值移动后，新绑定拥有它，旧绑定不能再用这个值。** 原文中的 `&foo` 则创建引用，借用不取得被引用值的所有权。[[source:source_ref_b7cdf804a5f27a0d]]\n\n现在只看去掉 `&` 后的代码，沿用原文的非 `Copy` `Foo`：\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n请用自己的话把下面这一句话补完整：\n\n> `let bar = foo` 的右侧交给 `bar` 的是____，所以 `bar` 的类型是____；由于这里的 `Foo` 不是 `Copy`，这次赋值发生____，值的所有权从____转到____；因此第一条打印不能使用 `foo`，因为____。\n\n从右侧表达式开始往后说即可，不必重新解释整个借用过程。"
+}

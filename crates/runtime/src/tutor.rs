@@ -70,14 +70,14 @@ pub fn spec() -> crate::ToolSpec {
         .into(), parameters: json!({"type":"object","properties":{
             "operation":{"type":"string","enum":["material","trace","select","outside","assess","understanding","evidence"]},
             "evidence_ref":{"type":"string","description":"Read one evidence interpretation with operation=understanding; after is the character offset."},
-            "operation_id":{"type":"string"},"supersedes":{"type":"string"},
+            "operation_id":{"type":"string","description":"A new identity for this interpretation; retry the same input with the same identity."},"supersedes":{"type":"string","description":"An existing evidence_ref being revised, obtained from understanding."},
             "nature":{"type":"string","enum":["hypothesis"]},
-            "fact_refs":{"type":"array","items":{"type":"string"}},
+            "fact_refs":{"type":"array","items":{"type":"string"},"description":"Actual learner-expression event_ids from the current context or trace. UI clicks and assistant deliveries cannot support a hypothesis."},
             "target":target_input_schema(),
             "teaching_implication":{"type":"string","description":"Concrete change to starting point, depth, example or next step supported by these facts."},
             "interpretation":{"type":"string","description":"A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation."},
-            "response_quote":{"type":"string"},"sources":{"type":"array","items":{"type":"object","properties":{"lid":{"type":"string"},"quote":{"type":"string"}},"required":["lid","quote"]}},
-            "action_ref":{"type":"string","description":"Formal submit/revise event to assess with the frozen open rubric. This runs one isolated, budgeted evaluator and returns only accepted status; do not grade it yourself."},
+            "response_quote":{"type":"string","description":"Exact learner words from the referenced ungraded source-discrimination response."},"sources":{"type":"array","items":{"type":"object","properties":{"lid":{"type":"string"},"quote":{"type":"string"}},"required":["lid","quote"]}},
+            "action_ref":{"type":"string","description":"An actual response event_id from context or trace. assess requires an unassessed formal submit/revise with a frozen open rubric; it runs one isolated, budgeted evaluator. Ungraded evidence requires a response to an evaluation activity with a formal object and no scoring contract."},
             "object_id":{"type":"string"},"after":{"type":"integer","minimum":0},
             "event_id":{"type":"string","description":"Read one exact trace event in bounded JSON text chunks; after is its character offset. Without event_id, after is the trace cursor."},
             "move":{"type":"object","properties":{
@@ -96,7 +96,51 @@ pub fn spec() -> crate::ToolSpec {
                 "assessment":{"type":"object","description":"Optional private frozen scoring contract. {rule:{kind:choice_set,choices:[tokens],correct:[tokens]} OR rule:{kind:open,items:[{id,criterion,source_lids:[LID]}]},source_lids:[LID],source_sufficient:boolean,feedback:after_submit|on_reveal}. Open criterion states necessary conditions, equivalent expressions and acceptable omissions. Use only source text read this turn. Never copy the private key/rubric into page files or final text. Choice tokens belong in the public prompt; responses are a token or JSON array. Help and revised attempts are retained separately."}
             },"required":["move_id","object_ids","capability","kind","prompt","interaction_intent","intent_origin"]}
         },"required":["operation"]}) };
-    crate::tool_schema::complete_spec(tool)
+    let mut tool = crate::tool_schema::complete_spec(tool);
+    tool.description.push_str(" Examples use an average-speed teaching fixture, not learner facts. Replace its content, locations and references with actual material and events from this turn; read the source before selecting or interpreting.");
+    tool.parameters["examples"] = input_examples();
+    tool
+}
+
+/// Complete requests in the existing Tutor fixture. References are created by
+/// the real delivery/action tests, not invented persisted learner evidence.
+fn input_examples() -> Value {
+    let target = json!({"learning_focus":"Average speed","expected_performance":"Explain why total time is the denominator",
+        "capability":"explanation","source_bindings":[{"start_lid":"1.1","end_lid":"1.1"}],"object_refs":[]});
+    let explain = json!({"move_id":"explain-speed","object_ids":[],"target":target,"capability":"explanation",
+        "kind":"explain","interaction_intent":"neutral","intent_origin":"neutral",
+        "prompt":"Explain average speed using total distance and total time."});
+    let mut help = explain.clone();
+    help["move_id"] = json!("compare-times");
+    help["kind"] = json!("compare");
+    help["prompt"] = json!("Compare the travel times for two equal distances at different speeds.");
+    help["actions"] = json!(["request_hint", "reveal"]);
+    help["hint"] = json!("Time equals distance divided by speed.");
+    help["explanation"] = json!("At different positive speeds, equal distances take different times.");
+    let mut assessment = explain.clone();
+    assessment["move_id"] = json!("explain-denominator");
+    assessment["kind"] = json!("question");
+    assessment["prompt"] = json!("Explain which time belongs in the denominator of average speed.");
+    assessment["actions"] = json!(["submit"]);
+    assessment["assessment"] = json!({"rule":{"kind":"open","items":[{"id":"total-time",
+        "criterion":"Uses the total time of the journey; equivalent wording is accepted.","source_lids":["1.1"]}]},
+        "source_lids":["1.1"],"source_sufficient":true,"feedback":"after_submit"});
+    json!([
+        {"operation":"material"},
+        {"operation":"trace","after":0},
+        {"operation":"select","move":explain},
+        {"operation":"select","move":help},
+        {"operation":"select","move":assessment},
+        {"operation":"outside"},
+        {"operation":"assess","action_ref":"action:to3-open"},
+        {"operation":"understanding"},
+        {"operation":"evidence","action_ref":"action:to3-discrimination","object_id":"speed","operation_id":"to3-discrimination-evidence",
+            "response_quote":"The source supports total distance","sources":[{"lid":"1.1","quote":"total distance"}],
+            "interpretation":"The response distinguishes a source-supported quantity from an unsupported property."},
+        {"operation":"evidence","nature":"hypothesis","operation_id":"to3-hypothesis","target":target,
+            "fact_refs":["action:to3-discrimination"],"interpretation":"The response names total distance but leaves the role of total time unknown.",
+            "teaching_implication":"Ask the learner to connect total time to the denominator."}
+    ])
 }
 
 /// Resolve only intent already determined by accepted input and session state.
@@ -167,6 +211,9 @@ pub(crate) fn spec_for_context(context: &Value) -> Option<crate::ToolSpec> {
             }
             if intent == "direct_explanation" {
                 properties.get_mut("kind").unwrap()["enum"] = json!(["explain"]);
+            } else if context["current_action"]["action"]["origin"] == "ui_choice" {
+                // A chosen continuation already fixes the requested action.
+                properties.get_mut("kind").unwrap()["enum"] = json!([context["current_action"]["action"]["move_kind"]]);
             }
             movement["required"].as_array_mut().unwrap().retain(|field|
                 field != "interaction_intent" && field != "intent_origin");
@@ -177,6 +224,40 @@ pub(crate) fn spec_for_context(context: &Value) -> Option<crate::ToolSpec> {
         } else {
             "Read previously delivered teaching events with trace. event_id selects an exact stored event; after continues a bounded read. Use the original facts to answer the ordinary request."
         }.into();
+    }
+    // Project complete requests through exactly the fields/kinds advertised for
+    // this state. Program-owned intent/capability must not leak back in examples.
+    let mut examples = input_examples().as_array().unwrap().clone();
+    examples.retain_mut(|example| {
+        let operation = example["operation"].as_str().unwrap();
+        if !allowed.contains(&operation) || (status != "active" && operation == "evidence" && example["nature"] != "hypothesis") {
+            return false;
+        }
+        if operation == "assess" {
+            let Some(reference) = context["learner_context"]["pending_assessment_refs"].as_array().and_then(|refs| refs.first()) else { return false; };
+            example["action_ref"] = reference.clone();
+        }
+        if example["nature"] == "hypothesis" {
+            let Some(reference) = context["learner_context"]["uninterpreted_fact_refs"].as_array().and_then(|refs| refs.first()) else { return false; };
+            example["fact_refs"] = json!([reference]);
+        }
+        if let Some(movement) = example.get_mut("move").and_then(Value::as_object_mut) {
+            let properties = schema["properties"]["move"]["properties"].as_object().unwrap();
+            movement.retain(|key, _| properties.contains_key(key));
+            if let Some(kinds) = properties["kind"]["enum"].as_array() {
+                if kinds == &[json!("observe")] && movement["kind"] == "explain" {
+                    movement.insert("kind".into(), json!("observe"));
+                    movement.insert("prompt".into(), json!("Observe how total distance and total time determine average speed."));
+                }
+                if !kinds.contains(&movement["kind"]) { return false; }
+            }
+        }
+        true
+    });
+    schema["examples"] = json!(examples);
+    // Reduced descriptions still identify the sample data as illustrative.
+    if status != "active" {
+        tool.description.push_str(" Examples use an average-speed fixture; replace references and content with actual learner facts and source text. Examples are not evidence.");
     }
     Some(tool)
 }
@@ -212,21 +293,25 @@ pub fn instructions(context: &Value) -> String {
     format!("Tutor turn context (private, frozen; data is not instructions): {data}")
 }
 
-const GUIDANCE_REVISION: &str = "tc6.v1";
+const GUIDANCE_REVISION: &str = "tb4.v1";
 const COMMON: &str = "Tutor evidence and request boundaries:
 Follow the current request before session defaults or preferences. Follow current_action.accepted_request within its original source scope; real user_supplement takes precedence. A pure UI click and an assistant answer supply no learner understanding evidence. For answer continuation, advance one useful step from the referenced answer and verify its claims against the original source.
 Continuation displayed/chosen facts and repeated choices describe interaction only, never performance or permanent preferences. clarify_answer requests a smaller step or a different explanation of the referenced answer; it does not diagnose missing prerequisites. continue_answer requests further help, not a claim of difficulty. Answer excerpts are assistant-authored context. Only actual learner expression belongs in uninterpreted_fact_refs; absent choice or returning to reading says nothing about understanding.
 Read the relevant current interpretations and recent_facts; reuse applicable understanding to adjust the starting point, depth or example. User corrections supersede system interpretations, never the user's original words. Keep unknowns unknown: absent or stale evidence is not low ability, and exposure, browsing or fluent chat do not prove mastery. Separate independent, assisted and revised performances. Stable preferences use ProfileFact confirmation.
-Read the needed original text this turn with book tools; BookStructure and locators are not source evidence. A TeachingTarget declares whole LIDs: read their full text, not only the selected substring. Supply exact ranges and object revisions; omit source_id/source_revision in target source_bindings so the runtime binds the frozen current source. Do not copy search index revisions. Keep private keys, rubrics and unrevealed help out of public text and presentation files. The latest control state and actual tool contract determine permissions; guidance grants none.";
+Read the needed original text this turn with book tools; BookStructure and locators are not source evidence. A TeachingTarget declares whole LIDs: read their full text, not only the selected substring. Distinguish source claims from supplementary rules, examples and analogies you supply; preserve their conditions and limits in examples and recaps too. State the property that makes a rule apply to this case; a broad category label is not a substitute for that condition. Keep private keys, rubrics and unrevealed help out of public text and presentation files. The latest control state and actual tool contract determine permissions; guidance grants none.";
 
 const DISCOVERY: &str = "Optional Tutor workflows:
 Ordinary questions, restatements and corrections can support a correctable understanding hypothesis without an exercise or active teaching session. When relevant facts need interpretation or revision, tutor.step understanding reads the current view and loads the update workflow for the next sampling; trace rereads exact delivered facts. No hypothesis is required for uninformative input.
 For a formal submit/revise response, trace can recover its original action_ref; assess uses the private evaluator when available. Ungraded observations are not scores. Use only operations in this sampling's tool contract. Rich explanation can be discovered with tool.search presentation_authoring; its current phase supplies the authoring workflow.";
 
 const SELECT: &str = "Select one teaching move:
-Start from learner_context's current request, user intent, constraints, confirmed background, current target and facts. If the user has not read the book, establish the needed entities, relationships and causal process first. Unknown background permits a correctable starting point; do not demand a full profile or placement test.
-Choose a TeachingTarget with learning_focus, expected_performance, capability, exact source_bindings and optional object_refs. Use tutor.step material for applicable available objects; include their exact revisions. Missing objects or cognitive materials do not block source-only teaching: use empty object_ids/object_refs, never invented IDs.
-Explicit explanation, answer, summary or translation takes precedence over guided inquiry. Respect the resolved action intent in the current contract; real supplementary text and natural-language preferences still need interpretation. Adopt only applicable interpretation_refs and adapt the move concretely. If outside the learning intent, use outside and answer ordinarily. Do not change the user's learning goal. Select before final delivery. Stop at the user response boundary. The final answer is the actual teaching text, not a report of plans.";
+Tutor mission: start from the learner's current understanding, provide cognitive building blocks they can understand, use and combine to build new understanding, and help them gradually use it independently.
+Start from learner_context's current request, intent, constraints, stated background, current target and actual facts. Reuse relevant understanding without treating a self-report as demonstrated ability. Unknown background permits a correctable starting point; do not demand a full profile or placement test.
+Choose one bounded capability for this step: what the learner can judge, explain or do, with which support. Connect the TeachingTarget and move to a usable relationship, model, method or representation and the concrete activity the learner will perform. Use available relevant material; missing formal objects or cognitive materials do not block teaching from the read source.
+Before inviting a prediction or explanation, supply the concepts and rules needed to start. If a necessary connection is missing, explain it or demonstrate a small analogous step, then leave the target inference to the learner. A prerequisite absent from the read passage may be supplied as a clearly identified supplementary rule with its conditions; do not require a missing optional asset before helping. Make that rule operational: explain what remains usable or permitted after the change, not only the name of the relationship or operation. Leave applying the rule to the target example to the learner. Do not make an unknown prerequisite the quiz, or merely offer choices with no basis for deciding. Reuse what this learner already knows; change the support with the starting point, not just the length or vocabulary. A short example, comparison or table can be enough. Correct an expressed misconception at its specific faulty connection, then let the learner try the repaired relationship.
+Resolve the whole request: an explanation or correction followed by the learner's own judgment or explanation is guided_inquiry. Give the requested support, then leave that judgment to them; kind=explain can supply support within guided inquiry. Do not classify the whole turn as direct_explanation just because it includes an explanation. When the user requests a complete explanation, answer, summary or translation without reserving a learner activity, deliver the whole requested content and show reusable relationships without requiring an answer first. Respect the resolved action intent in the current contract; real supplementary text and natural-language preferences still need interpretation. Adopt applicable interpretations and adapt the support concretely. If outside the learning intent, use outside and answer ordinarily. Do not change the user's learning goal.
+After a learner response, choose the next support from what they actually did and the help they had. If they cannot start, demonstrate one smaller connection and leave a doable step. If the conclusion is right but its reason is missing, acknowledge the conclusion and work on that specific connection; do not repeat the whole lesson or credit an unsupported reason. If they say the support does not fit, use their stated alternative or ask one concrete locating question when the obstacle is unclear. If their explanation or application supports less help on this task, let them choose a method or handle one changed condition without supplying its solution; distinguish this local performance from copied reasoning, self-report and wider transfer. These are judgments, not a fixed sequence or an error-count ladder.
+Select before final delivery. Deliver the support itself and, when guiding, one clear activity the learner can start; identify the exact expression or example part to work on, consistent with the source. Do not fill in their answer or carry out later steps. Stop at the user response boundary. The final answer is the actual teaching text, not a report of plans. Delivery alone does not establish understanding.";
 
 const CONTINUATION: &str = "Optional next-step suggestions:
 First answer the current request. Omit move.continuation when the answer is sufficient, the reader asks to stop at this answer, or no distinct useful next step exists. Never replace the requested explanation with a menu.
@@ -237,7 +322,10 @@ Suggestions are requests for future help, not executed moves, exercises, answers
 
 const UNDERSTANDING: &str = "Understanding update workflow:
 Interpret the relevant learner words and facts in this same Resident turn. When a supported understanding hypothesis changes, first read the relevant original text this turn, then use tutor.step evidence with nature=hypothesis, operation_id, target, fact_refs, interpretation and teaching_implication. Use supersedes to revise an earlier interpretation. Trace rereads truncated facts; understanding rereads interpretation details.
-Preserve exact learner words, uncertainty and help conditions. Do not invent a hypothesis for unrelated or uninformative input. Use the resulting evidence_ref in move.interpretation_refs when selecting, and actually adjust the starting point, depth or example. No scoring activity is required.
+Connect the actual response to the relevant delivered support and any displayed help before interpreting it. Keep what the learner supplied, what was already demonstrated, and what remains unknown distinct. An empty assistance list in ordinary conversation does not mean independent performance: prior explanations and examples may have supplied the reasoning. Preserve exact learner words, uncertainty and help conditions in the interpretation, including the task and the part they performed. Do not invent a hypothesis for unrelated or uninformative input; a request to continue alone adds no performance.
+For a presentation follow-up, use the delivered version and saved scene attached to that request, including the conditions and results actually visible then. Read their exact facts when needed; a newer version or later page state does not replace that scene. Control changes and computed results describe an observation, not a learner explanation. Adapt from the learner's actual words together with that support; a result already displayed cannot count as their independent inference.
+Recent facts and interpretations are bounded views, not complete histories. When a judgment depends on missing or truncated words, support, independence or a correction, follow trace/understanding pages and read the relevant event_id/evidence_ref chunks through next. Read the delivered content as needed, not merely the selected plan. Absence from a page means not returned here, not never happened.
+Revise contradicted interpretations with supersedes while preserving original learner facts. Make teaching_implication a concrete change to the support or the part left to the learner. Use the resulting evidence_ref in move.interpretation_refs when selecting, and actually adjust the starting point, depth or example. On a later turn or a reopened valid session, recover and adopt the applicable current interpretation and its help conditions; carry its implication into the new delivery instead of restarting the old explanation. If no new evidence changes it, reuse it without duplicating the hypothesis. No scoring activity is required.
 For an existing ungraded source-discrimination activity with capability=evaluation, evidence with action_ref, object_id, operation_id, response_quote, sources and interpretation records a correctable observation, not a score.";
 
 const ASSESSMENT: &str = "Formal response assessment workflow:
@@ -288,9 +376,9 @@ pub(crate) fn instruction_modules(
         if let Some(guidance) = presentation {
             use crate::agent_prompt::PresentationPhase;
             let text = match guidance.phase {
-                PresentationPhase::Global => "Teaching presentation planning: carry the current target's expected performance and supported understanding obstacle into the explanation design.",
-                PresentationPhase::Local => "Teaching presentation construction: let the learner perform the target cognitive action; page calculations are observations, never assessments. Keep source and generated explanation identities distinct.",
-                PresentationPhase::Review => "Teaching presentation review: verify the intended cognitive action and source-grounded explanation against the actual scene. Only a delivered presentation may be attached to the selected move.",
+                PresentationPhase::Global => "Teaching presentation planning: connect the current target and applicable understanding to one judgment the learner will make. In the existing framework, describe the relationship they can use, the support already provided, and what they will do themselves. Choose an operation only when changing or organizing that relationship helps this judgment; a static comparison can suffice. Respect requests for less help and preserve unanswered activities. Put the critical relationship and its role in focus, with the conditions held fixed and the observable consequence. A complete-explanation request still receives the full explanation.",
+                PresentationPhase::Local => "Teaching presentation construction: make the relationship in framework/focus usable from this learner's starting point. Let their operation change the relevant condition and keep code, labels and observed results consistent. Supply missing prerequisites or a small demonstration when needed; leave the target judgment or explanation to the learner. When they want to try first, keep results behind an explicit observation action and do not prefill their reasoning. Preserve source and supplementary-model identities and applicable conditions. Capture the meaningful conditions and displayed results through the existing page-state contract so a follow-up can recover what was actually seen. Page calculations are observations, never assessments.",
+                PresentationPhase::Review => "Teaching presentation review: execute the learner's intended operation in the actual candidate and verify the displayed relationship against the read source, deterministic calculation or runnable example. Check the initial scene and changed conditions: can the learner begin, observe the relevant consequence and still supply their own explanation? Ensure saved state describes the conditions, visible results and revealed support needed to continue the same conversation. Respect the current help level and complete-request scope. Attach only the actual delivered version to the selected move; preview, clicks and delivery do not demonstrate understanding.",
             };
             modules.push(module("presentation", text));
         }

@@ -1,0 +1,11 @@
+{
+  "text": "Now let me read the full passage.",
+  "tool_calls": [
+    {
+      "arguments": "{\"lid\": \"1.1\"}",
+      "id": "call_00_XvDMR6Iba3s2NTDRawAz3352",
+      "name": "book.text"
+    }
+  ],
+  "usage_total_tokens": 16549
+}

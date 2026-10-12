@@ -1,0 +1,35 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "redacted_reasoning_chars": 41,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"lid\": \"1.1\"}",
+              "name": "book_text"
+            },
+            "id": "call_00_bapruHbaY1JrvmSf243g6041",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 55,
+    "completion_tokens_details": {
+      "reasoning_tokens": 15
+    },
+    "prompt_cache_hit_tokens": 11264,
+    "prompt_cache_miss_tokens": 5583,
+    "prompt_tokens": 16847,
+    "prompt_tokens_details": {
+      "cached_tokens": 11264
+    },
+    "total_tokens": 16902
+  }
+}

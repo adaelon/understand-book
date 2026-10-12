@@ -1,0 +1,26 @@
+{
+  "text": "The passage is located. Let me register the supporting passages as visible sources.",
+  "tool_calls": [
+    {
+      "arguments": "{\"quote\": \"借用让代码在不取得所有权的情况下临时访问值。\"}",
+      "id": "call_00_uvbFZUxV2jpdMc8o3M9a4839",
+      "name": "source.present"
+    },
+    {
+      "arguments": "{\"quote\": \"不可变借用：在表达式中的值前写 &，会创建对该值的不可变借用。相应的引用类型写作 &T。\"}",
+      "id": "call_01_slWrJny2tCsUg2E6VSey0153",
+      "name": "source.present"
+    },
+    {
+      "arguments": "{\"quote\": \"这一次，程序可以编译，因为 main 中的第二行变成了：\"}",
+      "id": "call_02_STWub7ttaD5GzzeWlJAr3595",
+      "name": "source.present"
+    },
+    {
+      "arguments": "{\"quote\": \"注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。\"}",
+      "id": "call_03_8KR9zMjUVfLBKd2gHbHw1234",
+      "name": "source.present"
+    }
+  ],
+  "usage_total_tokens": 31307
+}

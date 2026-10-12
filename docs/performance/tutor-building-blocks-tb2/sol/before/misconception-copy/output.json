@@ -1,0 +1,24 @@
+{
+  "select": {
+    "operation": "select",
+    "move": {
+      "move_id": "repair-borrow-as-copy",
+      "object_ids": [],
+      "capability": "explanation",
+      "kind": "question",
+      "prompt": "指出需要修改的是把 &foo 理解为复制 Foo 的一步；说明 &foo 创建对原值的不可变引用，bar 的类型为 &Foo，foo 保留所有权，两个 println 能使用它们并不表示存在两份 Foo；然后请学习者重新解释这段代码。",
+      "interaction_intent": "guided_inquiry",
+      "intent_origin": "current_request",
+      "intent_quote": "帮我找出该改哪一步，再让我试着解释。",
+      "interpretation_refs": [],
+      "target": {
+        "capability": "explanation",
+        "learning_focus": "区分创建不可变引用与复制原值，并解释借用后 foo 与 bar 的关系",
+        "expected_performance": "用自己的话说明 &foo 创建引用而非复制 Foo，说明 foo 仍拥有原值、bar 借用该值，以及两个 println 为什么能使用它们。",
+        "source_bindings": [{"start_lid": "1.1", "end_lid": "1.1"}],
+        "object_refs": []
+      }
+    }
+  },
+  "answer": "需要改的是这一环：**把 `&foo` 理解成“复制一份 `Foo`”**。`&foo` 创建的是对原值的不可变引用，赋给 `bar` 后，`bar` 的类型是 `&Foo`，不是 `Foo`。它借用的是 `foo` 中那个值，也不能通过它修改这个值。[[source:source_ref_9af277d1d3d785d4]]\n\n因此，两个 `println!` 都能用，原因是借用没有把原值的所有权从 `foo` 转走：`foo` 仍拥有原值，`bar` 则通过引用访问它；这不表示复制出了两份 `Foo`。借用本来就是在不取得所有权的情况下临时访问值。[[source:source_ref_b7cdf804a5f27a0d]] [[source:source_ref_e2f1f69dfb7b32e3]]\n\n现在你试着用自己的话解释：执行 `let bar = &foo;` 后，`foo` 和 `bar` 各自是什么关系，为什么接下来的两个 `println!` 都能使用它们？"
+}

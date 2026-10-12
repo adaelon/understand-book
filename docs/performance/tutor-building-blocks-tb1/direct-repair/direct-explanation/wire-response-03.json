@@ -1,0 +1,26 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "message": {
+        "content": "{\"candidate_fits\":[],\"plan_gate\":{\"missing_requirements\":[],\"target_issues\":[],\"valid\":true},\"probes\":[{\"query\":\"let bar = foo 所有权 移动 编译错误\",\"target_index\":0},{\"query\":\"let bar = &foo 不可变借用\",\"target_index\":1},{\"query\":\"Rust E0382 use of moved value\",\"target_index\":0}]}",
+        "redacted_reasoning_chars": 25338,
+        "role": "assistant",
+        "tool_calls": []
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 5922,
+    "completion_tokens_details": {
+      "reasoning_tokens": 5834
+    },
+    "prompt_cache_hit_tokens": 0,
+    "prompt_cache_miss_tokens": 558,
+    "prompt_tokens": 558,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 6480
+  }
+}

@@ -1,12 +1,12 @@
 # 工具契约与 Agent 可用性优化切片方案
 
-日期：2026-10-12。状态：TO0–TO2 已完成；TO3–TO14 待实施。
+日期：2026-10-12。状态：TO0–TO2 已完成；TO3 已从主工作区集成至 TB 工作区；TO4–TO14 待实施。
 
 本方案以本项目提交 `67efb605f5d45157eeb769f0074b218eacd76dba` 为代码观察基线，以 REA 提交 `2ff850de68dc9b05c6faf2bbfd26d56bc2d5d27c` 为外部设计参考。执行时先确认相关代码是否已有后续变化，再按本文的符号和行为定位。
 
 目标：让 Agent 更容易选对工具、一次填对参数、理解结果覆盖范围，并沿工具返回的信息完成读取、引用和真实交付。改进覆盖 Book、Tutor、Presentation、Goal、Reader/Memory 和专用 Build Executor；同时优化已有的契约单源、动态发现、证据分层、结果预算和评测机制。
 
-TO1 已实现共同参数语义回收，TO2 已补共享 Book 示例并完成最终发布输入与真实分派验证，证据见 [TO1 实施记录](performance/tool-usability/to1/README.md) 与 [TO2 实施记录](performance/tool-usability/to2/README.md)。TO3–TO14 待实施，生产服务尚未发布本轮改动。
+TO1 已实现共同参数语义回收，TO2 已补共享 Book 示例并完成最终发布输入与真实分派验证，证据见 [TO1 实施记录](performance/tool-usability/to1/README.md) 与 [TO2 实施记录](performance/tool-usability/to2/README.md)。TO3 的 Tutor 契约及状态示例已在 TB2 中集成，见 [集成与验证](performance/tutor-building-blocks-tb2/README.md#to2-首轮与-to3-集成)。TO4–TO14 在本工作区待实施，生产服务尚未发布本轮改动。
 
 ## 1. 既有基础与本轮改进依据
 
@@ -129,7 +129,7 @@ rg -n 'examplesFor|outputSchema|annotations|batch_decompile|binary_overview' $re
 | TO0 | 基线、源码导航、切片方案和文档入口 | 无 | 已完成 |
 | TO1 | 共同参数语义回收 | TO0 | 已完成，见 [实现与验证](performance/tool-usability/to1/README.md) |
 | TO2 | Book 示例与实际发布示例验证 | TO1 | 已完成，见 [实现与验证](performance/tool-usability/to2/README.md) |
-| TO3 | Tutor 当前状态的有效示例 | TO2 | 待实施 |
+| TO3 | Tutor 当前状态的有效示例 | TO2 | 已集成，见 [TB2 集成验证](performance/tutor-building-blocks-tb2/README.md#to2-首轮与-to3-集成) |
 | TO4 | Presentation 操作示例 | TO2 | 待实施 |
 | TO5 | Goal、Reader、Memory 的用途和动作示例 | TO2 | 待实施 |
 | TO6 | 专用 Executor 四工具生命周期示例 | TO0 | 待实施 |
@@ -460,4 +460,4 @@ Tutor、Presentation、Reader 的行为验证继续使用现有对应模块测�
 4. 只在该片的现有所有者内补齐设计，按第 9 节选择能检测具体失败的检查。沿项目公开支持的用法验证当前缺口。
 5. 记录改动、测试和实际模型证据，更新本表状态与 [代码链路](代码链路.md)；结构边界确实变化时再同步架构/ADR。尚未运行的验收明确保留待办。
 
-TO1、TO2 已完成。接手 TO3 时从 [TO2 实施记录](performance/tool-usability/to2/README.md)、[TO2 改后定义](performance/tool-usability/to2/after.json) 和本文 TO3 开始，按 Tutor 当前状态补有效示例；复用 `tool_registry::contract_tests` 中的最终示例/schema/真实解析验证与 Native/ReAct 请求投影检查，并保持三表面契约一致性。
+TO1、TO2 已完成，TO3 已集成到本工作区，入口见 [TB2 集成记录](performance/tutor-building-blocks-tb2/README.md)。TO 主工作区独立推进后续切片，同步前先核对其在途状态；本工作区继续 TB，保留两侧 checkpoint 的接手入口。

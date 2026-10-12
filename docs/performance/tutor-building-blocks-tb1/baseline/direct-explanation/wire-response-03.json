@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "redacted_reasoning_chars": 2407,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"anchor_lid\": \"1.1\", \"intent\": \"relation\", \"query\": \"在借用一节之前的所有权示例中，把 foo 直接赋给 bar（不加 &）会发生什么，为什么之后不能再使用或打印 foo；采用借用的版本为什么可以让 foo 与 bar 都被打印？\", \"targets\": [\"所有权\", \"借用\"], \"obligations\": [{\"requirement\": \"描述不加 & 的赋值（let bar = foo;）对 foo 所有权的影响。\"}, {\"requirement\": \"说明为什么借用版本中 foo 与 bar 都能被打印。\"}]}",
+              "name": "book_query"
+            },
+            "id": "call_00_d0JNEkCkQZvbfDSScr0U3538",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"page_size\": 50, \"query\": \"所有权\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_01_b5GFCaPmagO9v5SP1gP51252",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 819,
+    "completion_tokens_details": {
+      "reasoning_tokens": 569
+    },
+    "prompt_cache_hit_tokens": 17152,
+    "prompt_cache_miss_tokens": 921,
+    "prompt_tokens": 18073,
+    "prompt_tokens_details": {
+      "cached_tokens": 17152
+    },
+    "total_tokens": 18892
+  }
+}

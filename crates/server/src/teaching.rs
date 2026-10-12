@@ -621,12 +621,23 @@ pub(crate) fn step(
                     json!({"chunk":text.chars().skip(after).take(8000).collect::<String>(),"next":(after+8000<text.chars().count()).then_some(after+8000)}),
                 )
             } else {
-                understanding(
+                let mut page = understanding(
                     state,
                     &binding.source_id,
                     request["object_id"].as_str(),
                     request["after"].as_u64().unwrap_or(0),
-                )
+                )?;
+                // Tool lists are previews; exact evidence remains chunk-readable.
+                // The UI uses the full strings from understanding directly.
+                for item in page["interpretations"].as_array_mut().unwrap() {
+                    for field in ["interpretation", "teaching_implication", "learner_quote", "correction"] {
+                        if item[field].is_null() { continue; }
+                        let excerpt = preview(&item[field], 600);
+                        item[field] = excerpt["text"].clone();
+                        item[format!("{field}_truncated")] = excerpt["truncated"].clone();
+                    }
+                }
+                Ok(page)
             }
         }
         Some("trace") => {
@@ -1489,6 +1500,23 @@ fn accept_hypothesis(state: &PrivateBookContext<'_>, binding: &TeachingBinding, 
         if quote.is_empty() { quote = fact.learner_expression().unwrap_or_default().into(); }
         if fact.kind == TeachingFact::HelpDisplayed { assistance.push(id.clone()); }
         assistance.extend(fact.payload["assistance_refs"].as_array().into_iter().flatten().filter_map(|v|v.as_str().map(str::to_owned)));
+        if fact.kind == TeachingFact::UsageObserved && fact.learner_expression().is_some() {
+            // A referenced chat response has both a usage observation and a
+            // LearnerAction. Its help exposure was frozen by that original action,
+            // not by whichever fact the model happened to cite.
+            match event(state, &format!("response:{}", fact.binding.turn_id)) {
+                Ok(response) if response.binding.tutor_session_id == fact.binding.tutor_session_id
+                    && response.binding.source_id == fact.binding.source_id
+                    && response.binding.source_revision == fact.binding.source_revision
+                    && response.binding.chat_session_id == fact.binding.chat_session_id => {
+                    assistance.extend(response.payload["assistance_refs"].as_array().into_iter().flatten()
+                        .filter_map(|v|v.as_str().map(str::to_owned)));
+                }
+                Ok(_) => {},
+                Err(error) if error.error_code == "TEACHING_INVALID" => {},
+                Err(error) => return Err(error),
+            }
+        }
     }
     assistance.sort(); assistance.dedup();
     let evidence = LearningEvidence {
@@ -1675,7 +1703,7 @@ fn learner_context(
     // No invented object target: first turn starts unknown until the Agent chooses one.
     let store = state.user.learning_store()?;
     let (projection, watermark) = store.learner_projection(&binding.source_id)?;
-    let interpretations: Vec<_> = store.current_interpretations(&binding.source_id,&binding.source_revision,None,12)?.into_iter()
+    let interpretations: Vec<_> = store.current_interpretations(&binding.source_id,&binding.source_revision,0,12)?.into_iter()
         .map(|(_,e)|json!({"evidence_ref":e.evidence_id,"nature":e.nature,"target":e.target,"interpretation":preview(&json!(e.interpretation),600),
             "teaching_implication":preview(&json!(e.teaching_implication),600),"learner_quote":preview(&json!(e.learner_quote),600),"correction":e.correction,
             "fact_refs":e.fact_refs,"status":e.status,"assistance_refs":e.assistance_refs,"attempt":e.attempt})).collect();
@@ -1728,7 +1756,7 @@ fn learner_context(
         "target":delivery.payload["move"]["target"],"prompt":preview(&delivery.payload["move"]["prompt"],600)}));
     Ok(
         json!({"entries":entries,"interpretations":interpretations,"path_progress":paths,"current_target":current_target,"pending_activity":pending,"pending_assessment_refs":pending_assessment_refs,"unknown_when_absent":true,"evidence_watermark":watermark,"projection_watermark":projection.as_ref().map(|p|p.evidence_watermark),
-        "stale":projection.as_ref().is_none_or(|p|p.evidence_watermark!=watermark),"details":"tutor.step understanding with object_id and after"}),
+        "stale":projection.as_ref().is_none_or(|p|p.evidence_watermark!=watermark),"details":"Recent interpretations only; tutor.step understanding with after pages current records. evidence_ref reads exact details; trace pages earlier facts and event_id reads exact content."}),
     )
 }
 
@@ -1789,8 +1817,10 @@ fn understanding(
     }
     let total = all.len();
     let rows: Vec<_> = all.into_iter().skip(after as usize).take(12).collect();
+    let interpretations = store.current_interpretations(source,state.book.source_fingerprint(),after,13)?;
+    let more = after as usize + 12 < total || interpretations.len() > 12;
     Ok(
-        json!({"rows":rows,"interpretations":store.current_interpretations(source,state.book.source_fingerprint(),None,20)?.into_iter().map(|(_,e)|json!({"evidence_id":e.evidence_id,"nature":e.nature,"label":e.label,"interpretation":e.interpretation,"teaching_implication":e.teaching_implication,"correction":e.correction})).collect::<Vec<_>>(),"next":(after as usize+12<total).then_some(after+12),"evidence_watermark":watermark,"projection_watermark":projection.as_ref().map(|p|p.evidence_watermark),"stale":projection.as_ref().is_none_or(|p|p.evidence_watermark!=watermark),"estimator_version":projection.as_ref().map(|p|&p.estimator_version)}),
+        json!({"rows":rows,"interpretations":interpretations.into_iter().take(12).map(|(_,e)|json!({"evidence_id":e.evidence_id,"nature":e.nature,"label":e.label,"target":e.target,"interpretation":e.interpretation,"teaching_implication":e.teaching_implication,"correction":e.correction,"learner_quote":e.learner_quote,"fact_refs":e.fact_refs,"assistance_refs":e.assistance_refs,"attempt":e.attempt,"status":e.status})).collect::<Vec<_>>(),"next":more.then_some(after+12),"evidence_watermark":watermark,"projection_watermark":projection.as_ref().map(|p|p.evidence_watermark),"stale":projection.as_ref().is_none_or(|p|p.evidence_watermark!=watermark),"estimator_version":projection.as_ref().map(|p|&p.estimator_version)}),
     )
 }
 

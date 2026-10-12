@@ -73,6 +73,32 @@ it('opens one hypothesis with real words and corrects it without inventing a per
   } finally { w.unmount(); }
 });
 
+it.each([0, 2])('shows the hypothesis scope and actual help without grading ordinary conversation (help=%s)', async count => {
+  const record = evidence('supported', {
+    prompt: '在此前讲解和教具已显示结果的支持下，自选两组条件并说明理由。',
+    interpretation: '已表达局部推断，尚未解释对照怎样支持理由。',
+    learner_quote: '这些结果是教具给的；我推断 Copy 本身没有让共享引用能写入。',
+    assistance_count: count,
+  });
+  const { w, fetch } = setup({ interpretations: [record], records: { supported: record } });
+  try {
+    await flushPromises(); await w.get('.concept').trigger('click'); await flushPromises();
+    const conditions = w.get('[aria-label="适用目标与帮助条件"]');
+    expect(conditions.isVisible()).toBe(true);
+    expect(conditions.text()).toContain(record.prompt);
+    expect(conditions.text().includes(`已展示 ${count} 条活动帮助`)).toBe(count > 0);
+    expect(w.get('.evidence').text()).toContain('普通交流中的暂定理解，未评分');
+    expect(w.get('.implication h5').text()).toBe('接下来怎样帮助你');
+    expect(w.text()).not.toContain('第 0 次作答');
+    expect(w.text()).not.toContain('符合当时标准');
+    expect(w.text()).not.toContain('独立完成');
+    expect(fetch.mock.calls.some(([url]) => url.endsWith('/feedback-displayed'))).toBe(false);
+    await w.get('textarea').setValue('理由仍需要帮助'); await w.get('form').trigger('submit'); await flushPromises();
+    expect(w.get('[aria-label="适用目标与帮助条件"]').text()).toContain(record.prompt);
+    expect(w.get('.quote').text()).toContain(record.learner_quote);
+  } finally { w.unmount(); }
+});
+
 it('keeps unknown objects unknown and returns keyboard focus without reading invented evidence', async () => {
   const { w, fetch } = setup({ interpretations: [], rows: [row({ evidence_count: 0, evidence_refs: [], state: 'unknown', capability: '' })] });
   try {
@@ -186,6 +212,27 @@ it('keeps loaded object pages after correction and refreshes their original row'
     await w.get('textarea').setValue('我借助了例题'); await w.get('form').trigger('submit'); await flushPromises();
     expect(afters).toEqual([0, 12, 0, 12]);
     expect(w.get('[aria-label="能力依据概况"]').text()).toContain('有 2 条');
+    await button(w, '← 返回概念列表').trigger('click');
+    expect(w.findAll('.concept')).toHaveLength(2);
+  } finally { w.unmount(); }
+});
+
+it('keeps earlier interpretation pages and reloads them after a later correction', async () => {
+  let corrected = false; const afters: number[] = [];
+  const { w } = setup({ records: { older: evidence('older') }, handler(path, body) {
+    if (path === 'correct') corrected = true;
+    if (path === 'understanding') {
+      afters.push(body.after);
+      return Response.json({ rows: [], stale: false, next: body.after ? null : 12,
+        interpretations: body.after ? [evidence(corrected ? 'corrected' : 'older')] : [evidence('recent')] });
+    }
+  } });
+  try {
+    await flushPromises(); await button(w, '查看更多对象').trigger('click'); await flushPromises();
+    expect(w.findAll('.concept')).toHaveLength(2);
+    await w.findAll('.concept')[1].trigger('click'); await flushPromises();
+    await w.get('textarea').setValue('这个判断用了前面的示范'); await w.get('form').trigger('submit'); await flushPromises();
+    expect(afters).toEqual([0, 12, 0, 12]);
     await button(w, '← 返回概念列表').trigger('click');
     expect(w.findAll('.concept')).toHaveLength(2);
   } finally { w.unmount(); }

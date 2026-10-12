@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": "Let me find the earlier ownership example that this borrowing example rewrites.",
+        "redacted_reasoning_chars": 761,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"query\": \"let bar = foo;\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_00_bM7VlEhniO9CwGwlJydC4983",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"lid\": \"1.1\", \"granularity\": \"near\", \"k\": 10}",
+              "name": "book_context"
+            },
+            "id": "call_01_s2vpMtbHFH7D4FimA5Ym1001",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 311,
+    "completion_tokens_details": {
+      "reasoning_tokens": 192
+    },
+    "prompt_cache_hit_tokens": 15360,
+    "prompt_cache_miss_tokens": 929,
+    "prompt_tokens": 16289,
+    "prompt_tokens_details": {
+      "cached_tokens": 15360
+    },
+    "total_tokens": 16600
+  }
+}

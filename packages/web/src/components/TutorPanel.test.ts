@@ -97,6 +97,19 @@ it('changes teaching intent without optimistic selection and preserves pause/end
   expect(w.emitted('action')?.[2][0]).toEqual({ kind: 'end', session_id: 'learn' });
 });
 
+it('explains supported inquiry and distinguishes the session default from a direct request', async () => {
+  const w = setup(state({ learn: session('learn', { default_teaching_intent: 'guided_inquiry' }) }));
+  const guided = w.findAll('.teaching-mode')[2];
+  expect(guided.attributes('aria-pressed')).toBe('true');
+  expect(guided.text()).toContain('尝试、示范与按需帮助');
+  expect(w.get('.teaching-section').text()).toContain('本次学习的默认教法');
+  expect(w.get('.teaching-note').text()).toContain('这次直接讲解');
+  expect(w.get('.teaching-note').text()).toContain('只调整本轮');
+  await w.findAll('.teaching-mode')[0].trigger('click');
+  expect(w.emitted('action')?.[0][0]).toEqual({ kind: 'set_mode', session_id: 'learn', mode: null });
+  expect(guided.attributes('aria-pressed')).toBe('true');
+});
+
 it('keeps every non-current session reachable and requires an explicit resume', async () => {
   const data = state({ learn: session(), old: session('old', { status: 'ended', user_intent: '旧目标' }),
     other: session('other', { status: 'paused', user_intent: '另一本书', material_scope: [{ source_id: 'other-book', scope_refs: [], role: 'primary' }] }),

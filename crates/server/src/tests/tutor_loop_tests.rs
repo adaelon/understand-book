@@ -2,6 +2,9 @@ use super::*;
 use memory::teaching::TeachingFact;
 use runtime::presentation::*;
 
+#[path = "tutor_example_tests.rs"]
+pub(super) mod tool_examples;
+
 fn fixture() -> (tempfile::TempDir, AppState) {
     fixture_with_assets(true)
 }
@@ -58,7 +61,7 @@ fn fixture_with_assets(published: bool) -> (tempfile::TempDir, AppState) {
     let source = "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. ".repeat(3);
     fixture_with_book(published, Book::new(sample_base(), &source), &source)
 }
-fn fixture_with_book(published: bool, book: Book, source: &str) -> (tempfile::TempDir, AppState) {
+pub(super) fn fixture_with_book(published: bool, book: Book, source: &str) -> (tempfile::TempDir, AppState) {
     let root = tempfile::tempdir().unwrap();
     let mut state = state_named(&format!(
         "tutor-loop-{}",
@@ -300,6 +303,10 @@ fn tutor_open_assessment_is_isolated_budgeted_and_contract_checked() {
     assert!(sampled[0]["instruction_assets"].as_array().unwrap().iter().any(|a| a["asset_id"] == "resident-agent.tutor.assessment"));
     assert!(sampled[0].to_string().contains("action:open"));
     assert!(!sampled[2]["instruction_assets"].as_array().unwrap().iter().any(|a| a["asset_id"] == "resident-agent.tutor.assessment"), "completed assessment expires at the next sampling");
+    let examples = |index: usize| sampled[index]["tools"].as_array().unwrap().iter()
+        .find(|t| t["name"] == "tutor.step").unwrap()["parameters"]["examples"].as_array().unwrap();
+    assert!(examples(0).iter().any(|e| e["operation"] == "assess" && e["action_ref"] == "action:open"));
+    assert!(!examples(2).iter().any(|e| e["operation"] == "assess"), "completed assessment example expires with its instruction");
     drop(sampled);
     let assessment = state
         .user.learning_store()

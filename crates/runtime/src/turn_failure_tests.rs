@@ -35,6 +35,60 @@ fn tutor_pause_overrides_frozen_context_at_next_sample() {
 }
 
 #[test]
+fn tutor_tb2_final_request_keeps_mission_scoped_to_active_teaching() {
+    let b = book();
+    let profile = ModelRuntimeProfile::fallback("tb2-guidance", ProviderToolProtocol::Native);
+    for status in ["active", "observing", "reference", "paused", "inactive"] {
+        let tutor = serde_json::json!({"status":status,"default_teaching_intent":"guided_inquiry",
+            "learner_context":{"current_request":"Explain this fully; do not ask me to answer first."}});
+        let registry = resident_tool_registry().with_tutor_context(Some(&tutor));
+        let mut exposure = ToolExposureState::default();
+        exposure.activate_tutor();
+        let messages = vec![Message::system(crate::tutor::instructions(&tutor)),
+            Message::user("Explain this fully; do not ask me to answer first.")];
+        let (_, plan) = build_sample_request(&messages, &mut ContextFragmentLedger::default(), &b,
+            &ActiveToolResultLedger::default(), None, COMPACTION_CONSUMPTION_WRAPPER, &registry, &profile,
+            ToolPermissions::default(), &exposure, ArtifactExposureContext::no_overlay(), EvidenceState::UserProvided,
+            &[], None, false, Some(&tutor)).unwrap();
+        let text = serde_json::to_string(&plan.ordered_messages()).unwrap();
+        let ids: Vec<_> = plan.instruction_assets.iter().map(|a| a.asset_id.as_str()).collect();
+        assert_eq!(text.matches("Tutor mission:").count(), usize::from(status == "active"), "{status}");
+        assert_eq!(ids.contains(&"resident-agent.tutor.select"), status == "active");
+        for irrelevant in ["resident-agent.tutor.presentation", "resident-agent.tutor.assessment"] {
+            assert!(!ids.contains(&irrelevant), "{status}: {irrelevant}");
+        }
+        assert_eq!(text.matches("Recent facts and interpretations are bounded views").count(),
+            usize::from(matches!(status,"active"|"observing")),"{status}");
+        if matches!(status,"active"|"observing") {
+            assert!(text.contains("An empty assistance list in ordinary conversation does not mean independent performance"));
+            assert!(text.contains("reopened valid session"));
+        }
+        if status == "active" {
+            assert_eq!(text.matches("After a learner response, choose the next support").count(),1);
+            assert!(text.contains("If the conclusion is right but its reason is missing"));
+            assert!(text.contains("If they say the support does not fit"));
+            assert!(text.contains("without supplying its solution"));
+            // A direct request still reaches the model beside the guided default;
+            // the teaching policy must preserve its priority and response boundary.
+            assert!(text.contains("deliver the whole requested content"));
+            assert!(text.contains("supply the concepts and rules needed to start"));
+            assert!(text.contains("Resolve the whole request"));
+            assert!(text.contains("State the property that makes a rule apply to this case"));
+            assert!(text.contains("Stop at the user response boundary"));
+            assert_eq!(text.matches("Select one teaching move:").count(), 1);
+            let tool = plan.tools.iter().find(|t| t.name == "tutor.step").unwrap();
+            assert!(tool.parameters["properties"]["operation"]["enum"].as_array().unwrap().contains(&serde_json::json!("select")));
+            // Natural-language requests remain model-interpreted, rather than
+            // being coerced to the session default by the sampled contract.
+            let intents = &tool.parameters["properties"]["move"]["properties"]["interaction_intent"]["enum"];
+            assert!(intents.as_array().unwrap().contains(&serde_json::json!("direct_explanation")));
+        } else if let Some(tool) = plan.tools.iter().find(|t| t.name == "tutor.step") {
+            assert!(!tool.parameters["properties"]["operation"]["enum"].as_array().unwrap().contains(&serde_json::json!("select")));
+        }
+    }
+}
+
+#[test]
 fn tutor_tc2a_navigation_discovery_loads_workflow_on_next_sample() {
     let b = guided_read_book();
     let mut store = MemoryStore::open(tmp("tc2a-navigation-discovery")).unwrap();
@@ -74,15 +128,34 @@ fn tutor_tc2a_presentation_guidance_follows_discovery_phase_and_delivery() {
         &initial_exposure, &registry, &mut exposure).unwrap();
     for (phase, expected) in [(PresentationPhase::Global,"Teaching presentation planning"),
         (PresentationPhase::Local,"Teaching presentation construction"), (PresentationPhase::Review,"Teaching presentation review")] {
-        let authoring = crate::presentation_author::PresentationAuthoringContext { phase,framework:None,focus:None,needs:vec![] };
+        let authoring = crate::presentation_author::PresentationAuthoringContext { phase,framework:Some("TB4 relationship and learner judgment".into()),focus:Some("TB4 changed condition".into()),needs:vec![crate::agent_prompt::PresentationNeed::State] };
         let (_, plan) = sample(&exposure, Some(&authoring), false);
         assert!(plan.tools.iter().any(|t| t.name == "presentation.author"));
-        assert!(serde_json::to_string(&plan.ordered_messages()).unwrap().contains(expected));
+        let text = serde_json::to_string(&plan.ordered_messages()).unwrap();
+        assert!(text.contains(expected));
+        assert_eq!(text.matches("TB4 relationship and learner judgment").count(), 1);
+        assert_eq!(text.matches("TB4 changed condition").count(), 1);
+        assert_eq!(text.matches("Teaching presentation ").count(), 1);
+        for (other, _) in [("planning",PresentationPhase::Global),("construction",PresentationPhase::Local),("review",PresentationPhase::Review)] {
+            let marker = format!("Teaching presentation {other}");
+            assert_eq!(text.contains(&marker), expected == marker);
+        }
+        assert_eq!(text.contains("Saved page state contract:"), phase != PresentationPhase::Global);
         assert!(plan.instruction_assets.iter().any(|a| a.asset_id == "resident-agent.tutor.select"));
+        if let Ok(directory) = std::env::var("TB4_REQUEST_SNAPSHOT") {
+            std::fs::create_dir_all(&directory).unwrap();
+            std::fs::write(std::path::Path::new(&directory).join(format!("{phase:?}.json")),
+                serde_json::to_vec_pretty(&serde_json::json!({"tools":plan.tools,"messages":plan.ordered_messages(),"assets":plan.instruction_assets})).unwrap()).unwrap();
+        }
     }
     let (_, delivered) = sample(&exposure, None, true);
     assert!(!delivered.instruction_assets.iter().any(|a| a.asset_id == "resident-agent.tutor.presentation"));
     assert!(delivered.instruction_assets.iter().any(|a| a.asset_id == "resident-agent.tutor.select"));
+    for status in ["observing", "reference", "paused", "inactive"] {
+        let guidance = crate::agent_prompt::PresentationGuidance { phase:PresentationPhase::Local,needs:vec![] };
+        let modules = crate::tutor::instruction_modules(&serde_json::json!({"status":status}), &[], Some(&guidance));
+        assert!(!modules.iter().any(|m|m.asset_id == "resident-agent.tutor.presentation"));
+    }
 }
 
 struct ExpandingCompactor { inner: AutoCompactionAdapter }

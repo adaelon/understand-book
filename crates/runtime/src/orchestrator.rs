@@ -2574,6 +2574,27 @@ struct AnswerDelivery {
 const SOURCE_MARKER_PREFIX: &str = "[[source:";
 const SOURCE_PRESENTATION_FAILURE_MESSAGE: &str = "这次回答生成失败，请重试。";
 
+fn source_suffix_is_literal(prefix: &str) -> bool {
+    let mut quote = None;
+    let mut code_ticks = 0;
+    let mut chars = prefix.chars().peekable();
+    while let Some(character) = chars.next() {
+        if character == '`' {
+            let mut count = 1;
+            while chars.peek() == Some(&'`') { chars.next(); count += 1; }
+            if code_ticks == count { code_ticks = 0; }
+            else if code_ticks == 0 && quote.is_none() { code_ticks = count; }
+        } else if code_ticks == 0 {
+            if character == '\\' { chars.next(); }
+            else if quote == Some(character) { quote = None; }
+            else if quote.is_none() {
+                quote = match character { '“' => Some('”'), '‘' => Some('’'), '"' => Some('"'), _ => None };
+            }
+        }
+    }
+    code_ticks != 0 || quote.is_some()
+}
+
 fn normalize_bound_source_suffixes(raw: &str, bindings: &[SourceBinding]) -> String {
     let mut result = String::new();
     let mut fence: Option<char> = None;
@@ -2589,12 +2610,11 @@ fn normalize_bound_source_suffixes(raw: &str, bindings: &[SourceBinding]) -> Str
             result.push_str(line);
             continue;
         }
-        // Restrict to ordinary prose suffixes; code, quotations and indented blocks
-        // are left intact. Ambiguous placements remain the Agent's responsibility.
+        // Keep literal blocks intact. Inline literals are checked at the marker,
+        // so a claim containing code or a quotation can still cite its source.
         if fence.is_some()
             || trimmed.starts_with('>')
             || line.starts_with("    ")
-            || line.contains(['`', '“', '”', '‘', '’', '"'])
         {
             result.push_str(line);
             continue;
@@ -2611,12 +2631,15 @@ fn normalize_bound_source_suffixes(raw: &str, bindings: &[SourceBinding]) -> Str
                     let suffix = normalized[end..].trim_start();
                     let has_claim = !prefix.trim().is_empty() || !result.trim().is_empty();
                     let is_suffix = suffix.is_empty()
+                        || (prefix.trim_end().ends_with(['。', '.', '!', '！', '?', '？', ';', '；'])
+                            && !suffix.starts_with('('))
                         || suffix.starts_with([
                             '。', '，', '；', '：', '.', ',', ';', ':', '!', '！', '?', '？',
                         ])
                         || suffix.starts_with("[[source")
                         || suffix.starts_with("[source_ref_");
-                    if has_claim && is_suffix && !prefix.ends_with(['[', ']', '\\']) {
+                    if has_claim && is_suffix && !prefix.ends_with(['[', ']', '\\'])
+                        && !source_suffix_is_literal(prefix) {
                         let standard = format!("[[source:{}]]", binding.source_ref_id);
                         normalized.replace_range(index..end, &standard);
                         from = index + standard.len();
@@ -5787,6 +5810,9 @@ fn run_context_inner(
         if context.tutor.as_ref().is_some_and(|t| t["status"] == "active") && !state.tutor_active()? {
             context.tutor = Some(serde_json::json!({"status":"paused"}));
             tool_registry = tool_registry.without_tutor();
+        } else if context.tutor.is_some() {
+            // Accepted assessments change the pending references between samples.
+            tool_registry = tool_registry.with_tutor_context(context.tutor.as_ref());
         }
         let mut sampling_context_fragments = context_fragments.clone();
         if let Some(tutor) = &context.tutor {
@@ -13402,6 +13428,21 @@ user_question=\"这段怎么理解？\"",
     }
 
     #[test]
+    fn source_presentation_tb2_borrowing_suffixes_preserve_clickable_sources() {
+        let raw = include_str!("../../../docs/performance/tutor-building-blocks-tb2/to3-after/starting-ownership/answer.md");
+        let bindings = [
+            "source_ref_b7cdf804a5f27a0d", "source_ref_9af277d1d3d785d4",
+            "source_ref_1a3ec5f7971d4632", "source_ref_e2f1f69dfb7b32e3",
+            "source_ref_4c3de5a75d5bc2f7",
+        ].map(|id| source_binding_fixture(id, "1.1"));
+        let compiled = compile_agent_answer(raw, &bindings, &AnswerProvenanceLedger::default()).unwrap();
+        assert_eq!(compiled.view.sources.len(), bindings.len());
+        assert!(!compiled.answer.contains("[source_ref_"));
+        // Both final answers and Tutor prompt/help use this compiler.
+        assert_eq!(compile_presentation_text(raw, &bindings, &[]).unwrap().sources.len(), bindings.len());
+    }
+
+    #[test]
     fn source_presentation_bound_suffix_formats_compile_without_repair() {
         let bindings = vec![source_binding_fixture("source_ref_one", "1.1")];
         for answer in [
@@ -13411,6 +13452,10 @@ user_question=\"这段怎么理解？\"",
             "A claim\n[source_ref_one]",
             "依据书中的近似式 [source_ref_one]：\n\n> IR ≈ IC·√breadth",
             "The formula [source_ref_one]:\n\n> IR ≈ IC·√breadth",
+            "`bar` has type `&Foo`.[source_ref_one]",
+            "原文说“借用不取得所有权”。[source_ref_one]",
+            "An inline `` `code` `` example.[source_ref_one]",
+            "A `code` claim.[source_ref_one] The next sentence.",
         ] {
             let adapter = FakeAdapter::new(vec![], vec![]);
             let delivery = deliver_agent_answer(
@@ -13429,11 +13474,15 @@ user_question=\"这段怎么理解？\"",
         for answer in [
             "No citation chosen",
             "Example `[source_ref_one]`",
+            "Example `[source_ref_one].`",
+            "Example `` `[source_ref_one].` ``",
+            "原文写着“标记 [source_ref_one]。”",
             "```text\n[source_ref_one]\n```",
             "> quoted [source_ref_one]",
             "标记 [source_ref_one] 的语法",
             "A claim [unknown]",
             "A claim [source_ref_one](https://example.com)",
+            "A claim.[source_ref_one](https://example.com)",
         ] {
             let compiled =
                 compile_agent_answer(answer, &bindings, &AnswerProvenanceLedger::default())

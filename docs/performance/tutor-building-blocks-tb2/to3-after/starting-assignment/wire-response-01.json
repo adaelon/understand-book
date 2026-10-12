@@ -1,0 +1,35 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": "Now let me read the full passage.",
+        "redacted_reasoning_chars": 64,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"lid\": \"1.1\"}",
+              "name": "book_text"
+            },
+            "id": "call_00_XvDMR6Iba3s2NTDRawAz3352",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 66,
+    "completion_tokens_details": {
+      "reasoning_tokens": 19
+    },
+    "prompt_cache_hit_tokens": 3840,
+    "prompt_cache_miss_tokens": 12643,
+    "prompt_tokens": 16483,
+    "prompt_tokens_details": {
+      "cached_tokens": 3840
+    },
+    "total_tokens": 16549
+  }
+}

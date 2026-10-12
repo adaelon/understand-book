@@ -1,0 +1,21 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"&foo\", \"match_mode\": \"exact\", \"page_size\": 20}",
+      "id": "call_00_wMQbrS2sOrfq9kcMRAVj7483",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"query\": \"bar\", \"match_mode\": \"exact\", \"page_size\": 20}",
+      "id": "call_01_1iCFAjBbMyoJiAZSJe407041",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"query\": \"借用 引用 foo bar 共享引用\", \"limit\": 12}",
+      "id": "call_02_N3FrJ2jC6QGXT26C6tuF1886",
+      "name": "book.concept"
+    }
+  ],
+  "usage_total_tokens": 13389
+}

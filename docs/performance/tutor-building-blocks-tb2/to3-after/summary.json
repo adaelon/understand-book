@@ -1,0 +1,435 @@
+{
+  "common_code_baseline": "93b476da49b005def3f52b7b95bdaff4867e6e7b",
+  "model": "deepseek-v4-flash",
+  "known_total_tokens": 719605,
+  "http_calls": 33,
+  "cumulative_budget": {
+    "http_calls": 33,
+    "monetary_cost": null,
+    "stopped": false,
+    "token_limit": 3000000,
+    "tokens_or_reserved": 719605
+  },
+  "monetary_cost": null,
+  "cases": [
+    {
+      "case": "starting-assignment",
+      "status": "completed",
+      "incomplete": false,
+      "failure": null,
+      "elapsed_ms": 103541,
+      "http_calls": 10,
+      "resident_chat_calls": 8,
+      "wire_logical_calls": 10,
+      "known_total_tokens": 192768,
+      "usage_complete": true,
+      "active_input_estimated_tokens": [
+        14418,
+        17709,
+        18852,
+        20613,
+        22395,
+        23648,
+        36404,
+        38475
+      ],
+      "actual_input_tokens": [
+        13509,
+        16483,
+        17429,
+        360,
+        360,
+        19019,
+        20641,
+        21681,
+        32407,
+        34185
+      ],
+      "actual_output_tokens": [
+        482,
+        66,
+        850,
+        1254,
+        602,
+        355,
+        168,
+        9626,
+        1186,
+        2105
+      ],
+      "wire_bytes_without_private_reasoning": [
+        57560,
+        68859,
+        72864,
+        1633,
+        1633,
+        76979,
+        82583,
+        86549,
+        92295,
+        96268
+      ],
+      "tools": [
+        "book.search_text",
+        "book.search_text",
+        "book.text",
+        "book.search_text",
+        "book.query",
+        "book.context",
+        "book.search_text",
+        "book.text",
+        "source.present",
+        "source.present",
+        "source.present",
+        "source.present",
+        "tutor.step"
+      ],
+      "tool_errors": [],
+      "delivery_count": 1,
+      "moves": [
+        {
+          "actions": [],
+          "capability": "explanation",
+          "intent_origin": "current_request",
+          "intent_quote": "帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
+          "interaction_intent": "direct_explanation",
+          "interpretation_refs": [],
+          "kind": "explain",
+          "move_id": "explain-borrow-foo-shared-access",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "用零所有权的起点解释：`let bar = &foo;` 里的 `&` 是对 foo 的不可变借用，bar 的类型是 &Foo，foo 没有被搬走，所以 foo 和 bar 两行 println 都能读同一个值（同时补充：不是整数的 Foo 用普通赋值会被移动）；最后给一个判断任务——把该行改成 `let bar = foo;` 后程序能否编译、哪一行会出问题。",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "说明 &foo 创建对 foo 的不可变引用（bar: &Foo）因而 foo 未被移动、仍可打印；并判断去掉 & 后 foo 不可再用、程序无法编译",
+            "learning_focus": "借用（&）创建引用而不取得所有权，故 foo 与 bar 都可使用",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tb1-mastering-rust-borrowing-v1",
+                "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        }
+      ],
+      "hypotheses": [],
+      "learner_response_after_delivery": false
+    },
+    {
+      "case": "starting-ownership",
+      "status": "completed",
+      "incomplete": false,
+      "failure": null,
+      "elapsed_ms": 78279,
+      "http_calls": 7,
+      "resident_chat_calls": 7,
+      "wire_logical_calls": 7,
+      "known_total_tokens": 163081,
+      "usage_complete": true,
+      "active_input_estimated_tokens": [
+        14493,
+        17745,
+        18900,
+        20314,
+        21680,
+        34952,
+        36144
+      ],
+      "actual_input_tokens": [
+        13583,
+        16555,
+        17514,
+        18793,
+        19935,
+        31310,
+        32350
+      ],
+      "actual_output_tokens": [
+        438,
+        51,
+        490,
+        242,
+        9827,
+        930,
+        1063
+      ],
+      "wire_bytes_without_private_reasoning": [
+        57795,
+        69207,
+        73275,
+        77068,
+        81127,
+        90222,
+        94356
+      ],
+      "tools": [
+        "book.search_text",
+        "book.search_text",
+        "book.text",
+        "book.context",
+        "book.search_text",
+        "book.text",
+        "tutor.step",
+        "source.present",
+        "source.present",
+        "source.present",
+        "source.present",
+        "source.present",
+        "tutor.step"
+      ],
+      "tool_errors": [],
+      "delivery_count": 1,
+      "moves": [
+        {
+          "actions": [
+            "submit",
+            "request_hint",
+            "reveal"
+          ],
+          "capability": "explanation",
+          "intent_origin": "current_request",
+          "intent_quote": "帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样",
+          "interaction_intent": "guided_inquiry",
+          "interpretation_refs": [
+            "interpretation:to9-borrow-vs-move-gap"
+          ],
+          "kind": "question",
+          "move_id": "borrow-vs-move-prediction",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "把那段程序里的 let bar = &foo; 按你说的“去掉 &”改写成 let bar = foo;（Foo 只派生了 Debug，不是 Copy）。请判断三件事：① 两个 println! 里哪一个会编译失败，失败的直接原因是什么？② 此时 bar 和 foo 分别是什么类型，谁持有那个 Foo 值？③ 这次失败是“借用用错了”，还是别的原因？",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "判断去掉 & 后赋值变成移动、foo 失去可用性，并指出失败的是打印 foo 的那一行，同时说明 bar 的类型由 &Foo 变为 Foo",
+            "learning_focus": "赋值位置上 &Foo 与 Foo 的区别：借用 vs 移动",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tb1-mastering-rust-borrowing-v1",
+                "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        }
+      ],
+      "hypotheses": [
+        {
+          "interpretation": "读者对非 Copy 值的赋值即移动、以及值与变量的区分属于已确认可用的起点，但当前模型里\"赋值＝把值搬走\"似乎是赋值的唯一形式：他无法解释 let bar = &foo; 之后 foo 与 bar 各自仍可用，说明尚未把\"借用产生一个新值（引用）、原所有者不变\"纳入赋值语义。",
+          "teaching_implication": "起点放在\"这一行赋值究竟搬走了什么\"：先给出原文的借用定义与 bar 的类型是 &Foo 这两个结论，再用去掉 & 的对照让他自己判断哪一行失去可用性；不要重讲移动规则本身。",
+          "learner_quote": "我知道非 Copy 的 Foo 赋值会移动，旧绑定之后不能再用；也能分清值和变量。但还没弄清 &Foo 和 Foo 在赋值时有什么区别。\n原文里 let bar = &foo; 后面为什么还能分别打印 foo 和 bar？帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。"
+        }
+      ],
+      "learner_response_after_delivery": false
+    },
+    {
+      "case": "misconception-copy",
+      "status": "failed",
+      "incomplete": null,
+      "failure": {
+        "category": "model_spend",
+        "error_code": "MODEL_CHARGE_RECONCILIATION_REQUIRED",
+        "message": "本次模型费用需要核对，已停止后续模型调用。 本次已完成内容已保存。"
+      },
+      "elapsed_ms": 56285,
+      "http_calls": 6,
+      "resident_chat_calls": 7,
+      "wire_logical_calls": 7,
+      "known_total_tokens": 141787,
+      "usage_complete": true,
+      "active_input_estimated_tokens": [
+        14397,
+        18032,
+        19153,
+        29672,
+        31352,
+        33075,
+        1479
+      ],
+      "actual_input_tokens": [
+        13492,
+        16847,
+        17774,
+        26372,
+        27829,
+        29284
+      ],
+      "actual_output_tokens": [
+        387,
+        55,
+        7228,
+        888,
+        876,
+        755
+      ],
+      "wire_bytes_without_private_reasoning": [
+        57485,
+        70354,
+        74298,
+        82724,
+        88596,
+        94291,
+        5173
+      ],
+      "tools": [
+        "book.search_text",
+        "book.search_text",
+        "book.text",
+        "source.present",
+        "source.present",
+        "source.present",
+        "source.present",
+        "tutor.step",
+        "tutor.step",
+        "tutor.step"
+      ],
+      "tool_errors": [
+        {
+          "tool": "tutor.step",
+          "arguments": "{\"move\":{\"actions\":[\"submit\"],\"capability\":\"explanation\",\"intent_origin\":\"current_request\",\"intent_quote\":\"帮我找出该改哪一步，再让我试着解释\",\"interaction_intent\":\"direct_explanation\",\"interpretation_refs\":[\"interpretation:to1-borrow-vs-copy-hypothesis\"],\"kind\":\"explain\",\"move_id\":\"to1-borrow-not-copy\",\"object_ids\":[],\"prompt\":\"【要改的是哪一步】\\n\\n不在 `let bar = &foo` 这一行的“效果”上，而在更早的一步：你把“赋值”和“借用”当成同一个动作了，于是默认“右边是值 → 左边就得到一份值”。\\n\\n书里这段的原话是：注意变量 foo 前面的 `&`。我们借用了 foo，并把借用赋给 bar。bar 的类型是 `&Foo`，也就是引用类型。[[source:source_ref_9af275d1d3d7826e]] 也就是说，`bar` 里装的不是一份 `Foo`，而是一个指向 `foo` 的引用，它的类型是 `&Foo`。\\n\\n替换后的关系是这样：\\n\\n1. `&` 在这里是借用运算符，不是“取一份副本”。在表达式中的值前写 `&`，会创建对该值的不可变借用，相应的引用类型写作 `&T`。[[source:source_905eaa3cc3af06dd]] 书里还提醒，它“不能简单等同于 C 中不带有效性约束的取地址操作”。[[source:source_ref_46bdf0bd7c28cd49]]\\n2. 借用的语义是：在不取得所有权的情况下临时访问值；它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。[[source:source_ref_46bdf0bd7c28cd49]]\\n3. 所以这行之后，`foo` 那份值既没有多出第二份，也没有被移走，只是被借出去了——这才是书里说“这一次，程序可以编译，因为 main 中的第二行变成了” `let bar = &foo` 的原因。[[source:source_ref_1a3ec5f7971d4632]] 两个 `println!` 都能用的理由不是“有拷贝所以够用”，而是借用没有取走 `foo` 的所有权。\\n\\n把要改的那一步一句话写出来：`&foo` ≠ 复制一份 Foo；`&foo` = 创建一个指向 foo 的引用（`&Foo`），不复制值，也不转移所有权。\\n\\n【我补充的一条规则（这段书里没有展开）】Rust 中 `let bar = foo` 这样的直接赋值默认是移动语义而非复制；`&` 的作用正是让这一行不触发移动。上面“没有多出第二份、也没有被移走”的说法依据的就是这条补充规则，而不是这段原文的直接表述。\\n\\n【轮到你】\\n\\n请用你自己的话解释：`let bar = &foo` 之后，`println!(\\\"Foo is {:?}\\\", foo)` 为什么仍然能编译通过？请把落点放在两点上——(1) `bar` 的实际类型是什么；(2) `foo` 在这行之后其所有权发生了什么。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"用借用语义解释 let bar = &foo 之后两个 println! 都能编译：bar 的类型是 &Foo，借用不取得所有权，也没有复制 Foo\",\"learning_focus\":\"借用表达式创建引用而不是复制值\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+          "result": {
+            "error_code": "TEACHING_INVALID",
+            "category": "validation",
+            "message": "教学文字来源无效"
+          }
+        }
+      ],
+      "delivery_count": 0,
+      "moves": [],
+      "hypotheses": [
+        {
+          "interpretation": "学习者把\"赋值\"和\"借用\"看成同一动作，认为 let bar = &foo 把 Foo 复制了一份给 bar，并由此推断两个 println! 能用是因为存在两份值；尚未把 bar 的类型 &Foo（借用/引用、不取得所有权）与复制区分开。",
+          "teaching_implication": "先在其具体错误连接处（\"& 表达式 = 复制一份值\"）纠正并给出 bar 的类型 &Foo 与\"借用不取得所有权\"这一关系，再把\"为什么两个 println! 都能用\"的解释留给学习者自己完成。",
+          "learner_quote": "我知道变量可以赋值，但对引用的理解是它会复制原值。\n我觉得 let bar = &foo 是把 Foo 复制了一份给 bar，所以两个 println 都能用。这样理解对吗？帮我找出该改哪一步，再让我试着解释。"
+        }
+      ],
+      "learner_response_after_delivery": false
+    },
+    {
+      "case": "direct-explanation",
+      "status": "completed",
+      "incomplete": false,
+      "failure": null,
+      "elapsed_ms": 60825,
+      "http_calls": 10,
+      "resident_chat_calls": 10,
+      "wire_logical_calls": 10,
+      "known_total_tokens": 221969,
+      "usage_complete": true,
+      "active_input_estimated_tokens": [
+        14464,
+        17377,
+        18521,
+        19974,
+        21248,
+        22958,
+        24376,
+        28604,
+        32683,
+        34884
+      ],
+      "actual_input_tokens": [
+        13533,
+        16043,
+        16981,
+        18159,
+        19369,
+        20940,
+        22111,
+        25502,
+        28882,
+        30797
+      ],
+      "actual_output_tokens": [
+        334,
+        50,
+        541,
+        310,
+        490,
+        291,
+        2399,
+        2896,
+        1319,
+        1022
+      ],
+      "wire_bytes_without_private_reasoning": [
+        57685,
+        67953,
+        71977,
+        75009,
+        79105,
+        83766,
+        87782,
+        93026,
+        100208,
+        107430
+      ],
+      "tools": [
+        "book.search_text",
+        "book.structure",
+        "book.text",
+        "book.search_text",
+        "book.context",
+        "book.search_text",
+        "book.search_text",
+        "book.search_text",
+        "book.text",
+        "source.present",
+        "source.present",
+        "source.present",
+        "tutor.step",
+        "tutor.step"
+      ],
+      "tool_errors": [
+        {
+          "tool": "tutor.step",
+          "arguments": "{\"move\":{\"capability\":\"explanation\",\"intent_origin\":\"current_request\",\"intent_quote\":\"请直接完整讲解这段借用代码\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-borrow-basics\",\"object_ids\":[],\"prompt\":\"把这段代码摊开看：\\n\\n```rust\\n#[derive(Debug)]\\nstruct Foo(u32);\\n\\nfn main() {\\n    let foo = Foo(0);\\n    let bar = &foo;\\n    println!(\\\"Foo is {:?}\\\", foo);\\n    println!(\\\"Bar is {:?}\\\", bar);\\n}\\n```\\n\\n**1. &foo 做了什么**\\n`&` 是 Rust 的借用运算符：在表达式里的 place 前写 `&`，就产生一个共享（不可变）借用，也就是一个引用；写 `&mut` 才是可变借用。借用的意义是“不取得所有权就临时访问值”——它不是绕过或放宽所有权规则，而属于所有权模型本身。它的作用对象是有位置的值（place），也正因为有有效性约束，它不能简单等同于 C 里不带约束的取地址。[[source_ref_b7cdf804a5f27a0d]]\\n\\n**2. foo 和 bar 分别是什么**\\n- `foo` 是变量，类型就是 `Foo`，它持有 `Foo(0)` 这个值本身，所有权在它手里。\\n- `bar` 是变量，类型是 `&Foo`，是一个引用类型；它借用 foo，自己不拥有那个 `Foo` 值。原文的措辞是：“我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。”[[source_ref_9af275d1d3d7826e]]\\n\\n同一个值因此同时有两个入口：所有者 foo，以及指向它的引用 bar。\\n\\n**3. 为什么两个都能打印**\\n区别全在第二行是 `let bar = &foo;` 而不是 `let bar = foo;`。因为是借用，foo 的所有权没有被交出去，foo 仍然是该值的所有者；bar 则是指向同一值的引用。两者都处在可用状态，所以两行 `println!` 都合法。书里对这一点只说了一句：“这一次，程序可以编译，因为 main 中的第二行变成了……”[[source_ref_1a3ec3f7971d42cc]]——这里的“这一次”是相对“前面所有权一节中的例子”而言的对照。\\n\\n**4. 去掉 & 会怎样**\\n去掉 `&`，第二行就成了 `let bar = foo;`。这就不是借用了，而是把值移动给 bar。`Foo` 只派生了 `Debug`、内容是 `u32`，并不是 `Copy` 类型，所以这次赋值按移动处理：所有权转到 bar 手里，foo 随即失去使用资格（正是你已有的那条规则）。于是 `println!(\\\"Foo is {:?}\\\", foo)` 这一行会编译失败，而 `println!(\\\"Bar is {:?}\\\", bar)` 仍然合法。\\n这里的取舍可以这样记住：**`=` 加上不带 `&` 的变量名是“交出所有权”，加上 `&` 是“只交出访问权”。**\\n需要说明证据边界：“去掉 & 后第一处打印报错”是结合书里“这一次，程序可以编译”这句对照（意味着原先的写法通不过）与你已知的移动规则推出的结论；那段“前面所有权一节中的例子”并没有随这段文字一起附给我，所以我没有直接读到它的原文。\\n\\n**5. 能不能通过 bar 修改 Foo**\\n不能。bar 的类型是 `&Foo`，即不可变引用/共享借用，书里明确写着：“由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。”[[source_ref_9af275d1d3d7826e]]\\n要经由引用修改，需要的是可变借用 `&mut foo`（原文也提到写 `&mut` 可创建可变借用）[[source_ref_b7cdf804a5f27a0d]]；此外还有本段文字未展开的补充条件：绑定本身要写成 `let mut foo = Foo(0);`，且在可变借用有效期间不能同时存在对 foo 的共享借用。\\n\\n**一句话总括**：这段代码用一次共享借用，把“移动导致旧变量失效”换成了“所有者和引用并存且都能读”，而 `&`（而非 `&mut`）也同时决定了通过 bar 只能读、不能写。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"能完整解释 & 创建的共享借用、foo 与 bar 各自的类型与所有权归属、借用为何使两处打印都成立、去掉 & 变成移动后 foo 不可用，以及不可变引用不能修改值\",\"learning_focus\":\"不可变借用 &foo 与所有权移动的对照（bar: &Foo）\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+          "result": {
+            "error_code": "TEACHING_INVALID",
+            "category": "validation",
+            "message": "教学文字来源无效"
+          }
+        }
+      ],
+      "delivery_count": 1,
+      "moves": [
+        {
+          "actions": [],
+          "capability": "explanation",
+          "intent_origin": "current_request",
+          "intent_quote": "请直接完整讲解这段借用代码",
+          "interaction_intent": "direct_explanation",
+          "interpretation_refs": [],
+          "kind": "explain",
+          "move_id": "explain-borrow-basics",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "把这段代码摊开看：\n\n```rust\n#[derive(Debug)]\nstruct Foo(u32);\n\nfn main() {\n    let foo = Foo(0);\n    let bar = &foo;\n    println!(\"Foo is {:?}\", foo);\n    println!(\"Bar is {:?}\", bar);\n}\n```\n\n**1. &foo 做了什么**\n`&` 是 Rust 的借用运算符：在表达式里的 place 前写 `&`，就产生一个共享（不可变）借用，也就是一个引用；写 `&mut` 才是可变借用。借用的意义是“不取得所有权就临时访问值”——它不是绕过或放宽所有权规则，而属于所有权模型本身。它的作用对象是表达式里有位置的值（place），所以不能简单等同于 C 里不带有效性约束的取地址。[[source:source_ref_b7cdf804a5f27a0d]]\n\n**2. foo 和 bar 分别是什么**\n- `foo` 是变量，类型就是 `Foo`，它持有 `Foo(0)` 这个值本身，所有权在它手里。\n- `bar` 是变量，类型是 `&Foo`，是一个引用类型；它借用 foo，自己不拥有那个 `Foo` 值。原文的措辞是：“我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。”[[source:source_ref_9af275d1d3d7826e]]\n\n同一个值因此同时有两个入口：所有者 foo，以及指向它的引用 bar。\n\n**3. 为什么两个都能打印**\n区别全在第二行是 `let bar = &foo;` 而不是 `let bar = foo;`。因为是借用，foo 的所有权没有被交出去，foo 仍然是该值的所有者；bar 则是指向同一值的引用。两者都处在可用状态，所以两行 `println!` 都合法。书里对这一点只说了一句：“这一次，程序可以编译，因为 main 中的第二行变成了……”[[source:source_ref_1a3ec3f7971d42cc]]这里的“这一次”是相对“前面所有权一节中的例子”而言的对照。\n\n**4. 去掉 & 会怎样**\n去掉 `&`，第二行就成了 `let bar = foo;`。这就不是借用了，而是把值移动给 bar。`Foo` 只派生了 `Debug`、内容是 `u32`，并不是 `Copy` 类型，所以这次赋值按移动处理：所有权转到 bar 手里，foo 随即失去使用资格（正是你已有的那条规则）。于是 `println!(\"Foo is {:?}\", foo)` 这一行会编译失败，而 `println!(\"Bar is {:?}\", bar)` 仍然合法。\n这里的取舍可以这样记住：**`=` 右边写不带 `&` 的变量名是“交出所有权”，写成 `&foo` 是“只交出访问权”。**\n需要说明证据边界：“去掉 & 后第一处打印报错”是结合书里“这一次，程序可以编译”这句对照（意味着原先的写法通不过）与你已知的移动规则推出的结论；那段“前面所有权一节中的例子”并没有随这段文字一起附给我，我没有直接读到它的原文。\n\n**5. 能不能通过 bar 修改 Foo**\n不能。bar 的类型是 `&Foo`，即不可变引用/共享借用，书里明确写着：“由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。”[[source:source_ref_9af275d1d3d7826e]]\n要经由引用修改，需要的是可变借用 `&mut foo`（原文也提到写 `&mut` 可创建可变借用）。[[source:source_ref_b7cdf804a5f27a0d]]此外还有本段文字未展开的补充条件：绑定本身要写成 `let mut foo = Foo(0);`，且在可变借用有效期间不能同时存在对 foo 的共享借用。\n\n**一句话总括**：这段代码用一次共享借用，把“移动导致旧变量失效”换成了“所有者和引用并存而且都能读”，而用 `&` 而不是 `&mut`，也同时决定了通过 bar 只能读、不能写。",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "能完整解释 & 创建的共享借用、foo 与 bar 各自的类型与所有权归属、借用为何使两处打印都成立、去掉 & 变成移动后 foo 不可用，以及不可变引用不能修改值",
+            "learning_focus": "不可变借用 &foo 与所有权移动的对照（bar: &Foo）",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tb1-mastering-rust-borrowing-v1",
+                "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        }
+      ],
+      "hypotheses": [],
+      "learner_response_after_delivery": false
+    }
+  ]
+}

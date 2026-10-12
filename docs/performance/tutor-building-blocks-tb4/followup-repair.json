@@ -1,0 +1,7 @@
+{
+  "changed_field": "select.move.interpretation_refs",
+  "added": "interpretation:tb4-followup-copy-shared-access-observation",
+  "source": "browser-before-ref-completion/followup-result.json evidence.evidence_id",
+  "answer_changed": false,
+  "external_model_calls": 0
+}

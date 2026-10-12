@@ -1,0 +1,16 @@
+{
+  "text": "I'll locate the borrowing example in the source first.",
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"&foo\", \"match_mode\": \"exact\", \"page_size\": 20}",
+      "id": "call_00_HqGptEHLonQxdiupfHSo6737",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{}",
+      "id": "call_01_TYseAqAQDCslr6XgEbPF6867",
+      "name": "book.structure"
+    }
+  ],
+  "usage_total_tokens": 12816
+}

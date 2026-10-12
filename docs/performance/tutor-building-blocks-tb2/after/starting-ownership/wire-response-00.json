@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": "I'll locate the exact passage the learner is referring to, then read the surrounding explanation.",
+        "redacted_reasoning_chars": 828,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"query\": \"bar = &foo\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_00_BrhnT8TZWTNk2CbOaX1u4707",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"query\": \"&foo\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_01_Y61Nv1ZMmT08KJtFAFth9195",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 284,
+    "completion_tokens_details": {
+      "reasoning_tokens": 196
+    },
+    "prompt_cache_hit_tokens": 10752,
+    "prompt_cache_miss_tokens": 1767,
+    "prompt_tokens": 12519,
+    "prompt_tokens_details": {
+      "cached_tokens": 10752
+    },
+    "total_tokens": 12803
+  }
+}
