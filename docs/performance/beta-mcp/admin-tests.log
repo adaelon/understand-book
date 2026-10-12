@@ -1,0 +1,24 @@
+
+> @understand-book/admin@0.0.0 test E:\allwork\download\agent\understand-book-reading-share\apps\admin
+> vitest run
+
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/apps/admin
+
+ ✓ src/lib/usage.test.ts (2 tests) 25ms
+ ✓ src/lib/format.test.ts (2 tests) 23ms
+ ✓ src/lib/api.test.ts (4 tests) 48ms
+ ✓ src/lib/invites.test.ts (4 tests) 23ms
+ ✓ src/lib/operations.test.ts (3 tests) 20ms
+ ✓ src/pages/mcp.test.tsx (15 tests) 4025ms
+   ✓ previews integer packs and submits the fixed-price contract with CSRF  305ms
+   ✓ rejects fractional, zero and unsafe pack counts before preparing an operation  431ms
+   ✓ preserves the exact purchase across timeout and reload, looks up before retrying  435ms
+   ✓ reloads a conflicting revision and uses a new operation only after rejection  418ms
+   ✓ routes mixed receipts to their own correction forms and preserves model correction  388ms
+
+ Test Files  6 passed (6)
+      Tests  30 passed (30)
+   Start at  11:51:45
+   Duration  18.46s (transform 3.40s, setup 0ms, collect 10.67s, tests 4.16s, environment 7.71s, prepare 10.42s)
+

@@ -71,7 +71,9 @@ fn jl4_local_run_reopens_and_public_history_hides_continuation() {
         2
     );
     assert!(kinds.iter().any(|s| s == "activity.recorded"));
-    assert_eq!(kinds.last().unwrap(), "turn.finished");
+    // Teaching receipts can be linked after the run has durably finished.
+    assert_eq!(kinds.iter().filter(|kind| kind.as_str() == "turn.finished").count(), 1);
+    assert_eq!(kinds.iter().rev().find(|kind| kind.as_str() != "teaching.linked").unwrap(), "turn.finished");
     assert!(!state.user.history_path.as_ref().unwrap().exists());
 }
 

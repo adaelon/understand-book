@@ -1,0 +1,109 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/web
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/RightRail.test.ts (52 tests) 1915ms
+ ✓ src/App.startup.test.ts (70 tests) 1586ms
+stderr | src/components/PdfReaderPane.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/PdfReaderPane.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/PdfReaderPane.test.ts (18 tests) 755ms
+ ✓ src/components/IntentArtifactPanel.test.ts (8 tests) 131ms
+stderr | src/components/ReaderPane.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/ReaderPane.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/ReaderPane.test.ts (9 tests) 226ms
+stderr | src/NetworkApp.chat.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.chat.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/NetworkApp.chat.test.ts (6 tests) 391ms
+stderr | src/components/ShareImagePanel.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/ShareImagePanel.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/ShareImagePanel.test.ts (8 tests) 236ms
+ ✓ src/components/ProfileMemoryPanel.test.ts (4 tests) 206ms
+stderr | src/NetworkApp.resumption.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.resumption.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/NetworkApp.resumption.test.ts (9 tests) 191ms
+stderr | src/NetworkApp.recovery.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.recovery.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/NetworkApp.recovery.test.ts (6 tests) 156ms
+ ✓ src/network-client.test.ts (19 tests) 108ms
+ ✓ src/components/TutorPanel.test.ts (7 tests) 628ms
+stderr | src/reading-share.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/reading-share.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/reading-share.test.ts (9 tests) 56ms
+ ✓ src/components/AccountMcp.test.ts (4 tests) 137ms
+ ✓ src/components/AccountSettings.test.ts (4 tests) 85ms
+ ✓ src/components/TutorContinuation.test.ts (6 tests) 78ms
+stderr | src/components/RightRail.pdf-note-placement.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.pdf-note-placement.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/RightRail.pdf-note-placement.test.ts (1 test) 80ms
+ ✓ src/components/ConversationLearningGoal.test.ts (6 tests) 75ms
+ ✓ src/useTutorControl.test.ts (4 tests) 10ms
+stderr | src/NetworkApp.mcp.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.mcp.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/NetworkApp.mcp.test.ts (4 tests) 128ms
+stderr | src/NetworkApp.recap.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.recap.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/NetworkApp.recap.test.ts (1 test) 56ms
+ ✓ src/components/TutorActivities.test.ts (4 tests) 62ms
+ ✓ src/local-reading-action.test.ts (3 tests) 9ms
+ ✓ src/reader-navigation.test.ts (4 tests) 7ms
+ ✓ src/mcp-source.test.ts (3 tests) 9ms
+ ✓ src/mcp-source.integration.test.ts (1 test) 4ms
+ ✓ src/components/TutorControl.test.ts (2 tests) 40ms
+ ✓ src/book-title.test.ts (1 test) 4ms
+
+ Test Files  28 passed (28)
+      Tests  273 passed (273)
+   Start at  08:07:39
+   Duration  62.91s (transform 5.09s, setup 0ms, collect 23.85s, tests 7.37s, environment 69.70s, prepare 12.02s)
+

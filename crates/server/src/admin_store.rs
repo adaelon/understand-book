@@ -51,6 +51,7 @@ pub(crate) enum Command {
     Grant(PublishedBookRef),
     Revoke(PublishedBookRef),
     Allowance(crate::allowance_admin::Mutation),
+    Mcp(crate::mcp_pack::Mutation),
     Reconcile(String, crate::charge_admin::Reconcile),
 }
 impl Command {
@@ -63,12 +64,14 @@ impl Command {
             Self::Grant(_) => "book-grants",
             Self::Revoke(_) => "book-revocations",
             Self::Allowance(m) => m.kind(),
+            Self::Mcp(m) => m.kind(),
             Self::Reconcile(..) => "charge-reconcile",
         }
     }
     fn parameters(&self) -> Value {
         match self {
             Self::Allowance(m) => m.parameters(),
+            Self::Mcp(m) => m.parameters(),
             Self::Reconcile(call, r) => json!({"call_id":call,"reconciliation":r}),
             Self::Status(disabled) => json!({"disabled":disabled}),
             Self::Grant(reference) | Self::Revoke(reference) => {
@@ -121,6 +124,7 @@ impl AdminStore {
         if let Command::Allowance(m) = &mut command {
             m.normalize()?;
         }
+        if let Command::Mcp(m) = &mut command { m.normalize()?; }
         if let Command::Reconcile(_, r) = &mut command { r.normalize()?; }
         let kind = command.kind();
         let parameters = command.parameters();
@@ -167,7 +171,7 @@ impl AdminStore {
         let mut cancelled = 0;
         // Allowance rows reference the operation. Save its final result below in
         // the same transaction, so no placeholder is externally observable.
-        if matches!(command, Command::Allowance(_) | Command::Reconcile(..)) {
+        if matches!(command, Command::Allowance(_) | Command::Mcp(_) | Command::Reconcile(..)) {
             tx.execute(
                 "INSERT INTO admin_operations VALUES(?,?,?,?,?,'{}',?)",
                 params![actor, id, owner, kind, parameters.to_string(), now],
@@ -177,6 +181,7 @@ impl AdminStore {
         let mut allowance_result = None;
         match &command {
             Command::Allowance(m) => allowance_result = Some(m.apply(&tx, actor, id, owner, now)?),
+            Command::Mcp(m) => allowance_result = Some(m.apply(&tx, actor, id, owner, now)?),
             Command::Reconcile(call, r) => allowance_result = Some(r.apply(&tx, actor, id, owner, call, now)?),
             Command::Create(_) | Command::Password(_) => auth::write_password(
                 &tx,
@@ -325,7 +330,7 @@ fn user_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<Value> {
     )
 }
 
-fn replay(
+pub(crate) fn replay(
     db: &Connection,
     actor: &str,
     id: &str,

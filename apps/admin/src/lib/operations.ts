@@ -1,4 +1,5 @@
 import { ApiError } from "./api";
+import type { McpCallPack, McpUsage } from "./types";
 
 export interface Operation {
   operation_id: string;
@@ -14,6 +15,10 @@ export interface Receipt {
   kind: string;
   created_at: number;
   ok: boolean;
+  parameters?: Record<string, unknown>;
+  call_pack?: McpCallPack;
+  usage?: McpUsage;
+  month_hk?: string;
   [key: string]: unknown;
 }
 type Request = <T>(path: string, method?: string, body?: unknown) => Promise<T>;

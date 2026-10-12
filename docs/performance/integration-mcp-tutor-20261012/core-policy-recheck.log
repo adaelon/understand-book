@@ -1,0 +1,57 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/core
+
+ ❯ test/build-orchestrator.test.ts (21 tests | 1 failed | 19 skipped) 8200ms
+   ↓ reuses an accepted BookStructure publication for Tutor after its generation route changes
+   ↓ P2 snapshots and plans inspect preparation without mutating an empty or prepared stage
+   ↓ automatic build orchestrator > U2 resumes partial completed work after relocation and rejects the old executor
+   ↓ automatic build orchestrator > U1 resumes an imported md snapshot after relocation and external edits
+   ↓ automatic build orchestrator > U1 resumes an imported epub snapshot after relocation and external edits
+   ↓ automatic build orchestrator > uses an explicit book id before falling back to the source filename slug
+   ↓ automatic build orchestrator > resolves an existing technical-learning workspace and its source.txt without a Workbench manifest
+   ↓ automatic build orchestrator > falls back to the workspace truth file when the imported technical source is unavailable
+   ↓ automatic build orchestrator > resolves an explicit trusted paper workspace and starts after the foundation
+   ↓ automatic build orchestrator > resolves a reconciled source.txt back to its trusted paper workspace
+   ↓ automatic build orchestrator > fails closed for an untrusted source.txt inside a build workspace
+   ↓ automatic build orchestrator > rejects a paper workspace whose trusted foundation is incomplete
+   ↓ automatic build orchestrator > finds a trusted paper workspace by a unique input sha256
+   ↓ automatic build orchestrator > selects only the first unfinished stage and batches pending semantic tasks
+   ↓ automatic build orchestrator > closes a stage only after every semantic task passes
+   ✓ automatic build orchestrator > prepares the repaired BookStructure prompt alongside a frozen v2 policy  4179ms
+   ↓ automatic build orchestrator > omits Pass2 projection for a confirmed plan that excludes it and retains explicit inspection
+   × automatic build orchestrator > exposes BookStructure without Pass2 and invalidates it when a Pass2 audit arrives later 4019ms
+     → expected false to be true // Object.is equality
+   ↓ automatic build orchestrator > reopens Pass1 when fresh artifacts disagree with the closed base graph
+   ↓ automatic build orchestrator > paper Pass1 close preserves the trusted foundation manifest and PDF maps
+   ↓ automatic build orchestrator > routes fresh paper lexicon fragments into an artifact-bound reducer without mutating build state
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/build-orchestrator.test.ts > automatic build orchestrator > exposes BookStructure without Pass2 and invalidates it when a Pass2 audit arrives later
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/build-orchestrator.test.ts:684:9
+    682|       && unit.kind === "structure_unit"
+    683|       && "execution_budget_proof" in unit
+    684|     ))).toBe(true);
+       |         ^
+    685|     expect(bookStructure?.pending_work_units?.every((unit) => (
+    686|       bookStructure.generation_tasks?.[unit.work_unit_id]?.kind === "b…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed | 19 skipped (21)
+   Start at  08:15:25
+   Duration  13.34s (transform 2.20s, setup 0ms, collect 4.40s, tests 8.20s, environment 0ms, prepare 363ms)
+
+undefined
+E:\allwork\download\agent\understand-book\packages\core:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/build-orchestrator.test.ts -t prepares the repaired BookStructure|exposes BookStructure without Pass2 --maxWorkers=1

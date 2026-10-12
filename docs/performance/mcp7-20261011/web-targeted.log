@@ -1,0 +1,110 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+ ✓ src/mcp-source.test.ts (3 tests) 13ms
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/AccountMcp.test.ts (4 tests) 380ms
+stderr | src/NetworkApp.mcp.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.mcp.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/NetworkApp.mcp.test.ts (4 tests) 228ms
+ ❯ src/App.startup.test.ts (61 tests | 1 failed) 2766ms
+   ✓ sends the real start request with optional teaching assets unavailable 104ms
+   ✓ workspace startup > shows the text-free page animation until the first reading window is ready 60ms
+   ✓ workspace startup > removes the loading animation and exposes the error when material loading fails 20ms
+   ✓ workspace startup > ADM8 keeps a submitted draft when first-chat admission remounts App before returning 69ms
+   ✓ workspace startup > ADM8 projects a real terminal snapshot (saved) and preserves the right draft 58ms
+   ✓ workspace startup > ADM8 projects a real terminal snapshot (failed) and preserves the right draft 56ms
+   ✓ workspace startup > ADM8 projects a real terminal snapshot (new-draft) and preserves the right draft 61ms
+   ✓ workspace startup > ADM8 restores a denied draft and quote, exposes the allowance action, and only explicitly continues the original goal 80ms
+   ✓ workspace startup > ADM8 recovers a saved spend stop from history using its code without claiming task completion 52ms
+   ✓ workspace startup > passes the table renderer and canonical focus marks to the reader 150ms
+   ✓ workspace startup > restores the unsent message and quote after the network scene remounts 43ms
+   ✓ workspace startup > rebinds the network workspace before retrying a failed history read 55ms
+   ✓ workspace startup > JL9 resumes a recap target after the original chat has loaded 40ms
+   ✓ workspace startup > uses the attached network reading position without another state round trip 25ms
+   ✓ workspace startup > does not wait for PDF metadata when the saved surface is text 24ms
+   ✓ workspace startup > shows text without waiting for annotations or profile configuration 36ms
+   ✓ workspace startup > starts independent material requests together 31ms
+   ✓ workspace startup > shows the reader while history and profile are still pending 37ms
+   ✓ workspace startup > keeps the reader and unsent draft available when history fails, and supports retry 46ms
+   ✓ workspace startup > ignores history from the previous book after a book switch 59ms
+   ✓ JL6 effect receipts in chat > submits the stable effect identity and restores handled state after reload 101ms
+   ✓ RN2 presentation note draft > keeps the captured association across collapse, chat change and save failure 56ms
+   ✓ RN2 presentation note draft > edits a reactive saved note through replace and binds follow-up to the selected chat 38ms
+   ✓ RN3 unified note draft > records answers directly with their fixed turn, preserving the composer and reading position 39ms
+   ✓ RN3 unified note draft > processes another note with continue, failure, save and discard without overwriting the draft 43ms
+   ✓ RN3 unified note draft > keeps whitespace meaningful to Markdown when saving a legacy note 21ms
+   ✓ RN3 unified note draft > guards material switches and unload, and preserves failed text before leaving 37ms
+   ✓ RN3 unified note draft > clears private drafts on an identity change and ignores late save failures 32ms
+   ✓ RN3 unified note draft > opens original notes from ReaderPane with read-only excerpts and atomic text editing 31ms
+   ✓ RN3 unified note draft > opens original notes from RightRail with read-only excerpts and atomic text editing 26ms
+   ✓ RN4 note continuity > uses the replacement identity immediately and keeps a failed delete visible 41ms
+   ✓ RN4 note continuity > opens the original answer and reports a deleted chat without changing notes 25ms
+   ✓ RN4 note continuity > does not apply a late recall after changing publication 33ms
+   ✓ RN4 note continuity > does not apply a late recall after changing identity 22ms
+   ✓ RN4 note continuity > only projects the current publication for structured notes while retaining unknown legacy records 45ms
+   ✓ RN4 searches and displays all parts of a grouped highlight without changing its deletion identity 13ms
+   ✓ RS1 shared note selection and scope > keeps saved text and an independent editing draft untouched while using the real book title 54ms
+   ✓ RS1 shared note selection and scope > clears a pending source read on chat change 21ms
+   ✓ RS1 shared note selection and scope > clears a pending source read on identity change 31ms
+   ✓ RS1 shared note selection and scope > clears a pending source read on publication change 27ms
+   ✓ RS1 shared note selection and scope > clears a pending source read on material change 45ms
+   ✓ RS1 shared note selection and scope > does not manufacture a source for a legacy unplaced note or after metadata failure 42ms
+   ✓ RS1 shared note selection and scope > loads the existing material name even when the book picker has never been opened 34ms
+   ✓ RS1 shared note selection and scope > ignores a late library title after the share is closed 42ms
+   ✓ RS1 shared note selection and scope > discards late PNG output after identity changes the reader scene 52ms
+   ✓ RS1 shared note selection and scope > discards late PNG output after material changes the reader scene 63ms
+   ✓ RS1 shared note selection and scope > discards late PNG output after publication changes the reader scene 45ms
+   ✓ RS1 shared note selection and scope > discards late PNG output after chat changes the reader scene 49ms
+   ✓ RS2 shares all actual highlight group members and their chapter labels without trusting the UI preview text 48ms
+   ✓ RS6 delivered answer sharing > freezes the selected historical answer and resolves multiple original materials without current metadata 37ms
+   ✓ RS6 delivered answer sharing > keeps an unavailable original label and shares unsourced answers without inventing an attribution 41ms
+   ✓ RS6 delivered answer sharing > rejects incomplete answers and text outside the delivered answer 48ms
+   ✓ RS6 delivered answer sharing > ignores late original sources after close 32ms
+   ✓ RS6 delivered answer sharing > ignores late original sources after chat 79ms
+   ✓ RS6 delivered answer sharing > ignores late original sources after identity 35ms
+   ✓ RS6 delivered answer sharing > ignores late original sources after publication 42ms
+   ✓ RS7 shared diagram lifetime > handles success while a diagram is being prepared 32ms
+   ✓ RS7 shared diagram lifetime > handles chat while a diagram is being prepared 48ms
+   ✓ RS7 shared diagram lifetime > handles identity while a diagram is being prepared 22ms
+   ✓ RS7 shared diagram lifetime > handles new-share while a diagram is being prepared 34ms
+   × MCP7 opens exact UTF-16 evidence in canonical text without saving a highlight 50ms
+     → expected "spy" to be called with arguments: [ '1.1' ]
+
+Number of calls: 0
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/App.startup.test.ts > MCP7 opens exact UTF-16 evidence in canonical text without saving a highlight
+AssertionError: expected "spy" to be called with arguments: [ '1.1' ]
+
+Number of calls: 0
+
+ ❯ src/App.startup.test.ts:790:20
+    788|   } } } });
+    789|   wrappers.push(wrapper); await flushPromises();
+    790|   expect(api.goto).toHaveBeenCalledWith('1.1');
+       |                    ^
+    791|   expect(wrapper.get('.source-focus-mark').text()).toBe('即阅读的');
+    792|   expect(wrapper.emitted('mcp-source-consumed')).toHaveLength(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 71 passed (72)
+   Start at  11:14:35
+   Duration  24.73s (transform 7.46s, setup 0ms, collect 17.40s, tests 3.39s, environment 25.77s, prepare 6.32s)
+
+undefined
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/components/AccountMcp.test.ts src/mcp-source.test.ts src/NetworkApp.mcp.test.ts src/App.startup.test.ts

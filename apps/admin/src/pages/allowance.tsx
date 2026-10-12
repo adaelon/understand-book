@@ -5,6 +5,7 @@ import { useData, DataState, DataTable, Pagination } from "@/components/data";
 import { Field, OperationDialog, useOperations } from "@/components/operation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { McpCorrectionDialog } from "./mcp";
 
 export function AllowancePanel({
   userId,
@@ -282,12 +283,16 @@ const operationNames: Record<string, string> = {
   receipts: "登记收款",
   "receipt-corrections": "收款更正",
   "charge-reconcile": "费用核算",
+  "mcp-packs": "登记 MCP 购包",
+  "mcp-free-gift": "赠送 MCP 当月次数",
+  "mcp-corrections": "更正 MCP 收款 / 次数",
 };
 type Row = Record<string, string | number | null>;
 export function HistoryPanel({ userId }: { userId: string }) {
   const [kind, setKind] = useState("receipts"),
     [offset, setOffset] = useState(0),
     [correction, setCorrection] = useState<Row | null>(null);
+  const [mcpReceiptId, setMcpReceiptId] = useState<string | null>(null);
   const [periodId, setPeriodId] = useState(""),
     [periodOffset, setPeriodOffset] = useState(0);
   const base = `/admin/users/${encodeURIComponent(userId)}`,
@@ -322,6 +327,12 @@ export function HistoryPanel({ userId }: { userId: string }) {
               kind === "receipts"
                 ? [
                     {
+                      header: "收款用途 / 权益",
+                      cell: ({ row }) => row.original.entitlement_kind === "mcp_call_pack"
+                        ? <span className="break-all">MCP 调用包 · {row.original.pack_id}</span>
+                        : <span className="break-all">模型使用额度 · {row.original.period_id}</span>,
+                    },
+                    {
                       header: "付款时间",
                       cell: ({ row }) => date(Number(row.original.paid_at)),
                     },
@@ -343,6 +354,10 @@ export function HistoryPanel({ userId }: { userId: string }) {
                           variant="outline"
                           disabled={ops.blocked}
                           onClick={() => {
+                            if (row.original.entitlement_kind === "mcp_call_pack") {
+                              setMcpReceiptId(String(row.original.receipt_id));
+                              return;
+                            }
                             setCorrection(row.original);
                             setPeriodId(String(row.original.period_id));
                           }}
@@ -369,6 +384,10 @@ export function HistoryPanel({ userId }: { userId: string }) {
                       },
                     ]
                   : [
+                      ...(kind === "receipt-corrections" ? [{
+                        header: "收款用途 / 原收款",
+                        cell: ({ row }: { row: { original: Row } }) => `${row.original.entitlement_kind === "mcp_call_pack" ? "MCP 调用包" : "模型使用额度"} · ${row.original.receipt_id}`,
+                      }] : []),
                       {
                         header: "时间",
                         cell: ({ row }) =>
@@ -445,6 +464,7 @@ export function HistoryPanel({ userId }: { userId: string }) {
           <Input name="reason" required />
         </Field>
       </OperationDialog>
+      {mcpReceiptId && <McpCorrectionDialog userId={userId} receiptId={mcpReceiptId} close={() => setMcpReceiptId(null)} />}
     </section>
   );
 }

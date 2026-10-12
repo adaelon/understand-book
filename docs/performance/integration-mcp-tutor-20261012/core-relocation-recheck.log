@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/core
+
+ ✓ test/build-orchestrator.test.ts (21 tests | 19 skipped) 7630ms
+   ✓ automatic build orchestrator > U1 resumes an imported md snapshot after relocation and external edits  3798ms
+   ✓ automatic build orchestrator > U1 resumes an imported epub snapshot after relocation and external edits  3831ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 19 skipped (21)
+   Start at  08:13:46
+   Duration  12.99s (transform 2.44s, setup 0ms, collect 4.66s, tests 7.63s, environment 0ms, prepare 343ms)
+

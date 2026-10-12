@@ -1,0 +1,133 @@
+    Blocking waiting for file lock on build directory
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 9.57s
+     Running unittests src\lib.rs (target\debug\deps\server-e6140f0c20c22aad.exe)
+
+running 29 tests
+test mcp::tests::mcp_tool_characterization ... FAILED
+test mcp::tests::tools_list_excludes_private_and_bare_route_tools ... ok
+test mcp::tests::book_concept_v2_mcp_contract_and_dispatch ... ok
+test mcp::tests::unconfigured_adapter_errors_do_not_create_tier1_session ... ok
+test mcp::tests::concurrent_visitor_sessions_are_isolated ... ok
+test mcp::tests::artifact_tools_fail_closed_when_overlay_is_unavailable ... ok
+test mcp::tests::jsonrpc_tools_call_wraps_tool_result ... ok
+test mcp::tests::book_guide_opens_refines_and_closes_ephemeral_session ... ok
+test mcp::tests::artifact_refs_fail_closed_after_the_current_snapshot_changes ... ok
+test mcp::tests::expired_visitor_sessions_are_gc_during_dispatch ... ok
+test mcp::tests::artifact_tools_use_the_shared_executor_and_reread_snapshot_per_call ... ok
+test tests::mu3_tests::mu3_url_binding_preserves_user_and_source_plaintext ... ok
+test mcp::tests::tier1_readonly_calls_do_not_create_visitor_session ... ok
+test mcp::tests::visitor_dispatch_has_no_reader_or_memory_branch ... ok
+test tests::search_text_rest_mcp_and_resident_contracts_have_parity ... ok
+test tests::search_text_real_book_mcp_pages_match_the_core_result ... FAILED
+test mcp::tests::visitor_guide_never_reads_or_injects_reader_private_profile ... ok
+test tests::mu3_tests::book_cover_local_reads_an_unopened_book_and_pdf_without_switching_the_reader ... ok
+test tests::mu3_tests::mu3_unready_build_and_unsafe_declared_dependency_never_become_defaults ... ok
+test tests::mu3_tests::book_cover_publication_copies_metadata_cover_and_enforces_grants_without_loading_book ... ok
+test tests::mu3_tests::mu3_writer_reopen_preserves_sealed_package_permissions ... ok
+test tests::mu3_tests::mu3_failed_registration_is_invisible_and_byte_budget_prevents_loading ... ok
+test tests::mu3_tests::mu3_service_metadata_reopens_defaults_and_schema_one_upgrades_without_losing_users ... ok
+test tests::mu3_tests::mu3_publications_isolate_same_name_resources_and_require_grants_on_cache_hits ... ok
+test tests::mu3_tests::mu3_default_change_keeps_old_run_history_and_capacity_pins ... ok
+test tests::mu3_tests::tutor_t15_publication_preserves_admission_without_private_build_files ... ok
+test tests::mu3_tests::mu3_published_localization_is_shared_single_flight_and_urls_are_bound ... ok
+test tests::mu3_tests::mu3_readonly_pdf_package_relocates_attachments_and_routes_without_writes ... ok
+test tests::mu3_tests::mu3_rejects_revised_content_missing_dependencies_and_preserves_teaching_readiness ... ok
+
+failures:
+
+---- mcp::tests::mcp_tool_characterization stdout ----
+
+thread 'mcp::tests::mcp_tool_characterization' (14232) panicked at crates\server\src\mcp.rs:1109:9:
+assertion `left == right` failed
+  left: Null
+ right: Array [String("near"), String("mid"), String("far")]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- tests::search_text_real_book_mcp_pages_match_the_core_result stdout ----
+
+thread 'tests::search_text_real_book_mcp_pages_match_the_core_result' (38016) panicked at crates\server\src\lib.rs:19950:68:
+called `Result::unwrap()` on an `Err` value: "读 base.json 失败: 系统找不到指定的路径。 (os error 3)"
+
+
+failures:
+    mcp::tests::mcp_tool_characterization
+    tests::search_text_real_book_mcp_pages_match_the_core_result
+
+test result: FAILED. 27 passed; 2 failed; 0 ignored; 0 measured; 663 filtered out; finished in 1.73s
+
+error: test failed, to rerun pass `-p server --lib`

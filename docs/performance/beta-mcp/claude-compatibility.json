@@ -1,0 +1,26 @@
+{
+  "client": "Claude Code 2.1.196",
+  "model": "claude-opus-4-8",
+  "mcp_servers": [
+    {
+      "name": "beta",
+      "status": "connected"
+    }
+  ],
+  "tools": [
+    "mcp__beta__book_concept",
+    "mcp__beta__book_context",
+    "mcp__beta__book_guide_path",
+    "mcp__beta__book_list",
+    "mcp__beta__book_paper_lexicon",
+    "mcp__beta__book_paper_metadata",
+    "mcp__beta__book_paper_reading_guide",
+    "mcp__beta__book_search_text",
+    "mcp__beta__book_structure",
+    "mcp__beta__book_text",
+    "mcp__beta__mcp_usage"
+  ],
+  "model_http_status": 401,
+  "content_calls": 0,
+  "result": "MCP discovery succeeded; model authentication failed with HTTP 401"
+}

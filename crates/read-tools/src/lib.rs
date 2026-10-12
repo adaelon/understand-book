@@ -1426,6 +1426,20 @@ pub struct ToolError {
     pub message: String,
 }
 
+/// Remote source pages count Unicode scalar values; all positions remain UTF-16.
+pub const MCP_TEXT_PAGE_CHARS: usize = 8_000;
+
+#[cfg(test)]
+mod mcp_text_page_tests;
+
+#[derive(Debug, Serialize)]
+pub struct TextPage {
+    pub text: String,
+    pub source_range: Span,
+    pub requested_range: Span,
+    pub next_start_utf16: Option<usize>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SourceTextRange {
     pub start: u32,
@@ -5711,6 +5725,63 @@ impl Book {
             None => self.node(lid)?.span.end,
         };
         Ok(String::from_utf16_lossy(&self.source_u16[start..end]))
+    }
+
+    /// Read a bounded page directly from the canonical source, without allocating the full range.
+    /// `start_utf16` is an absolute source position returned by the previous page.
+    pub fn text_page(
+        &self,
+        lid: &str,
+        end_lid: Option<&str>,
+        start_utf16: Option<usize>,
+    ) -> Result<TextPage, ToolError> {
+        let first = self.node(lid)?;
+        let last = self.node(end_lid.unwrap_or(lid))?;
+        let requested_range = Span {
+            start: first.span.start,
+            end: last.span.end,
+        };
+        let invalid = || {
+            invalid_source_range(
+                "Use an ordered LID range and a UTF-16 character boundary inside that range",
+            )
+        };
+        let boundary = |at: usize| {
+            at <= self.source_u16.len()
+                && !(at > 0
+                    && at < self.source_u16.len()
+                    && (0xD800..=0xDBFF).contains(&self.source_u16[at - 1])
+                    && (0xDC00..=0xDFFF).contains(&self.source_u16[at]))
+        };
+        if first.span.start > last.span.start
+            || requested_range.start > requested_range.end
+            || !boundary(requested_range.start)
+            || !boundary(requested_range.end)
+        {
+            return Err(invalid());
+        }
+        let start = start_utf16.unwrap_or(requested_range.start);
+        if start < requested_range.start
+            || start > requested_range.end
+            || !boundary(start)
+            || (start == requested_range.end && start != requested_range.start)
+        {
+            return Err(invalid());
+        }
+        let units = &self.source_u16[start..requested_range.end];
+        let mut end = start;
+        let mut text = String::new();
+        for ch in char::decode_utf16(units.iter().copied()).take(MCP_TEXT_PAGE_CHARS) {
+            let ch = ch.map_err(|_| invalid())?;
+            end += ch.len_utf16();
+            text.push(ch);
+        }
+        Ok(TextPage {
+            text,
+            source_range: Span { start, end },
+            next_start_utf16: (end < requested_range.end).then_some(end),
+            requested_range,
+        })
     }
 
     fn source_passage(

@@ -102,7 +102,7 @@ impl Site {
 }
 pub(crate) struct Headers(pub Vec<(String, String)>);
 impl Headers {
-    fn get(&self, name: &str) -> Option<&str> {
+    pub(crate) fn get(&self, name: &str) -> Option<&str> {
         let mut values = self
             .0
             .iter()
@@ -129,7 +129,7 @@ pub(crate) struct HttpReply {
     )>,
 }
 impl HttpReply {
-    fn json(value: Value) -> Self {
+    pub(crate) fn json(value: Value) -> Self {
         Self {
             status: 200,
             body: value.to_string().into_bytes(),
@@ -378,7 +378,14 @@ pub(crate) fn start_with_access(
 }
 
 fn respond(request: tiny_http::Request, reply: HttpReply) {
+    let remote_mcp = request.url().split('?').next() == Some("/mcp");
     let mut response = Response::from_data(reply.body).with_status_code(reply.status);
+    if remote_mcp && reply.status == 405 {
+        response.add_header(Header::from_bytes("Allow", "POST").unwrap());
+    }
+    if remote_mcp && reply.status == 401 {
+        response.add_header(Header::from_bytes("WWW-Authenticate", "Bearer realm=\"understand-book-mcp\"").unwrap());
+    }
     if reply.content_type == "application/pdf" {
         // Both complete and bounded PDF responses have a known Content-Length.
         response = response.with_chunked_threshold(usize::MAX);
@@ -409,6 +416,12 @@ pub(crate) fn dispatch(
     body: &str,
     now: i64,
 ) -> HttpReply {
+    if url.split('?').next() == Some("/mcp") {
+        if let Err(error) = site.validate(headers, false) {
+            return HttpReply::error(error);
+        }
+        return crate::remote_mcp::dispatch(access, &site.origin, method, headers, body);
+    }
     let result = (|| -> Result<HttpReply, ToolError> {
         site.validate(headers, !matches!(method, "GET" | "HEAD"))?;
         // Only this fixed credential-free shell is public. No SPA/static fallback for unknown URLs.
@@ -528,8 +541,27 @@ pub(crate) fn dispatch(
             }
         }
         let capability = authorization::capability(path)?;
-        // Login/logout/me do not load private state; all other routes get the authenticated authority.
+        // Account management does not load private Reader state.
         match capability {
+            Capability::McpList => {
+                expect_method(method, "GET")?;
+                if !query.is_empty() || !matches!(input, Value::Null) { return Err(invalid()); }
+                let credentials = access.mcp_access.list(&principal, now)?;
+                let usage = crate::remote_mcp::usage_value(access.mcp_usage.status(principal.user_id())?, 0, Value::Null, &site.origin);
+                return Ok(HttpReply::json(json!({"credentials":credentials,"usage":usage,"mcp_url":format!("{}/mcp", site.origin)})));
+            }
+            Capability::McpCreate => {
+                expect_method(method, "POST")?;
+                if !query.is_empty() { return Err(invalid()); }
+                let input: crate::mcp_access::Create = serde_json::from_value(input).map_err(|_| invalid())?;
+                return Ok(HttpReply::json(json!(access.mcp_access.create(&principal, &input.label, now)?)));
+            }
+            Capability::McpRevoke(ref id) => {
+                expect_method(method, "POST")?;
+                if !query.is_empty() || !(input.is_null() || input.as_object().is_some_and(|v|v.is_empty())) { return Err(invalid()); }
+                access.mcp_access.revoke(&principal, id, now)?;
+                return Ok(HttpReply::json(json!({"revoked":true})));
+            }
             Capability::Password => {
                 expect_method(method, "POST")?;
                 if !query.is_empty() { return Err(invalid()); }
@@ -904,7 +936,7 @@ pub(crate) fn dispatch(
                 }
                 Ok(HttpReply::from_reply(reply))
             }
-            Capability::Me | Capability::Logout | Capability::Allowance | Capability::AccountUsage | Capability::EmailBinding | Capability::Password => unreachable!(),
+            Capability::Me | Capability::Logout | Capability::Allowance | Capability::AccountUsage | Capability::EmailBinding | Capability::Password | Capability::McpList | Capability::McpCreate | Capability::McpRevoke(_) => unreachable!(),
         }
     })();
     match result {

@@ -1,0 +1,9 @@
+
+> @understand-book/admin@0.0.0 typecheck E:\allwork\download\agent\understand-book-reading-share\apps\admin
+> tsc --noEmit
+
+src/pages/mcp.test.tsx(163,55): error TS2550: Property 'findLastIndex' does not exist on type 'any[][]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2023' or later.
+src/pages/mcp.test.tsx(163,73): error TS7031: Binding element 'opts' implicitly has an 'any' type.
+E:\allwork\download\agent\understand-book-reading-share\apps\admin:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @understand-book/admin@0.0.0 typecheck: `tsc --noEmit`
+Exit status 2

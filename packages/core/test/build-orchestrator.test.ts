@@ -615,19 +615,17 @@ describe("automatic build orchestrator", () => {
     if (!stage?.policy_set) throw new Error("expected BookStructure production policies");
     const previous = {
       ...stage.policy_set,
-      members: stage.policy_set.members.map(member => ({
+      members: stage.policy_set.members.map(member => member.policy_generation_id.endsWith(".v4") ? ({
         ...member, policy_generation_id: member.policy_generation_id.replace(/\.v\d+$/u, ".v2"),
         semantic_contract: { ...member.semantic_contract, prompt_sha256: "a".repeat(64) },
-      })),
+      }) : member),
     };
     freezeAutomaticBuildStagePolicySet(target, previous);
     const before = previous.members.map(member => readFileSync(path.join(workspace, ".build", "automatic-build",
       "v4", "policies", "book_structure", member.policy_generation_id, "policy.json")));
     expect(prepareAutomaticBuildSnapshot(target, "book_structure").status).toBe("ready");
     const current = buildAutomaticBuildSnapshot(target).stages.find(item => item.stage === "book_structure");
-    expect(current?.policy_set?.members.every(member => member.policy_generation_id.endsWith(
-      ["structure_unit", "structure_fragment", "structure_reduce", "structure_stitch", "structure_stitch_fragment"].includes(member.kind) ? ".v4" : ".v1",
-    ))).toBe(true);
+    expect(current?.policy_set).toEqual(stage.policy_set);
     previous.members.forEach((member, index) => expect(readFileSync(path.join(workspace, ".build", "automatic-build",
       "v4", "policies", "book_structure", member.policy_generation_id, "policy.json"))).toEqual(before[index]));
   });

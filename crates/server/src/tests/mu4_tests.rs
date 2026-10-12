@@ -11,6 +11,27 @@ use crate::{
 const PASSWORD: &str = "fixture-only-password";
 const ORIGIN: &str = "https://reader.example";
 
+fn persist_fixture_session(user: &mut crate::user_runtime::UserRuntime, mut session: AgentChatSession) {
+    use crate::session_event::{EventBody, TurnFinished};
+    assert_eq!(session.turns.len(), 1);
+    let mut turn = session.turns.pop().unwrap();
+    let finished = TurnFinished {
+        status: turn.status.clone(), outcome: turn.outcome.take(), error: turn.error.take(),
+        run_summary: turn.run_summary.clone(), source_bindings: turn.source_bindings.clone(),
+        delivery_diagnostics: turn.delivery_diagnostics.clone(), goal_ref: turn.goal_ref.clone(),
+        goals: session.goals.clone(), history_revision: None,
+    };
+    turn.status = AgentAssistantStatus::PendingAssistant;
+    let session_id = session.id.clone();
+    let turn_id = turn.turn_id.clone();
+    let at = session.updated_at.clone();
+    let store = user.session_store.as_mut().unwrap();
+    store.create(&mut user.agent_history, session.clone()).unwrap();
+    session.turns.push(turn);
+    store.accept(&mut user.agent_history, session, &at).unwrap();
+    store.append(&mut user.agent_history, &session_id, &at, Some(&turn_id), EventBody::TurnFinished(finished)).unwrap();
+}
+
 #[test]
 fn multi_user_review_consumes_idle_jobs_without_holding_user_lock() {
     let f = Fixture::unseeded();
@@ -164,8 +185,7 @@ impl Fixture {
             session.id = format!("chat-{id}");
             session.title = format!("{id}-private-title");
             session.turns.push(turn);
-            user.agent_history.sessions.push(session);
-            save_agent_history_path(&user.history_path, &user.agent_history).unwrap();
+            persist_fixture_session(&mut user, session);
             self.control
                 .connection
                 .execute(
@@ -812,7 +832,7 @@ fn mu4_same_legacy_ids_and_delivered_presentation_stay_in_user_root() {
     for id in ["A", "B"] {
         let handle = f.access.users.lock().unwrap().get(id, "now").unwrap();
         let mut user = handle.lock().unwrap();
-        let session = &mut user.agent_history.sessions[0];
+        let mut session = user.agent_history.sessions[0].clone();
         session.id = "chat-same".into();
         session.turns[0].turn_id = "turn-same".into();
         session.turns[0].status = AgentAssistantStatus::Completed;
@@ -871,7 +891,7 @@ fn mu4_same_legacy_ids_and_delivered_presentation_stay_in_user_root() {
             .join("versions/presentation-same/1.json");
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, serde_json::to_vec(&version).unwrap()).unwrap();
-        save_agent_history_path(&user.history_path, &user.agent_history).unwrap();
+        persist_fixture_session(&mut user, session);
     }
     let server = f.start();
     for id in ["A", "B"] {

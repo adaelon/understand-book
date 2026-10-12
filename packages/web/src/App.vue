@@ -15,8 +15,9 @@ import type { ScrollAnchor } from './reader-text-anchor';
 import { typographyHtml } from './reader-typography';
 import { recoverSubmissions, recoverWorkspaceBinding, pendingSubmissions } from './network-client';
 import type { RecapTarget } from './session-recap';
-const recapProps = defineProps<{ recapTarget?: RecapTarget | null; chatDraft?: ChatDraft | null }>();
-const recapEmit = defineEmits<{ (e: 'recap-publication', target: RecapTarget): void; (e: 'recap-consumed'): void; (e: 'update:chatDraft', draft: ChatDraft): void; (e: 'show-allowance'): void; (e: 'show-library'): void }>();
+import { resolveMcpSource, displayedSourceRange, type McpSource } from './mcp-source';
+const recapProps = defineProps<{ recapTarget?: RecapTarget | null; mcpSource?: McpSource | null; chatDraft?: ChatDraft | null }>();
+const recapEmit = defineEmits<{ (e: 'mcp-source-consumed'): void; (e: 'mcp-source-error', message: string): void; (e: 'recap-publication', target: RecapTarget): void; (e: 'recap-consumed'): void; (e: 'update:chatDraft', draft: ChatDraft): void; (e: 'show-allowance'): void; (e: 'show-library'): void }>();
 import { spendNotice, type SpendNotice } from './account-allowance';
 const api = bindSceneApi(sharedApi, readerKey);
 const mountedReaderKey = readerKey();
@@ -253,6 +254,7 @@ const readerPaneRef = ref<{
   captureScrollAnchor: (candidateLids: string[]) => ScrollAnchor | null;
   restoreScrollAnchor: (anchor: ScrollAnchor | null, current?: () => boolean) => Promise<void>;
   scrollLidIntoView: (lid: string) => Promise<boolean>;
+  scrollSourceIntoView: (lid: string) => Promise<boolean>;
 } | null>(null);
 const pdfReaderPaneRef = ref<{
   captureReadingAnchor: () => PdfReadingAnchor | null;
@@ -295,6 +297,7 @@ const chapterTitle = ref<string>("");
 interface SourceFocus {
   lid: string;
   quote: string | null;
+  ranges?: Map<string, [number, number]>;
 }
 interface SourcePreview {
   focus: SourceFocus;
@@ -303,6 +306,7 @@ interface SourcePreview {
   error: string | null;
 }
 const sourceFocus = ref<SourceFocus | null>(null);
+const sourceManifestTree = ref<import("./api").Manifest | null>(null);
 const sourcePreview = ref<SourcePreview | null>(null);
 const sourcePreviewBodyRef = ref<HTMLElement | null>(null);
 const profileSummary = ref<ProfileSummary | null>(null);
@@ -1117,7 +1121,9 @@ function sourceFocusRange(text: string, focus: SourceFocus | null, lid: string):
 function renderSegWithFocus(seg: Segment, focus: SourceFocus | null, sourceSegments: Segment[], includeStoredHighlights: boolean): string {
   const display = isRawAssetSegment(seg) ? { text: seg.text, offset: 0 } : displayText(seg);
   const hls = includeStoredHighlights ? highlightsOf(seg.lid).filter((h) => h.range) : [];
-  const focusRange = sourceFocusRangesIn(sourceSegments, focus).get(seg.lid) ?? sourceFocusRange(display.text, focus, seg.lid);
+  const focusRange = focus?.ranges
+    ? displayedSourceRange(focus.ranges.get(seg.lid), display.offset, display.text.length)
+    : sourceFocusRangesIn(sourceSegments, focus).get(seg.lid) ?? sourceFocusRange(display.text, focus, seg.lid);
   if (hls.length === 0 && !focusRange) return renderSegmentText(seg, display.text);
   const ranges: MarkedSourceRange[] = hls
     .map((h) => {
@@ -2285,6 +2291,7 @@ async function init() {
     }
     noteSourceFingerprint.value = noteSource.source_fingerprint;
     await nextTick(); // Apply this book's saved reading surface before deciding what blocks display.
+    sourceManifestTree.value = m;
     kindByLid.value = new Map(m.tree.map((n) => [n.lid, n.kind]));
     imageAssetByLid.value = new Map(assets.images.map((img) => [img.lid, img]));
     leafOrder.value = m.tree.filter((n) => n.children.length === 0).map((n) => n.lid);
@@ -2534,7 +2541,7 @@ async function onScrollEdge(direction: "up" | "down") {
   edgeLoading.value = true;
   try {
     banner.value = "";
-    sourceFocus.value = null;
+    if (!sourceFocus.value?.ranges) sourceFocus.value = null;
     const next = await hydrateSegments(nextLids);
     segments.value = mergeSegments(segments.value, next, direction === "down" ? "append" : "prepend");
     if (direction === "up") await readerPaneRef.value?.restoreScrollAnchor(anchor);
@@ -2580,6 +2587,31 @@ async function doGoto(lid: string, focusQuote?: string | null, restoreCurrent?: 
     return false;
   }
 }
+let openingMcpSource = false;
+watch(() => [recapProps.mcpSource, appSurface.value] as const, async ([source, surface]) => {
+  if (!source || surface !== 'reader' || openingMcpSource || !sourceManifestTree.value) return;
+  openingMcpSource = true;
+  const current = () => !disposed && recapProps.mcpSource === source && readerKey() === mountedReaderKey;
+  try {
+    const publication = network.value.workspace?.published_book_ref;
+    if (!publication || publication.book_id !== source.published_book_ref.book_id
+      || publication.publication_id !== source.published_book_ref.publication_id) throw new Error('来源材料版本不匹配。');
+    const target = resolveMcpSource(source, sourceManifestTree.value);
+    // Canonical UTF-16 citations open on the canonical text surface, including PDF materials.
+    readerSurfacePreference.value = 'markdown';
+    await nextTick();
+    if (!current()) return;
+    workspaceRef.value?.showReader();
+    if (!await doGoto(target.lid, undefined, current)) throw new Error('来源定位未完成，请重试。');
+    if (!current()) return;
+    sourceFocus.value = { lid: target.lid, quote: null, ranges: target.ranges };
+    await nextTick();
+    await readerPaneRef.value?.scrollSourceIntoView(target.lid);
+    if (current()) recapEmit('mcp-source-consumed');
+  } catch (failure) { if (current()) recapEmit('mcp-source-error', errorMessage(failure)); }
+  finally { openingMcpSource = false; }
+}, { flush: 'post' });
+
 async function selectReaderSurface(surface: ReaderSurface) {
   if (surface === activeReaderSurface.value) return;
   if (surface === "pdf" && !pdfReaderAvailable.value) {

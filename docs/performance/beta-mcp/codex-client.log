@@ -1,0 +1,10 @@
+file:///E:/allwork/download/agent/understand-book-reading-share/scripts/mcp9-codex-acceptance.mjs:47
+  if (code !== 0) throw new Error(`${name}: client exited ${code}; inspect saved transcript`);
+                        ^
+
+Error: reader: client exited 1; inspect saved transcript
+    at run (file:///E:/allwork/download/agent/understand-book-reading-share/scripts/mcp9-codex-acceptance.mjs:47:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///E:/allwork/download/agent/understand-book-reading-share/scripts/mcp9-codex-acceptance.mjs:51:3
+
+Node.js v24.9.0

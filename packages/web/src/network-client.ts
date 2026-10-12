@@ -2,6 +2,12 @@ import { ApiError, type AgentHistoryResponse } from './api';
 import { initialRun, type RunDescriptor, type RunSnapshot } from './agent-run-state';
 import { network, sceneKey, installWorkspace, forgetNetwork, workspaceStorageKey, type NetworkWorkspace } from './network-context';
 
+export const accountMcp = {
+  read: () => networkFetch<import('./api').AccountMcpState>('GET', '/account/mcp'),
+  create: (label: string) => networkFetch<{ credential: import('./api').McpCredential; token: string }>('POST', '/account/mcp/credentials', { label }),
+  revoke: (id: string) => networkFetch('POST', `/account/mcp/credentials/${encodeURIComponent(id)}/revoke`, {}),
+};
+
 export async function networkFetch<T>(method: string, path: string, body?: unknown): Promise<T> {
   const key = sceneKey();
   const identity = network.value.identity;

@@ -1,0 +1,22 @@
+
+> @understand-book/admin@0.0.0 test E:\allwork\download\agent\understand-book\apps\admin
+> vitest run "--maxWorkers=2"
+
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/apps/admin
+
+ ✓ src/lib/usage.test.ts (2 tests) 17ms
+ ✓ src/lib/api.test.ts (4 tests) 22ms
+ ✓ src/lib/format.test.ts (2 tests) 15ms
+ ✓ src/lib/invites.test.ts (4 tests) 16ms
+ ✓ src/lib/operations.test.ts (3 tests) 15ms
+ ✓ src/pages/mcp.test.tsx (15 tests) 3139ms
+   ✓ rejects fractional, zero and unsafe pack counts before preparing an operation  337ms
+   ✓ reloads a conflicting revision and uses a new operation only after rejection  306ms
+   ✓ routes mixed receipts to their own correction forms and preserves model correction  339ms
+
+ Test Files  6 passed (6)
+      Tests  30 passed (30)
+   Start at  08:10:36
+   Duration  10.15s (transform 635ms, setup 0ms, collect 4.06s, tests 3.22s, environment 3.57s, prepare 3.21s)
+
