@@ -1,0 +1,5147 @@
+{
+  "samples": [
+    {
+      "input": {},
+      "reply": {
+        "content": [
+          {
+            "text": "{\"tree\":[{\"lid\":\"1\",\"children\":[\"1.1\",\"1.2\",\"1.3\"],\"span\":{\"start\":0,\"end\":184},\"kind\":\"chapter\",\"title\":\"The alpha threshold activates only when the value is greater than 10.\"},{\"lid\":\"1.1\",\"children\":[],\"span\":{\"start\":0,\"end\":70},\"kind\":\"paragraph\"},{\"lid\":\"1.2\",\"children\":[],\"span\":{\"start\":70,\"end\":130},\"kind\":\"paragraph\"},{\"lid\":\"1.3\",\"children\":[],\"span\":{\"start\":130,\"end\":184},\"kind\":\"paragraph\"}],\"stats_by_lid\":{\"1.1\":{\"child_count\":0,\"leaf_count\":1,\"anchored_nodes\":1},\"1\":{\"child_count\":3,\"leaf_count\":3,\"anchored_nodes\":0},\"1.2\":{\"child_count\":0,\"leaf_count\":1,\"anchored_nodes\":1},\"1.3\":{\"child_count\":0,\"leaf_count\":1,\"anchored_nodes\":0}}}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "stats_by_lid": {
+            "1": {
+              "anchored_nodes": 0,
+              "child_count": 3,
+              "leaf_count": 3
+            },
+            "1.1": {
+              "anchored_nodes": 1,
+              "child_count": 0,
+              "leaf_count": 1
+            },
+            "1.2": {
+              "anchored_nodes": 1,
+              "child_count": 0,
+              "leaf_count": 1
+            },
+            "1.3": {
+              "anchored_nodes": 0,
+              "child_count": 0,
+              "leaf_count": 1
+            }
+          },
+          "tree": [
+            {
+              "children": [
+                "1.1",
+                "1.2",
+                "1.3"
+              ],
+              "kind": "chapter",
+              "lid": "1",
+              "span": {
+                "end": 184,
+                "start": 0
+              },
+              "title": "The alpha threshold activates only when the value is greater than 10."
+            },
+            {
+              "children": [],
+              "kind": "paragraph",
+              "lid": "1.1",
+              "span": {
+                "end": 70,
+                "start": 0
+              }
+            },
+            {
+              "children": [],
+              "kind": "paragraph",
+              "lid": "1.2",
+              "span": {
+                "end": 130,
+                "start": 70
+              }
+            },
+            {
+              "children": [],
+              "kind": "paragraph",
+              "lid": "1.3",
+              "span": {
+                "end": 184,
+                "start": 130
+              }
+            }
+          ]
+        }
+      },
+      "tool": "book_manifest"
+    },
+    {
+      "input": {
+        "end_lid": "1.2",
+        "lid": "1.1"
+      },
+      "reply": {
+        "content": [
+          {
+            "text": "{\"lid\":\"1.1\",\"text\":\"The alpha threshold activates only when the value is greater than 10.\\nThe beta threshold activates when the value is at least 10.\\n\"}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "lid": "1.1",
+          "text": "The alpha threshold activates only when the value is greater than 10.\nThe beta threshold activates when the value is at least 10.\n"
+        }
+      },
+      "tool": "book_text"
+    },
+    {
+      "input": {
+        "match_mode": "exact",
+        "order": "document",
+        "page_size": 1,
+        "query": "threshold"
+      },
+      "reply": {
+        "content": [
+          {
+            "text": "{\"exhaustive\":true,\"next_cursor\":\"st1.7b2276657273696f6e223a227365617263685f746578742e7631222c22736f757263655f7265766973696f6e223a2265353736623735356634396434333430653231383963343864306266313766346263633537333133646333643439623365616564623238393334343766383433222c22726571756573745f646967657374223a2231336564333233626261623062346331616138303732643164613039333264336433363132613938646461363963643063613861363037333261303738666365222c226f6666736574223a317d.7cb3a8df4e34495bc937a90d3446ea1d85f5bb2bd2d109cfdd4e483279ac37a9\",\"occurrences\":[{\"end_lid\":\"1.1\",\"excerpt\":\"The alpha threshold activates only when the value is greater than 1\",\"heading_path\":[],\"match_type\":\"exact\",\"next_calls\":[{\"arguments\":{\"lid\":\"1.1\"},\"name\":\"book_text\"}],\"ordinal\":1,\"ranges\":[{\"end_utf16\":19,\"lid\":\"1.1\",\"start_utf16\":10}],\"source_range_utf16\":{\"end\":19,\"start\":10},\"start_lid\":\"1.1\"}],\"section_counts\":[{\"count\":1,\"label\":\"1.1\",\"section_lid\":\"1.1\"},{\"count\":1,\"label\":\"1.2\",\"section_lid\":\"1.2\"},{\"count\":1,\"label\":\"1.3\",\"section_lid\":\"1.3\"}],\"source_revision\":\"e576b755f49d4340e2189c48d0bf17f4bcc57313dc3d49b3eaedb2893447f843\",\"total_lids\":3,\"total_occurrences\":3,\"version\":\"search_text.v1\"}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "exhaustive": true,
+          "next_cursor": "st1.7b2276657273696f6e223a227365617263685f746578742e7631222c22736f757263655f7265766973696f6e223a2265353736623735356634396434333430653231383963343864306266313766346263633537333133646333643439623365616564623238393334343766383433222c22726571756573745f646967657374223a2231336564333233626261623062346331616138303732643164613039333264336433363132613938646461363963643063613861363037333261303738666365222c226f6666736574223a317d.7cb3a8df4e34495bc937a90d3446ea1d85f5bb2bd2d109cfdd4e483279ac37a9",
+          "occurrences": [
+            {
+              "end_lid": "1.1",
+              "excerpt": "The alpha threshold activates only when the value is greater than 1",
+              "heading_path": [],
+              "match_type": "exact",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.1"
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "ordinal": 1,
+              "ranges": [
+                {
+                  "end_utf16": 19,
+                  "lid": "1.1",
+                  "start_utf16": 10
+                }
+              ],
+              "source_range_utf16": {
+                "end": 19,
+                "start": 10
+              },
+              "start_lid": "1.1"
+            }
+          ],
+          "section_counts": [
+            {
+              "count": 1,
+              "label": "1.1",
+              "section_lid": "1.1"
+            },
+            {
+              "count": 1,
+              "label": "1.2",
+              "section_lid": "1.2"
+            },
+            {
+              "count": 1,
+              "label": "1.3",
+              "section_lid": "1.3"
+            }
+          ],
+          "source_revision": "e576b755f49d4340e2189c48d0bf17f4bcc57313dc3d49b3eaedb2893447f843",
+          "total_lids": 3,
+          "total_occurrences": 3,
+          "version": "search_text.v1"
+        }
+      },
+      "tool": "book_search_text"
+    },
+    {
+      "input": {
+        "match_mode": "normalized",
+        "order": "reverse_document",
+        "page_size": 1,
+        "query": "THRESHOLD",
+        "scope": {
+          "relative_to": {
+            "direction": "before",
+            "lid": "1.3"
+          },
+          "within_lid": "1"
+        }
+      },
+      "reply": {
+        "content": [
+          {
+            "text": "{\"exhaustive\":true,\"next_cursor\":\"st1.7b2276657273696f6e223a227365617263685f746578742e7631222c22736f757263655f7265766973696f6e223a2265353736623735356634396434333430653231383963343864306266313766346263633537333133646333643439623365616564623238393334343766383433222c22726571756573745f646967657374223a2230363035303564376564646537393831386464376537613132666564313137346664623563393338333036326361386466386134323331626566633361393739222c226f6666736574223a317d.bf6492b3da1067b4c84bcddb3c02e379682cb5eafcb756388523d8968cc8674b\",\"occurrences\":[{\"end_lid\":\"1.2\",\"excerpt\":\"nly when the value is greater than 10.\\nThe beta threshold activates when the value is at least 10.\\nCompar\",\"heading_path\":[],\"match_type\":\"normalized\",\"next_calls\":[{\"arguments\":{\"lid\":\"1.2\"},\"name\":\"book_text\"}],\"ordinal\":2,\"ranges\":[{\"end_utf16\":18,\"lid\":\"1.2\",\"start_utf16\":9}],\"source_range_utf16\":{\"end\":88,\"start\":79},\"start_lid\":\"1.2\"}],\"section_counts\":[{\"count\":1,\"label\":\"1.1\",\"section_lid\":\"1.1\"},{\"count\":1,\"label\":\"1.2\",\"section_lid\":\"1.2\"}],\"source_revision\":\"e576b755f49d4340e2189c48d0bf17f4bcc57313dc3d49b3eaedb2893447f843\",\"total_lids\":2,\"total_occurrences\":2,\"version\":\"search_text.v1\"}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "exhaustive": true,
+          "next_cursor": "st1.7b2276657273696f6e223a227365617263685f746578742e7631222c22736f757263655f7265766973696f6e223a2265353736623735356634396434333430653231383963343864306266313766346263633537333133646333643439623365616564623238393334343766383433222c22726571756573745f646967657374223a2230363035303564376564646537393831386464376537613132666564313137346664623563393338333036326361386466386134323331626566633361393739222c226f6666736574223a317d.bf6492b3da1067b4c84bcddb3c02e379682cb5eafcb756388523d8968cc8674b",
+          "occurrences": [
+            {
+              "end_lid": "1.2",
+              "excerpt": "nly when the value is greater than 10.\nThe beta threshold activates when the value is at least 10.\nCompar",
+              "heading_path": [],
+              "match_type": "normalized",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.2"
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "ordinal": 2,
+              "ranges": [
+                {
+                  "end_utf16": 18,
+                  "lid": "1.2",
+                  "start_utf16": 9
+                }
+              ],
+              "source_range_utf16": {
+                "end": 88,
+                "start": 79
+              },
+              "start_lid": "1.2"
+            }
+          ],
+          "section_counts": [
+            {
+              "count": 1,
+              "label": "1.1",
+              "section_lid": "1.1"
+            },
+            {
+              "count": 1,
+              "label": "1.2",
+              "section_lid": "1.2"
+            }
+          ],
+          "source_revision": "e576b755f49d4340e2189c48d0bf17f4bcc57313dc3d49b3eaedb2893447f843",
+          "total_lids": 2,
+          "total_occurrences": 2,
+          "version": "search_text.v1"
+        }
+      },
+      "tool": "book_search_text"
+    },
+    {
+      "input": {
+        "granularity": "near",
+        "k": 3,
+        "lid": "1.2"
+      },
+      "reply": {
+        "content": [
+          {
+            "text": "{\"anchor\":\"1.2\",\"items\":[{\"layer\":\"near\",\"lid\":\"1\",\"next_calls\":[{\"arguments\":{\"lid\":\"1\"},\"name\":\"book_text\"}],\"via\":{\"kind\":\"tree\",\"rel\":\"parent\"}},{\"layer\":\"near\",\"lid\":\"1.1\",\"next_calls\":[{\"arguments\":{\"lid\":\"1.1\"},\"name\":\"book_text\"}],\"via\":{\"kind\":\"tree\",\"rel\":\"prev_sibling\"}},{\"layer\":\"near\",\"lid\":\"1.3\",\"next_calls\":[{\"arguments\":{\"lid\":\"1.3\"},\"name\":\"book_text\"}],\"via\":{\"kind\":\"tree\",\"rel\":\"next_sibling\"}}],\"returned_count\":3,\"total_candidates\":3,\"truncated\":false}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "anchor": "1.2",
+          "items": [
+            {
+              "layer": "near",
+              "lid": "1",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1"
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "parent"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.1",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.1"
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "prev_sibling"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.3",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.3"
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "next_sibling"
+              }
+            }
+          ],
+          "returned_count": 3,
+          "total_candidates": 3,
+          "truncated": false
+        }
+      },
+      "tool": "book_context"
+    },
+    {
+      "input": {
+        "anchor_lid": "1.2",
+        "limit": 5,
+        "query": "threshold"
+      },
+      "reply": {
+        "content": [
+          {
+            "text": "{\"candidates\":[{\"kind\":\"concept\",\"match_reasons\":[\"label_token\"],\"match_tier\":\"label_token\",\"matched_terms\":[\"threshold\"],\"name\":\"beta threshold\",\"next_calls\":[{\"arguments\":{\"lid\":\"1.2\"},\"name\":\"book_text\"}],\"node_id\":\"concept:beta\",\"occurrences\":[\"1.2\"],\"previews\":[{\"lid\":\"1.2\",\"text\":\"The beta threshold activates when the value is at least 10.\\n\"}]},{\"kind\":\"concept\",\"match_reasons\":[\"label_token\"],\"match_tier\":\"label_token\",\"matched_terms\":[\"threshold\"],\"name\":\"alpha threshold\",\"next_calls\":[{\"arguments\":{\"lid\":\"1.1\"},\"name\":\"book_text\"}],\"node_id\":\"concept:alpha\",\"occurrences\":[\"1.1\"],\"previews\":[{\"lid\":\"1.1\",\"text\":\"The alpha threshold activates only when the value is greater than 10.\\n\"}]}],\"matched_count\":2,\"query\":\"threshold\",\"returned_count\":2,\"truncated\":false,\"version\":\"book_concept.v2\"}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "candidates": [
+            {
+              "kind": "concept",
+              "match_reasons": [
+                "label_token"
+              ],
+              "match_tier": "label_token",
+              "matched_terms": [
+                "threshold"
+              ],
+              "name": "beta threshold",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.2"
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "node_id": "concept:beta",
+              "occurrences": [
+                "1.2"
+              ],
+              "previews": [
+                {
+                  "lid": "1.2",
+                  "text": "The beta threshold activates when the value is at least 10.\n"
+                }
+              ]
+            },
+            {
+              "kind": "concept",
+              "match_reasons": [
+                "label_token"
+              ],
+              "match_tier": "label_token",
+              "matched_terms": [
+                "threshold"
+              ],
+              "name": "alpha threshold",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.1"
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "node_id": "concept:alpha",
+              "occurrences": [
+                "1.1"
+              ],
+              "previews": [
+                {
+                  "lid": "1.1",
+                  "text": "The alpha threshold activates only when the value is greater than 10.\n"
+                }
+              ]
+            }
+          ],
+          "matched_count": 2,
+          "query": "threshold",
+          "returned_count": 2,
+          "truncated": false,
+          "version": "book_concept.v2"
+        }
+      },
+      "tool": "book_concept"
+    },
+    {
+      "input": {
+        "at": "1.2"
+      },
+      "reply": {
+        "content": [
+          {
+            "text": "{\"available\":true,\"at\":\"1.2\",\"spine_index\":0,\"spine_unit\":{\"lid\":\"1\",\"role\":\"foundation\",\"summary\":{\"text\":\"Compare the two activation conditions.\",\"evidence_lids\":[\"1.1\",\"1.2\"]},\"key_stop_ids\":[],\"depends_on\":[]},\"key_stops\":[],\"throughlines\":[{\"id\":\"conditions\",\"name\":\"Threshold conditions\",\"summary\":{\"text\":\"Compare the two activation conditions.\",\"evidence_lids\":[\"1.1\",\"1.2\"]},\"lids\":[\"1.1\",\"1.2\"],\"key_stop_ids\":[]}],\"warning\":null}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "at": "1.2",
+          "available": true,
+          "key_stops": [],
+          "spine_index": 0,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.1",
+                "1.2"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          },
+          "throughlines": [
+            {
+              "id": "conditions",
+              "key_stop_ids": [],
+              "lids": [
+                "1.1",
+                "1.2"
+              ],
+              "name": "Threshold conditions",
+              "summary": {
+                "evidence_lids": [
+                  "1.1",
+                  "1.2"
+                ],
+                "text": "Compare the two activation conditions."
+              }
+            }
+          ],
+          "warning": null
+        }
+      },
+      "tool": "book_structure"
+    },
+    {
+      "input": {},
+      "reply": {
+        "content": [
+          {
+            "text": "{\"available\":true,\"at\":null,\"current_segment_index\":null,\"segments\":[{\"spine_index\":0,\"spine_unit\":{\"lid\":\"1\",\"role\":\"foundation\",\"summary\":{\"text\":\"Compare the two activation conditions.\",\"evidence_lids\":[\"1.1\",\"1.2\"]},\"key_stop_ids\":[],\"depends_on\":[]},\"key_stops\":[]}],\"warning\":null}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "at": null,
+          "available": true,
+          "current_segment_index": null,
+          "segments": [
+            {
+              "key_stops": [],
+              "spine_index": 0,
+              "spine_unit": {
+                "depends_on": [],
+                "key_stop_ids": [],
+                "lid": "1",
+                "role": "foundation",
+                "summary": {
+                  "evidence_lids": [
+                    "1.1",
+                    "1.2"
+                  ],
+                  "text": "Compare the two activation conditions."
+                }
+              }
+            }
+          ],
+          "warning": null
+        }
+      },
+      "tool": "book_guide_path"
+    },
+    {
+      "input": {},
+      "reply": {
+        "content": [
+          {
+            "text": "{\"available\":false,\"header\":null,\"title\":null,\"authors\":null,\"affiliations\":null,\"venue\":null,\"year\":null,\"identifiers\":null,\"keywords\":null,\"field_labels\":null,\"references\":null,\"datasets\":null,\"code_links\":null,\"funding\":null,\"warning\":\"paper_metadata.json not attached\"}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "affiliations": null,
+          "authors": null,
+          "available": false,
+          "code_links": null,
+          "datasets": null,
+          "field_labels": null,
+          "funding": null,
+          "header": null,
+          "identifiers": null,
+          "keywords": null,
+          "references": null,
+          "title": null,
+          "venue": null,
+          "warning": "paper_metadata.json not attached",
+          "year": null
+        }
+      },
+      "tool": "book_paper_metadata"
+    },
+    {
+      "input": {},
+      "reply": {
+        "content": [
+          {
+            "text": "{\"available\":false,\"header\":null,\"entries\":[],\"warning\":\"paper_lexicon.json not attached\"}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "available": false,
+          "entries": [],
+          "header": null,
+          "warning": "paper_lexicon.json not attached"
+        }
+      },
+      "tool": "book_paper_lexicon"
+    },
+    {
+      "input": {},
+      "reply": {
+        "content": [
+          {
+            "text": "{\"available\":false,\"mode\":\"skim\",\"stage\":\"passive\",\"questions\":[],\"codebook\":{\"available\":false,\"metadata\":{\"title\":null,\"authors\":[],\"venue\":null,\"year\":null,\"doi\":null,\"arxiv\":null,\"url\":null,\"keywords\":[],\"field_labels\":[],\"datasets\":[],\"code_links\":[],\"evidence_lids\":[]},\"terms\":[],\"throughlines\":[{\"id\":\"conditions\",\"lid\":\"1.1\",\"title\":\"Threshold conditions\",\"summary\":\"Compare the two activation conditions.\",\"evidence_lids\":[\"1.1\",\"1.2\"]}],\"key_stops\":[],\"warnings\":[\"paper_metadata.json not attached\",\"paper_lexicon.json not attached\"]},\"abstract_aid\":{\"available\":false,\"abstract_lids\":[],\"excerpts\":[],\"key_terms\":[],\"comprehension_checks\":[],\"user_reflection_prompt\":\"Write a short Chinese restatement only after selecting the abstract LIDs.\",\"warning\":\"abstract LID not identified from discourse or metadata\"},\"warnings\":[\"paper artifacts not attached; load a paper-profile book to use this projection\"]}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "abstract_aid": {
+            "abstract_lids": [],
+            "available": false,
+            "comprehension_checks": [],
+            "excerpts": [],
+            "key_terms": [],
+            "user_reflection_prompt": "Write a short Chinese restatement only after selecting the abstract LIDs.",
+            "warning": "abstract LID not identified from discourse or metadata"
+          },
+          "available": false,
+          "codebook": {
+            "available": false,
+            "key_stops": [],
+            "metadata": {
+              "arxiv": null,
+              "authors": [],
+              "code_links": [],
+              "datasets": [],
+              "doi": null,
+              "evidence_lids": [],
+              "field_labels": [],
+              "keywords": [],
+              "title": null,
+              "url": null,
+              "venue": null,
+              "year": null
+            },
+            "terms": [],
+            "throughlines": [
+              {
+                "evidence_lids": [
+                  "1.1",
+                  "1.2"
+                ],
+                "id": "conditions",
+                "lid": "1.1",
+                "summary": "Compare the two activation conditions.",
+                "title": "Threshold conditions"
+              }
+            ],
+            "warnings": [
+              "paper_metadata.json not attached",
+              "paper_lexicon.json not attached"
+            ]
+          },
+          "mode": "skim",
+          "questions": [],
+          "stage": "passive",
+          "warnings": [
+            "paper artifacts not attached; load a paper-profile book to use this projection"
+          ]
+        }
+      },
+      "tool": "book_paper_reading_guide"
+    },
+    {
+      "input": {
+        "anchor_lid": "1.1",
+        "intent": "comparison",
+        "obligations": [
+          {
+            "requirement": "State the activation condition at each location."
+          },
+          {
+            "requirement": "Compare whether equality activates each threshold, citing both passages."
+          }
+        ],
+        "query": "How do the activation conditions of the alpha threshold and beta threshold differ?",
+        "targets": [
+          "alpha threshold",
+          "beta threshold"
+        ]
+      },
+      "reply": {
+        "content": [
+          {
+            "text": "{\"status\":\"complete\",\"answer\":\"Alpha requires > 10; beta includes equality.\",\"citations\":[{\"lid\":\"1.1\",\"text\":\"greater than 10\",\"role\":\"support\"},{\"lid\":\"1.2\",\"text\":\"at least 10\",\"role\":\"support\"}],\"bindings\":[{\"target\":\"alpha threshold\",\"candidate_id\":\"concept:alpha\",\"kind\":\"concept\",\"canonical_label\":\"alpha threshold\",\"source_lids\":[\"1.1\"]},{\"target\":\"beta threshold\",\"candidate_id\":\"concept:beta\",\"kind\":\"concept\",\"canonical_label\":\"beta threshold\",\"source_lids\":[\"1.2\"]}],\"support\":[{\"obligation_index\":0,\"verdict\":\"supported\",\"citation_lids\":[\"1.1\",\"1.2\"],\"support_note\":\"Both conditions read\"},{\"obligation_index\":1,\"verdict\":\"supported\",\"citation_lids\":[\"1.1\",\"1.2\"],\"support_note\":\"Equality differs\"}],\"model_supplement\":[]}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "answer": "Alpha requires > 10; beta includes equality.",
+          "bindings": [
+            {
+              "candidate_id": "concept:alpha",
+              "canonical_label": "alpha threshold",
+              "kind": "concept",
+              "source_lids": [
+                "1.1"
+              ],
+              "target": "alpha threshold"
+            },
+            {
+              "candidate_id": "concept:beta",
+              "canonical_label": "beta threshold",
+              "kind": "concept",
+              "source_lids": [
+                "1.2"
+              ],
+              "target": "beta threshold"
+            }
+          ],
+          "citations": [
+            {
+              "lid": "1.1",
+              "role": "support",
+              "text": "greater than 10"
+            },
+            {
+              "lid": "1.2",
+              "role": "support",
+              "text": "at least 10"
+            }
+          ],
+          "model_supplement": [],
+          "status": "complete",
+          "support": [
+            {
+              "citation_lids": [
+                "1.1",
+                "1.2"
+              ],
+              "obligation_index": 0,
+              "support_note": "Both conditions read",
+              "verdict": "supported"
+            },
+            {
+              "citation_lids": [
+                "1.1",
+                "1.2"
+              ],
+              "obligation_index": 1,
+              "support_note": "Equality differs",
+              "verdict": "supported"
+            }
+          ]
+        }
+      },
+      "tool": "book_query"
+    },
+    {
+      "input": {
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "task": "Summarize these two threshold conditions using only these passages; state any evidence gaps."
+      },
+      "reply": {
+        "content": [
+          {
+            "text": "{\"answer\":\"Alpha requires > 10; beta includes equality.\",\"citations\":[{\"lid\":\"1.1\",\"text\":\"greater than 10\",\"role\":\"support\"},{\"lid\":\"1.2\",\"text\":\"at least 10\",\"role\":\"support\"}],\"model_supplement\":[],\"source_lids\":[\"1.1\",\"1.2\"],\"batched\":false,\"evidence_chain\":[\"1.1\",\"1.2\"],\"related_concepts\":[\"alpha threshold\",\"beta threshold\"],\"suggested_probing\":[]}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "answer": "Alpha requires > 10; beta includes equality.",
+          "batched": false,
+          "citations": [
+            {
+              "lid": "1.1",
+              "role": "support",
+              "text": "greater than 10"
+            },
+            {
+              "lid": "1.2",
+              "role": "support",
+              "text": "at least 10"
+            }
+          ],
+          "evidence_chain": [
+            "1.1",
+            "1.2"
+          ],
+          "model_supplement": [],
+          "related_concepts": [
+            "alpha threshold",
+            "beta threshold"
+          ],
+          "source_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "suggested_probing": []
+        }
+      },
+      "tool": "book_synthesize"
+    },
+    {
+      "input": {
+        "action": "close",
+        "session_id": "visitor-1"
+      },
+      "reply": {
+        "content": [
+          {
+            "text": "{\"closed\":true,\"ok\":true,\"session_id\":\"visitor-1\"}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "closed": true,
+          "ok": true,
+          "session_id": "visitor-1"
+        }
+      },
+      "tool": "book_guide"
+    },
+    {
+      "input": {
+        "anchor_lid": "1.1",
+        "intent": "Explain the threshold conditions"
+      },
+      "reply": {
+        "content": [
+          {
+            "text": "{\"guide\":{\"answer\":\"Alpha requires > 10; beta includes equality.\",\"citations\":[{\"lid\":\"1.1\",\"role\":\"support\",\"text\":\"greater than 10\"},{\"lid\":\"1.2\",\"role\":\"support\",\"text\":\"at least 10\"}],\"entry_lid\":\"1.1\",\"frontier\":[{\"edge_type\":\"next_sibling\",\"evidence_lids\":[\"1.1\",\"1.2\"],\"lid\":\"1.2\",\"score\":0.33333334,\"why\":\"reading order: next sibling\"}],\"intent\":\"Explain the threshold conditions\",\"model_supplement\":[],\"refined\":false,\"route\":[{\"edge_type\":\"next_sibling\",\"evidence_lids\":[\"1.1\",\"1.2\"],\"lid\":\"1.2\",\"score\":0.33333334,\"why\":\"reading order: next sibling\"}]},\"opened\":true,\"session_id\":\"visitor-1\"}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "guide": {
+            "answer": "Alpha requires > 10; beta includes equality.",
+            "citations": [
+              {
+                "lid": "1.1",
+                "role": "support",
+                "text": "greater than 10"
+              },
+              {
+                "lid": "1.2",
+                "role": "support",
+                "text": "at least 10"
+              }
+            ],
+            "entry_lid": "1.1",
+            "frontier": [
+              {
+                "edge_type": "next_sibling",
+                "evidence_lids": [
+                  "1.1",
+                  "1.2"
+                ],
+                "lid": "1.2",
+                "score": 0.33333334,
+                "why": "reading order: next sibling"
+              }
+            ],
+            "intent": "Explain the threshold conditions",
+            "model_supplement": [],
+            "refined": false,
+            "route": [
+              {
+                "edge_type": "next_sibling",
+                "evidence_lids": [
+                  "1.1",
+                  "1.2"
+                ],
+                "lid": "1.2",
+                "score": 0.33333334,
+                "why": "reading order: next sibling"
+              }
+            ]
+          },
+          "opened": true,
+          "session_id": "visitor-1"
+        }
+      },
+      "tool": "book_guide"
+    },
+    {
+      "input": {
+        "query": "missing-text"
+      },
+      "reply": {
+        "content": [
+          {
+            "text": "{\"exhaustive\":true,\"occurrences\":[],\"section_counts\":[],\"source_revision\":\"e576b755f49d4340e2189c48d0bf17f4bcc57313dc3d49b3eaedb2893447f843\",\"total_lids\":0,\"total_occurrences\":0,\"version\":\"search_text.v1\"}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "exhaustive": true,
+          "occurrences": [],
+          "section_counts": [],
+          "source_revision": "e576b755f49d4340e2189c48d0bf17f4bcc57313dc3d49b3eaedb2893447f843",
+          "total_lids": 0,
+          "total_occurrences": 0,
+          "version": "search_text.v1"
+        }
+      },
+      "tool": "book_search_text"
+    },
+    {
+      "input": {
+        "query": "missing-concept"
+      },
+      "reply": {
+        "content": [
+          {
+            "text": "{\"error_code\":\"CONCEPT_NOT_FOUND\",\"category\":\"not_found\",\"message\":\"未找到相关概念/实体候选: missing-concept\"}",
+            "type": "text"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "category": "not_found",
+          "error_code": "CONCEPT_NOT_FOUND",
+          "message": "未找到相关概念/实体候选: missing-concept"
+        }
+      },
+      "tool": "book_concept"
+    },
+    {
+      "input": {
+        "k": 0,
+        "lid": "1"
+      },
+      "reply": {
+        "content": [
+          {
+            "text": "{\"anchor\":\"1\",\"items\":[],\"returned_count\":0,\"total_candidates\":3,\"truncated\":true}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "anchor": "1",
+          "items": [],
+          "returned_count": 0,
+          "total_candidates": 3,
+          "truncated": true
+        }
+      },
+      "tool": "book_context"
+    },
+    {
+      "input": {
+        "lid": "1.1",
+        "start_utf16": 0
+      },
+      "reply": {
+        "content": [
+          {
+            "text": "{\"lid\":\"1.1\",\"next_start_utf16\":null,\"requested_range\":{\"end\":70,\"start\":0},\"source_range\":{\"end\":70,\"start\":0},\"text\":\"The alpha threshold activates only when the value is greater than 10.\\n\"}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "lid": "1.1",
+          "next_start_utf16": null,
+          "requested_range": {
+            "end": 70,
+            "start": 0
+          },
+          "source_range": {
+            "end": 70,
+            "start": 0
+          },
+          "text": "The alpha threshold activates only when the value is greater than 10.\n"
+        }
+      },
+      "tool": "book_text"
+    },
+    {
+      "input": {
+        "query": "invalid plan"
+      },
+      "reply": {
+        "content": [
+          {
+            "text": "{\"status\":\"invalid_plan\",\"missing_requirements\":[\"missing field `intent`\"],\"target_issues\":[]}",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "missing_requirements": [
+            "missing field `intent`"
+          ],
+          "status": "invalid_plan",
+          "target_issues": []
+        }
+      },
+      "tool": "book_query"
+    },
+    {
+      "reply": {
+        "content": [
+          {
+            "text": "{\"error_code\":\"LID_NOT_FOUND\",\"category\":\"not_found\",\"message\":\"LID 不存在: missing\"}",
+            "type": "text"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "category": "not_found",
+          "error_code": "LID_NOT_FOUND",
+          "message": "LID 不存在: missing"
+        }
+      },
+      "tool": "book_text"
+    }
+  ],
+  "tools": [
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Return the read-only book manifest. Use when: Inspect public book identity and structure metadata. Do not treat manifest metadata as source-text evidence.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "book_manifest",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "book.manifest() 返回结构(符 V3 §4.1)。",
+        "properties": {
+          "stats_by_lid": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "description": "每 LID 的确定性统计。",
+              "properties": {
+                "anchored_nodes": {
+                  "format": "uint",
+                  "minimum": 0.0,
+                  "type": "integer"
+                },
+                "child_count": {
+                  "format": "uint",
+                  "minimum": 0.0,
+                  "type": "integer"
+                },
+                "leaf_count": {
+                  "format": "uint",
+                  "minimum": 0.0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "anchored_nodes",
+                "child_count",
+                "leaf_count"
+              ],
+              "type": "object"
+            },
+            "type": "object"
+          },
+          "tree": {
+            "items": {
+              "additionalProperties": false,
+              "description": "book.manifest 树节点(确定性拓扑)`[ADR-0014]`。",
+              "properties": {
+                "children": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "kind": {
+                  "description": "LID 节点类型。切片0 停在段(Paragraph),句留切片1+。 Asset 一等对象切片只增不改:Code/Table/Image/Formula 是带类型 LID 叶子 `[ADR-0029]`。",
+                  "enum": [
+                    "chapter",
+                    "section",
+                    "paragraph",
+                    "code",
+                    "table",
+                    "image",
+                    "formula"
+                  ],
+                  "type": "string"
+                },
+                "lid": {
+                  "type": "string"
+                },
+                "span": {
+                  "additionalProperties": false,
+                  "description": "内容区间(半开 [start, end)),映射回源文。 切片0 = **UTF-16 code unit 下标**(TS segment 用 JS 串下标);字节精确化留后 `[ADR-0024]`。 ⇒ Rust book.text 须按 UTF-16 语义切原文(encode_utf16 索引),勿按 UTF-8 字节直切(中文会错位)。",
+                  "properties": {
+                    "end": {
+                      "format": "uint",
+                      "minimum": 0.0,
+                      "type": "integer"
+                    },
+                    "start": {
+                      "format": "uint",
+                      "minimum": 0.0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "end",
+                    "start"
+                  ],
+                  "type": "object"
+                },
+                "title": {
+                  "description": "First non-empty source line for outline display, retaining Markdown heading syntax.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "children",
+                "kind",
+                "lid",
+                "span"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "stats_by_lid",
+          "tree"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Read canonical source text by one LID or an inclusive LID range. Use when: Read source text after a LID has been located. Do not use for lexical discovery when no LID is known.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "end_lid": "1.2",
+            "lid": "1.1"
+          }
+        ],
+        "properties": {
+          "end_lid": {
+            "description": "Inclusive final LID in source reading order; for a search hit, use end_lid. Reads from lid's span start through end_lid's span end. Omit or null to read only lid's span.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lid": {
+            "description": "Known LID from this book's locating or structure results; for a search hit, use start_lid. Reads the node's canonical source span, including descendants.",
+            "type": "string"
+          },
+          "start_utf16": {
+            "description": "Absolute canonical-source UTF-16 position copied from a text continuation. Keep the original lid/end_lid. Omit or null for the initial read; a continuation returns a bounded page and its source_range, requested_range and next_start_utf16.",
+            "format": "uint",
+            "minimum": 0.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "lid"
+        ],
+        "type": "object"
+      },
+      "name": "book_text",
+      "outputSchema": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "lid": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "lid",
+              "text"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "lid": {
+                "type": "string"
+              },
+              "next_start_utf16": {
+                "format": "uint",
+                "minimum": 0.0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "requested_range": {
+                "additionalProperties": false,
+                "description": "内容区间(半开 [start, end)),映射回源文。 切片0 = **UTF-16 code unit 下标**(TS segment 用 JS 串下标);字节精确化留后 `[ADR-0024]`。 ⇒ Rust book.text 须按 UTF-16 语义切原文(encode_utf16 索引),勿按 UTF-8 字节直切(中文会错位)。",
+                "properties": {
+                  "end": {
+                    "format": "uint",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  },
+                  "start": {
+                    "format": "uint",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "end",
+                  "start"
+                ],
+                "type": "object"
+              },
+              "source_range": {
+                "additionalProperties": false,
+                "description": "内容区间(半开 [start, end)),映射回源文。 切片0 = **UTF-16 code unit 下标**(TS segment 用 JS 串下标);字节精确化留后 `[ADR-0024]`。 ⇒ Rust book.text 须按 UTF-16 语义切原文(encode_utf16 索引),勿按 UTF-8 字节直切(中文会错位)。",
+                "properties": {
+                  "end": {
+                    "format": "uint",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  },
+                  "start": {
+                    "format": "uint",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "end",
+                  "start"
+                ],
+                "type": "object"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "requested_range",
+              "source_range",
+              "text",
+              "lid"
+            ],
+            "type": "object"
+          }
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Enumerate the complete set of literal-text occurrences in canonical source, returning stable source UTF-16 ranges, the total count, and a pagination cursor. Use when: Locate the first, previous, or every lexical occurrence before interpreting it. Do not use lexical exhaustiveness as proof of semantic exhaustiveness.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "match_mode": "exact",
+            "order": "document",
+            "page_size": 1,
+            "query": "threshold"
+          },
+          {
+            "match_mode": "normalized",
+            "order": "reverse_document",
+            "page_size": 1,
+            "query": "THRESHOLD",
+            "scope": {
+              "relative_to": {
+                "direction": "before",
+                "lid": "1.3"
+              },
+              "within_lid": "1"
+            }
+          }
+        ],
+        "properties": {
+          "cursor": {
+            "description": "Opaque next_cursor from the preceding search result. Omit or null for the first page; preserve query, match_mode, scope, order and page_size on continuation. A changed source revision invalidates it.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "match_mode": {
+            "default": "exact",
+            "description": "exact (default) matches unchanged text; normalized applies NFKC, full non-Turkic case folding and whitespace collapsing. Both locate literal occurrences, not semantic equivalents; result ranges use original-source UTF-16 positions.",
+            "enum": [
+              "exact",
+              "normalized"
+            ],
+            "type": "string"
+          },
+          "order": {
+            "default": "document",
+            "description": "document (default) returns earliest occurrences first; reverse_document returns latest first. Uses canonical source order, not lexical LID sorting. Combine before with reverse_document for previous occurrences.",
+            "enum": [
+              "document",
+              "reverse_document"
+            ],
+            "type": "string"
+          },
+          "page_size": {
+            "default": 20,
+            "description": "Maximum literal occurrences per search page, 1..50, default 20. Does not change total_occurrences or exhaustive coverage of the requested literal scope; preserve it when using cursor.",
+            "format": "uint",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "type": "integer"
+          },
+          "query": {
+            "description": "Literal text to locate in canonical source, containing non-whitespace text and at most 4,096 Unicode scalar values. Exact mode preserves query whitespace; this is not a semantic question or regex. Read chosen hits using their start_lid/end_lid.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "relative_to": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "direction": {
+                            "description": "before keeps hits ending at or before the reference span's start; after keeps hits starting at or after its end. Direction filters scope independently of result order.",
+                            "enum": [
+                              "before",
+                              "after"
+                            ],
+                            "type": "string"
+                          },
+                          "lid": {
+                            "description": "Known reference LID in this book. The relative filter excludes this node's entire source span, including its descendants.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "direction",
+                          "lid"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Optional before/after filter around a known LID, excluding that node's span. Intersects with within_lid when both are supplied."
+                  },
+                  "within_lid": {
+                    "description": "Known LID whose source span, including descendants, must contain each whole hit. Omit or null for no subtree restriction.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional source scope using known LIDs from this book. Omit, null or {} searches the whole book; within_lid and relative_to intersect, and each whole hit must fit the resulting range."
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "book_search_text",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "exhaustive": {
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurrences": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "end_lid": {
+                  "type": "string"
+                },
+                "excerpt": {
+                  "type": "string"
+                },
+                "heading_path": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "lid": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "lid",
+                      "title"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "match_type": {
+                  "enum": [
+                    "exact",
+                    "normalized"
+                  ],
+                  "type": "string"
+                },
+                "next_calls": {
+                  "default": [],
+                  "items": {
+                    "additionalProperties": false,
+                    "description": "Optional source reads for a chosen locator; emitting a call does not observe its text.",
+                    "properties": {
+                      "arguments": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "end_lid": {
+                            "description": "Inclusive final LID in source reading order; for a search hit, use end_lid. Reads from lid's span start through end_lid's span end. Omit or null to read only lid's span.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "lid": {
+                            "description": "Known LID from this book's locating or structure results; for a search hit, use start_lid. Reads the node's canonical source span, including descendants.",
+                            "type": "string"
+                          },
+                          "start_utf16": {
+                            "description": "Absolute canonical-source UTF-16 position copied from a text continuation. Keep the original lid/end_lid. Omit or null for the initial read; a continuation returns a bounded page and its source_range, requested_range and next_start_utf16.",
+                            "format": "uint",
+                            "minimum": 0.0,
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "lid"
+                        ],
+                        "type": "object"
+                      },
+                      "name": {
+                        "const": "book_text"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "arguments"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "ordinal": {
+                  "format": "uint",
+                  "minimum": 0.0,
+                  "type": "integer"
+                },
+                "ranges": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "end_utf16": {
+                        "format": "uint",
+                        "minimum": 0.0,
+                        "type": "integer"
+                      },
+                      "lid": {
+                        "type": "string"
+                      },
+                      "start_utf16": {
+                        "format": "uint",
+                        "minimum": 0.0,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "end_utf16",
+                      "lid",
+                      "start_utf16"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "source_range_utf16": {
+                  "additionalProperties": false,
+                  "description": "内容区间(半开 [start, end)),映射回源文。 切片0 = **UTF-16 code unit 下标**(TS segment 用 JS 串下标);字节精确化留后 `[ADR-0024]`。 ⇒ Rust book.text 须按 UTF-16 语义切原文(encode_utf16 索引),勿按 UTF-8 字节直切(中文会错位)。",
+                  "properties": {
+                    "end": {
+                      "format": "uint",
+                      "minimum": 0.0,
+                      "type": "integer"
+                    },
+                    "start": {
+                      "format": "uint",
+                      "minimum": 0.0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "end",
+                    "start"
+                  ],
+                  "type": "object"
+                },
+                "start_lid": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "end_lid",
+                "excerpt",
+                "heading_path",
+                "match_type",
+                "ordinal",
+                "ranges",
+                "source_range_utf16",
+                "start_lid"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "section_counts": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "count": {
+                  "format": "uint",
+                  "minimum": 0.0,
+                  "type": "integer"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "section_lid": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "count",
+                "label",
+                "section_lid"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "source_revision": {
+            "type": "string"
+          },
+          "total_lids": {
+            "format": "uint",
+            "minimum": 0.0,
+            "type": "integer"
+          },
+          "total_occurrences": {
+            "format": "uint",
+            "minimum": 0.0,
+            "type": "integer"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exhaustive",
+          "occurrences",
+          "section_counts",
+          "source_revision",
+          "total_lids",
+          "total_occurrences",
+          "version"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Return context pointers for a LID: near adds tree adjacency and local edges, mid adds other concept or entity occurrences, and far adds long-range edges. Counts cover only known rule-recalled pointers, not all semantic relations; built structure availability is reported by book_structure. Pointers contain no source text; use book_text to read it. Use when: Expand around a verified LID through deterministic context links. Do not treat pointers as source text.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "granularity": "near",
+            "k": 3,
+            "lid": "1.2"
+          }
+        ],
+        "properties": {
+          "granularity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "near",
+                  "mid",
+                  "far"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "near",
+            "description": "Context reach: near includes tree adjacency and local relations; mid adds other concept/entity occurrences; far also adds long-range relations. Omit or null for near."
+          },
+          "k": {
+            "default": 10,
+            "description": "Maximum number of context pointers returned across all layers. Omit or null for 10; zero returns no items. total_candidates counts deduplicated pointers before k; returned_count and truncated describe selection by k before pagination or output budgeting. Counts pointers, not distinct LIDs, characters or source passages.",
+            "format": "uint",
+            "minimum": 0.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "lid": {
+            "description": "Known LID in this book to expand around. Returned items are context pointers; read their LIDs through the source-text tool for evidence.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lid"
+        ],
+        "type": "object"
+      },
+      "name": "book_context",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "book.context() 返回结构(符 V3 §4.1)。",
+        "properties": {
+          "anchor": {
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "additionalProperties": false,
+              "description": "book.context 的一个指针项(纯坐标,不带原文)`[ADR-0014]`。",
+              "properties": {
+                "layer": {
+                  "type": "string"
+                },
+                "lid": {
+                  "type": "string"
+                },
+                "next_calls": {
+                  "items": {
+                    "additionalProperties": false,
+                    "description": "Optional source reads for a chosen locator; emitting a call does not observe its text.",
+                    "properties": {
+                      "arguments": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "end_lid": {
+                            "description": "Inclusive final LID in source reading order; for a search hit, use end_lid. Reads from lid's span start through end_lid's span end. Omit or null to read only lid's span.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "lid": {
+                            "description": "Known LID from this book's locating or structure results; for a search hit, use start_lid. Reads the node's canonical source span, including descendants.",
+                            "type": "string"
+                          },
+                          "start_utf16": {
+                            "description": "Absolute canonical-source UTF-16 position copied from a text continuation. Keep the original lid/end_lid. Omit or null for the initial read; a continuation returns a bounded page and its source_range, requested_range and next_start_utf16.",
+                            "format": "uint",
+                            "minimum": 0.0,
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "lid"
+                        ],
+                        "type": "object"
+                      },
+                      "name": {
+                        "const": "book_text"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "arguments"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "via": {
+                  "description": "context item 的确定性接入来源 + 排序键(判别联合)`[ADR-0014]`。 P1 覆盖 Tree / Concept(mid 二跳) / Edge(local 与 long_range 召回路标); P2a 覆盖 technical_learning discourse sidecar 投影 `[ADR-0033]`。",
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "tree"
+                          ],
+                          "type": "string"
+                        },
+                        "rel": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "rel"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "concept"
+                          ],
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "shared_count": {
+                          "format": "uint",
+                          "minimum": 0.0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "name",
+                        "shared_count"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "direction": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "enum": [
+                            "edge"
+                          ],
+                          "type": "string"
+                        },
+                        "scope": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "weight": {
+                          "format": "float",
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "direction",
+                        "kind",
+                        "scope",
+                        "type",
+                        "weight"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "confidence": {
+                          "format": "float",
+                          "type": "number"
+                        },
+                        "direction": {
+                          "type": "string"
+                        },
+                        "evidence_lids": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "family": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "kind": {
+                          "enum": [
+                            "discourse"
+                          ],
+                          "type": "string"
+                        },
+                        "source_lid": {
+                          "type": "string"
+                        },
+                        "target_lid": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "confidence",
+                        "direction",
+                        "evidence_lids",
+                        "kind",
+                        "source_lid",
+                        "target_lid",
+                        "type"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "layer",
+                "lid",
+                "next_calls",
+                "via"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "returned_count": {
+            "description": "Pointers selected by k in the canonical result, before transport pagination or the Resident model-output budget is applied.",
+            "format": "uint",
+            "minimum": 0.0,
+            "type": "integer"
+          },
+          "total_candidates": {
+            "description": "Deduplicated pointers recalled by this anchor/granularity's rules before k. Counts relations, not distinct LIDs or all semantic relationships in the book.",
+            "format": "uint",
+            "minimum": 0.0,
+            "type": "integer"
+          },
+          "truncated": {
+            "description": "Whether k omitted known candidates; false does not imply semantic completeness or availability of built structure artifacts.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "anchor",
+          "items",
+          "returned_count",
+          "total_candidates",
+          "truncated"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Deterministically recall whole-book concept and entity candidates with match reasons, bounded previews, and complete occurrence LIDs. After choosing candidates, read their full evidence with book_text. Use when: Discover concept or entity candidates when the user may not know the graph display label. Do not treat previews as final evidence or silently select a candidate; read chosen occurrence LIDs with book_text.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "anchor_lid": "1.2",
+            "limit": 5,
+            "query": "threshold"
+          }
+        ],
+        "properties": {
+          "anchor_lid": {
+            "description": "Optional known LID in this book to rank nearby candidates and previews. Omit or null for unanchored ranking; this does not restrict recall to a subtree.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "default": 12,
+            "description": "Maximum concept/entity candidates, 1..50; omit or null for 12. Inspect matched_count and truncated for candidate coverage; this does not limit occurrences within a candidate.",
+            "format": "uint",
+            "maximum": 50,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "query": {
+            "description": "Nonblank concept/entity name, alias or descriptive terms for deterministic candidate recall from names and occurrence text. At most 4,096 Unicode scalar values, including surrounding whitespace; not literal occurrence enumeration.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "book_concept",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "candidates": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "concept",
+                    "entity"
+                  ],
+                  "type": "string"
+                },
+                "match_reasons": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "match_tier": {
+                  "enum": [
+                    "occurrence_text",
+                    "approximate_label",
+                    "label_token",
+                    "exact_label"
+                  ],
+                  "type": "string"
+                },
+                "matched_terms": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "next_calls": {
+                  "default": [],
+                  "items": {
+                    "additionalProperties": false,
+                    "description": "Optional source reads for a chosen locator; emitting a call does not observe its text.",
+                    "properties": {
+                      "arguments": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "end_lid": {
+                            "description": "Inclusive final LID in source reading order; for a search hit, use end_lid. Reads from lid's span start through end_lid's span end. Omit or null to read only lid's span.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "lid": {
+                            "description": "Known LID from this book's locating or structure results; for a search hit, use start_lid. Reads the node's canonical source span, including descendants.",
+                            "type": "string"
+                          },
+                          "start_utf16": {
+                            "description": "Absolute canonical-source UTF-16 position copied from a text continuation. Keep the original lid/end_lid. Omit or null for the initial read; a continuation returns a bounded page and its source_range, requested_range and next_start_utf16.",
+                            "format": "uint",
+                            "minimum": 0.0,
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "lid"
+                        ],
+                        "type": "object"
+                      },
+                      "name": {
+                        "const": "book_text"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "arguments"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "node_id": {
+                  "type": "string"
+                },
+                "occurrences": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "previews": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "lid": {
+                        "type": "string"
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "lid",
+                      "text"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "kind",
+                "match_reasons",
+                "match_tier",
+                "matched_terms",
+                "name",
+                "node_id",
+                "occurrences",
+                "previews"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "matched_count": {
+            "description": "Graph candidates matched by this query's recall rules before limit, not all semantic matches in the book or proof that graph construction is complete.",
+            "format": "uint",
+            "minimum": 0.0,
+            "type": "integer"
+          },
+          "query": {
+            "type": "string"
+          },
+          "returned_count": {
+            "description": "Candidates selected by limit before transport pagination or model-output budgeting.",
+            "format": "uint",
+            "minimum": 0.0,
+            "type": "integer"
+          },
+          "truncated": {
+            "description": "Whether limit omitted matched candidates; does not describe occurrence coverage.",
+            "type": "boolean"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidates",
+          "matched_count",
+          "query",
+          "returned_count",
+          "truncated",
+          "version"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Project BookStructure to explain a LID's role in the whole-book spine, throughline, and key stops. Without at, return the whole-book overview; when the sidecar is absent, return explicit unavailable status. Use when: Inspect the structural role of a LID or the whole-book overview. Do not use as a source-text search surface.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "at": "1.2"
+          }
+        ],
+        "properties": {
+          "at": {
+            "description": "Optional known LID in this book to locate its structural role or current route segment. Omit or null for the whole-book view; this is a location, not a natural-language query.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "name": "book_structure",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "key_stops": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "lid": {
+                  "type": "string"
+                },
+                "reason": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "evidence_lids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "evidence_lids",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                "title": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "type": {
+                  "enum": [
+                    "definition",
+                    "formula",
+                    "claim",
+                    "example",
+                    "turning_point",
+                    "warning",
+                    "summary"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "lid",
+                "reason",
+                "type"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "spine_index": {
+            "format": "uint",
+            "minimum": 0.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "spine_unit": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "depends_on": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "key_stop_ids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "lid": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "enum": [
+                      "setup",
+                      "foundation",
+                      "method",
+                      "application",
+                      "case",
+                      "synthesis"
+                    ],
+                    "type": "string"
+                  },
+                  "summary": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "evidence_lids": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "evidence_lids",
+                      "text"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "depends_on",
+                  "key_stop_ids",
+                  "lid",
+                  "role",
+                  "summary"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "throughlines": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "key_stop_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "lids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "summary": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "evidence_lids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "evidence_lids",
+                    "text"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "id",
+                "key_stop_ids",
+                "lids",
+                "name",
+                "summary"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "warning": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "available",
+          "key_stops",
+          "throughlines"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Return a macro guided-reading route from BookStructure by expanding key stops along spine segments. It does not interpret natural language or read Reader or memory state; when the sidecar is absent, it returns explicit unavailable status. Use when: Choose macro reading stops from BookStructure. Do not use for semantic question answering.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "description": "Optional known LID in this book to locate its structural role or current route segment. Omit or null for the whole-book view; this is a location, not a natural-language query.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "name": "book_guide_path",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "current_segment_index": {
+            "format": "uint",
+            "minimum": 0.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "segments": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "key_stops": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "lid": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "evidence_lids": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "evidence_lids",
+                          "text"
+                        ],
+                        "type": "object"
+                      },
+                      "title": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "type": {
+                        "enum": [
+                          "definition",
+                          "formula",
+                          "claim",
+                          "example",
+                          "turning_point",
+                          "warning",
+                          "summary"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "lid",
+                      "reason",
+                      "type"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "spine_index": {
+                  "format": "uint",
+                  "minimum": 0.0,
+                  "type": "integer"
+                },
+                "spine_unit": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "depends_on": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "key_stop_ids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "lid": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "enum": [
+                        "setup",
+                        "foundation",
+                        "method",
+                        "application",
+                        "case",
+                        "synthesis"
+                      ],
+                      "type": "string"
+                    },
+                    "summary": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "evidence_lids": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "evidence_lids",
+                        "text"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "depends_on",
+                    "key_stop_ids",
+                    "lid",
+                    "role",
+                    "summary"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "key_stops",
+                "spine_index",
+                "spine_unit"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "warning": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "available",
+          "segments"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Return the current paper's metadata projection while preserving value, source, evidence_lids, and confidence. It returns explicit unavailable status without a sidecar and never creates cross-paper relationships. Use when: Read the current paper metadata projection. Do not infer cross-paper relations.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "book_paper_metadata",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "affiliations": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "confidence": {
+                    "format": "float",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "evidence_lids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "evidence_lids",
+                  "source",
+                  "value"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "authors": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "confidence": {
+                    "format": "float",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "evidence_lids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "raw": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "evidence_lids",
+                  "source",
+                  "value"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "code_links": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "confidence": {
+                    "format": "float",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "evidence_lids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "evidence_lids",
+                  "source",
+                  "value"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "datasets": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "confidence": {
+                    "format": "float",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "evidence_lids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "evidence_lids",
+                  "source",
+                  "value"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "field_labels": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "confidence": {
+                    "format": "float",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "evidence_lids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "evidence_lids",
+                  "source",
+                  "value"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "funding": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "confidence": {
+                    "format": "float",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "evidence_lids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "evidence_lids",
+                  "source",
+                  "value"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "header": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "book_id": {
+                    "type": "string"
+                  },
+                  "book_version": {
+                    "type": "string"
+                  },
+                  "core_schema_version": {
+                    "type": "string"
+                  },
+                  "generated_at": {
+                    "type": "string"
+                  },
+                  "profile_id": {
+                    "type": "string"
+                  },
+                  "profile_version": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "book_id",
+                  "book_version",
+                  "core_schema_version",
+                  "generated_at",
+                  "profile_id",
+                  "profile_version"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "identifiers": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "arxiv": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "confidence": {
+                            "format": "float",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "evidence_lids": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "evidence_lids",
+                          "source",
+                          "value"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "doi": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "confidence": {
+                            "format": "float",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "evidence_lids": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "evidence_lids",
+                          "source",
+                          "value"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "url": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "confidence": {
+                            "format": "float",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "evidence_lids": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "evidence_lids",
+                          "source",
+                          "value"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keywords": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "confidence": {
+                    "format": "float",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "evidence_lids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "evidence_lids",
+                  "source",
+                  "value"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "references": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "confidence": {
+                    "format": "float",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "evidence_lids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "identifiers": {
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "type": [
+                            "object",
+                            "null"
+                          ]
+                        },
+                        "raw": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "raw"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "evidence_lids",
+                  "source",
+                  "value"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "confidence": {
+                    "format": "float",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "evidence_lids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "evidence_lids",
+                  "source",
+                  "value"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "venue": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "confidence": {
+                    "format": "float",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "evidence_lids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "evidence_lids",
+                  "source",
+                  "value"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "warning": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "year": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "confidence": {
+                    "format": "float",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "evidence_lids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "format": "int64",
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "evidence_lids",
+                  "source",
+                  "value"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "available"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Return the current paper's lexicon projection for aligning term, abbreviation, and dataset candidates. It returns explicit unavailable status when the sidecar is absent. Use when: Align paper terms, abbreviations, and dataset candidates. Do not treat candidates as verified definitions without source text.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "book_paper_lexicon",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "entries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "acronym_expansion": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "aliases": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "chinese_gloss": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "defined_at_lid": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "evidence_lids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "term": {
+                  "type": "string"
+                },
+                "term_type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "aliases",
+                "evidence_lids",
+                "term",
+                "term_type"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "header": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "book_id": {
+                    "type": "string"
+                  },
+                  "book_version": {
+                    "type": "string"
+                  },
+                  "core_schema_version": {
+                    "type": "string"
+                  },
+                  "generated_at": {
+                    "type": "string"
+                  },
+                  "profile_id": {
+                    "type": "string"
+                  },
+                  "profile_version": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "book_id",
+                  "book_version",
+                  "core_schema_version",
+                  "generated_at",
+                  "profile_id",
+                  "profile_version"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "warning": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "available",
+          "entries"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Return the read-only PaperReadingGuide projection, combining paper metadata and lexicon, BookStructure, graph, discourse, and source text into ten paper questions, a codebook, and abstract-reading aids. It never creates or changes persistent truth. Use when: Read a deterministic paper-reading projection. Do not use it to mutate persistent truth.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "default": "skim",
+            "description": "Reading depth: skim, close or deep. Defaults to skim.",
+            "enum": [
+              "skim",
+              "close",
+              "deep"
+            ],
+            "type": "string"
+          },
+          "stage": {
+            "default": "passive",
+            "description": "Reading stage: passive, active, critical or creative. Defaults to passive.",
+            "enum": [
+              "passive",
+              "active",
+              "critical",
+              "creative"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "book_paper_reading_guide",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "abstract_aid": {
+            "additionalProperties": false,
+            "properties": {
+              "abstract_lids": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "available": {
+                "type": "boolean"
+              },
+              "comprehension_checks": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "evidence_lids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "prompt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "evidence_lids",
+                    "id",
+                    "prompt"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "excerpts": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "evidence_lids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "lid": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "evidence_lids",
+                    "lid",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "key_terms": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "acronym_expansion": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "aliases": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "chinese_gloss": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "defined_at_lid": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "evidence_lids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "term": {
+                      "type": "string"
+                    },
+                    "term_type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "aliases",
+                    "evidence_lids",
+                    "term",
+                    "term_type"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "user_reflection_prompt": {
+                "type": "string"
+              },
+              "warning": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "abstract_lids",
+              "available",
+              "comprehension_checks",
+              "excerpts",
+              "key_terms",
+              "user_reflection_prompt"
+            ],
+            "type": "object"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "codebook": {
+            "additionalProperties": false,
+            "properties": {
+              "available": {
+                "type": "boolean"
+              },
+              "key_stops": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "evidence_lids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "lid": {
+                      "type": "string"
+                    },
+                    "summary": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "evidence_lids",
+                    "id",
+                    "lid",
+                    "summary"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "metadata": {
+                "additionalProperties": false,
+                "properties": {
+                  "arxiv": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "authors": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "code_links": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "datasets": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "doi": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "evidence_lids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "field_labels": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "keywords": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "title": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "url": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "venue": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "year": {
+                    "format": "int64",
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "authors",
+                  "code_links",
+                  "datasets",
+                  "evidence_lids",
+                  "field_labels",
+                  "keywords"
+                ],
+                "type": "object"
+              },
+              "terms": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "acronym_expansion": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "aliases": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "chinese_gloss": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "defined_at_lid": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "evidence_lids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "term": {
+                      "type": "string"
+                    },
+                    "term_type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "aliases",
+                    "evidence_lids",
+                    "term",
+                    "term_type"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "throughlines": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "evidence_lids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "lid": {
+                      "type": "string"
+                    },
+                    "summary": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "evidence_lids",
+                    "id",
+                    "lid",
+                    "summary"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "warnings": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "available",
+              "key_stops",
+              "metadata",
+              "terms",
+              "throughlines",
+              "warnings"
+            ],
+            "type": "object"
+          },
+          "mode": {
+            "enum": [
+              "skim",
+              "close",
+              "deep"
+            ],
+            "type": "string"
+          },
+          "questions": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "answer_slots": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "evidence_lids": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "instruction": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "enum": [
+                          "paper_evidence",
+                          "model_supplement",
+                          "user_reflection"
+                        ],
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "evidence_lids",
+                      "instruction",
+                      "kind",
+                      "label"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "evidence_lids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "focus": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "question": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "answer_slots",
+                "evidence_lids",
+                "focus",
+                "id",
+                "question"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "stage": {
+            "enum": [
+              "passive",
+              "active",
+              "critical",
+              "creative"
+            ],
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "abstract_aid",
+          "available",
+          "codebook",
+          "mode",
+          "questions",
+          "stage",
+          "warnings"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Answer a self-contained semantic question about explicit referents by resolving targets first and then reading source evidence around the frozen bindings. Use when: Answer definition, explanation, relation, or comparison obligations for explicit referents. Do not use for literal occurrence location.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "properties": {
+              "intent": {
+                "enum": [
+                  "definition",
+                  "explanation"
+                ]
+              }
+            }
+          },
+          {
+            "properties": {
+              "intent": {
+                "enum": [
+                  "relation",
+                  "comparison"
+                ]
+              },
+              "targets": {
+                "minItems": 2
+              }
+            }
+          }
+        ],
+        "examples": [
+          {
+            "anchor_lid": "1.1",
+            "intent": "comparison",
+            "obligations": [
+              {
+                "requirement": "State the activation condition at each location."
+              },
+              {
+                "requirement": "Compare whether equality activates each threshold, citing both passages."
+              }
+            ],
+            "query": "How do the activation conditions of the alpha threshold and beta threshold differ?",
+            "targets": [
+              "alpha threshold",
+              "beta threshold"
+            ]
+          }
+        ],
+        "properties": {
+          "anchor_lid": {
+            "description": "Required known LID in this book anchoring referent resolution. It provides local context without restricting evidence retrieval to this node.",
+            "type": "string"
+          },
+          "intent": {
+            "description": "Question kind: definition or explanation requires 1..3 targets; relation or comparison requires 2..3 separately named targets.",
+            "enum": [
+              "definition",
+              "explanation",
+              "relation",
+              "comparison"
+            ],
+            "type": "string"
+          },
+          "obligations": {
+            "description": "One to three answer requirements, each in its own requirement object; these guide evidence sufficiency for the requested answer.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "requirement": {
+                  "description": "One nonblank, independently checkable requirement the semantic answer must address.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "requirement"
+              ],
+              "type": "object"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "type": "array"
+          },
+          "query": {
+            "description": "Self-contained, nonblank semantic question about the named targets, with enough context to resolve referents. Use literal search for exact wording or first/previous occurrences.",
+            "type": "string"
+          },
+          "targets": {
+            "description": "Explicit referents to resolve before reading evidence. Each item is nonblank and unique after trimming and lowercasing; name comparison/relation targets separately, not as one combined phrase.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "anchor_lid",
+          "intent",
+          "obligations",
+          "query",
+          "targets"
+        ],
+        "type": "object"
+      },
+      "name": "book_query",
+      "outputSchema": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "answer": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "bindings": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "candidate_id": {
+                      "type": "string"
+                    },
+                    "canonical_label": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "enum": [
+                        "concept",
+                        "entity",
+                        "paper_term"
+                      ],
+                      "type": "string"
+                    },
+                    "source_lids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "target": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "candidate_id",
+                    "canonical_label",
+                    "kind",
+                    "source_lids",
+                    "target"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "citations": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "lid": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "lid",
+                    "role",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "model_supplement": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "source",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "status": {
+                "enum": [
+                  "complete"
+                ],
+                "type": "string"
+              },
+              "support": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "citation_lids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "obligation_index": {
+                      "format": "uint",
+                      "minimum": 0.0,
+                      "type": "integer"
+                    },
+                    "support_note": {
+                      "type": "string"
+                    },
+                    "verdict": {
+                      "enum": [
+                        "supported",
+                        "uncertain",
+                        "unsupported"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "citation_lids",
+                    "obligation_index",
+                    "support_note",
+                    "verdict"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "bindings",
+              "citations",
+              "model_supplement",
+              "status",
+              "support"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "answer": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "bindings": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "candidate_id": {
+                      "type": "string"
+                    },
+                    "canonical_label": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "enum": [
+                        "concept",
+                        "entity",
+                        "paper_term"
+                      ],
+                      "type": "string"
+                    },
+                    "source_lids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "target": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "candidate_id",
+                    "canonical_label",
+                    "kind",
+                    "source_lids",
+                    "target"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "citations": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "lid": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "lid",
+                    "role",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "model_supplement": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "source",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "status": {
+                "enum": [
+                  "partial"
+                ],
+                "type": "string"
+              },
+              "support": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "citation_lids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "obligation_index": {
+                      "format": "uint",
+                      "minimum": 0.0,
+                      "type": "integer"
+                    },
+                    "support_note": {
+                      "type": "string"
+                    },
+                    "verdict": {
+                      "enum": [
+                        "supported",
+                        "uncertain",
+                        "unsupported"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "citation_lids",
+                    "obligation_index",
+                    "support_note",
+                    "verdict"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "bindings",
+              "citations",
+              "model_supplement",
+              "status",
+              "support"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "answer": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "bindings": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "candidate_id": {
+                      "type": "string"
+                    },
+                    "canonical_label": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "enum": [
+                        "concept",
+                        "entity",
+                        "paper_term"
+                      ],
+                      "type": "string"
+                    },
+                    "source_lids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "target": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "candidate_id",
+                    "canonical_label",
+                    "kind",
+                    "source_lids",
+                    "target"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "citations": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "lid": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "lid",
+                    "role",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "model_supplement": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "source",
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "status": {
+                "enum": [
+                  "insufficient"
+                ],
+                "type": "string"
+              },
+              "support": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "citation_lids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "obligation_index": {
+                      "format": "uint",
+                      "minimum": 0.0,
+                      "type": "integer"
+                    },
+                    "support_note": {
+                      "type": "string"
+                    },
+                    "verdict": {
+                      "enum": [
+                        "supported",
+                        "uncertain",
+                        "unsupported"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "citation_lids",
+                    "obligation_index",
+                    "support_note",
+                    "verdict"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "bindings",
+              "citations",
+              "model_supplement",
+              "status",
+              "support"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "missing_requirements": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "status": {
+                "enum": [
+                  "invalid_plan"
+                ],
+                "type": "string"
+              },
+              "target_issues": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "missing_requirements",
+              "status",
+              "target_issues"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "candidates": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "aliases": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "candidate_id": {
+                      "type": "string"
+                    },
+                    "excerpts": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "lid": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "lid",
+                          "text"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "hint_only": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "acronym_expansion": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "chinese_gloss": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "kind": {
+                      "enum": [
+                        "concept",
+                        "entity",
+                        "paper_term"
+                      ],
+                      "type": "string"
+                    },
+                    "labels": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "match_reasons": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "occurrence_count": {
+                      "format": "uint",
+                      "minimum": 0.0,
+                      "type": "integer"
+                    },
+                    "recall_strength": {
+                      "enum": [
+                        "none",
+                        "context_only",
+                        "approximate",
+                        "direct"
+                      ],
+                      "type": "string"
+                    },
+                    "sources": {
+                      "items": {
+                        "enum": [
+                          "graph",
+                          "paper_lexicon"
+                        ],
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "aliases",
+                    "candidate_id",
+                    "excerpts",
+                    "kind",
+                    "labels",
+                    "match_reasons",
+                    "occurrence_count",
+                    "recall_strength",
+                    "sources"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "status": {
+                "enum": [
+                  "ambiguous"
+                ],
+                "type": "string"
+              },
+              "target": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "candidates",
+              "status",
+              "target"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "enum": [
+                  "unresolved"
+                ],
+                "type": "string"
+              },
+              "target": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "target"
+            ],
+            "type": "object"
+          }
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Synthesize a caller-supplied discrete LID set without expanding retrieval, returning an answer whose citations are a subset of the input LIDs. Use when: Synthesize a caller-supplied, frozen set of LIDs. Do not expand evidence beyond the supplied LIDs.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "lids": [
+              "1.1",
+              "1.2"
+            ],
+            "task": "Summarize these two threshold conditions using only these passages; state any evidence gaps."
+          }
+        ],
+        "properties": {
+          "lids": {
+            "description": "Nonempty list of known LIDs selected as the complete evidence scope. Synthesis reads only these nodes and returns citations drawn from this list, without expanding retrieval.",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "task": {
+            "description": "Synthesis instruction for the supplied LIDs; omit or null to synthesize their content without an additional task.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "lids"
+        ],
+        "type": "object"
+      },
+      "name": "book_synthesize",
+      "outputSchema": {
+        "additionalProperties": false,
+        "description": "`book.synthesize` 对外响应:复用 query 的 answer/citations/model_supplement 骨架, 但 echo 输入 `source_lids` 并标记是否走分批归并 `[ADR-0017/0033]`。",
+        "properties": {
+          "answer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "batched": {
+            "type": "boolean"
+          },
+          "citations": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "lid": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "lid",
+                "role",
+                "text"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "evidence_chain": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "model_supplement": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "source": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source",
+                "text"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "related_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source_lids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "suggested_probing": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "batched",
+          "citations",
+          "evidence_chain",
+          "model_supplement",
+          "related_concepts",
+          "source_lids",
+          "suggested_probing"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Open, refine, or close an ephemeral visitor guide session. Use when: Maintain a visitor-only ephemeral guided-reading cursor. Do not read Resident reader or memory state.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "properties": {
+              "action": {
+                "enum": [
+                  "guide"
+                ]
+              },
+              "intent": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "intent"
+            ]
+          },
+          {
+            "properties": {
+              "action": {
+                "enum": [
+                  "close"
+                ]
+              },
+              "session_id": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "action",
+              "session_id"
+            ]
+          }
+        ],
+        "properties": {
+          "action": {
+            "default": "guide",
+            "description": "guide opens or refines an ephemeral visitor session and requires intent; close ends it and requires session_id. Defaults to guide.",
+            "enum": [
+              "guide",
+              "close"
+            ],
+            "type": "string"
+          },
+          "anchor_lid": {
+            "description": "Optional known LID in this book to anchor guided reading. Omit or null when no location is chosen; unused for close.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "feedback": {
+            "description": "Optional reader feedback to combine with intent when generating the next guide; unused for close.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "intent": {
+            "description": "Nonblank natural-language reading goal, required on every guide action, including session refinement; unused for close.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "session_id": {
+            "description": "Session identifier returned by an earlier guide call. For guide, omit or null to open a session, or supply it to refine that session; required for close.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "name": "book_guide",
+      "outputSchema": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "guide": {
+                "additionalProperties": false,
+                "description": "`book_guide` response: route first, prose second. Every route step is a true `RankedStep` from Core route primitives; prose citations are filtered against the supplied route evidence.",
+                "properties": {
+                  "answer": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "citations": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "lid": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "lid",
+                        "role",
+                        "text"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "entry_lid": {
+                    "type": "string"
+                  },
+                  "frontier": {
+                    "items": {
+                      "additionalProperties": false,
+                      "description": "route_from 前沿的一个排序步:纯坐标 + 结构排序分,不带原文(消费方走 `book.text`)`[ADR-0034]`。",
+                      "properties": {
+                        "edge_type": {
+                          "description": "真实边类型(local / long_range edge_type、discourse relation_type、co_occurrence、next_sibling)。",
+                          "type": "string"
+                        },
+                        "evidence_lids": {
+                          "description": "证据 LID(discourse 取 relation.evidence_lids;其余取 [anchor, step] 两端真 LID)。",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "lid": {
+                          "description": "真实 LID。",
+                          "type": "string"
+                        },
+                        "score": {
+                          "description": "结构排序分 = weight /(1 + 树距)(占位口径,实测回填 `[ADR-0034 何时回头]`)。",
+                          "format": "float",
+                          "type": "number"
+                        },
+                        "why": {
+                          "description": "来自哪条边的导航理由(人可读)。",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "edge_type",
+                        "evidence_lids",
+                        "lid",
+                        "score",
+                        "why"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "intent": {
+                    "type": "string"
+                  },
+                  "model_supplement": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "source": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "source",
+                        "text"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "refined": {
+                    "type": "boolean"
+                  },
+                  "route": {
+                    "items": {
+                      "additionalProperties": false,
+                      "description": "route_from 前沿的一个排序步:纯坐标 + 结构排序分,不带原文(消费方走 `book.text`)`[ADR-0034]`。",
+                      "properties": {
+                        "edge_type": {
+                          "description": "真实边类型(local / long_range edge_type、discourse relation_type、co_occurrence、next_sibling)。",
+                          "type": "string"
+                        },
+                        "evidence_lids": {
+                          "description": "证据 LID(discourse 取 relation.evidence_lids;其余取 [anchor, step] 两端真 LID)。",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "lid": {
+                          "description": "真实 LID。",
+                          "type": "string"
+                        },
+                        "score": {
+                          "description": "结构排序分 = weight /(1 + 树距)(占位口径,实测回填 `[ADR-0034 何时回头]`)。",
+                          "format": "float",
+                          "type": "number"
+                        },
+                        "why": {
+                          "description": "来自哪条边的导航理由(人可读)。",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "edge_type",
+                        "evidence_lids",
+                        "lid",
+                        "score",
+                        "why"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "citations",
+                  "entry_lid",
+                  "frontier",
+                  "intent",
+                  "model_supplement",
+                  "refined",
+                  "route"
+                ],
+                "type": "object"
+              },
+              "opened": {
+                "type": "boolean"
+              },
+              "session_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "session_id",
+              "opened",
+              "guide"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "closed": {
+                "const": true
+              },
+              "ok": {
+                "const": true
+              },
+              "session_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "ok",
+              "closed",
+              "session_id"
+            ],
+            "type": "object"
+          }
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "List bounded Routing Cards for the current active accepted artifact overlay.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "format": "uint",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "name": "artifact_list"
+    },
+    {
+      "description": "Search current active accepted artifacts with deterministic bounded lexical ranking.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "anchor_lids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "artifact_refs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "format": "uint",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "query": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "artifact_search"
+    },
+    {
+      "description": "Read bounded records from a current active accepted artifact by opaque reference.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "limit": {
+                  "enum": [
+                    1
+                  ]
+                }
+              },
+              "required": [
+                "limit"
+              ]
+            },
+            "then": {
+              "properties": {
+                "record_refs": {
+                  "maxItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "limit": {
+                  "enum": [
+                    2
+                  ]
+                }
+              },
+              "required": [
+                "limit"
+              ]
+            },
+            "then": {
+              "properties": {
+                "record_refs": {
+                  "maxItems": 2
+                }
+              }
+            }
+          }
+        ],
+        "not": {
+          "properties": {
+            "cursor": {
+              "type": "string"
+            },
+            "record_refs": {
+              "type": "array"
+            }
+          },
+          "required": [
+            "record_refs",
+            "cursor"
+          ]
+        },
+        "properties": {
+          "artifact_ref": {
+            "type": "string"
+          },
+          "cursor": {
+            "description": "Read continuation; omit record_refs when using cursor.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "field_paths": {
+            "items": {
+              "description": "JSON Pointer such as /title or /meaning/text; escape ~ as ~0 and / in a key as ~1.",
+              "maxLength": 256,
+              "pattern": "^/(?:[^~]|~[01])*$",
+              "type": "string"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "include_relations": {
+            "default": false,
+            "type": "boolean"
+          },
+          "limit": {
+            "format": "uint",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "record_refs": {
+            "description": "Opaque refs returned by artifact.search; mutually exclusive with cursor. Their count must not exceed limit.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "artifact_ref"
+        ],
+        "type": "object"
+      },
+      "name": "artifact_read"
+    }
+  ]
+}

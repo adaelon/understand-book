@@ -1,0 +1,148 @@
+import { describe, expect, it } from "vitest";
+import {
+  confirmBuildIntentSelection,
+  draftBuildIntentSelection,
+  mapLegacyBuildInvocation,
+  replanBuildIntentSelection,
+} from "../src/build-intent-controller";
+import { getSystemArtifactBlueprintV1 } from "../src/artifact-blueprint";
+
+const NOW = "2026-07-26T04:00:00.000Z";
+const LATER = "2026-07-26T04:10:00.000Z";
+const FRESH_PASS1 = {
+  version: "automatic_build_stage_freshness.v1" as const,
+  artifact: "public.pass1" as const,
+  stage: "pass1" as const,
+  fresh: true,
+  freshness_digest: "a".repeat(64),
+};
+
+function target(source_fingerprint = "source-v1") {
+  return {
+    book_id: "migration-book",
+    source_fingerprint,
+    content_profile: { id: "technical_learning" as const, version: "technical_learning_v0" as const },
+    public_freshness: [FRESH_PASS1],
+  };
+}
+
+function candidate(artifact: "timeline" | "concept_map" = "timeline") {
+  return {
+    version: "build_intent_planner_candidate.v2" as const,
+    goal_kind: "analyze" as const,
+    source_scope: { whole_book: true, lids: [], sections: [] },
+    artifacts: [{
+      source: "system" as const,
+      blueprint_id: `system.${artifact}`,
+      blueprint_version: "1.0.0",
+    }],
+    usage_horizon: "project" as const,
+  };
+}
+
+function resolutions(artifact: "timeline" | "concept_map" = "timeline") {
+  const preset = getSystemArtifactBlueprintV1(artifact);
+  return [{
+    version: "artifact_blueprint_resolution.v2" as const,
+    source: "system" as const,
+    blueprint: preset.blueprint,
+    blueprint_id: preset.blueprint.blueprint_id,
+    blueprint_version: preset.blueprint.blueprint_version,
+  }];
+}
+
+function ownerIdentity(suffix: string, revision: number) {
+  return {
+    intent_id: `intent-${suffix}`,
+    intent_revision: revision,
+    plan_id: `plan-${suffix}`,
+    plan_revision: revision,
+  } as const;
+}
+
+function confirmedGoal() {
+  const draft = draftBuildIntentSelection({
+    mode: "goal_directed",
+    target: target(),
+    now: NOW,
+    user_goal: "Build a private timeline",
+    ...ownerIdentity("timeline", 1),
+    candidate: candidate(),
+    resolved_blueprints: resolutions(),
+  });
+  return confirmBuildIntentSelection(draft, {
+    plan_id: draft.plan!.plan_id,
+    plan_revision: draft.plan!.plan_revision,
+    at: NOW,
+    confirmation_source: "reader_ui",
+  });
+}
+
+describe("IP8 replan and legacy migration contracts", () => {
+  it("supersedes the prior selection without scheduling a fresh public Pass1 again", () => {
+    const previous = confirmedGoal();
+    const result = replanBuildIntentSelection(previous, {
+      mode: "goal_directed",
+      target: target(),
+      now: LATER,
+      user_goal: "Build a private concept map",
+      ...ownerIdentity("concept-map", 2),
+      candidate: candidate("concept_map"),
+      resolved_blueprints: resolutions("concept_map"),
+    });
+
+    expect(result.previous.intent?.status).toBe("superseded");
+    expect(result.previous.plan?.status).toBe("superseded");
+    expect(result.previous.plan).toMatchObject({
+      plan_id: previous.plan?.plan_id,
+      plan_revision: previous.plan?.plan_revision,
+    });
+    expect(result.current.intent).toMatchObject({
+      intent_revision: 2,
+      supersedes_intent_id: previous.intent?.intent_id,
+      status: "draft",
+    });
+    expect(result.current.intent?.intent_id).not.toBe(previous.intent?.intent_id);
+    expect(result.current.plan).toMatchObject({ plan_revision: 2, public_stage_closure: [] });
+    expect(result.current.plan?.create).toEqual([expect.stringMatching(/^private\.artifact-/u)]);
+    expect(result.current.plan?.create).not.toContain("public.pass1");
+  });
+
+  it("marks the prior selection stale when the source identity changes before reconfirmation", () => {
+    const result = replanBuildIntentSelection(confirmedGoal(), {
+      mode: "goal_directed",
+      target: target("source-v2"),
+      now: LATER,
+      user_goal: "Rebuild against the changed source",
+      ...ownerIdentity("changed-source", 2),
+      candidate: candidate("concept_map"),
+      resolved_blueprints: resolutions("concept_map"),
+    });
+
+    expect(result.previous.intent?.status).toBe("stale_source");
+    expect(result.previous.plan?.status).toBe("stale_source");
+    expect(result.current.intent).toMatchObject({ source_fingerprint: "source-v2", status: "draft" });
+    expect(result.current.plan).toMatchObject({ source_fingerprint: "source-v2", status: "draft" });
+  });
+
+  it("maps only an explicit legacy full-build invocation to a confirmed standard plan", () => {
+    for (const invocation of ["book_open", "book_import", "book_resume"] as const) {
+      expect(mapLegacyBuildInvocation({ invocation, target: target(), now: NOW })).toBeNull();
+    }
+
+    const explicit = mapLegacyBuildInvocation({
+      invocation: "explicit_full_build",
+      target: target(),
+      now: NOW,
+    });
+    expect(explicit).not.toBeNull();
+    expect(explicit?.intent).toBeNull();
+    expect(explicit?.plan).toMatchObject({
+      recipe_id: "standard_deep",
+      status: "confirmed",
+      confirmation_source: "explicit_legacy_command",
+      reuse: [{ artifact: "public.pass1", freshness_digest: "a".repeat(64) }],
+    });
+    expect(explicit?.plan?.create).not.toContain("public.pass1");
+  });
+});

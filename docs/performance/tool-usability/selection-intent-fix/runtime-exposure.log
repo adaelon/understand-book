@@ -1,0 +1,151 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling memory v0.0.0 (E:\allwork\download\agent\understand-book\crates\memory)
+   Compiling reader v0.0.0 (E:\allwork\download\agent\understand-book\crates\reader)
+   Compiling runtime v0.0.0 (E:\allwork\download\agent\understand-book\crates\runtime)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized] target(s) in 2m 05s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\runtime-cd76124556be8ae4.exe)
+
+running 31 tests
+test tool_exposure::discovery_tests::tool_search_to11_bounded_discovery_refines_through_the_real_parser ... ok
+test tool_exposure::discovery_tests::tool_search_to7_budget_observation ... ok
+test tool_exposure::discovery_tests::tool_search_to7_examples_preserve_runtime_authority ... ok
+test tool_exposure::discovery_tests::tool_search_to7_public_recovery_is_capability_scoped_and_executable ... ok
+test tool_exposure::discovery_tests::tool_search_to7_recovery_tracks_evidence_permissions_and_sampling ... ok
+test tool_exposure::discovery_tests::tool_search_to7_result_limit_is_not_a_capability_failure ... ok
+test tool_exposure::discovery_tests::tool_search_to7_snapshot ... ok
+test tool_exposure::tests::artifact_exposure_replaces_synthesize_without_exceeding_the_direct_budget ... ok
+test tool_exposure::tests::capability_resolver_changes_plan_with_runtime_evidence_profile_and_permissions ... ok
+test tool_exposure::tests::capability_resolver_covers_a_multi_tool_task_need_before_filling_alternatives ... ok
+test tool_exposure::tests::capability_resolver_requires_runtime_effect_seed_and_audits_without_task_text ... ok
+test tool_exposure::tests::explicit_navigation_is_scoped_through_discovery ... ok
+test tool_exposure::tests::explicit_note_and_highlight_have_separate_authority ... ok
+test tool_exposure::tests::historical_discovery_keeps_match_but_expires_run_local_activation ... ok
+test tool_exposure::tests::precise_routing_cards_keep_tool_search_v1_legacy_result_shape_equivalent ... ok
+test tool_exposure::tests::task_need_rejects_model_spoofing_and_stamps_runtime_authority ... ok
+test tool_exposure::tests::tool_exposure_initial_schema_golden_is_small_and_profile_gated ... ok
+test tool_exposure::tests::tool_exposure_schema_budget_is_hard_and_selection_is_repeatable ... ok
+test tool_exposure::tests::tool_exposure_search_activates_only_deferred_metadata_for_next_sampling ... ok
+test tool_exposure::tests::tool_exposure_search_caps_each_activation_and_never_reveals_hidden_tools ... ok
+test tool_exposure::tests::tool_exposure_source_presentation_is_direct_only_with_turn_evidence ... ok
+test tool_exposure::tests::tool_search_v2_filters_then_matches_structural_index_for_a_cjk_task ... ok
+test tool_exposure::tests::tool_search_v2_keeps_v1_receipts_readable_without_producing_them ... ok
+test tool_exposure::tests::tool_search_v2_order_score_and_max_results_are_repeatable ... ok
+test tool_exposure::tests::tool_search_v2_reader_write_requires_authority_and_permission_and_zero_hit_is_inert ... ok
+test tool_exposure::tests::tool_search_v2_schema_is_closed_bounded_and_provider_equivalent ... ok
+test tool_exposure::tests::turn_intent_negative_and_summary_keep_the_read_only_structural_first_surface ... ok
+test tool_exposure::tests::turn_intent_seed_respects_reader_permissions_and_content_profile ... ok
+test tool_exposure::tests::turn_intent_seeded_exposure_is_complete_profile_gated_and_budgeted ... ok
+test tool_exposure::tests::turn_intent_v1_classifies_only_the_frozen_guided_read_phrases ... ok
+test tool_exposure::tests::turn_intent_v1_prioritizes_negation_and_rejects_summary_or_read_aloud ... ok
+
+test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 523 filtered out; finished in 0.85s
+

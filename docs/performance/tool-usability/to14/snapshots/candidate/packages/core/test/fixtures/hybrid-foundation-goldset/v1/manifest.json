@@ -1,0 +1,46 @@
+{
+  "version": "hybrid_foundation_goldset.v1",
+  "policy_version": "hybrid_quality_policy.v1",
+  "fixtures": [
+    {
+      "fixture_id": "licensed-inline-formula",
+      "directory": "licensed-inline-formula",
+      "source_path": "source.md",
+      "pdf_path": "paper.pdf",
+      "expected_path": "expected.json",
+      "license": {
+        "spdx": "CC0-1.0",
+        "copyright": "Understand Book contributors"
+      }
+    },
+    {
+      "fixture_id": "licensed-two-column-formula",
+      "directory": "licensed-two-column-formula",
+      "source_path": "source.md",
+      "pdf_path": "paper.pdf",
+      "expected_path": "expected.json",
+      "license": {
+        "spdx": "CC0-1.0",
+        "copyright": "Understand Book contributors"
+      }
+    }
+  ],
+  "external_benchmarks": [
+    {
+      "benchmark_id": "external-formula-dense-transformer",
+      "descriptor_path": "external-formula-dense-transformer.json",
+      "structure_audit_path": "external-formula-dense-transformer-structure-audit.json",
+      "reviewed_source_plan_path": "external-formula-dense-transformer-reviewed-source-plan.json",
+      "reviewed_source_candidate_audit_path": "external-formula-dense-transformer-reviewed-source-candidate-audit.json",
+      "alignment_unit_audit_path": "external-formula-dense-transformer-alignment-unit-audit.json",
+      "child_window_audit_path": "external-formula-dense-transformer-child-window-audit.json",
+      "display_token_audit_path": "external-formula-dense-transformer-display-token-audit.json",
+      "formula_source_ast_audit_path": "external-formula-dense-transformer-formula-source-ast-audit.json",
+      "formula_region_audit_path": "external-formula-dense-transformer-formula-region-audit.json",
+      "formula_glyph_audit_path": "external-formula-dense-transformer-formula-glyph-audit.json",
+      "image_object_audit_path": "external-formula-dense-transformer-image-object-audit.json",
+      "binding_ownership_audit_path": "external-formula-dense-transformer-binding-ownership-audit.json",
+      "requires_explicit_book_path": true
+    }
+  ]
+}

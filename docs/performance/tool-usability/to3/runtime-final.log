@@ -1,0 +1,158 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling runtime v0.0.0 (E:\allwork\download\agent\understand-book\crates\runtime)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized] target(s) in 41.78s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\runtime-aa2ba5f3b5fb7381.exe)
+
+running 40 tests
+test orchestrator::tests::adm6::adm6_tutor_and_observation_keep_typed_reason_without_text_matching ... ok
+test orchestrator::tests::adm6::adm6_tutor_tool_stops_run_before_next_tool_and_leaves_response_unassessed ... ok
+test orchestrator::tests::turn_failures::tutor_pause_overrides_frozen_context_at_next_sample ... ok
+test orchestrator::tests::turn_failures::tutor_tc2a_navigation_discovery_loads_workflow_on_next_sample ... ok
+test orchestrator::tests::turn_failures::tutor_tc2a_presentation_guidance_follows_discovery_phase_and_delivery ... ok
+test orchestrator::tests::turn_failures::tutor_turn_context_appears_once_across_five_samples ... ok
+test orchestrator::tests::tutor_t16_literal_occurrence_requires_original_read_for_teaching ... ok
+test tool_registry::contract_tests::advertised_example_validation_detects_projection_and_parser_drift ... ok
+test tool_registry::contract_tests::advertised_examples_survive_provider_projection_and_real_validation ... ok
+test tool_registry::contract_tests::artifact_read_exposes_pointer_and_cursor_rules ... ok
+test tool_registry::contract_tests::author_operations_require_complete_inputs ... ok
+test tool_registry::contract_tests::book_common_semantics_and_routing_guidance_reach_the_resident_surface ... ok
+test tool_registry::contract_tests::book_comparison_schema_requires_separate_targets ... ok
+test tool_registry::contract_tests::goal_operations_never_silently_discard_plan_fields ... ok
+test tool_registry::contract_tests::mcp_guide_schema_has_conditional_requirements ... ok
+test tool_registry::contract_tests::note_is_only_exposed_through_reader_note ... ok
+test tool_registry::contract_tests::optional_nulls_match_serde_without_weakening_required_fields ... ok
+test tool_registry::contract_tests::reader_commands_expose_nested_required_fields ... ok
+test tool_registry::contract_tests::search_schemas_expose_existing_length_limits ... ok
+test tool_registry::contract_tests::tutor_examples_follow_final_state_schema_and_provider_requests ... ok
+test tool_registry::contract_tests::tutor_operations_require_their_payloads ... ok
+test tool_registry::contract_tests::tutor_tc2a_misuse_and_help_have_valid_example_counterparts ... ok
+test tutor::t15_tests::tutor_t15_move_roundtrips_source_target_and_historical_objects ... ok
+test tutor_continuation::export_bindings_answerref ... ok
+test tutor_continuation::export_bindings_continuationavailability ... ok
+test tutor_continuation::export_bindings_continuationmovekind ... ok
+test tutor_continuation::export_bindings_continuationoption ... ok
+test tutor_continuation::export_bindings_entryaction ... ok
+test tutor_continuation::export_bindings_interactionaction ... ok
+test tutor_continuation::export_bindings_interactionresolution ... ok
+test tutor_continuation::export_bindings_resolvedinteraction ... ok
+test tutor_continuation::export_bindings_teachingchoice ... ok
+test tutor_continuation::export_bindings_teachingcontinuation ... ok
+test tutor_continuation::export_bindings_tutorcontinuationview ... ok
+test tutor_continuation_tests::continuation_contract_action_origins_and_direction_are_distinct ... ok
+test tutor_continuation_tests::continuation_contract_legacy_move_and_public_allowlist ... ok
+test tutor_continuation_tests::continuation_contract_runtime_and_schema_reject_invalid_options ... ok
+test tutor_continuation_tests::tutor_action_intent_preserves_request_default_and_preference_precedence ... ok
+test tutor_continuation_tests::tutor_projection_exposes_only_current_operations ... ok
+test tutor_continuation_tests::tutor_projection_pure_click_owns_intent_and_accepts_optional_continuation ... ok
+
+test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 480 filtered out; finished in 1.10s
+

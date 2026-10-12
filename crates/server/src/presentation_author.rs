@@ -572,7 +572,7 @@ fn compile(
         runtime::orchestrator::compile_presentation_text(text, &content.source_bindings, messages)
             .map_err(|issues| {
                 let hint = if issues.iter().any(|issue| issue.error_code == "UNKNOWN_SOURCE_REF") {
-                    " Include every cited ref in write.source_ref_ids (or patch.source_ref_ids when adding sources). A ref already observed through source.present or preserved by based_on need not be registered again; it must be explicitly attached to this candidate. Use only observed or preserved refs."
+                    " Include every cited ref in write.source_ref_ids; patch preserves existing bindings, so use write to change sources. A ref already observed through source.present or preserved by based_on need not be registered again; it must be explicitly attached to this candidate. Use only observed or preserved refs."
                 } else { "" };
                 invalid(format!("Public content rejected: {issues:?}{hint}"))
             })?;

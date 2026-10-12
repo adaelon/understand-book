@@ -1,0 +1,14 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/core
+
+ ✓ test/dsh-build-session.test.ts (8 tests | 7 skipped) 3526ms
+   ✓ DSH Engine records and real session > TO6 acknowledges non-final batches with the shared advertised request versions  3524ms
+ ✓ test/automatic-build-executor-session.test.ts (48 tests | 46 skipped) 16773ms
+   ✓ TO6 executor lifecycle examples > TO6 executes normal through the real MCP and session  8650ms
+   ✓ TO6 executor lifecycle examples > TO6 executes recovery through the real MCP and session  8122ms
+
+ Test Files  2 passed (2)
+      Tests  3 passed | 53 skipped (56)
+   Start at  19:31:08
+   Duration  23.89s (transform 3.93s, setup 0ms, collect 10.56s, tests 20.30s, environment 0ms, prepare 1.80s)
+

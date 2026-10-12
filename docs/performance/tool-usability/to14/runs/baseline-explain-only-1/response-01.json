@@ -1,0 +1,5 @@
+{
+  "text": "平均速度就是：**把整段过程走过的总路程，除以这段过程所用的总时间**。它表示这段时间里平均每单位时间走了多远。[[source:source_ref_43d7e3797e6f3aea]]\n\n假设走了 120 米，用了 60 秒，平均速度就是 120 ÷ 60 = 2 米/秒；这不表示每一秒都恰好走了 2 米。\n\n原文：“Average speed is total distance divided by total time.”[[source:source_ref_43d7e3797e6f3aea]]",
+  "tool_calls": [],
+  "usage_total_tokens": 25085
+}

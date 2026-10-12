@@ -1,0 +1,8 @@
+{
+  "name": "candidate-explain-only-1",
+  "version": "candidate",
+  "task": "explain-only",
+  "repetition": 1,
+  "exit_code": 0,
+  "batch": "coverage_completion"
+}

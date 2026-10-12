@@ -1,0 +1,2058 @@
+{
+  "located": {
+    "continuation": {
+      "arguments": {
+        "lid": "1.277"
+      },
+      "kind": "next_call",
+      "reason": "read a returned occurrence; other returned LIDs can be read with book.text, and this is not candidate pagination",
+      "tool": "book.text"
+    },
+    "model_body": {
+      "candidates": [
+        {
+          "kind": "concept",
+          "match_reasons": [
+            "label_token"
+          ],
+          "match_tier": "label_token",
+          "matched_terms": [
+            "alpha"
+          ],
+          "name": "alpha threshold",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.1"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.2"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.3"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.4"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.5"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.6"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.7"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.8"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.9"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.10"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.11"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.12"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.13"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.14"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.15"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.16"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.17"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.18"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.19"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.20"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.21"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.22"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.23"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.24"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.25"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.26"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.27"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.28"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.29"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.30"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.31"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.32"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.33"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.34"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.35"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.36"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.37"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.38"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.39"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.40"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.41"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.42"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.43"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.44"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.45"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.46"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.47"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.48"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.49"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.50"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.51"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.52"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.53"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.54"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.55"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.56"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.57"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.58"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.59"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.60"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.61"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.62"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.63"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.64"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.65"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.66"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.67"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.68"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.69"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.70"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.71"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.72"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.73"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.74"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.75"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.76"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.77"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.78"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.79"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.80"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.81"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.82"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.83"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.84"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.85"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.86"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.87"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.88"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.89"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.90"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.91"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.92"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.93"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.94"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.95"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.96"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.97"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.98"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.99"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.100"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.101"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.102"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.103"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.104"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.105"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.106"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.107"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.108"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.109"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.110"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.111"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.112"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.113"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.114"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.115"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.116"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.117"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.118"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.119"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.120"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.121"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.122"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.123"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.124"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.125"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.126"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.127"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.128"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.129"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.130"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.131"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.132"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.133"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.134"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.135"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.136"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.137"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.138"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.139"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.140"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.141"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.142"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.143"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.144"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.145"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.146"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.147"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.148"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.149"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.150"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.151"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.152"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.153"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.154"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.155"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.156"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.157"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.158"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.159"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.160"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.161"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.162"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.163"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.164"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.165"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.166"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.167"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.168"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.169"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.170"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.171"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.172"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.173"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.174"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.175"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.176"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.177"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.178"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.179"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.180"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.181"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.182"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.183"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.184"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.185"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.186"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.187"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.188"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.189"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.190"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.191"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.192"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.193"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.194"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.195"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.196"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.197"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.198"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.199"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.200"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.201"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.202"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.203"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.204"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.205"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.206"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.207"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.208"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.209"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.210"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.211"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.212"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.213"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.214"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.215"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.216"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.217"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.218"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.219"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.220"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.221"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.222"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.223"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.224"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.225"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.226"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.227"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.228"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.229"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.230"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.231"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.232"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.233"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.234"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.235"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.236"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.237"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.238"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.239"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.240"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.241"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.242"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.243"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.244"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.245"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.246"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.247"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.248"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.249"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.250"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.251"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.252"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.253"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.254"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.255"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.256"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.257"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.258"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.259"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.260"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.261"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.262"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.263"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.264"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.265"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.266"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.267"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.268"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.269"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.270"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.271"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.272"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.273"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.274"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.275"
+              },
+              "tool": "book.text"
+            },
+            {
+              "arguments": {
+                "lid": "1.276"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "node_id": "concept:alpha",
+          "occurrences": [
+            "1.1",
+            "1.2",
+            "1.3",
+            "1.4",
+            "1.5",
+            "1.6",
+            "1.7",
+            "1.8",
+            "1.9",
+            "1.10",
+            "1.11",
+            "1.12",
+            "1.13",
+            "1.14",
+            "1.15",
+            "1.16",
+            "1.17",
+            "1.18",
+            "1.19",
+            "1.20",
+            "1.21",
+            "1.22",
+            "1.23",
+            "1.24",
+            "1.25",
+            "1.26",
+            "1.27",
+            "1.28",
+            "1.29",
+            "1.30",
+            "1.31",
+            "1.32",
+            "1.33",
+            "1.34",
+            "1.35",
+            "1.36",
+            "1.37",
+            "1.38",
+            "1.39",
+            "1.40",
+            "1.41",
+            "1.42",
+            "1.43",
+            "1.44",
+            "1.45",
+            "1.46",
+            "1.47",
+            "1.48",
+            "1.49",
+            "1.50",
+            "1.51",
+            "1.52",
+            "1.53",
+            "1.54",
+            "1.55",
+            "1.56",
+            "1.57",
+            "1.58",
+            "1.59",
+            "1.60",
+            "1.61",
+            "1.62",
+            "1.63",
+            "1.64",
+            "1.65",
+            "1.66",
+            "1.67",
+            "1.68",
+            "1.69",
+            "1.70",
+            "1.71",
+            "1.72",
+            "1.73",
+            "1.74",
+            "1.75",
+            "1.76",
+            "1.77",
+            "1.78",
+            "1.79",
+            "1.80",
+            "1.81",
+            "1.82",
+            "1.83",
+            "1.84",
+            "1.85",
+            "1.86",
+            "1.87",
+            "1.88",
+            "1.89",
+            "1.90",
+            "1.91",
+            "1.92",
+            "1.93",
+            "1.94",
+            "1.95",
+            "1.96",
+            "1.97",
+            "1.98",
+            "1.99",
+            "1.100",
+            "1.101",
+            "1.102",
+            "1.103",
+            "1.104",
+            "1.105",
+            "1.106",
+            "1.107",
+            "1.108",
+            "1.109",
+            "1.110",
+            "1.111",
+            "1.112",
+            "1.113",
+            "1.114",
+            "1.115",
+            "1.116",
+            "1.117",
+            "1.118",
+            "1.119",
+            "1.120",
+            "1.121",
+            "1.122",
+            "1.123",
+            "1.124",
+            "1.125",
+            "1.126",
+            "1.127",
+            "1.128",
+            "1.129",
+            "1.130",
+            "1.131",
+            "1.132",
+            "1.133",
+            "1.134",
+            "1.135",
+            "1.136",
+            "1.137",
+            "1.138",
+            "1.139",
+            "1.140",
+            "1.141",
+            "1.142",
+            "1.143",
+            "1.144",
+            "1.145",
+            "1.146",
+            "1.147",
+            "1.148",
+            "1.149",
+            "1.150",
+            "1.151",
+            "1.152",
+            "1.153",
+            "1.154",
+            "1.155",
+            "1.156",
+            "1.157",
+            "1.158",
+            "1.159",
+            "1.160",
+            "1.161",
+            "1.162",
+            "1.163",
+            "1.164",
+            "1.165",
+            "1.166",
+            "1.167",
+            "1.168",
+            "1.169",
+            "1.170",
+            "1.171",
+            "1.172",
+            "1.173",
+            "1.174",
+            "1.175",
+            "1.176",
+            "1.177",
+            "1.178",
+            "1.179",
+            "1.180",
+            "1.181",
+            "1.182",
+            "1.183",
+            "1.184",
+            "1.185",
+            "1.186",
+            "1.187",
+            "1.188",
+            "1.189",
+            "1.190",
+            "1.191",
+            "1.192",
+            "1.193",
+            "1.194",
+            "1.195",
+            "1.196",
+            "1.197",
+            "1.198",
+            "1.199",
+            "1.200",
+            "1.201",
+            "1.202",
+            "1.203",
+            "1.204",
+            "1.205",
+            "1.206",
+            "1.207",
+            "1.208",
+            "1.209",
+            "1.210",
+            "1.211",
+            "1.212",
+            "1.213",
+            "1.214",
+            "1.215",
+            "1.216",
+            "1.217",
+            "1.218",
+            "1.219",
+            "1.220",
+            "1.221",
+            "1.222",
+            "1.223",
+            "1.224",
+            "1.225",
+            "1.226",
+            "1.227",
+            "1.228",
+            "1.229",
+            "1.230",
+            "1.231",
+            "1.232",
+            "1.233",
+            "1.234",
+            "1.235",
+            "1.236",
+            "1.237",
+            "1.238",
+            "1.239",
+            "1.240",
+            "1.241",
+            "1.242",
+            "1.243",
+            "1.244",
+            "1.245",
+            "1.246",
+            "1.247",
+            "1.248",
+            "1.249",
+            "1.250",
+            "1.251",
+            "1.252",
+            "1.253",
+            "1.254",
+            "1.255",
+            "1.256",
+            "1.257",
+            "1.258",
+            "1.259",
+            "1.260",
+            "1.261",
+            "1.262",
+            "1.263",
+            "1.264",
+            "1.265",
+            "1.266",
+            "1.267",
+            "1.268",
+            "1.269",
+            "1.270",
+            "1.271",
+            "1.272",
+            "1.273",
+            "1.274",
+            "1.275",
+            "1.276",
+            "1.277",
+            "1.278",
+            "1.279",
+            "1.280",
+            "1.281",
+            "1.282",
+            "1.283",
+            "1.284",
+            "1.285",
+            "1.286",
+            "1.287",
+            "1.288",
+            "1.289",
+            "1.290",
+            "1.291",
+            "1.292",
+            "1.293",
+            "1.294",
+            "1.295",
+            "1.296",
+            "1.297",
+            "1.298",
+            "1.299",
+            "1.300"
+          ],
+          "previews": [
+            {
+              "lid": "1.1",
+              "text": "XXXXXXXXXX"
+            },
+            {
+              "lid": "1.2",
+              "text": "XXXXXXXXXX"
+            }
+          ]
+        }
+      ],
+      "delivery": {
+        "collections": {
+          "/candidates": {
+            "delivered": 1,
+            "total": 1
+          },
+          "/candidates/0/next_calls": {
+            "delivered": 276,
+            "total": 300
+          },
+          "/candidates/0/occurrences": {
+            "delivered": 300,
+            "total": 300
+          },
+          "/candidates/0/previews": {
+            "delivered": 2,
+            "total": 2
+          }
+        },
+        "status": "partial"
+      },
+      "matched_count": 1,
+      "query": "alpha",
+      "returned_count": 1,
+      "truncated": false,
+      "version": "book_concept.v2"
+    },
+    "receipt": {
+      "locator_args": {},
+      "opaque_result_digest": "tool-result-fnv1a64-227f08a14eb2448b-bytes-17266",
+      "status": "ok",
+      "tool": "book.concept",
+      "version": "historical_tool_receipt.v1"
+    },
+    "status": "partial",
+    "truncated": true,
+    "version": "tool_result_envelope.v1"
+  },
+  "read": {
+    "model_body": {
+      "lid": "1.277",
+      "text": "XXXXXXXXXX"
+    },
+    "receipt": {
+      "accepted_evidence": [
+        {
+          "end_lid": "1.277",
+          "start_lid": "1.277"
+        }
+      ],
+      "locator_args": {
+        "lid": "1.277"
+      },
+      "opaque_result_digest": "tool-result-fnv1a64-39c58ae9a95f0910-bytes-35",
+      "status": "ok",
+      "tool": "book.text",
+      "version": "historical_tool_receipt.v1"
+    },
+    "status": "ok",
+    "truncated": false,
+    "version": "tool_result_envelope.v1"
+  }
+}

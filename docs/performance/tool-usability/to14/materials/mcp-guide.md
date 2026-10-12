@@ -1,0 +1,113 @@
+# Understand Book MCP 接入
+
+内测用户可让自己的 Agent 查找和读取账号已获准的材料，并依据原文回答。接入凭证、材料权限与调用次数都归属账号，同一账号的多个 Agent 共用余额。
+
+## 连接设置
+
+在支持 **Streamable HTTP 和自定义 Authorization 请求头**的客户端中，配置账号菜单「MCP 接入」中显示的站点地址与本人接入凭证：
+
+| 设置 | 示例／规则 |
+| --- | --- |
+| MCP URL | `https://understandbook.top/mcp` |
+| Authorization | `Bearer <YOUR_MCP_CREDENTIAL>`；替换尖括号占位值 |
+| Content-Type | `application/json` |
+| Accept | `application/json, text/event-stream` |
+| 协议版本 | `2025-11-25` |
+
+登录后从书架或阅读区的账号菜单打开「MCP 接入」，填写名称并创建凭证，复制地址与凭证到客户端。无需先打开材料；完整值仅创建时显示，关闭后无法再次查看，可在同一窗口撤销。创建结果未确认时先刷新列表核对，若已有条目却没有完整值，撤销后重新创建。接口见 [凭证说明](内测MCP-MCP1实现.md)。凭证只供 MCP 读取和查询本人次数使用。改密、停用账号或撤销授权后，应重新检查凭证。退出网页本身不会撤销它。
+
+初始化由客户端发送，例如：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2025-11-25",
+    "capabilities": {},
+    "clientInfo": { "name": "your-agent-client", "version": "your-version" }
+  }
+}
+```
+
+服务返回支持的协议版本、tools 能力和 `instructions`。客户端确认支持该版本后发送 `notifications/initialized`，此后每个请求携带 `MCP-Protocol-Version: 2025-11-25`。服务不分配 Session ID；POST 的普通响应为 JSON，通知响应为无正文的 202，GET 返回 405。无需网页 Cookie 或 CSRF；Agent 可省略 Origin，若发送则须与站点 Origin 一致。
+
+## 交给 Agent 的阅读说明
+
+1. 调用免费的 `book_list`，按名称选择材料，复制其 `published_book_ref`，并检查 `available_tools`。该引用由 `book_id + publication_id` 组成，后续调用保持同一版本。空目录表示当前账号没有获准材料，可请用户联系管理员。
+2. 用 `book_search_text` 找字面命中，或用 `book_concept` 找概念／实体候选。已知 LID 后可用 `book_context` 查关联；材料具备相应能力时，可查看结构、已有阅读路径或论文辅助信息。
+3. 用 `book_text` 读取找到的 LID。检索命中位于 `data.occurrences`：将命中的 `start_lid` 作为 `lid`，`end_lid` 作为 `end_lid`；`source_range_utf16` 给出整个命中的精确范围，`ranges` 给出每个 LID 的命中位置。候选、关系指针和结构摘要用于定位；原文用于核实并支撑回答。不要猜测材料标识、LID 或续页参数。
+4. 依据实际读过的证据回答，保留对应材料版本、来源位置和工具返回的来源链接。证据不足时明确指出缺口，再按任务需要继续读取。
+
+`tools/list` 一次返回下列 11 个工具，其 `inputSchema` 给出实际可用参数：
+
+| 工具 | 何时使用 | 计次 |
+| --- | --- | --- |
+| `book_list` | 选材、查看材料能力、权限变化后重新查询 | 0，目录续页也免费 |
+| `mcp_usage` | 查询本人免费／已购余额、恢复和到期时间 | 0 |
+| `book_search_text` | 按字面定位原文出现位置；空结果可调整关键词或材料范围 | 成功 1 |
+| `book_concept` | 找概念／实体候选和出现 LID，再读取所选候选证据 | 成功 1 |
+| `book_text` | 按一个 LID 或含首尾的 LID 范围读取原文 | 每页成功 1 |
+| `book_context` | 查已知 LID 的邻近、概念共现或远距离关系指针 | 成功 1 |
+| `book_structure` | 查看全书结构或指定 LID 的结构角色 | 成功 1 |
+| `book_guide_path` | 查看已构建的宏观阅读路线和停靠点 | 成功 1 |
+| `book_paper_metadata` | 查看论文元数据及其证据、来源和置信信息 | 成功 1 |
+| `book_paper_lexicon` | 对齐论文术语、缩写和数据集候选 | 成功 1 |
+| `book_paper_reading_guide` | 查看已有论文阅读问题、术语辅助和摘要阅读指引 | 成功 1 |
+
+## 返回、续页和引用
+
+工具响应位于 JSON-RPC 的 `result`，包含 `isError`、`structuredContent` 与 `content`。`content` 中的 JSON 文本与 `structuredContent` 表达相同结果，客户端读取其中一种即可。
+
+成功内容结果包含 `published_book_ref`、`data`、`sources`、`complete`、`next_calls` 和 `usage`。`complete=false` 表示仍有续页；按需要将 `next_calls` 中某项的 `name` 和 `arguments` 原样作为下一次 `tools/call.params`。多项续页可能分别指向不同集合，不应只取第一项后就宣称全部读完。
+
+- 原文每页最多 8,000 个 Unicode 字符。`data.source_range` 是本页范围，`data.requested_range` 是原 LID 请求范围；`start_utf16` 从续页返回值取得，第一页省略。
+- 范围采用规范原文的**绝对 UTF-16 坐标**，`[start, end)` 左闭右开。它不是字节位置；一个 emoji 可能占两个 UTF-16 单元。
+- 集合续页的 `data` 是集合分片，`data_path` 是其在原投影中的 JSON Pointer，`total_items` 是该集合总项数。检索自身的游标也由 `next_calls` 带回。
+- `complete` 只说明当前投影的分页状态；概念候选的 `matched_count`、`truncated` 和 `limit` 仍约束召回范围。字面检索完整也不表示语义上的全部相关内容已找到。
+
+每个 `sources` 项给出 `published_book_ref`、`start_lid`、`end_lid`、`source_range` 与 `source_url`。原文来源范围精确到本页；检索 `data` 另含精确命中位置，关系／结构来源可能覆盖整个 LID。引用时使用实际支持该论断的已读范围，不将不同版本拼成同一来源。空 `sources` 表示该投影未给出可引用原文位置，应先定位并读取证据。目录和额度查询不提供证据来源。
+
+打开来源链接后，Reader 会显示确切版本的规范原文并临时标记相应范围；未登录先登录，登录后恢复同一来源。PDF 材料也在规范文本表面定位。无权或已不可用版本会提示联系管理员，保留原链接，不改开默认版本。
+
+## 次数与购买
+
+每个内测账号每自然月有 1,000 次免费内容调用；首次开通获得完整当月额度。免费次数每月 1 日香港时间 00:00 恢复，未用次数不累计。先用免费次数，再用有效且最早到期的已购次数。
+
+每包 10 元、1,000 次，管理员确认收款并开通后有效 12 个日历月，可重复购买；有效期内的剩余次数跨月保留。购买由用户联系内测管理员完成：打开 `top_up_url`（站点的 `/?account=mcp`）或账号菜单「MCP 接入」，向管理员提供页面上的账号与包数，按管理员给出的方式付款，确认开通后刷新余额。购买次数不会增加材料访问权限。
+
+| usage 字段 | 含义 |
+| --- | --- |
+| `month_hk`、`free_granted`、`free_used`、`free_remaining` | 当前免费月份、当月授予／已用／剩余次数 |
+| `paid_remaining` | 所有当前有效调用包的可用次数之和 |
+| `free_resets_at` | 免费恢复时间，带时区 |
+| `paid_next_expires_at` | 下一批仍有可用次数的到期时间，无可用批次时为 null |
+| `call_packs` | 各批次的 `opened_at`／`expires_at`、授予／调整／已用／剩余次数和当前 `available_units`；过期包仍有历史，但不可用 |
+| `charged_units` | 本次成功内容为 1，免费查询和失败为 0 |
+| `charged_from` | 本次扣除的 `free_month + month_hk` 或 `call_pack + pack_id`；未扣次为 null |
+| `top_up_url`、`top_up_instruction` | 购买入口；URL 为 null 时向用户转述购买说明 |
+
+成功内容的 `usage` 是本次扣除后的余额。以服务端返回为准，不用客户端自行减法推算余额。正常空检索、每个续页和重复成功请求都分别计次；参数错误、权限拒绝、额度不足和服务端执行／记账失败不计次。
+
+## 失败后怎么继续
+
+工具业务失败返回 `isError=true`；结构化字段包括 `error_code`、原始原因 `cause_code`、`message`、`retryable`、`next_step` 与 `charged_units: 0`。
+
+| 状态 | 下一步 |
+| --- | --- |
+| `quota_exhausted` | 停止重复内容请求，告知 `usage.free_resets_at` 和购买说明。初始化、工具发现、目录与额度查询仍免费可用，工具集合稳定。 |
+| `unauthenticated`（HTTP 401） | 请用户检查或重新创建本人接入凭证。 |
+| `material_unavailable` | 重新查 `book_list`，选择获准且有该能力的材料；需要原材料时请用户联系管理员。 |
+| `invalid_arguments` | 按工具 `inputSchema` 修正参数，续页复制返回的 `next_calls`。 |
+| `service_busy` | 按 `retry_after_seconds` 等待后再试。 |
+| `service_unavailable` | 按 `next_step` 稍后重试，避免连续循环请求。 |
+
+身份／协议错误通过 HTTP 状态和 JSON／JSON-RPC 错误表达：403 检查站点 Host／Origin，400 检查 JSON-RPC 与版本头，406 检查 Accept，415 检查 Content-Type，405 改用 POST。协议错误不是内容结果。
+
+## 已知限制
+
+- MCP0–MCP10 已于 2026-10-12 上线，正式接入页为 [MCP 接入](https://understandbook.top/?account=mcp)。账号页面与来源打开见 [MCP7](内测MCP-MCP7实现.md)，备份／恢复和部署证据见 [发布运行单](内测MCP-发布运行单.md)。来源 URL 应与结构化定位一起保存。
+- Codex CLI 0.162.0-alpha.2 已通过本机 Streamable HTTP 完整阅读、翻页、引用和额度耗尽验收；需在客户端允许该 MCP 的读取工具。Claude Code 2.1.196 已通过初始化／工具发现，完整阅读因模型服务凭证 401 尚未验收。[客户端记录](performance/beta-mcp/README.md)。
+- 正式 HTTPS 代理已通过协议、来源和扣次验收；凭证占位值必须替换为本人创建的值。首批按 4 个活跃读取任务规划。
+- 服务端提交消费后连接中断，已记次数保留；再次成功请求会另计一次，复用 JSON-RPC id 不会去重。

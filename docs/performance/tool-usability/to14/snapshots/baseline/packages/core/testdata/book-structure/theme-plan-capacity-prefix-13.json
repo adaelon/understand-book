@@ -1,0 +1,1590 @@
+{
+  "phase": "plan",
+  "input": {
+    "chapters": [
+      {
+        "unit_lid": "1",
+        "title": "深入理解 AI Infra：量化分析与系统设计",
+        "overview": "《深入理解 AI Infra：量化分析与系统设计》由李博杰撰写，封面开启全书。",
+        "question": "本书由谁撰写？"
+      },
+      {
+        "unit_lid": "2",
+        "title": "前言",
+        "overview": "前言从模型应用的抽象代价引出 AI Infra，说明特定模型与加速器带来的跨层优化空间。以计算、读写、驻留容量、通信和串行等待的数量级约束推导设计，通过权重驻留与在线 softmax 说明数据搬移机制，再用双向推演、数据流五问及独立取舍贯通全书。阅读由工作需求递进到执行资源和完整系统，并通过替换输入、核对条件与实际观察形成可检验的设计判断。",
+        "question": "应用开发者为何需要理解模型及其运行基础设施的资源与时间代价？"
+      },
+      {
+        "unit_lid": "3",
+        "title": "第 1 章 初识 AI Infra",
+        "overview": "第 1 章 初识 AI Infra 从模型、运行时和硬件的共同执行信息出发，沿 prefill、decode、权重读取与跨设备交接认识系统。建立容量、运算、接口读写和执行依赖的预算，以量化容量与 70B 读取算例说明批内复用、重叠下界、算术强度和容量限制；再加入私有状态与实测口径，分辨模型漏项和主机开销。专用处理器、SmartNIC 与 UB 的机制把需求推导延伸到资源分工，最后统一到状态生命周期与依赖驱动的跨层设计。",
+        "question": "如何沿模型执行过程认识 AI Infra，并用资源与依赖分析指导系统设计？"
+      },
+      {
+        "unit_lid": "4",
+        "title": "第 2 章 模型架构",
+        "overview": "第 2 章 模型架构沿计算图的运算、数据和依赖推导资源需求，区分投影当前行数、因果查询键配对和输出头范围，并把 KV 复用与逐步生成扩展成完整请求的累计计算和读取。再分别分析头共享、MLA、压缩筛选、递推混合状态及 CED 跨层复用的机制与取舍，按专家实际分派计算 MoE 工作和权重复用，按深宽及层连接解释执行粒度和临时生命周期。最后用一致的结构与任务比较、完整容量预算和服务约束，联合判断模型质量、时延与成本，并衔接随时间变化的请求负载。",
+        "question": "模型结构如何决定每个 token 的运算、参数访问、上下文状态及执行依赖？"
+      },
+      {
+        "unit_lid": "5",
+        "title": "第 3 章 推理与训练负载",
+        "overview": "第 3 章 推理与训练负载在单次调用预算之外加入到达时刻、等待依赖与完成标准，以首响应、生成间隔、完整任务及状态空间时间面积刻画服务压力。由联合到达分布和队列分析转入多轮前缀复用、成功任务成本、关键路径与分支状态，再按视觉、音频和扩散的阶段与循环区分工作、表示和实时期限。训练与 RL 通过前反向、参数状态、有效监督、筛选及权重同步建立完整周期，最后将可检验的规模拟合和任务质量连接到长期服务成本，解释平均工作量无法呈现的系统约束。",
+        "question": "请求到达、任务依赖和状态驻留如何把单次模型工作量变成持续服务与训练的资源需求？"
+      },
+      {
+        "unit_lid": "6",
+        "title": "第 4 章 加速器架构",
+        "overview": "本章从任务运算、状态、流量与依赖出发，把矩阵、向量、各级存储和互联视为共享面积功耗预算下的资源。通过形状补齐、量化分组及展开复用说明实际执行与容量取舍，以分层流量、独立请求和缓冲生存期安排流水，并用数据位置、消息固定开销解释多die和主机设备交接。架构演进与专用化对应负载变化；共享资源服务时间、阶段依赖与Roofline建立条件化下界，再用计数器、内核和实测校准，区分忙时效率和等待，最终按有效产出、能耗边界与模型寿命判断成本及回本。",
+        "question": "在面积、功耗与容量限制下，怎样配置加速器资源才能缩短模型执行时间并控制能耗？"
+      },
+      {
+        "unit_lid": "7",
+        "title": "第 5 章 算子与运行时",
+        "overview": "本章把数学算子落实为kernel、提交、复制与事件交接，按最后使用时间管理缓冲，并以驻留资源和在途字节判断延迟隐藏。分块、bank布局与归约方向连接输入复用、局部容量、并行度及数值顺序；融合与在线注意力减少物化，同时保留完整归约、共同统计量和原舍入规则。编译器在合法性之后联合比较计算位置、保存重算、分块与量化成本；运行时通过准备复用、图重放及按块调度减少主机工作和等待。最终依形状频数、准备回本与关键路径，把局部节省推到完整请求并用配对测量检验。",
+        "question": "分块、布局、融合与运行时安排如何改变数据复用和完整请求的执行效率？"
+      },
+      {
+        "unit_lid": "8",
+        "title": "第 6 章 超节点",
+        "overview": "本章从容量、单请求延迟和总吞吐目标出发，将算子数据依赖映射到每卡权重、状态与输出分片。六种并行方式分别改变复制、汇合、独立输入和专家路由；组合方案须同时核算批内复用、最忙组、KV复制及通信增量。集合算法按消息大小和轮次选择，物理拓扑按逐链路与割集负载、缓冲位置及安装预算判断，互联状态组织和资源池化连接控制成本、访问窗口与状态热度。固定256卡、注意力DP与专家/Engram EP算例中，8→64卡超节点减少每卡专家权重和读取，释放HBM容纳更多KV会话，因容量而提高每卡吞吐；继续扩大后KV读取、计算和All-to-All使收益饱和，单会话速度仍受本卡关键路径限制，同64卡跨服务器还承担NIC开销。最终在固定负载和期限下比较排队、故障范围与按时产出成本，以实测校准可行方案；专用存储案例展示读取优化后的同步瓶颈。",
+        "question": "模型按不同维度分给多卡后，数据依赖、交换路径和调度怎样决定并行方案的收益？"
+      },
+      {
+        "unit_lid": "9",
+        "title": "第 7 章 数据中心网络",
+        "overview": "以流量资源、并发吞吐与依赖关键路径三个模型，把集合通信和专家交换映射到方向割集、共享接口、通信轮次与实际出口。进一步分析远程访问的控制路径、请求窗口、缓冲交接及状态共享，结合突发反馈、多路径乱序和循环等待判断网络选择。训练方案同时核算梯度就绪、节点出口和故障恢复；固定全局token改变TP/DP组合后，每副本序列数、局部矩阵与激活传输均须重算，128卡域算例在有效算力、kernel/KV布局及显存余量假定下由激活交换增量抵消同步节省，较大高速域无需填满张量组。最终以整步关键路径和有效训练进度比较配置。",
+        "question": "同一并行任务跨越超节点后，拓扑、带宽与共享网络行为如何改变执行代价？"
+      },
+      {
+        "unit_lid": "10",
+        "title": "第 8 章 推理优化",
+        "overview": "从请求、batch与调度迭代出发，用TTFT和输出间隔求完整答案时间，逐卡核算常驻权重、生成KV及缓冲以判断准入。批处理摊薄权重读取却增加状态与等待；连续补位和分块输入需按上下文、图形状和ITL取舍。分页、共享、前缀缓存分别改变分配、重复状态和重算，并保留引用生命周期与局部状态恢复条件。量化、卸载和推测通过字节、转换搬移、验证成本与有效输出数比较，正确性及重试进入同一任务时间。最后结合到达率与期限，以容量可行、正确按期和每个合格结果的资源成本筛选组合配置。",
+        "question": "如何组织请求、复用权重与管理 KV，在用户时间要求下返回更多正确答案？"
+      },
+      {
+        "unit_lid": "11",
+        "title": "第 9 章 分布式推理",
+        "overview": "先确定请求的工作、状态与继续生成边界，把有效阶段速度换成各类资源占用，比较完整副本、PD和AF分工的计算收益、状态交接、双端驻留和网络限制。专家放置以输入行复用、CPU/GPU路径和最忙卡为依据；固定总token、专家数和路由时扩大EP不增每专家batch，却减少每卡专家聚合的波动抵消并扩大等待域，使热点或随机路由的相对卡间skew加重。接收、返回及算力受限GEMM随行数变化；权重读取受限的小batch计算另判，热点比例与随机模拟均值只属各自条件。分别分析专家、卡与共享链路负载，副本、流水和细粒度推进计准备、padding与争用。共享KV由计算身份、目录、保留寿命、写读回本和预取依赖决定，路由比较资源与状态都就绪后的完成时间。启动、迁移和恢复保留输出与状态边界，用服务余量推导积压排空；在固定负载、容量和恢复期限下重配资源，以质量和时限合格产出核算成本。",
+        "question": "推理阶段、算子、权重与 KV 放在不同位置时，局部收益能否抵偿交接、路由和恢复代价？"
+      },
+      {
+        "unit_lid": "12",
+        "title": "第 10 章 训练系统",
+        "overview": "以固定数据、有效token目标和完成期限组织训练系统设计：临界batch区分统计收益与强弱扩展的执行等待；从状态精度、分片归属和同时生命周期判断容量，再比较分片、选择重计算、卸载及类型转换增加的关键路径工作。梯度累积保持全局token目标、统一裁剪更新；流水调度在完成时间与激活驻留两轴取舍，交错、延后dW和双向注入各付通信、保存或副本代价。通信须看就绪、争用与暴露首尾，MoE容量丢弃/填充及长度分布改变工作量。持续输入、消费位置与packer残余、同进度优化器快照和提交边界共同保证可恢复进度，保存、最慢卡、硬件与数值回滚进入长期成本。RL反馈按实际可用轨迹比较生成、验证、学习与阶段重叠，区分在线和策略一致性，保留真实行为概率、同事件输入及路由记录，考虑共享切换峰值、权重同步和版本滞后。最后合并迭代、等待、恢复和停顿求工期，按期限筛方案及资源敏感性；MFU口径、模型/数据共同规模与恢复后新增token决定结论适用范围。",
+        "question": "训练状态的分配与生命周期，以及计算通信依赖，如何决定容量和每步耗时？"
+      },
+      {
+        "unit_lid": "13",
+        "title": "第 11 章 资源调度与运行环境",
+        "overview": "以完整任务及按时通过为目标，沿模型、工具与保存依赖计时，用CPU工作和内存驻留面积定位跨资源瓶颈。依据可恢复状态安排模板加载、暂停或逐轮重建，提前准备须同时核对命中、等待及空闲占用；成组调度考虑配套资源、位置、迁移和抢占交还期限。RL临时资源扣权重与恢复准备，验证看条件剩余时间和被阻塞训练组。服务与采购联合比较实际用量、缓存、成功率和期限。完整轮提交、连续恢复位置与条件重试树保留全部失败支出；最终按任务关键路径、容量及按时成功成本选择方案。",
+        "question": "模型与工具反复交互的完整任务应怎样分配资源、管理运行环境并降低状态驻留成本？"
+      }
+    ],
+    "candidate_index_scope": "chapter_macro_route_seeds",
+    "total_candidates": 2636,
+    "candidate_index": [
+      {
+        "ref": "unit:10:fragment:0002#f3-0",
+        "unit_lid": "10",
+        "meaning": "请求有独立输入、输出与结束条件；batch是一次加速器执行共同计算的输入token组，调度迭代是"
+      },
+      {
+        "ref": "unit:10:fragment:0003#f4-1",
+        "unit_lid": "10",
+        "meaning": "每卡容量约束为Mw+MKV+Ma+Mu≤C，分别代表常驻权重、去重后的物理KV块、激活与普通工作"
+      },
+      {
+        "ref": "unit:10:fragment:0004#f5-1",
+        "unit_lid": "10",
+        "meaning": "第j个输出间隔ITLj=t(j+1)−tj，完整请求时间=TTFT+从j=1到G−1的ITLj之"
+      },
+      {
+        "ref": "unit:10:fragment:0006#f7-5",
+        "unit_lid": "10",
+        "meaning": "一轮读取D(b,L)=Dw+bLk，每输出token分摊d(b,L)=Dw/b+Lk；Dw是每轮"
+      },
+      {
+        "ref": "unit:10:fragment:0007#f8-3",
+        "unit_lid": "10",
+        "meaning": "相等方程b(F/P−Lk/β)=Dw/β；每加请求计算增F/P、KV读取增Lk/β，前者更大计算"
+      },
+      {
+        "ref": "unit:10:fragment:0009#f10-0",
+        "unit_lid": "10",
+        "meaning": "固定批处理整组接收、整组结束；连续批处理在迭代边界重排活跃请求，短请求结束空出位置即可接纳新请求"
+      },
+      {
+        "ref": "unit:10:fragment:0009#f10-2",
+        "unit_lid": "10",
+        "meaning": "更早接纳新请求也使其输入计算更早占用加速器，长prefill延长已有请求decode间隔；调度必"
+      },
+      {
+        "ref": "unit:10:fragment:0010#f11-1",
+        "unit_lid": "10",
+        "meaning": "c新token与h旧上下文的因果注意力配对Npair=ch+c(c+1)/2，矩形项为访问旧上下"
+      },
+      {
+        "ref": "unit:10:fragment:0011#f12-3",
+        "unit_lid": "10",
+        "meaning": "先按允许ITL确定轮执行时限，再结合上下文与预设形状换算新token；同时间内长上下文可处理更少"
+      },
+      {
+        "ref": "unit:10:fragment:0013#f14-1",
+        "unit_lid": "10",
+        "meaning": "分页将序列分固定块，逻辑块按token位置编号，物理块存KV，块表记录映射；需新块时从空闲池取块"
+      },
+      {
+        "ref": "unit:10:fragment:0014#f15-0",
+        "unit_lid": "10",
+        "meaning": "引用是块表指向物理块的记录，引用计数记录使用者；获取加一、结束释放，最后引用释放且加速器不再访问"
+      },
+      {
+        "ref": "unit:10:fragment:0014#f15-1",
+        "unit_lid": "10",
+        "meaning": "写时复制是在修改共享内容前获取私有副本；4token尾块已有共同3token而分支追加不同tok"
+      },
+      {
+        "ref": "unit:10:fragment:0014#f15-4",
+        "unit_lid": "10",
+        "meaning": "16条长请求前6144公共token KV864MiB，每条私有8192−6144+255=23"
+      },
+      {
+        "ref": "unit:10:fragment:0016#f17-0",
+        "unit_lid": "10",
+        "meaning": "旧请求前缀KV可跨结束供后请求续prefill，须前缀完全同且模型、位置编码、adapter、状"
+      },
+      {
+        "ref": "unit:10:fragment:0016#f17-6",
+        "unit_lid": "10",
+        "meaning": "全局KV和编码器SWA都命中直接处理追加；仅全局KV命中则重放最近最多128已缓存前缀token"
+      },
+      {
+        "ref": "unit:10:fragment:0018#f19-0",
+        "unit_lid": "10",
+        "meaning": "期望净节省Vh=ph(Tr−Tf)−Tm，ph为再次使用概率，Tr为重算，Tf取回并准备状态，T"
+      },
+      {
+        "ref": "unit:10:fragment:0020#f21-1",
+        "unit_lid": "10",
+        "meaning": "GGML Q2_K每256值主2bit编码64bytes，加scale/最小值等20bytes共"
+      },
+      {
+        "ref": "unit:10:fragment:0021#f22-3",
+        "unit_lid": "10",
+        "meaning": "净节省ΔT=ΔD/β−Tc，ΔD是少读bytes，β有效带宽，Tc新增串行转换时间；Tc超过省读"
+      },
+      {
+        "ref": "unit:10:fragment:0022#f23-3",
+        "unit_lid": "10",
+        "meaning": "每轮2592MiB=2.72GB经Gen5x16每向64GB/s搬移至少42.5ms，超过bat"
+      },
+      {
+        "ref": "unit:10:fragment:0024#f25-3",
+        "unit_lid": "10",
+        "meaning": "正确答案总时间包含首次生成、检查与再次生成；实验两次重试修错额外约2s及92token，首答更快"
+      },
+      {
+        "ref": "unit:10:fragment:0026#f27-0",
+        "unit_lid": "10",
+        "meaning": "推测解码为同请求先生成草稿序列，再目标模型同时验证多个token，接受多个则一次确定多个输出；普"
+      },
+      {
+        "ref": "unit:10:fragment:0026#f27-3",
+        "unit_lid": "10",
+        "meaning": "直接接受后相对目标还缺[p−q]+，其中[z]+=max(z,0)；拒草稿后归一化正差额再采样，"
+      },
+      {
+        "ref": "unit:10:fragment:0027#f28-1",
+        "unit_lid": "10",
+        "meaning": "验证后KV有效长度调至已确定输出，丢弃草稿KV不再用；分页器按确定长度更新块引用，采样器与限制可"
+      },
+      {
+        "ref": "unit:10:fragment:0028#f29-0",
+        "unit_lid": "10",
+        "meaning": "平均每输出耗时=ΣTr/ΣNr；两轮各1.5ms输出1/5token共3ms/6=0.5ms，等"
+      },
+      {
+        "ref": "unit:10:fragment:0030#f31-1",
+        "unit_lid": "10",
+        "meaning": "原轮T、平均输出N，新增ΔT、ΔN时(T+ΔT)/(N+ΔN)<T/N等价ΔT/ΔN<T/N，新"
+      },
+      {
+        "ref": "unit:10:fragment:0032#f33-3",
+        "unit_lid": "10",
+        "meaning": "准入决定是否开始新请求，应先查KV余量和剩余截止时间；6.95s短请求再排0.1s便超时，可提前"
+      },
+      {
+        "ref": "unit:10:fragment:0033#f34-0",
+        "unit_lid": "10",
+        "meaning": "观察窗Tobs内Qi正确指标、Di按期指标，有效吞吐Rgood=ΣQiDi/Tobs；全部完成数"
+      },
+      {
+        "ref": "unit:10:fragment:0034#f35-4",
+        "unit_lid": "10",
+        "meaning": "16条8K输入256输出前6K同、7s时限、KV辅助12GiB，比较A独立BF16、B共享、C独"
+      },
+      {
+        "ref": "unit:10:fragment:0034#f35-7",
+        "unit_lid": "10",
+        "meaning": "先核容量A16×1188=19008MiB超12GiB不能并接；B6048MiB5.91GiB，"
+      },
+      {
+        "ref": "unit:10:fragment:0035#f36-1",
+        "unit_lid": "10",
+        "meaning": "D每轮3输出，85轮得余255，总TD=2.23+85×0.02735=4.56s；A内存不够、"
+      },
+      {
+        "ref": "unit:10:fragment:0036#f37-2",
+        "unit_lid": "10",
+        "meaning": "观察总GPU占用TGPU、总能量Eobs、合格Ng时，每合格结果时间TGPU/Ng、能量Eobs"
+      },
+      {
+        "ref": "unit:11:fragment:0002#af_transfer",
+        "unit_lid": "11",
+        "meaning": "AF 把分界放在模型层内，注意力产生的激活传给 FFN 或专家侧，结果再返回；每层、每步生成都要"
+      },
+      {
+        "ref": "unit:11:fragment:0002#instance_replica",
+        "unit_lid": "11",
+        "meaning": "通信组中的进程各有 rank，多个进程可协同组成推理实例；完整服务副本具备完成整个模型推理的权重"
+      },
+      {
+        "ref": "unit:11:fragment:0002#pd_transfer",
+        "unit_lid": "11",
+        "meaning": "PD 分离让同一请求依次经过独立调度的 P、D 池，P 把输入处理形成的上下文 KV 交给 D；"
+      },
+      {
+        "ref": "unit:11:fragment:0002#stability",
+        "unit_lid": "11",
+        "meaning": "λd_r<n_r：λ 为请求到达率，d_r 为每请求在资源 r 上的平均服务占用，n_r 为该类"
+      },
+      {
+        "ref": "unit:11:fragment:0005#resume_kv_boundary",
+        "unit_lid": "11",
+        "meaning": "输出 1025 token 时 P 产生首个输出，1024 次 D 处理前 1024 个生成 t"
+      },
+      {
+        "ref": "unit:11:fragment:0009#handoff_order",
+        "unit_lid": "11",
+        "meaning": "整份双缓冲交接先保留完整源状态并分配完整目的缓冲；全部写完后 P 发布完成标记，D 看到标记才读"
+      },
+      {
+        "ref": "unit:11:fragment:0010#homogeneous_throughput",
+        "unit_lid": "11",
+        "meaning": "八 A100 共置每请求0.856+1.764=2.62 GPU秒，容量3.05请求/s；分为3"
+      },
+      {
+        "ref": "unit:11:fragment:0010#request_demand",
+        "unit_lid": "11",
+        "meaning": "d_P=L_new/r_P，d_D=(G−1)/r_D；L_new 是 P 新处理 token "
+      },
+      {
+        "ref": "unit:11:fragment:0011#pd_bottleneck",
+        "unit_lid": "11",
+        "meaning": "μ_PD=min(μ_P,μ_D,B_net/V_KV)：μ_P、μ_D 是两池请求率，B_ne"
+      },
+      {
+        "ref": "unit:11:fragment:0012#workload_allocation",
+        "unit_lid": "11",
+        "meaning": "原长输出、前缀命中、短输出最佳P卡数分别4、2、7；命中推动资源向D，短输出向P；输出越长D比重"
+      },
+      {
+        "ref": "unit:11:fragment:0015#cpu_path_model",
+        "unit_lid": "11",
+        "meaning": "T_C(m)=2α+2mhb/B_L+max(2mP_e/C_C,W_e/B_D)，分别计输入输"
+      },
+      {
+        "ref": "unit:11:fragment:0015#gpu_path_model",
+        "unit_lid": "11",
+        "meaning": "T_G(m)=α+W_e/B_L+max(2mP_e/C_G,W_e/B_H)，先启动搬一份专家"
+      },
+      {
+        "ref": "unit:11:fragment:0017#three_expert_quantities",
+        "unit_lid": "11",
+        "meaning": "总专家数决定安排多少权重，分派次数决定有效矩阵计算量，批内专家集合决定访问哪些权重；每专家输入行"
+      },
+      {
+        "ref": "unit:11:fragment:0018#ep_rows",
+        "unit_lid": "11",
+        "meaning": "均匀路由时每专家平均nk/E行；n=1024,k=8,E=256为32行，把同256专家从32卡"
+      },
+      {
+        "ref": "unit:11:fragment:0018#expert_disaggregation",
+        "unit_lid": "11",
+        "meaning": "专家分离将路由专家放独立资源池，由保留注意力/KV的worker发激活收结果；本书专家分离指部署"
+      },
+      {
+        "ref": "unit:11:fragment:0020#whole_request_comparison",
+        "unit_lid": "11",
+        "meaning": "5 μs启动下单步AF更快，但1024步累计约393 ms，为GQA一次PD48.3 ms的8."
+      },
+      {
+        "ref": "unit:11:fragment:0022#ep_hotspot_amplification",
+        "unit_lid": "11",
+        "meaning": "n1024、k8、E256共8192分派，均32行；一热专家128行，其余255各约31.6。编"
+      },
+      {
+        "ref": "unit:11:fragment:0022#ep_wait_case",
+        "unit_lid": "11",
+        "meaning": "每行8 KiB、每卡50 GB/s，EP256热卡128行接收1 MiB约21 μs，均卡32行"
+      },
+      {
+        "ref": "unit:11:fragment:0022#slowest_card_bound",
+        "unit_lid": "11",
+        "meaning": "卡r计算与读权重耗时至少max(F_r/C_r,W_r/B_r)，F_r、W_r为该卡计算量和权"
+      },
+      {
+        "ref": "unit:11:fragment:0023#network_cut_bound",
+        "unit_lid": "11",
+        "meaning": "D/C阶段T_X≥max(最大发送总载荷/发送带宽，最大接收总载荷/接收带宽，最大物理割集载荷V"
+      },
+      {
+        "ref": "unit:11:fragment:0023#random_skew_ep",
+        "unit_lid": "11",
+        "meaning": "独立均匀选8专家仍有行数随机波动；EP越大每卡专家越少、波动抵消越弱，等待卡越多、极忙卡概率越大"
+      },
+      {
+        "ref": "unit:11:fragment:0023#three_skew_levels",
+        "unit_lid": "11",
+        "meaning": "专家选择频率决定有效行，放置与副本选择变每卡负载，来源目标网络路径再变各方向流量；专家热度不均未"
+      },
+      {
+        "ref": "unit:11:fragment:0025#replica_payback",
+        "unit_lid": "11",
+        "meaning": "NΔt>T_copy，最少获益批数floor(T_copy/Δt)+1；同机第3批回本，16/6"
+      },
+      {
+        "ref": "unit:11:fragment:0027#token_critical_path",
+        "unit_lid": "11",
+        "meaning": "T_t=max_{e∈E(t)}L_t,e+T_merge,t，E(t)为所选专家，L累计层起点"
+      },
+      {
+        "ref": "unit:11:fragment:0030#cache_computation_identity",
+        "unit_lid": "11",
+        "meaning": "相同文本不足以确定可复用状态，缓存标识可能含模型/adapter版本、token序列、位置索引、"
+      },
+      {
+        "ref": "unit:11:fragment:0030#directory_object",
+        "unit_lid": "11",
+        "meaning": "状态先保存发布再供查询取回；事件通常只带标识/位置元数据，目录存标识到位置映射，对象存真实KV，"
+      },
+      {
+        "ref": "unit:11:fragment:0031#capacity_window",
+        "unit_lid": "11",
+        "meaning": "连续无命中8K P每0.856 s产1.125 GiB，r≈1.41 GB/s；全写且按顺序淘汰"
+      },
+      {
+        "ref": "unit:11:fragment:0032#save_reuse_inequality",
+        "unit_lid": "11",
+        "meaning": "保存更快需T_write+kT_read<kT_recompute，分别一次写、每次读、每次重算"
+      },
+      {
+        "ref": "unit:11:fragment:0033#preload_buffer",
+        "unit_lid": "11",
+        "meaning": "S_buf=B(T_read−T_new)，B链路带宽，T_read是全部历史KV读取时间，T_"
+      },
+      {
+        "ref": "unit:11:fragment:0034#ssd_endurance",
+        "unit_lid": "11",
+        "meaning": "r1.41 GB/s写只占PCIe5.6%、SSD写34%，但P5520 3.84 TB五年1D"
+      },
+      {
+        "ref": "unit:11:fragment:0036#first_token_ready",
+        "unit_lid": "11",
+        "meaning": "T_first=max(Q,R)+C，Q为GPU最早可执行时刻、R为从请求到达计状态就绪时刻、C"
+      },
+      {
+        "ref": "unit:11:fragment:0039#startup_drain",
+        "unit_lid": "11",
+        "meaning": "原服务全不可用、到达λ、启动T_s产生λT_s积压；就绪μ>λ时额外T_drain=λT_s/("
+      },
+      {
+        "ref": "unit:11:fragment:0040#live_migration_protocol",
+        "unit_lid": "11",
+        "meaning": "计划迁移可后台复制不变上下文、源端继续生成，末尾短暂停补增量再交执行权；最终交接同时定版本与执行"
+      },
+      {
+        "ref": "unit:11:fragment:0041#wal_kv_roles",
+        "unit_lid": "11",
+        "meaning": "WAL在对外确认前可靠存待恢复操作/结果；token WAL存已确定输出，决定继续哪条序列，KV"
+      },
+      {
+        "ref": "unit:11:fragment:0044#deadline_service_rate",
+        "unit_lid": "11",
+        "meaning": "剩余 50 秒消除 35 个积压，同时服务新到达请求，要求 μ−3.5≥35/50，即 μ≥4."
+      },
+      {
+        "ref": "unit:11:fragment:0044#effective_cost",
+        "unit_lid": "11",
+        "meaning": "C_effective＝统计期间总成本／满足质量与时限的请求或任务数。满负载 3.02/4.55"
+      },
+      {
+        "ref": "unit:12:fragment:0000#training-case-target",
+        "unit_lid": "12",
+        "meaning": "本章任务是Qwen3-8B特定领域继续训练100B token、期限30天；比较32与48张RT"
+      },
+      {
+        "ref": "unit:12:fragment:0002#critical-batch-turning-point",
+        "unit_lid": "12",
+        "meaning": "batch增大降低梯度估计噪声，但足够大后只能略减达到同一损失的步数，每步计算仍成比例增加；转折"
+      },
+      {
+        "ref": "unit:12:fragment:0003#strong-scaling-fixed-wait-ceiling",
+        "unit_lid": "12",
+        "meaning": "固定全局batch的强扩展不受噪声尺度的batch上限限制，但固定通信/输入等待占比随扩卡上升；"
+      },
+      {
+        "ref": "unit:12:fragment:0003#weak-scaling-statistical-ceiling",
+        "unit_lid": "12",
+        "meaning": "本例弱扩展加速上限31790/19434≈1.64；1536卡将每步batch放大32倍，只把完"
+      },
+      {
+        "ref": "unit:12:fragment:0003#weak-strong-scaling-definitions",
+        "unit_lid": "12",
+        "meaning": "弱扩展每卡固定累积8个micro-batch，全局batch随卡数放大、每步52.8秒；强扩展固"
+      },
+      {
+        "ref": "unit:12:fragment:0004#mixed-adam-sixteen-bytes",
+        "unit_lid": "12",
+        "meaning": "BF16执行权重2字节、BF16梯度2字节、FP32主权重4字节、Adam一阶与二阶矩各4字节，"
+      },
+      {
+        "ref": "unit:12:fragment:0004#time-dependent-memory-peak",
+        "unit_lid": "12",
+        "meaning": "第i卡峰值=max_t[Mpersistent,i(t)+Mactivation,i(t)+Mt"
+      },
+      {
+        "ref": "unit:12:fragment:0005#fp8-block-scaling-and-accumulation",
+        "unit_lid": "12",
+        "meaning": "E4M3最大正规数448，全局scale难覆盖各层激活；V3激活按1×128、权重按128×12"
+      },
+      {
+        "ref": "unit:12:fragment:0006#mfu-accounting-window",
+        "unit_lid": "12",
+        "meaning": "MFU分母用全部卡峰值；整步耗时已含通信等待，只算加速器计算则为单卡效率。本例按40%计算再加未"
+      },
+      {
+        "ref": "unit:12:fragment:0008#fsdp-full-sharding-execution",
+        "unit_lid": "12",
+        "meaning": "全分片执行先AllGather取得模块参数，做前向/反向，再ReduceScatter汇总并分配"
+      },
+      {
+        "ref": "unit:12:fragment:0008#zero-stage-capacity-formulas",
+        "unit_lid": "12",
+        "meaning": "d卡均分时每卡常驻状态：DP M0=16N；ZeRO1 M1=4N+12N/d；ZeRO2 M2"
+      },
+      {
+        "ref": "unit:12:fragment:0011#stage-memory-and-workspace-reuse",
+        "unit_lid": "12",
+        "meaning": "原GEMM输入每层15 MiB，其中可重建乘积10、其余QKV/注意力输出5；九层阶段每micr"
+      },
+      {
+        "ref": "unit:12:fragment:0012#gradient-cast-two-serial-paths",
+        "unit_lid": "12",
+        "meaning": "BF16梯度G转FP32需读G写2G，共3G内存访问；先传BF16到CPU路径Tc=G/B+3G"
+      },
+      {
+        "ref": "unit:12:fragment:0012#offload-window-wait",
+        "unit_lid": "12",
+        "meaning": "卸载保留数据在主机内存、使用前传回；V字节经有效带宽B传输，若可发到算子使用间窗口W秒，则Twa"
+      },
+      {
+        "ref": "unit:12:fragment:0014#three-memory-optimizations-time-tests",
+        "unit_lid": "12",
+        "meaning": "分片减重复状态但加参数收集/梯度归约；重算减前反向保留值但加重建；卸载减GPU暂不用状态但加主机"
+      },
+      {
+        "ref": "unit:12:fragment:0016#gradient-accumulation-equivalence",
+        "unit_lid": "12",
+        "meaning": "求和与求导可交换，各micro-batch可独立反向，但损失总和必须除同一全局L；所有梯度累积后"
+      },
+      {
+        "ref": "unit:12:fragment:0016#token-normalized-global-objective",
+        "unit_lid": "12",
+        "meaning": "Sk是micro-batch k的有效token索引集合，L=Σk|Sk|；token均值损失L"
+      },
+      {
+        "ref": "unit:12:fragment:0018#1f1b-dual-axis-choice",
+        "unit_lid": "12",
+        "meaning": "两调度相同前后向工作和理想气泡(p−1)(tf+tb)，但1F1B依赖等待使时间多约3%，峰值2"
+      },
+      {
+        "ref": "unit:12:fragment:0018#interleaved-virtual-blocks",
+        "unit_lid": "12",
+        "meaning": "交错1F1B把36层切八块轮流分四卡，每卡v=2不连续块合九层；每批前向跨7条边界而非3，理想气"
+      },
+      {
+        "ref": "unit:12:fragment:0019#delayed-weight-gradient-gap-filling",
+        "unit_lid": "12",
+        "meaning": "权重梯度dW仅用于本层累积，可在对应dX之后延后到空隙执行；ZB-H1利用此填隙，ZB-H2再提"
+      },
+      {
+        "ref": "unit:12:fragment:0019#dualpipe-bidirectional-mechanism",
+        "unit_lid": "12",
+        "meaning": "DualPipe把micro-batch分两半从流水两端相向注入，每阶段承载双向块；气泡=(PP"
+      },
+      {
+        "ref": "unit:12:fragment:0021#communication-wait-critical-path",
+        "unit_lid": "12",
+        "meaning": "通信等待是不能与计算重叠、会延长训练步的部分：3ms归约可藏在5ms独立计算内，若链路先占4ms"
+      },
+      {
+        "ref": "unit:12:fragment:0021#zero3-per-step-volume",
+        "unit_lid": "12",
+        "meaning": "全组ZeRO3每micro-batch前反向各AllGather一次BF16权重，反向后Redu"
+      },
+      {
+        "ref": "unit:12:fragment:0022#layerwise-overlap-and-exposed-ends",
+        "unit_lid": "12",
+        "meaning": "ZeRO3层前预取参数、反向后立即归约；48卡每批链路1.50秒对计算6.53秒，一层0.39G"
+      },
+      {
+        "ref": "unit:12:fragment:0023#capacity-factor-dispatch-rule",
+        "unit_lid": "12",
+        "meaning": "每专家容量=floor(c×token数×k/E)，k为每token选专家数、E总专家数，容量是"
+      },
+      {
+        "ref": "unit:12:fragment:0024#packing-grouping-context-parallel-distinction",
+        "unit_lid": "12",
+        "meaning": "长三角形额外面积来自真实注意力，去填充无法消除；打包减无效填充，长度分组让各卡配对面积接近，CP"
+      },
+      {
+        "ref": "unit:12:fragment:0027#coherent-resume-state",
+        "unit_lid": "12",
+        "meaning": "训练 checkpoint 必须保存同一训练进度的权重、一阶与二阶矩、步数、学习率状态、随机状态"
+      },
+      {
+        "ref": "unit:12:fragment:0028#async-snapshot-commit-boundary",
+        "unit_lid": "12",
+        "meaning": "同步保存生成固定快照并等待写入完成后继续训练；异步保存先复制一致快照到独立内存缓冲，再后台写入，"
+      },
+      {
+        "ref": "unit:12:fragment:0029#first-order-checkpoint-cost",
+        "unit_lid": "12",
+        "meaning": "每次同步保存耗时 c，两次保存之间完成 τ 秒有用训练，作业故障率 λ，每次恢复 r 秒，则单位"
+      },
+      {
+        "ref": "unit:12:fragment:0030#straggler-max-controls-step",
+        "unit_lid": "12",
+        "meaning": "掉队者是同步数据并行某一步中拖慢整步的卡；所有卡要等最慢卡完成，计算步时间取 N 张卡计算耗时的"
+      },
+      {
+        "ref": "unit:12:fragment:0031#loss-spike-rollback-rate-model",
+        "unit_lid": "12",
+        "meaning": "损失尖峰虽不损坏硬件，却同样需丢弃当前参数并回滚。将整作业的尖峰回滚率 λspike 与硬件回滚"
+      },
+      {
+        "ref": "unit:12:fragment:0032#rl-feedback-changes-system-contract",
+        "unit_lid": "12",
+        "meaning": "RL 中模型生成下一批轨迹，经奖励或验证后用于训练，更新权重再改变下一轮生成，使固定数据训练流水"
+      },
+      {
+        "ref": "unit:12:fragment:0033#opd-student-prefix-feedback",
+        "unit_lid": "12",
+        "meaning": "OPD 由当前学生生成轨迹，教师在学生实际前缀上提供下一 token 分布等监督，使学生在易错位"
+      },
+      {
+        "ref": "unit:12:fragment:0034#rl-effective-pipeline-throughput",
+        "unit_lid": "12",
+        "meaning": "把生成、验证或教师反馈、学习能力统一为相同工作单位，分别记 rg、rv、rl，验证后满足策略版本"
+      },
+      {
+        "ref": "unit:12:fragment:0034#shared-versus-independent-deployment",
+        "unit_lid": "12",
+        "meaning": "共享加速器让同组卡轮流训练和生成，节省重复资源但需切换显存状态；独立部署让两侧重叠执行，却需跨组"
+      },
+      {
+        "ref": "unit:12:fragment:0036#actual-sampling-transform-and-event-reconstruction",
+        "unit_lid": "12",
+        "meaning": "温度、top-k、top-p 会改变原 Softmax 分布，行为概率需按实际规则计算并保存变换"
+      },
+      {
+        "ref": "unit:12:fragment:0036#same-weights-forward-engine-difference",
+        "unit_lid": "12",
+        "meaning": "每轮同步权重也不保证 πold/μ=1：生成逐 token decode 读取 KV，训练整段并"
+      },
+      {
+        "ref": "unit:12:fragment:0036#three-policy-ratio-factorization",
+        "unit_lid": "12",
+        "meaning": "μ 为实际行为分布、πold 为本轮优化起点、πθ 为当前策略；同一前缀和 token 下 πθ"
+      },
+      {
+        "ref": "unit:12:fragment:0037#retained-sample-async-break-even",
+        "unit_lid": "12",
+        "meaning": "每批 B 条等效轨迹、异步保留比例 q 时，同步有效吞吐 B/60、异步 qB/44；异步更快要"
+      },
+      {
+        "ref": "unit:12:fragment:0038#routing-replay-current-numerics",
+        "unit_lid": "12",
+        "meaning": "Routing Replay 记录生成选中的逻辑专家 ID，以样本、token 位置和层号定位；"
+      },
+      {
+        "ref": "unit:12:fragment:0040#48-card-deadline-choice",
+        "unit_lid": "12",
+        "meaning": "32/48 卡保存恢复附加比例 1.02%/1.08%，加 5 天停顿后约 34.3/24.6 "
+      },
+      {
+        "ref": "unit:12:fragment:0040#first-order-end-to-end-finish-time",
+        "unit_lid": "12",
+        "meaning": "Tfinish=T0+ceil(D/b) ts(1+L)，其中迭代数由任务 token 总量与每"
+      },
+      {
+        "ref": "unit:12:fragment:0042#48-card-bandwidth-and-compute-sensitivity",
+        "unit_lid": "12",
+        "meaning": "48 卡暴露通信 0.08 秒约占 0.14%；PCIe 减半使每 micro-batch 链路"
+      },
+      {
+        "ref": "unit:12:fragment:0043#model-data-joint-scaling",
+        "unit_lid": "12",
+        "meaning": "数据量固定时参数五倍使 F=6ND 五倍；若 D=20N 随参数增长，则 F=120N²，参数五"
+      },
+      {
+        "ref": "unit:13:fragment:0000#f1-0",
+        "unit_lid": "13",
+        "meaning": "任务是需要交付最终结果的整项工作，代码修复包括反复模型生成、工具改文件与测试、结果回模型；一次模"
+      },
+      {
+        "ref": "unit:13:fragment:0002#f3-4",
+        "unit_lid": "13",
+        "meaning": "各阶段串行时T_task=T_queue+T_prepare+Σ_r(T_model,r+T_t"
+      },
+      {
+        "ref": "unit:13:fragment:0003#f4-4",
+        "unit_lid": "13",
+        "meaning": "内存随阶段变化时A_M=∫M(t)dt，平均需求λ_task E[A_M]；CPU工作W_cpu"
+      },
+      {
+        "ref": "unit:13:fragment:0005#f6-1",
+        "unit_lid": "13",
+        "meaning": "模型上下文可重提交重建，文件可持久副本恢复或重施补丁，进程内存可快照恢复或重执行，工具结果可查询"
+      },
+      {
+        "ref": "unit:13:fragment:0007#f8-2",
+        "unit_lid": "13",
+        "meaning": "进程以地址空间权限隔离且共享内核，容器加命名空间、文件视图与资源控制仍通常共享内核；完整VM用独"
+      },
+      {
+        "ref": "unit:13:fragment:0008#f9-1",
+        "unit_lid": "13",
+        "meaning": "创建需取模板、建立私有状态和准备数据；完整复制、共享只读只复制写页、按需加载各有取舍，少加载缩短"
+      },
+      {
+        "ref": "unit:13:fragment:0009#f10-1",
+        "unit_lid": "13",
+        "meaning": "暂停恢复延续同一任务；快照派生从同状态建多个分支；初始环境重建不继承旧任务修改，三者可运行但继承"
+      },
+      {
+        "ref": "unit:13:fragment:0009#f10-4",
+        "unit_lid": "13",
+        "meaning": "释放M GiB并空闲G秒，以每GiB·秒价格p_M计，暂停节省条件p_M M G>C_trans"
+      },
+      {
+        "ref": "unit:13:fragment:0010#f11-2",
+        "unit_lid": "13",
+        "meaning": "每任务内存3×(2+1)×2=18GiB·秒，平台180GiB替代600GiB；30次准备/秒各"
+      },
+      {
+        "ref": "unit:13:fragment:0010#f11-3",
+        "unit_lid": "13",
+        "meaning": "准备P秒、提前L秒、预测命中h时，调用后平均等待E[W]=h max(P−L,0)+(1−h)P"
+      },
+      {
+        "ref": "unit:13:fragment:0013#f14-0",
+        "unit_lid": "13",
+        "meaning": "多卡作业需特定卡型、显存、配套CPU主存及适合通信的位置，还要求一组进程共同启动；空闲GPU总数"
+      },
+      {
+        "ref": "unit:13:fragment:0013#f14-2",
+        "unit_lid": "13",
+        "meaning": "比较等待+本地运行、迁移+本地运行、分散准备+分散运行；本例12+20=32秒、4+20=24秒"
+      },
+      {
+        "ref": "unit:13:fragment:0014#f15-3",
+        "unit_lid": "13",
+        "meaning": "在线最多等2秒而离线保存需30秒，即使离线可抢占也30秒后才能交还，必须另预留2秒内能分配的资源"
+      },
+      {
+        "ref": "unit:13:fragment:0014#f15-5",
+        "unit_lid": "13",
+        "meaning": "DRF以任务各类资源占比最高者为主导资源，按主导份额公平分配；异构卡同份额可能推进速度不同，Ga"
+      },
+      {
+        "ref": "unit:13:fragment:0015#f16-0",
+        "unit_lid": "13",
+        "meaning": "生成有效量Q、速率r_g时生成时间简化为Q/r_g；同步依次执行时T_iter=T_genera"
+      },
+      {
+        "ref": "unit:13:fragment:0015#f16-2",
+        "unit_lid": "13",
+        "meaning": "每实例Qwen3-8B BF16完整权重16.38GB，接收50Gbit/s单份至少2.62秒；"
+      },
+      {
+        "ref": "unit:13:fragment:0016#f17-0",
+        "unit_lid": "13",
+        "meaning": "可用L、准备恢复T0时实际生成窗口max(L−T0,0)；8秒准备在20秒资源中仅12秒生成，可"
+      },
+      {
+        "ref": "unit:13:fragment:0017#f18-3",
+        "unit_lid": "13",
+        "meaning": "已运行e仍未结束时应估E[S−e|S>e]，仅在未结束样本取平均；九项1秒、一项100秒总体均1"
+      },
+      {
+        "ref": "unit:13:fragment:0018#f19-0",
+        "unit_lid": "13",
+        "meaning": "验证少60H100·秒却让64卡训练多等2秒，新增128、系统净增68；16卡则新增32、净省2"
+      },
+      {
+        "ref": "unit:13:fragment:0018#f19-1",
+        "unit_lid": "13",
+        "meaning": "受控例等待方超时后台线程仍工作130ms，主动终止子进程约0.8ms观察退出；仅报超时即复用资源"
+      },
+      {
+        "ref": "unit:13:fragment:0021#f22-2",
+        "unit_lid": "13",
+        "meaning": "C_call=(Iu pu+Iw pw+Ih ph+O po)/10^6+C_storage+C"
+      },
+      {
+        "ref": "unit:13:fragment:0021#f22-4",
+        "unit_lid": "13",
+        "meaning": "同一前缀访问n次缓存更省条件n pu>pw+(n−1)ph，普通累计成本须大于创建加后续读取；有"
+      },
+      {
+        "ref": "unit:13:fragment:0023#f24-1",
+        "unit_lid": "13",
+        "meaning": "30调用/秒从9秒降6秒平均并发270降180，但每副本batch32降16，10副本仅160槽"
+      },
+      {
+        "ref": "unit:13:fragment:0023#f24-3",
+        "unit_lid": "13",
+        "meaning": "A全命中单次0.0129、成功0.8，成功任务约0.0161；B命中0.0088、未命中0.04"
+      },
+      {
+        "ref": "unit:13:fragment:0023#f24-5",
+        "unit_lid": "13",
+        "meaning": "要求90%提交6秒内通过，A完整10秒不可行，B命中4秒未命中12秒，仅命中成功分支按时，0.9"
+      },
+      {
+        "ref": "unit:13:fragment:0025#f26-1",
+        "unit_lid": "13",
+        "meaning": "固定窗口自建F+Nv、API Nc；成功概率相同且能力均满足时，自建更省须F+Nv<Nc，即N>"
+      },
+      {
+        "ref": "unit:13:fragment:0026#f27-0",
+        "unit_lid": "13",
+        "meaning": "月预留19555.2美元除0.0081任务按量费约241万回本；32槽×2592000秒/27秒"
+      },
+      {
+        "ref": "unit:13:fragment:0028#f29-0",
+        "unit_lid": "13",
+        "meaning": "确认未返可能未执行或已执行丢确认；先查持久结果核对操作标识及文件版本，存在即续接，缺失再判重试。"
+      },
+      {
+        "ref": "unit:13:fragment:0028#f29-5",
+        "unit_lid": "13",
+        "meaning": "异步保存分别跟踪本地和云端，不仅最后收到轮，还跟从起点连续保存轮；第三成功不能越过第二缺口，补齐"
+      },
+      {
+        "ref": "unit:13:fragment:0028#f29-7",
+        "unit_lid": "13",
+        "meaning": "一轮模型决策、工具执行、保存结果作为Agent事务，消息、结果、文件版本全保存才标提交，重启从最"
+      },
+      {
+        "ref": "unit:13:fragment:0029#f30-2",
+        "unit_lid": "13",
+        "meaning": "模型期间释放环境须下一轮状态已存外部或可重算；唯一结果若在内存，要等保存完成才释放，否则丢后重做"
+      },
+      {
+        "ref": "unit:13:fragment:0030#f31-0",
+        "unit_lid": "13",
+        "meaning": "成功平均成本C_all/N_q，按时成功成本C_all/N_q,d，总支出均包含失败尝试；十任务"
+      },
+      {
+        "ref": "unit:13:fragment:0030#f31-1",
+        "unit_lid": "13",
+        "meaning": "有限恢复树E[C]=Σπ pπ cπ，cπ为路径全部步骤成本，成功率为成功路径概率和；节点概率以"
+      },
+      {
+        "ref": "unit:13:fragment:0031#f32-3",
+        "unit_lid": "13",
+        "meaning": "工具环境文件进程由OS管，模型全局KV可取回、局部SWA需重放提示尾部；分别准备后在下一模型调用"
+      },
+      {
+        "ref": "unit:13:fragment:0032#f33-4",
+        "unit_lid": "13",
+        "meaning": "选快速服务、每轮重建且模型期间准备，模型副本10增12；现工具机可满足24秒，为四方案唯一既按期"
+      },
+      {
+        "ref": "unit:13:fragment:0033#f34-2",
+        "unit_lid": "13",
+        "meaning": "等G秒保2GiB成本2G×0.0000045；重建2秒内存加0.1CPU秒为0.0000194美"
+      },
+      {
+        "ref": "unit:13:fragment:0033#f34-3",
+        "unit_lid": "13",
+        "meaning": "可加速原时间占f、局部倍速s，其余时长不变，则整体S=1/[(1−f)+f/s]；工具占10%倍"
+      },
+      {
+        "ref": "unit:2:fragment:0000#abstraction_cost",
+        "unit_lid": "2",
+        "meaning": "理解抽象背后的资源与时间代价，才能解释程序或模型应用为何慢及怎样改进；模型规模、上下文长度、并发"
+      },
+      {
+        "ref": "unit:2:fragment:0000#infra_scope",
+        "unit_lid": "2",
+        "meaning": "AI Infra 是支撑模型训练与推理的基础设施；理解它同时涉及模型处理输入输出的机制，以及参数"
+      },
+      {
+        "ref": "unit:2:fragment:0002#constraints_to_design",
+        "unit_lid": "2",
+        "meaning": "从约束推导设计：先明确任务与质量要求，列出计算、存储、通信及依赖，检查容量、数据供给和不可消除的"
+      },
+      {
+        "ref": "unit:2:fragment:0002#rough_bounds",
+        "unit_lid": "2",
+        "meaning": "用任务计算量、读写量、驻留数据与资源供给做数量级估算，计算、读写和必须串行的步骤分别给出耗时下界"
+      },
+      {
+        "ref": "unit:2:fragment:0004#five_questions",
+        "unit_lid": "2",
+        "meaning": "搬什么、搬多少、搬几次、经过哪里、谁必须等它这五问，可在芯片存储层次、超节点、数据中心网络和端边"
+      },
+      {
+        "ref": "unit:2:fragment:0005#three_stage_analysis",
+        "unit_lid": "2",
+        "meaning": "十二章按理解工作需求、认识执行资源、组织完整系统递进：模型与负载提供计算量、数据量和依赖；芯片与"
+      },
+      {
+        "ref": "unit:2:fragment:0007#observable_judgment",
+        "unit_lid": "2",
+        "meaning": "面对新模型、加速器或部署要求，应能画出执行过程、计算关键数字、指出最需验证的假设，并根据观察调整"
+      },
+      {
+        "ref": "unit:3:fragment:0002#cooptimization",
+        "unit_lid": "3",
+        "meaning": "以模型训练和推理为主要应用时，模型给出计算数据依赖、运行时掌握状态生命周期、硬件执行运算传输，各"
+      },
+      {
+        "ref": "unit:3:fragment:0004#stages",
+        "unit_lid": "3",
+        "meaning": "prefill 处理输入，decode 逐步生成；KV 缓存保存上下文键值向量供后续注意力复用，"
+      },
+      {
+        "ref": "unit:3:fragment:0009#capacity_compute_traffic_equations",
+        "unit_lid": "3",
+        "meaning": "任务同时保存M bytes、做F FLOPs、经指定接口读写R bytes，对应容量M_cap、"
+      },
+      {
+        "ref": "unit:3:fragment:0009#stored_bytes_vs_transfer_bytes",
+        "unit_lid": "3",
+        "meaning": "一份数据可保存一次、读取多次，因此同时驻留容量M与接口累计读写量R须分别计算；显存容量需同时容纳"
+      },
+      {
+        "ref": "unit:3:fragment:0011#complete_memory_capacity_budget",
+        "unit_lid": "3",
+        "meaning": "容量检查为M_W+M_state+M_work≤M_cap：权重与量化附加数据、请求上下文状态、"
+      },
+      {
+        "ref": "unit:3:fragment:0015#eight_batch_throughput_not_latency",
+        "unit_lid": "3",
+        "meaning": "八请求共享一次70 GB读取，计算为八倍，下界约1.13 ms，读取仍20.90。整批产八输出，"
+      },
+      {
+        "ref": "unit:3:fragment:0015#overlap_max_time_bound",
+        "unit_lid": "3",
+        "meaning": "数据分块允许当前块计算时读取下一块；充分重叠模型下T_step≥max(F/Π,R_W/β)。是"
+      },
+      {
+        "ref": "unit:3:fragment:0015#weight_bound_h100_numbers",
+        "unit_lid": "3",
+        "meaning": "单请求140 GFLOPs、70 GB权重，按H100峰值989400 GFLOP/s、3350"
+      },
+      {
+        "ref": "unit:3:fragment:0018#state_augmented_step_model",
+        "unit_lid": "3",
+        "meaning": "补入每请求工作后，T_step≈max(BF₁/Π,(R_W+B R_state,1)/β)，F"
+      },
+      {
+        "ref": "unit:3:fragment:0019#missing_work_vs_system_overhead",
+        "unit_lid": "3",
+        "meaning": "实测偏离下界有两类来源：模型漏掉运算时补项使下界上移，修正模型；实现额外主机提交与日志导致设备空"
+      },
+      {
+        "ref": "unit:3:fragment:0026#dependencies_state_unify_design",
+        "unit_lid": "3",
+        "meaning": "应用以模型和上下文表达行为，多任务共享相近底层计算。掌握计算依赖与状态驻留时间，可统筹跨层选择："
+      },
+      {
+        "ref": "unit:4:fragment:0001#graph-three-aspects",
+        "unit_lid": "4",
+        "meaning": "节点运算量决定计算需求，边上张量决定传递数据量，边方向决定必须先后执行的运算；资源分析需同时考虑"
+      },
+      {
+        "ref": "unit:4:fragment:0003#projection-cost",
+        "unit_lid": "4",
+        "meaning": "输出mn个元素各为长度k的点积，因此N_W=kn，F=2mkn，M_W=b_Wkn，b_W为每参"
+      },
+      {
+        "ref": "unit:4:fragment:0007#causal-pairs",
+        "unit_lid": "4",
+        "meaning": "B条请求各有S个旧上下文与P个新token，第i个新查询可访问S+i个位置(i=1..P)，故N"
+      },
+      {
+        "ref": "unit:4:fragment:0010#model-matrix-budget",
+        "unit_lid": "4",
+        "meaning": "F_matrix=36(385875968m+16384N_pair)+2m_out×4096×"
+      },
+      {
+        "ref": "unit:4:fragment:0012#kv-reuse-conditions",
+        "unit_lid": "4",
+        "meaning": "因果模型旧token看不到后来token，在权重、token位置索引与相关计算条件不变时，旧KV"
+      },
+      {
+        "ref": "unit:4:fragment:0015#cumulative-old-kv",
+        "unit_lid": "4",
+        "meaning": "第j次decode(从0起)前旧上下文H+j；每次各读一次时R_old=c_KV Σ_(j=0)"
+      },
+      {
+        "ref": "unit:4:fragment:0018#kv-sharing-types",
+        "unit_lid": "4",
+        "meaning": "MHA每Q头有自己的K/V头；MQA全部Q头共享一组KV；GQA将Q头分组、每组共享KV。共享减"
+      },
+      {
+        "ref": "unit:4:fragment:0020#mla-associativity",
+        "unit_lid": "4",
+        "meaning": "键上投影Uk，潜变量行矩阵c，K=cUk；qK^T=q(cUk)^T=(qUk^T)c^T。紧凑"
+      },
+      {
+        "ref": "unit:4:fragment:0021#window-compress-select",
+        "unit_lid": "4",
+        "meaning": "窗口只访问近期位置，压缩将多个历史位置汇成较少条目，索引选择当前相关条目；可组合但须分别计量，筛"
+      },
+      {
+        "ref": "unit:4:fragment:0023#linear-recurrence",
+        "unit_lid": "4",
+        "meaning": "每新token贡献合入既有固定状态，当前查询直接用更新状态，下一步继续改写；不显式算全部查询—键"
+      },
+      {
+        "ref": "unit:4:fragment:0026#ced-window-replay",
+        "unit_lid": "4",
+        "meaning": "解码器全局KV由编码器末层投影，输入不必全过解码器；局部SWA依赖各解码层输入，要将末尾最多12"
+      },
+      {
+        "ref": "unit:4:fragment:0031#expert-batch-formulas",
+        "unit_lid": "4",
+        "meaning": "B请求各decode1token且不丢分派时Σ_e t_e=B k_top；F_expert=2"
+      },
+      {
+        "ref": "unit:4:fragment:0036#residual-lifetime",
+        "unit_lid": "4",
+        "meaning": "x_(l+1)=x_l+f_l(x_l)，输入直通与变换结果相加，故子层期间保留x_l直到相加；"
+      },
+      {
+        "ref": "unit:4:fragment:0039#whole-model-sum",
+        "unit_lid": "4",
+        "meaning": "按相同注意力/FFN/连接分g类、数量L_g：M_W=b_WΣ_gL_gN_g+M_embedd"
+      },
+      {
+        "ref": "unit:4:fragment:0044#input-output-distinct-loads",
+        "unit_lid": "4",
+        "meaning": "增加P主要增加一次输入处理量，并增长decode开始的历史；增加G则反复执行投影、专家和输出头，"
+      },
+      {
+        "ref": "unit:4:fragment:0044#two-comparison-controls",
+        "unit_lid": "4",
+        "meaning": "固定S、P、G、B比较同样多位置的资源需求，用于观察结构差异；固定文本和任务则经各模型分词得到输"
+      },
+      {
+        "ref": "unit:4:fragment:0052#service-first-model-design",
+        "unit_lid": "4",
+        "meaning": "模型设计可先扣除加速器上服务状态与工作区，用剩余空间比较模型规模和结构；MQA、GQA和稀疏激活"
+      },
+      {
+        "ref": "unit:5:fragment:0000#workload-three-additional-questions",
+        "unit_lid": "5",
+        "meaning": "在单次调用容量、运算与读取量之外，负载模型加入何时到达、哪些步骤等待、何种结果算完成，并据此建立"
+      },
+      {
+        "ref": "unit:5:fragment:0003#state-space-time-area",
+        "unit_lid": "5",
+        "meaning": "状态累计占用 A_M=∫M(t)dt，为每时间段空间乘持续时间之和，单位 byte·s；1 Gi"
+      },
+      {
+        "ref": "unit:5:fragment:0003#task-completion-before-metric-choice",
+        "unit_lid": "5",
+        "meaning": "模型请求与用户任务不一一对应，修复函数可能需多次读改测与重试；先定义完成，再选择指标。有效吞吐需"
+      },
+      {
+        "ref": "unit:5:fragment:0003#three-request-clocks",
+        "unit_lid": "5",
+        "meaning": "请求到达 ta、首 token t1、末 token tG 定义 TTFT=t1-ta，完整延迟"
+      },
+      {
+        "ref": "unit:5:fragment:0005#joint-arrival-length-distribution",
+        "unit_lid": "5",
+        "meaning": "负载应保留到达时刻和输入输出长度联合分布；长请求影响自身服务及状态驻留，短请求提前结束可释放资源"
+      },
+      {
+        "ref": "unit:5:fragment:0005#window-fluid-queue-recurrence",
+        "unit_lid": "5",
+        "meaning": "窗口积压 Q(k+1)=max(0,Qk+Ak-μkΔt)，Qk 为窗口初待处理，Ak 新到达，"
+      },
+      {
+        "ref": "unit:5:fragment:0009#multi-turn-full-input-and-cache-split",
+        "unit_lid": "5",
+        "meaning": "第i轮完整输入Ii含历史问答，可复用前缀Ki，则需处理Pi=Ii-Ki、恢复上下文Si=Ki；只"
+      },
+      {
+        "ref": "unit:5:fragment:0010#cost-per-success-relative-improvement-test",
+        "unit_lid": "5",
+        "meaning": "固定重复策略单次平均成本 c、成功率 p>0，期望尝试1/p，成功成本c/p；新方案降低成本需p"
+      },
+      {
+        "ref": "unit:5:fragment:0012#dependency-critical-path-definition",
+        "unit_lid": "5",
+        "meaning": "依赖图串行阶段耗时相加，独立分支可同时开始，汇合等最慢分支；从开始到结束累计耗时最长路径为关键路"
+      },
+      {
+        "ref": "unit:5:fragment:0015#vision-language-stage-dependency",
+        "unit_lid": "5",
+        "meaning": "图片先预处理编码投影，再语言prefill、后续decode，E→P→D；图片尺寸影响编码E，编"
+      },
+      {
+        "ref": "unit:5:fragment:0018#audio-buffer-arrival-playback-area",
+        "unit_lid": "5",
+        "meaning": "A(t)累计到达可播放音频时长、P(t)累计播放，剩余B=A-P；连续播放每秒消费一秒，A随块跳"
+      },
+      {
+        "ref": "unit:5:fragment:0021#backward-gradient-and-saved-input-mechanism",
+        "unit_lid": "5",
+        "meaning": "损失衡量输出目标差，梯度为敏感度；Y=XW，X[m,k]、W[k,n]，dX=dY W^T将误差"
+      },
+      {
+        "ref": "unit:5:fragment:0026#rl-producer-consumer-dependencies",
+        "unit_lid": "5",
+        "meaning": "策略生产 token，奖励函数或教师读取回答，学习器读取训练样本并生产新权重，生成模型副本使用新"
+      },
+      {
+        "ref": "unit:5:fragment:0027#retention-generation-amplification",
+        "unit_lid": "5",
+        "meaning": "为保留 n_keep 条样本，平均保留比例 a 满足 0<a≤1 时，所需生成数期望约为 n_g"
+      },
+      {
+        "ref": "unit:5:fragment:0031#scaling-law-fitted-loss-model",
+        "unit_lid": "5",
+        "meaning": "规模规律以实验拟合 L(N,D)=E+A/N^α+B/D^β：L 是验证损失，E 是渐近损失，参"
+      },
+      {
+        "ref": "unit:5:fragment:0036#weighted-lifecycle-cost",
+        "unit_lid": "5",
+        "meaning": "模型 m 的生命周期成本 C_life(m)=C_0(m)+QΣ_j w_j c_j(m)：C_"
+      },
+      {
+        "ref": "unit:5:fragment:0041#work-arrivals-dependencies-recap",
+        "unit_lid": "5",
+        "meaning": "平均速率可粗估资源，但请求到达、步骤依赖、短时积压与状态驻留决定未被平均值呈现的压力。多轮任务包"
+      },
+      {
+        "ref": "unit:6:fragment:0000#architecture_questions",
+        "unit_lid": "6",
+        "meaning": "架构分析需计算任务的运算、存储和传输需求，找出等待数据或先前结果的原因，并在局部提速后识别新瓶颈"
+      },
+      {
+        "ref": "unit:6:fragment:0005#buffer_tradeoff",
+        "unit_lid": "6",
+        "meaning": "缩缓冲加乘加器可能提前移除输入导致重复加载，抵消算力收益；低复用数据的大缓冲又挤占计算面积，应同"
+      },
+      {
+        "ref": "unit:6:fragment:0007#bandwidth_energy",
+        "unit_lid": "6",
+        "meaning": "同工作量和单位能耗下，HBM 带宽翻倍使时间减半但 .534 J 不变；降低该搬移能量要从更近层"
+      },
+      {
+        "ref": "unit:6:fragment:0011#shape_efficiency",
+        "unit_lid": "6",
+        "meaning": "最小块m_t×n_t×k_t按零补齐时，η_shape=MNK/[ceil(M/m_t)m_t·"
+      },
+      {
+        "ref": "unit:6:fragment:0015#steady_interval",
+        "unit_lid": "6",
+        "meaning": "稳态相邻块完成间隔τ≥max(T_matrix,T_smem,T_exp)；到达超过任一资源服务"
+      },
+      {
+        "ref": "unit:6:fragment:0017#reuse_strategies",
+        "unit_lid": "6",
+        "meaning": "比较加载时展开一次、每调用展开、直接分组三策略的重复R次总时间，应列权重、scale、副本、部分"
+      },
+      {
+        "ref": "unit:6:fragment:0019#capacity",
+        "unit_lid": "6",
+        "meaning": "权重+BSm_KV+工作区≤可用容量，B条各留S位置；固定S时Bmax=floor[(C−W−w"
+      },
+      {
+        "ref": "unit:6:fragment:0021#intensity_observation_level",
+        "unit_lid": "6",
+        "meaning": "数据占用空间、计算块逻辑请求字节数、某级接口实际传输字节数是三个不同量。用L2请求量计算的算术强"
+      },
+      {
+        "ref": "unit:6:fragment:0022#inflight_bandwidth_bound",
+        "unit_lid": "6",
+        "meaning": "若最多有No个在途事务，每个返回s bytes，平均延迟L秒，则每秒最多完成约No/L个事务，有"
+      },
+      {
+        "ref": "unit:6:fragment:0027#two_stage_pipeline_time",
+        "unit_lid": "6",
+        "meaning": "n块数据、每块加载tl和计算tc时，串行时间n(tl+tc)；加载与计算资源独立的双缓冲流水为t"
+      },
+      {
+        "ref": "unit:6:fragment:0029#three_distinct_handoff_changes",
+        "unit_lid": "6",
+        "meaning": "第二槽允许相邻组重叠，总时间降3200 tick，约减少38%；直接交接再降3008，节省约6%"
+      },
+      {
+        "ref": "unit:6:fragment:0031#locality_bandwidth_ratio",
+        "unit_lid": "6",
+        "meaning": "die间链路与本地HBM带宽之比小于1时，应在权重本地反复计算，只跨die传小输入与结果。Clo"
+      },
+      {
+        "ref": "unit:6:fragment:0033#point_to_point_time",
+        "unit_lid": "6",
+        "meaning": "一次点对点传输Tedge=α+V/R，α为提交请求与通知完成等固定开销，V为单次数据量，R为有效"
+      },
+      {
+        "ref": "unit:6:fragment:0041#model_hardware_feedback",
+        "unit_lid": "6",
+        "meaning": "大矩阵推动专用乘加，Transformer增加向量与交接需求，大型MoE扩大常驻容量需求，模型演"
+      },
+      {
+        "ref": "unit:6:fragment:0045#specialization_fixed_conditions",
+        "unit_lid": "6",
+        "meaning": "固定算子简化指令控制，固定数据流提前安排通信，固定格式按位宽设计存储运算，固定权重为不变参数设计"
+      },
+      {
+        "ref": "unit:6:fragment:0049#roofline_throughput_bound",
+        "unit_lid": "6",
+        "meaning": "I=F/V为每字节运算量，充分重叠计算访问时，吞吐Pattainable≤min(P,RI)。R"
+      },
+      {
+        "ref": "unit:6:fragment:0054#model_counter_kernel_time_roles",
+        "unit_lid": "6",
+        "meaning": "PRO6000 BF16/FP32稠密约504 TFLOP/s、1.792 TB/s，输入权重都"
+      },
+      {
+        "ref": "unit:6:fragment:0054#utilization_factorization",
+        "unit_lid": "6",
+        "meaning": "Sr为理想速率完成全部操作时间，Ar为实际工作时间，T为任务总时间，Sr/T=(Sr/Ar)×("
+      },
+      {
+        "ref": "unit:6:fragment:0055#service_utilization_unit_cost",
+        "unit_lid": "6",
+        "meaning": "忙时每秒q有效token，每小时处理时间比例u，则小时产出3600uq，token成本c/(36"
+      },
+      {
+        "ref": "unit:6:fragment:0056#specialization_break_even",
+        "unit_lid": "6",
+        "meaning": "专用相对通用增固定成本F0，每有效输出省Δc，则回本输出V*=F0/Δc。D台、忙时速率q、利用"
+      },
+      {
+        "ref": "unit:7:fragment:0002#operator_kernel_launch_layers",
+        "unit_lid": "7",
+        "meaning": "算子描述数学工作，kernel 在加速器执行工作，launch 是 CPU 发起动作；一矩阵乘可"
+      },
+      {
+        "ref": "unit:7:fragment:0004#buffer_last_user",
+        "unit_lid": "7",
+        "meaning": "缓冲复用按最后使用者分别定时：H2D 主机源等复制引擎读完才 CPU 重写，GPU 输入等 ke"
+      },
+      {
+        "ref": "unit:7:fragment:0005#timing_scope",
+        "unit_lid": "7",
+        "meaning": "异步调用前后 CPU 时钟只量提交，结束前等待结果才量发起到完成；CUDA event 在设备队"
+      },
+      {
+        "ref": "unit:7:fragment:0006#inflight_latency_hiding",
+        "unit_lid": "7",
+        "meaning": "延迟隐藏需在途字节＝带宽×延迟。本例 B_need=3.35 TB/s×600 ns/132≈1"
+      },
+      {
+        "ref": "unit:7:fragment:0006#residency_occupancy",
+        "unit_lid": "7",
+        "meaning": "块驻留须同时占线程槽、寄存器、共享内存，各资源容量/每块需求向下取整后取最小，再受块数上限限制。"
+      },
+      {
+        "ref": "unit:7:fragment:0010#independent_tile_traffic",
+        "unit_lid": "7",
+        "meaning": "各输出块独立读输入时 V=2MK(N/n)+2KN(M/m)+2MN；N/n列块各遍历A，M/m"
+      },
+      {
+        "ref": "unit:7:fragment:0013#matmul_split_axes",
+        "unit_lid": "7",
+        "meaning": "C[M,N]=A[M,K]W[K,N]可沿三维分工：切输出行M或列N，各执行者产生不同位置完整结"
+      },
+      {
+        "ref": "unit:7:fragment:0014#float_association_ulp",
+        "unit_lid": "7",
+        "meaning": "FP32计算1+2^-24+2^-24，先逐项加到1两次都舍回1，先加后两项得2^-23再加1得"
+      },
+      {
+        "ref": "unit:7:fragment:0016#fusion_traffic_time_ratio",
+        "unit_lid": "7",
+        "meaning": "独立SiLU读G写T共48 MiB，乘法读T/U写Z共72，合120；融合只读G/U写Z为72，"
+      },
+      {
+        "ref": "unit:7:fragment:0022#kv_query_reuse_tradeoff",
+        "unit_lid": "7",
+        "meaning": "K/V块越小自身和分数槽越小，可容更多Q行共享一次完整K/V扫描，因此减少整份K/V重读；但每扫"
+      },
+      {
+        "ref": "unit:7:fragment:0022#online_recurrence",
+        "unit_lid": "7",
+        "meaning": "新块到来设m'=max(m,max(s)), r=exp(m−m'), p_j=exp(s_j−"
+      },
+      {
+        "ref": "unit:7:fragment:0025#compiler_selection_three_steps",
+        "unit_lid": "7",
+        "meaning": "实现选择先把数学运算表示循环和数组访问、明确可变循环及读写；再依读写依赖和数值规则查合法性；最后"
+      },
+      {
+        "ref": "unit:7:fragment:0027#storage_format_independence",
+        "unit_lid": "7",
+        "meaning": "原FP32累加先BF16舍入再激活，融合也必须在激活前round_to_bf16；寄存器直接传中"
+      },
+      {
+        "ref": "unit:7:fragment:0028#quantization_fusion_traffic_case",
+        "unit_lid": "7",
+        "meaning": "A[4096,4096] FP16 32 MiB→FP8 16，FP8 W[4096,1536]"
+      },
+      {
+        "ref": "unit:7:fragment:0032#reduce_or_overlap_host_work",
+        "unit_lid": "7",
+        "meaning": "主机优化有两条独立路径：复用已确定的形状和执行计划，减少准备工作量；把准备移到前一段设备执行期间"
+      },
+      {
+        "ref": "unit:7:fragment:0033#graph_replay_vs_fusion",
+        "unit_lid": "7",
+        "meaning": "CUDA Graph 先记录设备任务及依赖，反复执行时一次 graph launch 取代逐 k"
+      },
+      {
+        "ref": "unit:7:fragment:0034#plan_run_separation",
+        "unit_lid": "7",
+        "meaning": "FlashInfer 分离 plan 与 run：plan 按本步请求长度和 KV 显存存放位置"
+      },
+      {
+        "ref": "unit:7:fragment:0035#preparation_amortization",
+        "unit_lid": "7",
+        "meaning": "运行 r 组的总时间 T_total=P+rT，P 为一次准备、T 为每组执行。图中截距为 P、"
+      },
+      {
+        "ref": "unit:7:fragment:0037#block_dependency_persistent",
+        "unit_lid": "7",
+        "meaning": "后算子只需前算子一块结果时，可把等待前 kernel 全部完成改为等待该块就绪。Persiste"
+      },
+      {
+        "ref": "unit:7:fragment:0040#parallel_critical_path_switch",
+        "unit_lid": "7",
+        "meaning": "准备与收尾各 10 μs，独立并行 A=60、B=40 μs且收尾等两支，原时间 10+max("
+      },
+      {
+        "ref": "unit:7:fragment:0041#whole_request_analysis_procedure",
+        "unit_lid": "7",
+        "meaning": "分析完整请求先统计各形状调用次数，再计算每次节省，最后按依赖关系判断节省能否缩短请求，才能连接k"
+      },
+      {
+        "ref": "unit:8:fragment:0000#f0-partition-communication",
+        "unit_lid": "8",
+        "meaning": "把算子块交给另一张卡时，必须确定所需输入、输出是否为部分和以及后续消费者；原来的本地数据交接因跨"
+      },
+      {
+        "ref": "unit:8:fragment:0002#f2-three-goals",
+        "unit_lid": "8",
+        "meaning": "权重超过单卡容量时分散存储，单请求执行慢时分摊计算，同时请求多时增加独立实例；三者分别对应容量、"
+      },
+      {
+        "ref": "unit:8:fragment:0003#f3-capacity",
+        "unit_lid": "8",
+        "meaning": "每张卡必须满足 W_i+K_i+A_i+U_i≤C_i：同时驻留的权重、KV、激活和工作区共用该"
+      },
+      {
+        "ref": "unit:8:fragment:0006#f6-cp",
+        "unit_lid": "8",
+        "meaning": "上下文并行切注意力的序列位置S，各卡保存一段Q、K、V，必须交换远端K、V或各段注意力统计量。"
+      },
+      {
+        "ref": "unit:8:fragment:0006#f6-ep",
+        "unit_lid": "8",
+        "meaning": "专家并行切专家集合E，每卡保存部分专家；token须送到所选专家所在卡计算，再将结果送回。"
+      },
+      {
+        "ref": "unit:8:fragment:0006#f6-pp",
+        "unit_lid": "8",
+        "meaning": "流水线并行切层L，每卡保存连续层段；相邻阶段交接激活，训练再反向交接梯度。"
+      },
+      {
+        "ref": "unit:8:fragment:0006#f6-tp",
+        "unit_lid": "8",
+        "meaning": "张量并行切隐藏特征H，包括权重列、行或注意力头；每卡计算同层矩阵的一部分，完整输出分片按需收集，"
+      },
+      {
+        "ref": "unit:8:fragment:0013#f14-3",
+        "unit_lid": "8",
+        "meaning": "p翻倍为2p可提速，当且仅当128[T_AR(2p)-T_AR(p)]<Tlocal/(2p)；"
+      },
+      {
+        "ref": "unit:8:fragment:0016#f17-1",
+        "unit_lid": "8",
+        "meaning": "q个等时阶段、每阶段t含激活传递，b个已就绪互不依赖micro-batch时，总时间(q+b-1"
+      },
+      {
+        "ref": "unit:8:fragment:0019#f20-1",
+        "unit_lid": "8",
+        "meaning": "先标设备坐标，逐算子写输入、权重、输出分片和通信组，再定义就绪执行通信回收顺序。DP2×PP2×"
+      },
+      {
+        "ref": "unit:8:fragment:0020#f21-1",
+        "unit_lid": "8",
+        "meaning": "TP2×EP4均匀覆盖每组128分派，八活跃专家全在一组则该组512分派、计算四倍，其余组等；将"
+      },
+      {
+        "ref": "unit:8:fragment:0025#f26-1",
+        "unit_lid": "8",
+        "meaning": "n卡各有M字节部分和分n块，每阶段n-1轮，两阶段共2(n-1)轮、每卡发送2(n-1)M/n；"
+      },
+      {
+        "ref": "unit:8:fragment:0026#f27-3",
+        "unit_lid": "8",
+        "meaning": "八卡α0.822μs、每方向450GB/s，10KiB树5.07μs胜环11.55μs；8192"
+      },
+      {
+        "ref": "unit:8:fragment:0027#f28-3",
+        "unit_lid": "8",
+        "meaning": "归约读取部分和、加法、写回并推进通信，占SM、HBM及互联，同期矩阵乘也用这些资源，因此重叠会改"
+      },
+      {
+        "ref": "unit:8:fragment:0031#f32-4",
+        "unit_lid": "8",
+        "meaning": "将系统分A/B两部分，连接两侧的链路合称割集；某阶段必须A→B传V字节、方向割集总带宽B，则传输"
+      },
+      {
+        "ref": "unit:8:fragment:0032#f33-0",
+        "unit_lid": "8",
+        "meaning": "把所有发送方流量累加到每条有向链路，逐轮取最大负载才反映瓶颈；递归前三轮4/4/4MiB，Swi"
+      },
+      {
+        "ref": "unit:8:fragment:0037#f38-2",
+        "unit_lid": "8",
+        "meaning": "Jetty保留应用身份、操作上下文与提交接收完成端点；Transport Protocol通道保"
+      },
+      {
+        "ref": "unit:8:fragment:0041#f42-0",
+        "unit_lid": "8",
+        "meaning": "内存池将其他节点空闲容量借给内存不足任务，计算位置不变仅部分数据远放；区别于TP、PP、EP把计"
+      },
+      {
+        "ref": "unit:8:fragment:0042#f43-2",
+        "unit_lid": "8",
+        "meaning": "每事务返回q字节、从发出到完成L秒、至多u个在途，窗口上限uq/L；有效带宽min(B_path"
+      },
+      {
+        "ref": "unit:8:fragment:0045#f46-2",
+        "unit_lid": "8",
+        "meaning": "单会话 50ms 期限需要八卡组；四会话均需在 130ms 内完成时，TP2 和 TP4 可行且"
+      },
+      {
+        "ref": "unit:8:fragment:0046#f47-0",
+        "unit_lid": "8",
+        "meaning": "按时会话平均成本 C_on_time=C_occupied/N_on_time。分子按全部工作占"
+      },
+      {
+        "ref": "unit:8:fragment:0048#f49-0",
+        "unit_lid": "8",
+        "meaning": "π*=argmin_{π∈P_feasible}J(π)，方案包含并行度、物理放置、通信算法、m"
+      },
+      {
+        "ref": "unit:8:fragment:0049#f50-2",
+        "unit_lid": "8",
+        "meaning": "8卡扩大至64卡使每卡专家降为八分之一、专家读取降至十分之一以下，释放HBM容九倍会话，每卡吞吐"
+      },
+      {
+        "ref": "unit:8:fragment:0049#f50-3",
+        "unit_lid": "8",
+        "meaning": "注意力数据并行下batch1关键路径仍由本卡8.2GB复制权重和逐层单专家读取决定，8卡或256"
+      },
+      {
+        "ref": "unit:8:fragment:0049#f50-5",
+        "unit_lid": "8",
+        "meaning": "权重离开HBM后读取2.7ms降到69μs，但80次片上AllReduce为159μs、占tok"
+      },
+      {
+        "ref": "unit:9:fragment:0000#f1-2",
+        "unit_lid": "9",
+        "meaning": "流量资源模型求各链路接口传输时间及瓶颈；并发吞吐模型求用满带宽需多少同时请求；依赖关键路径模型判"
+      },
+      {
+        "ref": "unit:9:fragment:0003#f4-1",
+        "unit_lid": "9",
+        "meaning": "割集某方向传输下界T_C=V_C/B_C。全双工两方向各计，共享内部接口需合计流量；调度不能突破"
+      },
+      {
+        "ref": "unit:9:fragment:0003#f4-2",
+        "unit_lid": "9",
+        "meaning": "Clos以多层交换机和中间层提供多路径。48个400Gbit/s下联共2.4TB/s、16上联0"
+      },
+      {
+        "ref": "unit:9:fragment:0009#f11-2",
+        "unit_lid": "9",
+        "meaning": "分层先本地八rank七轮ReduceScatter，每rank24MiB；对应分片跨服务器八对各"
+      },
+      {
+        "ref": "unit:9:fragment:0009#f11-3",
+        "unit_lid": "9",
+        "meaning": "T_comm=Σ_r(α+max_e V_{r,e}/B_e)：轮内并行取最慢资源传输，轮间依次"
+      },
+      {
+        "ref": "unit:9:fragment:0010#f12-5",
+        "unit_lid": "9",
+        "meaning": "分层以本地部分归约减少远端字节并给各NIC分片；独立多NIC时近乎无代价，共享接口则只有本地增加"
+      },
+      {
+        "ref": "unit:9:fragment:0012#f14-1",
+        "unit_lid": "9",
+        "meaning": "T_msg=α+M/B，50GB/s、5μs启动下BF16宽4096向量8KiB需5.2μs、9"
+      },
+      {
+        "ref": "unit:9:fragment:0013#f15-2",
+        "unit_lid": "9",
+        "meaning": "以V_ij为卡i→j载荷，行和为发送量、列和为接收量，跨割集元素和为割集量；各自除对应带宽后取最"
+      },
+      {
+        "ref": "unit:9:fragment:0014#f16-3",
+        "unit_lid": "9",
+        "meaning": "B_eff=min(B_D,50+min(450,100))GB/s。直连50与两邻NIC合10"
+      },
+      {
+        "ref": "unit:9:fragment:0020#f22-1",
+        "unit_lid": "9",
+        "meaning": "GPUDirect RDMA让NIC直接访问已注册授权GPU内存，避免主机中转；CPU发起仍由C"
+      },
+      {
+        "ref": "unit:9:fragment:0021#f23-2",
+        "unit_lid": "9",
+        "meaning": "内存语义不等于缓存一致。单边读写仍需授权有效期；跨节点Load/Store不自动一致，OpenU"
+      },
+      {
+        "ref": "unit:9:fragment:0024#f26-3",
+        "unit_lid": "9",
+        "meaning": "B_eff≤min(B_path,Nm/T,m/δ)。18.6ns发起间隔约5400万请求/s，"
+      },
+      {
+        "ref": "unit:9:fragment:0028#f30-0",
+        "unit_lid": "9",
+        "meaning": "源缓冲复用需完成语义保证不再读源；消费者需远端可见且就绪通知按约定发布查看；目的覆盖需消费完通知"
+      },
+      {
+        "ref": "unit:9:fragment:0028#f30-2",
+        "unit_lid": "9",
+        "meaning": "依赖边u→v要求u完成后v开始；节点完成取所有前驱最晚完成加自身时长，起终最长链为关键路径。"
+      },
+      {
+        "ref": "unit:9:fragment:0029#f31-1",
+        "unit_lid": "9",
+        "meaning": "S_private=Le+LP(r+t)，S_shared=Le+LPr+Pt，e端点、r关系绑"
+      },
+      {
+        "ref": "unit:9:fragment:0032#f34-5",
+        "unit_lid": "9",
+        "meaning": "D1μs提前读0，2μs更新1，标志3μs可见、4μs读标志，5μs按标志数据返仍旧0；保序须作"
+      },
+      {
+        "ref": "unit:9:fragment:0033#f35-2",
+        "unit_lid": "9",
+        "meaning": "4通知/20μs为20万项/s，8KiB仅1.64GB/s；满50GB/s需610万项/s、0."
+      },
+      {
+        "ref": "unit:9:fragment:0035#f37-1",
+        "unit_lid": "9",
+        "meaning": "两作业每100ms各20ms峰50GB/s，平均λ20GB/s仅40%，同步峰100超过出口50"
+      },
+      {
+        "ref": "unit:9:fragment:0037#f39-2",
+        "unit_lid": "9",
+        "meaning": "避免本次溢出需T_f≤Q_free/(λ−B)。到达100、出口50GB/s，512KiB已半满"
+      },
+      {
+        "ref": "unit:9:fragment:0038#f41-4",
+        "unit_lid": "9",
+        "meaning": "PFC 先在 0.33 μs 内挡住相邻上游，使缓冲在 DCQCN 所需 20 μs 内不溢出；"
+      },
+      {
+        "ref": "unit:9:fragment:0040#f43-6",
+        "unit_lid": "9",
+        "meaning": "n 条等速流独立均匀哈希到同一叶的 m 条上联，最忙上联流数为 Lmax。无冲突时负载为 ⌈n/"
+      },
+      {
+        "ref": "unit:9:fragment:0041#f44-3",
+        "unit_lid": "9",
+        "meaning": "此例喷洒更快的条件是最慢路径传播时延小于 168.8−21.0=147.8 μs；实际 8 μs"
+      },
+      {
+        "ref": "unit:9:fragment:0042#f45-1",
+        "unit_lid": "9",
+        "meaning": "统一严格资源申请次序可打断循环，例如所有工作先 A 后 B，则持有 B 的工作不再回头等 A。另"
+      },
+      {
+        "ref": "unit:9:fragment:0044#f47-0",
+        "unit_lid": "9",
+        "meaning": "某参与者很早进入集合通信调用、其他参与者梯度尚未产生时，前者在调用内等待；耗时记在通信调用上，根"
+      },
+      {
+        "ref": "unit:9:fragment:0045#f48-2",
+        "unit_lid": "9",
+        "meaning": "数据在 17 ms 就绪、计算在 20 ms 结束、更新需 2 ms 时，若通信与计算使用互不争"
+      },
+      {
+        "ref": "unit:9:fragment:0045#f48-3",
+        "unit_lid": "9",
+        "meaning": "17 ms 就绪时，连续环整步约 26.6 ms，分层归约约 22 ms，后者通信在 18.3 "
+      },
+      {
+        "ref": "unit:9:fragment:0047#f50-4",
+        "unit_lid": "9",
+        "meaning": "Tgrad=2(q−1)αL+2(q−1)G/(qBL)+2(H−1)αR+max(2(H−1)"
+      },
+      {
+        "ref": "unit:9:fragment:0047#f50-5",
+        "unit_lid": "9",
+        "meaning": "128 卡超节点且出口扩展时，TP8、16、32、64 对应 DP128、64、32、16，全局"
+      },
+      {
+        "ref": "unit:9:fragment:0048#f51-3",
+        "unit_lid": "9",
+        "meaning": "固定 400 GB/s 出口的 64 卡节点，分层归约本地加跨域约 31.1+300=331.1"
+      },
+      {
+        "ref": "unit:9:fragment:0049#f52-2",
+        "unit_lid": "9",
+        "meaning": "每 I 秒有效计算暂停 C 秒保存 checkpoint，作业中断率 λ、恢复 R 时，ε≈C/"
+      }
+    ],
+    "preview_notice": "Chapter summaries and questions are complete. Candidate meanings are short navigation previews; inspect/search supplies full mechanisms, conditions and source evidence. Chapter citation ledgers remain in Core and are not repeated for planning."
+  },
+  "reference_scope": {
+    "unit_lids": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12",
+      "13",
+      "14"
+    ],
+    "dependency_target_lids": [],
+    "evidence_by_unit": {}
+  }
+}

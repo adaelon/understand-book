@@ -201,7 +201,7 @@ pub(crate) fn display_time(value: i64) -> Result<String, ToolError> {
         .map_err(|_| invalid())
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct CallPack {
     pub pack_id: String,
     pub receipt_id: String,

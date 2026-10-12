@@ -1,0 +1,172 @@
+{
+  "checked_at": "2026-10-08T02:19:29.688Z",
+  "checks": [
+    {
+      "id": "f555123",
+      "actual_pts_ms": 555133.3125,
+      "source_pixels_equal": true
+    },
+    {
+      "id": "f570000",
+      "actual_pts_ms": 570000,
+      "source_pixels_equal": true
+    },
+    {
+      "id": "f585000",
+      "actual_pts_ms": 585000,
+      "source_pixels_equal": true
+    },
+    {
+      "id": "f600000",
+      "actual_pts_ms": 600000,
+      "source_pixels_equal": true
+    },
+    {
+      "id": "f615000",
+      "actual_pts_ms": 615000,
+      "source_pixels_equal": true
+    },
+    {
+      "id": "f630000",
+      "actual_pts_ms": 630000,
+      "source_pixels_equal": true
+    },
+    {
+      "id": "f650000",
+      "actual_pts_ms": 650000,
+      "source_pixels_equal": true
+    },
+    {
+      "id": "f1180000",
+      "actual_pts_ms": 1180000,
+      "source_pixels_equal": true
+    },
+    {
+      "id": "f1200000",
+      "actual_pts_ms": 1200000,
+      "source_pixels_equal": true
+    },
+    {
+      "id": "f1210000",
+      "actual_pts_ms": 1210000,
+      "source_pixels_equal": true
+    },
+    {
+      "id": "f1220000",
+      "actual_pts_ms": 1220000,
+      "source_pixels_equal": true
+    },
+    {
+      "id": "s1000",
+      "actual_pts_ms": 1000,
+      "source_pixels_equal": true
+    },
+    {
+      "id": "s3000",
+      "actual_pts_ms": 3000,
+      "source_pixels_equal": true
+    },
+    {
+      "id": "s5000",
+      "actual_pts_ms": 5000,
+      "source_pixels_equal": true
+    },
+    {
+      "id": "fp16",
+      "decoded": true,
+      "clip_frame_checks": [
+        {
+          "local_ms": 0,
+          "source_ms": 550000,
+          "mean_absolute_pixel_error": 0.19323463220164608
+        },
+        {
+          "local_ms": 18000,
+          "source_ms": 568000,
+          "mean_absolute_pixel_error": 0.2130074909979424
+        }
+      ],
+      "audio_duration_ms": 35999.93197278911,
+      "source_audio_pcm_equal": true,
+      "midpoint_source_ms": 568000
+    },
+    {
+      "id": "bf16",
+      "decoded": true,
+      "clip_frame_checks": [
+        {
+          "local_ms": 0,
+          "source_ms": 595000,
+          "mean_absolute_pixel_error": 0.17213059413580248
+        },
+        {
+          "local_ms": 30000,
+          "source_ms": 625000,
+          "mean_absolute_pixel_error": 0.29907101980452677
+        }
+      ],
+      "audio_duration_ms": 59999.88662131519,
+      "source_audio_pcm_equal": true,
+      "midpoint_source_ms": 625000
+    },
+    {
+      "id": "einsum",
+      "decoded": true,
+      "clip_frame_checks": [
+        {
+          "local_ms": 0,
+          "source_ms": 1180000,
+          "mean_absolute_pixel_error": 0.1724366640946502
+        },
+        {
+          "local_ms": 22500,
+          "source_ms": 1202500,
+          "mean_absolute_pixel_error": 0.24005208333333333
+        }
+      ],
+      "audio_duration_ms": 44999.90929705215,
+      "source_audio_pcm_equal": true,
+      "midpoint_source_ms": 1202500
+    },
+    {
+      "id": "pause-candidate",
+      "decoded": true,
+      "clip_frame_checks": [
+        {
+          "local_ms": 0,
+          "source_ms": 648000,
+          "mean_absolute_pixel_error": 0.218647762345679
+        },
+        {
+          "local_ms": 4000,
+          "source_ms": 652000,
+          "mean_absolute_pixel_error": 0.27729600694444445
+        }
+      ],
+      "audio_duration_ms": 7999.977324263039,
+      "source_audio_pcm_equal": true,
+      "midpoint_source_ms": 652000
+    },
+    {
+      "id": "controlled",
+      "decoded": true,
+      "clip_frame_checks": [
+        {
+          "local_ms": 0,
+          "source_ms": 0,
+          "mean_absolute_pixel_error": 0.022957658179012345
+        },
+        {
+          "local_ms": 3000,
+          "source_ms": 3000,
+          "mean_absolute_pixel_error": 0.022035590277777777
+        }
+      ],
+      "audio_duration_ms": null,
+      "source_audio_pcm_equal": null,
+      "midpoint_source_ms": 3000
+    }
+  ],
+  "status": "passed",
+  "semantic_scope": "Pixel/sample/timestamp fidelity only; visual annotations reviewed separately; audio words pending listening."
+}

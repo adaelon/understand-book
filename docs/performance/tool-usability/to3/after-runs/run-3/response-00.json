@@ -1,0 +1,11 @@
+{
+  "text": "I'll read the original passage this turn before selecting a teaching move.",
+  "tool_calls": [
+    {
+      "arguments": "{\"lid\": \"1.1\"}",
+      "id": "call_00_UofrHXbZQyhhsADgE9Yo2422",
+      "name": "book.text"
+    }
+  ],
+  "usage_total_tokens": 17697
+}

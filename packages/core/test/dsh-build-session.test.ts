@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,6 +10,7 @@ import { DSH_BUILD_EXECUTION_PROFILE_V1 as profile } from "../src/build-executio
 import { openAutomaticBuildExecutorSessionV3, resolveAutomaticBuildExecutorRegistryRoot, type AutomaticBuildExecutorSessionResponse } from "../src/automatic-build-executor-session";
 import { BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3 } from "../src/build-executor-connection-capability";
 import { spawnSync } from "node:child_process";
+import { BUILD_EXECUTOR_TOOL_CONTRACTS_V3, type BuildExecutorToolNameV1 } from "../src/build-executor-tool-contract";
 
 const runtime = { version: "build_executor_model_runtime.v1" as const, provider: "fixture", model: "fixture",
   reasoning_effort: null, max_output_tokens: 4096, context_window_tokens: 131072, safety_margin_tokens: 4096,
@@ -47,6 +48,54 @@ export function dshMcp() {
 }
 
 describe("DSH Engine records and real session", () => {
+  it("TO6 acknowledges non-final batches with the shared advertised request versions", () => {
+    const f = fixture();
+    const invocation = createAutomaticBuildInvocation(f.input);
+    const step = automaticBuildStep({ version: "automatic_build_step_request.v1", invocation_ref: invocation.invocation_ref, available_agent_slots: 1 });
+    if (step.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected TO6 DSH dispatch");
+    const m = dshMcp(); m.initialize();
+    const specs = m.rpc("tools/list", {}).result.tools;
+    const calls: unknown[] = [];
+    const call = (name: BuildExecutorToolNameV1, fields: Record<string, unknown>) => {
+      const schema = specs.find((tool: { name: string }) => tool.name === name).inputSchema;
+      expect(schema).toEqual(BUILD_EXECUTOR_TOOL_CONTRACTS_V3.find(tool => tool.name === name)!.input_schema);
+      const example = schema.examples[name === "executor.input.next" && "ack_through_ordinal" in fields ? 1 : 0];
+      const args = { ...example };
+      for (const [key, field] of Object.entries(fields)) {
+        if (key.endsWith("_ref") || key.endsWith("_ordinal")) args[key] = field;
+        else expect(field).toEqual(example[key]);
+      }
+      const response = m.call(name, args);
+      calls.push({ name, arguments: args, response });
+      return response;
+    };
+    const opened = call("executor.open", { opaque_handoff_ref: step.action.executors[0]!.opaque_handoff_ref });
+    if (opened.action.kind !== "DELIVER_INPUT") throw new Error("expected TO6 DSH delivery");
+    const refs = { opaque_session_ref: opened.action.input_manifest.opaque_session_ref,
+      generation_input_ref: opened.action.input_manifest.generation_input_ref };
+    let last: number | undefined;
+    let batches = 0;
+    for (;;) {
+      const next = call("executor.input.next", { ...refs, ...(last === undefined ? {} : { ack_through_ordinal: last }) });
+      if (next.action.kind !== "INPUT_BATCH") throw new Error("expected TO6 DSH batch");
+      expect(next.action.batch.first_ordinal).toBe((last ?? -1) + 1);
+      last = next.action.batch.last_ordinal;
+      batches++;
+      if (next.action.batch.final_for_generation) break;
+    }
+    expect(batches).toBeGreaterThan(1);
+    const generated = call("executor.generation.start", { ...refs, confirmed_through_ordinal: last });
+    if (generated.action.kind !== "GENERATE") throw new Error("expected TO6 DSH generation");
+    const done = call("executor.submit_candidate", { opaque_session_ref: generated.action.opaque_session_ref,
+      candidate_sink_ref: generated.action.candidate_sink_ref, candidate: { nodes: [], edges: [] } });
+    expect(done.action).toEqual({ kind: "DONE", status: "committed" });
+    if (process.env.TO6_CAPTURE_DIR) {
+      mkdirSync(process.env.TO6_CAPTURE_DIR, { recursive: true });
+      writeFileSync(path.join(process.env.TO6_CAPTURE_DIR, "dsh.json"), `${JSON.stringify({
+        fixture: readFileSync(f.input.target_input, "utf8"), specs, calls, batches,
+      }, null, 2)}\n`);
+    }
+  }, 30_000);
   it("accepts three workers and fences live controllers until their matching release", () => {
     const f = fixture();
     const invocation = createAutomaticBuildInvocation({ ...f.input, max_parallel: 3 });

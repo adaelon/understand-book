@@ -1,0 +1,91 @@
+{
+  "schemas_validated": 1,
+  "published_examples": 4,
+  "fixed_scenarios": 7,
+  "schema_before_bytes": 1063,
+  "schema_after_bytes": 2169,
+  "schema_before_estimated_tokens": 266,
+  "schema_after_estimated_tokens": 543,
+  "results": [
+    {
+      "scenario": "effect_not_authorized",
+      "before_bytes": 266,
+      "after_bytes": 788,
+      "before_estimated_tokens": 67,
+      "after_estimated_tokens": 197
+    },
+    {
+      "scenario": "evidence_required",
+      "before_bytes": 266,
+      "after_bytes": 956,
+      "before_estimated_tokens": 67,
+      "after_estimated_tokens": 239
+    },
+    {
+      "scenario": "intent_required",
+      "before_bytes": 266,
+      "after_bytes": 798,
+      "before_estimated_tokens": 67,
+      "after_estimated_tokens": 200
+    },
+    {
+      "scenario": "locator_required",
+      "before_bytes": 266,
+      "after_bytes": 877,
+      "before_estimated_tokens": 67,
+      "after_estimated_tokens": 220
+    },
+    {
+      "scenario": "matched",
+      "before_bytes": 872,
+      "after_bytes": 1050,
+      "before_estimated_tokens": 218,
+      "after_estimated_tokens": 263
+    },
+    {
+      "scenario": "no_result",
+      "before_bytes": 266,
+      "after_bytes": 515,
+      "before_estimated_tokens": 67,
+      "after_estimated_tokens": 129
+    },
+    {
+      "scenario": "profile_mismatch",
+      "before_bytes": 266,
+      "after_bytes": 922,
+      "before_estimated_tokens": 67,
+      "after_estimated_tokens": 231
+    }
+  ],
+  "requests": [
+    {
+      "scenario": "read-only",
+      "active_context": {
+        "context_window_tokens": 128000,
+        "estimated_input_tokens": 6955,
+        "fits": true,
+        "output_reserve_tokens": 8000,
+        "remaining_tokens": 109045,
+        "safety_margin_tokens": 4000
+      }
+    },
+    {
+      "scenario": "note-request",
+      "active_context": {
+        "context_window_tokens": 128000,
+        "estimated_input_tokens": 7860,
+        "fits": true,
+        "output_reserve_tokens": 8000,
+        "remaining_tokens": 108140,
+        "safety_margin_tokens": 4000
+      }
+    }
+  ],
+  "budget_observation": {
+    "limit": 4096,
+    "raw_bytes": 5122,
+    "legacy_shape_bytes": 4127,
+    "delivered_bytes": 4068,
+    "truncated": true
+  }
+}

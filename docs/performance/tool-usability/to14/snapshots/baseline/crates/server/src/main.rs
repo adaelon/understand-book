@@ -1,0 +1,179 @@
+use server::host::{start_server, ServerHostConfig};
+
+#[cfg(target_os = "linux")]
+static STOP_REQUESTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+#[cfg(target_os = "linux")]
+extern "C" fn request_stop(_: libc::c_int) {
+    STOP_REQUESTED.store(true, std::sync::atomic::Ordering::Release);
+}
+
+fn main() {
+    #[cfg(target_os = "linux")]
+    unsafe {
+        // The handler only sets an atomic notification; shutdown runs on the main thread.
+        for signal in [libc::SIGINT, libc::SIGTERM] {
+            if libc::signal(signal, request_stop as *const () as libc::sighandler_t)
+                == libc::SIG_ERR
+            {
+                eprintln!(
+                    "failed to install stop signal handler: {}",
+                    std::io::Error::last_os_error()
+                );
+                std::process::exit(1);
+            }
+        }
+    }
+    if std::env::args().nth(1).as_deref() == Some("--presentation-preview-probe") {
+        #[cfg(target_os = "linux")]
+        let result = std::thread::scope(|scope| {
+            let cancellation = runtime::run_context::CancellationToken::default();
+            let worker_token = cancellation.clone();
+            let worker = scope.spawn(move || {
+                server::presentation_preview::run_probe_with_cancellation(&worker_token)
+            });
+            while !worker.is_finished() {
+                if STOP_REQUESTED.load(std::sync::atomic::Ordering::Acquire) {
+                    cancellation.cancel();
+                }
+                std::thread::sleep(std::time::Duration::from_millis(25));
+            }
+            worker.join().unwrap_or(1)
+        });
+        #[cfg(not(target_os = "linux"))]
+        let result = server::presentation_preview::run_probe();
+        std::process::exit(result);
+    }
+    if std::env::args().nth(1).as_deref() == Some("--multi-user") {
+        let result = parse_multi_args(std::env::args().skip(2).collect())
+            .and_then(server::host::start_multi_user_server);
+        match result {
+            Ok(server) => {
+                eprintln!("understand-book multi-user backend listening at {}", server.url);
+                #[cfg(target_os = "linux")]
+                {
+                    while !STOP_REQUESTED.load(std::sync::atomic::Ordering::Acquire) {
+                        std::thread::sleep(std::time::Duration::from_millis(25));
+                    }
+                    server.shutdown();
+                }
+                #[cfg(not(target_os = "linux"))]
+                server.wait();
+            }
+            Err(error) => { eprintln!("{error}"); std::process::exit(2); }
+        }
+        return;
+    }
+    let (book_dir, reader_only) = parse_args(
+        std::env::args().skip(1),
+        std::env::var("UNDERSTAND_BOOK_DIR").ok(),
+    )
+    .unwrap_or_else(|error| {
+        eprintln!("{error}");
+        std::process::exit(2);
+    });
+    let mut config = ServerHostConfig::from_env(book_dir);
+    config.reader_only = reader_only;
+    match start_server(config) {
+        Ok(server) => {
+            eprintln!("understand-book server listening at {}", server.url);
+            #[cfg(target_os = "linux")]
+            {
+                while !STOP_REQUESTED.load(std::sync::atomic::Ordering::Acquire) {
+                    std::thread::sleep(std::time::Duration::from_millis(25));
+                }
+                server.shutdown();
+                eprintln!("understand-book server stopped cleanly");
+            }
+            #[cfg(not(target_os = "linux"))]
+            server.wait();
+        }
+        Err(error) => {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+    }
+}
+
+fn parse_multi_args(args: Vec<String>) -> Result<server::host::MultiUserConfig, String> {
+    if !(args.len() == 3 || args.len() == 5) || args[1] != "--origin" || (args.len() == 5 && args[3] != "--addr") {
+        return Err("usage: server --multi-user <absolute-service-root> --origin https://reader.example [--addr 127.0.0.1:8787]".into());
+    }
+    Ok(server::host::MultiUserConfig {
+        root: args[0].clone().into(), origin: args[2].clone(),
+        addr: args.get(4).map(String::as_str).unwrap_or("127.0.0.1:8787").parse().map_err(|_| "Invalid backend address".to_string())?,
+    })
+}
+
+fn parse_args(
+    args: impl IntoIterator<Item = String>,
+    env_book: Option<String>,
+) -> Result<(String, bool), String> {
+    let mut book = None;
+    let mut reader_only = false;
+    let mut positional = false;
+    for arg in args {
+        if !positional && arg == "--" {
+            positional = true;
+            continue;
+        }
+        if !positional && arg == "--reader-only" {
+            reader_only = true;
+            continue;
+        }
+        if !positional && arg.starts_with('-') {
+            return Err(format!("unknown option: {arg}"));
+        }
+        if book.replace(arg).is_some() {
+            return Err("expected one book directory".into());
+        }
+    }
+    book.or(env_book)
+        .filter(|value| !value.is_empty())
+        .map(|book| (book, reader_only))
+        .ok_or_else(|| {
+            "usage: server [--reader-only] <book_dir> (or set UNDERSTAND_BOOK_DIR)".into()
+        })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn multi_user_cli_requires_explicit_root_origin_and_separate_mode() {
+        let config = parse_multi_args(vec!["/srv/reader".into(),"--origin".into(),"https://reader.example".into()]).unwrap();
+        assert_eq!(config.origin,"https://reader.example");
+        assert!(config.addr.ip().is_loopback());
+        for args in [vec![],vec!["/srv/reader"],vec!["/srv/reader","https://reader.example"],vec!["/srv/reader","--reader-only","https://reader.example"]] {
+            assert!(parse_multi_args(args.into_iter().map(str::to_string).collect()).is_err());
+        }
+        assert!(parse_args(vec!["--multi-user".into()], Some("local-book".into())).is_err());
+    }
+    #[test]
+    fn legacy_and_reader_cli_preserve_book_selection() {
+        for (args, env, book, mode) in [
+            (vec!["C:\\books\\demo"], None, "C:\\books\\demo", false),
+            (vec![], Some("env-book"), "env-book", false),
+            (
+                vec!["--reader-only", "/books/中文 空格"],
+                None,
+                "/books/中文 空格",
+                true,
+            ),
+            (vec!["--reader-only"], Some("env-book"), "env-book", true),
+            (vec!["book", "--reader-only"], Some("ignored"), "book", true),
+        ] {
+            assert_eq!(
+                parse_args(
+                    args.into_iter().map(str::to_string),
+                    env.map(str::to_string)
+                )
+                .unwrap(),
+                (book.into(), mode)
+            );
+        }
+        assert!(parse_args(vec![], None).is_err());
+        assert!(parse_args(vec!["--typo".into()], Some("book".into())).is_err());
+        assert!(parse_args(vec!["one".into(), "two".into()], None).is_err());
+    }
+}

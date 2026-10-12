@@ -1,0 +1,39 @@
+{
+  "tools": 4,
+  "advertised_examples": 5,
+  "example_provenance": "exact successful before/normal.json and before/dsh.json requests",
+  "schema_rejected_invalid_inputs": 39,
+  "executed_successful_calls": 31,
+  "session_rejections_with_valid_shape": 4,
+  "stdio_protocol_rejections": 1,
+  "input_constraints_unchanged": true,
+  "annotation_correction": {
+    "executor.input.next.readOnlyHint": {
+      "before": true,
+      "after": false
+    }
+  },
+  "tool_definition_bytes": {
+    "executor.open": {
+      "before": 549,
+      "after": 1309
+    },
+    "executor.input.next": {
+      "before": 718,
+      "after": 2217
+    },
+    "executor.generation.start": {
+      "before": 792,
+      "after": 1860
+    },
+    "executor.submit_candidate": {
+      "before": 871,
+      "after": 2184
+    }
+  },
+  "total_definition_bytes": {
+    "before": 2930,
+    "after": 7570
+  },
+  "model_sampling": false
+}

@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"operation\": \"select\", \"move\": {\"move_id\": \"explain-time-weight-vs-arithmetic-mean\", \"kind\": \"explain\", \"object_ids\": [], \"prompt\": \"接着上一段答案往前走一步：不再只说‘把速度直接平均是错的’，而是说清它什么时候恰好是对的。用 v_avg = (v1t1 + v2t2)/(t1+t2) 说明权重来自时间：等时间时它退化成 (v1+v2)/2，等路程时它退化成 2/(1/v1+1/v2)，并用 60 km/h 与 30 km/h 两组数据把两种情形各算一遍。最后回到第二句：等路程不保证等时间，所以算术平均不能默认成立。\", \"target\": {\"learning_focus\": \"分母的时间才是权重：算术平均只在等时间时成立\", \"expected_performance\": \"能说明把两段速度直接取算术平均在等时间时成立、在等路程时不成立，并把理由归到总时间作分母\", \"capability\": \"explanation\", \"object_refs\": [], \"source_bindings\": [{\"start_lid\": \"1.1\", \"end_lid\": \"1.1\"}]}, \"continuation\": {\"recommended_option_id\": \"unequal-distances\", \"options\": [{\"option_id\": \"unequal-distances\", \"label\": \"如果两段路程不相等（60 km 和 120 km，速度仍为 60 和 30），按定义算平均速度是多少？\", \"purpose\": \"把结论从‘等路程’推广到路程不等的一般情形，看时间权重如何自动处理不相等\", \"move_kind\": \"compare\"}, {\"option_id\": \"many-profiles-one-average\", \"label\": \"平均速度 40 km/h、总路程 120 km，能不能反推出每段的速度？\", \"purpose\": \"认识定义只锁定总路程与总时间之比，不锁定途中快慢的分配\", \"move_kind\": \"observe\"}]}}}",
+      "id": "call_00_3LKA4Suh71S9YVjbLhBw2414",
+      "name": "tutor.step"
+    },
+    {
+      "arguments": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+      "id": "call_01_qegalHW8R1i0nHOPVRy96630",
+      "name": "source.present"
+    }
+  ],
+  "usage_total_tokens": 21853
+}

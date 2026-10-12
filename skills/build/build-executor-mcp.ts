@@ -211,7 +211,8 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
           description: tool.description,
           inputSchema: tool.input_schema,
           annotations: {
-            readOnlyHint: tool.name === "executor.input.next",
+            // Input delivery records offers and acknowledgements in the session ledger.
+            readOnlyHint: false,
             destructiveHint: false,
             idempotentHint: true,
             openWorldHint: false,

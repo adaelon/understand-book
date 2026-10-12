@@ -1,0 +1,113 @@
+{
+  "counterexamples": {
+    "equal_speed_unequal_time": {
+      "speeds": [
+        10,
+        10
+      ],
+      "times": [
+        1,
+        2
+      ],
+      "distances": [
+        10,
+        20
+      ],
+      "weighted": "10",
+      "arithmetic": "10"
+    },
+    "equal_speed_equal_distance": {
+      "speeds": [
+        10,
+        10
+      ],
+      "times": [
+        1,
+        1
+      ],
+      "distances": [
+        10,
+        10
+      ],
+      "weighted": "10",
+      "arithmetic": "10"
+    },
+    "equal_time": {
+      "speeds": [
+        60,
+        30
+      ],
+      "times": [
+        1,
+        1
+      ],
+      "distances": [
+        60,
+        30
+      ],
+      "weighted": "45",
+      "arithmetic": "45"
+    },
+    "original_unequal_time": {
+      "speeds": [
+        60,
+        30
+      ],
+      "times": [
+        1,
+        2
+      ],
+      "distances": [
+        60,
+        60
+      ],
+      "weighted": "40",
+      "arithmetic": "45"
+    }
+  },
+  "findings": [
+    {
+      "group": "baseline",
+      "run": "run-1",
+      "quote": "它只在「各段用时相等」时恰好成立",
+      "counterexample": "equal_speed_unequal_time",
+      "finding": "The general summary omits the equal-speed case; specific 60/30 calculations remain correct."
+    },
+    {
+      "group": "baseline",
+      "run": "run-2",
+      "quote": "只有各段时间相等时，直接取算术平均才对",
+      "counterexample": "equal_speed_unequal_time",
+      "finding": "The general summary omits the equal-speed case; specific 60/30 calculations remain correct."
+    },
+    {
+      "group": "baseline",
+      "run": "run-3",
+      "quote": "各段**路程**相等 → 不能直接平均",
+      "counterexample": "equal_speed_equal_distance",
+      "finding": "The general summary omits the equal-speed case; specific 60/30 calculations remain correct."
+    },
+    {
+      "group": "after-runs",
+      "run": "run-1",
+      "quote": "等路程恰好不属于这个特殊情形",
+      "counterexample": "equal_speed_equal_distance",
+      "finding": "The general summary omits the equal-speed case; specific 60/30 calculations remain correct."
+    },
+    {
+      "group": "after-runs",
+      "run": "run-2",
+      "quote": "两套规则只在一种情况下重合:**各段耗时相等**",
+      "counterexample": "equal_speed_unequal_time",
+      "finding": "The general summary omits the equal-speed case; specific 60/30 calculations remain correct."
+    },
+    {
+      "group": "after-runs",
+      "run": "run-3",
+      "quote": "相等的是**路程**(题目里更常见) → 不能直接平均",
+      "counterexample": "equal_speed_equal_distance",
+      "finding": "The general summary omits the equal-speed case; specific 60/30 calculations remain correct."
+    }
+  ],
+  "continuation_finding": "after-runs/run-1 repeats its two structured continuation suggestions in the public answer."
+}

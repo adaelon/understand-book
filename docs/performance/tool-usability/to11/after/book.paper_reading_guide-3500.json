@@ -1,0 +1,425 @@
+{
+  "continuation": {
+    "arguments": {
+      "mode": "deep",
+      "stage": "passive"
+    },
+    "guidance": "Request the passive stage without critique/research answer slots; this changes the selected reading scope.",
+    "kind": "refine_call",
+    "tool": "book.paper_reading_guide"
+  },
+  "delivered": {
+    "abstract_aid": {
+      "abstract_lids": [],
+      "available": false,
+      "comprehension_checks": [],
+      "excerpts": [],
+      "key_terms": [],
+      "user_reflection_prompt": "Write a short Chinese restatement only after selecting the abstract LIDs.",
+      "warning": "abstract LID not identified from discourse or metadata"
+    },
+    "available": true,
+    "codebook": {
+      "available": true,
+      "key_stops": [],
+      "metadata": {
+        "arxiv": null,
+        "authors": [],
+        "code_links": [],
+        "datasets": [],
+        "doi": null,
+        "evidence_lids": [],
+        "field_labels": [],
+        "keywords": [],
+        "title": null,
+        "url": null,
+        "venue": null,
+        "year": null
+      },
+      "terms": [],
+      "throughlines": [
+        {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "id": "conditions",
+          "lid": "1.1",
+          "summary": "Compare the two activation conditions.",
+          "title": "Threshold conditions"
+        }
+      ],
+      "warnings": [
+        "paper_metadata.json not attached",
+        "paper_lexicon.json not attached"
+      ]
+    },
+    "delivery": {
+      "collections": {
+        "/abstract_aid/comprehension_checks": {
+          "delivered": 0,
+          "total": 0
+        },
+        "/abstract_aid/excerpts": {
+          "delivered": 0,
+          "total": 0
+        },
+        "/abstract_aid/key_terms": {
+          "delivered": 0,
+          "total": 0
+        },
+        "/codebook/key_stops": {
+          "delivered": 0,
+          "total": 0
+        },
+        "/codebook/terms": {
+          "delivered": 0,
+          "total": 0
+        },
+        "/codebook/throughlines": {
+          "delivered": 1,
+          "total": 1
+        },
+        "/questions": {
+          "delivered": 0,
+          "total": 10
+        }
+      },
+      "status": "partial"
+    },
+    "mode": "deep",
+    "questions": [],
+    "stage": "critical",
+    "warnings": [
+      "paper_metadata.json not attached",
+      "paper_lexicon.json not attached",
+      "abstract LID not identified from discourse or metadata"
+    ]
+  },
+  "delivered_bytes": 1358,
+  "input": {
+    "mode": "deep",
+    "stage": "critical"
+  },
+  "limit": 3500,
+  "raw": {
+    "abstract_aid": {
+      "abstract_lids": [],
+      "available": false,
+      "comprehension_checks": [],
+      "excerpts": [],
+      "key_terms": [],
+      "user_reflection_prompt": "Write a short Chinese restatement only after selecting the abstract LIDs.",
+      "warning": "abstract LID not identified from discourse or metadata"
+    },
+    "available": true,
+    "codebook": {
+      "available": true,
+      "key_stops": [],
+      "metadata": {
+        "arxiv": null,
+        "authors": [],
+        "code_links": [],
+        "datasets": [],
+        "doi": null,
+        "evidence_lids": [],
+        "field_labels": [],
+        "keywords": [],
+        "title": null,
+        "url": null,
+        "venue": null,
+        "year": null
+      },
+      "terms": [],
+      "throughlines": [
+        {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "id": "conditions",
+          "lid": "1.1",
+          "summary": "Compare the two activation conditions.",
+          "title": "Threshold conditions"
+        }
+      ],
+      "warnings": [
+        "paper_metadata.json not attached",
+        "paper_lexicon.json not attached"
+      ]
+    },
+    "mode": "deep",
+    "questions": [
+      {
+        "answer_slots": [
+          {
+            "evidence_lids": [],
+            "instruction": "Answer only from the listed LID evidence; cite every factual claim.",
+            "kind": "paper_evidence",
+            "label": "paper_evidence"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Use only for critique or research ideas not explicitly asserted by the paper.",
+            "kind": "model_supplement",
+            "label": "model_supplement"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Reader-owned notes or Chinese restatement; never use as paper citation.",
+            "kind": "user_reflection",
+            "label": "user_reflection"
+          }
+        ],
+        "evidence_lids": [],
+        "focus": "problem and task boundary",
+        "id": "problem_input_output",
+        "question": "What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?What exact problem does the paper solve, and what are its inputs and outputs?"
+      },
+      {
+        "answer_slots": [
+          {
+            "evidence_lids": [],
+            "instruction": "Answer only from the listed LID evidence; cite every factual claim.",
+            "kind": "paper_evidence",
+            "label": "paper_evidence"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Use only for critique or research ideas not explicitly asserted by the paper.",
+            "kind": "model_supplement",
+            "label": "model_supplement"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Reader-owned notes or Chinese restatement; never use as paper citation.",
+            "kind": "user_reflection",
+            "label": "user_reflection"
+          }
+        ],
+        "evidence_lids": [],
+        "focus": "problem nature and motivation",
+        "id": "problem_nature",
+        "question": "What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?What kind of problem is it: empirical, theoretical, engineering, or conceptual?"
+      },
+      {
+        "answer_slots": [
+          {
+            "evidence_lids": [],
+            "instruction": "Answer only from the listed LID evidence; cite every factual claim.",
+            "kind": "paper_evidence",
+            "label": "paper_evidence"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Use only for critique or research ideas not explicitly asserted by the paper.",
+            "kind": "model_supplement",
+            "label": "model_supplement"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Reader-owned notes or Chinese restatement; never use as paper citation.",
+            "kind": "user_reflection",
+            "label": "user_reflection"
+          }
+        ],
+        "evidence_lids": [],
+        "focus": "hypothesis or main claim",
+        "id": "hypothesis",
+        "question": "What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?What hypothesis or central claim is being tested?"
+      },
+      {
+        "answer_slots": [
+          {
+            "evidence_lids": [],
+            "instruction": "Answer only from the listed LID evidence; cite every factual claim.",
+            "kind": "paper_evidence",
+            "label": "paper_evidence"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Use only for critique or research ideas not explicitly asserted by the paper.",
+            "kind": "model_supplement",
+            "label": "model_supplement"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Reader-owned notes or Chinese restatement; never use as paper citation.",
+            "kind": "user_reflection",
+            "label": "user_reflection"
+          }
+        ],
+        "evidence_lids": [],
+        "focus": "related work and positioning",
+        "id": "related_work_key_people",
+        "question": "Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?Which prior work, authors, or competing lines does the paper position against?"
+      },
+      {
+        "answer_slots": [
+          {
+            "evidence_lids": [],
+            "instruction": "Answer only from the listed LID evidence; cite every factual claim.",
+            "kind": "paper_evidence",
+            "label": "paper_evidence"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Use only for critique or research ideas not explicitly asserted by the paper.",
+            "kind": "model_supplement",
+            "label": "model_supplement"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Reader-owned notes or Chinese restatement; never use as paper citation.",
+            "kind": "user_reflection",
+            "label": "user_reflection"
+          }
+        ],
+        "evidence_lids": [],
+        "focus": "claimed contribution",
+        "id": "core_contribution",
+        "question": "What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?What is the paper's core contribution?"
+      },
+      {
+        "answer_slots": [
+          {
+            "evidence_lids": [],
+            "instruction": "Answer only from the listed LID evidence; cite every factual claim.",
+            "kind": "paper_evidence",
+            "label": "paper_evidence"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Use only for critique or research ideas not explicitly asserted by the paper.",
+            "kind": "model_supplement",
+            "label": "model_supplement"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Reader-owned notes or Chinese restatement; never use as paper citation.",
+            "kind": "user_reflection",
+            "label": "user_reflection"
+          }
+        ],
+        "evidence_lids": [],
+        "focus": "method and evaluation design",
+        "id": "experiment_design",
+        "question": "How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?How are the experiments or validation designed?"
+      },
+      {
+        "answer_slots": [
+          {
+            "evidence_lids": [],
+            "instruction": "Answer only from the listed LID evidence; cite every factual claim.",
+            "kind": "paper_evidence",
+            "label": "paper_evidence"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Use only for critique or research ideas not explicitly asserted by the paper.",
+            "kind": "model_supplement",
+            "label": "model_supplement"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Reader-owned notes or Chinese restatement; never use as paper citation.",
+            "kind": "user_reflection",
+            "label": "user_reflection"
+          }
+        ],
+        "evidence_lids": [],
+        "focus": "data and benchmark context",
+        "id": "dataset",
+        "question": "Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?Which datasets, benchmarks, or corpora are used?"
+      },
+      {
+        "answer_slots": [
+          {
+            "evidence_lids": [],
+            "instruction": "Answer only from the listed LID evidence; cite every factual claim.",
+            "kind": "paper_evidence",
+            "label": "paper_evidence"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Use only for critique or research ideas not explicitly asserted by the paper.",
+            "kind": "model_supplement",
+            "label": "model_supplement"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Reader-owned notes or Chinese restatement; never use as paper citation.",
+            "kind": "user_reflection",
+            "label": "user_reflection"
+          }
+        ],
+        "evidence_lids": [],
+        "focus": "result-to-claim evidence",
+        "id": "results_support_hypothesis",
+        "question": "Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?Do the results support the hypothesis or central claim?"
+      },
+      {
+        "answer_slots": [
+          {
+            "evidence_lids": [],
+            "instruction": "Answer only from the listed LID evidence; cite every factual claim.",
+            "kind": "paper_evidence",
+            "label": "paper_evidence"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Use only for critique or research ideas not explicitly asserted by the paper.",
+            "kind": "model_supplement",
+            "label": "model_supplement"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Reader-owned notes or Chinese restatement; never use as paper citation.",
+            "kind": "user_reflection",
+            "label": "user_reflection"
+          }
+        ],
+        "evidence_lids": [],
+        "focus": "paper-level summary",
+        "id": "contribution_summary",
+        "question": "How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?How should the paper's contribution be summarized after reading?"
+      },
+      {
+        "answer_slots": [
+          {
+            "evidence_lids": [],
+            "instruction": "Answer only from the listed LID evidence; cite every factual claim.",
+            "kind": "paper_evidence",
+            "label": "paper_evidence"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Use only for critique or research ideas not explicitly asserted by the paper.",
+            "kind": "model_supplement",
+            "label": "model_supplement"
+          },
+          {
+            "evidence_lids": [],
+            "instruction": "Reader-owned notes or Chinese restatement; never use as paper citation.",
+            "kind": "user_reflection",
+            "label": "user_reflection"
+          }
+        ],
+        "evidence_lids": [],
+        "focus": "limitations and future work",
+        "id": "future_work",
+        "question": "What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?What limitations or next research directions does the paper imply?"
+      }
+    ],
+    "stage": "critical",
+    "warnings": [
+      "paper_metadata.json not attached",
+      "paper_lexicon.json not attached",
+      "abstract LID not identified from discourse or metadata"
+    ]
+  },
+  "raw_bytes": 67005,
+  "status": "partial",
+  "tool": "book.paper_reading_guide",
+  "truncated": true
+}

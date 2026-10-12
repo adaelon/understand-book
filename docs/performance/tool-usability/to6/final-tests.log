@@ -1,0 +1,17 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/core
+
+ ✓ test/build-executor-tool-adapter.test.ts (9 tests | 8 skipped) 8ms
+ ✓ test/build-executor-mcp.test.ts (14 tests) 27ms
+ ✓ test/dsh-build-session.test.ts (8 tests | 7 skipped) 3305ms
+   ✓ DSH Engine records and real session > TO6 acknowledges non-final batches with the shared advertised request versions  3303ms
+ ✓ test/automatic-build-executor-session.test.ts (49 tests | 46 skipped) 22056ms
+   ✓ TO6 executor lifecycle examples > TO6 executes advertised examples over the real stdio transport  5454ms
+   ✓ TO6 executor lifecycle examples > TO6 executes normal through the real MCP and session  7628ms
+   ✓ TO6 executor lifecycle examples > TO6 executes recovery through the real MCP and session  8972ms
+
+ Test Files  4 passed (4)
+      Tests  19 passed | 61 skipped (80)
+   Start at  19:38:11
+   Duration  28.39s (transform 5.14s, setup 0ms, collect 19.25s, tests 25.39s, environment 1ms, prepare 2.87s)
+

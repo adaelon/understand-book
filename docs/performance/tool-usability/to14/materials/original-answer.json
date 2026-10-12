@@ -1,0 +1,81 @@
+{
+  "model": "deepseek-v4-flash",
+  "source": "crates/server/src/tests/fixtures/tutor-continuation/source.md",
+  "attempt": "state-projection-program-intent-and-target-capability",
+  "engineering_result": "passed_two_action_flow_without_tool_validation_errors",
+  "tool_errors": [],
+  "sampled_tutor_active": [
+    false,
+    false,
+    false,
+    true,
+    true,
+    true
+  ],
+  "protocol_findings": [
+    "Observing surface contained only trace, understanding and hypothesis evidence.",
+    "Active select omitted continuation, intent metadata and duplicate move.capability; one select succeeded and the move was delivered."
+  ],
+  "content_quality": "not_accepted",
+  "public_answer_findings": [
+    "Numeric examples are correct; the public continuation says unequal durations generally differ and explicitly includes equal-speed equality for equal distances."
+  ],
+  "quality_findings": [
+    "Persisted select prompt and target.expected_performance still incorrectly state that arithmetic equality holds only for equal durations. The final public answer is more accurate than this stored teaching target."
+  ],
+  "counterexample": {
+    "speeds": [
+      10,
+      10
+    ],
+    "durations": [
+      1,
+      2
+    ],
+    "time_weighted_mean": 10,
+    "arithmetic_mean": 10
+  },
+  "reader_participants": 0,
+  "cost_note": "Outcome tokens_spent is cumulative token usage; no monetary cost returned.",
+  "first": {
+    "answer": "这段其实是「平均速度」的定义，一共三句话，每句各管一件事。原文是：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 第一句：定义本身\n\n平均速度 = 总路程 ÷ 总时间。\n\n关键在这个「总」字上：分子是把整段行程走过的所有路程加起来，分母是把整段行程花掉的所有时间加起来。它描述的是**整段行程的一个整体结果**，不是某一时刻你跑多快。所以哪怕中途快慢变来变去，只要有这两个总量，就能算出这趟的平均速度。\n\n## 第二句：这句才是真正的提醒\n\n「Equal distances need not take equal times」——相等的路程不一定花相等的时间。它是在拦住一个非常自然的错误做法:把两段的**速度数值**拿来平均。\n\n举一个我自己的例子来说明(这是按上面定义推出来的，不是原文的例子)：你开车走两段各 60 公里的路，第一段速度 60 km/h，第二段 30 km/h。如果直接把速度平均，(60+30)/2 = 45 km/h，这是错的。按定义算：\n\n- 总路程 = 60 + 60 = 120 km\n- 总时间 = 60/60 + 60/30 = 1 + 2 = 3 小时\n- 平均速度 = 120 ÷ 3 = 40 km/h\n\n差出来的原因正是第二句说的：路程一样(都是 60 km)，但时间不一样(1 小时 vs 2 小时)，而定义里做分母的是**时间**。走得慢的那段占用了更多时间，所以在时间上「权重」更大，把平均速度往下拉。可见平均速度的天平是按时间倾斜的，不是按路程均分的。\n\n## 第三句：为什么必须要求总时间大于 0\n\n因为它在分母上。定义本身就是一次除法,除数不能为零，所以整趟行程的总时间必须是正数。反过来说，如果总时间是 0(比如既没动、也没花时间)，这个式子根本没有意义，平均速度无从谈起。反过来看，分子(总路程)没有这个限制——路程可以是 0，那平均速度就是 0。\n\n## 一句话抓手\n\n分母是**时间**、并且是**总量**，所以「平均速度」是被时间加权的结果：谁占的时间多，谁的快慢就更有发言权。\n\n想确认一下你现在的感觉：上面那个 60/30 的例子，你觉得答案是 45 还是 40？说说你的理由，我再针对你的思路补一段。",
+    "tokens_spent": 30841,
+    "turns": 3,
+    "incomplete": false,
+    "trace": [
+      {
+        "args": "{\"lid\": \"1.1\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"lid\":\"1.1\",\"text\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"source_ref_id\":\"source_ref_e85701c84b34a511\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time ",
+        "tool": "source.present"
+      }
+    ]
+  },
+  "continuation": {
+    "answer": "接着上一轮那句「天平按时间倾斜」，把它从一句提醒变成能算的规则。\n\n## 一、那句话的公式版\n\n把整趟行程切成若干段，第 i 段用速度 $v_i$ 走了 $t_i$ 小时。因为「速度」的含义是单位时间走多远，所以这段的路程就是 $v_i \\times t_i$（速度乘时间才还原成路程——这正是为什么权落在**时间**上，而不是落在路程上）。代回定义：\n\n$$\\text{平均速度}=\\frac{v_1t_1+v_2t_2+\\cdots}{t_1+t_2+\\cdots}$$\n\n这就是「各段速度按时间加权平均」的意思，和原文第一句是同一件事的两种写法。原文第二句「相等的路程不一定花相等的时间」，正是这句话的注脚：只要各段用时不等，谁的时间长谁的权就大。\n\n## 二、顺带确定：算术平均什么时候才是对的\n\n从上面的式子能直接看出一个边界——\n\n- 若各段**用时相等**（$t_1=t_2$）：分子是 $(v_1+v_2)t$，分母是 $2t$，约掉 $t$ 得 $(v_1+v_2)/2$。此时直接取算术平均**恰好正确**。\n- 若各段**用时不等**：算术平均一般不等于上面的式子。\n\n这就回答了上一轮那个 45 与 40 的差别从哪来：不是「算术平均这个运算错了」，而是它**用错了权重**。\n\n（下面这条是我按定义推的，不是原文给的公式：等路程两段时，把 $t_1=d/v_1$、$t_2=d/v_2$ 代进去，得到 $\\dfrac{2v_1v_2}{v_1+v_2}$。它总是不大于算术平均，只有两段速度相同时两者才相等——和我上一轮算的 40 < 45 一致。）\n\n## 三、给你一道判别题\n\n一辆车先以 30 km/h 行驶 1 小时，再以 60 km/h 行驶 2 小时。\n\n按定义算：总路程 $=30\\times1+60\\times2=150$ km，总时间 $=1+2=3$ h，平均速度 $=150\\div3=50$ km/h。而算术平均是 $(30+60)/2=45$ km/h，对不上——因为慢的那段占了 1 小时、快的那段占了 2 小时，权不一样。\n\n现在换你来判断一个更细的问题：**如果把这道题改成两段各走 1 小时（30 km/h 走 1 小时，60 km/h 走 1 小时），直接取算术平均还会不会错？** 说说你的理由，我看看你是按「公式」还是按「感觉」在判断。",
+    "tokens_spent": 60909,
+    "turns": 3,
+    "incomplete": false,
+    "trace": [
+      {
+        "args": "{\"lid\": \"1.1\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"lid\":\"1.1\",\"text\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"move\":{\"interpretation_refs\":[],\"kind\":\"explain\",\"move_id\":\"m-cont-1.1-time-weighted\",\"object_ids\":[],\"prompt\":\"把上一轮的提醒升级成一条可计算的规则：平均速度是各段速度按时间加权的平均，所以算术平均只在各段用时相等时才成立。给出 30 km/h 走 1 小时 + 60 km/h 走 2 小时的判别题。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"能用总路程÷总时间处理时间不等的分段行程，并能说明直接取算术平均只在各段用时相等时才对\",\"learning_focus\":\"从「时间是分母」这一定性提醒，推进到时间加权的定量规则，并划清算术平均的适用边界\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"source_id\":\"tc0-average-speed\",\"source_revision\":\"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"instruction\":\"Deliver this move in the final answer. Saved candidate is not displayed.\",\"selected\":\"move:turn_c9e196e32d3ef624:m-cont-1.1-time-weighted\"}",
+        "tool": "tutor.step"
+      }
+    ]
+  },
+  "total_tokens": 91750
+}

@@ -1,0 +1,143 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling memory v0.0.0 (E:\allwork\download\agent\understand-book\crates\memory)
+   Compiling reader v0.0.0 (E:\allwork\download\agent\understand-book\crates\reader)
+   Compiling runtime v0.0.0 (E:\allwork\download\agent\understand-book\crates\runtime)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling server v0.0.0 (E:\allwork\download\agent\understand-book\crates\server)
+    Finished `test` profile [unoptimized] target(s) in 2m 16s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\server-d6ca67c640d9d740.exe)
+
+running 22 tests
+test mcp::tests::book_concept_v2_mcp_contract_and_dispatch ... ok
+test mcp::tests::examples::mcp_contract_local_advertised_examples_use_real_dispatch ... ok
+test mcp::tests::examples::mcp_contract_to10_local_and_rest_consume_common_text_offset ... ok
+test mcp::tests::examples::mcp_contract_to9_local_context_counts_and_missing_structure ... ok
+test mcp_read::tests::mcp_read_catalog_isolates_accounts_pages_versions_and_avoids_private_or_resident_state ... ok
+test mcp_read::tests::mcp_read_nested_structure_and_paper_collections_reassemble_without_omissions ... ok
+test mcp_read::tests::mcp_read_search_context_empty_results_and_remote_parameter_validation ... ok
+test mcp_read::tests::mcp_read_text_pages_keep_exact_source_and_recheck_cached_grants_on_continuation ... ok
+test mcp_read::tests::mcp_read_to10_reverse_search_preserves_native_and_collection_continuations ... ok
+test mcp_read::tests::mcp_read_to8_nested_candidate_calls_remain_executable ... ok
+test mcp_read::tests::mcp_read_to9_context_pagination_and_missing_structure_are_independent ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_capture_example_publication ... ignored, one-time fixture capture; set TOOL_EXAMPLE_REFERENCE to an output path
+test remote_mcp::tests::mcp_contract::mcp_contract_discover_locate_read_and_cite_exact_pages ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_errors_give_actionable_recovery_without_evidence_or_charge ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_export_tool_definitions ... ignored, set TOOL_CONTRACT_SNAPSHOT and run explicitly to capture published definitions
+test remote_mcp::tests::mcp_contract::mcp_contract_initialize_and_all_tool_schemas_explain_the_reading_path ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_local_and_resident_keep_common_semantics_without_remote_fields ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_paid_expiry_and_exhausted_discovery_are_stable ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_remote_advertised_examples_execute_unchanged ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_to10_http_text_continuation_preserves_sources_and_charges_each_page ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_to8_candidate_calls_read_the_selected_publication_over_http ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_to9_context_coverage_reaches_http_structured_content ... ok
+
+test result: ok. 20 passed; 0 failed; 2 ignored; 0 measured; 797 filtered out; finished in 48.01s
+

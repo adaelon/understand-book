@@ -3,6 +3,23 @@ use crate::presentation_author::{AuthorRequest, AuthorResult, PreviewImage};
 use serde_json::{json, Value};
 
 #[test]
+fn presentation_to4_prepare_example_applies_at_next_sampling() {
+    let b = book();
+    let mut port = AuthoringPort::new(&b, "to4-prepare");
+    let input = crate::presentation_author::spec().parameters["examples"].as_array().unwrap()
+        .iter().find(|e| e["operation"] == "prepare").unwrap().clone();
+    let adapter = RequestPlanRecordingAdapter::new(vec![discover(), author("prepare", input.clone()), turn_final("Design prepared")], vec![]);
+    let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+    execute(&mut port, &b, &adapter, &mut context).unwrap();
+    let plans = adapter.seen_plans.borrow();
+    let mut expected = input.clone();
+    expected.as_object_mut().unwrap().remove("operation");
+    assert_eq!(design(&plans[2]).unwrap(), expected);
+    assert_eq!(selection_state(&plans[2]).unwrap()["needs"], input["needs"]);
+    assert_eq!((port.writes, port.deliveries), (0, 0));
+}
+
+#[test]
 fn ex13_guidance_changes_append_after_results_and_keep_provider_prefix() {
     let b = book();
     let mut port = AuthoringPort::new(&b, "ex13-prefix");

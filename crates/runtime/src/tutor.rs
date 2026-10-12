@@ -70,14 +70,14 @@ pub fn spec() -> crate::ToolSpec {
         .into(), parameters: json!({"type":"object","properties":{
             "operation":{"type":"string","enum":["material","trace","select","outside","assess","understanding","evidence"]},
             "evidence_ref":{"type":"string","description":"Read one evidence interpretation with operation=understanding; after is the character offset."},
-            "operation_id":{"type":"string"},"supersedes":{"type":"string"},
+            "operation_id":{"type":"string","description":"A new identity for this interpretation; retry the same input with the same identity."},"supersedes":{"type":"string","description":"An existing evidence_ref being revised, obtained from understanding."},
             "nature":{"type":"string","enum":["hypothesis"]},
-            "fact_refs":{"type":"array","items":{"type":"string"}},
+            "fact_refs":{"type":"array","items":{"type":"string"},"description":"Actual learner-expression event_ids from the current context or trace. UI clicks and assistant deliveries cannot support a hypothesis."},
             "target":target_input_schema(),
             "teaching_implication":{"type":"string","description":"Concrete change to starting point, depth, example or next step supported by these facts."},
             "interpretation":{"type":"string","description":"A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation."},
-            "response_quote":{"type":"string"},"sources":{"type":"array","items":{"type":"object","properties":{"lid":{"type":"string"},"quote":{"type":"string"}},"required":["lid","quote"]}},
-            "action_ref":{"type":"string","description":"Formal submit/revise event to assess with the frozen open rubric. This runs one isolated, budgeted evaluator and returns only accepted status; do not grade it yourself."},
+            "response_quote":{"type":"string","description":"Exact learner words from the referenced ungraded source-discrimination response."},"sources":{"type":"array","items":{"type":"object","properties":{"lid":{"type":"string"},"quote":{"type":"string"}},"required":["lid","quote"]}},
+            "action_ref":{"type":"string","description":"An actual response event_id from context or trace. assess requires an unassessed formal submit/revise with a frozen open rubric; it runs one isolated, budgeted evaluator. Ungraded evidence requires a response to an evaluation activity with a formal object and no scoring contract."},
             "object_id":{"type":"string"},"after":{"type":"integer","minimum":0},
             "event_id":{"type":"string","description":"Read one exact trace event in bounded JSON text chunks; after is its character offset. Without event_id, after is the trace cursor."},
             "move":{"type":"object","properties":{
@@ -96,7 +96,51 @@ pub fn spec() -> crate::ToolSpec {
                 "assessment":{"type":"object","description":"Optional private frozen scoring contract. {rule:{kind:choice_set,choices:[tokens],correct:[tokens]} OR rule:{kind:open,items:[{id,criterion,source_lids:[LID]}]},source_lids:[LID],source_sufficient:boolean,feedback:after_submit|on_reveal}. Open criterion states necessary conditions, equivalent expressions and acceptable omissions. Use only source text read this turn. Never copy the private key/rubric into page files or final text. Choice tokens belong in the public prompt; responses are a token or JSON array. Help and revised attempts are retained separately."}
             },"required":["move_id","object_ids","capability","kind","prompt","interaction_intent","intent_origin"]}
         },"required":["operation"]}) };
-    crate::tool_schema::complete_spec(tool)
+    let mut tool = crate::tool_schema::complete_spec(tool);
+    tool.description.push_str(" Examples use an average-speed teaching fixture, not learner facts. Replace its content, locations and references with actual material and events from this turn; read the source before selecting or interpreting.");
+    tool.parameters["examples"] = input_examples();
+    tool
+}
+
+/// Complete requests in the existing Tutor fixture. References are created by
+/// the real delivery/action tests, not invented persisted learner evidence.
+fn input_examples() -> Value {
+    let target = json!({"learning_focus":"Average speed","expected_performance":"Explain why total time is the denominator",
+        "capability":"explanation","source_bindings":[{"start_lid":"1.1","end_lid":"1.1"}],"object_refs":[]});
+    let explain = json!({"move_id":"explain-speed","object_ids":[],"target":target,"capability":"explanation",
+        "kind":"explain","interaction_intent":"neutral","intent_origin":"neutral",
+        "prompt":"Explain average speed using total distance and total time."});
+    let mut help = explain.clone();
+    help["move_id"] = json!("compare-times");
+    help["kind"] = json!("compare");
+    help["prompt"] = json!("Compare the travel times for two equal distances at different speeds.");
+    help["actions"] = json!(["request_hint", "reveal"]);
+    help["hint"] = json!("Time equals distance divided by speed.");
+    help["explanation"] = json!("At different positive speeds, equal distances take different times.");
+    let mut assessment = explain.clone();
+    assessment["move_id"] = json!("explain-denominator");
+    assessment["kind"] = json!("question");
+    assessment["prompt"] = json!("Explain which time belongs in the denominator of average speed.");
+    assessment["actions"] = json!(["submit"]);
+    assessment["assessment"] = json!({"rule":{"kind":"open","items":[{"id":"total-time",
+        "criterion":"Uses the total time of the journey; equivalent wording is accepted.","source_lids":["1.1"]}]},
+        "source_lids":["1.1"],"source_sufficient":true,"feedback":"after_submit"});
+    json!([
+        {"operation":"material"},
+        {"operation":"trace","after":0},
+        {"operation":"select","move":explain},
+        {"operation":"select","move":help},
+        {"operation":"select","move":assessment},
+        {"operation":"outside"},
+        {"operation":"assess","action_ref":"action:to3-open"},
+        {"operation":"understanding"},
+        {"operation":"evidence","action_ref":"action:to3-discrimination","object_id":"speed","operation_id":"to3-discrimination-evidence",
+            "response_quote":"The source supports total distance","sources":[{"lid":"1.1","quote":"total distance"}],
+            "interpretation":"The response distinguishes a source-supported quantity from an unsupported property."},
+        {"operation":"evidence","nature":"hypothesis","operation_id":"to3-hypothesis","target":target,
+            "fact_refs":["action:to3-discrimination"],"interpretation":"The response names total distance but leaves the role of total time unknown.",
+            "teaching_implication":"Ask the learner to connect total time to the denominator."}
+    ])
 }
 
 /// Resolve only intent already determined by accepted input and session state.
@@ -167,6 +211,9 @@ pub(crate) fn spec_for_context(context: &Value) -> Option<crate::ToolSpec> {
             }
             if intent == "direct_explanation" {
                 properties.get_mut("kind").unwrap()["enum"] = json!(["explain"]);
+            } else if context["current_action"]["action"]["origin"] == "ui_choice" {
+                // A chosen continuation already fixes the requested action.
+                properties.get_mut("kind").unwrap()["enum"] = json!([context["current_action"]["action"]["move_kind"]]);
             }
             movement["required"].as_array_mut().unwrap().retain(|field|
                 field != "interaction_intent" && field != "intent_origin");
@@ -177,6 +224,40 @@ pub(crate) fn spec_for_context(context: &Value) -> Option<crate::ToolSpec> {
         } else {
             "Read previously delivered teaching events with trace. event_id selects an exact stored event; after continues a bounded read. Use the original facts to answer the ordinary request."
         }.into();
+    }
+    // Project complete requests through exactly the fields/kinds advertised for
+    // this state. Program-owned intent/capability must not leak back in examples.
+    let mut examples = input_examples().as_array().unwrap().clone();
+    examples.retain_mut(|example| {
+        let operation = example["operation"].as_str().unwrap();
+        if !allowed.contains(&operation) || (status != "active" && operation == "evidence" && example["nature"] != "hypothesis") {
+            return false;
+        }
+        if operation == "assess" {
+            let Some(reference) = context["learner_context"]["pending_assessment_refs"].as_array().and_then(|refs| refs.first()) else { return false; };
+            example["action_ref"] = reference.clone();
+        }
+        if example["nature"] == "hypothesis" {
+            let Some(reference) = context["learner_context"]["uninterpreted_fact_refs"].as_array().and_then(|refs| refs.first()) else { return false; };
+            example["fact_refs"] = json!([reference]);
+        }
+        if let Some(movement) = example.get_mut("move").and_then(Value::as_object_mut) {
+            let properties = schema["properties"]["move"]["properties"].as_object().unwrap();
+            movement.retain(|key, _| properties.contains_key(key));
+            if let Some(kinds) = properties["kind"]["enum"].as_array() {
+                if kinds == &[json!("observe")] && movement["kind"] == "explain" {
+                    movement.insert("kind".into(), json!("observe"));
+                    movement.insert("prompt".into(), json!("Observe how total distance and total time determine average speed."));
+                }
+                if !kinds.contains(&movement["kind"]) { return false; }
+            }
+        }
+        true
+    });
+    schema["examples"] = json!(examples);
+    // Reduced descriptions still identify the sample data as illustrative.
+    if status != "active" {
+        tool.description.push_str(" Examples use an average-speed fixture; replace references and content with actual learner facts and source text. Examples are not evidence.");
     }
     Some(tool)
 }

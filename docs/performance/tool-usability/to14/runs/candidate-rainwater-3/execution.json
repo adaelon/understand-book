@@ -1,0 +1,7 @@
+{
+  "name": "candidate-rainwater-3",
+  "version": "candidate",
+  "task": "rainwater",
+  "repetition": 3,
+  "exit_code": 0
+}

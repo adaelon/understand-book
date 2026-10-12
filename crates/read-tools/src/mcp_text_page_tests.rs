@@ -94,6 +94,7 @@ fn mcp_text_page_handles_exact_limit_empty_source_and_last_page() {
 #[test]
 fn mcp_text_page_rejects_reversed_out_of_range_and_split_surrogate_positions() {
     let b = book(&["先", "😀后", "尾"]);
+    assert!(b.text("2", Some("1")).is_err());
     for (lid, end, start) in [
         ("2", Some("1"), None),
         ("2", None, Some(0)),

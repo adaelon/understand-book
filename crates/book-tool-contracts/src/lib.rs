@@ -49,6 +49,7 @@ impl BookToolContract {
             self.description, self.use_when, self.do_not_use_when
         )
         .replace("book.text", "book_text")
+        .replace("book.structure", "book_structure")
     }
 }
 
@@ -88,7 +89,7 @@ const CONTRACTS: &[BookToolContract] = &[
         Some("book.context"),
         Some("book_context"),
         Some("context"),
-        "Return context pointers for a LID: near adds tree adjacency and local edges, mid adds other concept or entity occurrences, and far adds long-range edges. Pointers contain no source text; use book.text to read it.",
+        "Return context pointers for a LID: near adds tree adjacency and local edges, mid adds other concept or entity occurrences, and far adds long-range edges. Counts cover only known rule-recalled pointers, not all semantic relations; built structure availability is reported by book.structure. Pointers contain no source text; use book.text to read it.",
         "Expand around a verified LID through deterministic context links.",
         "Do not treat pointers as source text.",
         "book_context.v1",
@@ -255,6 +256,9 @@ pub struct TextInput {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(description = "Inclusive final LID in source reading order; for a search hit, use end_lid. Reads from lid's span start through end_lid's span end. Omit or null to read only lid's span.")]
     pub end_lid: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Absolute canonical-source UTF-16 position copied from a text continuation. Keep the original lid/end_lid. Omit or null for the initial read; a continuation returns a bounded page and its source_range, requested_range and next_start_utf16.")]
+    pub start_utf16: Option<usize>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
@@ -287,7 +291,7 @@ pub struct ContextInput {
     #[schemars(description = "Context reach: near includes tree adjacency and local relations; mid adds other concept/entity occurrences; far also adds long-range relations. Omit or null for near.")]
     pub granularity: Option<ContextGranularity>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(description = "Maximum number of context pointers returned across all layers. Omit or null for 10; zero returns no items. Counts pointers, not characters or source passages.")]
+    #[schemars(description = "Maximum number of context pointers returned across all layers. Omit or null for 10; zero returns no items. total_candidates counts deduplicated pointers before k; returned_count and truncated describe selection by k before pagination or output budgeting. Counts pointers, not distinct LIDs, characters or source passages.")]
     pub k: Option<usize>,
 }
 

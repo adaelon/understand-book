@@ -1,0 +1,1811 @@
+{
+  "native": {
+    "messages": [
+      {
+        "content": "Revise the existing presentation",
+        "role": "user"
+      }
+    ],
+    "model": "test",
+    "parallel_tool_calls": false,
+    "temperature": 0,
+    "tool_choice": "auto",
+    "tools": [
+      {
+        "function": {
+          "description": "Create or revise rich answers. prepare replaces the complete run-local phase/framework/focus/needs; phase and needs are required. Omitted framework/focus clear previous values. Call prepare alone; selected guidance applies at the next sampling. It does not create or deliver content. read/search/patch require exactly one delivered reference or current-run candidate_id. read returns a file or offset/length range; search returns literal matches and character offsets. patch applies ordered edits, each old_text matching exactly once, atomically producing a new immutable candidate while preserving other content/resources; optional metadata replaces only supplied fields. write saves a complete candidate and requires title, html and readable_content; based_on selects an exact delivered version, never a candidate. render_plot returns a static SVG asset; render_animation returns a fixed movie asset. Include returned asset_refs and selected libraries on every write. preview executes actions and returns candidate/environment-bound DOM, errors and screenshots; width and viewport are mutually exclusive. deliver saves only a candidate meeting the preview and subsequent-observation contract; changed candidates need new previews. Examples illustrate calls, not live object IDs: replace reference/based_on with the exact delivered reference, candidate_id with the current run's write/patch result, and source/asset refs and asset paths with actual observed results. For an edit chain, read/search the delivered reference, patch it, then read/search/patch the returned candidate before preview and deliver. Observe each preview in a later sampling before deliver; explicit viewport previews must cover all environments required by the returned receipt.",
+          "name": "presentation_author",
+          "parameters": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "operation": {
+                      "enum": [
+                        "read",
+                        "search",
+                        "patch"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "operation"
+                  ]
+                },
+                "then": {
+                  "oneOf": [
+                    {
+                      "properties": {
+                        "reference": {
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "reference"
+                      ]
+                    },
+                    {
+                      "properties": {
+                        "candidate_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "candidate_id"
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "properties": {
+                    "viewport": {
+                      "type": "object"
+                    },
+                    "width": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "width",
+                    "viewport"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "new_object": {
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "new_object"
+                  ]
+                },
+                "then": {
+                  "not": {
+                    "properties": {
+                      "based_on": {
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "based_on"
+                    ]
+                  }
+                }
+              }
+            ],
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "focus": {},
+                  "framework": {},
+                  "needs": {},
+                  "operation": {
+                    "enum": [
+                      "prepare"
+                    ]
+                  },
+                  "phase": {}
+                },
+                "required": [
+                  "operation",
+                  "phase",
+                  "needs"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {},
+                  "data": {},
+                  "operation": {
+                    "enum": [
+                      "render_plot"
+                    ]
+                  },
+                  "size": {}
+                },
+                "required": [
+                  "operation",
+                  "code"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {},
+                  "cues": {},
+                  "data": {},
+                  "operation": {
+                    "enum": [
+                      "render_animation"
+                    ]
+                  },
+                  "size": {}
+                },
+                "required": [
+                  "operation",
+                  "code"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "candidate_id": {},
+                  "file": {},
+                  "length": {},
+                  "offset": {},
+                  "operation": {
+                    "enum": [
+                      "read"
+                    ]
+                  },
+                  "reference": {}
+                },
+                "required": [
+                  "operation"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "candidate_id": {},
+                  "file": {},
+                  "max_matches": {},
+                  "offset": {},
+                  "operation": {
+                    "enum": [
+                      "search"
+                    ]
+                  },
+                  "query": {},
+                  "reference": {}
+                },
+                "required": [
+                  "operation",
+                  "query"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "candidate_id": {},
+                  "edits": {},
+                  "initial_state": {},
+                  "operation": {
+                    "enum": [
+                      "patch"
+                    ]
+                  },
+                  "readable_content": {},
+                  "reference": {},
+                  "state_contract": {},
+                  "title": {}
+                },
+                "required": [
+                  "operation",
+                  "edits"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "asset_refs": {},
+                  "assumptions": {},
+                  "based_on": {},
+                  "html": {},
+                  "initial_state": {},
+                  "libraries": {},
+                  "new_object": {},
+                  "operation": {
+                    "enum": [
+                      "write"
+                    ]
+                  },
+                  "readable_content": {
+                    "type": "string"
+                  },
+                  "source_ref_ids": {},
+                  "state_contract": {},
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "operation",
+                  "title",
+                  "html",
+                  "readable_content"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "actions": {},
+                  "candidate_id": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "enum": [
+                      "preview"
+                    ]
+                  },
+                  "read_selector": {},
+                  "viewport": {},
+                  "width": {}
+                },
+                "required": [
+                  "operation",
+                  "candidate_id"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "candidate_id": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "enum": [
+                      "deliver"
+                    ]
+                  }
+                },
+                "required": [
+                  "operation",
+                  "candidate_id"
+                ]
+              }
+            ],
+            "examples": [
+              {
+                "focus": "Revise the existing button label and verify its result.",
+                "framework": "Compare the found evidence with the required total.",
+                "needs": [
+                  "editing",
+                  "state"
+                ],
+                "operation": "prepare",
+                "phase": "local"
+              },
+              {
+                "code": "ax.plot(data['x'], data['y'], marker='o'); ax.set_xlabel('Required'); ax.set_ylabel('Found')",
+                "data": {
+                  "x": [
+                    1,
+                    2,
+                    3
+                  ],
+                  "y": [
+                    1,
+                    2,
+                    2
+                  ]
+                },
+                "operation": "render_plot",
+                "size": {
+                  "height": 400,
+                  "width": 640
+                }
+              },
+              {
+                "code": "class PresentationAnimation(Scene):\n    def construct(self):\n        dot = Dot(LEFT)\n        self.add(dot)\n        self.play(dot.animate.shift(RIGHT * data['distance']), run_time=1)\n",
+                "cues": [
+                  {
+                    "at_seconds": 0.5,
+                    "id": "middle",
+                    "label": "Midpoint"
+                  }
+                ],
+                "data": {
+                  "distance": 2
+                },
+                "operation": "render_animation",
+                "size": {
+                  "height": 360,
+                  "width": 640
+                }
+              },
+              {
+                "operation": "read",
+                "reference": {
+                  "presentation_id": "PRESENTATION_ID_FROM_DELIVER",
+                  "revision": 1
+                }
+              },
+              {
+                "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+                "file": "readable_content",
+                "length": 200,
+                "offset": 0,
+                "operation": "read"
+              },
+              {
+                "max_matches": 5,
+                "operation": "search",
+                "query": "补齐证据",
+                "reference": {
+                  "presentation_id": "PRESENTATION_ID_FROM_DELIVER",
+                  "revision": 1
+                }
+              },
+              {
+                "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+                "max_matches": 5,
+                "operation": "search",
+                "query": "补齐全部证据"
+              },
+              {
+                "edits": [
+                  {
+                    "new_text": "补齐全部证据",
+                    "old_text": "补齐证据"
+                  }
+                ],
+                "operation": "patch",
+                "reference": {
+                  "presentation_id": "PRESENTATION_ID_FROM_DELIVER",
+                  "revision": 1
+                }
+              },
+              {
+                "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+                "edits": [
+                  {
+                    "new_text": "补齐所需证据",
+                    "old_text": "补齐全部证据"
+                  }
+                ],
+                "operation": "patch"
+              },
+              {
+                "html": "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script>",
+                "initial_state": {
+                  "count": 2
+                },
+                "new_object": true,
+                "operation": "write",
+                "readable_content": "已找到两处证据，共需三处。补齐后为一。",
+                "title": "证据召回率"
+              },
+              {
+                "asset_refs": [
+                  "PLOT_ASSET_REF"
+                ],
+                "based_on": {
+                  "presentation_id": "PRESENTATION_ID_FROM_DELIVER",
+                  "revision": 1
+                },
+                "html": "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script><img src='assets/PLOT_ASSET_REF.svg' alt='Required and found evidence'><button data-source-ref='SOURCE_REF_FROM_SOURCE_PRESENT'>来源</button>",
+                "initial_state": {
+                  "count": 2
+                },
+                "operation": "write",
+                "readable_content": "已找到两处证据，共需三处。补齐后为一。 [[source:SOURCE_REF_FROM_SOURCE_PRESENT]]",
+                "source_ref_ids": [
+                  "SOURCE_REF_FROM_SOURCE_PRESENT"
+                ],
+                "title": "证据召回率与图示"
+              },
+              {
+                "actions": [
+                  {
+                    "kind": "click",
+                    "selector": "#add"
+                  }
+                ],
+                "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+                "operation": "preview",
+                "read_selector": "#result",
+                "width": 960
+              },
+              {
+                "actions": [
+                  {
+                    "kind": "click",
+                    "selector": "#add"
+                  },
+                  {
+                    "kind": "scroll",
+                    "y": 0
+                  }
+                ],
+                "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+                "operation": "preview",
+                "read_selector": "#result",
+                "viewport": {
+                  "height": 420,
+                  "input": "touch",
+                  "width": 320
+                }
+              },
+              {
+                "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+                "operation": "deliver"
+              }
+            ],
+            "properties": {
+              "actions": {
+                "items": {
+                  "additionalProperties": false,
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "click"
+                          ]
+                        },
+                        "selector": {
+                          "description": "Required click target; optional key target to focus before pressing. Without a key target, the current focus receives the key.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "selector"
+                      ]
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "key": {},
+                        "kind": {
+                          "enum": [
+                            "key"
+                          ]
+                        },
+                        "selector": {}
+                      },
+                      "required": [
+                        "kind",
+                        "key"
+                      ]
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "seek"
+                          ]
+                        },
+                        "semantic_state": {},
+                        "transition_progress": {}
+                      },
+                      "required": [
+                        "kind",
+                        "semantic_state",
+                        "transition_progress"
+                      ]
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "scroll"
+                          ]
+                        },
+                        "y": {}
+                      },
+                      "required": [
+                        "kind",
+                        "y"
+                      ]
+                    }
+                  ],
+                  "properties": {
+                    "key": {
+                      "enum": [
+                        "ArrowLeft",
+                        "ArrowRight",
+                        "ArrowUp",
+                        "ArrowDown",
+                        "Home",
+                        "End",
+                        "Enter",
+                        "Tab"
+                      ],
+                      "type": "string"
+                    },
+                    "kind": {
+                      "enum": [
+                        "click",
+                        "key",
+                        "seek",
+                        "scroll"
+                      ],
+                      "type": "string"
+                    },
+                    "selector": {
+                      "description": "Required click target; optional key target to focus before pressing. Without a key target, the current focus receives the key.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "semantic_state": {
+                      "description": "seek: completed semantic step",
+                      "maximum": 1000,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "transition_progress": {
+                      "description": "seek: visual progress toward the next step",
+                      "exclusiveMaximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "y": {
+                      "description": "Required for scroll: absolute document vertical position in CSS pixels, clamped at the page bottom. Changes reading position without focusing or activating controls. Observations report the action, actual scroll position, viewport and visible_text. Each preview starts with a fresh page.",
+                      "maximum": 4294967295,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 4,
+                "type": "array"
+              },
+              "asset_refs": {
+                "description": "Refs returned by render_plot/render_animation or listed by read; include each asset used by html.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "assumptions": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "based_on": {
+                "additionalProperties": false,
+                "description": "write: exact delivered revision to revise. With a presentation follow-up receipt, must match its reference. Omit only for a new object; a follow-up then requires new_object=true.",
+                "properties": {
+                  "presentation_id": {
+                    "type": "string"
+                  },
+                  "revision": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "presentation_id",
+                  "revision"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "candidate_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "code": {
+                "description": "render_plot: statements using plt/fig/ax/data. render_animation: define PresentationAnimation(Scene), with Manim symbols and JSON data available.",
+                "type": "string"
+              },
+              "cues": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "at_seconds": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label",
+                    "at_seconds"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 16,
+                "type": "array"
+              },
+              "data": {
+                "description": "JSON data available as the Python variable data"
+              },
+              "edits": {
+                "description": "patch: ordered exact replacements in the entrypoint; every old_text must match once. All edits succeed or no candidate is saved. Unchanged bytes and version resources are preserved.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "new_text": {
+                      "type": "string"
+                    },
+                    "old_text": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "old_text",
+                    "new_text"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "file": {
+                "description": "read/search: logical file name; defaults to entrypoint. Use readable_content for the version's explanatory prose with offset/length or query, without HTML. Omit file to read entrypoint source plus full readable_content metadata. Managed libraries return metadata only.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "focus": {
+                "description": "prepare: current local purpose and its relation to the whole. Omission clears the previous focus.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "framework": {
+                "description": "prepare: brief current whole-work design, as task data. Omission clears the previous framework.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "html": {
+                "type": "string"
+              },
+              "initial_state": {},
+              "length": {
+                "description": "read: maximum characters requested from offset; omitted reads to file end, within model output budget.",
+                "minimum": 1,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "libraries": {
+                "description": "Optional fixed host libraries. Explicitly select dependencies on every write, including based_on revisions; omitted means none.",
+                "items": {
+                  "enum": [
+                    "konva"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "max_matches": {
+                "description": "search: default 20. Follow next_offset to find subsequent occurrences.",
+                "maximum": 50,
+                "minimum": 1,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "needs": {
+                "description": "Required for prepare, including []: technical guidance needed for the next sampling.",
+                "items": {
+                  "enum": [
+                    "editing",
+                    "static_plot",
+                    "state",
+                    "continuous_scene",
+                    "konva",
+                    "manim"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "new_object": {
+                "description": "write: true explicitly creates a separate presentation, including from a follow-up. Use only when the user wants a new object. Cannot be true together with based_on. Defaults to false; without a follow-up or based_on, ordinary creation is unchanged.",
+                "type": "boolean"
+              },
+              "offset": {
+                "description": "read/search: zero-based Unicode character offset (not bytes or UTF-16). For truncated reads follow next_offset and remaining length until null.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "operation": {
+                "enum": [
+                  "prepare",
+                  "render_plot",
+                  "render_animation",
+                  "read",
+                  "search",
+                  "patch",
+                  "write",
+                  "preview",
+                  "deliver"
+                ],
+                "type": "string"
+              },
+              "phase": {
+                "description": "Required for prepare: current design responsibility.",
+                "enum": [
+                  "global",
+                  "local",
+                  "review"
+                ],
+                "type": "string"
+              },
+              "query": {
+                "description": "search: literal case-sensitive source text, not a regular expression.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "read_selector": {
+                "description": "preview: CSS selector matching one visible result region. After the final action, returns its complete rendered text together with live page state, input values and scene position as reading. Use this page-computed reading for numerical claims; keep each value with its parameters and semantic step. action_step counts preview actions, not mathematical iterations. For another state, run another preview with the required actions. A playing scene must be paused/seeked first. Narrow the selected region if its full context exceeds the result budget.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "readable_content": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reference": {
+                "additionalProperties": false,
+                "properties": {
+                  "presentation_id": {
+                    "type": "string"
+                  },
+                  "revision": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "presentation_id",
+                  "revision"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "size": {
+                "additionalProperties": false,
+                "properties": {
+                  "height": {
+                    "maximum": 1200,
+                    "minimum": 240,
+                    "type": "integer"
+                  },
+                  "width": {
+                    "maximum": 1600,
+                    "minimum": 320,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "width",
+                  "height"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "source_ref_ids": {
+                "description": "write: list every source ref used in HTML or readable_content. patch preserves existing source bindings; use write to change them.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "state_contract": {
+                "description": "Parameter name -> semantic definition string, including units and allowed range. Preserve a definition only when old values retain exactly the same meaning and domain. Saved page parameters with identical definitions and JSON types replace matching initial_state fields; all others keep new defaults.",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "viewport": {
+                "additionalProperties": false,
+                "description": "Explicit content-container environment. Do not provide width at the same time.",
+                "properties": {
+                  "height": {
+                    "maximum": 2160,
+                    "minimum": 160,
+                    "type": "integer"
+                  },
+                  "input": {
+                    "enum": [
+                      "mouse",
+                      "touch"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "maximum": 1920,
+                    "minimum": 240,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "width",
+                  "height",
+                  "input"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "width": {
+                "description": "Legacy preview width in CSS pixels; defaults to 960. Mutually exclusive with viewport.",
+                "maximum": 1920,
+                "minimum": 240,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "operation"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      }
+    ]
+  },
+  "react": {
+    "messages": [
+      {
+        "content": "Your provider has no native tool calling. tool_choice=auto;parallel_tool_calls=false. You must output exactly one JSON object per turn and no Markdown.\nTo call a tool, output only an exact name from this turn's list. Shape example; replace values for the current task: {\"tool_calls\":[{\"arguments\":\"1.1\",\"name\":\"presentation.author\"}]}\nFor a final answer, output: {\"final\":\"answer text\"}\nSelect tools only from the following list. arguments must satisfy the corresponding JSON Schema:\n[\n  {\n    \"description\": \"Create or revise rich answers. prepare replaces the complete run-local phase/framework/focus/needs; phase and needs are required. Omitted framework/focus clear previous values. Call prepare alone; selected guidance applies at the next sampling. It does not create or deliver content. read/search/patch require exactly one delivered reference or current-run candidate_id. read returns a file or offset/length range; search returns literal matches and character offsets. patch applies ordered edits, each old_text matching exactly once, atomically producing a new immutable candidate while preserving other content/resources; optional metadata replaces only supplied fields. write saves a complete candidate and requires title, html and readable_content; based_on selects an exact delivered version, never a candidate. render_plot returns a static SVG asset; render_animation returns a fixed movie asset. Include returned asset_refs and selected libraries on every write. preview executes actions and returns candidate/environment-bound DOM, errors and screenshots; width and viewport are mutually exclusive. deliver saves only a candidate meeting the preview and subsequent-observation contract; changed candidates need new previews. Examples illustrate calls, not live object IDs: replace reference/based_on with the exact delivered reference, candidate_id with the current run's write/patch result, and source/asset refs and asset paths with actual observed results. For an edit chain, read/search the delivered reference, patch it, then read/search/patch the returned candidate before preview and deliver. Observe each preview in a later sampling before deliver; explicit viewport previews must cover all environments required by the returned receipt.\",\n    \"name\": \"presentation.author\",\n    \"parameters\": {\n      \"additionalProperties\": false,\n      \"allOf\": [\n        {\n          \"if\": {\n            \"properties\": {\n              \"operation\": {\n                \"enum\": [\n                  \"read\",\n                  \"search\",\n                  \"patch\"\n                ]\n              }\n            },\n            \"required\": [\n              \"operation\"\n            ]\n          },\n          \"then\": {\n            \"oneOf\": [\n              {\n                \"properties\": {\n                  \"reference\": {\n                    \"type\": \"object\"\n                  }\n                },\n                \"required\": [\n                  \"reference\"\n                ]\n              },\n              {\n                \"properties\": {\n                  \"candidate_id\": {\n                    \"type\": \"string\"\n                  }\n                },\n                \"required\": [\n                  \"candidate_id\"\n                ]\n              }\n            ]\n          }\n        },\n        {\n          \"not\": {\n            \"properties\": {\n              \"viewport\": {\n                \"type\": \"object\"\n              },\n              \"width\": {\n                \"type\": \"integer\"\n              }\n            },\n            \"required\": [\n              \"width\",\n              \"viewport\"\n            ]\n          }\n        },\n        {\n          \"if\": {\n            \"properties\": {\n              \"new_object\": {\n                \"enum\": [\n                  true\n                ]\n              }\n            },\n            \"required\": [\n              \"new_object\"\n            ]\n          },\n          \"then\": {\n            \"not\": {\n              \"properties\": {\n                \"based_on\": {\n                  \"type\": \"object\"\n                }\n              },\n              \"required\": [\n                \"based_on\"\n              ]\n            }\n          }\n        }\n      ],\n      \"anyOf\": [\n        {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"focus\": {},\n            \"framework\": {},\n            \"needs\": {},\n            \"operation\": {\n              \"enum\": [\n                \"prepare\"\n              ]\n            },\n            \"phase\": {}\n          },\n          \"required\": [\n            \"operation\",\n            \"phase\",\n            \"needs\"\n          ]\n        },\n        {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"code\": {},\n            \"data\": {},\n            \"operation\": {\n              \"enum\": [\n                \"render_plot\"\n              ]\n            },\n            \"size\": {}\n          },\n          \"required\": [\n            \"operation\",\n            \"code\"\n          ]\n        },\n        {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"code\": {},\n            \"cues\": {},\n            \"data\": {},\n            \"operation\": {\n              \"enum\": [\n                \"render_animation\"\n              ]\n            },\n            \"size\": {}\n          },\n          \"required\": [\n            \"operation\",\n            \"code\"\n          ]\n        },\n        {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"candidate_id\": {},\n            \"file\": {},\n            \"length\": {},\n            \"offset\": {},\n            \"operation\": {\n              \"enum\": [\n                \"read\"\n              ]\n            },\n            \"reference\": {}\n          },\n          \"required\": [\n            \"operation\"\n          ]\n        },\n        {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"candidate_id\": {},\n            \"file\": {},\n            \"max_matches\": {},\n            \"offset\": {},\n            \"operation\": {\n              \"enum\": [\n                \"search\"\n              ]\n            },\n            \"query\": {},\n            \"reference\": {}\n          },\n          \"required\": [\n            \"operation\",\n            \"query\"\n          ]\n        },\n        {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"candidate_id\": {},\n            \"edits\": {},\n            \"initial_state\": {},\n            \"operation\": {\n              \"enum\": [\n                \"patch\"\n              ]\n            },\n            \"readable_content\": {},\n            \"reference\": {},\n            \"state_contract\": {},\n            \"title\": {}\n          },\n          \"required\": [\n            \"operation\",\n            \"edits\"\n          ]\n        },\n        {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"asset_refs\": {},\n            \"assumptions\": {},\n            \"based_on\": {},\n            \"html\": {},\n            \"initial_state\": {},\n            \"libraries\": {},\n            \"new_object\": {},\n            \"operation\": {\n              \"enum\": [\n                \"write\"\n              ]\n            },\n            \"readable_content\": {\n              \"type\": \"string\"\n            },\n            \"source_ref_ids\": {},\n            \"state_contract\": {},\n            \"title\": {\n              \"type\": \"string\"\n            }\n          },\n          \"required\": [\n            \"operation\",\n            \"title\",\n            \"html\",\n            \"readable_content\"\n          ]\n        },\n        {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"actions\": {},\n            \"candidate_id\": {\n              \"type\": \"string\"\n            },\n            \"operation\": {\n              \"enum\": [\n                \"preview\"\n              ]\n            },\n            \"read_selector\": {},\n            \"viewport\": {},\n            \"width\": {}\n          },\n          \"required\": [\n            \"operation\",\n            \"candidate_id\"\n          ]\n        },\n        {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"candidate_id\": {\n              \"type\": \"string\"\n            },\n            \"operation\": {\n              \"enum\": [\n                \"deliver\"\n              ]\n            }\n          },\n          \"required\": [\n            \"operation\",\n            \"candidate_id\"\n          ]\n        }\n      ],\n      \"examples\": [\n        {\n          \"focus\": \"Revise the existing button label and verify its result.\",\n          \"framework\": \"Compare the found evidence with the required total.\",\n          \"needs\": [\n            \"editing\",\n            \"state\"\n          ],\n          \"operation\": \"prepare\",\n          \"phase\": \"local\"\n        },\n        {\n          \"code\": \"ax.plot(data['x'], data['y'], marker='o'); ax.set_xlabel('Required'); ax.set_ylabel('Found')\",\n          \"data\": {\n            \"x\": [\n              1,\n              2,\n              3\n            ],\n            \"y\": [\n              1,\n              2,\n              2\n            ]\n          },\n          \"operation\": \"render_plot\",\n          \"size\": {\n            \"height\": 400,\n            \"width\": 640\n          }\n        },\n        {\n          \"code\": \"class PresentationAnimation(Scene):\\n    def construct(self):\\n        dot = Dot(LEFT)\\n        self.add(dot)\\n        self.play(dot.animate.shift(RIGHT * data['distance']), run_time=1)\\n\",\n          \"cues\": [\n            {\n              \"at_seconds\": 0.5,\n              \"id\": \"middle\",\n              \"label\": \"Midpoint\"\n            }\n          ],\n          \"data\": {\n            \"distance\": 2\n          },\n          \"operation\": \"render_animation\",\n          \"size\": {\n            \"height\": 360,\n            \"width\": 640\n          }\n        },\n        {\n          \"operation\": \"read\",\n          \"reference\": {\n            \"presentation_id\": \"PRESENTATION_ID_FROM_DELIVER\",\n            \"revision\": 1\n          }\n        },\n        {\n          \"candidate_id\": \"CANDIDATE_ID_FROM_WRITE_OR_PATCH\",\n          \"file\": \"readable_content\",\n          \"length\": 200,\n          \"offset\": 0,\n          \"operation\": \"read\"\n        },\n        {\n          \"max_matches\": 5,\n          \"operation\": \"search\",\n          \"query\": \"补齐证据\",\n          \"reference\": {\n            \"presentation_id\": \"PRESENTATION_ID_FROM_DELIVER\",\n            \"revision\": 1\n          }\n        },\n        {\n          \"candidate_id\": \"CANDIDATE_ID_FROM_WRITE_OR_PATCH\",\n          \"max_matches\": 5,\n          \"operation\": \"search\",\n          \"query\": \"补齐全部证据\"\n        },\n        {\n          \"edits\": [\n            {\n              \"new_text\": \"补齐全部证据\",\n              \"old_text\": \"补齐证据\"\n            }\n          ],\n          \"operation\": \"patch\",\n          \"reference\": {\n            \"presentation_id\": \"PRESENTATION_ID_FROM_DELIVER\",\n            \"revision\": 1\n          }\n        },\n        {\n          \"candidate_id\": \"CANDIDATE_ID_FROM_WRITE_OR_PATCH\",\n          \"edits\": [\n            {\n              \"new_text\": \"补齐所需证据\",\n              \"old_text\": \"补齐全部证据\"\n            }\n          ],\n          \"operation\": \"patch\"\n        },\n        {\n          \"html\": \"<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script>\",\n          \"initial_state\": {\n            \"count\": 2\n          },\n          \"new_object\": true,\n          \"operation\": \"write\",\n          \"readable_content\": \"已找到两处证据，共需三处。补齐后为一。\",\n          \"title\": \"证据召回率\"\n        },\n        {\n          \"asset_refs\": [\n            \"PLOT_ASSET_REF\"\n          ],\n          \"based_on\": {\n            \"presentation_id\": \"PRESENTATION_ID_FROM_DELIVER\",\n            \"revision\": 1\n          },\n          \"html\": \"<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script><img src='assets/PLOT_ASSET_REF.svg' alt='Required and found evidence'><button data-source-ref='SOURCE_REF_FROM_SOURCE_PRESENT'>来源</button>\",\n          \"initial_state\": {\n            \"count\": 2\n          },\n          \"operation\": \"write\",\n          \"readable_content\": \"已找到两处证据，共需三处。补齐后为一。 [[source:SOURCE_REF_FROM_SOURCE_PRESENT]]\",\n          \"source_ref_ids\": [\n            \"SOURCE_REF_FROM_SOURCE_PRESENT\"\n          ],\n          \"title\": \"证据召回率与图示\"\n        },\n        {\n          \"actions\": [\n            {\n              \"kind\": \"click\",\n              \"selector\": \"#add\"\n            }\n          ],\n          \"candidate_id\": \"CANDIDATE_ID_FROM_WRITE_OR_PATCH\",\n          \"operation\": \"preview\",\n          \"read_selector\": \"#result\",\n          \"width\": 960\n        },\n        {\n          \"actions\": [\n            {\n              \"kind\": \"click\",\n              \"selector\": \"#add\"\n            },\n            {\n              \"kind\": \"scroll\",\n              \"y\": 0\n            }\n          ],\n          \"candidate_id\": \"CANDIDATE_ID_FROM_WRITE_OR_PATCH\",\n          \"operation\": \"preview\",\n          \"read_selector\": \"#result\",\n          \"viewport\": {\n            \"height\": 420,\n            \"input\": \"touch\",\n            \"width\": 320\n          }\n        },\n        {\n          \"candidate_id\": \"CANDIDATE_ID_FROM_WRITE_OR_PATCH\",\n          \"operation\": \"deliver\"\n        }\n      ],\n      \"properties\": {\n        \"actions\": {\n          \"items\": {\n            \"additionalProperties\": false,\n            \"anyOf\": [\n              {\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"kind\": {\n                    \"enum\": [\n                      \"click\"\n                    ]\n                  },\n                  \"selector\": {\n                    \"description\": \"Required click target; optional key target to focus before pressing. Without a key target, the current focus receives the key.\",\n                    \"type\": \"string\"\n                  }\n                },\n                \"required\": [\n                  \"kind\",\n                  \"selector\"\n                ]\n              },\n              {\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"key\": {},\n                  \"kind\": {\n                    \"enum\": [\n                      \"key\"\n                    ]\n                  },\n                  \"selector\": {}\n                },\n                \"required\": [\n                  \"kind\",\n                  \"key\"\n                ]\n              },\n              {\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"kind\": {\n                    \"enum\": [\n                      \"seek\"\n                    ]\n                  },\n                  \"semantic_state\": {},\n                  \"transition_progress\": {}\n                },\n                \"required\": [\n                  \"kind\",\n                  \"semantic_state\",\n                  \"transition_progress\"\n                ]\n              },\n              {\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"kind\": {\n                    \"enum\": [\n                      \"scroll\"\n                    ]\n                  },\n                  \"y\": {}\n                },\n                \"required\": [\n                  \"kind\",\n                  \"y\"\n                ]\n              }\n            ],\n            \"properties\": {\n              \"key\": {\n                \"enum\": [\n                  \"ArrowLeft\",\n                  \"ArrowRight\",\n                  \"ArrowUp\",\n                  \"ArrowDown\",\n                  \"Home\",\n                  \"End\",\n                  \"Enter\",\n                  \"Tab\"\n                ],\n                \"type\": \"string\"\n              },\n              \"kind\": {\n                \"enum\": [\n                  \"click\",\n                  \"key\",\n                  \"seek\",\n                  \"scroll\"\n                ],\n                \"type\": \"string\"\n              },\n              \"selector\": {\n                \"description\": \"Required click target; optional key target to focus before pressing. Without a key target, the current focus receives the key.\",\n                \"type\": [\n                  \"string\",\n                  \"null\"\n                ]\n              },\n              \"semantic_state\": {\n                \"description\": \"seek: completed semantic step\",\n                \"maximum\": 1000,\n                \"minimum\": 0,\n                \"type\": \"integer\"\n              },\n              \"transition_progress\": {\n                \"description\": \"seek: visual progress toward the next step\",\n                \"exclusiveMaximum\": 1,\n                \"minimum\": 0,\n                \"type\": \"number\"\n              },\n              \"y\": {\n                \"description\": \"Required for scroll: absolute document vertical position in CSS pixels, clamped at the page bottom. Changes reading position without focusing or activating controls. Observations report the action, actual scroll position, viewport and visible_text. Each preview starts with a fresh page.\",\n                \"maximum\": 4294967295,\n                \"minimum\": 0,\n                \"type\": \"integer\"\n              }\n            },\n            \"required\": [\n              \"kind\"\n            ],\n            \"type\": \"object\"\n          },\n          \"maxItems\": 4,\n          \"type\": \"array\"\n        },\n        \"asset_refs\": {\n          \"description\": \"Refs returned by render_plot/render_animation or listed by read; include each asset used by html.\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"type\": \"array\"\n        },\n        \"assumptions\": {\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"type\": \"array\"\n        },\n        \"based_on\": {\n          \"additionalProperties\": false,\n          \"description\": \"write: exact delivered revision to revise. With a presentation follow-up receipt, must match its reference. Omit only for a new object; a follow-up then requires new_object=true.\",\n          \"properties\": {\n            \"presentation_id\": {\n              \"type\": \"string\"\n            },\n            \"revision\": {\n              \"type\": \"integer\"\n            }\n          },\n          \"required\": [\n            \"presentation_id\",\n            \"revision\"\n          ],\n          \"type\": [\n            \"object\",\n            \"null\"\n          ]\n        },\n        \"candidate_id\": {\n          \"type\": [\n            \"string\",\n            \"null\"\n          ]\n        },\n        \"code\": {\n          \"description\": \"render_plot: statements using plt/fig/ax/data. render_animation: define PresentationAnimation(Scene), with Manim symbols and JSON data available.\",\n          \"type\": \"string\"\n        },\n        \"cues\": {\n          \"items\": {\n            \"additionalProperties\": false,\n            \"properties\": {\n              \"at_seconds\": {\n                \"minimum\": 0,\n                \"type\": \"number\"\n              },\n              \"id\": {\n                \"type\": \"string\"\n              },\n              \"label\": {\n                \"type\": \"string\"\n              }\n            },\n            \"required\": [\n              \"id\",\n              \"label\",\n              \"at_seconds\"\n            ],\n            \"type\": \"object\"\n          },\n          \"maxItems\": 16,\n          \"type\": \"array\"\n        },\n        \"data\": {\n          \"description\": \"JSON data available as the Python variable data\"\n        },\n        \"edits\": {\n          \"description\": \"patch: ordered exact replacements in the entrypoint; every old_text must match once. All edits succeed or no candidate is saved. Unchanged bytes and version resources are preserved.\",\n          \"items\": {\n            \"additionalProperties\": false,\n            \"properties\": {\n              \"new_text\": {\n                \"type\": \"string\"\n              },\n              \"old_text\": {\n                \"minLength\": 1,\n                \"type\": \"string\"\n              }\n            },\n            \"required\": [\n              \"old_text\",\n              \"new_text\"\n            ],\n            \"type\": \"object\"\n          },\n          \"minItems\": 1,\n          \"type\": \"array\"\n        },\n        \"file\": {\n          \"description\": \"read/search: logical file name; defaults to entrypoint. Use readable_content for the version's explanatory prose with offset/length or query, without HTML. Omit file to read entrypoint source plus full readable_content metadata. Managed libraries return metadata only.\",\n          \"type\": [\n            \"string\",\n            \"null\"\n          ]\n        },\n        \"focus\": {\n          \"description\": \"prepare: current local purpose and its relation to the whole. Omission clears the previous focus.\",\n          \"type\": [\n            \"string\",\n            \"null\"\n          ]\n        },\n        \"framework\": {\n          \"description\": \"prepare: brief current whole-work design, as task data. Omission clears the previous framework.\",\n          \"type\": [\n            \"string\",\n            \"null\"\n          ]\n        },\n        \"html\": {\n          \"type\": \"string\"\n        },\n        \"initial_state\": {},\n        \"length\": {\n          \"description\": \"read: maximum characters requested from offset; omitted reads to file end, within model output budget.\",\n          \"minimum\": 1,\n          \"type\": [\n            \"integer\",\n            \"null\"\n          ]\n        },\n        \"libraries\": {\n          \"description\": \"Optional fixed host libraries. Explicitly select dependencies on every write, including based_on revisions; omitted means none.\",\n          \"items\": {\n            \"enum\": [\n              \"konva\"\n            ],\n            \"type\": \"string\"\n          },\n          \"type\": \"array\"\n        },\n        \"max_matches\": {\n          \"description\": \"search: default 20. Follow next_offset to find subsequent occurrences.\",\n          \"maximum\": 50,\n          \"minimum\": 1,\n          \"type\": [\n            \"integer\",\n            \"null\"\n          ]\n        },\n        \"needs\": {\n          \"description\": \"Required for prepare, including []: technical guidance needed for the next sampling.\",\n          \"items\": {\n            \"enum\": [\n              \"editing\",\n              \"static_plot\",\n              \"state\",\n              \"continuous_scene\",\n              \"konva\",\n              \"manim\"\n            ],\n            \"type\": \"string\"\n          },\n          \"type\": \"array\"\n        },\n        \"new_object\": {\n          \"description\": \"write: true explicitly creates a separate presentation, including from a follow-up. Use only when the user wants a new object. Cannot be true together with based_on. Defaults to false; without a follow-up or based_on, ordinary creation is unchanged.\",\n          \"type\": \"boolean\"\n        },\n        \"offset\": {\n          \"description\": \"read/search: zero-based Unicode character offset (not bytes or UTF-16). For truncated reads follow next_offset and remaining length until null.\",\n          \"minimum\": 0,\n          \"type\": \"integer\"\n        },\n        \"operation\": {\n          \"enum\": [\n            \"prepare\",\n            \"render_plot\",\n            \"render_animation\",\n            \"read\",\n            \"search\",\n            \"patch\",\n            \"write\",\n            \"preview\",\n            \"deliver\"\n          ],\n          \"type\": \"string\"\n        },\n        \"phase\": {\n          \"description\": \"Required for prepare: current design responsibility.\",\n          \"enum\": [\n            \"global\",\n            \"local\",\n            \"review\"\n          ],\n          \"type\": \"string\"\n        },\n        \"query\": {\n          \"description\": \"search: literal case-sensitive source text, not a regular expression.\",\n          \"minLength\": 1,\n          \"type\": \"string\"\n        },\n        \"read_selector\": {\n          \"description\": \"preview: CSS selector matching one visible result region. After the final action, returns its complete rendered text together with live page state, input values and scene position as reading. Use this page-computed reading for numerical claims; keep each value with its parameters and semantic step. action_step counts preview actions, not mathematical iterations. For another state, run another preview with the required actions. A playing scene must be paused/seeked first. Narrow the selected region if its full context exceeds the result budget.\",\n          \"type\": [\n            \"string\",\n            \"null\"\n          ]\n        },\n        \"readable_content\": {\n          \"type\": [\n            \"string\",\n            \"null\"\n          ]\n        },\n        \"reference\": {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"presentation_id\": {\n              \"type\": \"string\"\n            },\n            \"revision\": {\n              \"type\": \"integer\"\n            }\n          },\n          \"required\": [\n            \"presentation_id\",\n            \"revision\"\n          ],\n          \"type\": [\n            \"object\",\n            \"null\"\n          ]\n        },\n        \"size\": {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"height\": {\n              \"maximum\": 1200,\n              \"minimum\": 240,\n              \"type\": \"integer\"\n            },\n            \"width\": {\n              \"maximum\": 1600,\n              \"minimum\": 320,\n              \"type\": \"integer\"\n            }\n          },\n          \"required\": [\n            \"width\",\n            \"height\"\n          ],\n          \"type\": [\n            \"object\",\n            \"null\"\n          ]\n        },\n        \"source_ref_ids\": {\n          \"description\": \"write: list every source ref used in HTML or readable_content. patch preserves existing source bindings; use write to change them.\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"type\": \"array\"\n        },\n        \"state_contract\": {\n          \"description\": \"Parameter name -> semantic definition string, including units and allowed range. Preserve a definition only when old values retain exactly the same meaning and domain. Saved page parameters with identical definitions and JSON types replace matching initial_state fields; all others keep new defaults.\",\n          \"type\": [\n            \"object\",\n            \"null\"\n          ]\n        },\n        \"title\": {\n          \"type\": [\n            \"string\",\n            \"null\"\n          ]\n        },\n        \"viewport\": {\n          \"additionalProperties\": false,\n          \"description\": \"Explicit content-container environment. Do not provide width at the same time.\",\n          \"properties\": {\n            \"height\": {\n              \"maximum\": 2160,\n              \"minimum\": 160,\n              \"type\": \"integer\"\n            },\n            \"input\": {\n              \"enum\": [\n                \"mouse\",\n                \"touch\"\n              ],\n              \"type\": \"string\"\n            },\n            \"width\": {\n              \"maximum\": 1920,\n              \"minimum\": 240,\n              \"type\": \"integer\"\n            }\n          },\n          \"required\": [\n            \"width\",\n            \"height\",\n            \"input\"\n          ],\n          \"type\": [\n            \"object\",\n            \"null\"\n          ]\n        },\n        \"width\": {\n          \"description\": \"Legacy preview width in CSS pixels; defaults to 960. Mutually exclusive with viewport.\",\n          \"maximum\": 1920,\n          \"minimum\": 240,\n          \"type\": [\n            \"integer\",\n            \"null\"\n          ]\n        }\n      },\n      \"required\": [\n        \"operation\"\n      ],\n      \"type\": \"object\"\n    }\n  }\n]",
+        "role": "system"
+      },
+      {
+        "content": "Revise the existing presentation",
+        "role": "user"
+      }
+    ],
+    "model": "test",
+    "temperature": 0
+  },
+  "spec": {
+    "description": "Create or revise rich answers. prepare replaces the complete run-local phase/framework/focus/needs; phase and needs are required. Omitted framework/focus clear previous values. Call prepare alone; selected guidance applies at the next sampling. It does not create or deliver content. read/search/patch require exactly one delivered reference or current-run candidate_id. read returns a file or offset/length range; search returns literal matches and character offsets. patch applies ordered edits, each old_text matching exactly once, atomically producing a new immutable candidate while preserving other content/resources; optional metadata replaces only supplied fields. write saves a complete candidate and requires title, html and readable_content; based_on selects an exact delivered version, never a candidate. render_plot returns a static SVG asset; render_animation returns a fixed movie asset. Include returned asset_refs and selected libraries on every write. preview executes actions and returns candidate/environment-bound DOM, errors and screenshots; width and viewport are mutually exclusive. deliver saves only a candidate meeting the preview and subsequent-observation contract; changed candidates need new previews. Examples illustrate calls, not live object IDs: replace reference/based_on with the exact delivered reference, candidate_id with the current run's write/patch result, and source/asset refs and asset paths with actual observed results. For an edit chain, read/search the delivered reference, patch it, then read/search/patch the returned candidate before preview and deliver. Observe each preview in a later sampling before deliver; explicit viewport previews must cover all environments required by the returned receipt.",
+    "name": "presentation.author",
+    "parameters": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "enum": [
+                  "read",
+                  "search",
+                  "patch"
+                ]
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "oneOf": [
+              {
+                "properties": {
+                  "reference": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "reference"
+                ]
+              },
+              {
+                "properties": {
+                  "candidate_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "candidate_id"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "not": {
+            "properties": {
+              "viewport": {
+                "type": "object"
+              },
+              "width": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "width",
+              "viewport"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "new_object": {
+                "enum": [
+                  true
+                ]
+              }
+            },
+            "required": [
+              "new_object"
+            ]
+          },
+          "then": {
+            "not": {
+              "properties": {
+                "based_on": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "based_on"
+              ]
+            }
+          }
+        }
+      ],
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "focus": {},
+            "framework": {},
+            "needs": {},
+            "operation": {
+              "enum": [
+                "prepare"
+              ]
+            },
+            "phase": {}
+          },
+          "required": [
+            "operation",
+            "phase",
+            "needs"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "code": {},
+            "data": {},
+            "operation": {
+              "enum": [
+                "render_plot"
+              ]
+            },
+            "size": {}
+          },
+          "required": [
+            "operation",
+            "code"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "code": {},
+            "cues": {},
+            "data": {},
+            "operation": {
+              "enum": [
+                "render_animation"
+              ]
+            },
+            "size": {}
+          },
+          "required": [
+            "operation",
+            "code"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "candidate_id": {},
+            "file": {},
+            "length": {},
+            "offset": {},
+            "operation": {
+              "enum": [
+                "read"
+              ]
+            },
+            "reference": {}
+          },
+          "required": [
+            "operation"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "candidate_id": {},
+            "file": {},
+            "max_matches": {},
+            "offset": {},
+            "operation": {
+              "enum": [
+                "search"
+              ]
+            },
+            "query": {},
+            "reference": {}
+          },
+          "required": [
+            "operation",
+            "query"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "candidate_id": {},
+            "edits": {},
+            "initial_state": {},
+            "operation": {
+              "enum": [
+                "patch"
+              ]
+            },
+            "readable_content": {},
+            "reference": {},
+            "state_contract": {},
+            "title": {}
+          },
+          "required": [
+            "operation",
+            "edits"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "asset_refs": {},
+            "assumptions": {},
+            "based_on": {},
+            "html": {},
+            "initial_state": {},
+            "libraries": {},
+            "new_object": {},
+            "operation": {
+              "enum": [
+                "write"
+              ]
+            },
+            "readable_content": {
+              "type": "string"
+            },
+            "source_ref_ids": {},
+            "state_contract": {},
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "operation",
+            "title",
+            "html",
+            "readable_content"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actions": {},
+            "candidate_id": {
+              "type": "string"
+            },
+            "operation": {
+              "enum": [
+                "preview"
+              ]
+            },
+            "read_selector": {},
+            "viewport": {},
+            "width": {}
+          },
+          "required": [
+            "operation",
+            "candidate_id"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "candidate_id": {
+              "type": "string"
+            },
+            "operation": {
+              "enum": [
+                "deliver"
+              ]
+            }
+          },
+          "required": [
+            "operation",
+            "candidate_id"
+          ]
+        }
+      ],
+      "examples": [
+        {
+          "focus": "Revise the existing button label and verify its result.",
+          "framework": "Compare the found evidence with the required total.",
+          "needs": [
+            "editing",
+            "state"
+          ],
+          "operation": "prepare",
+          "phase": "local"
+        },
+        {
+          "code": "ax.plot(data['x'], data['y'], marker='o'); ax.set_xlabel('Required'); ax.set_ylabel('Found')",
+          "data": {
+            "x": [
+              1,
+              2,
+              3
+            ],
+            "y": [
+              1,
+              2,
+              2
+            ]
+          },
+          "operation": "render_plot",
+          "size": {
+            "height": 400,
+            "width": 640
+          }
+        },
+        {
+          "code": "class PresentationAnimation(Scene):\n    def construct(self):\n        dot = Dot(LEFT)\n        self.add(dot)\n        self.play(dot.animate.shift(RIGHT * data['distance']), run_time=1)\n",
+          "cues": [
+            {
+              "at_seconds": 0.5,
+              "id": "middle",
+              "label": "Midpoint"
+            }
+          ],
+          "data": {
+            "distance": 2
+          },
+          "operation": "render_animation",
+          "size": {
+            "height": 360,
+            "width": 640
+          }
+        },
+        {
+          "operation": "read",
+          "reference": {
+            "presentation_id": "PRESENTATION_ID_FROM_DELIVER",
+            "revision": 1
+          }
+        },
+        {
+          "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+          "file": "readable_content",
+          "length": 200,
+          "offset": 0,
+          "operation": "read"
+        },
+        {
+          "max_matches": 5,
+          "operation": "search",
+          "query": "补齐证据",
+          "reference": {
+            "presentation_id": "PRESENTATION_ID_FROM_DELIVER",
+            "revision": 1
+          }
+        },
+        {
+          "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+          "max_matches": 5,
+          "operation": "search",
+          "query": "补齐全部证据"
+        },
+        {
+          "edits": [
+            {
+              "new_text": "补齐全部证据",
+              "old_text": "补齐证据"
+            }
+          ],
+          "operation": "patch",
+          "reference": {
+            "presentation_id": "PRESENTATION_ID_FROM_DELIVER",
+            "revision": 1
+          }
+        },
+        {
+          "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+          "edits": [
+            {
+              "new_text": "补齐所需证据",
+              "old_text": "补齐全部证据"
+            }
+          ],
+          "operation": "patch"
+        },
+        {
+          "html": "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script>",
+          "initial_state": {
+            "count": 2
+          },
+          "new_object": true,
+          "operation": "write",
+          "readable_content": "已找到两处证据，共需三处。补齐后为一。",
+          "title": "证据召回率"
+        },
+        {
+          "asset_refs": [
+            "PLOT_ASSET_REF"
+          ],
+          "based_on": {
+            "presentation_id": "PRESENTATION_ID_FROM_DELIVER",
+            "revision": 1
+          },
+          "html": "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script><img src='assets/PLOT_ASSET_REF.svg' alt='Required and found evidence'><button data-source-ref='SOURCE_REF_FROM_SOURCE_PRESENT'>来源</button>",
+          "initial_state": {
+            "count": 2
+          },
+          "operation": "write",
+          "readable_content": "已找到两处证据，共需三处。补齐后为一。 [[source:SOURCE_REF_FROM_SOURCE_PRESENT]]",
+          "source_ref_ids": [
+            "SOURCE_REF_FROM_SOURCE_PRESENT"
+          ],
+          "title": "证据召回率与图示"
+        },
+        {
+          "actions": [
+            {
+              "kind": "click",
+              "selector": "#add"
+            }
+          ],
+          "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+          "operation": "preview",
+          "read_selector": "#result",
+          "width": 960
+        },
+        {
+          "actions": [
+            {
+              "kind": "click",
+              "selector": "#add"
+            },
+            {
+              "kind": "scroll",
+              "y": 0
+            }
+          ],
+          "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+          "operation": "preview",
+          "read_selector": "#result",
+          "viewport": {
+            "height": 420,
+            "input": "touch",
+            "width": 320
+          }
+        },
+        {
+          "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+          "operation": "deliver"
+        }
+      ],
+      "properties": {
+        "actions": {
+          "items": {
+            "additionalProperties": false,
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "click"
+                    ]
+                  },
+                  "selector": {
+                    "description": "Required click target; optional key target to focus before pressing. Without a key target, the current focus receives the key.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "selector"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "key": {},
+                  "kind": {
+                    "enum": [
+                      "key"
+                    ]
+                  },
+                  "selector": {}
+                },
+                "required": [
+                  "kind",
+                  "key"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "seek"
+                    ]
+                  },
+                  "semantic_state": {},
+                  "transition_progress": {}
+                },
+                "required": [
+                  "kind",
+                  "semantic_state",
+                  "transition_progress"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "scroll"
+                    ]
+                  },
+                  "y": {}
+                },
+                "required": [
+                  "kind",
+                  "y"
+                ]
+              }
+            ],
+            "properties": {
+              "key": {
+                "enum": [
+                  "ArrowLeft",
+                  "ArrowRight",
+                  "ArrowUp",
+                  "ArrowDown",
+                  "Home",
+                  "End",
+                  "Enter",
+                  "Tab"
+                ],
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "click",
+                  "key",
+                  "seek",
+                  "scroll"
+                ],
+                "type": "string"
+              },
+              "selector": {
+                "description": "Required click target; optional key target to focus before pressing. Without a key target, the current focus receives the key.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "semantic_state": {
+                "description": "seek: completed semantic step",
+                "maximum": 1000,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "transition_progress": {
+                "description": "seek: visual progress toward the next step",
+                "exclusiveMaximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              "y": {
+                "description": "Required for scroll: absolute document vertical position in CSS pixels, clamped at the page bottom. Changes reading position without focusing or activating controls. Observations report the action, actual scroll position, viewport and visible_text. Each preview starts with a fresh page.",
+                "maximum": 4294967295,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "maxItems": 4,
+          "type": "array"
+        },
+        "asset_refs": {
+          "description": "Refs returned by render_plot/render_animation or listed by read; include each asset used by html.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "based_on": {
+          "additionalProperties": false,
+          "description": "write: exact delivered revision to revise. With a presentation follow-up receipt, must match its reference. Omit only for a new object; a follow-up then requires new_object=true.",
+          "properties": {
+            "presentation_id": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "presentation_id",
+            "revision"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "candidate_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "code": {
+          "description": "render_plot: statements using plt/fig/ax/data. render_animation: define PresentationAnimation(Scene), with Manim symbols and JSON data available.",
+          "type": "string"
+        },
+        "cues": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "at_seconds": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "at_seconds"
+            ],
+            "type": "object"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "data": {
+          "description": "JSON data available as the Python variable data"
+        },
+        "edits": {
+          "description": "patch: ordered exact replacements in the entrypoint; every old_text must match once. All edits succeed or no candidate is saved. Unchanged bytes and version resources are preserved.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "new_text": {
+                "type": "string"
+              },
+              "old_text": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "old_text",
+              "new_text"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "file": {
+          "description": "read/search: logical file name; defaults to entrypoint. Use readable_content for the version's explanatory prose with offset/length or query, without HTML. Omit file to read entrypoint source plus full readable_content metadata. Managed libraries return metadata only.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "focus": {
+          "description": "prepare: current local purpose and its relation to the whole. Omission clears the previous focus.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "framework": {
+          "description": "prepare: brief current whole-work design, as task data. Omission clears the previous framework.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "html": {
+          "type": "string"
+        },
+        "initial_state": {},
+        "length": {
+          "description": "read: maximum characters requested from offset; omitted reads to file end, within model output budget.",
+          "minimum": 1,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "libraries": {
+          "description": "Optional fixed host libraries. Explicitly select dependencies on every write, including based_on revisions; omitted means none.",
+          "items": {
+            "enum": [
+              "konva"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "max_matches": {
+          "description": "search: default 20. Follow next_offset to find subsequent occurrences.",
+          "maximum": 50,
+          "minimum": 1,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "needs": {
+          "description": "Required for prepare, including []: technical guidance needed for the next sampling.",
+          "items": {
+            "enum": [
+              "editing",
+              "static_plot",
+              "state",
+              "continuous_scene",
+              "konva",
+              "manim"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "new_object": {
+          "description": "write: true explicitly creates a separate presentation, including from a follow-up. Use only when the user wants a new object. Cannot be true together with based_on. Defaults to false; without a follow-up or based_on, ordinary creation is unchanged.",
+          "type": "boolean"
+        },
+        "offset": {
+          "description": "read/search: zero-based Unicode character offset (not bytes or UTF-16). For truncated reads follow next_offset and remaining length until null.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "operation": {
+          "enum": [
+            "prepare",
+            "render_plot",
+            "render_animation",
+            "read",
+            "search",
+            "patch",
+            "write",
+            "preview",
+            "deliver"
+          ],
+          "type": "string"
+        },
+        "phase": {
+          "description": "Required for prepare: current design responsibility.",
+          "enum": [
+            "global",
+            "local",
+            "review"
+          ],
+          "type": "string"
+        },
+        "query": {
+          "description": "search: literal case-sensitive source text, not a regular expression.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "read_selector": {
+          "description": "preview: CSS selector matching one visible result region. After the final action, returns its complete rendered text together with live page state, input values and scene position as reading. Use this page-computed reading for numerical claims; keep each value with its parameters and semantic step. action_step counts preview actions, not mathematical iterations. For another state, run another preview with the required actions. A playing scene must be paused/seeked first. Narrow the selected region if its full context exceeds the result budget.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "readable_content": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reference": {
+          "additionalProperties": false,
+          "properties": {
+            "presentation_id": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "presentation_id",
+            "revision"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "size": {
+          "additionalProperties": false,
+          "properties": {
+            "height": {
+              "maximum": 1200,
+              "minimum": 240,
+              "type": "integer"
+            },
+            "width": {
+              "maximum": 1600,
+              "minimum": 320,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "width",
+            "height"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "source_ref_ids": {
+          "description": "write: list every source ref used in HTML or readable_content. patch preserves existing source bindings; use write to change them.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "state_contract": {
+          "description": "Parameter name -> semantic definition string, including units and allowed range. Preserve a definition only when old values retain exactly the same meaning and domain. Saved page parameters with identical definitions and JSON types replace matching initial_state fields; all others keep new defaults.",
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "viewport": {
+          "additionalProperties": false,
+          "description": "Explicit content-container environment. Do not provide width at the same time.",
+          "properties": {
+            "height": {
+              "maximum": 2160,
+              "minimum": 160,
+              "type": "integer"
+            },
+            "input": {
+              "enum": [
+                "mouse",
+                "touch"
+              ],
+              "type": "string"
+            },
+            "width": {
+              "maximum": 1920,
+              "minimum": 240,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "width",
+            "height",
+            "input"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "width": {
+          "description": "Legacy preview width in CSS pixels; defaults to 960. Mutually exclusive with viewport.",
+          "maximum": 1920,
+          "minimum": 240,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "operation"
+      ],
+      "type": "object"
+    }
+  }
+}

@@ -28,6 +28,10 @@ impl Fixture {
     }
 
     fn with_example_book(examples: bool) -> Self {
+        Self::with_material(examples, false)
+    }
+
+    fn with_material(examples: bool, enriched: bool) -> Self {
         let root = tempfile::tempdir().unwrap();
         let input = tempfile::tempdir().unwrap();
         let users = UserRegistry::open(root.path()).unwrap();
@@ -66,6 +70,7 @@ impl Fixture {
         )
         .unwrap();
         fs::write(input.path().join("source.txt"), source).unwrap();
+        if enriched { crate::mcp_read::tests::material(input.path(), "to12-paper", true); }
         if examples {
             fs::write(input.path().join("base.json"), include_str!("../../book-tool-contracts/fixtures/example-book/base.json")).unwrap();
             fs::write(input.path().join("source.txt"), include_str!("../../book-tool-contracts/fixtures/example-book/source.txt")).unwrap();

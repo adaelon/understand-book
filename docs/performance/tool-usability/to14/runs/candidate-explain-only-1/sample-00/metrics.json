@@ -1,0 +1,15 @@
+{
+  "completed": true,
+  "recovered_errors": [],
+  "usage": {
+    "input_tokens": 26823,
+    "cached_input_tokens": 0,
+    "output_tokens": 80
+  },
+  "total_tokens": 26903,
+  "actual_cost": null,
+  "final": "{\"text\":\"我会按选中的原文解释，并附上来源。\",\"tool_calls\":[{\"name\":\"source.present\",\"arguments\":\"{\\\"quote\\\":\\\"Average speed is total distance divided by total time.\\\"}\"}]}",
+  "exit_code": 0,
+  "timed_out": false,
+  "elapsed_ms": 18743.4522
+}

@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { validateClosedToolRequest } from "../src/build-executor-tool-contract";
 import {
   BUILD_EXECUTOR_MCP_CONTRACT_V3,
   createBuildExecutorToolAdapter,
@@ -24,6 +25,20 @@ const TEST_CANDIDATE_TRANSPORT = createCandidateTransportContract(
   CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
   1_024,
 );
+
+it("TO6 publishes distinct complete lifecycle inputs using each tool's current version", () => {
+  const counts = [1, 2, 1, 1];
+  for (const [index, tool] of BUILD_EXECUTOR_MCP_CONTRACT_V3.tools.entries()) {
+    const schema = tool.input_schema as typeof tool.input_schema & { examples?: Record<string, unknown>[] };
+    expect(schema.examples, tool.name).toHaveLength(counts[index]!);
+    expect(new Set(schema.examples!.map(example => JSON.stringify(example))).size).toBe(counts[index]);
+    for (const example of schema.examples!) {
+      expect(() => validateClosedToolRequest(tool.name, example)).not.toThrow();
+      expect(() => validateClosedToolRequest(tool.name, { ...example, version: "wrong.v0" })).toThrow(/version/);
+      expect(() => validateClosedToolRequest(tool.name, { ...example, candidate_path: "candidate.json" })).toThrow();
+    }
+  }
+});
 
 function validSharedMcpConfig() {
   return {

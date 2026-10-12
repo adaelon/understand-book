@@ -1,5 +1,6 @@
 //! 模块 E 自建最小运行时。`book.query` 使用 referent-first typed mini-loop；
 //! `book.synthesize` 与其他工具保留各自明确的证据所有权。
+pub mod book_output_schema;
 use base_schema::{GraphNodeType, LidNode, NodeKind};
 pub use book_tool_contracts::{BookQueryIntent, BookQueryRequest, QueryObligation};
 use memory::{BookReadingState, EngagementSignals};
@@ -421,7 +422,7 @@ fn message_to_json(m: &Message) -> serde_json::Value {
     o
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct Citation {
     pub lid: String,
@@ -429,7 +430,7 @@ pub struct Citation {
     pub role: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct SupplementOut {
     pub text: String,
@@ -583,7 +584,7 @@ pub struct QueryRun {
     pub audit: QueryAudit,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum ReferentKind {
@@ -592,7 +593,7 @@ pub enum ReferentKind {
     PaperTerm,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum ReferentSource {
@@ -600,7 +601,7 @@ pub enum ReferentSource {
     PaperLexicon,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, TS)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum RecallStrength {
@@ -610,14 +611,14 @@ pub enum RecallStrength {
     Direct,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct CandidateExcerpt {
     pub lid: String,
     pub text: String,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct CandidateHint {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -626,7 +627,7 @@ pub struct CandidateHint {
     pub chinese_gloss: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct CandidatePreview {
     pub candidate_id: String,
@@ -642,7 +643,7 @@ pub struct CandidatePreview {
     pub hint_only: Option<CandidateHint>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct ReferentBinding {
     pub target: String,
@@ -652,7 +653,7 @@ pub struct ReferentBinding {
     pub source_lids: Vec<String>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum SupportVerdict {
@@ -661,7 +662,7 @@ pub enum SupportVerdict {
     Unsupported,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct SupportAssessment {
     pub obligation_index: usize,
@@ -670,7 +671,7 @@ pub struct SupportAssessment {
     pub support_note: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, schemars::JsonSchema)]
 #[serde(tag = "status", rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum QueryOutcome {
@@ -1779,7 +1780,7 @@ pub(crate) fn query_run_with_budgets(
 
 /// `book.synthesize` 对外响应:复用 query 的 answer/citations/model_supplement 骨架,
 /// 但 echo 输入 `source_lids` 并标记是否走分批归并 `[ADR-0017/0033]`。
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct SynthesizeResponse {
     pub answer: Option<String>,
@@ -1812,7 +1813,7 @@ pub struct BookGuideSessionContext {
 /// `book_guide` response: route first, prose second. Every route step is a
 /// true `RankedStep` from Core route primitives; prose citations are filtered
 /// against the supplied route evidence.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct BookGuideResponse {
     pub intent: String,
     pub entry_lid: String,

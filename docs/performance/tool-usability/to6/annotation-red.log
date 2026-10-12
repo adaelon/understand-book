@@ -1,0 +1,50 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/core
+
+ ❯ test/build-executor-mcp.test.ts (14 tests | 1 failed | 13 skipped) 17ms
+   × Build Executor root-shared MCP boundary > TO6 advertises input delivery and acknowledgement as session writes 15ms
+     → expected true to be false // Object.is equality
+   ↓ Build Executor root-shared MCP boundary > RG5 maps operation failures to one allowlisted V2 error without private detail
+   ↓ Build Executor root-shared MCP boundary > L2 reports connection_terminal precisely without opening the second ref
+   ↓ Build Executor root-shared MCP boundary > L2 reports handoff_ref_mismatch precisely without opening the second ref
+   ↓ Build Executor root-shared MCP boundary > R1 diagnoses a shortened handoff before binding and accepts the corrected ref
+   ↓ Build Executor root-shared MCP boundary > RG5 keeps a pre-session contract failure as protocol_incompatible with its operation phase
+   ↓ Build Executor root-shared MCP boundary > RG5 never relabels a post-session response failure as bootstrap
+   ↓ Build Executor root-shared MCP boundary > M1 records one bounded server timing sample per valid tool call
+   ↓ Build Executor root-shared MCP boundary > records a returned retryable failure as a bounded timing outcome
+   ↓ Build Executor root-shared MCP boundary > M1 keeps call ordinals local to each stdio connection
+   ↓ Build Executor root-shared MCP boundary > negotiates MCP and exposes exactly the four closed executor tools
+   ↓ Build Executor root-shared MCP boundary > R1/R2 exposes the dedicated-Executor-only warning on every tools/list description
+   ↓ Build Executor root-shared MCP boundary > keeps capability out of model parameters and candidate bodies out of tool results
+   ↓ Build Executor root-shared MCP boundary > fails closed with a bounded bootstrap diagnostic
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/build-executor-mcp.test.ts > Build Executor root-shared MCP boundary > TO6 advertises input delivery and acknowledgement as session writes
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/build-executor-mcp.test.ts:33:109
+     31|     };
+     32|     // inputBatchResponse persists an offer; confirmDeliveryBatch pers…
+     33|     expect(listed.result.tools.find(tool => tool.name === "executor.in…
+       |                                                                                                             ^
+     34|   });
+     35| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 skipped (14)
+   Start at  19:37:22
+   Duration  7.07s (transform 2.59s, setup 0ms, collect 5.53s, tests 17ms, environment 0ms, prepare 709ms)
+
+undefined
+E:\allwork\download\agent\understand-book\packages\core:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/build-executor-mcp.test.ts -t TO6

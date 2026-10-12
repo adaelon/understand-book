@@ -1,0 +1,10 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "name": "tutor.step",
+      "arguments": "{\"operation\":\"select\",\"move\":{\"move_id\":\"explain-equal-time-average\",\"kind\":\"explain\",\"object_ids\":[],\"prompt\":\"接着上一轮说明：两段用时相等时，可以直接取两段平均速度的算术平均。这是从原文的总路程除以总时间推导出的结论。用自拟例子，假设先以60 km/h行驶1小时，再以30 km/h行驶1小时：总路程90 km，总时间2小时，平均速度45 km/h。对照上一轮两段各60 km、分别耗时1小时和2小时而得到40 km/h的例子，突出相等时间与相等路程的区别。用(v₁t+v₂t)/(2t)=(v₁+v₂)/2，t>0，解释相等时间为何使时间权重相同。直接完成解释，不要求读者答题。\",\"target\":{\"learning_focus\":\"平均速度：相等用时为何允许直接平均两段速度\",\"expected_performance\":\"能依据总路程与总时间，区分相等用时和相等路程对平均速度计算的影响。\",\"capability\":\"explanation\",\"source_bindings\":[{\"start_lid\":\"1.1\",\"end_lid\":\"1.1\"}],\"object_refs\":[]}}}"
+    }
+  ],
+  "usage_total_tokens": 37020
+}

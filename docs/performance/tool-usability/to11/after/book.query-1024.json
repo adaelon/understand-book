@@ -1,0 +1,114 @@
+{
+  "continuation": {
+    "arguments": {
+      "lid": "1.1"
+    },
+    "kind": "next_call",
+    "reason": "read source text from the returned query; this does not regenerate the omitted answer",
+    "tool": "book.text"
+  },
+  "delivered": {
+    "answer": null,
+    "bindings": [
+      {
+        "candidate_id": "concept:alpha",
+        "canonical_label": "alpha",
+        "kind": "concept",
+        "source_lids": [
+          "1.1"
+        ],
+        "target": "alpha"
+      }
+    ],
+    "citations": [],
+    "delivery": {
+      "collections": {
+        "/citations": {
+          "delivered": 0,
+          "total": 2
+        },
+        "/model_supplement": {
+          "delivered": 0,
+          "total": 0
+        }
+      },
+      "omitted_fields": [
+        "/answer"
+      ],
+      "read_lids": [
+        "1.1",
+        "1.2"
+      ],
+      "status": "partial"
+    },
+    "model_supplement": [],
+    "status": "partial",
+    "support": [
+      {
+        "citation_lids": [
+          "1.1"
+        ],
+        "obligation_index": 0,
+        "support_note": "Only one direction is supported; the converse has not been established.",
+        "verdict": "uncertain"
+      }
+    ]
+  },
+  "delivered_bytes": 557,
+  "input": {
+    "anchor_lid": "1.1",
+    "intent": "explanation",
+    "obligations": [
+      {
+        "requirement": "Explain the assumptions"
+      }
+    ],
+    "query": "Explain alpha",
+    "targets": [
+      "alpha"
+    ]
+  },
+  "limit": 1024,
+  "raw": {
+    "answer": "The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. The result applies only under the stated assumptions. ",
+    "bindings": [
+      {
+        "candidate_id": "concept:alpha",
+        "canonical_label": "alpha",
+        "kind": "concept",
+        "source_lids": [
+          "1.1"
+        ],
+        "target": "alpha"
+      }
+    ],
+    "citations": [
+      {
+        "lid": "1.1",
+        "role": "support",
+        "text": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      {
+        "lid": "1.2",
+        "role": "caveat",
+        "text": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+      }
+    ],
+    "model_supplement": [],
+    "status": "partial",
+    "support": [
+      {
+        "citation_lids": [
+          "1.1"
+        ],
+        "obligation_index": 0,
+        "support_note": "Only one direction is supported; the converse has not been established.",
+        "verdict": "uncertain"
+      }
+    ]
+  },
+  "raw_bytes": 8247,
+  "status": "partial",
+  "tool": "book.query",
+  "truncated": true
+}

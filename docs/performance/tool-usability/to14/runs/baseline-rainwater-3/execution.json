@@ -1,0 +1,7 @@
+{
+  "name": "baseline-rainwater-3",
+  "version": "baseline",
+  "task": "rainwater",
+  "repetition": 3,
+  "exit_code": 0
+}

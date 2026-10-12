@@ -1,41 +1,46 @@
-# SESSION_CHECKPOINT — 2026-10-12（TO 主工作区）
+# SESSION_CHECKPOINT — 2026-10-12 21:07（TO 主工作区）
 
 ## 新鲜度自检
 - 工作区：E:/allwork/download/agent/understand-book；分支 main。
-- 写入时最新提交：b45c2b6602c72d3cd9604fa45c2df7ce72a97f3a — feat: preserve TO1-TO2 tool contracts and executable examples。
-- TO0–TO2 代码、夹具、日志和快照已提交；本 checkpoint 随 TB 设计与并行分工保存。接手时对照 git log -3 和目标文件实际状态。
+- 写入时最新 commit：93b476d docs: align TB design and prepare TO-TB parallel handoffs。
+- 读入时对比git log -3；TO3–TO14及选区保存修复已完成但未提交，不能只按HEAD判断。
 
 ## 当前在做什么
-TO2 已完成，下一片为 TO3：Tutor 当前状态的有效示例。TB 已完成设计，reading-share 从 TB1 接手；两条线的符号所有权见 [并行边界](docs/切片方案-Tutor使命与认知积木.md#to-与-tb-的并行边界)。
+TO0–TO14已完成。TO14发现的“选区＋保存”意图丢失已修复，38项定向测试通过。TO14原始16任务仍保留13通过、2笔记失败、1执行器未决的修复前结果；下一推荐独立小片是EXISTING笔记的Goal完成判断。TB仍由reading-share按原分工维护。
 
 ## 下一步（可直接接手）
-1. 阅读 [TO3](docs/切片方案-工具契约与Agent可用性优化.md#to3tutor-当前状态的有效示例)、[TO2 实施记录](docs/performance/tool-usability/to2/README.md) 和 TB 并行边界；TO 负责 tutor::spec/spec_for_context，教学指导由 TB 负责。
-2. 对照 crates/runtime/src/tutor.rs、tool_schema.rs 的当前状态投影及 TC2A 轨迹，固定受支持 operation、嵌套 move 和原参数拒绝场景。
-3. 用原 Tutor 测试上下文构造 source/action/fact refs；最终状态 schema 只发布可执行示例，保留原动作权限。
-4. 复用 tool_registry::contract_tests 的最终 schema、真实解析与 Native/ReAct 请求验证，补状态分派的受影响用例；按固定预算分别记录参数错误和教学内容错误。
-5. 导出定义并记录 TO3 的实际结果、输入体积和剩余问题，更新 TO 方案、代码链路及本 checkpoint；与 TB 集成时保持共同合同和指导一致。
+1. 阅读selection-intent-fix/README.md及production.diff，确认run_context_inner已经使用current_user_message识别动作，不再重复修此问题。
+2. 如接续EXISTING问题，先读to5 README已知限制，定位Runtime的Goal reader_action完成判据与reader.note成功回执路径。
+3. 用已存在笔记和明确保存要求补真实Server失败回归：回执为EXISTING、重开仍为同一笔记、本轮无创建effect，核对Goal是否错误保持未完成。
+4. 在现有完成判据接点依据真实保存回执处理已完成保存，保留去重、撤销及非笔记Reader操作语义；只运行受影响用例，再更新代码链路和checkpoint。
+5. 若继续性能收缩，按TO14 README选择可归因的具体投影与固定任务；保留原始样本，基线和候选使用不同CARGO_TARGET_DIR。
 
 ## 未提交 / 未完成
-- TO3–TO14、TB1–TB6 待实施；本轮准备不算实现这些切片。
-- 主目录仍保留独立首页改版：Web 首页、CONTEXT 首页定义、架构及代码链路的首页段落，另有首页新增组件和测试。按 git 状态保留，不混入 TO 提交。
-- reading-share 用本支线 checkpoint 接手 TB1；合并该支线时保留 main 的 TO 接手状态，TB 进度由其方案及实施记录提供。
-- 既有本地/Resident 逆序正文范围可能在 Book::text 切片时 panic，远程 text_page 已校验；按 TO1 已知限制独立处理。
-- Tutor TC7–TC8、真实读者验收、TC2 教学内容质量、旧教学事件兼容及原有 Core BookStructure 用例，沿各自方案保留未结项。
-- MCP0–MCP10 已完成，生产状态沿 MCP 运行单；本轮 TO/TB 准备未部署。临时输出及其他 worktree 保留。
+- 最新修复：crates/runtime/src/orchestrator.rs一处动作识别输入；Server selection_intent_tests.rs及父模块入口；selection-intent-fix/红绿证据、说明与相关文档，均未提交。
+- TO14：evals/tool-usability/执行器、判定／测试／材料核对；Server ignored试验适配器；package scripts；to14源码快照、原始轨迹、汇总和阅读案例，均未提交。
+- TO3–TO13：契约示例、发现／读取交接、覆盖／续取／预算、输出schema、Executor生命周期、生成参考文档已验证未提交，详见各片记录。
+- 独立首页：CONTEXT、架构／代码链路首页段落、Web首页及新增组件／测试；已有改动、其他输出及worktree保留。
+- 已知独立问题：EXISTING笔记不产生创建Reader effect，Goal若要求reader_action仍可能判未完成；本次未修改这一完成判断。
+- TC2历史数学条件、TO3重复正文建议、真人学习验收、TC7–TC8、旧教学事件兼容及Core BookStructure原用例沿原记录。
+- 本轮未提交Git、未部署生产服务、未更新安装态插件；MCP0–MCP10沿生产运行单。
 
 ## 冷启动读序
-1. [TO 方案](docs/切片方案-工具契约与Agent可用性优化.md) 第 7 节、TO3、第 9/11/12 节 — 所有权、下一片、检查与限制。
-2. [TB 方案](docs/切片方案-Tutor使命与认知积木.md) 的指导装配与并行边界、[ADR-0164](docs/adr/0164-tutor-mission-and-cognitive-building-blocks.md) — 教学职责和契约职责。
-3. [TO2 实施记录](docs/performance/tool-usability/to2/README.md)、同目录 after.json / sizes.json、[代码链路](docs/代码链路.md) — 已完成成果与实际证据。
-4. [TC2A 轨迹](docs/performance/tutor-continuation-tc2a.md)、tutor.rs、tool_schema.rs、tool_contract_tests.rs — 使用错误、状态投影和验证入口。
-5. TO 方案第 6 节 R1/R3 的固定源码链接 — 选择权、示例和最终发布验证原则。
+1. docs/performance/tool-usability/selection-intent-fix/README.md、production.diff、results.json — 已完成修复、真实红绿证据和权限边界。
+2. docs/performance/tool-usability/to5/README.md已知限制；crates/runtime/src/orchestrator.rs的Goal完成判断与reader.note分派；crates/server/src/goal_example_tests.rs — 下一独立缺陷。
+3. docs/切片方案-工具契约与Agent可用性优化.md第5/9/11/12节；docs/代码链路.md最新修复与TO14段；docs/工具契约参考.md的Reader／Memory／Goal表面 — 所有权与实际合同。
+4. docs/performance/tool-usability/to14/README.md、PLAN.md、coverage.md、content-review.md — 固定实验的失败分母、输入成本、数学核对和未测范围。
+5. 如需模型实验，再读to14/reading-case.md、source-manifest.json、evals/tool-usability/入口、to10 README实验模型约定及Tutor使命方案TO/TB并行边界。
 
 ## 本会话决策摘要
-- TO 维护工具契约/示例/共同结果投影，TB 维护教学指导/帮助适配/相关界面；共享合同由原所有者修订。
-- 同组 TB 对照固定同一 TO 实现、材料、模型和采样预算；实际参数、教学内容与学习者表现分别给依据。
+- 选区包装中的user_question是JSON字符串，原动作识别连它也排除；改用已有current_user_message，缺省时沿用question。原引号过滤、模型包装和证据校验保持，见selection-intent-fix README。
+- 回归实际经过/agent/chat、工具发现／分派和磁盘重开；明确保存为CREATED且1条，纯解释与正文保存命令均拒绝且0条。模型仅为固定决策驱动，本修复无真实模型采样。
+- TO14基线67efb60，候选93b476d＋当时TO改动；同一gpt-6.1-sol／medium、CLI0.162.0-alpha.2。16预选任务保留原结果，无失败补抽；原预算停止及仅补未启动任务单列。
+- TO14未测出误用下降；雨水累计输入+9.39%，Tutor有效配对+9.70%。整组差异不单独归因某条示例；5份交付和6份持久动作的数学条件核对未出现本批过度概括。
+- 共享target曾混用基线read-tools产物；已清理read-tools／book-tool-contracts编译缓存重建，原失败日志保留。TO14复跑说明已改成每版本独立target；冻结程序及原始试验数据未改。
 
 ## 验证与环境
-- 沿用 TO2 已完成的 42 项正确性测试、61 个最终 schema 和 23 个发布示例验证；TO1 的 5 项 Context 验证也已归档。本次准备未修改执行代码。
-- Rust +1.95.0；TO 沿用 CARGO_TARGET_DIR=D:/codex-build/understand-book-no-progress-195，dev/test debug=0、incremental=0、构建并行度 2，TEMP/TMP 在 D:/codex-build 下。
-- TB 使用独立构建输出目录，避免两条支线反复覆盖构建缓存；环境细节以各片记录为准。
-- 实模收益与真人学习表现尚未由 TO2 证明；默认忽略入口需按对应切片预算显式执行。
+- 修复：新增Server红测1项预期失败，改后新增3项通过；既有Tutor UI 1、Runtime tool_exposure 31、write_examples 3通过，共38项。证据见selection-intent-fix/。
+- TO14：两版Server编译、Node评测器11项、16份材料／CLI／模型配置核对通过；全16任务实际1,754,227 token，货币费用null，活动输入与累计usage分别记录。
+- 无模型修复复核：cargo --config 'profile.test.package.runtime.codegen-units=16' test -p server --lib selection_intent:: -- --test-threads=1；其余3条命令见修复README。
+- Rust：RUSTUP_TOOLCHAIN=1.95.0；主工作区CARGO_TARGET_DIR=D:/codex-build/understand-book-no-progress-195；dev/test debug=0、incremental=0、CARGO_BUILD_JOBS=1；TEMP/TMP=D:/codex-build/to3-temp；TB及不同源码版本独立target。
+- TO14冻结程序仍在D:/codex-build/to14-bin/baseline.exe、candidate.exe；源码在to14/snapshots/。本修复未覆盖这些程序，当前测试程序由主工作区重新构建。

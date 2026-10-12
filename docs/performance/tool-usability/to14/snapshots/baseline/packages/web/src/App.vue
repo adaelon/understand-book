@@ -1,0 +1,6270 @@
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, toRaw, watch } from "vue";
+import ShareImagePanel from './components/ShareImagePanel.vue';
+import { answerShareSource, deliveredAnswerText, excerptShareSource, noteShareSource, shareHighlightKey, shareNoteKey, sharePresentationKey, type ShareSource } from './reading-share';
+import { FolderOpen, Highlighter, Languages, MessageSquareText, RotateCcw, Save, Sparkles, X } from "@lucide/vue";
+import { api as sharedApi, ApiError } from "./api";
+import { pendingReadingActions, type PendingReadingAction } from './local-reading-action';
+import { network, bindSceneApi, sceneKey, readerKey, readerPreferenceOwner, submittedRunDrafts, type ChatDraft } from './network-context';
+import { useReaderTypography } from './useReaderTypography';
+import ReaderTypographyPanel from './components/ReaderTypographyPanel.vue';
+import BookCover from './components/BookCover.vue';
+import { bookTitle } from './book-title';
+import LoadingAnimation from './components/LoadingAnimation.vue';
+import type { ScrollAnchor } from './reader-text-anchor';
+import { typographyHtml } from './reader-typography';
+import { recoverSubmissions, recoverWorkspaceBinding, pendingSubmissions } from './network-client';
+import type { RecapTarget } from './session-recap';
+import { resolveMcpSource, displayedSourceRange, type McpSource } from './mcp-source';
+const recapProps = defineProps<{ recapTarget?: RecapTarget | null; mcpSource?: McpSource | null; chatDraft?: ChatDraft | null }>();
+const recapEmit = defineEmits<{ (e: 'mcp-source-consumed'): void; (e: 'mcp-source-error', message: string): void; (e: 'recap-publication', target: RecapTarget): void; (e: 'recap-consumed'): void; (e: 'update:chatDraft', draft: ChatDraft): void; (e: 'show-allowance'): void; (e: 'show-library'): void }>();
+import { spendNotice, type SpendNotice } from './account-allowance';
+const api = bindSceneApi(sharedApi, readerKey);
+const mountedReaderKey = readerKey();
+let disposed = false;
+import { generateBookIdFromTitle } from "./book-id";
+import type {
+  AgentChatSessionSummary,
+  AgentChatMeta,
+  AgentChatTurn as StoredAgentChatTurn,
+  AgentEffect,
+  AgentHistoryResponse,
+  ResidentGoal,
+  AgentQuestionQuoteView,
+  AskQuote,
+  BuildIntentSelection,
+  BuildIntentMode,
+  BuildPlanningSource,
+  BuildWorkbenchSnapshot,
+  BuildStageId,
+  BookLibraryEntry,
+  ExecutorId,
+  FormulaSemantics,
+  ImageAssetManifestEntry,
+  HistoricalBackfillJobRequest,
+  HistoricalBackfillStartRequest,
+  HistoricalBackfillStateView,
+  IntentArtifactOverlayV1,
+  IntentBuildReaderUsageKind,
+  MemoryRecord,
+  NoteBodyPlacement,
+  OuterOutcome,
+  PaperMinimapApplyOutcome,
+  PaperMinimapCommand,
+  PaperMinimapEffect,
+  PaperMinimapLocalization,
+  PaperMinimapStateResponse,
+  PaperViewportPosition,
+  PdfRegion,
+  PdfSourceMap,
+  PdfSourceMapEntry,
+  ProfileManifest,
+  ProfileGovernanceActionRequest,
+  ProfileMemoryState,
+  ProfileMemoryUpdate,
+  ProfileSummary,
+  ReaderLayoutAction,
+  ReaderLayoutProposal,
+  ReaderLayoutState,
+  SelectionContext,
+  SourceManifestV2,
+  SourceReviewDecisionKind,
+  SourceReviewLlmSuggestion,
+  TraceStep,
+  Viewport,
+  WorkbenchAdapterMode,
+} from "./api";
+import {
+  type PdfSelectionCapture,
+  type PdfSelectionDraft,
+  usePdfSelectionDraft,
+} from "./pdf-selection-draft";
+import { pdfSelectionCapabilities as getPdfSelectionCapabilities } from "./pdf-selection-capabilities";
+import {
+  type PdfSelectionTranslationInvalidation,
+  usePdfSelectionTranslation,
+} from "./pdf-selection-translation";
+import PdfSelectionTranslationSurface from "./components/PdfSelectionTranslationSurface.vue";
+import AlignmentQualityBar from "./components/AlignmentQualityBar.vue";
+import {
+  buildPdfProjectionBatch,
+  EMPTY_PDF_ANNOTATION_PROJECTION,
+  projectPdfAnnotations,
+  type PdfUserAnnotationProjection,
+} from "./pdf-annotation-projection";
+import { isDisplayFormulaSource, renderFormulaSource, renderInlineMarkdown, renderMarkdown, renderTableSource } from "./md";
+import {
+  createMarkdownDomSourceMap,
+  markMarkdownDomSourceRanges,
+  type MarkedSourceRange,
+} from "./markdown-source-map";
+import { desktopLibraryNeedsSelection } from "./desktop-library";
+import {
+  desktopProviderDraft,
+  desktopProviderStatusLabel,
+  type DesktopProviderMode,
+  type DesktopProviderStatus,
+} from "./desktop-provider";
+import { rangeToMarkdown } from "./selection";
+import {
+  hasMappedPdfNavigationTarget,
+  normalizePaperViewportForMinimap,
+} from "./paper-minimap-navigation";
+import {
+  resolveReaderNavigationTarget,
+  resolveReaderStateNavigationTarget,
+} from "./reader-navigation";
+import { recallBookAnnotations } from "./reader-annotations";
+import {
+  createPlacedNote,
+  isMarkdownInlineNote,
+  notePlacementCapability,
+  reanchorPlacedNote,
+  reconcilePlacedNoteCreate,
+  reconcilePlacedNoteReanchor,
+  type NotePlacementState,
+  type NotePlacementSurface,
+  useNotePlacementController,
+} from "./note-placement";
+import {
+  getSourceReviewAutoRerunRequest,
+  runSourceReviewLlmBatch,
+  runSourceReviewPageGroupDecision,
+  sourceReviewBatchTargets,
+  type SourceReviewLlmBatchState,
+} from "./source-review-batch";
+import { buildUndoProfileAction } from "./profile-memory";
+import {
+  chooseAppSurface,
+  workbenchAvailable,
+  type AppSurface,
+} from "./surface-selection";
+import TopBar from "./components/TopBar.vue";
+import TutorControl from './components/TutorControl.vue';
+import ConversationLearningGoal from './components/ConversationLearningGoal.vue';
+import TutorPanel from './components/TutorPanel.vue';
+import { useTutorControl } from './useTutorControl';
+import BuildWorkbenchPane from "./components/BuildWorkbenchPane.vue";
+import BuildIntentPane from "./components/BuildIntentPane.vue";
+import FileDropField from "./components/FileDropField.vue";
+import LeftRail from "./components/LeftRail.vue";
+import PdfReaderPane from "./components/PdfReaderPane.vue";
+import ReaderPane from "./components/ReaderPane.vue";
+import ReaderWorkspace, { type WorkspaceAuxTab } from "./components/ReaderWorkspace.vue";
+import NoteEditorPanel from "./components/NoteEditorPanel.vue";
+import RightRail from "./components/RightRail.vue";
+import { useAgentRun } from "./useAgentRun";
+import { submissionWasAccepted, type UnknownSubmissionAudit } from "./agent-submission-recovery";
+import {
+  readReaderSurfacePreference,
+  resolveReaderSurface,
+  writeReaderSurfacePreference,
+  type ReaderSurface,
+} from "./reader-surface";
+import type { ReaderSelectionSnapshot } from "./useReaderSelection";
+import { createReadingContinuity, type PdfReadingAnchor, type ReadingReturnPoint } from "./useReadingContinuity";
+import { effectId, dispositionLabel, type EffectDisposition } from "./effect-disposition";
+import { runStatusText, type RunActivity, type RunSnapshot } from "./agent-run-state";
+import type { WorkspaceLogicalState, WorkspaceProjection } from "./workspace-layout";
+
+type NodeKind = import("./api").Manifest["tree"][number]["kind"];
+type ManifestNode = import("./api").Manifest["tree"][number];
+const typography = useReaderTypography(computed(readerPreferenceOwner));
+function closeTypography() {
+  typography.open.value = false;
+  nextTick(() => document.querySelector<HTMLElement>('.topbar [data-typography-trigger]')?.focus());
+}
+
+export interface OutlineItem {
+  lid: string;
+  kind: NodeKind;
+  depth: number;
+  title: string;
+}
+// ── 阅读区会话态 ──
+const leafOrder = ref<string[]>([]); // 全书叶 LID 序(读位感分母 + 进度)
+const kindByLid = ref<Map<string, NodeKind>>(new Map());
+const imageAssetByLid = ref<Map<string, ImageAssetManifestEntry>>(new Map());
+const appSurface = ref<AppSurface>("loading");
+const diagnosticWorkbenchBookId = ref<string | null>(null);
+const buildWorkbenchSnapshot = ref<BuildWorkbenchSnapshot | null>(null);
+const buildWorkbenchLoading = ref(false);
+const buildWorkbenchError = ref<string | null>(null);
+const buildWorkbenchConfirming = ref(false);
+const buildWorkbenchImporting = ref(false);
+const buildWorkbenchActioning = ref(false);
+const buildIntentOpen = ref(false);
+const buildIntentSelection = ref<BuildIntentSelection | null>(null);
+const buildIntentPlanningSource = ref<BuildPlanningSource | null>(null);
+const buildIntentBusy = ref(false);
+const buildIntentError = ref<string | null>(null);
+let buildIntentRequestSeq = 0;
+const intentArtifacts = ref<IntentArtifactOverlayV1 | null>(null);
+const intentArtifactsLoading = ref(false);
+const intentArtifactsError = ref<string | null>(null);
+let intentArtifactRequestSeq = 0;
+const sourceReviewLlmSuggestions = ref<Record<string, SourceReviewLlmSuggestion>>({});
+const sourceReviewLlmAnalyzingBlockId = ref<string | null>(null);
+const sourceReviewLlmErrors = ref<Record<string, string>>({});
+const sourceReviewLlmBatch = ref<SourceReviewLlmBatchState | null>(null);
+let buildWorkbenchActionOwner = 0;
+let sourceReviewLlmBatchRunToken = 0;
+let sourceReviewLlmRequestToken = 0;
+
+function beginWorkbenchAction(): number {
+  const owner = ++buildWorkbenchActionOwner;
+  buildWorkbenchActioning.value = true;
+  return owner;
+}
+
+function endWorkbenchAction(owner: number) {
+  if (owner === buildWorkbenchActionOwner) buildWorkbenchActioning.value = false;
+}
+
+const sourceReviewEvidenceKey = computed(() => JSON.stringify(
+  (buildWorkbenchSnapshot.value?.source_review?.unresolved ?? []).map((block) => [
+    block.id,
+    block.status,
+    block.md_excerpt ?? "",
+    block.pdf_excerpt ?? "",
+    block.candidate_text ?? "",
+  ]),
+));
+watch(sourceReviewEvidenceKey, (next, previous) => {
+  if (next === previous) return;
+  sourceReviewLlmBatchRunToken += 1;
+  sourceReviewLlmRequestToken += 1;
+  sourceReviewLlmSuggestions.value = {};
+  sourceReviewLlmAnalyzingBlockId.value = null;
+  sourceReviewLlmErrors.value = {};
+  sourceReviewLlmBatch.value = null;
+});
+const sourceManifest = ref<SourceManifestV2 | null>(null);
+const pdfSourceMap = ref<PdfSourceMap | null>(null);
+const pdfRuntimeError = ref<string | null>(null);
+const outlineItems = ref<OutlineItem[]>([]);
+const titleByLid = ref<Map<string, string>>(new Map());
+const viewport = ref<Viewport | null>(null);
+let readerInteractionRevision = 0;
+let manualReaderBoundary: Promise<void> = Promise.resolve();
+let manualReaderState: { book_id: string; revision: number } | null = null;
+const edgeLoading = ref(false);
+const readerPaneRef = ref<{
+  cancelTypographyRestore: () => void;
+  captureScrollAnchor: (candidateLids: string[]) => ScrollAnchor | null;
+  restoreScrollAnchor: (anchor: ScrollAnchor | null, current?: () => boolean) => Promise<void>;
+  scrollLidIntoView: (lid: string) => Promise<boolean>;
+  scrollSourceIntoView: (lid: string) => Promise<boolean>;
+} | null>(null);
+const pdfReaderPaneRef = ref<{
+  captureReadingAnchor: () => PdfReadingAnchor | null;
+  restoreReadingAnchor: (anchor: PdfReadingAnchor) => Promise<boolean>;
+} | null>(null);
+const workspaceRef = ref<{
+  showReader: () => void;
+  showAssistant: (tab?: WorkspaceAuxTab) => void;
+  toggleOutline: () => void;
+  toggleFocus: () => void;
+} | null>(null);
+const focusReading = ref(false);
+const previousPdfAnchor = ref<PdfReadingAnchor | null>(null);
+const mobileGlobalActionsOpen = ref(false);
+const rightRailRef = ref<{
+  focusActivityHelp: (deliveryRefs: string[]) => void; scrollToTurn: (turnId: string) => Promise<boolean>;
+  showMemory: (memId: string) => Promise<boolean>;
+  replaceMemory?: (oldId: string, record: MemoryRecord) => void;
+  openNotePresentation: (record: MemoryRecord, restore?: boolean) => Promise<void>;
+  openRecapTarget: (target: RecapTarget) => Promise<void>;
+} | null>(null);
+interface Segment {
+  lid: string;
+  text: string;
+  kind: NodeKind;
+  formula: FormulaSemantics | null;
+  imageAsset: ImageAssetManifestEntry | null;
+}
+const segments = ref<Segment[]>([]); // 视口内连续正文(LID 隐形)
+const annotations = ref<MemoryRecord[]>([]); // 当前书全部标注(客户端按 lid 过滤)
+const pdfAnnotationProjection = ref<PdfUserAnnotationProjection>(EMPTY_PDF_ANNOTATION_PROJECTION);
+const pdfAnnotationProjectionError = ref<string | null>(null);
+let pdfAnnotationProjectionSeq = 0;
+const HIGHLIGHT_GROUP_PREFIX = "highlight-group:";
+const selectedLid = ref<string | null>(null);
+const currentReadingLid = ref<string | null>(null);
+const outlineNavigationLid = ref<string | null>(null);
+const formulaDialog = ref<Segment | null>(null);
+const chapterTitle = ref<string>("");
+interface SourceFocus {
+  lid: string;
+  quote: string | null;
+  ranges?: Map<string, [number, number]>;
+}
+interface SourcePreview {
+  focus: SourceFocus;
+  segments: Segment[];
+  loading: boolean;
+  error: string | null;
+}
+const sourceFocus = ref<SourceFocus | null>(null);
+const sourceManifestTree = ref<import("./api").Manifest | null>(null);
+const sourcePreview = ref<SourcePreview | null>(null);
+const sourcePreviewBodyRef = ref<HTMLElement | null>(null);
+const profileSummary = ref<ProfileSummary | null>(null);
+const profileManifest = ref<ProfileManifest | null>(null);
+const profileMemory = ref<ProfileMemoryState | null>(null);
+const profileMemoryLoading = ref(false);
+const profileMemoryBusy = ref(false);
+const profileMemoryError = ref<string | null>(null);
+const profileMemoryNotice = ref<string | null>(null);
+const profileUpdateStates = ref<Record<string, string>>({});
+let profileMemoryRequestSeq = 0;
+const profileBackfill = ref<HistoricalBackfillStateView | null>(null);
+const profileBackfillLoading = ref(false);
+const profileBackfillBusy = ref(false);
+const profileBackfillError = ref<string | null>(null);
+const profileBackfillNotice = ref<string | null>(null);
+let profileBackfillRequestSeq = 0;
+let profileBackfillPollTimer: number | null = null;
+const readerLayout = ref<ReaderLayoutState | null>(null);
+const pendingLayoutProposal = ref<ReaderLayoutProposal | null>(null);
+const paperMinimapSnapshot = ref<PaperMinimapStateResponse | null>(null);
+const paperMinimapLocalization = ref<PaperMinimapLocalization | null>(null);
+const lastPaperMinimapEffect = ref<PaperMinimapEffect | null>(null);
+const paperMinimapActionBusy = ref(false);
+const paperProjectionLoading = ref(false);
+const paperProjectionError = ref<string | null>(null);
+const paperProjectionKey = ref("");
+let paperProjectionSeq = 0;
+let paperLocalizationRequest: { key: string; promise: Promise<PaperMinimapLocalization> } | null = null;
+let paperPositionSyncTimer: number | null = null;
+let paperPositionSyncRunning = false;
+let paperPositionSyncCompletion: Promise<void> | null = null;
+let completePaperPositionSync: (() => void) | null = null;
+let pendingPaperViewport: PaperViewportPosition | null = null;
+let pendingPaperSelection: string | null | undefined;
+
+// goto 输入 + 错误条
+const gotoInput = ref("");
+const outlineSearch = ref("");
+const banner = ref<string>("");
+const bookPickerOpen = ref(false);
+const bookPickerLoading = ref(false);
+const bookPickerError = ref<string | null>(null);
+const bookPickerRoot = ref("");
+const bookPickerBooks = ref<BookLibraryEntry[]>([]);
+const bookPickerDir = ref("");
+const bookPickerMode = ref<"open" | "create">("open");
+const newBookTitle = ref("");
+const generatedNewBookId = computed(() => generateBookIdFromTitle(newBookTitle.value));
+const newBookMarkdown = ref<File | null>(null);
+const newBookPdf = ref<File | null>(null);
+const openingBook = ref(false);
+const desktopNeedsBook = ref(false);
+const desktopHost = ref(false);
+const readerOnly = ref(false);
+const desktopSettingsOpen = ref(false);
+const desktopLibraryRoot = ref("");
+const desktopLibraryAvailable = ref(true);
+const desktopLibraryChanging = ref(false);
+const desktopLibraryError = ref("");
+const desktopProviderStatus = ref<DesktopProviderStatus | null>(null);
+const desktopProviderMode = ref<DesktopProviderMode>("native");
+const desktopProviderBaseUrl = ref("");
+const desktopProviderModel = ref("");
+const desktopProviderApiKey = ref("");
+const desktopProviderLoading = ref(false);
+const desktopProviderSaving = ref(false);
+const desktopProviderError = ref("");
+const codexPluginLoading = ref(false);
+const codexPluginError = ref("");
+type CodexPluginState =
+  | "installed_by_setup"
+  | "installed_externally"
+  | "pending_configuration"
+  | "codex_not_found"
+  | "not_installed"
+  | "error";
+type CodexPluginStatus = {
+  state: CodexPluginState;
+  codex_path: string | null;
+  marketplace_name: string;
+  plugin_name: string;
+  message: string;
+};
+const codexPluginStatus = ref<CodexPluginStatus | null>(null);
+const debugOpen = ref(false);
+const leftRailOpen = ref(true);
+const leftRailWidth = ref(240);
+const rightRailWidth = ref(384);
+const workspaceStyle = computed(() => ({
+  "--left-rail-width": leftRailOpen.value ? `${leftRailWidth.value}px` : "0px",
+  "--left-resizer-width": leftRailOpen.value ? "6px" : "0px",
+  "--right-rail-width": `${rightRailWidth.value}px`,
+}));
+
+function clampLayoutWidth(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+function startResize(which: "left" | "right", event: MouseEvent) {
+  if (window.innerWidth < 1024) return;
+  event.preventDefault();
+  const startX = event.clientX;
+  const startWidth = which === "left" ? leftRailWidth.value : rightRailWidth.value;
+  const onMove = (move: MouseEvent) => {
+    const delta = move.clientX - startX;
+    if (which === "left") leftRailWidth.value = clampLayoutWidth(startWidth + delta, 180, 420);
+    else rightRailWidth.value = clampLayoutWidth(startWidth - delta, 280, 560);
+  };
+  const onUp = () => {
+    document.body.classList.remove("is-resizing-layout");
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+  };
+  document.body.classList.add("is-resizing-layout");
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp, { once: true });
+}
+
+function fail(e: unknown) {
+  if (disposed || (e instanceof ApiError && e.errorCode === 'CLIENT_CONTEXT_STALE')) return;
+  if (e instanceof ApiError && e.errorCode === "CHAT_BUSY") { banner.value = "此对话仍有排队、执行中或未保存的回合，请先处理原运行再删除。"; return; }
+  if (e instanceof ApiError && e.errorCode === "REQUEST_KEY_CLOSED") { banner.value = "原对话已删除或原请求已关闭，不会转投其他对话。"; return; }
+  if (e instanceof ApiError) banner.value = `[${e.category}] ${e.errorCode}: ${e.message}`;
+  else banner.value = String(e);
+}
+
+// 读位感:anchor 在叶序中的位置 → 进度%;章节 = anchor 顶层段(LID 首段)。
+const readingAnchorLid = computed(() => currentReadingLid.value ?? viewport.value?.top_lid ?? null);
+const outlineAnchorLid = computed(() => outlineNavigationLid.value ?? readingAnchorLid.value);
+const activeOutlineItem = computed(() => {
+  const anchor = outlineAnchorLid.value;
+  if (!anchor) return null;
+  return outlineItems.value
+    .filter((item) => anchor === item.lid || anchor.startsWith(`${item.lid}.`))
+    .sort((a, b) => b.lid.length - a.lid.length)[0] ?? null;
+});
+const activeChapterTitle = computed(() => activeOutlineItem.value?.title ?? chapterTitle.value);
+const progressPct = computed(() => {
+  const a = readingAnchorLid.value;
+  if (!a || leafOrder.value.length === 0) return 0;
+  const idx = leafOrder.value.indexOf(a);
+  if (idx < 0) return 0;
+  return Math.round(((idx + 1) / leafOrder.value.length) * 100);
+});
+function pdfCapabilityUsable(status: string | undefined): boolean {
+  return status === "available" || status === "degraded";
+}
+const pdfReaderAvailable = computed(() => {
+  const manifest = sourceManifest.value;
+  return manifest?.capabilities?.view_pdf?.status === "available"
+    && !!manifest.original_pdf
+    && !!pdfSourceMap.value
+    && pdfCapabilityUsable(manifest.capabilities.project_lid_to_pdf?.status);
+});
+const noteSourceFingerprint = ref<string | null>(null);
+const readerSurfacePreference = ref<ReaderSurface | null>(null);
+const readerSurfaceIdentity = computed(() => {
+  const bookId = buildWorkbenchSnapshot.value?.book_id;
+  const sourceFingerprint = noteSourceFingerprint.value;
+  return bookId && sourceFingerprint ? { bookId, sourceFingerprint, userId: network.value.identity?.user_id } : null;
+});
+const activeReaderSurface = computed<ReaderSurface>(() => resolveReaderSurface(
+  readerSurfacePreference.value,
+  pdfReaderAvailable.value,
+));
+watch(readerSurfaceIdentity, (identity) => {
+  if (!identity) {
+    readerSurfacePreference.value = null;
+    return;
+  }
+  try {
+    readerSurfacePreference.value = readReaderSurfacePreference(window.localStorage, identity);
+  } catch {
+    readerSurfacePreference.value = null;
+  }
+}, { immediate: true });
+const NOTE_PLACEMENT_CAPABILITIES = {
+  markdown: true,
+  pdf: true,
+} as const;
+const notePlacementController = useNotePlacementController();
+const notePlacementState = notePlacementController.state;
+type SavingNotePlacement = Extract<NotePlacementState, { phase: "saving" }>;
+const notePlacementSurface = computed<NotePlacementSurface>(() => activeReaderSurface.value);
+const unquotedNotePlacementAvailable = computed(() =>
+  notePlacementCapability(notePlacementSurface.value, NOTE_PLACEMENT_CAPABILITIES),
+);
+watch(
+  notePlacementSurface,
+  (surface) => {
+    const current = notePlacementState.value;
+    if (current.phase !== "placing") return;
+    notePlacementController.synchronizeContext({
+      book_id: current.book_id,
+      surface_kind: surface,
+      source_fingerprint: current.source_fingerprint,
+    });
+  },
+);
+watch(appSurface, (surface) => {
+  if (surface !== "reader") notePlacementController.cancel();
+});
+const pdfEntryByLid = computed(() => new Map((pdfSourceMap.value?.entries ?? []).map((entry) => [entry.lid, entry])));
+const pdfMappedLids = computed(() => new Set(
+  (pdfSourceMap.value?.entries ?? []).filter(pdfEntryHasRegion).map((entry) => entry.lid),
+));
+const pdfActiveLid = computed(() => selectedLid.value ?? readingAnchorLid.value);
+function pdfEntryHasRegion(entry: PdfSourceMapEntry | null | undefined): boolean {
+  return !!entry?.primary_region || !!entry?.regions.length;
+}
+const selectedSegment = computed(() => segments.value.find((seg) => seg.lid === selectedLid.value) ?? null);
+const selectedFormula = computed(() => selectedSegment.value?.formula ?? null);
+const segmentByLid = computed(() => new Map(segments.value.map((seg) => [seg.lid, seg])));
+function lidOrderIndex(lid: string | null | undefined): number {
+  if (!lid) return Number.MAX_SAFE_INTEGER;
+  const idx = leafOrder.value.indexOf(lid);
+  if (idx >= 0) return idx;
+  const childIdx = leafOrder.value.findIndex((leaf) => leaf.startsWith(`${lid}.`));
+  return childIdx >= 0 ? childIdx : Number.MAX_SAFE_INTEGER;
+}
+function sortMemoryByBookOrder(a: MemoryRecord, b: MemoryRecord): number {
+  return lidOrderIndex(a.anchor.lid) - lidOrderIndex(b.anchor.lid)
+    || (a.anchor.lid ?? "").localeCompare(b.anchor.lid ?? "")
+    || (a.range?.start ?? a.selection_context?.ranges[0]?.range.start ?? 0) - (b.range?.start ?? b.selection_context?.ranges[0]?.range.start ?? 0)
+    || a.mem_id.localeCompare(b.mem_id);
+}
+const allNotes = computed(() => annotations.value.filter((r) => r.type === "note").sort(sortMemoryByBookOrder));
+const allHighlights = computed(() =>
+  annotations.value
+    .filter((r) => r.type === "highlight" && (highlightGroupMembers(r)[0]?.mem_id ?? r.mem_id) === r.mem_id)
+    .map(record => ({ ...record, content: highlightGroupMembers(record).map(member => member.content).join('\n') }))
+    .sort(sortMemoryByBookOrder),
+);
+const noteBookOrder = computed(() => [...allNotes.value, ...allHighlights.value].sort(sortMemoryByBookOrder).map(r => r.mem_id));
+const noteSourceLabels = computed(() => Object.fromEntries(annotations.value.map(record => {
+  let lid = record.anchor.lid ?? '';
+  while (lid) {
+    const title = titleByLid.value.get(lid);
+    if (title) return [record.mem_id, stripMarkdownHeadingLine(title)];
+    lid = lid.includes('.') ? lid.slice(0, lid.lastIndexOf('.')) : '';
+  }
+  return [record.mem_id, '来源未知'];
+})));
+const visibleNotes = computed(() => {
+  const visible = segments.value.map((seg) => seg.lid);
+  const order = new Map(visible.map((lid, idx) => [lid, idx]));
+  return annotations.value
+    .filter((r) =>
+      !!r.anchor.lid
+      && order.has(r.anchor.lid)
+      && isMarkdownInlineNote(r, noteSourceFingerprint.value)
+    )
+    .sort((a, b) => (order.get(a.anchor.lid ?? "") ?? 0) - (order.get(b.anchor.lid ?? "") ?? 0));
+});
+function layoutRevNumber(value: number | bigint): number {
+  return Number(value);
+}
+const isPaperProfile = computed(() => profileSummary.value?.profile_id === "paper");
+function resetPaperProjectionData() {
+  paperProjectionSeq += 1;
+  paperLocalizationRequest = null;
+  if (paperPositionSyncTimer !== null) window.clearTimeout(paperPositionSyncTimer);
+  paperPositionSyncTimer = null;
+  pendingPaperViewport = null;
+  pendingPaperSelection = undefined;
+  paperMinimapSnapshot.value = null;
+  paperMinimapLocalization.value = null;
+  lastPaperMinimapEffect.value = null;
+  paperMinimapActionBusy.value = false;
+  paperProjectionLoading.value = false;
+  paperProjectionError.value = null;
+  paperProjectionKey.value = "";
+}
+
+function minimapRegionForPosition(position: PaperViewportPosition): string | null {
+  const regions = paperMinimapSnapshot.value?.base.regions ?? [];
+  const centerPage = Math.floor(position.center_page);
+  const pageMatches = regions.filter((region) =>
+    centerPage >= region.page_span.start_page && centerPage <= region.page_span.end_page);
+  if (pageMatches.length <= 1 || !position.anchor_lid) return pageMatches[0]?.region_id ?? null;
+  const anchorOrder = lidOrderIndex(position.anchor_lid);
+  return pageMatches.find((region) => {
+    const start = lidOrderIndex(region.lid_span.start_lid);
+    const end = lidOrderIndex(region.lid_span.end_lid);
+    return anchorOrder >= start && anchorOrder <= end;
+  })?.region_id ?? pageMatches[0]?.region_id ?? null;
+}
+
+function paperMinimapStateFromOutcome(outcome: PaperMinimapApplyOutcome) {
+  if (outcome.kind === "effect") return outcome.effect.after;
+  if (outcome.kind === "noop") return outcome.state;
+  return null;
+}
+
+function schedulePaperPositionSync() {
+  if (paperPositionSyncTimer !== null) window.clearTimeout(paperPositionSyncTimer);
+  paperPositionSyncTimer = window.setTimeout(() => {
+    paperPositionSyncTimer = null;
+    void flushPaperPositionSync();
+  }, 180);
+}
+
+async function flushPaperPositionSync() {
+  if (paperPositionSyncRunning) {
+    await paperPositionSyncCompletion;
+    return;
+  }
+  const snapshot = paperMinimapSnapshot.value;
+  const viewportPosition = pendingPaperViewport;
+  const selected = pendingPaperSelection;
+  if (!snapshot || (!viewportPosition && selected === undefined)) return;
+  pendingPaperViewport = null;
+  pendingPaperSelection = undefined;
+  const commands: PaperMinimapCommand[] = [];
+  if (viewportPosition) {
+    commands.push({ scope: "session", action: { kind: "update_viewport", position: viewportPosition } });
+  }
+  if (selected !== undefined) {
+    commands.push({ scope: "session", action: { kind: "set_selected_lid", selected_lid: selected } });
+  }
+  paperPositionSyncRunning = true;
+  paperPositionSyncCompletion = new Promise((resolve) => {
+    completePaperPositionSync = resolve;
+  });
+  try {
+    const outcome = await api.paperMinimapApply({
+      base_state_rev: Number(snapshot.state.rev),
+      actor: "user",
+      reason: "sync deterministic PDF viewport and selection",
+      commands,
+    });
+    const state = paperMinimapStateFromOutcome(outcome);
+    if (state && paperMinimapSnapshot.value?.base.fingerprint === state.base_map_rev) {
+      paperMinimapSnapshot.value = { ...paperMinimapSnapshot.value, state };
+      if (lastPaperMinimapEffect.value
+        && Number(lastPaperMinimapEffect.value.after_state_rev) !== Number(state.rev)) {
+        lastPaperMinimapEffect.value = null;
+      }
+      if (state.viewport_position.anchor_lid) currentReadingLid.value = state.viewport_position.anchor_lid;
+    }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 409) {
+      paperMinimapSnapshot.value = await api.paperMinimapState();
+      pendingPaperViewport ??= viewportPosition;
+      if (pendingPaperSelection === undefined) pendingPaperSelection = selected;
+      schedulePaperPositionSync();
+    } else {
+      fail(error);
+    }
+  } finally {
+    paperPositionSyncRunning = false;
+    completePaperPositionSync?.();
+    completePaperPositionSync = null;
+    paperPositionSyncCompletion = null;
+    if (pendingPaperViewport || pendingPaperSelection !== undefined) schedulePaperPositionSync();
+  }
+}
+
+function onPdfViewportChange(position: PaperViewportPosition) {
+  if (!paperMinimapSnapshot.value) return;
+  const bounded = normalizePaperViewportForMinimap(
+    position,
+    paperMinimapSnapshot.value.base.regions.map((region) => region.page_span),
+  );
+  if (!bounded) return;
+  const normalized = { ...bounded, region_id: minimapRegionForPosition(bounded) };
+  pendingPaperViewport = normalized;
+  paperMinimapSnapshot.value = {
+    ...paperMinimapSnapshot.value,
+    state: { ...paperMinimapSnapshot.value.state, viewport_position: normalized },
+  };
+  schedulePaperPositionSync();
+}
+
+function queuePaperSelection(selected: string | null) {
+  if (!isPaperProfile.value || !pdfReaderAvailable.value || !paperMinimapSnapshot.value) return;
+  pendingPaperSelection = selected;
+  paperMinimapSnapshot.value = {
+    ...paperMinimapSnapshot.value,
+    state: { ...paperMinimapSnapshot.value.state, selected_lid: selected },
+  };
+  schedulePaperPositionSync();
+}
+
+async function applyPaperMinimapCommands(commands: PaperMinimapCommand[], reason: string) {
+  if (paperMinimapActionBusy.value) return;
+  if (paperPositionSyncTimer !== null) {
+    window.clearTimeout(paperPositionSyncTimer);
+    paperPositionSyncTimer = null;
+    await flushPaperPositionSync();
+  } else if (paperPositionSyncRunning) {
+    await flushPaperPositionSync();
+  }
+  const snapshot = paperMinimapSnapshot.value;
+  if (!snapshot) return;
+  paperMinimapActionBusy.value = true;
+  try {
+    const outcome = await api.paperMinimapApply({
+      base_state_rev: Number(snapshot.state.rev),
+      actor: "user",
+      reason,
+      commands,
+    });
+    const state = paperMinimapStateFromOutcome(outcome);
+    if (outcome.kind === "effect") lastPaperMinimapEffect.value = outcome.effect;
+    if (state) paperMinimapSnapshot.value = { ...snapshot, state };
+    paperMinimapSnapshot.value = await api.paperMinimapState();
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 409) {
+      paperMinimapSnapshot.value = await api.paperMinimapState();
+      lastPaperMinimapEffect.value = null;
+    } else {
+      fail(error);
+    }
+  } finally {
+    paperMinimapActionBusy.value = false;
+  }
+}
+
+async function setPaperMinimapMode(mode: import("./api").ReaderPaperMinimapState["mode"]) {
+  if (mode === paperMinimapSnapshot.value?.state.mode) return;
+  const modeLabel = { skim: "速览", abstract: "摘要", deep: "深读" }[mode];
+  await applyPaperMinimapCommands(
+    [{ scope: "session", action: { kind: "set_mode_lens", mode } }],
+    `切换为${modeLabel}模式`,
+  );
+}
+
+async function setPaperMinimapLayer(layer: string, visible: boolean) {
+  const layerLabel = {
+    regions: "章节区域",
+    landmarks: "重点位置",
+    arguments: "论证关系",
+    user: "我的标记",
+  }[layer] ?? layer;
+  await applyPaperMinimapCommands(
+    [{ scope: "session", action: { kind: "set_layer_visibility", layer, visible } }],
+    `${visible ? "显示" : "隐藏"}${layerLabel}图层`,
+  );
+}
+
+async function togglePaperMinimapPin(landmarkId: string, pinned: boolean) {
+  await applyPaperMinimapCommands(
+    [{
+      scope: "session",
+      action: pinned
+        ? { kind: "unpin_landmark", landmark_id: landmarkId }
+        : { kind: "pin_landmark", landmark_id: landmarkId },
+    }],
+    pinned ? "取消固定地标" : "固定地标",
+  );
+}
+
+async function undoLastPaperMinimapEffect() {
+  const effect = lastPaperMinimapEffect.value;
+  const snapshot = paperMinimapSnapshot.value;
+  if (!effect || !snapshot || paperMinimapActionBusy.value) return;
+  paperMinimapActionBusy.value = true;
+  try {
+    const outcome = await api.paperMinimapApply({
+      base_state_rev: Number(snapshot.state.rev),
+      undo_effect_id: effect.effect_id,
+    });
+    const state = paperMinimapStateFromOutcome(outcome);
+    if (state) paperMinimapSnapshot.value = { ...snapshot, state };
+    lastPaperMinimapEffect.value = null;
+    paperMinimapSnapshot.value = await api.paperMinimapState();
+  } catch (error) {
+    fail(error);
+  } finally {
+    paperMinimapActionBusy.value = false;
+  }
+}
+async function loadPaperProjectionData(force = false) {
+  if (!isPaperProfile.value) {
+    resetPaperProjectionData();
+    return;
+  }
+  const key = `${profileSummary.value?.profile_id}:${profileSummary.value?.profile_version}:${readingAnchorLid.value ?? ""}`;
+  if (!force && paperProjectionKey.value === key) return;
+  const seq = ++paperProjectionSeq;
+  paperProjectionLoading.value = true;
+  paperProjectionError.value = null;
+  try {
+    const minimap = await api.paperMinimapState();
+    if (seq !== paperProjectionSeq) return;
+    paperMinimapSnapshot.value = minimap;
+    if (paperMinimapLocalization.value?.base_map_rev !== minimap.base.fingerprint) {
+      const localizationKey = `${minimap.base.book_id}:${minimap.base.fingerprint}`;
+      if (paperLocalizationRequest?.key !== localizationKey) {
+        const request = { key: localizationKey, promise: api.paperMinimapLocalize() };
+        paperLocalizationRequest = request;
+        void request.promise.then((localization) => {
+          if (paperLocalizationRequest !== request) return;
+          if (localization.base_map_rev === minimap.base.fingerprint) {
+            paperMinimapLocalization.value = localization;
+          }
+        }).catch((error) => {
+          if (paperLocalizationRequest === request) paperProjectionError.value = errorMessage(error);
+        });
+      }
+    }
+    paperProjectionKey.value = key;
+  } catch (e) {
+    if (seq !== paperProjectionSeq) return;
+    paperProjectionError.value = errorMessage(e);
+  } finally {
+    if (seq === paperProjectionSeq) paperProjectionLoading.value = false;
+  }
+}
+
+async function togglePaperMinimap() {
+  const snapshot = paperMinimapSnapshot.value;
+  if (!snapshot) return;
+  const presentation = snapshot.state.presentation === "expanded" ? "collapsed" : "expanded";
+  try {
+    await api.paperMinimapApply({
+      base_state_rev: Number(snapshot.state.rev),
+      actor: "user",
+      reason: presentation === "expanded" ? "user expanded paper minimap" : "user collapsed paper minimap",
+      commands: [{
+        scope: "session",
+        action: { kind: "set_presentation", presentation },
+      }],
+    });
+    paperMinimapSnapshot.value = await api.paperMinimapState();
+  } catch (error) {
+    fail(error);
+  }
+}
+watch(
+  () => [
+    profileSummary.value?.profile_id,
+    profileSummary.value?.profile_version,
+    readingAnchorLid.value,
+  ] as const,
+  () => { void loadPaperProjectionData(); },
+);
+
+// ── 标注:高亮(整段 / 段内 range)+ 笔记 ──
+// 整段高亮(range 缺省)→ <p> 背景;段内 range 高亮 → <mark>(见 renderSeg)`[ADR-0031]`。
+function isHighlighted(lid: string): boolean {
+  return annotations.value.some((r) => r.anchor.lid === lid && r.type === "highlight" && !r.range);
+}
+function highlightsOf(lid: string): MemoryRecord[] {
+  return annotations.value.filter((r) => r.anchor.lid === lid && r.type === "highlight");
+}
+
+function newHighlightGroupId(): string {
+  const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${HIGHLIGHT_GROUP_PREFIX}${id}`;
+}
+
+function highlightGroupId(rec: MemoryRecord): string | null {
+  const id = rec.source_session_id?.trim();
+  return id?.startsWith(HIGHLIGHT_GROUP_PREFIX) ? id : null;
+}
+
+function highlightGroupMembers(rec: MemoryRecord): MemoryRecord[] {
+  const groupId = highlightGroupId(rec);
+  if (!groupId) return [rec];
+  return annotations.value
+    .filter((r) => r.type === "highlight" && highlightGroupId(r) === groupId)
+    .sort(sortMemoryByBookOrder);
+}
+
+function highlightGroupRepresentative(rec: MemoryRecord): MemoryRecord {
+  const members = highlightGroupMembers(rec);
+  const visibleOrder = new Map(segments.value.map((seg, idx) => [seg.lid, idx]));
+  const visibleMembers = members
+    .filter((m) => visibleOrder.has(m.anchor.lid ?? ""))
+    .sort((a, b) => (visibleOrder.get(a.anchor.lid ?? "") ?? Number.MAX_SAFE_INTEGER) - (visibleOrder.get(b.anchor.lid ?? "") ?? Number.MAX_SAFE_INTEGER));
+  return visibleMembers[0] ?? members[0] ?? rec;
+}
+
+function isHighlightCardRepresentative(rec: MemoryRecord): boolean {
+  return highlightGroupRepresentative(rec).mem_id === rec.mem_id;
+}
+
+function highlightCardsOf(lid: string): MemoryRecord[] {
+  return highlightsOf(lid).filter(isHighlightCardRepresentative);
+}
+
+function renderInlineText(s: string): string {
+  return renderInlineMarkdown(s);
+}
+function inlineMathSource(symbol: string): string {
+  const trimmed = symbol.trim();
+  if (!trimmed) return "";
+  const dollar = /^\$(.*)\$$/.exec(trimmed);
+  if (dollar) return `$${dollar[1]}$`;
+  const paren = /^\\\((.*)\\\)$/.exec(trimmed);
+  if (paren) return `$${paren[1]}$`;
+  return `$${trimmed.replace(/\$/g, "\\$")}$`;
+}
+function renderFormulaSymbol(symbol: string): string {
+  return renderInlineMarkdown(inlineMathSource(symbol));
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function isRawAssetSegment(seg: { kind?: NodeKind }): boolean {
+  return seg.kind === "code" || seg.kind === "table" || seg.kind === "image";
+}
+
+function renderSegmentText(seg: { kind?: NodeKind }, text: string): string {
+  if (seg.kind === "table") return renderTableSource(text);
+  if (isRawAssetSegment(seg)) return escapeHtml(text);
+  return seg.kind === "formula" ? renderFormulaSource(text) : renderInlineText(text);
+}
+
+interface MarkdownHeadingDisplay {
+  level: number;
+  text: string;
+  offset: number;
+}
+
+function markdownHeadingDisplay(text: string): MarkdownHeadingDisplay | null {
+  const match = /^(\s{0,3})(#{1,6})([ \t]+)([^\r\n]*?)([ \t]+#+)?[ \t]*(?:\r?\n)?$/.exec(text);
+  if (!match || !match[4].trim()) return null;
+  return {
+    level: match[2].length,
+    text: match[4].trimEnd(),
+    offset: match[1].length + match[2].length + match[3].length,
+  };
+}
+
+function markdownHeadingLevel(seg: { text: string; kind?: NodeKind }): number | null {
+  if (seg.kind !== "chapter" && seg.kind !== "section" && seg.kind !== "paragraph") return null;
+  return markdownHeadingDisplay(seg.text)?.level ?? null;
+}
+
+function stripMarkdownHeadingLine(line: string): string {
+  return markdownHeadingDisplay(line)?.text ?? line;
+}
+
+function displayText(seg: { text: string; kind?: NodeKind }): { text: string; offset: number } {
+  const heading = markdownHeadingLevel(seg) ? markdownHeadingDisplay(seg.text) : null;
+  if (heading) return { text: heading.text, offset: heading.offset };
+  return { text: seg.text, offset: 0 };
+}
+
+function clampRange(n: number, max: number): number {
+  return Math.max(0, Math.min(max, n));
+}
+
+function leadingQuote(content: string): string | null {
+  const quoteLines: string[] = [];
+  for (const line of content.split("\\n")) {
+    if (line.startsWith(">")) quoteLines.push(line.replace(/^>\\s?/, ""));
+    else if (quoteLines.length > 0 && line.trim() === "") break;
+    else if (quoteLines.length > 0) break;
+  }
+  const quote = quoteLines.join(" ").replace(/\\s+/g, " ").trim();
+  return quote || null;
+}
+
+interface FocusCharRef {
+  lid: string;
+  offset: number;
+}
+interface FocusStream {
+  text: string;
+  refs: Array<FocusCharRef | null>;
+}
+
+const markdownEscapedPunctuation = /[\\`*_[\]{}()#+\-.!|>%]/;
+
+function escapedMarkdownLiteral(text: string, index: number): { ch: string; offset: number } | null {
+  if (text[index] !== "\\" || index + 1 >= text.length) return null;
+  const next = text[index + 1];
+  return markdownEscapedPunctuation.test(next) ? { ch: next, offset: index + 1 } : null;
+}
+
+function normalizeSourceMatchText(text: string): string {
+  let out = "";
+  let inSpace = false;
+  for (let i = 0; i < text.length; i++) {
+    const escaped = escapedMarkdownLiteral(text, i);
+    const ch = escaped?.ch ?? text[i];
+    if (escaped) i = escaped.offset;
+    if (/\s/.test(ch)) {
+      if (!inSpace) {
+        out += " ";
+        inSpace = true;
+      }
+      continue;
+    }
+    out += ch;
+    inSpace = false;
+  }
+  return out.trim();
+}
+
+function appendNormalizedText(stream: FocusStream, lid: string, text: string) {
+  let inSpace = stream.text.endsWith(" ");
+  for (let i = 0; i < text.length; i++) {
+    const escaped = escapedMarkdownLiteral(text, i);
+    const ch = escaped?.ch ?? text[i];
+    const offset = escaped?.offset ?? i;
+    if (escaped) i = escaped.offset;
+    if (/\s/.test(ch)) {
+      if (!inSpace) {
+        stream.text += " ";
+        stream.refs.push({ lid, offset });
+        inSpace = true;
+      }
+      continue;
+    }
+    stream.text += ch;
+    stream.refs.push({ lid, offset });
+    inSpace = false;
+  }
+}
+
+function joinsInlineFlow(prev: Segment, next: Segment): boolean {
+  return prev.kind === "formula" || next.kind === "formula";
+}
+
+function sourceFocusStreamIn(sourceSegments: Segment[], focus: SourceFocus): FocusStream | null {
+  const start = sourceSegments.findIndex((seg) => seg.lid === focus.lid);
+  if (start < 0) return null;
+  const stream: FocusStream = { text: "", refs: [] };
+  let prev: Segment | null = null;
+  for (const seg of sourceSegments.slice(start)) {
+    if (prev && !joinsInlineFlow(prev, seg) && stream.text && !stream.text.endsWith(" ")) {
+      stream.text += " ";
+      stream.refs.push(null);
+    }
+    appendNormalizedText(stream, seg.lid, displayText(seg).text);
+    prev = seg;
+  }
+  return stream;
+}
+
+function commonPrefixLen(a: string, b: string): number {
+  const n = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < n && a[i] === b[i]) i++;
+  return i;
+}
+
+function sourceFocusRangesIn(sourceSegments: Segment[], focus: SourceFocus | null): Map<string, [number, number]> {
+  const out = new Map<string, [number, number]>();
+  if (!focus) return out;
+  if (!focus.quote) {
+    const seg = sourceSegments.find((s) => s.lid === focus.lid);
+    if (seg) out.set(focus.lid, [0, displayText(seg).text.length]);
+    return out;
+  }
+  const quote = normalizeSourceMatchText(focus.quote);
+  if (!quote) return out;
+  const stream = sourceFocusStreamIn(sourceSegments, focus);
+  if (!stream) return out;
+
+  let start = stream.text.indexOf(quote);
+  let len = quote.length;
+  if (start < 0) {
+    let bestStart = -1;
+    let bestLen = 0;
+    for (let i = 0; i < stream.text.length; i++) {
+      const n = commonPrefixLen(stream.text.slice(i), quote);
+      if (n > bestLen) {
+        bestLen = n;
+        bestStart = i;
+      }
+    }
+    const minUseful = Math.min(8, quote.length, stream.text.length);
+    if (bestLen < minUseful) {
+      const seg = sourceSegments.find((s) => s.lid === focus.lid);
+      if (seg) out.set(focus.lid, [0, displayText(seg).text.length]);
+      return out;
+    }
+    start = bestStart;
+    len = bestLen;
+  }
+
+  for (let i = start; i < start + len && i < stream.refs.length; i++) {
+    const ref = stream.refs[i];
+    if (!ref) continue;
+    const current = out.get(ref.lid);
+    if (current) {
+      current[0] = Math.min(current[0], ref.offset);
+      current[1] = Math.max(current[1], ref.offset + 1);
+    } else {
+      out.set(ref.lid, [ref.offset, ref.offset + 1]);
+    }
+  }
+  return out;
+}
+
+function sourceFocusRange(text: string, focus: SourceFocus | null, lid: string): [number, number] | null {
+  if (!focus || focus.lid !== lid) return null;
+  if (!focus.quote) return [0, text.length];
+  const exact = text.indexOf(focus.quote);
+  if (exact >= 0) return [exact, exact + focus.quote.length];
+  const normalizedQuote = focus.quote.replace(/\s+/g, " ").trim();
+  const compact = text.replace(/\s+/g, " ");
+  const approx = compact.indexOf(normalizedQuote);
+  if (approx < 0) return [0, text.length];
+  return [0, text.length];
+}
+
+// 段正文渲染:先完整渲染 Markdown,再把规范 source range 投影到 DOM 包 <mark>,避免切断行内语法 `[ADR-0031]`。
+// chapter/section 的 Markdown 标题符号只在显示层剥掉,不改 book.text 原文与 LID 锚点。
+function renderSegWithFocus(seg: Segment, focus: SourceFocus | null, sourceSegments: Segment[], includeStoredHighlights: boolean): string {
+  const display = isRawAssetSegment(seg) ? { text: seg.text, offset: 0 } : displayText(seg);
+  const hls = includeStoredHighlights ? highlightsOf(seg.lid).filter((h) => h.range) : [];
+  const focusRange = focus?.ranges
+    ? displayedSourceRange(focus.ranges.get(seg.lid), display.offset, display.text.length)
+    : sourceFocusRangesIn(sourceSegments, focus).get(seg.lid) ?? sourceFocusRange(display.text, focus, seg.lid);
+  if (hls.length === 0 && !focusRange) return renderSegmentText(seg, display.text);
+  const ranges: MarkedSourceRange[] = hls
+    .map((h) => {
+      const start = clampRange(h.range!.start - display.offset, display.text.length);
+      const end = clampRange(h.range!.end - display.offset, display.text.length);
+      return { start, end, className: "hl-mark" };
+    })
+    .filter(({ start, end }) => end > start);
+  if (focusRange) ranges.push({ start: focusRange[0], end: focusRange[1], className: "source-focus-mark" });
+  const root = document.createElement("span");
+  root.innerHTML = renderSegmentText(seg, display.text);
+  markMarkdownDomSourceRanges(display.text, root, ranges);
+  return root.innerHTML;
+}
+function renderSeg(seg: Segment): string {
+  return renderSegWithFocus(seg, sourceFocus.value, segments.value, true);
+}
+function renderSourcePreviewSeg(seg: Segment): string {
+  return renderSegWithFocus(seg, sourcePreview.value?.focus ?? null, sourcePreview.value?.segments ?? [], false);
+}
+function isSourcePreviewFlowSegment(seg: Segment): boolean {
+  if (seg.kind === "paragraph" && markdownHeadingLevel(seg) !== null) return false;
+  return seg.kind === "paragraph" || (seg.kind === "formula" && !isDisplayFormulaSource(seg.text));
+}
+function sourcePreviewFlowHtml(flow: Segment[]): string {
+  const body = flow
+    .map((seg) => `<span class="source-preview-inline-${seg.kind === "formula" ? "formula" : "text"}">${renderSourcePreviewSeg(seg)}</span>`)
+    .join("");
+  return `<p class="source-preview-paragraph">${body}</p>`;
+}
+function sourcePreviewSingleHtml(seg: Segment): string {
+  const level = markdownHeadingLevel(seg);
+  if (level) return `<h${level} class="source-preview-heading">${renderSourcePreviewSeg(seg)}</h${level}>`;
+  if (seg.kind === "formula") return `<div class="source-preview-formula">${renderSourcePreviewSeg(seg)}</div>`;
+  if (seg.kind === "code") return `<pre class="source-preview-asset source-preview-code"><code>${renderSourcePreviewSeg(seg)}</code></pre>`;
+  if (seg.kind === "table") return `<div class="source-preview-asset source-preview-table reader-table">${renderSourcePreviewSeg(seg)}</div>`;
+  if (seg.kind === "image") {
+    const meta = imageMeta(seg.text);
+    const asset = seg.imageAsset;
+    const src = imageRenderSrc(asset);
+    const image = src
+      ? `<img class="source-preview-rendered-image" src="${escapeHtml(src)}" alt="${escapeHtml(asset?.alt || meta?.alt || "图片")}" loading="lazy" decoding="async">`
+      : "";
+    const warning = asset?.warning ? `<em>${escapeHtml(asset.warning)}</em>` : "";
+    return `<figure class="source-preview-asset source-preview-image">${image}<strong>${escapeHtml(meta?.alt || asset?.alt || "图片")}</strong><code>${escapeHtml(meta?.src || asset?.original_src || "来源不可用")}</code>${warning}<pre>${renderSourcePreviewSeg(seg)}</pre></figure>`;
+  }
+  return `<p class="source-preview-paragraph">${renderSourcePreviewSeg(seg)}</p>`;
+}
+const sourcePreviewHtml = computed(() => {
+  const preview = sourcePreview.value;
+  if (!preview || preview.loading || preview.error) return "";
+  const parts: string[] = [];
+  let flow: Segment[] = [];
+  const flush = () => {
+    if (!flow.length) return;
+    parts.push(sourcePreviewFlowHtml(flow));
+    flow = [];
+  };
+  for (const seg of preview.segments) {
+    if (isSourcePreviewFlowSegment(seg)) {
+      const last = flow[flow.length - 1];
+      if (last && !joinsInlineFlow(last, seg)) flush();
+      flow.push(seg);
+    } else {
+      flush();
+      parts.push(sourcePreviewSingleHtml(seg));
+    }
+  }
+  flush();
+  return parts.join("\n");
+});
+function hlExcerpt(rec: MemoryRecord): string {
+  const members = highlightGroupMembers(rec);
+  const c = members.map((m) => m.content).join(" ").replace(/\s+/g, " ").trim();
+  if (!rec.range && members.length === 1) return "(整段)";
+  return c.length > 40 ? c.slice(0, 40) + "…" : c;
+}
+
+// 高亮删除 / 修改(=移除后重新框选;高亮无可编辑正文,改 = 改范围 `[ADR-0031]`)。
+async function deleteHighlight(rec: MemoryRecord) {
+  try {
+    banner.value = "";
+    await Promise.all(highlightGroupMembers(rec).map((h) => api.delete(h.mem_id)));
+    await refreshAnnotations();
+  } catch (e) {
+    fail(e);
+  }
+}
+async function modifyHighlight(rec: MemoryRecord) {
+  await deleteHighlight(rec);
+  if (!banner.value) banner.value = "已移除该高亮——重新框选文字再点「🖍 高亮选区」即可改范围。";
+}
+
+// One page-local draft, fixed to its material and selected association.
+const noteCollapsed = ref(false);
+const noteError = ref('');
+type NoteDraft = {
+  materialKey: string;
+  initialContent: string;
+  legacy?: boolean;
+  excerpt?: import('./generated/NoteExcerpt').NoteExcerpt | null;
+  request?: import('./api').NoteCreateRequest;
+  receipt?: import('./generated/PresentationFollowUp').PresentationFollowUp;
+  title?: string;
+  summary?: string;
+  lid: string;
+  memId: string | null;
+  layer: string;
+  content: string;
+  selectionContext: SelectionContext | null;
+};
+const noteEditor = ref<NoteDraft | null>(null);
+const noteSaving = ref(false);
+const noteDirty = computed(() => !!noteEditor.value && (noteEditor.value.memId
+  ? noteEditor.value.content !== noteEditor.value.initialContent || !!noteEditor.value.selectionContext
+  : !!noteEditor.value.content.trim() || !!noteEditor.value.excerpt));
+const noteTransition = ref<{ label: string; resolve: (proceed: boolean) => void } | null>(null);
+async function beforeNoteLeave(label = '离开当前材料'): Promise<boolean> {
+  if (noteTransition.value || noteSaving.value) return false;
+  if (!noteDirty.value) { cancelNote(); return true; }
+  if (document.activeElement instanceof HTMLTextAreaElement) document.activeElement.blur();
+  noteCollapsed.value = false;
+  return new Promise(resolve => { noteTransition.value = { label, resolve }; });
+}
+async function resolveNoteTransition(action: 'save' | 'discard' | 'continue') {
+  const pending = noteTransition.value;
+  if (!pending || noteSaving.value) return;
+  if (action === 'save' && !await saveNote()) return;
+  if (noteTransition.value !== pending) return;
+  if (action === 'discard') cancelNote();
+  noteTransition.value = null;
+  pending.resolve(action !== 'continue');
+}
+defineExpose({ beforeNoteLeave });
+async function beginNote(draft: Omit<NoteDraft, 'materialKey' | 'initialContent'>) {
+  if (draft.memId && noteEditor.value?.memId === draft.memId && !draft.selectionContext) { noteCollapsed.value = false; return; }
+  const materialKey = noteMaterialKey.value;
+  if (!await beforeNoteLeave('打开另一条笔记') || disposed || materialKey !== noteMaterialKey.value) return;
+  noteEditor.value = { ...draft, materialKey, initialContent: draft.content };
+  noteCollapsed.value = false; noteError.value = '';
+}
+function openNewNote(lid = selectedLid.value, content = "", selectionContext: SelectionContext | null = null) {
+  if (!lid) return;
+  void beginNote({ lid, memId: null, layer: 'long_term', content, selectionContext,
+    title: '原文', excerpt: selectionContext ? { kind: 'original', text: selectionContext.raw_quote } : null,
+    request: selectionContext ? { association: { kind: 'selection' }, retained_excerpt: selectionContext.raw_quote } : undefined });
+}
+function recordPresentationNote(receipt: import('./generated/PresentationFollowUp').PresentationFollowUp, title: string, summary = '') {
+  const fixed = { ...receipt, reference: { ...receipt.reference } };
+  void beginNote({ lid: '', memId: null, layer: 'long_term', content: '', selectionContext: null,
+    receipt: fixed, request: { association: { kind: 'presentation', receipt: fixed } }, title, summary });
+}
+function openEditNote(rec: MemoryRecord) {
+  const association = rec.note?.association;
+  void beginNote({
+    lid: rec.anchor.lid ?? "",
+    memId: rec.mem_id,
+    layer: rec.layer,
+    content: rec.content,
+    selectionContext: null,
+    legacy: !rec.note, excerpt: rec.note?.retained_excerpt,
+    title: association?.kind === 'presentation' ? association.title : association?.kind === 'answer' ? '助手回答' : '阅读笔记',
+    receipt: association?.kind === 'presentation' ? association.receipt : undefined,
+  });
+}
+async function showAnnotationInNotes(record: MemoryRecord) {
+  workspaceRef.value?.showAssistant('notes');
+  requestWorkspaceTab('notes');
+  await nextTick();
+  await rightRailRef.value?.showMemory(record.mem_id);
+}
+function cancelNote() {
+  if (noteSaving.value) return;
+  noteEditor.value = null;
+}
+// 保存:新建走 save;编辑走原子 replace,默认继承旧锚与 selection context。
+async function saveNote() {
+  const ed = noteEditor.value;
+  if (!ed || noteSaving.value || ed.materialKey !== noteMaterialKey.value) return false;
+  const current = () => !disposed && ed.materialKey === noteMaterialKey.value && noteEditor.value === ed;
+  const content = ed.content;
+  if (!content.trim() && !ed.excerpt) return false;
+  noteSaving.value = true;
+  noteError.value = '';
+  try {
+    banner.value = "";
+    if (ed.memId) {
+      const saved = await api.replace({
+        mem_id: ed.memId,
+        content,
+        selection_context: ed.selectionContext ?? undefined,
+      });
+      if (!current()) return false;
+      if (saved) {
+        rightRailRef.value?.replaceMemory?.(ed.memId, saved);
+        annotations.value = annotations.value.map(record => record.mem_id === ed.memId ? saved : record);
+      }
+    } else if (ed.request) {
+      await api.save({
+        type: "note",
+        content,
+        layer: ed.layer,
+        selection_context: ed.selectionContext ?? undefined,
+        note: ed.request,
+      });
+    } else {
+      await api.note(ed.lid, content);
+    }
+    if (!current()) return false;
+    noteEditor.value = null;
+    banner.value = '笔记已保存';
+    try { await refreshAnnotations(); }
+    catch (e) { if (!disposed && ed.materialKey === noteMaterialKey.value) fail(e); }
+    return true;
+  } catch (e) {
+    if (current()) { noteError.value = errorMessage(e); fail(e); }
+    return false;
+  } finally { noteSaving.value = false; }
+}
+async function deleteNote(rec: MemoryRecord) {
+  if (!window.confirm("删除这条笔记?")) return;
+  const scope = noteMaterialKey.value;
+  try {
+    banner.value = '';
+    await api.delete(rec.mem_id);
+    if (disposed || scope !== noteMaterialKey.value) return;
+    if (noteEditor.value?.memId === rec.mem_id) noteEditor.value = null;
+    annotations.value = annotations.value.filter(record => record.mem_id !== rec.mem_id);
+    banner.value = '笔记已删除';
+    await refreshAnnotations();
+  } catch (e) { if (!disposed && scope === noteMaterialKey.value) fail(e); }
+}
+async function openNoteAnswer(record: MemoryRecord) {
+  const association = record.note?.association;
+  if (association?.kind !== 'answer' || agentHistoryLoading.value) return;
+  const scope = noteMaterialKey.value;
+  if (association.session_id !== activeChatSessionId.value) await selectChat(association.session_id);
+  if (disposed || scope !== noteMaterialKey.value) return;
+  if (association.session_id !== activeChatSessionId.value || !chat.value.some(turn => turn.turnId === association.turn_id)) {
+    banner.value = '原回答当前不可用，已保存的笔记与摘录仍可阅读。'; return;
+  }
+  presentationWorkspace.value = null;
+  workspaceRef.value?.showAssistant('agent'); requestWorkspaceTab('agent');
+  await nextTick();
+  if (disposed || scope !== noteMaterialKey.value) return;
+  if (!await rightRailRef.value?.scrollToTurn(association.turn_id)) banner.value = '原回答当前不可用，已保存的笔记与摘录仍可阅读。';
+}
+async function openNoteAssociation(record: MemoryRecord, restore = false) {
+  if (record.note?.association.kind === 'answer') { await openNoteAnswer(record); return; }
+  workspaceRef.value?.showAssistant('agent'); requestWorkspaceTab('agent');
+  await nextTick();
+  await rightRailRef.value?.openNotePresentation(record, restore);
+}
+
+function kindOf(lid: string): NodeKind {
+  return kindByLid.value.get(lid) ?? "paragraph";
+}
+function lidDepth(lid: string): number {
+  return lid.split(".").length - 1;
+}
+function fallbackTitle(lid: string): string {
+  return titleByLid.value.get(lid) ?? lid;
+}
+function firstTitleLine(text: string, lid: string): string {
+  const line = text
+    .split("\n")
+    .map((s) => s.trim())
+    .find(Boolean);
+  return (line ? stripMarkdownHeadingLine(line) : lid).slice(0, 80);
+}
+function buildOutline(tree: ManifestNode[]): OutlineItem[] {
+  return tree
+    .filter((n) => n.children.length > 0 || n.kind === "chapter" || n.kind === "section")
+    .map((n) => ({
+      lid: n.lid,
+      kind: n.kind,
+      depth: Math.min(lidDepth(n.lid), 4),
+      title: fallbackTitle(n.lid),
+    }));
+}
+function loadOutlineTitles(tree: ManifestNode[]) {
+  titleByLid.value = new Map(tree
+    .filter(node => node.children.length > 0 || node.kind === "chapter" || node.kind === "section")
+    .map(node => [node.lid, firstTitleLine(node.title ?? "", node.lid)]));
+  outlineItems.value = buildOutline(tree);
+}
+function isAsset(seg: Segment): boolean {
+  return seg.kind === "code" || seg.kind === "table" || seg.kind === "image" || seg.kind === "formula";
+}
+function imageMeta(text: string): { alt: string; src: string } | null {
+  const m = text.trim().match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+  return m ? { alt: m[1], src: m[2] } : null;
+}
+function imageAssetFor(lid: string): ImageAssetManifestEntry | null {
+  return imageAssetByLid.value.get(lid) ?? null;
+}
+function imageRenderSrc(asset: ImageAssetManifestEntry | null | undefined): string | null {
+  if (!asset) return null;
+  return asset.url_path ?? (asset.status === "external" ? asset.original_src : null);
+}
+async function formulaFor(lid: string, kind: NodeKind): Promise<FormulaSemantics | null> {
+  if (kind !== "formula") return null;
+  try {
+    return await api.formulaSemantics(lid);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return null;
+    throw e;
+  }
+}
+
+function resetPdfAnnotationProjection() {
+  pdfAnnotationProjectionSeq += 1;
+  pdfAnnotationProjection.value = EMPTY_PDF_ANNOTATION_PROJECTION;
+  pdfAnnotationProjectionError.value = null;
+}
+
+async function refreshPdfAnnotationProjection(records: MemoryRecord[]) {
+  const seq = ++pdfAnnotationProjectionSeq;
+  pdfAnnotationProjectionError.value = null;
+  if (
+    !pdfReaderAvailable.value
+    || !pdfCapabilityUsable(sourceManifest.value?.capabilities?.project_ranges_to_pdf?.status)
+  ) {
+    pdfAnnotationProjection.value = EMPTY_PDF_ANNOTATION_PROJECTION;
+    return;
+  }
+  const batch = buildPdfProjectionBatch(records, {
+    source_fingerprint: noteSourceFingerprint.value,
+    source_map: pdfSourceMap.value,
+  });
+  if (!batch.requests.length) {
+    pdfAnnotationProjection.value = projectPdfAnnotations(batch, { projections: [] });
+    return;
+  }
+  try {
+    const response = await api.pdfRangesProject(batch.requests);
+    if (seq !== pdfAnnotationProjectionSeq) return;
+    pdfAnnotationProjection.value = projectPdfAnnotations(batch, response);
+  } catch (error) {
+    if (seq !== pdfAnnotationProjectionSeq) return;
+    pdfAnnotationProjection.value = projectPdfAnnotations(batch, { projections: [] });
+    pdfAnnotationProjectionError.value = errorMessage(error);
+  }
+}
+
+let annotationReadSequence = 0;
+async function refreshAnnotations(): Promise<MemoryRecord[]> {
+  const sequence = ++annotationReadSequence;
+  const materialKey = noteMaterialKey.value;
+  const bookId = buildWorkbenchSnapshot.value?.book_id;
+  if (!bookId) {
+    annotations.value = [];
+    resetPdfAnnotationProjection();
+    return [];
+  }
+  const publication = network.value.enabled ? network.value.workspace?.published_book_ref.publication_id ?? null : null;
+  const records = (await recallBookAnnotations(bookId, api.recall)).filter(record => !record.note || record.note.material.publication_id === publication);
+  if (disposed || materialKey !== noteMaterialKey.value || sequence !== annotationReadSequence) return [];
+  annotations.value = records;
+  await refreshPdfAnnotationProjection(records);
+  return records;
+}
+
+type SegmentLoadMode = "replace" | "append" | "prepend";
+
+async function hydrateSegments(lids: string[]): Promise<Segment[]> {
+  const texts = await Promise.all(lids.map((lid) => api.text(lid)));
+  return Promise.all(
+    texts.map(async (t) => {
+      const kind = kindOf(t.lid);
+      return {
+        lid: t.lid,
+        text: t.text,
+        kind,
+        formula: await formulaFor(t.lid, kind),
+        imageAsset: kind === "image" ? imageAssetFor(t.lid) : null,
+      };
+    }),
+  );
+}
+
+function mergeSegments(current: Segment[], incoming: Segment[], mode: SegmentLoadMode): Segment[] {
+  if (mode === "replace") return incoming;
+  const seen = new Set(current.map((seg) => seg.lid));
+  const unique = incoming.filter((seg) => !seen.has(seg.lid));
+  return mode === "append" ? [...current, ...unique] : [...unique, ...current];
+}
+
+// 视口加载:逐 visible_lid 取真原文。replace 用于 goto/sync;append/prepend 用于正文连续滚动缓冲。
+async function loadWindow(
+  vp: Viewport,
+  mode: SegmentLoadMode = "replace",
+  navigationTargetLid = vp.top_lid,
+  stillCurrent: () => boolean = () => true,
+  withAnnotations = true,
+) {
+  const next = await hydrateSegments(vp.visible_lids);
+  if (!stillCurrent()) return;
+  viewport.value = vp;
+  if (mode === "replace") {
+    selectedLid.value = navigationTargetLid;
+    currentReadingLid.value = navigationTargetLid;
+  }
+  segments.value = mergeSegments(segments.value, next, mode);
+  if (mode === "replace") {
+    await readerPaneRef.value?.scrollLidIntoView(navigationTargetLid);
+  }
+  if (withAnnotations) await refreshAnnotations();
+  await loadChapter(vp.top_lid);
+}
+
+// 阅读区与服务端 reader 同步(agent 可能改了视口 → 重新拉 state 渲染)。
+async function ensureProfileManifest(summary: ProfileSummary, stillCurrent: () => boolean = () => true) {
+  const current = profileManifest.value;
+  if (current?.profile_id === summary.profile_id && current.profile_version === summary.profile_version) return;
+  const manifest = await api.profileManifest(summary.profile_id);
+  if (stillCurrent()) profileManifest.value = manifest;
+}
+async function applyReaderState(st: Awaited<ReturnType<typeof api.state>>) {
+  profileSummary.value = st.profile;
+  readerLayout.value = st.layout;
+  await ensureProfileManifest(st.profile);
+}
+
+function profileOperationId(kind: string): string {
+  const random = globalThis.crypto?.randomUUID?.()
+    ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `profile-ui-${kind}-${random}`;
+}
+
+async function refreshProfileMemory(preserveFeedback = false) {
+  const requestSeq = ++profileMemoryRequestSeq;
+  profileMemoryLoading.value = true;
+  if (!preserveFeedback) {
+    profileMemoryError.value = null;
+    profileMemoryNotice.value = null;
+  }
+  try {
+    const state = await api.profileMemory();
+    if (requestSeq !== profileMemoryRequestSeq) return;
+    profileMemory.value = state;
+  } catch (error) {
+    if (requestSeq !== profileMemoryRequestSeq) return;
+    profileMemoryError.value = errorMessage(error);
+  } finally {
+    if (requestSeq === profileMemoryRequestSeq) profileMemoryLoading.value = false;
+  }
+}
+
+async function refreshProfileBackfill(preserveFeedback = false) {
+  const requestSeq = ++profileBackfillRequestSeq;
+  profileBackfillLoading.value = true;
+  if (!preserveFeedback) {
+    profileBackfillError.value = null;
+    profileBackfillNotice.value = null;
+  }
+  try {
+    const state = await api.profileBackfill();
+    if (requestSeq !== profileBackfillRequestSeq) return;
+    profileBackfill.value = state;
+  } catch (error) {
+    if (requestSeq !== profileBackfillRequestSeq) return;
+    profileBackfillError.value = errorMessage(error);
+  } finally {
+    if (requestSeq === profileBackfillRequestSeq) profileBackfillLoading.value = false;
+  }
+}
+
+async function refreshProfileSurface(preserveFeedback = false) {
+  if (network.value.enabled) { await refreshProfileMemory(preserveFeedback); return; }
+  await Promise.all([
+    refreshProfileMemory(preserveFeedback),
+    refreshProfileBackfill(preserveFeedback),
+  ]);
+}
+
+function scheduleProfileBackfillPoll() {
+  if (profileBackfillPollTimer !== null) window.clearTimeout(profileBackfillPollTimer);
+  profileBackfillPollTimer = null;
+  const active = profileBackfill.value?.jobs.some((job) =>
+    job.status === "queued" || job.status === "running") ?? false;
+  if (!active) return;
+  profileBackfillPollTimer = window.setTimeout(async () => {
+    profileBackfillPollTimer = null;
+    await Promise.all([
+      refreshProfileBackfill(true),
+      refreshProfileMemory(true),
+    ]);
+    scheduleProfileBackfillPoll();
+  }, 750);
+}
+
+watch(
+  () => profileBackfill.value?.jobs
+    .map((job) => `${job.job_id}:${job.status}:${job.processed_through}`)
+    .join("|") ?? "",
+  scheduleProfileBackfillPoll,
+);
+
+async function startProfileBackfill(request: HistoricalBackfillStartRequest) {
+  if (profileBackfillBusy.value) return;
+  profileBackfillBusy.value = true;
+  profileBackfillError.value = null;
+  profileBackfillNotice.value = null;
+  try {
+    profileBackfill.value = await api.profileBackfillStart(request);
+    profileBackfillNotice.value = "历史回填已开始";
+    await refreshProfileMemory(true);
+  } catch (error) {
+    profileBackfillError.value = errorMessage(error);
+  } finally {
+    profileBackfillBusy.value = false;
+  }
+}
+
+async function mutateProfileBackfill(
+  action: "cancel" | "retry" | "clear",
+  request: HistoricalBackfillJobRequest,
+) {
+  if (profileBackfillBusy.value) return;
+  profileBackfillBusy.value = true;
+  profileBackfillError.value = null;
+  profileBackfillNotice.value = null;
+  try {
+    profileBackfill.value = action === "cancel"
+      ? await api.profileBackfillCancel(request)
+      : action === "retry"
+        ? await api.profileBackfillRetry(request)
+        : await api.profileBackfillClear(request);
+    profileBackfillNotice.value = {
+      cancel: "历史回填已中止",
+      retry: "历史回填已继续",
+      clear: "历史回填记录已清除",
+    }[action];
+    await refreshProfileMemory(true);
+  } catch (error) {
+    profileBackfillError.value = errorMessage(error);
+  } finally {
+    profileBackfillBusy.value = false;
+  }
+}
+
+function profileMutationLabel(action: ProfileGovernanceActionRequest): string {
+  return {
+    remember: "画像已记住",
+    correct: "画像已纠正",
+    forget: "画像已忘记",
+    confirm: "画像已确认",
+    reject: "候选已忽略",
+    change_scope: "画像范围已更新",
+    add_collection_rule: "自动收集规则已添加",
+    remove_collection_rule: "自动收集规则已移除",
+  }[action.kind];
+}
+
+async function mutateProfile(action: ProfileGovernanceActionRequest) {
+  if (profileMemoryBusy.value) return null;
+  if (!profileMemory.value) await refreshProfileMemory();
+  const state = profileMemory.value;
+  if (!state) return null;
+  profileMemoryBusy.value = true;
+  profileMemoryError.value = null;
+  profileMemoryNotice.value = null;
+  try {
+    const response = await api.profileMemoryApply({
+      expected_document_revision: state.status.document_revision,
+      action,
+    });
+    profileMemoryNotice.value = response.kind === "applied"
+      ? profileMutationLabel(action)
+      : "敏感画像等待确认";
+    await refreshProfileMemory(true);
+    return response;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 409) {
+      await refreshProfileMemory(true);
+      profileMemoryError.value = error.errorCode === "MEMORY_DOCUMENT_REVISION_CONFLICT"
+        ? "画像已在后台更新，已载入最新版本，请重试刚才的操作。"
+        : error.message;
+    } else {
+      profileMemoryError.value = errorMessage(error);
+    }
+    return null;
+  } finally {
+    profileMemoryBusy.value = false;
+  }
+}
+
+async function undoProfileUpdate(
+  turnIndex: number,
+  updateIndex: number,
+  update: ProfileMemoryUpdate,
+) {
+  const key = `${turnIndex}:${updateIndex}`;
+  if (!profileMemory.value) await refreshProfileMemory();
+  const action = buildUndoProfileAction(
+    profileMemory.value,
+    update,
+    profileOperationId("undo"),
+  );
+  if (!action) {
+    profileUpdateStates.value = { ...profileUpdateStates.value, [key]: "无法撤销" };
+    return;
+  }
+  const response = await mutateProfile(action);
+  if (!response) return;
+  const status = response.kind === "applied" ? "已撤销" : "等待确认";
+  profileUpdateStates.value = { ...profileUpdateStates.value, [key]: status };
+  profileMemoryNotice.value = response.kind === "applied" ? "画像更新已撤销" : "敏感画像等待确认";
+}
+
+async function syncViewport(forcePaperProjection = false, preferReaderSelection = false) {
+  const st = await api.state();
+  await applyReaderState(st);
+  const navigationTargetLid = preferReaderSelection
+    ? resolveReaderStateNavigationTarget(st.viewport.top_lid, st.selection, leafOrder.value)
+    : st.viewport.top_lid;
+  await loadWindow(st.viewport, "replace", navigationTargetLid);
+  await loadPaperProjectionData(forcePaperProjection);
+}
+
+// 章节标题:取 anchor 顶层段(LID 首段)原文首行作标签(读位感「第N章…」)。
+async function loadChapter(anchorLid: string) {
+  const top = anchorLid.split(".")[0];
+  const title = titleByLid.value.get(top);
+  if (title !== undefined) {
+    chapterTitle.value = title.slice(0, 40);
+    return;
+  }
+  try {
+    const t = await api.text(top);
+    chapterTitle.value = t.text.split("\n")[0].slice(0, 40);
+  } catch {
+    chapterTitle.value = top;
+  }
+}
+
+async function loadPdfRuntimeArtifacts(stillCurrent: () => boolean = () => true) {
+  sourceManifest.value = null;
+  pdfSourceMap.value = null;
+  pdfRuntimeError.value = null;
+  try {
+    const manifest = await api.sourceManifest();
+    if (!stillCurrent()) return;
+    sourceManifest.value = manifest;
+    if (!manifest) return;
+    if (
+      manifest.capabilities.view_pdf.status === "available"
+      && pdfCapabilityUsable(manifest.capabilities.project_lid_to_pdf.status)
+    ) {
+      const map = await api.pdfSourceMap();
+      if (!stillCurrent()) return;
+      pdfSourceMap.value = map;
+      await refreshPdfAnnotationProjection(annotations.value);
+    }
+  } catch (e) {
+    if (!stillCurrent()) return;
+    if (e instanceof ApiError && e.status === 404) return;
+    pdfRuntimeError.value = errorMessage(e);
+  }
+}
+
+async function loadBuildWorkbenchSnapshot(): Promise<BuildWorkbenchSnapshot | null> {
+  buildWorkbenchLoading.value = true;
+  buildWorkbenchError.value = null;
+  try {
+    let snapshot = await api.buildWorkbench();
+    buildWorkbenchSnapshot.value = snapshot;
+    snapshot = await maybeAutoRerunSourceReview(snapshot);
+    buildWorkbenchSnapshot.value = snapshot;
+    return snapshot;
+  } catch (e) {
+    buildWorkbenchError.value = errorMessage(e);
+    buildWorkbenchSnapshot.value = null;
+    return null;
+  } finally {
+    buildWorkbenchLoading.value = false;
+  }
+}
+
+async function maybeAutoRerunSourceReview(
+  snapshot: BuildWorkbenchSnapshot,
+  actionOwner?: number,
+): Promise<BuildWorkbenchSnapshot> {
+  if (readerOnly.value) return snapshot;
+  const request = getSourceReviewAutoRerunRequest(snapshot);
+  if (!request) return snapshot;
+
+  const ownsAction = actionOwner === undefined;
+  const owner = actionOwner ?? beginWorkbenchAction();
+  buildWorkbenchSnapshot.value = snapshot;
+  try {
+    return await api.workbenchJobStart(request);
+  } catch (e) {
+    buildWorkbenchError.value = `复核决定已保存，但自动重新运行来源对齐失败：${errorMessage(e)}`;
+    return snapshot;
+  } finally {
+    if (ownsAction) endWorkbenchAction(owner);
+  }
+}
+
+async function refreshBuildWorkbench() {
+  const snapshot = await loadBuildWorkbenchSnapshot();
+  if (!snapshot) return;
+  await showSurfaceForWorkbenchSnapshot(snapshot);
+}
+
+async function showSurfaceForWorkbenchSnapshot(snapshot: BuildWorkbenchSnapshot) {
+  const surface = chooseAppSurface(snapshot);
+  if (surface === "reader" && diagnosticWorkbenchBookId.value !== snapshot.book_id) {
+    await init();
+    return;
+  }
+  appSurface.value = "workbench";
+}
+
+async function confirmSidecarPlan(fields: Record<string, unknown>) {
+  buildWorkbenchConfirming.value = true;
+  buildWorkbenchError.value = null;
+  try {
+    buildWorkbenchSnapshot.value = await api.sidecarPlanConfirm(fields);
+  } catch (e) {
+    buildWorkbenchError.value = errorMessage(e);
+  } finally {
+    buildWorkbenchConfirming.value = false;
+  }
+}
+
+async function importWorkbenchInput(payload: {
+  target_dir?: string;
+  book_id?: string;
+  display_title?: string;
+  paper_md_path?: string;
+  paper_pdf_path?: string;
+  paper_md_text?: string;
+  paper_pdf_base64?: string;
+}) {
+  buildWorkbenchImporting.value = true;
+  buildWorkbenchError.value = null;
+  try {
+    buildWorkbenchSnapshot.value = await api.workbenchInputImport(payload);
+    diagnosticWorkbenchBookId.value = null;
+    appSurface.value = "workbench";
+  } catch (e) {
+    buildWorkbenchError.value = errorMessage(e);
+  } finally {
+    buildWorkbenchImporting.value = false;
+  }
+}
+
+async function applyWorkbenchAction(action: () => Promise<BuildWorkbenchSnapshot>) {
+  const actionOwner = beginWorkbenchAction();
+  buildWorkbenchError.value = null;
+  try {
+    let snapshot = await action();
+    buildWorkbenchSnapshot.value = snapshot;
+    snapshot = await maybeAutoRerunSourceReview(snapshot, actionOwner);
+    buildWorkbenchSnapshot.value = snapshot;
+    await showSurfaceForWorkbenchSnapshot(snapshot);
+  } catch (e) {
+    buildWorkbenchError.value = errorMessage(e);
+  } finally {
+    endWorkbenchAction(actionOwner);
+  }
+}
+
+async function createBuildJob() {
+  await applyWorkbenchAction(() => api.workbenchJobCreate());
+}
+
+async function startBuildJob(payload: {
+  job_id?: string;
+  stage: BuildStageId;
+  executor: ExecutorId;
+  run_id?: string;
+  adapter_mode?: WorkbenchAdapterMode;
+}) {
+  await applyWorkbenchAction(() => api.workbenchJobStart(payload));
+}
+
+async function resumeBuildJob(jobId: string) {
+  await applyWorkbenchAction(() => api.workbenchJobResume(jobId));
+}
+
+async function resolveBuildDecision(payload: { job_id: string; decision_id: string; answer: string }) {
+  await applyWorkbenchAction(() => api.workbenchDecisionResolve(payload));
+}
+
+async function resolveExecutorPermission(payload: { job_id: string; request_id: string; granted: boolean }) {
+  await applyWorkbenchAction(() => api.workbenchPermissionResolve(payload));
+}
+
+async function resolveSourceReview(payload: {
+  job_id?: string;
+  block_id: string;
+  decision: SourceReviewDecisionKind;
+  replacement_text?: string;
+  note?: string;
+}) {
+  await applyWorkbenchAction(() => api.workbenchSourceReviewResolve(payload));
+}
+
+async function resolveSourceReviewGroup(payload: {
+  job_id?: string;
+  group_id: string;
+  note?: string;
+}) {
+  const snapshot = buildWorkbenchSnapshot.value;
+  if (!snapshot || buildWorkbenchActioning.value) return;
+  const actionOwner = beginWorkbenchAction();
+  const bookId = snapshot.book_id;
+  const stillCurrent = () => buildWorkbenchSnapshot.value?.book_id === bookId;
+  buildWorkbenchError.value = null;
+
+  try {
+    let nextSnapshot = await runSourceReviewPageGroupDecision({
+      snapshot,
+      groupId: payload.group_id,
+      jobId: payload.job_id,
+      note: payload.note,
+      resolve: (decision) => api.workbenchSourceReviewResolve(decision),
+      onSnapshot: (persistedSnapshot) => {
+        if (stillCurrent()) buildWorkbenchSnapshot.value = persistedSnapshot;
+      },
+    });
+    if (!stillCurrent()) return;
+    buildWorkbenchSnapshot.value = nextSnapshot;
+    nextSnapshot = await maybeAutoRerunSourceReview(nextSnapshot, actionOwner);
+    if (stillCurrent()) {
+      buildWorkbenchSnapshot.value = nextSnapshot;
+      await showSurfaceForWorkbenchSnapshot(nextSnapshot);
+    }
+  } catch (e) {
+    if (stillCurrent()) buildWorkbenchError.value = errorMessage(e);
+  } finally {
+    endWorkbenchAction(actionOwner);
+  }
+}
+
+async function analyzeSourceReview(payload: { block_id: string }) {
+  if (sourceReviewLlmBatch.value?.status === "running" || buildWorkbenchActioning.value) return;
+  const blockId = payload.block_id;
+  const requestToken = ++sourceReviewLlmRequestToken;
+  const bookId = buildWorkbenchSnapshot.value?.book_id;
+  const evidenceKey = sourceReviewEvidenceKey.value;
+  const stillCurrent = () => (
+    requestToken === sourceReviewLlmRequestToken
+    && buildWorkbenchSnapshot.value?.book_id === bookId
+    && sourceReviewEvidenceKey.value === evidenceKey
+  );
+  sourceReviewLlmAnalyzingBlockId.value = blockId;
+  const nextErrors = { ...sourceReviewLlmErrors.value };
+  const nextSuggestions = { ...sourceReviewLlmSuggestions.value };
+  delete nextErrors[blockId];
+  delete nextSuggestions[blockId];
+  sourceReviewLlmErrors.value = nextErrors;
+  sourceReviewLlmSuggestions.value = nextSuggestions;
+  try {
+    const suggestion = await api.workbenchSourceReviewAnalyze(blockId);
+    if (stillCurrent()) {
+      sourceReviewLlmSuggestions.value = {
+        ...sourceReviewLlmSuggestions.value,
+        [blockId]: suggestion,
+      };
+    }
+  } catch (e) {
+    if (stillCurrent()) {
+      sourceReviewLlmErrors.value = {
+        ...sourceReviewLlmErrors.value,
+        [blockId]: errorMessage(e),
+      };
+    }
+  } finally {
+    if (stillCurrent() && sourceReviewLlmAnalyzingBlockId.value === blockId) {
+      sourceReviewLlmAnalyzingBlockId.value = null;
+    }
+  }
+}
+
+async function applyAllSourceReviewWithLlm() {
+  const snapshot = buildWorkbenchSnapshot.value;
+  if (
+    !snapshot
+    || buildWorkbenchActioning.value
+    || sourceReviewLlmAnalyzingBlockId.value
+    || sourceReviewLlmBatch.value?.status === "running"
+  ) return;
+  const targets = sourceReviewBatchTargets(snapshot);
+  if (!targets.length) return;
+
+  const runToken = ++sourceReviewLlmBatchRunToken;
+  sourceReviewLlmRequestToken += 1;
+  sourceReviewLlmAnalyzingBlockId.value = null;
+  const actionOwner = beginWorkbenchAction();
+  const bookId = snapshot.book_id;
+  const targetIds = new Set(targets.map((block) => block.id));
+  const nextErrors = { ...sourceReviewLlmErrors.value };
+  const nextSuggestions = { ...sourceReviewLlmSuggestions.value };
+  for (const blockId of targetIds) {
+    delete nextErrors[blockId];
+    delete nextSuggestions[blockId];
+  }
+  sourceReviewLlmErrors.value = nextErrors;
+  sourceReviewLlmSuggestions.value = nextSuggestions;
+  buildWorkbenchError.value = null;
+
+  const latestJobId = [...snapshot.jobs]
+    .sort((left, right) => left.updated_at.localeCompare(right.updated_at))
+    .at(-1)?.job_id;
+  const stillCurrent = () => (
+    runToken === sourceReviewLlmBatchRunToken
+    && buildWorkbenchSnapshot.value?.book_id === bookId
+  );
+
+  try {
+    const result = await runSourceReviewLlmBatch({
+      snapshot,
+      jobId: latestJobId,
+      analyze: (blockId) => api.workbenchSourceReviewAnalyze(blockId),
+      resolve: (payload) => api.workbenchSourceReviewResolve(payload),
+      formatError: errorMessage,
+      isCancelled: () => !stillCurrent(),
+      onState: (state) => {
+        if (!stillCurrent()) return;
+        sourceReviewLlmBatch.value = state;
+        sourceReviewLlmAnalyzingBlockId.value = state.status === "running"
+          ? state.current_block_id
+          : null;
+      },
+      onSuggestion: (suggestion) => {
+        if (!stillCurrent()) return;
+        sourceReviewLlmSuggestions.value = {
+          ...sourceReviewLlmSuggestions.value,
+          [suggestion.block_id]: suggestion,
+        };
+      },
+      onFailure: (failure) => {
+        if (!stillCurrent()) return;
+        sourceReviewLlmErrors.value = {
+          ...sourceReviewLlmErrors.value,
+          [failure.block_id]: failure.message,
+        };
+      },
+      onSnapshot: (nextSnapshot) => {
+        if (stillCurrent()) buildWorkbenchSnapshot.value = nextSnapshot;
+      },
+    });
+    if (stillCurrent()) {
+      let nextSnapshot = result.snapshot;
+      buildWorkbenchSnapshot.value = nextSnapshot;
+      sourceReviewLlmBatch.value = result.state;
+      nextSnapshot = await maybeAutoRerunSourceReview(nextSnapshot, actionOwner);
+      if (stillCurrent()) buildWorkbenchSnapshot.value = nextSnapshot;
+    }
+  } catch (e) {
+    if (stillCurrent()) buildWorkbenchError.value = errorMessage(e);
+  } finally {
+    if (stillCurrent()) sourceReviewLlmAnalyzingBlockId.value = null;
+    endWorkbenchAction(actionOwner);
+  }
+}
+
+async function draftSidecarPlan(payload: { request: string }) {
+  await applyWorkbenchAction(() => api.sidecarPlanDraft(payload));
+}
+
+async function enterReader() {
+  const snapshot = buildWorkbenchSnapshot.value;
+  if (!snapshot || snapshot.readiness.route !== "reader") return;
+  diagnosticWorkbenchBookId.value = null;
+  await init();
+}
+
+async function openBuildWorkbench() {
+  const snapshot = await loadBuildWorkbenchSnapshot();
+  if (!snapshot || !workbenchAvailable(snapshot)) return;
+  diagnosticWorkbenchBookId.value = snapshot.book_id;
+  appSurface.value = "workbench";
+}
+
+async function openBuildIntent() {
+  buildIntentOpen.value = true;
+  buildIntentError.value = null;
+  const request = ++buildIntentRequestSeq;
+  try {
+    await api.buildIntentStatus();
+  } catch (error) {
+    if (request === buildIntentRequestSeq) buildIntentError.value = errorMessage(error);
+  }
+}
+
+function closeBuildIntent() {
+  buildIntentOpen.value = false;
+}
+
+let intentUsageEventSequence = 0;
+
+function nextIntentUsageEventId(kind: IntentBuildReaderUsageKind): string {
+  const nonce = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${++intentUsageEventSequence}`;
+  return `${kind}-${nonce}`;
+}
+
+function recordIntentUsage(kind: IntentBuildReaderUsageKind, artifactId?: string) {
+  if (network.value.enabled) return;
+  void api.intentUsageEvent({
+    event_id: nextIntentUsageEventId(kind),
+    occurred_at: new Date().toISOString(),
+    kind,
+    ...(artifactId ? { artifact_id: artifactId } : {}),
+  }).catch(() => undefined);
+}
+
+async function refreshIntentArtifacts(): Promise<boolean> {
+  const request = ++intentArtifactRequestSeq;
+  intentArtifactsLoading.value = true;
+  intentArtifactsError.value = null;
+  try {
+    const response = await api.intentArtifacts();
+    if (request === intentArtifactRequestSeq) intentArtifacts.value = response.overlay;
+    return request === intentArtifactRequestSeq;
+  } catch (error) {
+    if (request !== intentArtifactRequestSeq) return false;
+    if (error instanceof ApiError && error.status === 404) {
+      intentArtifacts.value = null;
+    } else {
+      intentArtifactsError.value = "暂时无法读取目标成果";
+    }
+    return false;
+  } finally {
+    if (request === intentArtifactRequestSeq) intentArtifactsLoading.value = false;
+  }
+}
+
+async function openIntentArtifacts() {
+  if (!await refreshIntentArtifacts()) return;
+  for (const artifact of intentArtifacts.value?.artifacts ?? []) {
+    if (artifact.state === "accepted") recordIntentUsage("artifact_opened", artifact.artifact_id);
+  }
+}
+
+async function draftBuildIntent(payload: {
+  mode: BuildIntentMode;
+  user_goal?: string;
+  edit_plan_id?: string;
+}) {
+  const request = ++buildIntentRequestSeq;
+  buildIntentBusy.value = true;
+  buildIntentError.value = null;
+  try {
+    const response = payload.edit_plan_id && payload.mode === "goal_directed"
+      ? await api.buildIntentEdit({
+          plan_id: payload.edit_plan_id,
+          user_goal: payload.user_goal,
+        })
+      : await api.buildIntentDraft({
+          mode: payload.mode,
+          user_goal: payload.user_goal,
+        });
+    if (request === buildIntentRequestSeq) {
+      buildIntentSelection.value = response.selection;
+      buildIntentPlanningSource.value = response.planning_source;
+    }
+  } catch (error) {
+    if (request === buildIntentRequestSeq) buildIntentError.value = errorMessage(error);
+  } finally {
+    if (request === buildIntentRequestSeq) buildIntentBusy.value = false;
+  }
+}
+
+async function confirmBuildIntent(payload: { plan_id: string; plan_digest: string }) {
+  const request = ++buildIntentRequestSeq;
+  buildIntentBusy.value = true;
+  buildIntentError.value = null;
+  try {
+    const response = await api.buildIntentConfirm(payload.plan_id, payload.plan_digest);
+    if (request === buildIntentRequestSeq) {
+      buildIntentSelection.value = response.selection;
+      buildIntentPlanningSource.value = response.planning_source;
+      if (!network.value.enabled) void refreshIntentArtifacts();
+    }
+  } catch (error) {
+    if (request === buildIntentRequestSeq) buildIntentError.value = errorMessage(error);
+  } finally {
+    if (request === buildIntentRequestSeq) buildIntentBusy.value = false;
+  }
+}
+
+async function rejectBuildIntent(payload: { plan_id: string }) {
+  const request = ++buildIntentRequestSeq;
+  buildIntentBusy.value = true;
+  buildIntentError.value = null;
+  try {
+    const response = await api.buildIntentReject(payload.plan_id);
+    if (request === buildIntentRequestSeq) {
+      buildIntentSelection.value = response.selection;
+      buildIntentPlanningSource.value = response.planning_source;
+    }
+  } catch (error) {
+    if (request === buildIntentRequestSeq) buildIntentError.value = errorMessage(error);
+  } finally {
+    if (request === buildIntentRequestSeq) buildIntentBusy.value = false;
+  }
+}
+
+let workspaceLoadSeq = 0;
+async function init() {
+  const request = ++workspaceLoadSeq;
+  const current = () => !disposed && request === workspaceLoadSeq;
+  try {
+    appSurface.value = "loading";
+    startupHistoryRequestSeq += 1;
+    agentHistoryLoading.value = true;
+    agentHistoryError.value = null;
+    intentArtifactRequestSeq += 1;
+    intentArtifacts.value = null;
+    intentArtifactsLoading.value = false;
+    intentArtifactsError.value = null;
+    const desktop = network.value.enabled ? { desktop_host: false, reader_only: true, active_book: true, book_dir: null, library_root: "", library_root_available: true } : await api.desktopStatus().catch((error) => {
+      if (error instanceof ApiError && error.status === 404) return null;
+      throw error;
+    });
+    desktopHost.value = Boolean(desktop?.desktop_host);
+    readerOnly.value = Boolean(desktop?.reader_only);
+    desktopLibraryRoot.value = desktop?.library_root ?? "";
+    desktopLibraryAvailable.value = desktop?.library_root_available ?? true;
+    desktopNeedsBook.value = Boolean(desktop && !desktop.active_book);
+    if (desktopLibraryNeedsSelection(desktop)) {
+      desktopSettingsOpen.value = true;
+      bookPickerOpen.value = false;
+      await refreshDesktopProviderStatus();
+      return;
+    }
+    if (desktop && !desktop.active_book) {
+      bookPickerOpen.value = true;
+      await loadBookLibrary();
+      return;
+    }
+    desktopNeedsBook.value = false;
+    const workbench = network.value.enabled ? null : await loadBuildWorkbenchSnapshot();
+    if (network.value.enabled) {
+      const w = network.value.workspace!;
+      buildWorkbenchSnapshot.value = { book_id: w.published_book_ref.book_id, readiness: { route: "reader", reasons: [], stages: {} } } as unknown as BuildWorkbenchSnapshot;
+    }
+    if (!workbench && buildWorkbenchError.value) {
+      appSurface.value = readerOnly.value ? "waiting-materials" : "workbench";
+      return;
+    }
+    if (workbench) {
+      const surface = chooseAppSurface(workbench, readerOnly.value);
+      if (surface !== "reader") {
+        appSurface.value = surface;
+        return;
+      }
+    }
+    const pdfReady = loadPdfRuntimeArtifacts(current);
+    const [m, assets, noteSource, st] = await Promise.all([
+      api.manifest(), api.assetManifest(), api.sourceFingerprint(),
+      network.value.enabled ? Promise.resolve(network.value.workspace!.reader) : api.state(),
+    ]);
+    if (!current()) return;
+    if (buildWorkbenchSnapshot.value?.book_id !== noteSource.book_id) {
+      throw new Error("Note source identity does not match the active book");
+    }
+    noteSourceFingerprint.value = noteSource.source_fingerprint;
+    await nextTick(); // Apply this book's saved reading surface before deciding what blocks display.
+    sourceManifestTree.value = m;
+    kindByLid.value = new Map(m.tree.map((n) => [n.lid, n.kind]));
+    imageAssetByLid.value = new Map(assets.images.map((img) => [img.lid, img]));
+    leafOrder.value = m.tree.filter((n) => n.children.length === 0).map((n) => n.lid);
+    loadOutlineTitles(m.tree);
+    profileSummary.value = st.profile;
+    readerLayout.value = st.layout;
+    void ensureProfileManifest(st.profile, current).catch(error => { if (current()) fail(error); });
+    await Promise.all([
+      loadWindow(st.viewport, "replace", st.viewport.top_lid, current, false),
+      readerSurfacePreference.value === "markdown" ? Promise.resolve() : pdfReady,
+    ]);
+    if (!current()) return;
+    appSurface.value = "reader";
+    void refreshAnnotations().catch(error => { if (current()) fail(error); });
+    recordIntentUsage("reader_ready");
+    void loadPaperProjectionData();
+    void loadStartupHistory();
+    void refreshProfileSurface();
+    if (!network.value.enabled) void refreshIntentArtifacts();
+  } catch (e) {
+    if (!current()) return;
+    appSurface.value = buildWorkbenchSnapshot.value?.readiness.route === "workbench" ? "workbench" : "reader";
+    fail(e);
+  }
+}
+
+let workspaceRecoveryTask: Promise<void> | null = null;
+let workspaceRecoveryTimer: number | null = null;
+async function recoverWorkspaceState() {
+  if (workspaceRecoveryTask || appSurface.value !== "reader" || agentHistoryLoading.value) return workspaceRecoveryTask;
+  const expectedBookId = buildWorkbenchSnapshot.value?.book_id;
+  if (!expectedBookId) return;
+  workspaceRecoveryTask = (async () => {
+    try {
+      const source = await api.sourceFingerprint();
+      if (buildWorkbenchSnapshot.value?.book_id !== expectedBookId) return;
+      if (source.book_id !== expectedBookId) {
+        residentRun.forget();
+        resetBookSessionUi();
+        await init();
+        return;
+      }
+      if (network.value.enabled) await recoverSubmissions();
+      if (agentHistoryError.value) await loadStartupHistory();
+      else applyAgentHistory(await api.agentHistory());
+    } catch (error) {
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+        banner.value = "认证已失效，请通过现有受保护入口恢复登录。";
+      } else if (navigator.onLine === false) {
+        banner.value = "当前离线；恢复网络后将核对原运行，不会自动重提问题。";
+      }
+    } finally {
+      workspaceRecoveryTask = null;
+    }
+  })();
+  return workspaceRecoveryTask;
+}
+
+function scheduleWorkspaceRecovery(event?: Event) {
+  // NetworkApp owns wake-up authentication and attachment; wait for its completion.
+  if (network.value.enabled && event && ['visibilitychange', 'pageshow', 'online'].includes(event.type)) return;
+  if (document.visibilityState === "hidden" || workspaceRecoveryTask || workspaceRecoveryTimer !== null) return;
+  workspaceRecoveryTimer = window.setTimeout(() => {
+    workspaceRecoveryTimer = null;
+    void recoverWorkspaceState();
+  }, 0);
+}
+async function refreshLinkedReader() {
+  try {
+    const state = await api.state();
+    await applyReaderState(state);
+    await loadWindow(state.viewport, "replace", resolveReaderStateNavigationTarget(state.viewport.top_lid, state.selection, leafOrder.value));
+  } catch (error) { if (!disposed) fail(error); }
+}
+
+async function invokeDesktop<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  if (!("__TAURI_INTERNALS__" in window)) {
+    throw new Error("桌面命令仅在 Understand Book 应用中可用");
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<T>(command, args);
+}
+
+async function refreshCodexPluginStatus() {
+  codexPluginLoading.value = true;
+  codexPluginError.value = "";
+  try {
+    codexPluginStatus.value = await invokeDesktop<CodexPluginStatus>("codex_plugin_status");
+  } catch (error) {
+    codexPluginError.value = error instanceof Error ? error.message : String(error);
+  } finally {
+    codexPluginLoading.value = false;
+  }
+}
+
+async function openDesktopSettings() {
+  desktopSettingsOpen.value = true;
+  await Promise.all([refreshCodexPluginStatus(), refreshDesktopProviderStatus()]);
+}
+
+function closeDesktopSettings() {
+  if (desktopLibraryChanging.value || desktopProviderSaving.value || !desktopLibraryAvailable.value) return;
+  desktopSettingsOpen.value = false;
+}
+
+async function refreshDesktopProviderStatus() {
+  desktopProviderLoading.value = true;
+  desktopProviderError.value = "";
+  try {
+    const status = await invokeDesktop<DesktopProviderStatus>("desktop_provider_status");
+    desktopProviderStatus.value = status;
+    const draft = desktopProviderDraft(status);
+    desktopProviderMode.value = draft.mode;
+    desktopProviderBaseUrl.value = draft.baseUrl;
+    desktopProviderModel.value = draft.model;
+    desktopProviderApiKey.value = draft.apiKey;
+  } catch (error) {
+    desktopProviderError.value = error instanceof Error ? error.message : String(error);
+  } finally {
+    desktopProviderLoading.value = false;
+  }
+}
+
+async function saveDesktopProviderSettings() {
+  desktopProviderSaving.value = true;
+  desktopProviderError.value = "";
+  try {
+    const status = await invokeDesktop<DesktopProviderStatus>("save_desktop_provider_settings", {
+      input: {
+        mode: desktopProviderMode.value,
+        api_key: desktopProviderApiKey.value,
+        base_url: desktopProviderBaseUrl.value,
+        model: desktopProviderModel.value,
+      },
+    });
+    desktopProviderStatus.value = status;
+    desktopProviderApiKey.value = "";
+  } catch (error) {
+    desktopProviderError.value = error instanceof Error ? error.message : String(error);
+  } finally {
+    desktopProviderSaving.value = false;
+  }
+}
+
+async function chooseDesktopLibraryDirectory() {
+  desktopLibraryChanging.value = true;
+  desktopLibraryError.value = "";
+  try {
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: "选择 Understand Book 书库位置",
+    });
+    if (!selected || Array.isArray(selected)) return;
+    const result = await invokeDesktop<{ library_root: string }>("set_desktop_library_directory", {
+      selectedDir: selected,
+    });
+    desktopLibraryRoot.value = result.library_root;
+    desktopLibraryAvailable.value = true;
+    await loadBookLibrary();
+    desktopSettingsOpen.value = false;
+    if (desktopNeedsBook.value) {
+      bookPickerOpen.value = true;
+    } else {
+      await init();
+    }
+  } catch (error) {
+    desktopLibraryError.value = error instanceof Error ? error.message : String(error);
+  } finally {
+    desktopLibraryChanging.value = false;
+  }
+}
+
+async function installCodexPlugin() {
+  codexPluginLoading.value = true;
+  codexPluginError.value = "";
+  try {
+    codexPluginStatus.value = await invokeDesktop<CodexPluginStatus>("install_codex_plugin");
+  } catch (error) {
+    codexPluginError.value = error instanceof Error ? error.message : String(error);
+  } finally {
+    codexPluginLoading.value = false;
+  }
+}
+
+function codexPluginStateLabel(state: CodexPluginState): string {
+  return {
+    installed_by_setup: "已由安装程序安装",
+    installed_externally: "已在 Codex 中安装",
+    pending_configuration: "等待发布配置",
+    codex_not_found: "未找到 Codex",
+    not_installed: "尚未安装",
+    error: "需要处理",
+  }[state];
+}
+onMounted(() => {
+  window.addEventListener('beforeunload', noteBeforeUnload);
+  document.addEventListener('pointerdown', collapseNoteOutside);
+  window.addEventListener("agent-admission-changed", scheduleWorkspaceRecovery);
+  window.addEventListener("workspace-recovered", scheduleWorkspaceRecovery);
+  window.addEventListener("linked-reader-changed", refreshLinkedReader);
+  window.addEventListener("tutor-response", onTutorResponse);
+  void tutor.load();
+  void init();
+  document.addEventListener("visibilitychange", scheduleWorkspaceRecovery);
+  window.addEventListener("pageshow", scheduleWorkspaceRecovery);
+  window.addEventListener("online", scheduleWorkspaceRecovery);
+});
+onBeforeUnmount(() => {
+  disposed = true;
+  clearNoteScope();
+  window.removeEventListener('beforeunload', noteBeforeUnload);
+  document.removeEventListener('pointerdown', collapseNoteOutside);
+  window.removeEventListener("agent-admission-changed", scheduleWorkspaceRecovery);
+  window.removeEventListener("workspace-recovered", scheduleWorkspaceRecovery);
+  window.removeEventListener("linked-reader-changed", refreshLinkedReader);
+  window.removeEventListener("tutor-response", onTutorResponse);
+  startupHistoryRequestSeq += 1;
+  document.removeEventListener("visibilitychange", scheduleWorkspaceRecovery);
+  window.removeEventListener("pageshow", scheduleWorkspaceRecovery);
+  window.removeEventListener("online", scheduleWorkspaceRecovery);
+  if (workspaceRecoveryTimer !== null) window.clearTimeout(workspaceRecoveryTimer);
+  workspaceRecoveryTimer = null;
+  if (paperPositionSyncTimer !== null) window.clearTimeout(paperPositionSyncTimer);
+  if (profileBackfillPollTimer !== null) window.clearTimeout(profileBackfillPollTimer);
+  notePlacementController.cancel();
+  pdfSelectionTranslation.invalidate("unmount");
+});
+
+// ── 四动作 ──
+async function onScrollEdge(direction: "up" | "down") {
+  if (edgeLoading.value || !viewport.value) return;
+  const loaded = segments.value;
+  if (!loaded.length || !leafOrder.value.length) return;
+  const firstIdx = leafOrder.value.indexOf(loaded[0].lid);
+  const lastIdx = leafOrder.value.indexOf(loaded[loaded.length - 1].lid);
+  if (firstIdx < 0 || lastIdx < 0) return;
+  const count = Math.max(1, viewport.value.width);
+  const nextLids = direction === "down"
+    ? leafOrder.value.slice(lastIdx + 1, Math.min(lastIdx + 1 + count, leafOrder.value.length))
+    : leafOrder.value.slice(Math.max(0, firstIdx - count), firstIdx);
+  if (!nextLids.length) return;
+  const anchor = direction === "up"
+    ? readerPaneRef.value?.captureScrollAnchor(loaded.map((seg) => seg.lid)) ?? null
+    : null;
+  edgeLoading.value = true;
+  try {
+    banner.value = "";
+    if (!sourceFocus.value?.ranges) sourceFocus.value = null;
+    const next = await hydrateSegments(nextLids);
+    segments.value = mergeSegments(segments.value, next, direction === "down" ? "append" : "prepend");
+    if (direction === "up") await readerPaneRef.value?.restoreScrollAnchor(anchor);
+  } catch (e) {
+    fail(e);
+  } finally {
+    edgeLoading.value = false;
+  }
+}
+let readerNavigationRequest = 0;
+async function doGoto(lid: string, focusQuote?: string | null, restoreCurrent?: () => boolean): Promise<boolean> {
+  if (!lid) return false;
+  if (!restoreCurrent) readingContinuity.cancelRestore();
+  const request = ++readerNavigationRequest;
+  const contextKey = workspaceContextKey.value;
+  const current = () => !disposed && request === readerNavigationRequest && contextKey === workspaceContextKey.value && (restoreCurrent?.() ?? true);
+  readerPaneRef.value?.cancelTypographyRestore();
+  try {
+    banner.value = "";
+    sourceFocus.value = focusQuote === undefined ? null : { lid, quote: focusQuote };
+    const gotoEffect = await api.goto(lid);
+    if (!current()) return false;
+    outlineNavigationLid.value = lid;
+    const navigationTargetLid = resolveReaderNavigationTarget(lid, leafOrder.value)
+      ?? gotoEffect.viewport.top_lid;
+    await loadWindow(gotoEffect.viewport, "replace", navigationTargetLid, current);
+    if (!current()) return false;
+    queuePaperSelection(lid);
+    if (activeReaderSurface.value === "pdf" && !hasMappedPdfNavigationTarget(
+      lid,
+      navigationTargetLid,
+      pdfMappedLids.value,
+    )) {
+      banner.value = `PDF 暂无 ${navigationTargetLid} 的可靠定位，已保留当前 PDF 页面。`;
+    }
+    await loadPaperProjectionData();
+    gotoInput.value = "";
+    return true;
+  } catch (e) {
+    if (!current()) return false;
+    if (outlineNavigationLid.value === lid) outlineNavigationLid.value = null;
+    fail(e);
+    return false;
+  }
+}
+let openingMcpSource = false;
+watch(() => [recapProps.mcpSource, appSurface.value] as const, async ([source, surface]) => {
+  if (!source || surface !== 'reader' || openingMcpSource || !sourceManifestTree.value) return;
+  openingMcpSource = true;
+  const current = () => !disposed && recapProps.mcpSource === source && readerKey() === mountedReaderKey;
+  try {
+    const publication = network.value.workspace?.published_book_ref;
+    if (!publication || publication.book_id !== source.published_book_ref.book_id
+      || publication.publication_id !== source.published_book_ref.publication_id) throw new Error('来源材料版本不匹配。');
+    const target = resolveMcpSource(source, sourceManifestTree.value);
+    // Canonical UTF-16 citations open on the canonical text surface, including PDF materials.
+    readerSurfacePreference.value = 'markdown';
+    await nextTick();
+    if (!current()) return;
+    workspaceRef.value?.showReader();
+    if (!await doGoto(target.lid, undefined, current)) throw new Error('来源定位未完成，请重试。');
+    if (!current()) return;
+    sourceFocus.value = { lid: target.lid, quote: null, ranges: target.ranges };
+    await nextTick();
+    await readerPaneRef.value?.scrollSourceIntoView(target.lid);
+    if (current()) recapEmit('mcp-source-consumed');
+  } catch (failure) { if (current()) recapEmit('mcp-source-error', errorMessage(failure)); }
+  finally { openingMcpSource = false; }
+}, { flush: 'post' });
+
+async function selectReaderSurface(surface: ReaderSurface) {
+  if (surface === activeReaderSurface.value) return;
+  if (surface === "pdf" && !pdfReaderAvailable.value) {
+    banner.value = "当前来源没有可用的 PDF 阅读表面。";
+    return;
+  }
+  const previous = activeReaderSurface.value;
+  const markdownAnchor = previous === "markdown"
+    ? readerPaneRef.value?.captureScrollAnchor(segments.value.map((segment) => segment.lid)) ?? null
+    : null;
+  const pdfAnchor = previous === "pdf" ? pdfReaderPaneRef.value?.captureReadingAnchor() ?? null : null;
+  if (previous === 'pdf') previousPdfAnchor.value = pdfAnchor;
+  hlPopover.value = null;
+  window.getSelection()?.removeAllRanges();
+  cancelPdfSelectionDraftFor("reader-surface-switch");
+  readerSurfacePreference.value = surface;
+  const identity = readerSurfaceIdentity.value;
+  if (identity) {
+    try { writeReaderSurfacePreference(window.localStorage, identity, surface); } catch { /* Device preference remains in memory. */ }
+  }
+  await nextTick();
+  if (surface === "pdf") {
+    const lid = markdownAnchor?.lid ?? readingAnchorLid.value;
+    if (lid && !hasMappedPdfNavigationTarget(lid, lid, pdfMappedLids.value)) {
+      banner.value = `PDF 暂无 ${lid} 的可靠定位，已保留当前 PDF 页面。`;
+    }
+    return;
+  }
+  const lid = pdfAnchor?.anchorLid;
+  if (!lid) {
+    banner.value = "当前 PDF 位置没有可靠的 Markdown 映射，已保留此前正文读位。";
+    return;
+  }
+  if (segments.value.some((segment) => segment.lid === lid)) {
+    await readerPaneRef.value?.scrollLidIntoView(lid);
+  } else if (await doGoto(lid)) {
+    await readerPaneRef.value?.scrollLidIntoView(lid);
+  }
+}
+async function focusSource(source: { lid: string; quote: string | null; memId?: string }) {
+  await openSourcePreview(source, 'notes', source.memId);
+}
+function focusLocalSource(source: { lid: string; quote: string | null }) {
+  void openSourcePreview(source, 'reader');
+}
+function sourcePreviewCenterLid(lid: string): string {
+  return resolveReaderNavigationTarget(lid, leafOrder.value) ?? lid;
+}
+function sourcePreviewLids(centerLid: string): string[] {
+  const idx = leafOrder.value.indexOf(centerLid);
+  if (idx < 0) return [centerLid];
+  const before = 3;
+  const after = 3;
+  return leafOrder.value.slice(Math.max(0, idx - before), Math.min(leafOrder.value.length, idx + after + 1));
+}
+function errorMessage(e: unknown): string {
+  if (e instanceof ApiError) return `[${e.category}] ${e.errorCode}: ${e.message}`;
+  return String(e);
+}
+async function centerSourcePreview() {
+  await nextTick();
+  const body = sourcePreviewBodyRef.value;
+  const target =
+    body?.querySelector<HTMLElement>(".source-focus-mark") ??
+    body?.querySelector<HTMLElement>(".source-preview-text");
+  target?.scrollIntoView({ block: "center" });
+}
+let sourcePreviewSequence = 0;
+let sourcePreviewReturn: ReadingReturnPoint | null = null;
+let sourcePreviewTrigger: HTMLElement | null = null;
+async function openSourcePreview(source: SourceFocus, origin: 'reader' | 'notes' = 'reader', memId?: string) {
+  const sequence = ++sourcePreviewSequence;
+  const contextKey = workspaceContextKey.value;
+  sourcePreviewReturn = { ...captureReadingReturnPoint(''), origin, memId };
+  sourcePreviewTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const centerLid = sourcePreviewCenterLid(source.lid);
+  const focus: SourceFocus = { lid: centerLid, quote: source.quote };
+  sourcePreview.value = { focus, segments: [], loading: true, error: null };
+  try {
+    banner.value = "";
+    const previewSegments = await hydrateSegments(sourcePreviewLids(centerLid));
+    if (disposed || sequence !== sourcePreviewSequence || contextKey !== workspaceContextKey.value) return;
+    sourcePreview.value = { focus, segments: previewSegments, loading: false, error: null };
+    await centerSourcePreview();
+    document.querySelector<HTMLButtonElement>('.source-preview-actions [aria-label="关闭来源预览"]')?.focus({ preventScroll: true });
+  } catch (e) {
+    if (!disposed && sequence === sourcePreviewSequence && contextKey === workspaceContextKey.value) sourcePreview.value = { focus, segments: [], loading: false, error: errorMessage(e) };
+  }
+}
+function closeSourcePreview() {
+  sourcePreviewSequence++;
+  sourcePreviewReturn = null;
+  sourcePreview.value = null;
+  if (sourcePreviewTrigger?.isConnected) sourcePreviewTrigger.focus({ preventScroll: true });
+  sourcePreviewTrigger = null;
+}
+async function openSourceInReader() {
+  const focus = sourcePreview.value?.focus;
+  if (!focus) return;
+  const point = sourcePreviewReturn;
+  closeSourcePreview();
+  workspaceRef.value?.showReader();
+  if (await doGoto(focus.lid, focus.quote) && point?.contextKey === workspaceContextKey.value) {
+    readingContinuity.push(point);
+    updateReadingReturn();
+  }
+}
+const pdfSelectionSession = usePdfSelectionDraft((capture) =>
+  api.pdfSelectionResolve({ rects: capture.rects, raw_quote: capture.raw_quote }),
+);
+const pdfSelectionTranslation = usePdfSelectionTranslation((request) =>
+  api.pdfSelectionTranslate(request),
+);
+const pdfSelectionState = pdfSelectionSession.state;
+const pdfSelectionTranslationState = pdfSelectionTranslation.state;
+const pdfSelectionCapabilities = computed(() => getPdfSelectionCapabilities(
+  pdfSelectionState.value.draft?.status ?? "unresolved",
+  pdfSelectionState.value.draft?.diagnostic,
+));
+const showPdfTranslationSettings = computed(() =>
+  desktopHost.value
+  && pdfSelectionTranslationState.value.error?.error_code === "TRANSLATION_PROVIDER_UNCONFIGURED",
+);
+const pdfReselectTarget = ref<{
+  kind: "note" | "highlight";
+  record: MemoryRecord;
+} | null>(null);
+const pdfSelectionToolbarStyle = computed(() => {
+  const rect = pdfSelectionState.value.capture?.screen_rect;
+  if (!rect) return {};
+  const center = (rect.left + rect.right) / 2;
+  return {
+    left: `clamp(178px, ${center}px, calc(100vw - 178px))`,
+    top: `${Math.max(8, rect.top - 48)}px`,
+  };
+});
+
+function onPdfSelectionCapture(capture: PdfSelectionCapture) {
+  pdfSelectionTranslation.invalidate("selection");
+  void pdfSelectionSession.capture(capture);
+}
+
+function cancelPdfSelectionDraftFor(reason: PdfSelectionTranslationInvalidation) {
+  pdfSelectionTranslation.invalidate(reason);
+  pdfSelectionSession.cancel();
+  pdfReselectTarget.value = null;
+}
+
+function cancelPdfSelectionDraft() {
+  cancelPdfSelectionDraftFor("close");
+}
+
+function onReaderViewportInteraction() {
+  readerNavigationRequest++;
+  readerPaneRef.value?.cancelTypographyRestore();
+  readingContinuity.cancelRestore();
+  clearOutlineNavigation();
+  const interaction = readerInteractionRevision;
+  if (residentRun.active.value) manualReaderBoundary = api.state().then(state => { if (readerInteractionRevision === interaction) manualReaderState = state; }).catch(fail);
+}
+function onPdfViewportInteraction() {
+  pdfSelectionTranslation.invalidate("viewport");
+  onReaderViewportInteraction();
+}
+
+function translatePdfSelection() {
+  const draft = pdfSelectionState.value.draft;
+  if (
+    !draft
+    || !getPdfSelectionCapabilities(draft.status).canTranslate
+    || pdfSelectionTranslationState.value.phase === "loading"
+  ) return;
+  void pdfSelectionTranslation.start(draft);
+}
+
+function closePdfSelectionTranslation() {
+  pdfSelectionTranslation.invalidate("close");
+}
+
+function retryPdfSelectionTranslation() {
+  void pdfSelectionTranslation.retry();
+}
+
+async function copyPdfSelectionTranslation(markdown: string) {
+  try {
+    await navigator.clipboard.writeText(markdown);
+    banner.value = "译文已复制";
+  } catch (error) {
+    fail(error);
+  }
+}
+
+function selectionContextOf(draft: PdfSelectionDraft): SelectionContext {
+  return {
+    status: draft.status,
+    ...(draft.resolution_basis ? { resolution_basis: draft.resolution_basis } : {}),
+    raw_quote: draft.raw_quote,
+    resolved_quote: draft.resolved_quote,
+    ranges: draft.ranges,
+  };
+}
+
+function completePdfSelectionAction() {
+  pdfSelectionTranslation.invalidate("existing-action");
+  pdfSelectionSession.complete();
+  pdfReselectTarget.value = null;
+  window.getSelection()?.removeAllRanges();
+}
+
+function reselectPdfNote(note: MemoryRecord) {
+  if (!note.selection_context && note.note_placement?.kind === "pdf_region") {
+    void startNotePlacement(note);
+    return;
+  }
+  pdfSelectionTranslation.invalidate("existing-action");
+  pdfSelectionSession.cancel();
+  pdfReselectTarget.value = { kind: "note", record: note };
+  banner.value = "重新框选 PDF 文字后选择“笔记”；保存成功前原位置保持不变。";
+}
+
+function reselectPdfHighlight(highlight: MemoryRecord) {
+  pdfSelectionTranslation.invalidate("existing-action");
+  pdfSelectionSession.cancel();
+  pdfReselectTarget.value = { kind: "highlight", record: highlight };
+  banner.value = "重新框选 PDF 文字后选择“高亮”；新范围保存成功前原高亮保持不变。";
+}
+
+// ── 自由选区:可跨多个 LID,高亮按 LID 拆 range;Note/Ask AI 锚到起点 LID `[ADR-0031]` ──
+interface MarkdownSelectedRange {
+  lid: string;
+  start: number;
+  end: number;
+}
+interface MarkdownSelectionPopover {
+  contextKey: string;
+  x: number;
+  y: number;
+  anchorLid: string;
+  ranges: MarkdownSelectedRange[];
+  text: string;
+  resolvedText: string;
+}
+const hlPopover = ref<MarkdownSelectionPopover | null>(null);
+
+function lidElementOf(node: Node | null): HTMLElement | null {
+  const el = node && node.nodeType === 3 ? node.parentElement : (node as HTMLElement | null);
+  return el ? el.closest("[data-lid]") : null;
+}
+
+function selectedRangesForElement(el: HTMLElement, range: Range, startEl: HTMLElement, endEl: HTMLElement): MarkdownSelectedRange[] {
+  const lid = el.getAttribute("data-lid") ?? "";
+  const seg = lid ? segmentByLid.value.get(lid) : null;
+  if (!lid || !seg) return [];
+
+  if (seg.kind === "formula") {
+    return seg.text.length > 0 ? [{ lid, start: 0, end: seg.text.length }] : [];
+  }
+
+  const display = displayText(seg);
+  const localRange = document.createRange();
+  localRange.selectNodeContents(el);
+  if (el === startEl) localRange.setStart(range.startContainer, range.startOffset);
+  if (el === endEl) localRange.setEnd(range.endContainer, range.endOffset);
+  return createMarkdownDomSourceMap(display.text, el)
+    .sourceRangesForRange(localRange)
+    .map(({ start, end }) => ({
+      lid,
+      start: clampRange(display.offset + start, seg.text.length),
+      end: clampRange(display.offset + end, seg.text.length),
+    }))
+    .filter(({ start, end }) => end > start);
+}
+
+function selectionRanges(range: Range): MarkdownSelectedRange[] {
+  const startEl = lidElementOf(range.startContainer);
+  const endEl = lidElementOf(range.endContainer);
+  if (!startEl || !endEl) return [];
+  const root = startEl.closest(".prose");
+  if (!root || !root.contains(endEl)) return [];
+
+  return Array.from(root.querySelectorAll<HTMLElement>("[data-lid]"))
+    .filter((el) => range.intersectsNode(el))
+    .flatMap((el) => selectedRangesForElement(el, range, startEl, endEl));
+}
+
+function resolvedSelectionQuote(ranges: MarkdownSelectedRange[]): string {
+  return ranges
+    .map(({ lid, start, end }) => segmentByLid.value.get(lid)?.text.slice(start, end) ?? "")
+    .join("");
+}
+
+function onSelectSeg(lid: string) {
+  selectedLid.value = lid;
+  currentReadingLid.value = lid;
+  sourceFocus.value = null;
+  queuePaperSelection(lid);
+}
+
+function onMarkdownNotePlacementInvalid() {
+  if (notePlacementState.value.phase === "placing") {
+    banner.value = "这里不是可放置的正文目标，请点选真实正文块。";
+  }
+}
+
+function notePlacementBookIsCurrent(saving: SavingNotePlacement): boolean {
+  return buildWorkbenchSnapshot.value?.book_id === saving.original_book_id;
+}
+
+async function handleExplicitNotePlacementFailure(
+  saving: SavingNotePlacement,
+  error: ApiError,
+) {
+  if (!notePlacementBookIsCurrent(saving)) {
+    notePlacementController.saveFailed(error);
+    notePlacementController.cancel();
+    return;
+  }
+  let records: MemoryRecord[] | null = null;
+  try {
+    records = await refreshAnnotations();
+  } catch {
+    // The mutation response is authoritative; a failed refresh must not change its classification.
+  }
+  if (!notePlacementBookIsCurrent(saving)) {
+    notePlacementController.saveFailed(error);
+    notePlacementController.cancel();
+    return;
+  }
+  notePlacementController.saveFailed(error);
+  if (saving.record && records && !records.some((record) => record.mem_id === saving.record?.mem_id)) {
+    notePlacementController.cancel();
+    banner.value = "这条 Note 已被其他操作更新，请从最新笔记重新发起放置。";
+    return;
+  }
+  if (error.errorCode === "STALE_NOTE_SOURCE" || error.errorCode === "STALE_PDF_NOTE_PLACEMENT") {
+    try {
+      const source = await api.sourceFingerprint();
+      const nextPdfMap = saving.surface_kind === "pdf" ? await api.pdfSourceMap() : null;
+      if (!notePlacementBookIsCurrent(saving)
+        || source.book_id !== saving.original_book_id
+        || notePlacementSurface.value !== saving.surface_kind
+        || (saving.surface_kind === "pdf" && nextPdfMap?.book_id !== source.book_id)) {
+        notePlacementController.cancel();
+        return;
+      }
+      if (nextPdfMap) pdfSourceMap.value = nextPdfMap;
+      if (saving.draft) {
+        noteSourceFingerprint.value = source.source_fingerprint;
+        notePlacementController.createDraft({
+          ...saving.draft,
+          source_fingerprint: source.source_fingerprint,
+        });
+      } else if (saving.record && records) {
+        const authoritative = records.find((record) => record.mem_id === saving.record?.mem_id);
+        if (authoritative) {
+          noteSourceFingerprint.value = source.source_fingerprint;
+          notePlacementController.startRecord({
+            record: authoritative,
+            book_id: source.book_id,
+            surface_kind: saving.surface_kind,
+            source_fingerprint: source.source_fingerprint,
+          });
+        }
+      }
+    } catch {
+      // Keep the prior placing session; reopening the book will refresh the source identity.
+    }
+  }
+  fail(error);
+}
+
+async function reconcileUncertainNotePlacement(
+  saving: SavingNotePlacement,
+  error: unknown,
+) {
+  notePlacementController.reconcileRequired(errorMessage(error));
+  if (!notePlacementBookIsCurrent(saving)) {
+    notePlacementController.reconciled("missing");
+    return;
+  }
+  let records: MemoryRecord[];
+  try {
+    records = await refreshAnnotations();
+  } catch (refreshError) {
+    if (!notePlacementBookIsCurrent(saving)) {
+      notePlacementController.reconciled("missing");
+      return;
+    }
+    notePlacementController.reconciled("retry");
+    fail(refreshError);
+    return;
+  }
+  if (!notePlacementBookIsCurrent(saving)) {
+    notePlacementController.reconciled("missing");
+    return;
+  }
+  const reconciliation = saving.draft
+    ? reconcilePlacedNoteCreate(saving.draft, saving.target, records)
+    : saving.record
+      ? reconcilePlacedNoteReanchor(saving.record, saving.target, records)
+      : { outcome: "missing" as const };
+  notePlacementController.reconciled(reconciliation.outcome);
+  if (reconciliation.outcome === "committed") {
+    selectedLid.value = saving.target.lid;
+    banner.value = saving.subject.kind === "record"
+      ? "已从磁盘确认 Note 的新正文位置。"
+      : "已从磁盘确认 Note 保存成功。";
+  } else if (reconciliation.outcome === "retry") {
+    banner.value = "未确认写入成功，已保留放置内容；请重新选择正文目标。";
+  } else {
+    banner.value = "原 Note 已被其他操作更新，请从最新笔记重新发起放置。";
+  }
+}
+
+function sameNotePlacement(left: NoteBodyPlacement | null | undefined, right: NoteBodyPlacement): boolean {
+  if (!left || left.kind !== right.kind) return false;
+  if (left.kind === "lid_block" && right.kind === "lid_block") {
+    return left.source_fingerprint === right.source_fingerprint && left.lid === right.lid;
+  }
+  if (left.kind !== "pdf_region" || right.kind !== "pdf_region") return false;
+  return left.source_fingerprint === right.source_fingerprint
+    && left.lid === right.lid
+    && left.source_map_version === right.source_map_version
+    && left.source_map_config_hash === right.source_map_config_hash
+    && left.page_index === right.page_index
+    && left.region_id === right.region_id;
+}
+
+async function submitNotePlacementTarget(placement: NoteBodyPlacement) {
+  const current = notePlacementState.value;
+  if (current.phase !== "placing"
+    || placement.source_fingerprint !== current.source_fingerprint
+    || (current.surface_kind === "markdown" && placement.kind !== "lid_block")
+    || (current.surface_kind === "pdf" && placement.kind !== "pdf_region")) return;
+  if (sameNotePlacement(current.record?.note_placement, placement)) {
+    banner.value = "这条 Note 已在该正文位置，请选择其他目标。";
+    return;
+  }
+  const saving = notePlacementController.beginSaving(placement);
+  if (!saving) return;
+  try {
+    const result = saving.draft
+      ? await createPlacedNote(saving.draft, placement, {
+          save: (input) => api.save(input),
+          promote: (memId) => api.promote(memId),
+        })
+      : saving.record
+        ? await reanchorPlacedNote(saving.record, placement, {
+            reanchor: (memId, nextPlacement) => api.reanchor(memId, nextPlacement),
+          })
+        : null;
+    notePlacementController.saveSucceeded();
+    if (!result || !notePlacementBookIsCurrent(saving)) return;
+    if (saving.record && 'mem_id' in result) {
+      rightRailRef.value?.replaceMemory?.(saving.record.mem_id, result);
+      annotations.value = annotations.value.map(record => record.mem_id === saving.record!.mem_id ? result : record);
+    }
+    try {
+      await refreshAnnotations();
+    } catch (refreshError) {
+      if (!notePlacementBookIsCurrent(saving)) return;
+      fail(refreshError);
+      return;
+    }
+    if (!notePlacementBookIsCurrent(saving)) return;
+    selectedLid.value = placement.lid;
+    banner.value = saving.subject.kind === "record"
+      ? saving.record?.note_placement
+        ? "Note 已移动到新的正文位置。"
+        : "旧 Note 已放置到正文。"
+      : "promoted" in result && result.promoted
+        ? "已将 Agent 提议提升为长期 Note。"
+        : "status" in result && result.status === "EXISTING"
+          ? "这条 Note 已存在。"
+          : "Note 已放置到正文。";
+  } catch (error) {
+    if (error instanceof ApiError) {
+      await handleExplicitNotePlacementFailure(saving, error);
+    } else {
+      await reconcileUncertainNotePlacement(saving, error);
+    }
+  }
+}
+
+async function onMarkdownNotePlacementTarget(target: { lid: string }) {
+  const current = notePlacementState.value;
+  if (current.phase !== "placing" || current.surface_kind !== "markdown") return;
+  await submitNotePlacementTarget({
+    kind: "lid_block",
+    source_fingerprint: current.source_fingerprint,
+    lid: target.lid,
+  });
+}
+
+async function onPdfNotePlacementTarget(target: { entry: PdfSourceMapEntry; region: PdfRegion }) {
+  const current = notePlacementState.value;
+  const map = pdfSourceMap.value;
+  if (current.phase !== "placing" || current.surface_kind !== "pdf" || !map) return;
+  const targetIsCurrent = map.entries.some((entry) =>
+    entry.lid === target.entry.lid
+    && entry.regions.some((region) =>
+      region.pageIndex === target.region.pageIndex
+      && region.region_id === target.region.region_id
+      && region.bbox.every((coordinate, index) => coordinate === target.region.bbox[index])));
+  if (!targetIsCurrent || map.book_id !== current.book_id) {
+    banner.value = "PDF 映射已变化，请重新选择正文区域。";
+    return;
+  }
+  await submitNotePlacementTarget({
+    kind: "pdf_region",
+    source_fingerprint: current.source_fingerprint,
+    lid: target.entry.lid,
+    source_map_version: map.version,
+    source_map_config_hash: map.config_hash,
+    page_index: target.region.pageIndex,
+    region_id: target.region.region_id,
+  });
+}
+
+function onCurrentLid(lid: string) {
+  currentReadingLid.value = lid;
+}
+
+function clearOutlineNavigation() {
+  readerInteractionRevision++;
+  outlineNavigationLid.value = null;
+}
+
+function openFormulaDialog(seg: Segment) {
+  if (!seg.formula) return;
+  selectedLid.value = seg.lid;
+  currentReadingLid.value = seg.lid;
+  sourceFocus.value = null;
+  formulaDialog.value = seg;
+}
+
+function closeFormulaDialog() {
+  formulaDialog.value = null;
+}
+
+
+function onProseSelection(snapshot: ReaderSelectionSnapshot | null) {
+  if (!snapshot) {
+    sourceFocus.value = null;
+    hlPopover.value = null;
+    return;
+  }
+  const range = snapshot.range;
+  const ranges = selectionRanges(range);
+  if (ranges.length === 0) {
+    hlPopover.value = null;
+    return;
+  }
+  const quote = rangeToMarkdown(range);
+  const resolvedQuote = resolvedSelectionQuote(ranges);
+  if (!quote.trim() || !resolvedQuote.trim()) {
+    hlPopover.value = null;
+    return;
+  }
+  const rect = snapshot.rect;
+  hlPopover.value = {
+    contextKey: workspaceContextKey.value,
+    x: rect.left + rect.width / 2,
+    y: rect.top,
+    anchorLid: ranges[0].lid,
+    ranges,
+    text: quote,
+    resolvedText: resolvedQuote,
+  };
+}
+async function confirmHighlight() {
+  const p = hlPopover.value;
+  if (!p || p.contextKey !== workspaceContextKey.value) {
+    hlPopover.value = null;
+    return;
+  }
+  try {
+    banner.value = "";
+    const groupId = p.ranges.length > 1 ? newHighlightGroupId() : undefined;
+    await Promise.all(p.ranges.map((r) => api.highlight(r.lid, { start: r.start, end: r.end }, groupId)));
+    selectedLid.value = p.anchorLid;
+    hlPopover.value = null;
+    window.getSelection()?.removeAllRanges();
+    await refreshAnnotations();
+  } catch (e) {
+    fail(e);
+  }
+}
+function markdownSelectionContext(popover: MarkdownSelectionPopover): SelectionContext {
+  return {
+    status: "resolved",
+    resolution_basis: "exact",
+    raw_quote: popover.text,
+    resolved_quote: popover.resolvedText,
+    ranges: popover.ranges.map((range) => ({
+      lid: range.lid,
+      range: { start: range.start, end: range.end },
+    })),
+  };
+}
+function noteSelection() {
+  const p = hlPopover.value;
+  if (!p || p.contextKey !== workspaceContextKey.value) {
+    hlPopover.value = null;
+    return;
+  }
+  hlPopover.value = null;
+  openNewNote(p.anchorLid, "", markdownSelectionContext(p));
+}
+function askSelection(direct = false) {
+  const p = hlPopover.value;
+  if (!p || p.contextKey !== workspaceContextKey.value) {
+    hlPopover.value = null;
+    return;
+  }
+  const quote = p.text.replace(/\s+/g, " ").trim();
+  if (!quote) return;
+  const draft = { lid: p.anchorLid, quote, ...markdownSelectionContext(p) };
+  if (direct) {
+    hlPopover.value = null;
+    window.getSelection()?.removeAllRanges();
+    void explainSelection(draft);
+    return;
+  }
+  askDraft.value = draft;
+  selectedLid.value = p.anchorLid;
+  agentInput.value = "";
+  hlPopover.value = null;
+  window.getSelection()?.removeAllRanges();
+  workspaceRef.value?.showAssistant("agent");
+}
+function clearAskDraft() {
+  askDraft.value = null;
+}
+
+// ── agent 对话区(外层 E agent 主入口)`[ADR-0030]` ──
+interface ChatTurn {
+  hasTeaching?: boolean;
+  interaction?: import("./generated/ResolvedInteraction").ResolvedInteraction | null;
+  spendStop?: SpendNotice;
+  teachingRef?: string | null;
+  presentationFollowUp?: import('./generated/PresentationFollowUp').PresentationFollowUp | null;
+  turnId: string | null;
+  user: string;
+  outcome: OuterOutcome | null;
+  pending: boolean;
+  error?: string;
+  questionAnchorLid: string | null;
+  questionQuote: AgentQuestionQuoteView | null;
+  questionSelection: AskDraft | null;
+  dispositions?: Record<string, EffectDisposition>;
+  liveEffects?: { effect_id: string; effect: AgentEffect }[];
+  effectLabels: string[];
+  activities?: RunActivity[];
+  runTrace?: TraceStep[];
+  runStatus?: string;
+  draft?: import("./agent-run-state").AnswerDraft | null;
+  submissionUnknown?: boolean;
+}
+interface UnknownSubmissionRecord extends UnknownSubmissionAudit {
+  turn: ChatTurn;
+}
+type AskDraft = AskQuote;
+const chat = ref<ChatTurn[]>([]);
+const chatSessions = ref<AgentChatSessionSummary[]>([]);
+const chatGoals = ref<ResidentGoal[]>([]);
+const targetGoalId = ref<string | null>(recapProps.chatDraft?.goalId ?? null);
+const activeChatSessionId = ref("");
+const agentHistoryLoading = ref(true);
+const agentHistoryError = ref<string | null>(null);
+let startupHistoryRequestSeq = 0;
+const agentInput = ref(recapProps.chatDraft?.message ?? "");
+const tutor = useTutorControl();
+const tutorPanelOpen = ref(false);
+const tutorPanelView = ref<'current' | 'understanding' | 'history'>('current');
+function openTutorPanel(view: 'current' | 'understanding' | 'history' = 'current') {
+  tutorPanelView.value = view;
+  tutorPanelOpen.value = true;
+}
+const presentationWorkspace = ref<import('./presentation-workspace').PresentationWorkspace | null>(null);
+watch(() => [recapProps.recapTarget, agentHistoryLoading.value, rightRailRef.value] as const, async ([target, loading, rail]) => {
+  if (!target || loading || !rail) return;
+  recapEmit('recap-consumed');
+  try {
+    if (target.session_id !== activeChatSessionId.value) applyAgentHistory(await api.agentHistorySelect(target.session_id));
+    await nextTick();
+    workspaceRef.value?.showAssistant('agent');
+    await rightRailRef.value?.openRecapTarget(target);
+  } catch (failure) { fail(failure); }
+});
+const askDraft = ref<AskDraft | null>(recapProps.chatDraft?.quote ?? null);
+watch([agentInput, askDraft, targetGoalId], ([message, quote, goalId]) => {
+  if (!disposed) recapEmit('update:chatDraft', { message, quote, goalId });
+}, { flush: 'sync' });
+const unknownSubmissionsBySession = new Map<string, UnknownSubmissionRecord[]>();
+const workspaceAuxTab = ref<WorkspaceAuxTab | null>(null);
+const workspaceAuxTabRevision = ref(0);
+const agentFullscreen = ref(false);
+const agentFullscreenSuspendedForSource = ref(false);
+const mobileWorkspaceEnabled = import.meta.env.VITE_MOBILE_WORKSPACE !== "0";
+const noteMaterialKey = computed(() => `${network.value.enabled ? readerKey() : 'local'}:${buildWorkbenchSnapshot.value?.book_id ?? 'no-book'}`);
+const shareDraft = ref<{ source: ShareSource; loading: boolean } | null>(null);
+let shareReturnFocus: HTMLElement | null = null;
+let shareOperation = 0;
+provide(sharePresentationKey, async load => {
+  const operation = ++shareOperation, scope = noteMaterialKey.value, chatId = activeChatSessionId.value;
+  const target = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const source = await load();
+  if (disposed || operation !== shareOperation || scope !== noteMaterialKey.value || chatId !== activeChatSessionId.value) return;
+  shareReturnFocus = target; shareDraft.value = { source, loading: false };
+});
+function closeShare() {
+  shareOperation++;
+  shareDraft.value = null;
+  const target = shareReturnFocus; shareReturnFocus = null;
+  void nextTick(() => { if (target?.isConnected) target.focus({ preventScroll: true }); });
+}
+provide(shareNoteKey, async (requested) => {
+  const record = annotations.value.find(record => record.mem_id === requested.mem_id && record.type === 'note');
+  if (!record) { banner.value = '这条笔记当前不可用，请重新打开笔记。'; return; }
+  const bookId = buildWorkbenchSnapshot.value?.book_id;
+  if (record.book_id !== bookId) return;
+  shareReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const labels = [...new Set((record.note?.source_bindings ?? []).map(source => source.label_snapshot).filter(Boolean))];
+  const association = record.note?.association.kind;
+  // Reanchoring an answer/presentation is a display position, not its original source.
+  const bodySource = !record.note || association === 'selection' || association === 'body_placement';
+  if (bodySource && record.anchor.lid) {
+    const placement = record.note_placement;
+    const entry = pdfEntryByLid.value.get(record.anchor.lid);
+    const pageIndex = placement?.kind === 'pdf_region' ? placement.page_index : entry?.primary_region?.pageIndex ?? entry?.regions[0]?.pageIndex;
+    const label = pageIndex !== undefined ? `第 ${pdfSourceMap.value?.pages.find(page => page.pageIndex === pageIndex)?.page_label ?? pageIndex + 1} 页`
+      : noteSourceLabels.value[record.mem_id];
+    if (label && label !== '来源未知' && !labels.includes(label)) labels.push(label);
+  }
+  const hasSource = labels.length > 0 || (bodySource && !!record.anchor.lid);
+  void beginShare(noteShareSource(record, hasSource ? labels : ['无已记录出处']), hasSource);
+});
+async function beginShare(source: ShareSource, hasSource = true) {
+  shareOperation++;
+  shareReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  shareDraft.value = { source, loading: hasSource };
+  if (!hasSource) return;
+  const scope = noteMaterialKey.value, chatId = activeChatSessionId.value;
+  const active = shareDraft.value;
+  const stillCurrent = () => !disposed && shareDraft.value === active && scope === noteMaterialKey.value && chatId === activeChatSessionId.value;
+  const bookId = buildWorkbenchSnapshot.value?.book_id;
+  let title = buildWorkbenchSnapshot.value?.input?.manifest?.display_title
+    || bookPickerBooks.value.find(book => book.book_id === bookId)?.name || '';
+  try {
+    const metadata = await api.paperMetadata();
+    if (!stillCurrent()) return;
+    title = metadata.title?.value || title;
+  } catch { if (!stillCurrent()) return; }
+  if (!stillCurrent()) return;
+  if (!title) {
+    try {
+      const library = await api.bookLibrary();
+      if (!stillCurrent()) return;
+      title = library.books.find(book => book.book_id === bookId)?.name ?? '';
+    } catch { if (!stillCurrent()) return; }
+  }
+  if (!stillCurrent()) return;
+  active.source.sources = [title ? `《${title}》` : '材料名称暂不可用', ...source.sources];
+  active.loading = false;
+}
+function excerptLabels(lids: string[]): string[] {
+  return [...new Set(lids.map(lid => {
+    const entry = pdfEntryByLid.value.get(lid);
+    const pages = entry?.regions.map(region => region.pageIndex) ?? [];
+    if (pages.length) return [...new Set(pages)].map(index => `第 ${pdfSourceMap.value?.pages.find(page => page.pageIndex === index)?.page_label ?? index + 1} 页`).join('、');
+    return chapterLabelForNote(lid);
+  }).filter(Boolean))];
+}
+function chapterLabelForNote(lid: string): string {
+  while (lid) {
+    const title = titleByLid.value.get(lid);
+    if (title) return stripMarkdownHeadingLine(title);
+    lid = lid.includes('.') ? lid.slice(0, lid.lastIndexOf('.')) : '';
+  }
+  return '来源位置暂不可用';
+}
+function shareSelection() {
+  const selected = hlPopover.value;
+  if (!selected || selected.contextKey !== workspaceContextKey.value) return;
+  void beginShare(excerptShareSource(selected.text, excerptLabels(selected.ranges.map(range => range.lid))));
+  hlPopover.value = null;
+}
+function sharePdfSelection() {
+  const draft = pdfSelectionState.value.draft;
+  if (!draft || draft.status !== 'resolved') return;
+  const pages = [...new Set(pdfSelectionState.value.capture?.rects.map(rect => rect.pageIndex) ?? [])];
+  const labels = pages.map(index => `第 ${pdfSourceMap.value?.pages.find(page => page.pageIndex === index)?.page_label ?? index + 1} 页`);
+  void beginShare(excerptShareSource(draft.raw_quote, labels.length ? labels : excerptLabels(draft.ranges.map(range => range.lid)), 'plain'));
+  pdfSelectionSession.cancel();
+}
+provide(shareHighlightKey, requested => {
+  const record = annotations.value.find(record => record.mem_id === requested.mem_id && record.type === 'highlight');
+  if (!record || record.book_id !== buildWorkbenchSnapshot.value?.book_id) return;
+  const members = highlightGroupMembers(record);
+  const pages = [...new Set(members.flatMap(member => pdfAnnotationProjection.value.highlights.find(highlight => highlight.mem_id === member.mem_id)?.rects.map(rect => rect.pageIndex) ?? []))];
+  const labels = pages.map(index => `第 ${pdfSourceMap.value?.pages.find(page => page.pageIndex === index)?.page_label ?? index + 1} 页`);
+  void beginShare(excerptShareSource(members.map(member => member.content).join('\n'), labels.length ? labels : excerptLabels(members.map(member => member.anchor.lid).filter((lid): lid is string => !!lid))));
+});
+watch([noteMaterialKey, activeChatSessionId], () => { shareOperation++; shareDraft.value = null; shareReturnFocus = null; }, { flush: 'sync' });
+watch(noteMaterialKey, clearNoteScope, { flush: 'sync' });
+function clearNoteScope() {
+  noteEditor.value = null; noteCollapsed.value = false; noteError.value = '';
+  annotations.value = [];
+  const pending = noteTransition.value; noteTransition.value = null; pending?.resolve(false);
+}
+function noteBeforeUnload(event: BeforeUnloadEvent) {
+  if (noteDirty.value || noteSaving.value) { event.preventDefault(); event.returnValue = ''; }
+}
+function collapseNoteOutside(event: PointerEvent) {
+  if (!noteEditor.value || noteTransition.value || noteCollapsed.value) return;
+  if (event.target instanceof Element && !event.target.closest('.note-editor-panel, .note-resume, .share-image-panel, [data-share-note]')) noteCollapsed.value = true;
+}
+const workspaceContextKey = computed(() => `${network.value.enabled ? sceneKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}:${activeChatSessionId.value || "no-chat"}`);
+const readerContextKey = computed(() => `${network.value.enabled ? readerKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}`);
+const chatSceneKey = computed(() => network.value.enabled ? sceneKey() : 'local');
+const workspaceLogicalState = computed<WorkspaceLogicalState>(() => ({
+  // Reader layout belongs to the book; recovering a chat must not replay saved focus.
+  contextKey: buildWorkbenchSnapshot.value?.book_id ?? "no-book",
+  revision: readerLayout.value?.rev ?? 0n,
+  activePreset: readerLayout.value?.active_preset ?? null,
+  openSlots: readerLayout.value?.open_slots ?? [],
+  focusedSlot: readerLayout.value?.focused_slot ?? null,
+}));
+const readingContinuity = createReadingContinuity();
+const returnToAnswerAvailable = ref(false);
+const readingReturnLabel = ref('返回回答');
+function updateReadingReturn() {
+  const point = readingContinuity.peek(workspaceContextKey.value);
+  returnToAnswerAvailable.value = !!point;
+  readingReturnLabel.value = point?.origin === 'reader' ? '返回阅读位置' : point?.origin === 'notes' ? '返回笔记' : '返回回答';
+}
+let pendingReadingReturnPoint: ReadingReturnPoint | null = null;
+watch(workspaceContextKey, (contextKey, previous) => {
+  previousPdfAnchor.value = null;
+  const recoveringFirstChat = previous === `${network.value.enabled ? sceneKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}:no-chat`;
+  if (!recoveringFirstChat) {
+    hlPopover.value = null;
+    window.getSelection()?.removeAllRanges();
+  }
+  closeSourcePreview();
+  pendingReadingReturnPoint = null;
+  readingContinuity.invalidateContext(contextKey);
+  updateReadingReturn();
+  agentFullscreenSuspendedForSource.value = false;
+});
+function toggleAgentFullscreen() {
+  agentFullscreen.value = !agentFullscreen.value;
+  agentFullscreenSuspendedForSource.value = false;
+}
+function requestWorkspaceTab(tab: WorkspaceAuxTab) {
+  // The foreground request runs before Vue hides the Reader on a narrow screen.
+  readerPaneRef.value?.captureScrollAnchor(segments.value.map(segment => segment.lid));
+  if (tab !== "agent") {
+    agentFullscreen.value = false;
+    agentFullscreenSuspendedForSource.value = false;
+  }
+  workspaceAuxTab.value = tab;
+  workspaceAuxTabRevision.value += 1;
+}
+function handleWorkspaceProjection(projection: WorkspaceProjection) {
+  if (projection.navigation === "desktop") mobileGlobalActionsOpen.value = false;
+}
+let displayReadingPoint: { point: ReadingReturnPoint; interaction: number; navigation: number } | null = null;
+async function preserveDisplayReadingPosition() {
+  // Repeated display-only changes keep the same source character. Recapturing
+  // the new line start would accumulate drift when returning to a narrow column.
+  const saved = displayReadingPoint;
+  const point = saved && saved.point.contextKey === workspaceContextKey.value
+    && saved.point.anchor?.surface === activeReaderSurface.value
+    && saved.interaction === readerInteractionRevision && saved.navigation === readerNavigationRequest
+    ? saved.point : captureReadingReturnPoint('');
+  displayReadingPoint = { point, interaction: readerInteractionRevision, navigation: readerNavigationRequest };
+  const token = readingContinuity.beginRestore(point.contextKey);
+  const current = () => !disposed && point.contextKey === workspaceContextKey.value && readingContinuity.isCurrent(token);
+  await nextTick();
+  if (!current() || !point.anchor) return;
+  if (point.anchor.surface === 'markdown') await readerPaneRef.value?.restoreScrollAnchor(point.anchor, current);
+  else await pdfReaderPaneRef.value?.restoreReadingAnchor(point.anchor);
+}
+function toggleNavigationOutline() {
+  if (mobileGlobalActionsOpen.value || focusReading.value) workspaceRef.value?.toggleOutline();
+  else leftRailOpen.value = !leftRailOpen.value;
+}
+const acceptingRun = ref(false);
+let submissionSequence = 0;
+const residentRun = useAgentRun((snapshot) => { void finishResidentRun(snapshot).catch(fail); });
+const sending = computed(() => acceptingRun.value || residentRun.active.value);
+const runConnection = computed(() => residentRun.connection.value);
+watch([residentRun.snapshot, residentRun.connection], ([snapshot]) => {
+  if (!snapshot || snapshot.descriptor.session_id !== activeChatSessionId.value) return;
+  const turn = chat.value.find(t => t.turnId === snapshot.descriptor.turn_id);
+  if (!turn) return;
+  turn.activities = snapshot.activities;
+  turn.liveEffects = snapshot.effects;
+  void syncResidentChanges(snapshot).catch(fail);
+  turn.draft = snapshot.draft;
+  turn.pending = snapshot.persistence_state === "pending";
+  turn.runStatus = runStatusText(snapshot, residentRun.connection.value);
+  if (snapshot.final_view) Object.assign(turn, chatTurnFromHistory(snapshot.final_view, turn), { runStatus: turn.runStatus });
+  if (snapshot.persistence_state === "failed") turn.error = snapshot.error ? runStatusText(snapshot, residentRun.connection.value) : "运行已结束，但结果未保存。已发生的阅读操作保留。";
+  turn.spendStop = spendNotice(snapshot.error ?? snapshot.final_view?.error, snapshot.persistence_state);
+  restoreAllowanceDraft(turn);
+}, { flush: "sync" });
+function restoreAllowanceDraft(turn: ChatTurn, rejectedDraft?: ChatDraft) {
+  const draft = rejectedDraft ?? (turn.turnId ? submittedRunDrafts.get(turn.turnId) : undefined);
+  if (draft && !turn.pending && !turn.spendStop && turn.turnId) submittedRunDrafts.delete(turn.turnId);
+  if (!turn.spendStop || !draft) return;
+  // A stopped request must not overwrite a newer question the reader is already drafting.
+  if (!agentInput.value && !askDraft.value) {
+    agentInput.value = draft.message;
+    askDraft.value = draft.quote;
+    targetGoalId.value = draft.goalId;
+  }
+  if (turn.turnId) submittedRunDrafts.delete(turn.turnId);
+}
+watch(() => submittedRunDrafts.size, () => { for (const turn of chat.value) restoreAllowanceDraft(turn); });
+const seenResidentEffects = new Set<string>();
+let residentReaderRevision = -1;
+let residentReaderTurn = "";
+function runOwnsCurrentScene(snapshot: RunSnapshot) {
+  if (!network.value.enabled) return true;
+  const w = network.value.workspace, d = snapshot.descriptor;
+  return !!w && d.workspace_id === w.workspace_id && d.workspace_generation === w.generation
+    && d.published_book_ref?.book_id === w.published_book_ref.book_id && d.published_book_ref?.publication_id === w.published_book_ref.publication_id;
+}
+async function syncResidentChanges(snapshot: RunSnapshot) {
+  if (!runOwnsCurrentScene(snapshot)) return;
+  const matches = () => snapshot.descriptor.book_id === buildWorkbenchSnapshot.value?.book_id && snapshot.descriptor.session_id === activeChatSessionId.value;
+  if (!matches()) return;
+  if (residentReaderTurn !== snapshot.descriptor.turn_id) { residentReaderTurn = snapshot.descriptor.turn_id; residentReaderRevision = -1; seenResidentEffects.clear(); }
+  let navigation = false;
+  for (const item of snapshot.effects ?? []) {
+    if (seenResidentEffects.has(item.effect_id)) continue;
+    seenResidentEffects.add(item.effect_id);
+    if (item.effect.kind === "Goto") navigation = true;
+    if (item.effect.kind === "LayoutProposal") pendingLayoutProposal.value = item.effect.proposal;
+    if (item.effect.kind === "PaperMinimap") lastPaperMinimapEffect.value = item.effect.effect;
+  }
+  const changed = snapshot.reader_state;
+  if (!changed || (changed.revision <= residentReaderRevision && !navigation)) return;
+  residentReaderRevision = changed.revision;
+  const interaction = readerInteractionRevision;
+  const stillCurrent = () => matches() && residentReaderTurn === snapshot.descriptor.turn_id && residentReaderRevision === changed.revision && readerInteractionRevision === interaction;
+  await manualReaderBoundary;
+  if (manualReaderState?.book_id === snapshot.descriptor.book_id && changed.revision <= manualReaderState.revision) return;
+  const current = await api.state();
+  if (!stillCurrent() || current.book_id !== snapshot.descriptor.book_id || current.revision !== changed.revision) return;
+  await applyReaderState(current);
+  if (!stillCurrent()) return;
+  if (navigation) await loadWindow(current.viewport, "replace", resolveReaderStateNavigationTarget(current.viewport.top_lid, current.selection, leafOrder.value), stillCurrent);
+  else await refreshAnnotations();
+  if (stillCurrent()) await loadPaperProjectionData(true);
+}
+async function retryResidentSave() {
+  const current = residentRun.snapshot.value;
+  if (!current) return;
+  try { await api.agentRunRetrySave(current.descriptor.turn_id); residentRun.forget(); residentRun.observe(current.descriptor); }
+  catch (error) { fail(error); }
+}
+async function stopResidentRun() {
+  try { await residentRun.cancel(); } catch (error) { fail(error); }
+}
+async function finishResidentRun(snapshot: RunSnapshot) {
+  if (snapshot.descriptor.session_id !== activeChatSessionId.value || snapshot.descriptor.book_id !== buildWorkbenchSnapshot.value?.book_id) return;
+  const outcome = runOwnsCurrentScene(snapshot) ? snapshot.final_view?.outcome : null;
+  const proposalEffect = outcome?.effects.find(effect => effect.kind === "LayoutProposal");
+  if (proposalEffect?.kind === "LayoutProposal") pendingLayoutProposal.value = proposalEffect.proposal;
+  const minimapEffect = [...(outcome?.effects ?? [])].reverse().find(effect => effect.kind === "PaperMinimap");
+  if (minimapEffect?.kind === "PaperMinimap") lastPaperMinimapEffect.value = minimapEffect.effect;
+  await refreshAnnotations();
+  if (snapshot.persistence_state === "saved" && snapshot.descriptor.session_id === activeChatSessionId.value) await refreshAgentHistory();
+  submittedRunDrafts.delete(snapshot.descriptor.turn_id);
+  window.dispatchEvent(new Event("tutor-state-changed"));
+  await refreshProfileSurface(true);
+  void tutor.load();
+}
+
+
+async function highlightPdfSelection() {
+  const ready = pdfSelectionState.value.draft;
+  if (!ready || ready.status !== "resolved") return;
+  const draft = pdfSelectionSession.beginAction();
+  if (!draft) return;
+  try {
+    banner.value = "";
+    const groupId = draft.ranges.length > 1 ? newHighlightGroupId() : undefined;
+    const created = await Promise.all(draft.ranges.map((selected) =>
+      api.highlight(selected.lid, selected.range, groupId),
+    ));
+    const reselect = pdfReselectTarget.value?.kind === "highlight" ? pdfReselectTarget.value.record : null;
+    if (reselect) {
+      try {
+        await Promise.all(highlightGroupMembers(reselect).map((record) => api.delete(record.mem_id)));
+      } catch (error) {
+        await Promise.allSettled(created.map((effect) => api.delete(effect.highlight_id)));
+        throw error;
+      }
+    }
+    selectedLid.value = draft.ranges[0]?.lid ?? selectedLid.value;
+    completePdfSelectionAction();
+    await refreshAnnotations();
+  } catch (error) {
+    pdfSelectionSession.actionFailed(error);
+    fail(error);
+  }
+}
+
+function notePdfSelection() {
+  const draft = pdfSelectionState.value.draft;
+  if (!draft || !getPdfSelectionCapabilities(draft.status).canNote || !draft.ranges[0]) return;
+  const first = draft.ranges[0];
+  const selectionContext = selectionContextOf(draft);
+  const reselect = pdfReselectTarget.value?.kind === "note" ? pdfReselectTarget.value.record : null;
+  if (reselect) {
+    void beginNote({ lid: first.lid, memId: reselect.mem_id, layer: reselect.layer,
+      content: reselect.content, selectionContext, legacy: !reselect.note,
+      excerpt: reselect.note?.retained_excerpt ? { kind: 'original', text: selectionContext.raw_quote } : null,
+      title: '重新选择原文' });
+  } else openNewNote(first.lid, '', selectionContext);
+  // The editor owns the immutable selection; later PDF selections are independent.
+  completePdfSelectionAction();
+}
+
+function askPdfSelection(direct = false) {
+  const ready = pdfSelectionState.value.draft;
+  if (!ready || !getPdfSelectionCapabilities(ready.status).canAsk) return;
+  const draft = pdfSelectionSession.beginAction();
+  const first = draft?.ranges[0];
+  if (!draft || !first) return;
+  const quote = draft.raw_quote.replace(/\s+/g, " ").trim();
+  const selectedDraft = {
+    lid: first.lid,
+    quote,
+    ranges: draft.ranges,
+    status: draft.status,
+    ...(draft.resolution_basis ? { resolution_basis: draft.resolution_basis } : {}),
+    raw_quote: draft.raw_quote,
+    resolved_quote: draft.resolved_quote,
+  };
+  if (direct) {
+    completePdfSelectionAction();
+    void explainSelection(selectedDraft);
+    return;
+  }
+  askDraft.value = selectedDraft;
+  selectedLid.value = first.lid;
+  agentInput.value = "";
+  completePdfSelectionAction();
+  workspaceRef.value?.showAssistant("agent");
+}
+const effectPending = ref<Record<string, boolean>>({});
+watch(chatSceneKey, () => {
+  if (disposed || readerKey() !== mountedReaderKey) return;
+  // First-question admission creates its chat before returning the accepted run.
+  const admittingFirstChat = !activeChatSessionId.value && acceptingRun.value;
+  residentRun.forget();
+  startupHistoryRequestSeq += 1;
+  activeChatSessionId.value = network.value.workspace?.selected_chat ?? '';
+  chatGoals.value = [];
+  targetGoalId.value = null;
+  effectPending.value = {};
+  presentationWorkspace.value = null;
+  pendingLayoutProposal.value = null;
+  agentHistoryError.value = null;
+  profileMemoryRequestSeq += 1;
+  profileMemoryLoading.value = false;
+  profileMemoryError.value = null;
+  void tutor.load();
+  if (!admittingFirstChat) {
+    submissionSequence += 1;
+    acceptingRun.value = false;
+    chat.value = [];
+    askDraft.value = null;
+    agentInput.value = '';
+  }
+}, { flush: 'sync' });
+function effState(ti: number, ei: number): string | undefined {
+  const turn = chat.value[ti];
+  const effect = turn?.outcome?.effects[ei];
+  if (!effect) return undefined;
+  const id = effectId(effect);
+  if (effectPending.value[`${turn.turnId}:${id}`]) return "正在处理";
+  return dispositionLabel(turn.dispositions?.[id], effect);
+}
+function localQuestionQuoteView(draft: AskDraft): AgentQuestionQuoteView {
+  return {
+    label: draft.status === "partial" ? "部分定位引用" : "引用来源",
+    quote: draft.quote,
+    status: draft.status,
+  };
+}
+
+function chatTurnFromHistory(turn: StoredAgentChatTurn, previous?: ChatTurn): ChatTurn {
+  const matchingPrevious = previous?.user === turn.user ? previous : undefined;
+  return {
+    spendStop: spendNotice(turn.error, turn.status === 'pending_assistant' ? 'pending' : 'saved'),
+    interaction: turn.domain?.interaction,
+    dispositions: Object.fromEntries((turn.domain?.effects ?? []).filter(e => e.disposition).map(e => [e.effect_id, e.disposition!])),
+    teachingRef: turn.teaching_ref,
+    hasTeaching: !!turn.domain?.teaching?.length,
+    presentationFollowUp: turn.presentation_follow_up,
+    turnId: turn.turn_id,
+    user: turn.user,
+    outcome: turn.outcome ?? null,
+    pending: turn.status === "pending_assistant",
+    error: turn.error
+      ? `[${turn.error.category}] ${turn.error.error_code}: ${turn.error.message}`
+      : undefined,
+    questionAnchorLid: matchingPrevious?.questionAnchorLid ?? null,
+    questionQuote: turn.question_quote ? { ...turn.question_quote } : null,
+    questionSelection: matchingPrevious?.questionSelection ?? null,
+    liveEffects: turn.run_summary?.effects.map(effect => ({ effect_id: effectId(effect), effect })),
+    effectLabels: [...turn.effect_labels],
+    activities: turn.run_summary?.activities ?? undefined,
+    runTrace: turn.run_summary?.trace,
+    runStatus: turn.status === "cancelled" ? "已停止" : undefined,
+  };
+}
+
+function applyAgentHistory(history: AgentHistoryResponse) {
+  if (residentRun.snapshot.value && residentRun.snapshot.value.descriptor.session_id !== history.current.id) residentRun.forget();
+  const previousChat = activeChatSessionId.value === history.active_session_id ? chat.value : [];
+  activeChatSessionId.value = history.active_session_id;
+  chatSessions.value = history.sessions;
+  chatGoals.value = history.current.goals ?? [];
+  if (!chatGoals.value.some(goal => goal.id === targetGoalId.value && goal.status === "open")) targetGoalId.value = null;
+  chat.value = history.current.turns.map((turn, index) => chatTurnFromHistory(turn, previousChat[index]));
+  for (const turn of chat.value) restoreAllowanceDraft(turn);
+  const unknown = unknownSubmissionsBySession.get(history.current.id) ?? [];
+  const unresolved = network.value.enabled ? [] : unknown.filter((record) => !submissionWasAccepted(record, {
+    sessionId: history.current.id,
+    turns: history.current.turns.map((turn) => ({ turnId: turn.turn_id, user: turn.user })),
+  }));
+  if (unresolved.length) {
+    chat.value.push(...unresolved.map((record) => record.turn));
+    unknownSubmissionsBySession.set(history.current.id, unresolved);
+  } else {
+    unknownSubmissionsBySession.delete(history.current.id);
+  }
+  effectPending.value = {};
+  const pending = history.current.turns.find(turn => turn.status === "pending_assistant");
+  if (pending && !(residentRun.snapshot.value?.descriptor.turn_id === pending.turn_id && residentRun.snapshot.value.persistence_state === "failed")) {
+    residentRun.observe({ book_id: history.current.book_id, session_id: history.current.id, turn_id: pending.turn_id });
+  }
+  const snapshot = residentRun.snapshot.value;
+  if (snapshot?.descriptor.session_id === history.current.id) {
+    const current = chat.value.find(turn => turn.turnId === snapshot.descriptor.turn_id);
+    if (current) {
+      current.activities = snapshot.activities;
+      current.draft = snapshot.draft;
+      current.pending = snapshot.persistence_state === "pending";
+      current.runStatus = runStatusText(snapshot, residentRun.connection.value);
+      if (snapshot.persistence_state === "failed") current.error = snapshot.error ? runStatusText(snapshot, residentRun.connection.value) : "运行已结束，但结果未保存。已发生的阅读操作保留。";
+      current.spendStop = spendNotice(snapshot.error ?? snapshot.final_view?.error, snapshot.persistence_state);
+      restoreAllowanceDraft(current);
+    }
+  }
+}
+
+async function refreshAgentHistory() {
+  applyAgentHistory(await api.agentHistory());
+}
+
+async function loadStartupHistory() {
+  const request = ++startupHistoryRequestSeq;
+  const bookId = buildWorkbenchSnapshot.value?.book_id;
+  agentHistoryLoading.value = true;
+  agentHistoryError.value = null;
+  try {
+    const history = await api.agentHistory();
+    if (request !== startupHistoryRequestSeq) return;
+    if (history.current.book_id !== bookId) throw new Error("对话所属书籍已变化，请重试");
+    applyAgentHistory(history);
+  } catch (error) {
+    if (request === startupHistoryRequestSeq) agentHistoryError.value = errorMessage(error);
+  } finally {
+    if (request === startupHistoryRequestSeq) agentHistoryLoading.value = false;
+  }
+}
+
+async function retryHistory() {
+  if (!network.value.enabled) { await loadStartupHistory(); return; }
+  agentHistoryLoading.value = true;
+  agentHistoryError.value = null;
+  try {
+    await recoverWorkspaceBinding();
+    // A new generation remounts App; its startup owns the next history read.
+    await nextTick();
+    if (!disposed) await loadStartupHistory();
+  } catch (error) {
+    if (!disposed) agentHistoryError.value = errorMessage(error);
+  } finally {
+    if (!disposed) agentHistoryLoading.value = false;
+  }
+}
+
+// AgentEffect 判别(在 TS 里 narrow,避开模板里的联合类型收窄)。
+function isGoto(e: AgentEffect): boolean {
+  return e.kind === "Goto";
+}
+function effLabel(e: AgentEffect): string {
+  if (e.kind === "PaperMinimap") return "论文地图已更新";
+  if (e.kind === "PaperMinimapProposal") return "论文地图建议";
+  if (e.kind === "Goto") return "跳转";
+  if (e.kind === "Highlight") return "高亮";
+  if (e.kind === "Note") return "笔记";
+  if (e.kind === "Layout") return "布局已更新";
+  return "布局调整建议";
+}
+function gotoBack(e: AgentEffect): string {
+  return e.kind === "Goto" ? e.before_anchor : "";
+}
+function effectPrimaryLabel(e: AgentEffect): string {
+  if (e.kind === "LayoutProposal" || e.kind === "PaperMinimapProposal") return "应用";
+  if (e.kind === "Highlight" || e.kind === "Note") return "保留";
+  return "";
+}
+function effectSecondaryLabel(e: AgentEffect): string {
+  if (e.kind === "LayoutProposal" || e.kind === "PaperMinimapProposal") return "忽略";
+  if (e.kind === "PaperMinimap") return "撤销";
+  if (e.kind === "Highlight" || e.kind === "Note") return "撤销";
+  return "";
+}
+function showEffectPrimary(e: AgentEffect): boolean {
+  return e.kind === "Highlight" || e.kind === "Note" || e.kind === "LayoutProposal"
+    || e.kind === "PaperMinimapProposal";
+}
+function showEffectSecondary(e: AgentEffect): boolean {
+  return e.kind === "Highlight" || e.kind === "Note" || e.kind === "LayoutProposal"
+    || e.kind === "PaperMinimap" || e.kind === "PaperMinimapProposal";
+}
+async function applyLayoutActions(actions: ReaderLayoutAction[]) {
+  const outcome = await api.layoutApply({ actions });
+  if (outcome.kind === "proposal") {
+    pendingLayoutProposal.value = outcome.proposal;
+  } else {
+    pendingLayoutProposal.value = null;
+  }
+  const st = await api.state();
+  await applyReaderState(st);
+}
+async function tutorAction(action: import("./generated/TutorAction").TutorAction) {
+  await tutor.act(action);
+  window.dispatchEvent(new Event("tutor-state-changed"));
+  if (tutor.error.value || tutor.pending.value) return;
+  if (action.kind === "start" || action.kind === "resume") {
+    try {
+      const result = await api.tutorStart();
+      await tutor.load();
+      if (result.started && result.message && sending.value) {
+        banner.value = "教学设置已保存，当前回复完成后可点击继续教学。";
+      } else if (result.started && result.message) {
+        tutorPanelOpen.value = false;
+        await submitAgentMessage(result.message, "继续学习", null);
+      } else if (result.reason) banner.value = result.reason;
+    } catch (failure) { banner.value = `教学未开始：${failure instanceof Error ? failure.message : String(failure)}`; }
+  }
+}
+async function setConversationLearningGoal(intent: string) {
+  const sourceId = tutor.readiness.value?.source_id;
+  if (!sourceId || sending.value) return;
+  await tutor.act({ kind: 'start', user_intent: intent, explicit_constraints: [],
+    material_scope: [{ source_id: sourceId, scope_refs: [], role: 'primary' }], default_teaching_intent: null });
+  window.dispatchEvent(new Event('tutor-state-changed'));
+}
+async function resumeConversationLearning() {
+  const session = tutor.currentForSource.value;
+  if (!session || sending.value || tutor.busy.value || tutor.pending.value || tutor.readiness.value?.status !== 'ready' || tutor.readinessError.value) return;
+  if (!tutor.state.value?.control.enabled) {
+    await tutorAction({ kind: 'set_enabled', enabled: true });
+    if (tutor.error.value || tutor.pending.value || !tutor.state.value?.control.enabled) return;
+  }
+  await tutorAction({ kind: 'resume', session_id: session.id });
+}
+function onTutorResponse(event: Event) {
+  const detail = (event as CustomEvent<{ eventId: string; text: string }>).detail;
+  if (sending.value) { banner.value = "回答已记录，请等待当前回复完成后继续。"; return; }
+  void submitAgentMessage(detail.text, detail.text, null, undefined, { teaching_ref: detail.eventId });
+}
+const activityHelpLocation = ref<{ session_id: string; turn_id: string; delivery_refs: string[] } | null>(null);
+const localReadingActions = ref<PendingReadingAction[]>([]);
+function refreshReadingActions() { localReadingActions.value = network.value.enabled ? [] : pendingReadingActions(); }
+const currentReadingActions = computed(() => localReadingActions.value.filter(item => item.body.session_id === activeChatSessionId.value));
+onMounted(() => { refreshReadingActions(); window.addEventListener('local-reading-action-changed', refreshReadingActions); });
+onBeforeUnmount(() => window.removeEventListener('local-reading-action-changed', refreshReadingActions));
+async function recoverReadingAction(item: PendingReadingAction, retry = false) {
+  if (sending.value) return;
+  const originalScene = chatSceneKey.value;
+  acceptingRun.value = true;
+  try {
+    const result = await api.recoverReadingAction(item, retry);
+    if (disposed || chatSceneKey.value !== originalScene) return;
+    if (result && typeof result === 'object' && 'turn_id' in result) residentRun.observe(result as import('./agent-run-state').RunDescriptor);
+    else if (result && typeof result === 'object' && 'kind' in result && result.kind === 'activity_help') {
+      const help = result as unknown as { delivery_refs: string[]; activity?: { session_id: string; turn_id: string } };
+      activityHelpLocation.value = help.activity ? { ...help.activity, delivery_refs: help.delivery_refs } : null;
+      banner.value = '这段内容属于当前待答题，请前往原题帮助。';
+    } else if (!result) banner.value = '未找到已接纳的原操作，可使用原身份重试。';
+    const history = await api.agentHistory();
+    if (!disposed && chatSceneKey.value === originalScene) applyAgentHistory(history);
+  } catch (error) { if (!disposed && chatSceneKey.value === originalScene) banner.value = errorMessage(error); }
+  finally { if (!disposed && chatSceneKey.value === originalScene) acceptingRun.value = false; refreshReadingActions(); }
+}
+function hasUnconfirmedReadingRequest() {
+  return network.value.enabled ? pendingSubmissions().some(item => item.body.session_id === activeChatSessionId.value) : currentReadingActions.value.length > 0;
+}
+watch(chatSceneKey, () => { activityHelpLocation.value = null; });
+async function openActivityHelp() {
+  const location = activityHelpLocation.value;
+  if (!location || sending.value) return;
+  await selectChat(location.session_id, true);
+  workspaceRef.value?.showAssistant("agent");
+  await rightRailRef.value?.scrollToTurn(location.turn_id);
+  rightRailRef.value?.focusActivityHelp(location.delivery_refs);
+}
+function actionHead() { return chat.value.filter(turn => turn.turnId).at(-1)?.turnId ?? null; }
+async function explainSelection(draft: AskDraft) {
+  workspaceRef.value?.showAssistant("agent");
+  await submitAgentMessage('', '操作：帮我弄懂这段', draft, undefined, {
+    entry_action: 'explain_selection', session_id: activeChatSessionId.value, client_request_id: crypto.randomUUID(), expected_chat_head: actionHead(),
+    source_id: buildWorkbenchSnapshot.value?.book_id, source_revision: noteSourceFingerprint.value ?? undefined,
+  });
+}
+const canContinueAnswer = computed(() => !!tutor.state.value?.control.enabled && !tutor.busy.value && !tutor.pending.value
+  && !tutor.error.value && tutor.readiness.value?.status === 'ready' && !tutor.hasOtherSourceSession.value
+  && (!tutor.current.value || tutor.current.value.status === 'active'));
+async function continueAnswer(turnId: string) {
+  if (!canContinueAnswer.value) return;
+  await submitAgentMessage('', '操作：继续理解这段', null, undefined, {
+    entry_action: 'continue_answer', session_id: activeChatSessionId.value, answer_ref: { turn_id: turnId },
+    client_request_id: crypto.randomUUID(), expected_chat_head: actionHead(),
+  });
+}
+async function clarifyAnswer(turnId: string, excerpt?: string, receipt?: import('./generated/PresentationFollowUp').PresentationFollowUp) {
+  await submitAgentMessage('', '操作：这一步没跟上', null, receipt, {
+    entry_action: 'clarify_answer', session_id: activeChatSessionId.value, answer_ref: { turn_id: turnId, ...(excerpt ? { excerpt } : {}) },
+    client_request_id: crypto.randomUUID(), expected_chat_head: actionHead(),
+  });
+}
+async function chooseContinuation(view: import('./generated/TutorContinuationView').TutorContinuationView, optionId: string, receipt?: import('./generated/PresentationFollowUp').PresentationFollowUp) {
+  const option = view.continuation.options.find(o => o.option_id === optionId);
+  if (!option || !canContinueAnswer.value || view.availability.status !== 'eligible' || view.expected_chat_head !== actionHead()) return;
+  await submitAgentMessage('', `选择：${option.label}`, null, receipt, {
+    teaching_choice: { delivery_ref: view.delivery_ref, option_id: optionId }, session_id: activeChatSessionId.value,
+    client_request_id: crypto.randomUUID(), expected_chat_head: view.expected_chat_head,
+  });
+}
+async function submitAgentMessage(msg: string, displayUser: string, draft: AskDraft | null, presentationFollowUp?: import("./generated/PresentationFollowUp").PresentationFollowUp, goalMeta: AgentChatMeta = {}, submittedDraft?: ChatDraft) {
+  if (sending.value || agentHistoryLoading.value || agentHistoryError.value) return;
+  if (hasUnconfirmedReadingRequest()) { banner.value = '原操作结果待核对，请先核对或重试原操作。'; return; }
+  const questionAnchorLid = goalMeta.answer_ref || goalMeta.teaching_choice ? null : draft?.lid ?? selectedLid.value ?? viewport.value?.top_lid ?? null;
+  const turn: ChatTurn = {
+    teachingRef: goalMeta.teaching_ref,
+    presentationFollowUp,
+    turnId: null,
+    user: displayUser,
+    outcome: null,
+    pending: true,
+    questionAnchorLid,
+    questionQuote: draft ? localQuestionQuoteView(draft) : null,
+    questionSelection: draft ? { ...draft } : null,
+    effectLabels: [],
+  };
+  const submissionSessionId = activeChatSessionId.value;
+  const submission = ++submissionSequence;
+  const submissionIdentity = network.value.identity;
+  const knownTurnIds = chat.value.flatMap((candidate) => candidate.turnId ? [candidate.turnId] : []);
+  chat.value.push(turn);
+  acceptingRun.value = true;
+  banner.value = "";
+  try {
+    const result = await api.agentRunCreate(msg, {
+      presentation_follow_up: presentationFollowUp,
+      ...goalMeta,
+      display_user: displayUser, question_anchor_lid: questionAnchorLid,
+      question_quote: draft ? { ...draft } : null,
+    });
+    if ('turn_id' in result && submittedDraft && submissionIdentity?.user_id === network.value.identity?.user_id && submissionIdentity?.csrf_token === network.value.identity?.csrf_token) {
+      submittedRunDrafts.set(result.turn_id, submittedDraft);
+    }
+    if (disposed || submission !== submissionSequence) return;
+    if ("turn_id" in result) {
+      turn.turnId = result.turn_id;
+      activeChatSessionId.value = result.session_id;
+      residentRun.observe(result);
+    } else if ('kind' in result && result.kind === 'activity_help') {
+      chat.value = chat.value.filter(candidate => toRaw(candidate) !== turn);
+      activityHelpLocation.value = result.activity ? { ...result.activity, delivery_refs: result.delivery_refs } : null;
+      banner.value = '这段内容属于当前待答题，请使用原题的提示或直接讲解；未提供帮助时可返回原文阅读。';
+      await nextTick();
+      rightRailRef.value?.focusActivityHelp(result.delivery_refs);
+    } else {
+      // Existing precommit privacy refusals return an immediate outcome without creating a run.
+      turn.outcome = result as OuterOutcome;
+      turn.pending = false;
+      await refreshProfileSurface(true);
+    }
+  } catch (error) {
+    if (disposed || submission !== submissionSequence) return;
+    turn.pending = false;
+    const stop = error instanceof ApiError ? spendNotice({ error_code: error.errorCode, category: error.category, message: error.message }, 'unsubmitted') : undefined;
+    if (stop) {
+      turn.spendStop = stop;
+      turn.error = stop.message;
+      restoreAllowanceDraft(turn, submittedDraft);
+    } else if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+      turn.error = "认证已失效，本次问题未提交。请通过现有受保护入口恢复登录。";
+    } else if (error instanceof ApiError && error.status < 500) {
+      turn.error = `[${error.category}] ${error.errorCode}: ${error.message}`;
+    } else {
+      turn.submissionUnknown = true;
+      turn.error = "提交结果待核对；服务端可能已收到，本页不会自动重提。";
+      const records = unknownSubmissionsBySession.get(submissionSessionId) ?? [];
+      records.push({ sessionId: submissionSessionId, user: displayUser, knownTurnIds, turn });
+      unknownSubmissionsBySession.set(submissionSessionId, records);
+      // A lost creation response may already have accepted the turn. Discover it, never resubmit it.
+      try { applyAgentHistory(await api.agentHistory()); } catch { /* Keep the explicit unknown state. */ }
+    }
+  } finally {
+    if (submission === submissionSequence) acceptingRun.value = false;
+  }
+}
+
+async function sendAgent() {
+  if (agentHistoryLoading.value || agentHistoryError.value || sending.value) return;
+  if (hasUnconfirmedReadingRequest()) { banner.value = '原操作结果待核对，请先核对或重试原操作。'; return; }
+  const msg = agentInput.value.trim();
+  if (!msg) return;
+  const draft = askDraft.value;
+  const submittedDraft = { message: agentInput.value, quote: draft, goalId: targetGoalId.value };
+  agentInput.value = "";
+  askDraft.value = null;
+  await submitAgentMessage(msg, msg, draft, undefined, targetGoalId.value ? { goal_id: targetGoalId.value } : {}, submittedDraft);
+}
+
+function targetGoal(goalId: string) {
+  targetGoalId.value = goalId;
+}
+
+async function continueGoal(goalId: string) {
+  targetGoalId.value = null;
+  await submitAgentMessage("继续这个任务", "继续任务", null, undefined, { goal_id: goalId });
+}
+
+async function cancelGoal(goalId: string) {
+  if (sending.value) return;
+  acceptingRun.value = true;
+  try {
+    applyAgentHistory(await api.agentGoalCancel(goalId));
+    banner.value = "任务已取消";
+  } catch (error) {
+    fail(error);
+  } finally {
+    acceptingRun.value = false;
+  }
+}
+
+async function sendNoteFollowUp(message: string, receipt: import('./generated/PresentationFollowUp').PresentationFollowUp, memId: string) {
+  if (!activeChatSessionId.value || sending.value) return;
+  await submitAgentMessage(message, message, null, receipt, { note_mem_id: memId });
+}
+async function sendPresentationFollowUp(message: string, receipt: import("./generated/PresentationFollowUp").PresentationFollowUp) {
+  if (receipt.session_id !== activeChatSessionId.value || sending.value) return;
+  await submitAgentMessage(message, message, null, receipt);
+}
+
+async function confirmSensitiveProfile() {
+  if (sending.value || profileMemoryBusy.value) return;
+  profileMemoryNotice.value = "正在确认敏感画像";
+  await submitAgentMessage("confirm save", "确认保存敏感画像", null);
+  if (!profileMemory.value?.status.pending_sensitive_confirmation) {
+    profileMemoryNotice.value = "敏感画像已处理";
+  }
+}
+
+// 提议「撤销」:Goto→ 返回回合前 anchor;Highlight/Note→ memory.delete(mem_id)。
+async function disposeEffect(ti: number, effect: AgentEffect, action: "keep" | "undo" | "dismiss") {
+  const turn = chat.value[ti];
+  const sessionId = activeChatSessionId.value;
+  if (!turn?.turnId || !sessionId) return;
+  const turnId = turn.turnId;
+  const id = effectId(effect);
+  const key = `${turnId}:${id}`;
+  if (effectPending.value[key]) return;
+  effectPending.value[key] = true;
+  try {
+    banner.value = "";
+    const disposition = await api.disposeEffect({ session_id: sessionId, turn_id: turnId, effect_id: id, action });
+    const savedTurn = chat.value.find(t => t.turnId === turnId);
+    if (savedTurn) savedTurn.dispositions = { ...savedTurn.dispositions, [id]: disposition };
+    if (disposition.receipt?.error) throw new Error(disposition.receipt.error.message);
+    if (!disposition.receipt) return;
+    if (effect.kind === "LayoutProposal" && pendingLayoutProposal.value?.proposal_id === effect.proposal.proposal_id) pendingLayoutProposal.value = null;
+    if (effect.kind === "PaperMinimap") lastPaperMinimapEffect.value = null;
+    await syncViewport();
+    await refreshAnnotations();
+    if (effect.kind === "PaperMinimap" || effect.kind === "PaperMinimapProposal") paperMinimapSnapshot.value = await api.paperMinimapState();
+  } catch (err) {
+    fail(err);
+  } finally {
+    delete effectPending.value[key];
+  }
+}
+
+async function undoEffect(ti: number, _ei: number, effect: AgentEffect) {
+  await disposeEffect(ti, effect, effect.kind === "LayoutProposal" || effect.kind === "PaperMinimapProposal" ? "dismiss" : "undo");
+}
+
+async function keepEffect(ti: number, _ei: number, effect: AgentEffect) {
+  await disposeEffect(ti, effect, "keep");
+}
+
+function cancelNotePlacement() {
+  if (notePlacementController.cancel()) banner.value = "已取消正文放置。";
+}
+
+async function startNotePlacement(note: MemoryRecord) {
+  const surface = notePlacementSurface.value;
+  if (!unquotedNotePlacementAvailable.value) return;
+  const placementSurface = note.note_placement?.kind === "pdf_region" ? "pdf" : "markdown";
+  if (note.selection_context || (note.note_placement && placementSurface !== surface)) {
+    banner.value = note.selection_context
+      ? "引用型 Note 请使用重新选择，不能移动到正文位置。"
+      : "Note 不能跨阅读格式移动。";
+    return;
+  }
+  try {
+    banner.value = "";
+    const source = await api.sourceFingerprint();
+    if (notePlacementSurface.value !== surface
+      || buildWorkbenchSnapshot.value?.book_id !== source.book_id) {
+      banner.value = "阅读上下文已变化，请重新发起 Note 放置。";
+      return;
+    }
+    noteSourceFingerprint.value = source.source_fingerprint;
+    const started = notePlacementController.startRecord({
+      record: note,
+      book_id: source.book_id,
+      surface_kind: surface,
+      source_fingerprint: source.source_fingerprint,
+    });
+    if (started) { window.getSelection()?.removeAllRanges(); workspaceRef.value?.showReader(); }
+    const targetLabel = surface === "pdf" ? "PDF 正文区域" : "正文块";
+    banner.value = started
+      ? note.note_placement
+        ? `请选择新的${targetLabel}移动这条 Note。`
+        : `请选择${targetLabel}放置这条旧 Note。`
+      : "这条 Note 不能在当前阅读表面放置。";
+  } catch (error) {
+    fail(error);
+  }
+}
+
+function saveAgentSelection(turn: ChatTurn, text: string) {
+  if (turn.pending || turn.error || !turn.turnId || !activeChatSessionId.value || !text.trim()) return;
+  const parts = turn.outcome?.answer_view?.parts;
+  const texts = parts ? parts.filter(p => p.kind === 'markdown').map(p => p.text) : [turn.outcome?.answer ?? ''];
+  if (!texts.some(source => source.includes(text))) { banner.value = '请重新选择已交付回答中的连续文字。'; return; }
+  void beginNote({ lid: '', memId: null, layer: 'long_term', content: '', selectionContext: null,
+    title: '助手回答', excerpt: { kind: 'assistant', text },
+    request: { association: { kind: 'answer', session_id: activeChatSessionId.value, turn_id: turn.turnId }, retained_excerpt: text } });
+}
+
+async function shareAgentAnswer(requested: ChatTurn, excerpt?: string) {
+  shareOperation++;
+  const turn = chat.value.find(turn => turn.turnId === requested.turnId);
+  if (!turn || !activeChatSessionId.value) return;
+  const fullText = deliveredAnswerText(turn), text = excerpt ?? fullText;
+  if (!fullText || !text.trim() || !fullText.includes(text)) return;
+  const turnId = turn.turnId!, sessionId = activeChatSessionId.value;
+  const view = turn.outcome!.answer_view;
+  const ids = [...new Set(view?.parts.flatMap(part => part.kind === 'sources' ? part.source_ref_ids : []) ?? [])];
+  const labels = ids.map(id => view?.sources.find(source => source.source_ref_id === id)?.label || '来源名称暂不可用');
+  // Answer citations are turn-bound. Never supplement them with the current book metadata.
+  shareReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  shareDraft.value = { source: answerShareSource(fullText, text, sessionId, turnId, labels), loading: ids.length > 0 };
+  const active = shareDraft.value, scope = noteMaterialKey.value;
+  const resolved = await Promise.allSettled(ids.map(id => api.agentSourceResolve(turnId, id)));
+  if (disposed || shareDraft.value !== active || scope !== noteMaterialKey.value || sessionId !== activeChatSessionId.value) return;
+  active.source.sources = resolved.length ? resolved.map((result, index) => result.status === 'fulfilled'
+    ? `${result.value.material_title ? `《${result.value.material_title}》 · ` : ''}${result.value.label || labels[index]}${result.value.stale ? '（来源暂不可用）' : ''}`
+    : `${labels[index]}（来源暂不可用）`) : ['无已记录出处'];
+  active.loading = false;
+}
+
+function captureReadingReturnPoint(turnId: string): ReadingReturnPoint {
+  const markdownAnchor = readerPaneRef.value?.captureScrollAnchor(segments.value.map((segment) => segment.lid)) ?? null;
+  return {
+    contextKey: workspaceContextKey.value,
+    turnId,
+    anchor: activeReaderSurface.value === "pdf"
+      ? pdfReaderPaneRef.value?.captureReadingAnchor() ?? null
+      : markdownAnchor
+        ? { surface: "markdown", ...markdownAnchor }
+        : null,
+  };
+}
+
+function captureAgentSourceReturnPoint(source: { turnId: string; sourceRefId: string }) {
+  pendingReadingReturnPoint = captureReadingReturnPoint(source.turnId);
+}
+async function syncAfterAgentSourceOpen() {
+  const returnPoint = pendingReadingReturnPoint;
+  pendingReadingReturnPoint = null;
+  if (returnPoint?.contextKey === workspaceContextKey.value) {
+    readingContinuity.push(returnPoint);
+    updateReadingReturn();
+    if (agentFullscreen.value) {
+      agentFullscreenSuspendedForSource.value = true;
+      agentFullscreen.value = false;
+    }
+    if (presentationWorkspace.value) presentationWorkspace.value.suspended = true;
+  }
+  workspaceRef.value?.showReader();
+  try {
+    await syncViewport(true, true);
+  } catch (error) {
+    fail(error);
+  }
+}
+
+async function returnToAgentAnswer() {
+  const contextKey = workspaceContextKey.value;
+  const point = readingContinuity.pop(contextKey);
+  updateReadingReturn();
+  if (!point) return;
+  const token = readingContinuity.beginRestore(contextKey);
+  if (point.anchor) {
+    const restored = point.anchor.surface === "pdf"
+      ? !point.anchor.anchorLid || await doGoto(point.anchor.anchorLid, undefined, () => readingContinuity.isCurrent(token))
+      : await doGoto(point.anchor.lid, undefined, () => readingContinuity.isCurrent(token));
+    if (!readingContinuity.isCurrent(token) || workspaceContextKey.value !== contextKey) return;
+    if (!restored) {
+      readingContinuity.push(point);
+      updateReadingReturn();
+      return;
+    }
+    if (!readingContinuity.isCurrent(token) || workspaceContextKey.value !== contextKey) return;
+    const positionRestored = point.anchor.surface === "pdf"
+      ? await pdfReaderPaneRef.value?.restoreReadingAnchor(point.anchor) ?? false
+      : (await readerPaneRef.value?.restoreScrollAnchor(point.anchor), true);
+    if (!positionRestored) {
+      readingContinuity.push(point);
+      updateReadingReturn();
+      return;
+    }
+  }
+  if (!readingContinuity.isCurrent(token) || workspaceContextKey.value !== contextKey) return;
+  if (point.origin === 'reader') { workspaceRef.value?.showReader(); return; }
+  if (point.origin === 'notes') {
+    workspaceRef.value?.showAssistant('notes');
+    requestWorkspaceTab('notes');
+    await nextTick();
+    if (point.memId) await rightRailRef.value?.showMemory(point.memId);
+    return;
+  }
+  workspaceRef.value?.showAssistant("agent");
+  if (presentationWorkspace.value) presentationWorkspace.value.suspended = false;
+  if (agentFullscreenSuspendedForSource.value) {
+    agentFullscreen.value = true;
+    agentFullscreenSuspendedForSource.value = false;
+  }
+  await nextTick();
+  await rightRailRef.value?.scrollToTurn(point.turnId);
+}
+
+async function newChat() {
+  if (agentHistoryLoading.value || agentHistoryError.value) return;
+  const previousChat = activeChatSessionId.value;
+  agentHistoryLoading.value = true;
+  try {
+    const response = await api.agentNew();
+    applyAgentHistory(response.history);
+    askDraft.value = null;
+    agentInput.value = "";
+    void refreshProfileSurface(true);
+  } catch (e) {
+    if (!disposed && activeChatSessionId.value !== previousChat) agentHistoryError.value = errorMessage(e);
+    fail(e);
+  } finally { if (!disposed) agentHistoryLoading.value = false; }
+}
+async function selectChat(sessionId: string, preserveDraft = false) {
+  if (!sessionId || sessionId === activeChatSessionId.value || agentHistoryLoading.value) return;
+  const previousChat = activeChatSessionId.value;
+  const draft = preserveDraft ? { text: agentInput.value, quote: askDraft.value } : null;
+  const scope = noteMaterialKey.value;
+  agentHistoryLoading.value = true;
+  try {
+    const history = await api.agentHistorySelect(sessionId);
+    if (disposed || scope !== noteMaterialKey.value) return;
+    applyAgentHistory(history);
+    askDraft.value = draft?.quote ?? null;
+    agentInput.value = draft?.text ?? "";
+    void refreshProfileSurface(true);
+  } catch (e) {
+    if (disposed || scope !== noteMaterialKey.value) return;
+    if (!disposed && activeChatSessionId.value !== previousChat) agentHistoryError.value = errorMessage(e);
+    fail(e);
+  } finally { if (!disposed) agentHistoryLoading.value = false; }
+}
+async function deleteChat(sessionId: string) {
+  if (!sessionId) return;
+  if (!window.confirm("删除这个对话历史?")) return;
+  try {
+    unknownSubmissionsBySession.delete(sessionId);
+    applyAgentHistory(await api.agentHistoryDelete(sessionId));
+    askDraft.value = null;
+    agentInput.value = "";
+    await refreshProfileSurface(true);
+  } catch (e) {
+    fail(e);
+  }
+}
+async function loadBookLibrary() {
+  bookPickerLoading.value = true;
+  bookPickerError.value = null;
+  try {
+    const library = await api.bookLibrary();
+    bookPickerRoot.value = library.root;
+    bookPickerBooks.value = library.books;
+    if (!bookPickerDir.value.trim() && library.books.length > 0) {
+      bookPickerDir.value = library.books[0].dir;
+    }
+  } catch (e) {
+    bookPickerError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    bookPickerLoading.value = false;
+  }
+}
+
+async function openBook() {
+  if (network.value.enabled) { recapEmit('show-library'); return; }
+  bookPickerOpen.value = true;
+  if (bookPickerBooks.value.length === 0) {
+    await loadBookLibrary();
+  }
+}
+
+function switchBookPickerMode(mode: "open" | "create") {
+  bookPickerMode.value = mode;
+  bookPickerError.value = null;
+}
+
+function selectNewBookMarkdown(file: File | null) {
+  newBookMarkdown.value = file;
+  if (!file) return;
+  const inferredTitle = file.name.replace(/\.md$/i, "");
+  if (!newBookTitle.value.trim()) newBookTitle.value = inferredTitle;
+}
+
+function readLocalFileAsText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("读取 Markdown 文件失败"));
+    reader.readAsText(file);
+  });
+}
+
+function readLocalFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const raw = String(reader.result ?? "");
+      resolve(raw.includes(",") ? raw.slice(raw.indexOf(",") + 1) : raw);
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("读取 PDF 文件失败"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function submitCreateBook() {
+  if (!await beforeNoteLeave('创建另一份材料')) return;
+  const title = newBookTitle.value.trim();
+  const bookId = generatedNewBookId.value;
+  const markdown = newBookMarkdown.value;
+  const pdf = newBookPdf.value;
+  if (!title || !bookId) {
+    bookPickerError.value = "请输入论文标题，书 ID 将由系统自动生成。";
+    return;
+  }
+  if (!markdown || !pdf) {
+    bookPickerError.value = "请选择 Markdown 和 PDF 文件。";
+    return;
+  }
+  try {
+    openingBook.value = true;
+    banner.value = "";
+    bookPickerError.value = null;
+    const snapshot = await api.createBook({
+      book_id: generatedNewBookId.value,
+      display_title: title,
+      paper_md_text: await readLocalFileAsText(markdown),
+      paper_pdf_base64: await readLocalFileAsBase64(pdf),
+    });
+    resetBookSessionUi();
+    buildWorkbenchSnapshot.value = snapshot;
+    appSurface.value = "workbench";
+    bookPickerOpen.value = false;
+    bookPickerMode.value = "open";
+    newBookTitle.value = "";
+    newBookMarkdown.value = null;
+    newBookPdf.value = null;
+  } catch (e) {
+    bookPickerError.value = e instanceof Error ? e.message : String(e);
+    fail(e);
+  } finally {
+    openingBook.value = false;
+  }
+}
+
+function closeBookPicker() {
+  if (openingBook.value || desktopNeedsBook.value) return;
+  bookPickerOpen.value = false;
+}
+
+function resetBookSessionUi() {
+  startupHistoryRequestSeq += 1;
+  agentHistoryLoading.value = true;
+  agentHistoryError.value = null;
+  agentFullscreen.value = false;
+  agentFullscreenSuspendedForSource.value = false;
+  buildWorkbenchActionOwner += 1;
+  sourceReviewLlmBatchRunToken += 1;
+  sourceReviewLlmRequestToken += 1;
+  leafOrder.value = [];
+  kindByLid.value = new Map();
+  imageAssetByLid.value = new Map();
+  appSurface.value = "loading";
+  diagnosticWorkbenchBookId.value = null;
+  buildWorkbenchSnapshot.value = null;
+  buildWorkbenchLoading.value = false;
+  buildWorkbenchError.value = null;
+  buildWorkbenchConfirming.value = false;
+  buildWorkbenchImporting.value = false;
+  buildWorkbenchActioning.value = false;
+  buildIntentRequestSeq += 1;
+  buildIntentOpen.value = false;
+  buildIntentSelection.value = null;
+  buildIntentPlanningSource.value = null;
+  buildIntentBusy.value = false;
+  buildIntentError.value = null;
+  sourceReviewLlmSuggestions.value = {};
+  sourceReviewLlmAnalyzingBlockId.value = null;
+  sourceReviewLlmErrors.value = {};
+  sourceReviewLlmBatch.value = null;
+  sourceManifest.value = null;
+  pdfSourceMap.value = null;
+  readerSurfacePreference.value = null;
+  pdfRuntimeError.value = null;
+  noteSourceFingerprint.value = null;
+  outlineItems.value = [];
+  titleByLid.value = new Map();
+  readerInteractionRevision++;
+  manualReaderState = null;
+  manualReaderBoundary = Promise.resolve();
+  viewport.value = null;
+  segments.value = [];
+  annotations.value = [];
+  resetPdfAnnotationProjection();
+  cancelPdfSelectionDraftFor("book-switch");
+  notePlacementController.cancel();
+  noteEditor.value = null;
+  selectedLid.value = null;
+  currentReadingLid.value = null;
+  outlineNavigationLid.value = null;
+  formulaDialog.value = null;
+  profileSummary.value = null;
+  profileManifest.value = null;
+  profileMemoryRequestSeq += 1;
+  profileMemory.value = null;
+  profileMemoryLoading.value = false;
+  profileMemoryBusy.value = false;
+  profileMemoryError.value = null;
+  profileMemoryNotice.value = null;
+  profileBackfillRequestSeq += 1;
+  if (profileBackfillPollTimer !== null) window.clearTimeout(profileBackfillPollTimer);
+  profileBackfillPollTimer = null;
+  profileBackfill.value = null;
+  profileBackfillLoading.value = false;
+  profileBackfillBusy.value = false;
+  profileBackfillError.value = null;
+  profileBackfillNotice.value = null;
+  profileUpdateStates.value = {};
+  readerLayout.value = null;
+  pendingLayoutProposal.value = null;
+  resetPaperProjectionData();
+  chapterTitle.value = "";
+  gotoInput.value = "";
+  outlineSearch.value = "";
+  chat.value = [];
+  chatSessions.value = [];
+  chatGoals.value = [];
+  targetGoalId.value = null;
+  activeChatSessionId.value = "";
+  unknownSubmissionsBySession.clear();
+  submittedRunDrafts.clear();
+  askDraft.value = null;
+  agentInput.value = "";
+  effectPending.value = {};
+}
+
+async function submitOpenBook(dir = bookPickerDir.value) {
+  const target = dir.trim();
+  if (!target) {
+    bookPickerError.value = "Choose a book directory or enter one manually.";
+    return;
+  }
+  if (!await beforeNoteLeave('切换材料')) return;
+  try {
+    openingBook.value = true;
+    banner.value = "";
+    bookPickerError.value = null;
+    await api.openBook(target);
+    desktopNeedsBook.value = false;
+    resetBookSessionUi();
+    await init();
+    bookPickerOpen.value = false;
+  } catch (e) {
+    bookPickerError.value = e instanceof Error ? e.message : String(e);
+    fail(e);
+  } finally {
+    openingBook.value = false;
+  }
+}
+</script>
+
+<template>
+  <div class="app" :style="typography.style.value">
+    <TopBar
+      :focus-available="appSurface === 'reader'"
+      :focus-reading="focusReading"
+      @toggle-focus="workspaceRef?.toggleFocus()"
+      :typography-available="appSurface === 'reader'"
+      @open-typography="typography.open.value = true"
+      :chapter-title="appSurface === 'workbench' ? '构建工作台' : activeChapterTitle"
+      :progress-pct="appSurface === 'reader' ? progressPct : 0"
+      :anchor-lid="readingAnchorLid"
+      :debug-open="debugOpen"
+      :left-rail-open="leftRailOpen"
+      :build-intent-open="buildIntentOpen"
+      :build-intent-available="!readerOnly && appSurface === 'reader'"
+      :workbench-available="!readerOnly && appSurface === 'reader' && workbenchAvailable(buildWorkbenchSnapshot)"
+      :desktop-host="desktopHost"
+      :chat-unavailable="agentHistoryLoading || !!agentHistoryError"
+      :mobile-collapsible="appSurface === 'reader'"
+      :mobile-open="mobileGlobalActionsOpen"
+      @new-chat="newChat"
+      @open-workbench="openBuildWorkbench"
+      @open-book="openBook"
+      @open-settings="openDesktopSettings"
+      @toggle-left-rail="toggleNavigationOutline"
+      @open-build-intent="openBuildIntent"
+      @toggle-debug="debugOpen = !debugOpen"
+      @close-mobile="mobileGlobalActionsOpen = false"
+    >
+      <template #account><slot name="account" /></template>
+    </TopBar>
+    <ReaderTypographyPanel v-if="typography.open.value" :preferences="typography.preferences.value" :save-error="typography.saveError.value" :pdf="activeReaderSurface === 'pdf'" @change="typography.update" @close="closeTypography" />
+    <TutorPanel v-if="tutorPanelOpen" :initial-view="tutorPanelView" :readiness="tutor.readiness.value" :readiness-error="tutor.readinessError.value" @refresh-readiness="tutor.loadReadiness" :state="tutor.state.value" :busy="tutor.busy.value" :error="tutor.error.value" :pending="!!tutor.pending.value" :source-id="tutor.readiness.value?.source_id ?? buildWorkbenchSnapshot?.book_id" :label="tutor.label.value" @action="tutorAction" @retry="tutor.retry" @close="tutorPanelOpen = false" />
+
+    <AlignmentQualityBar
+      v-if="appSurface === 'reader' && sourceManifest?.alignment_quality"
+      :quality="sourceManifest.alignment_quality"
+      :workbench-available="!readerOnly && workbenchAvailable(buildWorkbenchSnapshot)"
+      @open-workbench="openBuildWorkbench"
+    />
+
+    <p v-if="banner" class="banner">{{ banner }} <button v-if="activityHelpLocation" :disabled="sending" @click="openActivityHelp">前往原题帮助</button></p>
+    <p v-for="item in currentReadingActions" :key="item.key" class="banner" role="status">{{ item.body.display_user }}：提交结果待核对
+      <button :disabled="sending" @click="recoverReadingAction(item)">核对原操作</button>
+      <button :disabled="sending" @click="recoverReadingAction(item, true)">重试原操作</button>
+    </p>
+    <p v-if="network.enabled && residentRun.snapshot.value?.persistence_state === 'failed' && residentRun.snapshot.value?.execution_state !== 'interrupted'" role="status">原回合结果尚未保存。<button @click="retryResidentSave">重试保存原结果</button></p>
+
+    <section v-if="appSurface === 'waiting-materials'" class="build-workbench" role="status">
+      <h2>等待完整阅读材料</h2>
+      <p>请在服务停止后同步这本书的完整已就绪目录，再启动服务并刷新。</p>
+      <p v-if="buildWorkbenchError">{{ buildWorkbenchError }}</p>
+      <ul>
+        <li v-for="reason in buildWorkbenchSnapshot?.readiness.reasons ?? []" :key="reason">{{ reason }}</li>
+        <li v-for="stage in Object.values(buildWorkbenchSnapshot?.readiness.stages ?? {}).filter(s => s.reason && s.status !== 'done' && s.status !== 'blocked')" :key="stage.stage">{{ stage.reason }}</li>
+      </ul>
+      <button @click="init">刷新材料状态</button>
+      <button @click="openBook">打开其他书籍</button>
+    </section>
+
+    <div v-if="desktopSettingsOpen" class="desktop-settings-modal" @click.self="closeDesktopSettings">
+      <section class="desktop-settings-dialog" role="dialog" aria-modal="true" aria-labelledby="desktop-settings-title">
+        <header class="desktop-settings-head">
+          <div>
+            <p class="formula-dialog-kicker">桌面应用</p>
+            <h3 id="desktop-settings-title">设置</h3>
+          </div>
+          <button
+            class="formula-dialog-close"
+            title="关闭"
+            aria-label="关闭设置"
+            :disabled="desktopLibraryChanging || desktopProviderSaving || !desktopLibraryAvailable"
+            @click="closeDesktopSettings"
+          >×</button>
+        </header>
+        <div class="desktop-settings-body">
+          <div class="desktop-settings-section">
+            <div class="desktop-settings-row">
+              <div>
+                <strong>书库位置</strong>
+                <p>{{ desktopLibraryAvailable ? "用于扫描和新建书" : "当前目录不可用，请重新选择" }}</p>
+              </div>
+              <button
+                class="desktop-library-button"
+                :disabled="desktopLibraryChanging"
+                @click="chooseDesktopLibraryDirectory"
+              >
+                <FolderOpen :size="17" aria-hidden="true" />
+                <span>{{ desktopLibraryChanging ? "处理中" : "选择目录" }}</span>
+              </button>
+            </div>
+            <p v-if="desktopLibraryRoot" class="desktop-settings-path">{{ desktopLibraryRoot }}</p>
+            <p v-if="desktopLibraryError" class="book-picker-error">{{ desktopLibraryError }}</p>
+          </div>
+          <div class="desktop-settings-section">
+            <div class="desktop-settings-row desktop-provider-heading">
+              <div>
+                <strong>AI 服务连接</strong>
+                <p>{{ desktopProviderLoading ? "正在读取..." : desktopProviderStatusLabel(desktopProviderStatus) }}</p>
+              </div>
+
+            </div>
+            <div class="desktop-provider-grid">
+              <label>
+                <span>服务地址</span>
+                <input v-model="desktopProviderBaseUrl" type="url" :disabled="desktopProviderSaving" placeholder="https://provider.example/v1" />
+              </label>
+              <label>
+                <span>模型名称</span>
+                <input v-model="desktopProviderModel" :disabled="desktopProviderSaving" placeholder="model-name" />
+              </label>
+              <label class="desktop-provider-key">
+                <span>API Key</span>
+                <input
+                  v-model="desktopProviderApiKey"
+                  type="password"
+                  autocomplete="new-password"
+                  :disabled="desktopProviderSaving"
+                  :placeholder="desktopProviderStatus?.api_key_configured ? '留空保留已保存密钥' : '输入 API Key'"
+                />
+              </label>
+            </div>
+            <details class="desktop-provider-advanced"><summary>高级连接选项</summary>
+              <p>通常选择原生工具调用；服务不支持 tools 参数时，可改用文本工具调用（ReAct）。</p>
+              <div class="desktop-provider-mode" role="group" aria-label="AI 工具调用方式">
+                <button
+                  type="button"
+                  :class="{ active: desktopProviderMode === 'native' }"
+                  :aria-pressed="desktopProviderMode === 'native'"
+                  :disabled="desktopProviderSaving"
+                  @click="desktopProviderMode = 'native'"
+                >原生工具调用</button>
+                <button
+                  type="button"
+                  :class="{ active: desktopProviderMode === 'react' }"
+                  :aria-pressed="desktopProviderMode === 'react'"
+                  :disabled="desktopProviderSaving"
+                  @click="desktopProviderMode = 'react'"
+                >文本工具调用（ReAct）</button>
+              </div>
+            </details>
+            <div class="desktop-provider-actions">
+              <p>API Key 明文保存在当前 Windows 用户设置中。</p>
+              <button
+                class="primary-action desktop-provider-save"
+                :disabled="desktopProviderSaving || !desktopProviderBaseUrl.trim() || !desktopProviderModel.trim()"
+                @click="saveDesktopProviderSettings"
+              >
+                <Save :size="16" aria-hidden="true" />
+                <span>{{ desktopProviderSaving ? "应用中" : "保存并应用" }}</span>
+              </button>
+            </div>
+            <p v-if="desktopProviderError" class="book-picker-error">{{ desktopProviderError }}</p>
+          </div>
+          <div class="desktop-settings-section">
+            <div class="desktop-settings-row">
+              <div>
+                <strong>Codex 预构建插件</strong>
+                <p v-if="codexPluginStatus">{{ codexPluginStateLabel(codexPluginStatus.state) }}</p>
+                <p v-else>{{ codexPluginLoading ? "正在检测..." : "尚未检测" }}</p>
+              </div>
+              <button
+                v-if="codexPluginStatus && !['installed_by_setup', 'installed_externally'].includes(codexPluginStatus.state)"
+                class="primary-action"
+                :disabled="codexPluginLoading"
+                @click="installCodexPlugin"
+              >
+                {{ codexPluginLoading ? "处理中..." : "安装或重试" }}
+              </button>
+              <button v-else :disabled="codexPluginLoading" @click="refreshCodexPluginStatus">刷新</button>
+            </div>
+            <p v-if="codexPluginStatus" class="desktop-settings-message">{{ codexPluginStatus.message }}</p>
+            <p v-if="codexPluginStatus?.codex_path" class="desktop-settings-path">{{ codexPluginStatus.codex_path }}</p>
+            <p v-if="codexPluginError" class="book-picker-error">{{ codexPluginError }}</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="bookPickerOpen" class="book-picker-modal" @click.self="closeBookPicker">
+      <section class="book-picker-dialog" role="dialog" aria-modal="true" aria-labelledby="book-picker-title">
+        <header class="book-picker-head">
+          <div>
+            <p class="formula-dialog-kicker">继续一次阅读</p>
+            <h3 id="book-picker-title">选择阅读材料</h3>
+          </div>
+          <button class="formula-dialog-close" title="关闭" aria-label="关闭书库" @click="closeBookPicker">×</button>
+        </header>
+
+        <div v-if="desktopHost && !readerOnly" class="book-picker-tabs" role="tablist" aria-label="书库操作">
+          <button
+            role="tab"
+            :aria-selected="bookPickerMode === 'open'"
+            :class="{ active: bookPickerMode === 'open' }"
+            @click="switchBookPickerMode('open')"
+          >
+            打开
+          </button>
+          <button
+            v-if="desktopHost && !readerOnly"
+            role="tab"
+            :aria-selected="bookPickerMode === 'create'"
+            :class="{ active: bookPickerMode === 'create' }"
+            @click="switchBookPickerMode('create')"
+          >
+            新建论文书
+          </button>
+        </div>
+
+        <div v-if="bookPickerMode === 'open'" class="book-picker-body">
+          <div class="book-picker-toolbar">
+            <span>{{ bookPickerBooks.length }} 份阅读材料</span>
+            <button :disabled="bookPickerLoading || openingBook" @click="loadBookLibrary">{{ bookPickerLoading ? '加载中' : '刷新' }}</button>
+          </div>
+          <p v-if="bookPickerError" class="book-picker-error">{{ bookPickerError }}</p>
+          <p v-if="bookPickerLoading" class="book-picker-state">正在查找阅读材料…</p>
+          <p v-else-if="bookPickerBooks.length === 0" class="book-picker-state">这里还没有阅读材料。可以通过目录打开已有材料。</p>
+
+          <div v-else class="book-picker-list">
+            <button v-for="book in bookPickerBooks" :key="book.dir" class="book-picker-card"
+              :class="{ active: bookPickerDir === book.dir }" :aria-pressed="bookPickerDir === book.dir"
+              :disabled="openingBook" @click="bookPickerDir = book.dir" @dblclick="submitOpenBook(book.dir)">
+              <BookCover :title="bookTitle(book)" :cover="book.cover" compact />
+              <span class="book-picker-card-title"><strong>{{ bookTitle(book) }}</strong>
+                <small>{{ book.route === 'workbench' ? '正在准备' : '可开始阅读' }}</small>
+                <small v-if="bookPickerBooks.filter(item => bookTitle(item) === bookTitle(book)).length > 1" class="book-picker-variant">{{ book.name }}</small>
+              </span>
+              <span class="book-picker-selected" aria-hidden="true">{{ bookPickerDir === book.dir ? '✓' : '›' }}</span>
+            </button>
+          </div>
+
+          <details v-if="!network.enabled" class="book-picker-location">
+            <summary>通过目录打开 / 查看材料位置</summary>
+            <div class="book-picker-input-row">
+            <label>
+              <span>材料目录</span>
+              <input
+                v-model="bookPickerDir"
+                :disabled="openingBook"
+                placeholder=".understand-book/book-id"
+                @keydown.enter.prevent="submitOpenBook()"
+              />
+            </label>
+            </div>
+            <p v-if="bookPickerRoot" class="book-picker-root">书库位置：{{ bookPickerRoot }}</p>
+          </details>
+        </div>
+
+        <div v-else class="book-picker-body">
+          <div class="book-create-grid">
+            <label>
+              <span>标题</span>
+              <input
+                v-model="newBookTitle"
+                :disabled="openingBook"
+                placeholder="论文标题"
+                @keydown.enter.prevent="submitCreateBook"
+              />
+            </label>
+            <label>
+              <span>书 ID（自动生成）</span>
+              <output class="book-create-generated-id" :title="generatedNewBookId">
+                {{ generatedNewBookId || "输入标题后自动生成" }}
+              </output>
+            </label>
+            <FileDropField
+              :model-value="newBookMarkdown"
+              label="Markdown"
+              accept=".md,text/markdown,text/plain"
+              accept-label=".md"
+              kind="markdown"
+              :disabled="openingBook"
+              @update:model-value="selectNewBookMarkdown"
+            />
+            <FileDropField
+              v-model="newBookPdf"
+              label="PDF"
+              accept=".pdf,application/pdf"
+              accept-label=".pdf"
+              kind="pdf"
+              :disabled="openingBook"
+            />
+          </div>
+          <p v-if="bookPickerRoot" class="book-picker-root">{{ bookPickerRoot }}</p>
+          <p v-if="bookPickerError" class="book-picker-error">{{ bookPickerError }}</p>
+        </div>
+
+        <footer class="book-picker-actions">
+          <button :disabled="openingBook" @click="closeBookPicker">取消</button>
+          <button
+            v-if="bookPickerMode === 'open'"
+            class="primary-action"
+            :disabled="openingBook || !bookPickerDir.trim()"
+            @click="submitOpenBook()"
+          >
+            {{ openingBook ? "打开中" : "打开" }}
+          </button>
+          <button
+            v-else
+            class="primary-action"
+            :disabled="openingBook || !newBookTitle.trim() || !generatedNewBookId || !newBookMarkdown || !newBookPdf"
+            @click="submitCreateBook"
+          >
+            {{ openingBook ? "创建中" : "创建并进入工作台" }}
+          </button>
+        </footer>
+      </section>
+    </div>
+
+    <BuildWorkbenchPane
+      v-if="appSurface === 'workbench'"
+      :snapshot="buildWorkbenchSnapshot"
+      :loading="buildWorkbenchLoading"
+      :error="buildWorkbenchError"
+      :confirming="buildWorkbenchConfirming"
+      :importing="buildWorkbenchImporting"
+      :actioning="buildWorkbenchActioning"
+      :pdf-url="api.pdfOriginalUrl()"
+      :source-review-llm-suggestions="sourceReviewLlmSuggestions"
+      :source-review-llm-analyzing-block-id="sourceReviewLlmAnalyzingBlockId"
+      :source-review-llm-errors="sourceReviewLlmErrors"
+      :source-review-llm-batch="sourceReviewLlmBatch"
+      @refresh="refreshBuildWorkbench"
+      @import-input="importWorkbenchInput"
+      @create-job="createBuildJob"
+      @start-job="startBuildJob"
+      @resume-job="resumeBuildJob"
+      @resolve-decision="resolveBuildDecision"
+      @resolve-permission="resolveExecutorPermission"
+      @resolve-source-review="resolveSourceReview"
+      @resolve-source-review-group="resolveSourceReviewGroup"
+      @analyze-source-review="analyzeSourceReview"
+      @apply-all-source-review-with-llm="applyAllSourceReviewWithLlm"
+      @draft-sidecar-plan="draftSidecarPlan"
+      @confirm-sidecar-plan="confirmSidecarPlan"
+      @enter-reader="enterReader"
+    />
+
+    <main v-else-if="appSurface === 'loading'" class="app-loading"><LoadingAnimation /></main>
+
+    <ReaderWorkspace
+      v-else-if="appSurface === 'reader'"
+      ref="workspaceRef"
+      :logical="workspaceLogicalState"
+      :context-key="readerContextKey"
+      :enabled="mobileWorkspaceEnabled"
+      :selection-active="!!hlPopover"
+      :left-collapsed="!leftRailOpen"
+      :return-available="returnToAnswerAvailable"
+      :return-label="readingReturnLabel"
+      :reader-surface="activeReaderSurface"
+      :pdf-surface-available="pdfReaderAvailable"
+      :global-actions-open="mobileGlobalActionsOpen"
+      :style="workspaceStyle"
+      @tab-request="requestWorkspaceTab"
+      @before-display-change="preserveDisplayReadingPosition"
+      @focus-change="focusReading = $event"
+      @projection-change="handleWorkspaceProjection"
+      @global-actions-request="mobileGlobalActionsOpen = !mobileGlobalActionsOpen"
+      @return="returnToAgentAnswer"
+      @reader-surface-request="selectReaderSurface"
+    >
+      <LeftRail
+        v-show="leftRailOpen"
+        v-model:goto-input="gotoInput"
+        v-model:search-query="outlineSearch"
+        :outline-items="outlineItems"
+        :progress-pct="progressPct"
+        :anchor-lid="outlineAnchorLid"
+        :selected-lid="selectedLid"
+        :leaf-count="leafOrder.length"
+        :debug-open="debugOpen"
+        :paper-enabled="isPaperProfile"
+        :paper-loading="paperProjectionLoading"
+        :paper-error="paperProjectionError"
+        :paper-minimap-base="paperMinimapSnapshot?.base ?? null"
+        :paper-minimap-state="paperMinimapSnapshot?.state ?? null"
+        :paper-minimap-lens="paperMinimapSnapshot?.lens ?? null"
+        :paper-minimap-localization="paperMinimapLocalization"
+        :paper-minimap-effect-reason="lastPaperMinimapEffect?.reason ?? null"
+        :paper-minimap-undo-available="!!lastPaperMinimapEffect"
+        :paper-minimap-action-busy="paperMinimapActionBusy"
+        @goto="doGoto"
+        @paper-minimap-toggle="togglePaperMinimap"
+        @paper-minimap-mode="setPaperMinimapMode"
+        @paper-minimap-layer="setPaperMinimapLayer"
+        @paper-minimap-pin="togglePaperMinimapPin"
+        @paper-minimap-undo="undoLastPaperMinimapEffect"
+      />
+
+      <div
+        class="resize-handle resize-handle-left"
+        role="separator"
+        aria-orientation="vertical"
+        title="调整目录栏宽度"
+        @mousedown="startResize('left', $event)"
+      ></div>
+
+      <PdfReaderPane
+        v-if="activeReaderSurface === 'pdf'"
+        ref="pdfReaderPaneRef"
+        :source-manifest="sourceManifest"
+        :source-map="pdfSourceMap"
+        :pdf-url="api.pdfOriginalUrl()"
+        :initial-reading-anchor="previousPdfAnchor"
+        :active-lid="pdfActiveLid"
+        :selected-lid="selectedLid"
+        :annotation-projection="pdfAnnotationProjection"
+        :annotation-error="pdfAnnotationProjectionError"
+        :render-markdown="renderMarkdown"
+        :note-placement-active="notePlacementState.phase === 'placing' && notePlacementSurface === 'pdf'"
+        @goto="doGoto"
+        @viewport-change="onPdfViewportChange"
+        @focus-source="focusLocalSource"
+        @selection-capture="onPdfSelectionCapture"
+        @selection-cancel="cancelPdfSelectionDraft"
+        @viewport-interaction="onPdfViewportInteraction"
+        @edit-note="openEditNote"
+        @open-note="openNoteAssociation"
+        @delete-note="deleteNote"
+        @reselect-note="reselectPdfNote"
+        @show-notes="showAnnotationInNotes"
+        @delete-highlight="deleteHighlight"
+        @reselect-highlight="reselectPdfHighlight"
+        @note-placement-target="onPdfNotePlacementTarget"
+      />
+
+      <ReaderPane
+        v-else
+        ref="readerPaneRef"
+        :typography="typography.preferences.value"
+        :context-key="workspaceContextKey"
+        :segments="segments"
+        :viewport-anchor="readingAnchorLid"
+        :selected-lid="selectedLid"
+        :note-placement-active="notePlacementState.phase === 'placing' && notePlacementSurface === 'markdown'"
+        :render-seg="renderSeg"
+        :render-markdown="renderMarkdown"
+        :markdown-heading-level="markdownHeadingLevel"
+        :is-asset="isAsset"
+        :is-highlighted="isHighlighted"
+        :highlights-of="highlightsOf"
+        :highlight-cards-of="highlightCardsOf"
+        :visible-notes="visibleNotes"
+        :hl-excerpt="hlExcerpt"
+        :image-meta="imageMeta"
+        :image-asset="imageAssetFor"
+        @select="onSelectSeg"
+        @prose-selection-change="onProseSelection"
+        @current-lid="onCurrentLid"
+        @viewport-interaction="onReaderViewportInteraction"
+        @note-placement-target="onMarkdownNotePlacementTarget"
+        @note-placement-invalid="onMarkdownNotePlacementInvalid"
+        @scroll-edge="onScrollEdge"
+        @goto="doGoto"
+        @focus-source-local="focusLocalSource"
+        @open-formula="openFormulaDialog"
+        @modify-highlight="modifyHighlight"
+        @delete-highlight="deleteHighlight"
+        @edit-note="openEditNote"
+        @open-note="openNoteAssociation"
+        @delete-note="deleteNote"
+        @show-notes="showAnnotationInNotes"
+        @place-note="startNotePlacement"
+      />
+
+      <div
+        class="resize-handle resize-handle-right"
+        role="separator"
+        aria-orientation="vertical"
+        title="调整上下文栏宽度"
+        @mousedown="startResize('right', $event)"
+      ></div>
+
+      <RightRail
+        :key="chatSceneKey"
+        v-model:presentation-workspace="presentationWorkspace"
+        ref="rightRailRef"
+        @recap-publication="recapEmit('recap-publication', $event)"
+        :fullscreen="agentFullscreen"
+        v-model:agent-input="agentInput"
+        :history-loading="agentHistoryLoading"
+        :history-error="agentHistoryError"
+        :chat="chat"
+        :chat-sessions="chatSessions"
+        :chat-goals="chatGoals"
+        :target-goal-id="targetGoalId"
+        :active-chat-session-id="activeChatSessionId"
+        :sending="sending"
+        :continuation-enabled="canContinueAnswer"
+        :tutor-enabled="tutor.state.value?.control.enabled"
+        :tutor-enable-busy="tutor.busy.value || !!tutor.pending.value || !tutor.state.value"
+        :continuation-label="tutor.label.value"
+        @enable-tutor="tutorAction({ kind: 'set_enabled', enabled: true })"
+        @continue-answer="continueAnswer"
+        @clarify-answer="clarifyAnswer"
+        @choose-continuation="chooseContinuation"
+        @return-reading="workspaceRef?.showReader()"
+        :run-connection="runConnection"
+        :can-stop="residentRun.active.value"
+        @stop-agent="stopResidentRun"
+        @continue-goal="continueGoal"
+        @show-allowance="recapEmit('show-allowance')"
+        @cancel-goal="cancelGoal"
+        @target-goal="targetGoal"
+        @clear-goal-target="targetGoalId = null"
+        :unquoted-note-placement-available="unquotedNotePlacementAvailable"
+        :note-placement-surface="notePlacementSurface"
+        :note-source-fingerprint="noteSourceFingerprint"
+        :selected-lid="selectedLid"
+        :selected-formula="selectedFormula"
+        :context-notes="allNotes"
+        :context-highlights="allHighlights"
+        :note-book-order="noteBookOrder" :note-source-labels="noteSourceLabels" :note-scope-key="noteMaterialKey"
+        :annotation-location="pdfAnnotationProjection.location_by_mem_id"
+        :render-markdown="renderMarkdown"
+        :eff-label="effLabel"
+        :eff-state="effState"
+        :is-goto="isGoto"
+        :show-effect-primary="showEffectPrimary"
+        :show-effect-secondary="showEffectSecondary"
+        :effect-primary-label="effectPrimaryLabel"
+        :effect-secondary-label="effectSecondaryLabel"
+        :goto-back="gotoBack"
+        :ask-draft="askDraft"
+        :profile-memory="profileMemory"
+        :profile-memory-loading="profileMemoryLoading"
+        :profile-memory-busy="profileMemoryBusy || sending"
+        :profile-memory-error="profileMemoryError"
+        :profile-memory-notice="profileMemoryNotice"
+        :profile-backfill="profileBackfill"
+        :profile-backfill-loading="profileBackfillLoading"
+        :profile-backfill-busy="profileBackfillBusy || sending"
+        :profile-backfill-error="profileBackfillError"
+        :profile-backfill-notice="profileBackfillNotice"
+        :profile-update-states="profileUpdateStates"
+        :intent-artifacts="intentArtifacts"
+        :intent-artifacts-loading="intentArtifactsLoading"
+        :intent-artifacts-error="intentArtifactsError"
+        :requested-tab="workspaceAuxTab"
+        :requested-tab-revision="workspaceAuxTabRevision"
+        @send-agent="sendAgent"
+        @retry-history="retryHistory"
+        @toggle-fullscreen="toggleAgentFullscreen"
+        @presentation-follow-up="sendPresentationFollowUp"
+        @record-note="recordPresentationNote" @note-follow-up="sendNoteFollowUp"
+        @new-chat="newChat"
+        @select-chat="selectChat"
+        @open-note-answer="openNoteAnswer"
+        @delete-chat="deleteChat"
+        @clear-ask="clearAskDraft"
+        @goto="doGoto"
+        @focus-source="focusSource"
+        @undo-effect="undoEffect"
+        @keep-effect="keepEffect"
+        @save-answer-selection="saveAgentSelection"
+        @share-answer="shareAgentAnswer"
+        @place-note="startNotePlacement"
+        @edit-note="openEditNote"
+        @open-note="openNoteAssociation"
+        @delete-note="deleteNote"
+        @modify-highlight="modifyHighlight"
+        @delete-highlight="deleteHighlight"
+        @agent-source-will-open="captureAgentSourceReturnPoint"
+        @agent-source-opened="syncAfterAgentSourceOpen"
+        @refresh-profile="refreshProfileSurface()"
+        @mutate-profile="mutateProfile"
+        @confirm-sensitive-profile="confirmSensitiveProfile"
+        @start-profile-backfill="startProfileBackfill"
+        @mutate-profile-backfill="mutateProfileBackfill"
+        @undo-profile-update="undoProfileUpdate"
+        @refresh-artifacts="refreshIntentArtifacts"
+        :preparation-available="!readerOnly && appSurface === 'reader'"
+        @prepare-artifacts="openBuildIntent"
+        @open-artifacts="openIntentArtifacts"
+        @artifact-cited="recordIntentUsage('artifact_cited', $event)"
+      >
+        <template #learning-actions>
+          <button type="button" @click="openTutorPanel('understanding')">我的理解</button>
+        </template>
+        <template #learning-details>
+          <button type="button" @click="openTutorPanel()">学习详情</button>
+        </template>
+        <template #learning-goal>
+          <ConversationLearningGoal
+            :session="tutor.currentForSource.value" :other-session="tutor.hasOtherSourceSession.value"
+            :enabled="!!tutor.state.value?.control.enabled" :busy="tutor.busy.value || sending" :available="!!tutor.state.value && !tutor.pending.value && !!tutor.readiness.value?.source_id"
+            :ready="tutor.readiness.value?.status === 'ready' && !tutor.readinessError.value"
+            :error="tutor.error.value" @goal="setConversationLearningGoal" @manage="openTutorPanel()"
+            @resume="resumeConversationLearning" @retry="tutor.retry" />
+        </template>
+        <template #tutor-control>
+          <TutorControl :enabled="!!tutor.state.value?.control.enabled" :label="tutor.label.value" :busy="tutor.busy.value" :unavailable="!tutor.state.value || !!tutor.pending.value" :error="tutor.error.value" @toggle="tutorAction({ kind: 'set_enabled', enabled: !tutor.state.value?.control.enabled })" @retry="tutor.retry" />
+        </template>
+      </RightRail>
+    </ReaderWorkspace>
+
+    <aside
+      v-if="notePlacementState.phase !== 'idle'"
+      class="note-placement-status"
+      role="status"
+      aria-live="polite"
+    >
+      <span v-if="notePlacementState.phase === 'placing'">
+        请选择{{ notePlacementSurface === "pdf" ? " PDF 正文区域" : "正文中的真实段落" }}放置 Note。
+      </span>
+      <span v-else-if="notePlacementState.phase === 'saving'">正在保存 Note...</span>
+      <span v-else>正在核对 Note 是否已保存...</span>
+      <button v-if="notePlacementState.phase === 'placing'" @click="cancelNotePlacement">取消</button>
+    </aside>
+
+    <BuildIntentPane
+      v-if="appSurface === 'reader' && buildIntentOpen"
+      :selection="buildIntentSelection"
+      :planning-source="buildIntentPlanningSource"
+      :busy="buildIntentBusy"
+      :error="buildIntentError"
+      @close="closeBuildIntent"
+      @draft="draftBuildIntent"
+      @confirm="confirmBuildIntent"
+      @reject="rejectBuildIntent"
+    />
+
+    <div
+      v-if="pdfSelectionState.capture && (pdfSelectionState.phase === 'error' || pdfSelectionState.draft)"
+      class="hl-popover pdf-selection-toolbar"
+      :style="pdfSelectionToolbarStyle"
+      role="toolbar"
+      aria-label="PDF 选区操作"
+    >
+      <template v-if="pdfSelectionState.phase === 'error'">
+        <span class="pdf-selection-status error">{{ pdfSelectionState.error }}</span>
+        <button title="重试定位" aria-label="重试定位" @mousedown.prevent="pdfSelectionSession.retry">
+          <RotateCcw :size="16" />
+        </button>
+      </template>
+      <template v-else-if="pdfSelectionState.draft">
+        <span v-if="pdfSelectionCapabilities.statusLabel" class="pdf-selection-status">
+          {{ pdfSelectionCapabilities.statusLabel }}
+        </span>
+        <button
+          v-if="pdfSelectionCapabilities.canHighlight"
+          title="高亮"
+          :disabled="pdfSelectionState.phase === 'saving' || pdfSelectionTranslationState.phase === 'loading'"
+          @mousedown.prevent="highlightPdfSelection"
+        >
+          <Highlighter :size="16" />
+          <span>高亮</span>
+        </button>
+        <button
+          v-if="pdfSelectionCapabilities.canNote"
+          title="笔记"
+          :disabled="pdfSelectionState.phase === 'saving' || pdfSelectionTranslationState.phase === 'loading'"
+          @mousedown.prevent="notePdfSelection"
+        >
+          <MessageSquareText :size="16" />
+          <span>笔记</span>
+        </button>
+        <button v-if="pdfSelectionCapabilities.canNote" title="生成分享图" :disabled="pdfSelectionState.phase === 'saving'" @mousedown.prevent="sharePdfSelection">生成分享图</button>
+        <button v-if="pdfSelectionState.draft?.status === 'resolved' && pdfSelectionCapabilities.canAsk"
+          :disabled="sending || pdfSelectionState.phase === 'saving'" @mousedown.prevent="askPdfSelection(true)">帮我弄懂这段</button>
+        <button
+          v-if="pdfSelectionCapabilities.canAsk"
+          title="问 AI"
+          :disabled="pdfSelectionState.phase === 'saving' || pdfSelectionTranslationState.phase === 'loading'"
+          @mousedown.prevent="askPdfSelection()"
+        >
+          <Sparkles :size="16" />
+          <span>问 AI</span>
+        </button>
+        <button
+          v-if="pdfSelectionCapabilities.canTranslate"
+          title="翻译"
+          :disabled="pdfSelectionState.phase === 'saving' || pdfSelectionTranslationState.phase === 'loading'"
+          @mousedown.prevent="translatePdfSelection"
+        >
+          <Languages :size="16" />
+          <span>翻译</span>
+        </button>
+        <span v-if="pdfSelectionState.error" class="pdf-selection-status error">{{ pdfSelectionState.error }}</span>
+      </template>
+      <button title="关闭" aria-label="关闭 PDF 选区操作" @mousedown.prevent="cancelPdfSelectionDraft">
+        <X :size="16" />
+      </button>
+    </div>
+
+    <PdfSelectionTranslationSurface
+      v-if="pdfSelectionTranslationState.phase !== 'idle' && pdfSelectionState.draft"
+      :state="pdfSelectionTranslationState"
+      :anchor-rect="pdfSelectionState.draft.screen_rect"
+      :render-markdown="renderMarkdown"
+      :show-settings="showPdfTranslationSettings"
+      @close="closePdfSelectionTranslation"
+      @retry="retryPdfSelectionTranslation"
+      @settings="openDesktopSettings"
+      @copy="copyPdfSelectionTranslation"
+    />
+
+    <div
+      v-if="hlPopover"
+      class="hl-popover"
+      :style="{ left: hlPopover.x + 'px', top: hlPopover.y - 40 + 'px' }"
+    >
+      <button @mousedown.prevent="confirmHighlight">高亮</button>
+      <button @mousedown.prevent="noteSelection">笔记</button>
+      <button @mousedown.prevent="shareSelection">生成分享图</button>
+      <button :disabled="sending" @mousedown.prevent="askSelection(true)">帮我弄懂这段</button>
+      <button @mousedown.prevent="askSelection()">问 AI</button>
+    </div>
+
+    <div v-if="formulaDialog" class="formula-modal" @click.self="closeFormulaDialog">
+      <section
+        class="formula-dialog"
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="`formula-dialog-title-${formulaDialog.lid}`"
+      >
+        <header class="formula-dialog-head">
+          <div>
+            <p class="formula-dialog-kicker">公式剖面</p>
+            <h3 :id="`formula-dialog-title-${formulaDialog.lid}`">{{ formulaDialog.lid }}</h3>
+          </div>
+          <button class="formula-dialog-close" title="关闭" aria-label="关闭公式剖面" @click="closeFormulaDialog">×</button>
+        </header>
+        <div class="formula-dialog-body">
+          <pre class="formula-dialog-source" v-html="renderSeg(formulaDialog)"></pre>
+          <div v-if="formulaDialog.formula" class="formula-dialog-profile">
+            <p class="formula-dialog-meaning">{{ formulaDialog.formula.composition.meaning }}</p>
+            <div v-if="formulaDialog.formula.parameters.length" class="formula-dialog-section">
+              <h4>参数</h4>
+              <dl>
+                <template v-for="p in formulaDialog.formula.parameters" :key="p.symbol">
+                  <dt>
+                    <span class="formula-param-symbol" v-html="renderFormulaSymbol(p.symbol)"></span>
+                    <span v-if="p.label" class="formula-param-label"> · {{ p.label }}</span>
+                  </dt>
+                  <dd>
+                    {{ p.meaning }}
+                    <span v-if="p.unit"> · 单位: {{ p.unit }}</span>
+                    <span v-if="p.domain"> · 取值域: {{ p.domain }}</span>
+                  </dd>
+                </template>
+              </dl>
+            </div>
+            <div v-if="formulaDialog.formula.context_links.length" class="formula-dialog-section">
+              <h4>上下文关系</h4>
+              <ul>
+                <li v-for="link in formulaDialog.formula.context_links" :key="`${link.target_lid}:${link.relation}`">
+                  <strong>{{ link.relation }}</strong> {{ link.description }}
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="sourcePreview" class="source-preview-modal" @click.self="closeSourcePreview" @keydown.esc.stop="closeSourcePreview">
+      <section
+        class="source-preview-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="source-preview-title"
+      >
+        <header class="source-preview-head">
+          <div>
+            <p class="formula-dialog-kicker">来源预览</p>
+            <h3 id="source-preview-title">引用来源</h3>
+          </div>
+          <div class="source-preview-actions">
+            <button title="在主阅读区打开" @click="openSourceInReader">在阅读区打开</button>
+            <button class="formula-dialog-close" title="关闭" aria-label="关闭来源预览" @click="closeSourcePreview">×</button>
+          </div>
+        </header>
+        <div ref="sourcePreviewBodyRef" class="source-preview-body">
+          <p v-if="sourcePreview.loading" class="source-preview-state">正在加载来源...</p>
+          <p v-else-if="sourcePreview.error" class="source-preview-state error">{{ sourcePreview.error }}</p>
+          <div v-else class="source-preview-text md" v-html="typographyHtml(sourcePreviewHtml)"></div>
+        </div>
+      </section>
+    </div>
+
+    <ShareImagePanel v-if="shareDraft" :source="shareDraft.source" :loading="shareDraft.loading" @close="closeShare" />
+    <NoteEditorPanel v-if="noteEditor && !noteCollapsed" v-model:content="noteEditor.content"
+      :title="noteEditor.title ?? '阅读笔记'" :summary="noteEditor.summary" :revision="noteEditor.receipt?.reference.revision"
+      :excerpt="noteEditor.excerpt" :legacy="noteEditor.legacy" :saving="noteSaving" :disabled="!!noteTransition" :error="noteError"
+      @save="saveNote" @collapse="noteCollapsed = true" @discard="cancelNote" />
+    <button v-if="noteEditor && noteCollapsed" class="note-resume" @click="noteCollapsed = false">继续编辑笔记</button>
+    <div v-if="noteTransition" class="note-transition" role="dialog" aria-modal="true" aria-label="处理未保存笔记">
+      <p>{{ noteTransition.label }}前，如何处理未保存的笔记？</p>
+      <p v-if="noteError" role="alert">{{ noteError }}</p>
+      <button :disabled="noteSaving" @click="resolveNoteTransition('save')">保存并继续</button>
+      <button :disabled="noteSaving" @click="resolveNoteTransition('discard')">放弃并继续</button>
+      <button :disabled="noteSaving" @click="resolveNoteTransition('continue')">继续编辑</button>
+    </div>
+  </div>
+</template>
+<style scoped>
+.note-transition { position: fixed; z-index: 150; bottom: 24px; right: 16px; box-sizing: border-box; width: min(380px, calc(100vw - 32px)); padding: 20px; background: var(--canvas); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 32px #0003; }
+.note-transition button { min-height: 44px; margin: 4px; }
+.note-resume { position: fixed; z-index: 120; right: 20px; bottom: 24px; padding: 12px 18px; background: var(--canvas); color: var(--accent); border: 1px solid var(--line); border-radius: 12px; }
+.desktop-settings-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(10, 10, 10, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.desktop-settings-dialog {
+  width: min(32rem, 94vw);
+  max-height: min(90vh, 48rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.98);
+}
+.desktop-settings-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+.desktop-settings-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.desktop-settings-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem;
+}
+.desktop-settings-section + .desktop-settings-section {
+  margin-top: 1rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+.desktop-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.desktop-settings-row strong {
+  font-size: 0.9rem;
+}
+.desktop-settings-row p,
+.desktop-settings-message,
+.desktop-settings-path {
+  margin: 0.25rem 0 0;
+  color: var(--slate);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.desktop-settings-row button {
+  min-height: 36px;
+  flex: 0 0 auto;
+}
+.desktop-library-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+.desktop-provider-heading {
+  align-items: flex-start;
+}
+.desktop-provider-mode {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.desktop-provider-mode button {
+  min-height: 32px;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  padding: 0.35rem 0.65rem;
+  color: var(--slate);
+}
+.desktop-provider-mode button + button {
+  border-left: 1px solid var(--hairline);
+}
+.desktop-provider-mode button.active {
+  background: var(--ink);
+  color: #fff;
+}
+.desktop-provider-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(9rem, 0.58fr);
+  gap: 0.7rem;
+  margin-top: 0.8rem;
+}
+.desktop-provider-grid label {
+  min-width: 0;
+  display: grid;
+  gap: 0.3rem;
+  color: var(--steel);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+.desktop-provider-grid input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.desktop-provider-key {
+  grid-column: 1 / -1;
+}
+.desktop-provider-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-top: 0.75rem;
+}
+.desktop-provider-actions p {
+  margin: 0;
+  color: var(--steel);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+.desktop-provider-save {
+  min-height: 36px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.desktop-settings-message {
+  margin-top: 0.85rem;
+}
+.desktop-settings-path {
+  overflow-wrap: anywhere;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+}
+.app-loading {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  background: var(--reader-canvas);
+  color: var(--steel);
+  font-size: 0.9rem;
+}
+.agent {
+  /* 固定宽侧栏:flex 0 0 不随内容增长。修 S10g 回归——面板 class 从 .qa 改 .agent 时丢了 width,
+     默认 flex:0 1 auto 让右栏被长答案/trace 内容撑满全屏、挤垮分屏与按钮。 */
+  flex: 0 0 24rem;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line);
+  min-width: 0;
+  padding: 1rem;
+  overflow-y: auto;
+}
+.agent-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.new-chat {
+  font-size: 0.85em;
+}
+.transcript {
+  flex: 1;
+  overflow-y: auto;
+  /* 长答案/无空格长串(trace digest、JSON args)在固定宽侧栏内换行,不横向撑破。 */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.turn {
+  margin-bottom: 1.2em;
+}
+.u-msg {
+  font-weight: 600;
+}
+.a-msg {
+  background: #f7f7f9;
+  border-radius: 6px;
+  padding: 0.6em 0.8em;
+}
+/* `.md` 渲染排版移到全局 style.css —— scoped 样式够不到 v-html 注入的子节点。 */
+.pending {
+  color: #888;
+}
+.incomplete {
+  color: #b35;
+}
+.proposals {
+  margin-top: 0.6em;
+  border-top: 1px dashed #ccc;
+  padding-top: 0.4em;
+}
+.prop-h {
+  font-size: 0.8em;
+  color: #666;
+}
+.proposal {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0.25em 0;
+  font-size: 0.9em;
+}
+.prop-label {
+  flex: 1;
+}
+.proposal button.undo {
+  color: #b35;
+}
+.done {
+  color: #393;
+  font-size: 0.85em;
+}
+.agent-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+  border-top: 1px solid #ddd;
+  padding-top: 0.5em;
+}
+.agent-input textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 段内选区浮动工具条 */
+.hl-popover {
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--ink);
+  box-shadow: none;
+}
+.hl-popover button {
+  background: transparent;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  font-size: 0.82rem;
+  min-height: 36px;
+  cursor: pointer;
+}
+.hl-popover button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.hl-popover button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+.pdf-selection-toolbar {
+  min-width: min(336px, calc(100vw - 16px));
+  max-width: min(520px, calc(100vw - 16px));
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+.pdf-selection-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  border-radius: 6px;
+}
+.pdf-selection-status {
+  padding: 0 0.45rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+.pdf-selection-status.error {
+  max-width: 220px;
+  overflow: hidden;
+  color: #ffd4ce;
+  text-overflow: ellipsis;
+}
+@media (max-width: 640px) {
+  .pdf-selection-toolbar {
+    left: 8px !important;
+    right: 8px;
+    min-width: 0;
+    max-width: none;
+    transform: none;
+  }
+  .pdf-selection-status {
+    min-width: 0;
+    line-height: 1.25;
+    white-space: normal;
+  }
+}
+
+/* 公式 sidecar 查看弹窗 */
+.formula-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(10, 10, 10, 0.28);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.formula-dialog {
+  width: min(52rem, 94vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: none;
+}
+.formula-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+.formula-dialog-kicker {
+  margin: 0 0 0.15rem;
+  color: var(--steel);
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+.formula-dialog-head h3 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 1rem;
+}
+.formula-dialog-close {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--muted);
+  padding: 0;
+  font-size: 1rem;
+}
+.book-picker-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(10, 10, 10, 0.28);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.book-picker-dialog {
+  width: min(42rem, 94vw);
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: none;
+}
+.book-picker-head,
+.book-picker-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+.book-picker-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.book-picker-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin: 0.8rem 1rem 0;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--canvas);
+  padding: 2px;
+}
+.book-picker-tabs button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+}
+.book-picker-tabs button.active {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--hairline-soft);
+}
+.book-picker-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem;
+}
+.book-picker-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+.book-picker-input-row label {
+  display: grid;
+  gap: 0.32rem;
+  color: var(--steel);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.book-picker-input-row input {
+  width: 100%;
+  min-height: 42px;
+  box-sizing: border-box;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  padding: 0.55rem 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.84rem;
+}
+.book-create-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+.book-create-grid label {
+  display: grid;
+  gap: 0.32rem;
+  min-width: 0;
+  color: var(--steel);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.book-create-grid input {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  box-sizing: border-box;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  padding: 0.55rem 0.7rem;
+  font-size: 0.84rem;
+}
+.book-create-generated-id {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid var(--hairline-soft);
+  border-radius: 8px;
+  background: var(--surface-code);
+  color: var(--slate);
+  padding: 0.62rem 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.book-picker-input-row button,
+.book-picker-actions button {
+  min-height: 42px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--canvas);
+  color: var(--ink);
+  padding: 0 0.9rem;
+}
+.book-picker-root {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+.book-picker-error,
+.book-picker-state {
+  margin: 0.85rem 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.book-picker-error {
+  color: #9f2d2d;
+}
+.book-picker-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+.book-picker-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+  width: 100%;
+  min-height: 58px;
+  border: 1px solid var(--hairline-soft);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+}
+.book-picker-card:hover,
+.book-picker-card.active {
+  border-color: var(--accent);
+  background: #fff;
+}
+.book-picker-card strong {
+  font-family: var(--serif);
+  font-size: 1rem;
+  line-height: 1.55;
+  overflow-wrap: break-word;
+}
+.book-picker-card-title {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+.book-picker-card-title small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.book-picker-selected { color: var(--accent); font-size: 1.2rem; }
+.desktop-provider-advanced { margin: 1rem 0; color: var(--muted); font-size: .8rem; }
+.desktop-provider-advanced summary { cursor: pointer; }
+.desktop-provider-advanced p { line-height: 1.6; }
+.book-picker-toolbar { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: .8rem; }
+.book-picker-toolbar button { padding: .4rem .7rem; border: 1px solid var(--hairline); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.book-picker-location { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--hairline-soft); color: var(--muted); font-size: .8rem; }
+.book-picker-location summary { cursor: pointer; }
+.book-picker-location .book-picker-input-row { margin-top: .8rem; }
+.book-picker-card:nth-child(3n + 2) { --cover-color: #ece2d4; }
+.book-picker-card:nth-child(3n) { --cover-color: #dfe6ee; }
+.book-picker-actions {
+  border-top: 1px solid var(--line);
+  border-bottom: none;
+}
+.book-picker-actions .primary-action {
+  background: var(--ink);
+  color: #fff;
+}
+@media (max-width: 640px) {
+  .book-create-grid {
+    grid-template-columns: 1fr;
+  }
+  .desktop-provider-grid {
+    grid-template-columns: 1fr;
+  }
+  .desktop-provider-key {
+    grid-column: auto;
+  }
+  .desktop-provider-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .desktop-provider-save {
+    justify-content: center;
+  }
+}
+.formula-dialog-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem;
+}
+.formula-dialog-source {
+  margin: 0 0 1rem;
+  border: 1px solid var(--hairline-soft);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 0.85rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+.formula-dialog-profile {
+  display: grid;
+  gap: 0.9rem;
+}
+.formula-dialog-meaning {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 650;
+  line-height: 1.55;
+}
+.formula-dialog-section {
+  border-top: 1px solid var(--hairline-soft);
+  padding-top: 0.8rem;
+}
+.formula-dialog-section h4 {
+  margin: 0 0 0.45rem;
+  font-size: 0.9rem;
+}
+.formula-dialog-section dl {
+  margin: 0;
+}
+.formula-dialog-section dt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem;
+  font-weight: 650;
+}
+.formula-param-symbol {
+  min-width: 0;
+}
+.formula-param-label {
+  color: var(--ink);
+}
+.formula-dialog-section dd {
+  margin: 0 0 0.55rem 1rem;
+  color: var(--slate);
+  line-height: 1.5;
+}
+.formula-dialog-section ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--slate);
+  line-height: 1.5;
+}
+
+/* Source 临时阅读区 */
+.source-preview-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(10, 10, 10, 0.32);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.source-preview-dialog {
+  width: min(58rem, 94vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: none;
+}
+.source-preview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+.source-preview-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.source-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.source-preview-actions button:not(.formula-dialog-close) {
+  min-height: 44px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 0.84rem;
+}
+.source-preview-body {
+  min-height: 0;
+  overflow-y: auto;
+  scroll-padding: 30vh 0;
+  padding: 1.2rem;
+}
+.source-preview-state {
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--hairline-soft);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--slate);
+}
+.source-preview-state.error {
+  color: #8f1f1f;
+}
+.source-preview-text {
+  max-width: var(--reader-measure);
+  margin: 0 auto;
+  font-family: var(--reader-font);
+  font-size: var(--reader-size);
+  line-height: var(--reader-leading);
+  color: var(--ink);
+}
+.source-preview-text > *:first-child {
+  margin-top: 0;
+}
+.source-preview-text > *:last-child {
+  margin-bottom: 0;
+}
+.source-preview-paragraph {
+  margin: 0 0 1rem;
+}
+.source-preview-heading {
+  margin: 1.2rem 0 0.65rem;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.source-preview-inline-formula {
+  display: inline;
+}
+.source-preview-formula {
+  margin: 0 0 1rem;
+  overflow-x: auto;
+}
+.source-preview-asset {
+  margin: 1rem 0;
+  border: 1px solid var(--hairline-soft);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 0.85rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.source-preview-code {
+  background:
+    linear-gradient(90deg, rgba(204, 120, 92, 0.08), rgba(204, 120, 92, 0) 3.5rem),
+    var(--surface-code);
+  color: var(--code-ink);
+  border-color: var(--code-border);
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  white-space: pre;
+  overflow-wrap: normal;
+  tab-size: 2;
+}
+.source-preview-table {
+  white-space: normal;
+}
+.source-preview-code code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+.source-preview-image {
+  display: grid;
+  gap: 0.45rem;
+  white-space: normal;
+}
+.source-preview-rendered-image {
+  display: block;
+  max-width: 100%;
+  max-height: 62vh;
+  object-fit: contain;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+.source-preview-image code,
+.source-preview-image pre {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 笔记编辑器模态 */
+.note-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.28);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 60;
+}
+.note-dialog {
+  width: min(46rem, 92vw);
+  max-height: 86vh;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.nd-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--line);
+  font-weight: 600;
+}
+.nd-close {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--canvas);
+  font-size: 1rem;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 0;
+}
+.nd-body {
+  display: flex;
+  gap: 0;
+  flex: 1;
+  min-height: 16rem;
+}
+.nd-input {
+  flex: 1;
+  border: none;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  padding: 1rem;
+  font: inherit;
+  resize: none;
+  outline: none;
+}
+.nd-preview {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  background: var(--canvas-parchment);
+}
+.nd-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--line);
+}
+.nd-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.nd-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.nd-actions .primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.reader-pane [data-lid].note-placement-candidate {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  background: rgba(116, 86, 55, 0.1);
+  cursor: crosshair;
+}
+.note-placement-status {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  z-index: 80;
+  width: min(34rem, calc(100vw - 2rem));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--canvas);
+  box-shadow: 0 8px 28px rgba(34, 31, 27, 0.16);
+}
+.note-placement-status button {
+  flex: 0 0 auto;
+}
+</style>

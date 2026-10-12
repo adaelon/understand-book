@@ -1,0 +1,24 @@
+{
+  "continuation": null,
+  "delivered": {
+    "available": false,
+    "delivery": {
+      "reason": "Required semantics exceed the model-body budget; no content or evidence was delivered. Retry in a fresh turn with sufficient budget; this tool may have no paging API.",
+      "status": "omitted"
+    },
+    "projection": "semantic_budget_exceeded"
+  },
+  "delivered_bytes": 269,
+  "input": {},
+  "limit": 512,
+  "raw": {
+    "available": false,
+    "key_stops": [],
+    "throughlines": [],
+    "warning": "BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. "
+  },
+  "raw_bytes": 1925,
+  "status": "partial",
+  "tool": "book.structure",
+  "truncated": true
+}

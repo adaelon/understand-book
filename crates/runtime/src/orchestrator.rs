@@ -680,6 +680,8 @@ struct ObservedCitationEnvelope {
 struct ObservedBookText {
     lid: String,
     text: String,
+    #[serde(default)]
+    source_range: Option<base_schema::Span>,
 }
 
 #[derive(Debug, Clone)]
@@ -923,6 +925,21 @@ impl TurnLocatorLedger {
                 self.lid_not_found_observed = true;
             }
             return;
+        }
+        // The bounded projection can deliver source identities without their
+        // quote text. These explicit recovery locations authorize reads only.
+        let recovery_origin = match tool {
+            "book.query" | "book.synthesize" => Some(LocatorOrigin::SemanticQueryResult),
+            "book.structure" | "book.guide_path" => Some(LocatorOrigin::StructuralIndexResult),
+            _ => None,
+        };
+        if let (Some(origin), Ok(value)) = (
+            recovery_origin,
+            serde_json::from_str::<serde_json::Value>(result),
+        ) {
+            if let Some(delivery) = value.get("delivery") {
+                self.observe_value_array(delivery, "read_lids", origin, book);
+            }
         }
         match tool {
             "book.structure" => {
@@ -1364,6 +1381,8 @@ fn legacy_book_text_would_succeed(arguments: &str, book: &Book) -> bool {
 struct ObservedTurnEvidence {
     range: EvidenceRange,
     claim_kind: EvidenceClaimKind,
+    /// Exact canonical interval for a verified text page, including leaf gaps.
+    source_range: Option<(usize, usize)>,
 }
 
 #[derive(Debug, Default)]
@@ -1387,14 +1406,19 @@ impl TurnEvidenceLedger {
     }
 
     fn observe(&mut self, evidence: EvidenceRange) {
-        self.observe_with_claim(evidence, EvidenceClaimKind::SourceText);
+        self.observe_with_claim(evidence, EvidenceClaimKind::SourceText, None);
     }
 
     fn observe_literal_occurrence(&mut self, evidence: EvidenceRange) {
-        self.observe_with_claim(evidence, EvidenceClaimKind::LiteralOccurrence);
+        self.observe_with_claim(evidence, EvidenceClaimKind::LiteralOccurrence, None);
     }
 
-    fn observe_with_claim(&mut self, range: EvidenceRange, claim_kind: EvidenceClaimKind) {
+    fn observe_with_claim(
+        &mut self,
+        range: EvidenceRange,
+        claim_kind: EvidenceClaimKind,
+        source_range: Option<(usize, usize)>,
+    ) {
         if let Some(existing) = self
             .evidence
             .iter_mut()
@@ -1403,10 +1427,16 @@ impl TurnEvidenceLedger {
             if claim_kind == EvidenceClaimKind::SourceText {
                 existing.claim_kind = EvidenceClaimKind::SourceText;
             }
+            if source_range.is_some() {
+                existing.source_range = source_range;
+            }
             return;
         }
-        self.evidence
-            .push(ObservedTurnEvidence { range, claim_kind });
+        self.evidence.push(ObservedTurnEvidence {
+            range,
+            claim_kind,
+            source_range,
+        });
         if self.evidence_state != EvidenceState::UserProvided {
             self.evidence_state = EvidenceState::KnownLids;
         }
@@ -1523,7 +1553,13 @@ impl TurnEvidenceLedger {
         let mut observed: Vec<_> = self
             .evidence
             .iter()
-            .filter_map(|evidence| evidence_intervals(book, &evidence.range))
+            .filter_map(|evidence| {
+                evidence
+                    .source_range
+                    .as_ref()
+                    .map(|range| vec![*range])
+                    .or_else(|| evidence_intervals(book, &evidence.range))
+            })
             .flatten()
             .collect();
         observed.sort_unstable();
@@ -1708,6 +1744,66 @@ fn observe_tool_evidence(
                 .get("end_lid")
                 .and_then(|value| value.as_str())
                 .unwrap_or(lid);
+            if let Some(range) = observed.source_range {
+                let Some(first) = book.base.lid_nodes.iter().find(|node| node.lid == lid) else {
+                    return;
+                };
+                let Some(last) = book.base.lid_nodes.iter().find(|node| node.lid == end_lid) else {
+                    return;
+                };
+                let expected_start = args
+                    .get("start_utf16")
+                    .and_then(|v| v.as_u64())
+                    .map_or(first.span.start, |at| at as usize);
+                if observed.lid != lid
+                    || range.start != expected_start
+                    || range.end > last.span.end
+                    || book.text_in_source_range(&range).ok().as_deref()
+                        != Some(observed.text.as_str())
+                {
+                    return;
+                }
+                // Bind by coordinates, never by searching for repeated text.
+                let mut leaves: Vec<_> = book
+                    .base
+                    .lid_nodes
+                    .iter()
+                    .filter(|node| {
+                        node.children.is_empty()
+                            && node.span.start < range.end
+                            && node.span.end > range.start
+                    })
+                    .collect();
+                leaves.sort_by_key(|node| (node.span.start, node.span.end));
+                let ranges: Vec<_> = leaves
+                    .into_iter()
+                    .map(|node| SourceSelectedRange {
+                        lid: node.lid.clone(),
+                        range: SourceTextRange {
+                            start: (range.start.max(node.span.start) - node.span.start) as u32,
+                            end: (range.end.min(node.span.end) - node.span.start) as u32,
+                        },
+                    })
+                    .collect();
+                if let (Some(first), Some(last)) = (ranges.first(), ranges.last()) {
+                    let evidence = EvidenceRange {
+                        start_lid: first.lid.clone(),
+                        end_lid: last.lid.clone(),
+                        ranges,
+                    };
+                    if book
+                        .resolve_source(&evidence, SOURCE_PRESENTATION_LOCALE, None)
+                        .is_ok()
+                    {
+                        ledger.observe_with_claim(
+                            evidence,
+                            EvidenceClaimKind::SourceText,
+                            Some((range.start, range.end)),
+                        );
+                    }
+                }
+                return;
+            }
             if observed.lid != lid
                 || book
                     .text(lid, (end_lid != lid).then_some(end_lid))
@@ -3138,14 +3234,18 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
         ),
         s(
             "goal.update",
-            "Update the active Resident task only when interpretation, requirements or working state changes. Refine the origin request before complex work; revise requirements only with an exact quote from the current user message. Working items record a revisable plan, not user requirements. Keep the plan consistent with actual results and remaining content gaps before finishing. This tool cannot mark delivery or Goal completion; completed items do not prove either. Short direct answers need no update or plan.",
+            "Update the active Resident task only when interpretation, requirements or working state changes. working saves focus/next_move and optionally replaces the plan; refine sets interpretation/requirements only in the goal's origin turn; revise changes requirements using the current user turn ID and an exact quote from that message. Replace example turn IDs with actual IDs from the active Goal; each requirement must cite the origin or current user turn. Working items record a revisable plan, not user requirements. Keep the plan consistent with actual results and remaining content gaps before finishing. Success returns {goal_id, revision, changed}; changed=false means no state change. This tool cannot mark delivery or Goal completion; completed items do not prove either. Short direct answers need no update or plan.",
             json!({"type":"object","properties":{
                 "operation":{"type":"string","enum":["working","refine","revise"]},
                 "focus":{"type":"string"},"open_questions":{"type":"array","items":{"type":"string"}},"next_move":{"type":"string"},
                 "items":{"type":"array","description":"For operation=working: replace the whole ordered work plan atomically. Omit to retain it; [] clears it. Use non-empty unique IDs and non-empty descriptions. Reorder, split, merge, remove abandoned steps or reopen completed items as observations require; this does not change requirements.","items":{"type":"object","properties":{"id":{"type":"string","minLength":1},"description":{"type":"string","minLength":1},"status":{"type":"string","enum":["pending","in_progress","completed"]}},"required":["id","description","status"]}},
                 "interpretation":{"type":"string"},"requirements":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"description":{"type":"string"},"basis_turn_id":{"type":"string"},"verification":{"type":"string","enum":["content","presentation_delivery","reader_action"],"description":"content: explanation correctness and features inside the authored page, including page controls, dragging, playback, pause, seeking and saved scene restoration. presentation_delivery: actually save and deliver the requested page. reader_action: an explicitly requested host Reader operation such as navigating the book or changing its panels; requires an actual Reader effect. Page interactions and preview actions are content requirements, not reader_action. Keep the user's required behavior in description; choose verification by what must actually be delivered."}},"required":["id","description","basis_turn_id","verification"]}},
                 "basis_turn_id":{"type":"string"},"basis_quote":{"type":"string"}
-            },"required":["operation"]}),
+            },"required":["operation"],"examples":[
+                {"operation":"working","focus":"核对当前段落的解释依据","next_move":"解释后保存用户要求的笔记","items":[{"id":"explain","description":"核对原文并解释","status":"in_progress"},{"id":"note","description":"保存用户要求的笔记并核对回执","status":"pending"}]},
+                {"operation":"refine","interpretation":"解释当前段落并保存用户要求的笔记","requirements":[{"id":"explain","description":"解释当前段落","basis_turn_id":"origin-user-turn-id","verification":"content"},{"id":"note","description":"在当前段落保存笔记","basis_turn_id":"origin-user-turn-id","verification":"reader_action"}]},
+                {"operation":"revise","basis_turn_id":"current-user-turn-id","basis_quote":"只解释，不要保存笔记","interpretation":"只解释当前段落","requirements":[{"id":"explain","description":"只解释当前段落，不保存笔记","basis_turn_id":"current-user-turn-id","verification":"content"}]}
+            ]}),
         ),
         artifact_s(
             ArtifactToolId::List,
@@ -3263,7 +3363,7 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
         ),
         s(
             "memory.save",
-            "Save highlight or position memory; qa records the user's original question after answering with book.query; context records sourced reader background, preferences, interests or sticking points. Use reader.note for every note: note is not a memory.save type. anchor_lid is the question or memory location. context may cite real LIDs supporting it.",
+            "Save an existing reader fact at a verified anchor_lid. type=highlight stores supplied content as long_term memory without resolving a source range or selecting it in Reader; use reader.highlight for a requested source highlight. position stores a session reading-position memory, without navigating. qa stores the user's original substantive question after answering with book.query, not the generated answer or routine chat history. context stores sourced reader background, preferences, interests or sticking points; retain what the user actually said and distinguish inference. Use reader.note for every note. context needs no book citation for a user-stated preference; citations may contain real supporting LIDs, and invalid LIDs are dropped. Success returns the saved record {mem_id,type,layer,anchor,content,citations,...}; it is not a note_id or proof of learning. Replace example locations and content with observed facts; do not write merely to explain selected text.",
             json!({
                 "type": "object",
                 "properties": {
@@ -3276,7 +3376,13 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
                         "description": "Optional real LIDs supporting this memory, primarily for context; invalid LIDs are dropped and the list may be empty"
                     }
                 },
-                "required": ["type", "anchor_lid", "content"]
+                "required": ["type", "anchor_lid", "content"],
+                "examples": [
+                    {"type":"highlight","anchor_lid":"1.1","content":"先核对前提，再下结论"},
+                    {"type":"position","anchor_lid":"1.1","content":"读到当前段落，稍后从这里继续"},
+                    {"type":"qa","anchor_lid":"1.1","content":"为什么要先核对前提？"},
+                    {"type":"context","anchor_lid":"1.1","content":"用户说：我有 Rust 基础，读这一段时请先给例子","citations":[]}
+                ]
             }),
         ),
         s(
@@ -3312,23 +3418,28 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
         ),
         s(
             "reader.highlight",
-            "Highlight source text at a LID. When the user specifies a sentence or quote, provide that exact quote; only its unique original occurrence is saved. Omit quote only when the user requests the whole passage. Persistence is delegated to memory; returns highlight_id.",
+            "Save a user-requested source highlight at a verified LID. For a sentence, pass the exact unique quote within that LID; omit quote only for the whole passage. This interface accepts one lid and an optional quote, not offsets, an end_lid or note text. Use reader.note for commentary. Success returns {ok:true,highlight_id}, the saved session memory ID. If reader_effect.status=not_applied, persistence succeeded but the Reader selection did not apply. Replace example locations and quotes with observed source text; an explanation alone needs no highlight.",
             json!({
                 "type": "object",
                 "properties": {"lid": {"type": "string"}, "quote": {"type": "string", "description": "Exact requested original text within this LID; must match once"}},
-                "required": ["lid"]
+                "required": ["lid"],
+                "examples": [
+                    {"lid":"1.1","quote":"先核对前提"},
+                    {"lid":"1.1"}
+                ]
             }),
         ),
         s(
             "reader.note",
-            "Attach a note to a LID through a thin entry point whose persistence is delegated to memory. Returns note_id, which is the memory-layer ID.",
+            "Save the user's requested note text at a verified source lid. The lid is the note's body placement; text is the content to retain, not a highlight quote. Use this tool for notes, including requested summaries of an explanation; memory.save cannot create notes. Success returns {ok:true,note_id,status:CREATED|EXISTING}; note_id is the persisted memory ID. EXISTING reuses the same note rather than creating another. New Agent notes are saved in the session layer. If reader_effect.status=not_applied, the note is saved but Reader selection did not apply. Replace the example lid with the actual requested location. Do not create a note for an explanation-only request or claim success before the receipt.",
             json!({
                 "type": "object",
                 "properties": {
                     "lid": {"type": "string"},
                     "text": {"type": "string", "description": "Note content"}
                 },
-                "required": ["lid", "text"]
+                "required": ["lid", "text"],
+                "examples": [{"lid":"1.1","text":"先核对前提再下结论"}]
             }),
         ),
         s(
@@ -3662,8 +3773,8 @@ fn dispatch_resident_book_tool(
             }
         }
         (BookToolId::Text, BookToolInput::Text(input)) => {
-            match book.text(&input.lid, input.end_lid.as_deref()) {
-                Ok(text) => to_json(&serde_json::json!({ "lid": input.lid, "text": text })),
+            match book.read_text(&input) {
+                Ok(result) => to_json(&result),
                 Err(error) => to_json(&error),
             }
         }
@@ -5638,7 +5749,9 @@ fn run_context_inner(
     context.evidence_plan_ledger =
         TurnEvidencePlanLedger::from_evidence_state(context.evidence_ledger.evidence_state());
     let guided_origin = guided_read_origin(question, messages).map(str::to_string);
-    let mut turn_intent_hints = classify_turn_intent(question);
+    // Selection provenance JSON-quotes user text; intent belongs to the original request.
+    let mut turn_intent_hints =
+        classify_turn_intent(context.current_user_message.as_deref().unwrap_or(question));
     if let Some(origin) = &guided_origin {
         turn_intent_hints.insert(TurnIntentHint::ExplicitGuidedRead);
         let selected_lid = reader_input.state.selection.clone();
@@ -5787,6 +5900,9 @@ fn run_context_inner(
         if context.tutor.as_ref().is_some_and(|t| t["status"] == "active") && !state.tutor_active()? {
             context.tutor = Some(serde_json::json!({"status":"paused"}));
             tool_registry = tool_registry.without_tutor();
+        } else if context.tutor.is_some() {
+            // Accepted assessments change the pending references between samples.
+            tool_registry = tool_registry.with_tutor_context(context.tutor.as_ref());
         }
         let mut sampling_context_fragments = context_fragments.clone();
         if let Some(tutor) = &context.tutor {
@@ -7034,6 +7150,11 @@ fn run_context_inner(
 #[cfg(test)]
 mod tests {
     mod book_examples { include!("book_example_tests.rs"); }
+    mod book_handoff { include!("book_handoff_tests.rs"); }
+    mod book_continuation { include!("book_continuation_tests.rs"); }
+    mod book_outputs { include!("book_output_tests.rs"); }
+    mod tool_discovery { include!("tool_discovery_integration_tests.rs"); }
+    mod write_examples { include!("write_example_tests.rs"); }
     mod adm6 { include!("adm6_tests.rs"); }
     mod turn_failures { include!("turn_failure_tests.rs"); }
     use super::*;
@@ -9620,7 +9741,7 @@ user_question=\"explain normalization and create a rich presentation\"";
                     turn_calls(vec![call(
                         "unobserved-source",
                         "source.present",
-                        &serde_json::json!({"quote": "X".repeat(100)}).to_string(),
+                        &serde_json::json!({"quote": "TAIL_SECRET"}).to_string(),
                     )]),
                     turn_final("正文过长，未把未读尾部当作证据。"),
                 ]
@@ -9669,7 +9790,7 @@ user_question=\"explain normalization and create a rich presentation\"";
             .find(|message| message.tool_call_id.as_deref() == Some("unobserved-source"))
             .and_then(|message| message.content.as_deref())
             .unwrap();
-        assert!(source_result.contains("TOOL_NOT_EXPOSED"));
+        assert!(source_result.contains("SOURCE_NOT_OBSERVED"));
     }
 
     #[test]

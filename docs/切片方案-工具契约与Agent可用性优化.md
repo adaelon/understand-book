@@ -1,12 +1,12 @@
 # 工具契约与 Agent 可用性优化切片方案
 
-日期：2026-10-12。状态：TO0–TO2 已完成；TO3–TO14 待实施。
+日期：2026-10-12。状态：TO0–TO14 已完成；真实对照未证明性能收益，已知产品问题另列。
 
 本方案以本项目提交 `67efb605f5d45157eeb769f0074b218eacd76dba` 为代码观察基线，以 REA 提交 `2ff850de68dc9b05c6faf2bbfd26d56bc2d5d27c` 为外部设计参考。执行时先确认相关代码是否已有后续变化，再按本文的符号和行为定位。
 
 目标：让 Agent 更容易选对工具、一次填对参数、理解结果覆盖范围，并沿工具返回的信息完成读取、引用和真实交付。改进覆盖 Book、Tutor、Presentation、Goal、Reader/Memory 和专用 Build Executor；同时优化已有的契约单源、动态发现、证据分层、结果预算和评测机制。
 
-TO1 已实现共同参数语义回收，TO2 已补共享 Book 示例并完成最终发布输入与真实分派验证，证据见 [TO1 实施记录](performance/tool-usability/to1/README.md) 与 [TO2 实施记录](performance/tool-usability/to2/README.md)。TO3–TO14 待实施，生产服务尚未发布本轮改动。
+TO1 已实现共同参数语义回收，TO2 已补共享 Book 示例，TO3 已补 Tutor 状态示例与真实分派验证，TO4 已补 Presentation 九种操作示例与真实修改交付链路，TO5 已补 Goal／Reader／Memory 十个示例及真实保存回执，TO6 已补 Executor 四工具的五个生命周期示例及正常／恢复／stdio 验证，TO7 已补发现用途和能力恢复提示，TO8 已完成候选到原文读取的参数交接，TO9 已补 Context 候选覆盖并验证结构可用性，TO10 已完成正文／搜索续取与精确交付证据，TO11 已完成结构化预算下的语义保留及可执行恢复，TO12 已发布 Book 结果 schema 和副作用注解。证据见 [TO1](performance/tool-usability/to1/README.md)、[TO2](performance/tool-usability/to2/README.md)、[TO3](performance/tool-usability/to3/README.md)、[TO4](performance/tool-usability/to4/README.md)、[TO5](performance/tool-usability/to5/README.md)、[TO6](performance/tool-usability/to6/README.md)、[TO7](performance/tool-usability/to7/README.md)、[TO8](performance/tool-usability/to8/README.md)、[TO9](performance/tool-usability/to9/README.md)、[TO10](performance/tool-usability/to10/README.md)、[TO11 实施记录](performance/tool-usability/to11/README.md) 和 [TO12 实施记录](performance/tool-usability/to12/README.md)。TO13 已从实际契约生成工具参考文档，见 [工具契约参考](工具契约参考.md) 和 [TO13 实施记录](performance/tool-usability/to13/README.md)。TO14 已完成固定真实对照和阅读案例，见 [TO14 实施记录](performance/tool-usability/to14/README.md)；未测出性能收益，生产服务尚未发布本轮改动。
 
 ## 1. 既有基础与本轮改进依据
 
@@ -129,18 +129,18 @@ rg -n 'examplesFor|outputSchema|annotations|batch_decompile|binary_overview' $re
 | TO0 | 基线、源码导航、切片方案和文档入口 | 无 | 已完成 |
 | TO1 | 共同参数语义回收 | TO0 | 已完成，见 [实现与验证](performance/tool-usability/to1/README.md) |
 | TO2 | Book 示例与实际发布示例验证 | TO1 | 已完成，见 [实现与验证](performance/tool-usability/to2/README.md) |
-| TO3 | Tutor 当前状态的有效示例 | TO2 | 待实施 |
-| TO4 | Presentation 操作示例 | TO2 | 待实施 |
-| TO5 | Goal、Reader、Memory 的用途和动作示例 | TO2 | 待实施 |
-| TO6 | 专用 Executor 四工具生命周期示例 | TO0 | 待实施 |
-| TO7 | 发现结果的用途和能力恢复提示 | TO1 | 待实施 |
-| TO8 | 定位结果到原文读取的参数交接 | TO1 | 待实施 |
-| TO9 | Context 候选覆盖与结构可用性 | TO0 | 待实施 |
-| TO10 | 正文/搜索结果的可执行续取 | TO8 | 待实施 |
-| TO11 | 结构化结果预算下的语义保留 | TO7、TO9、TO10 | 待实施 |
-| TO12 | Book 结果 schema 与副作用注解 | TO2、TO11 | 待实施 |
-| TO13 | 从实际契约产生工具参考文档 | TO3、TO4、TO5、TO6、TO7、TO12 | 待实施 |
-| TO14 | 真实 Agent 对照与可复用阅读案例 | TO13 | 待实施 |
+| TO3 | Tutor 当前状态的有效示例 | TO2 | 已完成，见 [实现与验证](performance/tool-usability/to3/README.md) |
+| TO4 | Presentation 操作示例 | TO2 | 已完成，见 [实现与验证](performance/tool-usability/to4/README.md) |
+| TO5 | Goal、Reader、Memory 的用途和动作示例 | TO2 | 已完成，见 [实现与验证](performance/tool-usability/to5/README.md) |
+| TO6 | 专用 Executor 四工具生命周期示例 | TO0 | 已完成，见 [实现与验证](performance/tool-usability/to6/README.md) |
+| TO7 | 发现结果的用途和能力恢复提示 | TO1 | 已完成，见 [实现与验证](performance/tool-usability/to7/README.md) |
+| TO8 | 定位结果到原文读取的参数交接 | TO1 | 已完成，见 [实现与验证](performance/tool-usability/to8/README.md) |
+| TO9 | Context 候选覆盖与结构可用性 | TO0 | 已完成，见 [实现与验证](performance/tool-usability/to9/README.md) |
+| TO10 | 正文/搜索结果的可执行续取 | TO8 | 已完成，见 [实现与验证](performance/tool-usability/to10/README.md) |
+| TO11 | 结构化结果预算下的语义保留 | TO7、TO9、TO10 | 已完成，见 [实现与验证](performance/tool-usability/to11/README.md) |
+| TO12 | Book 结果 schema 与副作用注解 | TO2、TO11 | 已完成，见 [实现与验证](performance/tool-usability/to12/README.md) |
+| TO13 | 从实际契约产生工具参考文档 | TO3、TO4、TO5、TO6、TO7、TO12 | 已完成，见 [实现与验证](performance/tool-usability/to13/README.md) |
+| TO14 | 真实 Agent 对照与可复用阅读案例 | TO13 | 已完成，见 [实现与验证](performance/tool-usability/to14/README.md) |
 
 推荐先完成 TO1→TO2→TO3，直接覆盖已有 TC2A 参数错误；随后推进 TO7→TO8→TO9→TO10→TO11。TO4、TO5 和独立的 TO6 按各自所有权接续，最后完成输出契约、文档与整体验收。每片独立记录实际影响，不以等待全方案结束为由延后本片验证。
 
@@ -223,6 +223,8 @@ rg -n 'examplesFor|outputSchema|annotations|batch_decompile|binary_overview' $re
 
 **验证及处置**：用既有 Tutor/工具契约测试抓“示例字段被状态投影删掉”“正式评估条件未满足”“无原话形成理解事实”；失败修示例选择或契约组装，保留原业务拒绝。该片真实模型对照遵循 TO14 的固定采样办法，单独报告参数错误和教学内容错误。
 
+**本次结果（2026-10-12）**：10 个 canonical 输入覆盖七种 operation 及两个 evidence 分支；14 个状态／动作上下文的 86 个发布示例经最终 schema、Native/ReAct 验证，真实分派、UI 字段绑定、帮助、评估、观察及暂停边界通过。评分必须开放 submit、建议选择必须匹配 kind，均与原业务拒绝一致；评估完成后下一采样撤下该示例。Runtime 40、Server 103 项通过（定向 5 项含于后者），12 项保持默认忽略。固定模型改前／改后各 3 次均交付、均无参数拒绝，未证明误用下降；首轮估算输入增加 741 token（4.25%）。数学条件概括和一次正文重复建议独立保留，采样预算执行限制也已记录。定义、体积、轨迹及复现见 [TO3 实施记录](performance/tool-usability/to3/README.md)。按推荐顺序下一片为 TO7。
+
 ## TO4：Presentation 操作示例
 
 **目标**：让 Agent 能准确完成创建、修改、预览和交付演示。
@@ -236,6 +238,8 @@ rg -n 'examplesFor|outputSchema|annotations|batch_decompile|binary_overview' $re
 **完成判据**：九种 operation 的示例分别通过实际 schema 和解析；至少一条已有演示修改链路按真实 fixture 完成，最终回执指向交付对象。候选与已交付引用不会在后续示例中混用。
 
 **验证及处置**：以真实 authoring 测试抓 reference/candidate 混用、预览参数冲突、遗漏 readable_content、提前声称交付；失败改示例或与实际约束不一致的描述。保留当前演示协议和对象生命周期。
+
+**本次结果（2026-10-12）**：发布 14 个完整输入，覆盖九种操作及 reference／candidate、based_on／new_object、width／viewport 的有效用法。最终 schema、真实解析、Native／ReAct 与 prepare 下一采样均通过；真实存储、Matplotlib、Manim 和三环境浏览器完成修改与交付，版本、来源及资产保持正确。修正不受支持的 `patch.source_ref_ids` 恢复提示，并为示例按钮补足触屏尺寸。Runtime 50、Server 5 项通过；独立 Draft 7 验证 14 个示例、19 个成功调用及 11 个反例，原输入约束不变。定义增加 3,945 字节，无实模采样或生产部署，详见 [TO4 实施记录](performance/tool-usability/to4/README.md)。
 
 ## TO5：Goal、Reader、Memory 的用途和动作示例
 
@@ -256,6 +260,8 @@ rg -n 'examplesFor|outputSchema|annotations|batch_decompile|binary_overview' $re
 
 **验证及处置**：扩展现有 `goal_operations_never_silently_discard_plan_fields`、`note_is_only_exposed_through_reader_note` 及对应真实持久化测试。发现错误工具被选中则修用途/示例，发现假成功则修实际回执判定；两类原因分别记录。
 
+**本次结果（2026-10-12）**：在原定义发布 10 个完整输入，发现用途同步；Goal 分支字段集保持，真实回合与原话约束经持久化链路验证。笔记 `CREATED/EXISTING`、唯一／整段高亮和四类记忆均核对重开后的真实记录；纯解释无写入。修复“记为……笔记”未激活及“不保存笔记、高亮或记忆”误激活的既有意图识别缺口。Runtime 44、Server 3 项累计通过；独立 Draft 7 验证 10 个示例与 11 个成功调用，26 个反例被拒绝，输入约束逐值保持。定义 4,711 → 8,006 字节，详见 [TO5 实施记录](performance/tool-usability/to5/README.md)。
+
 ## TO6：专用 Executor 四工具生命周期示例
 
 **目标**：让 Build Executor 明确每一步消费什么引用、确认到哪里、返回什么下一步信息。
@@ -269,6 +275,8 @@ rg -n 'examplesFor|outputSchema|annotations|batch_decompile|binary_overview' $re
 **完成判据**：示例可通过当前适配器与真实 session 流转；恢复示例沿既有授权代际，提交候选后由代码侧返回真实处置。专用 Executor 的工具面与 Reader 的 Book/Memory 工具面继续各自独立。
 
 **验证及处置**：运行已有 tool-adapter、MCP、session、transport 和 version-boundary 中受影响测试。抓取错误版本、未确认输入直接生成、旧 sink 被误当当前目标等受支持恢复流程中的错误；失败修本片示例/适配，实际业务行为问题单列最小修复。
+
+**本次结果（2026-10-12）**：原 TypeScript 契约发布五个完整输入，引用取自真实测试 session，版本按工具生成；说明 delivery／generation session、批次确认、当前 sink 和恢复处置。实际 Codex／DSH MCP 与独立 stdio 消费发布示例，正常重放保持同一次 attempt，恢复到 epoch 2 后拒绝旧 start／sink并接纳新候选。相关 Core 六文件累计 90 项通过、typecheck 通过；独立 Draft 7 验证 5 个发布示例、31 次成功调用和 39 个字段反例，原输入约束不变。`input.next` 会写交付账本，其只读注解已更正；定义 2,930 → 7,570 字节。无真实模型采样或部署，见 [TO6 实施记录](performance/tool-usability/to6/README.md)。
 
 ## TO7：发现结果的用途和能力恢复提示
 
@@ -285,6 +293,8 @@ rg -n 'examplesFor|outputSchema|annotations|batch_decompile|binary_overview' $re
 **完成判据**：已有匹配时返回有用用途；未满足时能理解原因及合法下一步；Hidden 工具名不会经新字段泄露；发现动作本身不会执行 Reader/Memory 副作用。
 
 **验证及处置**：用能力解析/暴露测试分别覆盖 evidence_required、locator_required、effect_not_authorized、profile 不适用及无结果；检查序列化后的真实公共 JSON。若出现内部计划泄漏则收窄投影；若恢复建议在当前状态不可执行则修建议来源。
+
+**本次结果（2026-10-12）**：原 Routing Card 用途进入匹配结果，公开 unmet/blocked 按能力解释缺口，`next_searches` 经原解析器确认合法且只读；内部计划、隐藏名称、权限来源保持原边界。四个完整输入示例通过最终 schema 与 Native/ReAct；59 项 Runtime 测试通过，含真实运行分派、Reader/Memory 无副作用及下一采样验证。七个固定结果完整交付，schema 增加 1,106 字节（Runtime 估算 +277 token），未作实模收益声明。多能力大结果的原 4 KiB 裁剪问题已保存样本交 TO11；见 [TO7 实施记录](performance/tool-usability/to7/README.md)。后续参数交接已在 TO8 完成。
 
 ## TO8：定位结果到原文读取的参数交接
 
@@ -310,6 +320,8 @@ remote projection:
 
 **验证及处置**：从夹具结果提取返回参数直接走读取 dispatch，并核对原文范围和证据账本。若参数不合法修映射；若未读候选被接纳为完整证据修接纳路径；若增加大量重复参数则按实际候选数量和预算调整投影。
 
+**本次结果（2026-10-12）**：搜索命中、概念候选和 Context 项在原结果类型附 `next_calls`，复用共同 `TextInput`；本地 MCP 映射 `book_text`，远程在分页前补同一发布引用。24 个导出读取调用经最终 schema 和真实读取分派，Resident 下一采样从实际交付结果复制调用，定位／正文账本保持分层。300 处概念位置的预算用例发现并修复了位置被裁掉但调用仍保留的问题；60 处远程候选可分页重建并执行末项。五种固定结果除新增调用外逐值相同，完整结果增加 0–186 字节。验证、体积及原预算限制见 [TO8 实施记录](performance/tool-usability/to8/README.md)。候选覆盖已在 TO9 接续。
+
 ## TO9：Context 候选覆盖与结构可用性
 
 **目标**：调用方知道当前看到了多少已知关系，以及为什么不能声称完整。
@@ -330,6 +342,8 @@ remote projection:
 
 **验证及处置**：准备真实规则可召回超过 k 个候选的小夹具以及缺产物夹具。计数错误修裁剪前统计；空结果掩盖产物不可用则修可用性传播。已有 Concept 的 matched_count 语义继续成立。
 
+**本次结果（2026-10-12）**：Context 新增 `total_candidates/returned_count/truncated`，总数在既有召回、排序和关系去重之后、k 裁剪之前取得；共同描述及生成类型同步。五种固定结果的原字段逐值不变，新增 58–60 字节。缺失 BookStructure 的本地／Resident `available=false`、远程 manifest 能力清单及不可用错误原路径正确；60 个候选的远程分页验证表明外层 complete 与候选 truncated 各自独立。read-tools 36、Runtime 27、Server 17 项通过，2 个原快照入口默认忽略，Web 类型检查通过；实际 HTTP 3 次内容计费正确。证据见 [TO9 实施记录](performance/tool-usability/to9/README.md)，TO10 已接续完成，下一推荐切片为 TO11。
+
 ## TO10：正文/搜索结果的可执行续取
 
 **目标**：对受支持的大结果，Agent 按返回信息能继续读取，覆盖范围可以核对。
@@ -344,6 +358,8 @@ remote projection:
 
 **远程约束**：一次成功续页当前计一次内容调用；实现不得在这片中隐式改变额度、来源链接和发布版本绑定。
 
+**本次结果（2026-10-12）**：`start_utf16` 成为共同正文参数，本地／REST／Resident 与远程复用规范正文分页；正文预算投影交付连续前缀、原请求范围及可执行 offset，搜索按实际交付前缀生成原查询 cursor。证据账本保留已校验页的精确范围，重复文本不误定位，同页不重复计数，跨叶空隙和未读尾部均经引用用例验证。read-tools 35、契约 12、Runtime 63、Server 20 项通过，2 个原快照入口默认忽略；Web 类型检查及 18 个实际输入的最终 schema 验证通过。实际 Resident 4 页重建 24,022 个 UTF-16 单元；HTTP 2 页分别计费，倒序搜索 8 次读取恢复 60 个命中。没有真实模型采样或生产发布，见 [TO10 实施记录](performance/tool-usability/to10/README.md)。
+
 ## TO11：结构化结果预算下的语义保留
 
 **目标**：结果变短以后仍能被正确解释，并保留真实可用的后续动作。
@@ -355,6 +371,12 @@ remote projection:
 **完成判据**：预算内结果仍是合法 JSON；partial/truncated 与实际交付一致；缺失 graph、截掉候选、只有部分证据等状态可辨；来源引用保持原身份。纯粹重复的说明可以省去，改变结论适用范围的信息继续可见。
 
 **验证及处置**：给已存在的 query、concept、structure/profile 路径构造会触发预算的正常规模结果，检查必要字段和续取。若通用裁剪破坏某工具语义，将该工具的最小投影规则放在现有结果分派处。若最小语义仍超过预算，返回明确的有界 partial/error 和恢复动作，记录其支持边界。
+
+**改前复现**：TO7 的 [五项发现匹配样本](performance/tool-usability/to7/budget-observation.json) 为 5,122 字节，在原 4 KiB 预算下缩短 use_when/avoid_when 等文字，并给出通用 RefineCall；移除 TO7 新字段后原形状仍有 4,127 字节。
+
+TO8 的 [300 处概念位置样本](performance/tool-usability/to8/budget-observation.json) 在 16 KiB 预算下交付 189 处位置和相应调用，调用均可由定位账本放行。原 envelope 标记 partial/truncated，但候选层计数与通用 `RefineCall` 仍沿旧逻辑。
+
+**本次结果（2026-10-12）**：现有投影按工具语义整项裁剪集合，保留用途、警告／限制、支持判断、绑定及来源身份；`delivery.collections` 分开记录预算交付，原候选计数不变。五项发现以 2,525 字节保留完整用途；300 处概念位置在 16 KiB 内全部保留，交付 276 项重复读取提示并实际执行第 277 处恢复读取。query／结构省略项的原定位只授权读取，未交付正文不进入证据账本。缩小范围仅使用真实参数；无缩小接口或必要语义放不下时明确说明省略。Runtime 80 项通过，含 10 项新增 TO11 测试；真实分派、Native／ReAct 下一采样与来源边界均已验证。没有真实模型采样或生产部署，详见 [TO11 实施记录](performance/tool-usability/to11/README.md)。
 
 ## TO12：Book 结果 schema 与副作用注解
 
@@ -372,6 +394,8 @@ remote projection:
 
 **验证及处置**：从真实 MCP tools/list 与 tools/call 取得 schema/返回值，验证完整、空集、续页、partial、error。失败时定位为领域 schema、表面包装或运行返回不一致，再修相应所有者。各表面使用已有版本策略；若需要变更调用协议，在本片明确记录具体接口变化和现有消费方更新范围。
 
+**本次结果（2026-10-12）**：领域结果由 read-tools／Runtime 的原类型派生，Resident registry 组合预算交付与回收后的 envelope，本地 13 个 Book 工具和远程 11 个工具发布实际 outputSchema／annotations。远程按 data_path 约束完整对象与嵌套集合页；sources／usage 留在 Server，重复成功读取标记非幂等并按原规则消费。132 个实际交付样本通过对应契约：本地 19 成功／2 错误，HTTP 45 成功／2 错误（含 26 集合页），Resident 26 ok／31 partial／7 error；错误不通过成功 schema。Runtime 81、Server 23 项通过，2 个原快照入口忽略。输入和返回协议保持，无实模采样或生产部署，详见 [TO12 实施记录](performance/tool-usability/to12/README.md)。
+
 ## TO13：从实际契约产生工具参考文档
 
 **目标**：后续开发者、Agent 和使用者看到的参数、示例、效果与实际发布工具一致。
@@ -385,6 +409,8 @@ remote projection:
 **完成判据**：生成目录与实际公开集合一致；Resident、远程 MCP、专用 Executor 的能力边界清楚；修改一个共同字段或示例后，生成文档反映相应变化。状态专属 Tutor 示例说明对应状态。
 
 **验证及处置**：执行生成入口并比较输出，检测漏工具、过期示例和生成漂移；失败修导出或模板。直接比较结构/文本即可。生成过程不调用模型、不需要生产账号，也不扫描材料正文。
+
+**本次结果（2026-10-12）**：`pnpm docs:tools` 从原 Runtime 注册表、MCP tools/list、TypeScript Executor 契约和 Tutor 状态验证导出生成 [工具契约参考](工具契约参考.md) 与完整 [契约数据](tool-contracts.json)。包含 Resident 34、本地 MCP 16、远程 MCP 11、Executor 4 个条目；Tutor 14 个可用场景及 3 个不可用状态。生成器 7 项、HTTP／共同字段回归 2 项及导出／状态测试通过；152 个输入示例、35 份输出 schema 通过 Draft 7，字段／示例变更、新工具收录、链接及只读漂移检查有效。生成无模型调用、材料扫描或生产账号，详见 [TO13 实施记录](performance/tool-usability/to13/README.md)。
 
 ## TO14：真实 Agent 对照与可复用阅读案例
 
@@ -414,6 +440,8 @@ remote projection:
 **产出**：计划将结果保存为 `docs/performance/tool-usability/` 下按切片/场景区分的记录，并写一份实现汇总；先复用 MCP9 的完整阅读任务，形成可从目录发现、定位、续读到可核对引用的教程。案例描述已实际运行的行为，演示材料可以使用现有确定性夹具。
 
 **完成判据**：每项变化都有对应的正确性证据；真实模型结果同时保留成功和失败，报告适用范围。若没有测出减少参数错误/调用耗时等预期收益，则在汇总中明确，并回退无收益且明显增加输入成本的示例投影。内容数学错误由独立客观算例判定，不能用 schema 通过代替。
+
+**本次结果（2026-10-12）**：固定TO1前基线与TO13候选，同一 `gpt-6.1-sol`、CLI和材料运行16预选任务，13通过、2保存失败、1执行器未决；无失败补抽。雨水各3次、Tutor有效配对、纯解释均未出现参数错误，未测出误用减少；雨水平均累计输入+9.39%，Tutor有效配对+9.70%。整组对照不能单独归因到示例，目录增量95.9%来自output schema，未盲目回收单条投影。独立数学算例核对5份交付与6份持久目标；11项评测器测试、16份材料／配置逐值检查通过，其他场景沿用TO1–TO13正确性证据。原预算停止与后续仅补未启动任务的批次分开记录。源码、usage、失败、成本边界及选区保存缺陷见 [TO14实施记录](performance/tool-usability/to14/README.md)，完整发现→定位→续读→引用／账本流程见 [阅读案例](performance/tool-usability/to14/reading-case.md)。
 
 ## 9. 验证入口与运行原则
 
@@ -445,10 +473,11 @@ Tutor、Presentation、Reader 的行为验证继续使用现有对应模块测�
 ## 11. 已知限制与范围
 
 - REA 的领域是逆向分析。本项目借鉴契约、选择权、覆盖表达和验证方法；其 Provider 体系、证据存储身份机制和工具规模不能直接说明本项目也需要同样实现。
-- 本方案给出具体设计和验证路径，尚未证明示例、output schema 或更丰富的发现结果会提高模型完成率。它们也可能增加每轮输入成本，TO14 负责给出实测结论。
+- TO14已完成固定模型观察，未证明示例、output schema或更丰富的发现结果提高完成率；本批累计输入增加。真实模型仅覆盖两个题族、四类任务，其他工具族只有确定性证据，详见 [TO14覆盖映射](performance/tool-usability/to14/coverage.md)。
 - 参数示例能够针对已观察的格式错误；TC2A 的数学条件错误需要内容证据和独立判定。两类结果分别记录。
 - coverage 的 complete 只说明约定集合/交付范围的完整性，不能证明知识图谱涵盖书内全部真实关系；无法从既有构建状态判断的能力明确保持 unknown。
 - 结果 schema 第一批覆盖共同 Book 结果及其表面投影。Tutor、Presentation、Goal、Reader/Memory 的重点是现有 operation/状态约束与可执行示例；需要进一步类型化其动态输出时，以实际消费问题另列小片。
+- 已有 Goal 完成判定只统计 Reader effects：请求保存一条已存在的笔记且要求为 reader_action 时，`EXISTING` 回执不产生创建 effect，可能仍报告未完成。已记录到 [TO5 已知限制](performance/tool-usability/to5/README.md#已知限制)，后续须用真实保存回执判断，保留去重和撤销语义。
 - 本轮复用现有账本、注册表、存储和版本策略。新增持久模型、跨语言统一框架、独立迁移层或新的内容摘要机制均需独立的具体需求依据。
 - 真实模型服务不可用、费用预算未具备或某表面尚无真实运行条件时，记录缺失的验收，不将确定性测试通过写成真实 Agent 通过。生产部署按既有发布约定处理。
 
@@ -460,4 +489,6 @@ Tutor、Presentation、Reader 的行为验证继续使用现有对应模块测�
 4. 只在该片的现有所有者内补齐设计，按第 9 节选择能检测具体失败的检查。沿项目公开支持的用法验证当前缺口。
 5. 记录改动、测试和实际模型证据，更新本表状态与 [代码链路](代码链路.md)；结构边界确实变化时再同步架构/ADR。尚未运行的验收明确保留待办。
 
-TO1、TO2 已完成。接手 TO3 时从 [TO2 实施记录](performance/tool-usability/to2/README.md)、[TO2 改后定义](performance/tool-usability/to2/after.json) 和本文 TO3 开始，按 Tutor 当前状态补有效示例；复用 `tool_registry::contract_tests` 中的最终示例/schema/真实解析验证与 Native/ReAct 请求投影检查，并保持三表面契约一致性。
+TO1–TO14 已完成。TO14发现的选区保存意图丢失也已修复：`orchestrator::run_context_inner` 使用既有current_user_message进行动作识别，新增真实Server保存／只读边界回归，合计38项定向检查通过，见 [修复记录](performance/tool-usability/selection-intent-fix/README.md)。TO14冻结样本仍反映修复前行为。下一推荐独立小片是按 [TO5已知限制](performance/tool-usability/to5/README.md#已知限制)处理EXISTING笔记的Goal完成判断。Executor、Presentation和Book结果合同沿TO6、TO4、TO12原证据，生产发布仍按原发布约定。
+
+后续原计划使用 DeepSeek 的模型实验，使用 `gpt-6.1-sol` 子代理，沿 [实验模型约定](performance/tool-usability/to10/README.md#实验模型约定) 固定输入、次数和停止条件。

@@ -1,0 +1,13 @@
+--- before/crates/runtime/src/orchestrator.rs
++++ after/crates/runtime/src/orchestrator.rs
+@@ -5749,7 +5749,9 @@
+     context.evidence_plan_ledger =
+         TurnEvidencePlanLedger::from_evidence_state(context.evidence_ledger.evidence_state());
+     let guided_origin = guided_read_origin(question, messages).map(str::to_string);
+-    let mut turn_intent_hints = classify_turn_intent(question);
++    // Selection provenance JSON-quotes user text; intent belongs to the original request.
++    let mut turn_intent_hints =
++        classify_turn_intent(context.current_user_message.as_deref().unwrap_or(question));
+     if let Some(origin) = &guided_origin {
+         turn_intent_hints.insert(TurnIntentHint::ExplicitGuidedRead);
+         let selected_lid = reader_input.state.selection.clone();

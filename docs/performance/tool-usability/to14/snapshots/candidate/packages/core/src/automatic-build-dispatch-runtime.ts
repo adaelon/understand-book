@@ -1,0 +1,1749 @@
+import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "./build-execution-profile";
+import { createHash } from "node:crypto";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
+import path from "node:path";
+import {
+  claimAutomaticBuildTask,
+  inspectAutomaticBuildTaskClaim,
+  type AutomaticBuildClaimResult,
+} from "./automatic-build-lease";
+import {
+  readAutomaticBuildTaskReceiptFile,
+  type AutomaticBuildTaskReceiptV2,
+} from "./automatic-build-mailbox";
+import {
+  createAutomaticBuildAttemptScope,
+  listAutomaticBuildStoredAttempts,
+} from "./automatic-build-task-store";
+import type { AutomaticBuildStage, AutomaticBuildTarget, BuildTargetRefV2 } from "./build-orchestrator";
+import {
+  selectAutomaticBuildDispatchRefill,
+  type AutomaticBuildExecutorDispatchManifestV1,
+  type AutomaticBuildExecutorDispatchPlanV1,
+} from "./automatic-build-dispatch";
+import {
+  isAutomaticBuildTaskPolicyBindingV2,
+  type AutomaticBuildTaskPolicyBinding,
+} from "./semantic-artifact";
+import {
+} from "./executor-transport";
+import {
+  isProofBoundWorkUnitDescriptor,
+  isWorkUnitDescriptorV3,
+  validateWorkUnitDescriptorV3,
+  validateWorkUnitDescriptorV4,
+  validateWorkUnitTaskPolicyBinding,
+  type WorkUnitDescriptor,
+} from "./stage-work-unit";
+
+const MAX_DISPATCH_RECEIPT_BYTES = 16_384;
+const MAX_DISPATCH_EXECUTOR_HANDOFF_BYTES = 262_144;
+const MAX_DISPATCH_EXECUTOR_PROMPT_BYTES = 65_536;
+
+export const AUTOMATIC_BUILD_EXECUTOR_INTERRUPTION_DIAGNOSTIC_CODES = [
+  "command_start_failed",
+  "command_nonzero_exit",
+  "command_output_invalid",
+  "harness_cancelled",
+  "executor_lost",
+  "legacy_handoff_missing",
+  "unknown",
+] as const;
+
+export const AUTOMATIC_BUILD_EXECUTOR_INTERRUPTION_REPORTERS = [
+  "executor",
+  "root_supervisor",
+  "build_engine",
+] as const;
+
+export const AUTOMATIC_BUILD_EXECUTOR_INTERRUPTION_COMMAND_ROLES = [
+  "dispatch_next",
+  "task_input",
+  "candidate_stage",
+  "task_submit",
+  "dispatch_finish",
+  "unknown",
+] as const;
+
+export type AutomaticBuildExecutorInterruptionDiagnosticCode =
+  typeof AUTOMATIC_BUILD_EXECUTOR_INTERRUPTION_DIAGNOSTIC_CODES[number];
+export type AutomaticBuildExecutorInterruptionReporter =
+  typeof AUTOMATIC_BUILD_EXECUTOR_INTERRUPTION_REPORTERS[number];
+export type AutomaticBuildExecutorInterruptionCommandRole =
+  typeof AUTOMATIC_BUILD_EXECUTOR_INTERRUPTION_COMMAND_ROLES[number];
+export type AutomaticBuildExecutorInterruptionPhase =
+  | "before_first_claim"
+  | "task_reserved"
+  | "task_running"
+  | "between_tasks"
+  | "finishing";
+
+export interface AutomaticBuildExecutorInterruptionInputV1 {
+  diagnostic_code: AutomaticBuildExecutorInterruptionDiagnosticCode;
+  reporter: AutomaticBuildExecutorInterruptionReporter;
+  last_command_role: AutomaticBuildExecutorInterruptionCommandRole;
+}
+
+export interface AutomaticBuildExecutorInterruptionV1
+  extends AutomaticBuildExecutorInterruptionInputV1 {
+  version: "automatic_build_executor_interruption.v1";
+  phase: AutomaticBuildExecutorInterruptionPhase;
+  last_completed_ordinal: number;
+  active_work_unit_id?: string;
+  observed_at: string;
+}
+
+export interface AutomaticBuildDispatchExecutorHandoffRefV1 {
+  version: "automatic_build_dispatch_executor_handoff_ref.v1";
+  path: string;
+  sha256: string;
+  byte_length: number;
+}
+
+export interface AutomaticBuildPreparedDispatchV1 {
+  version: "automatic_build_persisted_dispatch.v1";
+  dispatch_run_id: string;
+  manifest: AutomaticBuildExecutorDispatchManifestV1;
+  owner: string;
+  created_at: string;
+  reserve_ttl_ms: number;
+  run_ttl_ms: number;
+}
+
+export interface AutomaticBuildPersistedDispatchV1 extends AutomaticBuildPreparedDispatchV1 {
+  executor_handoff: AutomaticBuildDispatchExecutorHandoffRefV1;
+}
+
+export class AutomaticBuildLegacyPartialDispatchRunError extends Error {
+  readonly name = "AutomaticBuildLegacyPartialDispatchRunError";
+
+  constructor(
+    readonly prepared: AutomaticBuildPreparedDispatchV1,
+    readonly has_claim_or_progress: boolean,
+  ) {
+    super("legacy partial dispatch run is missing executor handoff");
+  }
+}
+
+export interface AutomaticBuildPersistedDispatchPlanV1 {
+  version: "automatic_build_persisted_dispatch_plan.v1";
+  accepted_plan_digest: string;
+  dispatch_plan: AutomaticBuildExecutorDispatchPlanV1;
+  created_at: string;
+}
+
+export interface AutomaticBuildDispatchTaskReceiptV1 {
+  version: "automatic_build_dispatch_task_receipt.v1";
+  task_ref: string;
+  state: "committed" | "retryable_failure";
+  work_unit_id: string;
+  attempt: number;
+  attempt_scope_digest?: string;
+  candidate_sha256?: string;
+  artifact_sha256?: string;
+  diagnostic_code?: string;
+  terminal_at: string;
+}
+
+export interface AutomaticBuildDispatchProgressV1 {
+  version: "automatic_build_dispatch_progress.v1";
+  dispatch_id: string;
+  ordinal: number;
+  work_unit_id: string;
+  task_receipt: AutomaticBuildDispatchTaskReceiptV1;
+  observed_at: string;
+}
+
+export interface AutomaticBuildRecoveryGenerationIdentityV1 {
+  version: "automatic_build_recovery_generation_identity.v1";
+  dispatch_id: string;
+  dispatch_run_id: string;
+  current_work_unit_id: string;
+  semantic_attempt: number;
+  lease_epoch: number;
+}
+
+export interface AutomaticBuildRecoveryGenerationIdentityV2
+  extends Omit<AutomaticBuildRecoveryGenerationIdentityV1, "version"> {
+  version: "automatic_build_recovery_generation_identity.v2";
+  bootstrap_epoch: number;
+}
+
+export type AutomaticBuildRecoveryGenerationIdentity =
+  | AutomaticBuildRecoveryGenerationIdentityV1
+  | AutomaticBuildRecoveryGenerationIdentityV2;
+
+export interface AutomaticBuildDispatchRecoveryGenerationInspectionV1 {
+  version: "automatic_build_dispatch_recovery_generation_inspection.v1";
+  dispatch_slot_ref: string;
+  recovery_identity: AutomaticBuildRecoveryGenerationIdentity;
+}
+
+export interface AutomaticBuildExecutorDispatchReceiptV1 {
+  version: "automatic_build_executor_dispatch_receipt.v1";
+  dispatch_id: string;
+  dispatch_run_id: string;
+  target_ref: BuildTargetRefV2;
+  stage: AutomaticBuildStage;
+  task_receipts: AutomaticBuildDispatchTaskReceiptV1[];
+  unclaimed_work_unit_ids: string[];
+  terminal_reason: "complete" | "task_failure" | "executor_interrupted";
+  interruption?: AutomaticBuildExecutorInterruptionV1;
+  finished_at: string;
+}
+
+export type AutomaticBuildDispatchAdvanceResult =
+  | {
+      status: "leased";
+      persisted: AutomaticBuildPersistedDispatchV1;
+      descriptor: WorkUnitDescriptor;
+      claim: Extract<AutomaticBuildClaimResult, { status: "leased" }>;
+    }
+  | {
+      status: "waiting";
+      persisted: AutomaticBuildPersistedDispatchV1;
+      work_unit_id: string;
+      retry_after_ms: number;
+    }
+  | {
+      status: "ready_to_finish";
+      persisted: AutomaticBuildPersistedDispatchV1;
+      task_receipts: AutomaticBuildDispatchTaskReceiptV1[];
+    }
+  | {
+      status: "finished";
+      persisted: AutomaticBuildPersistedDispatchV1;
+      receipt: AutomaticBuildExecutorDispatchReceiptV1;
+    }
+  | {
+      status:
+        | "retry_exhausted"
+        | "executor_instability"
+        | "policy_generation_conflict"
+        | "policy_generation_migration_required";
+      persisted: AutomaticBuildPersistedDispatchV1;
+      work_unit_id: string;
+    };
+
+function stableJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(",")}}`;
+}
+
+function sameTargetRef(left: BuildTargetRefV2, right: BuildTargetRefV2): boolean {
+  return left.version === right.version
+    && path.resolve(left.workspace_dir) === path.resolve(right.workspace_dir)
+    && left.book_id === right.book_id
+    && left.profile_id === right.profile_id
+    && left.input_fingerprint === right.input_fingerprint;
+}
+
+function pathIdentity(value: string): string {
+  const resolved = path.resolve(value);
+  return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+}
+
+function samePath(left: string, right: string): boolean {
+  return pathIdentity(left) === pathIdentity(right);
+}
+
+function isOutside(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative);
+}
+
+function assertRegularFileWithinWorkspace(
+  workspaceDir: string,
+  file: string,
+  field: string,
+): string {
+  const workspace = path.resolve(workspaceDir);
+  const resolved = path.resolve(file);
+  if (samePath(workspace, resolved) || isOutside(workspace, resolved)) {
+    throw new Error(`${field} escapes the build workspace`);
+  }
+  const workspaceStat = lstatSync(workspace);
+  if (!workspaceStat.isDirectory() || workspaceStat.isSymbolicLink()) {
+    throw new Error(`${field} workspace must be a real directory without symlinks`);
+  }
+  let cursor = workspace;
+  const parts = path.relative(workspace, resolved).split(path.sep).filter(Boolean);
+  for (const [index, part] of parts.entries()) {
+    cursor = path.join(cursor, part);
+    const stat = lstatSync(cursor);
+    if (stat.isSymbolicLink()) throw new Error(`${field} path must not contain a symlink`);
+    if (index < parts.length - 1 && !stat.isDirectory()) {
+      throw new Error(`${field} parent must be a directory`);
+    }
+    if (index === parts.length - 1 && !stat.isFile()) {
+      throw new Error(`${field} must be a regular file`);
+    }
+  }
+  const realWorkspace = realpathSync.native(workspace);
+  const realFile = realpathSync.native(resolved);
+  if (samePath(realWorkspace, realFile) || isOutside(realWorkspace, realFile)) {
+    throw new Error(`${field} realpath escapes the build workspace`);
+  }
+  return realFile;
+}
+
+function positiveInteger(value: number, field: string): number {
+  if (!Number.isSafeInteger(value) || value < 1) throw new Error(`${field} must be a positive safe integer`);
+  return value;
+}
+
+function dispatchDirectory(target: AutomaticBuildTarget, stage: AutomaticBuildStage, dispatchId: string): string {
+  if (!dispatchId || dispatchId.length > 256) throw new Error("dispatch_id must contain 1-256 characters");
+  return path.join(
+    target.workspace_dir,
+    ".build",
+    "automatic-build",
+    "v2",
+    "dispatches",
+    stage,
+    encodeURIComponent(dispatchId),
+  );
+}
+
+export function automaticBuildDispatchRunId(createdAt: string): string {
+  if (!Number.isFinite(Date.parse(createdAt))) throw new Error("dispatch run timestamp must be an ISO timestamp");
+  return `run-${createdAt.replace(/[^0-9A-Za-z]/g, "")}`;
+}
+
+function dispatchRunDirectory(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  dispatchId: string,
+  dispatchRunId: string,
+): string {
+  if (!dispatchRunId || dispatchRunId.length > 128) throw new Error("dispatch_run_id must contain 1-128 characters");
+  return path.join(dispatchDirectory(target, stage, dispatchId), "runs", encodeURIComponent(dispatchRunId));
+}
+
+export function automaticBuildDispatchManifestPath(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  dispatchId: string,
+  dispatchRunId: string,
+): string {
+  return path.join(dispatchRunDirectory(target, stage, dispatchId, dispatchRunId), "manifest.json");
+}
+
+export function automaticBuildDispatchExecutorHandoffPath(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  dispatchId: string,
+  dispatchRunId: string,
+): string {
+  return path.join(dispatchRunDirectory(target, stage, dispatchId, dispatchRunId), "executor-handoff.json");
+}
+
+function dispatchReceiptPath(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  dispatchId: string,
+  dispatchRunId: string,
+): string {
+  return path.join(dispatchRunDirectory(target, stage, dispatchId, dispatchRunId), "receipt.json");
+}
+
+function dispatchPlanDirectory(target: AutomaticBuildTarget, stage: AutomaticBuildStage): string {
+  return path.join(
+    target.workspace_dir,
+    ".build",
+    "automatic-build",
+    "v2",
+    "dispatch-plans",
+    stage,
+  );
+}
+
+function dispatchPlanPath(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  dispatchPlanDigest: string,
+  createdAt: string,
+): string {
+  return path.join(
+    dispatchPlanDirectory(target, stage),
+    `${dispatchPlanDigest}-${automaticBuildDispatchRunId(createdAt)}.json`,
+  );
+}
+
+function progressPath(
+  target: AutomaticBuildTarget,
+  persisted: AutomaticBuildPersistedDispatchV1,
+  ordinal: number,
+): string {
+  return path.join(
+    dispatchRunDirectory(
+      target,
+      persisted.manifest.stage,
+      persisted.manifest.dispatch_id,
+      persisted.dispatch_run_id,
+    ),
+    "progress",
+    `${String(ordinal).padStart(4, "0")}.json`,
+  );
+}
+
+function readJson<T>(file: string): T {
+  return JSON.parse(readFileSync(file, "utf8")) as T;
+}
+
+function writeCreateOnly(file: string, value: unknown): void {
+  mkdirSync(path.dirname(file), { recursive: true });
+  try {
+    writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+    if (code !== "EEXIST") throw error;
+    const existing = readJson<unknown>(file);
+    if (stableJson(existing) !== stableJson(value)) throw new Error(`create-only dispatch state conflicts: ${file}`);
+  }
+}
+
+function validatePreparedDispatch(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  dispatchId: string,
+  dispatchRunId: string,
+  value: AutomaticBuildPreparedDispatchV1,
+): AutomaticBuildPreparedDispatchV1 {
+  if (value.version !== "automatic_build_persisted_dispatch.v1"
+    || value.dispatch_run_id !== dispatchRunId
+    || value.manifest.version !== "automatic_build_executor_dispatch.v1"
+    || value.manifest.dispatch_id !== dispatchId
+    || value.manifest.stage !== stage
+    || !sameTargetRef(value.manifest.target_ref, target.target_ref)
+    || !value.owner
+    || !Number.isFinite(Date.parse(value.created_at))) {
+    throw new Error(`invalid automatic build dispatch manifest: ${stage}/${dispatchId}`);
+  }
+  positiveInteger(value.reserve_ttl_ms, "reserve_ttl_ms");
+  positiveInteger(value.run_ttl_ms, "run_ttl_ms");
+  return value;
+}
+
+function validateDispatchExecutorHandoff(
+  target: AutomaticBuildTarget,
+  prepared: AutomaticBuildPreparedDispatchV1,
+  ref: AutomaticBuildDispatchExecutorHandoffRefV1,
+): AutomaticBuildDispatchExecutorHandoffRefV1 {
+  const expectedPath = automaticBuildDispatchExecutorHandoffPath(
+    target,
+    prepared.manifest.stage,
+    prepared.manifest.dispatch_id,
+    prepared.dispatch_run_id,
+  );
+  if (ref.version !== "automatic_build_dispatch_executor_handoff_ref.v1"
+    || !path.isAbsolute(ref.path)
+    || !samePath(ref.path, expectedPath)
+    || !/^[a-f0-9]{64}$/u.test(ref.sha256)
+    || !Number.isSafeInteger(ref.byte_length)
+    || ref.byte_length < 1
+    || ref.byte_length > MAX_DISPATCH_EXECUTOR_HANDOFF_BYTES
+    || !existsSync(expectedPath)) {
+    throw new Error(`invalid dispatch executor handoff ref: ${prepared.manifest.dispatch_id}`);
+  }
+  const realHandoffPath = assertRegularFileWithinWorkspace(
+    target.workspace_dir,
+    expectedPath,
+    "dispatch executor handoff",
+  );
+  const bytes = readFileSync(realHandoffPath);
+  if (bytes.byteLength !== ref.byte_length
+    || createHash("sha256").update(bytes).digest("hex") !== ref.sha256) {
+    throw new Error(`dispatch executor handoff digest mismatch: ${prepared.manifest.dispatch_id}`);
+  }
+  let handoff: {
+    version?: string;
+    prompt?: unknown;
+    prompt_sha256?: unknown;
+    envelope?: {
+      version?: string;
+      dispatch_run_id?: string;
+      manifest_path?: string;
+      manifest?: unknown;
+      executor_handoff?: unknown;
+    };
+  };
+  try {
+    if (bytes.includes(0) || (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf)) {
+      throw new Error("dispatch executor handoff encoding is invalid");
+    }
+    handoff = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as typeof handoff;
+  } catch {
+    throw new Error(`invalid dispatch executor handoff JSON: ${prepared.manifest.dispatch_id}`);
+  }
+  if (handoff.version !== "automatic_build_dispatch_executor_handoff.v1"
+    || typeof handoff.prompt !== "string"
+    || !handoff.prompt
+    || handoff.prompt.includes("\0")
+    || Buffer.byteLength(handoff.prompt, "utf8") > MAX_DISPATCH_EXECUTOR_PROMPT_BYTES
+    || typeof handoff.prompt_sha256 !== "string"
+    || createHash("sha256").update(handoff.prompt, "utf8").digest("hex") !== handoff.prompt_sha256
+    || handoff.envelope?.version !== "automatic_build_dispatch_executor.v1"
+    || handoff.envelope.dispatch_run_id !== prepared.dispatch_run_id
+    || !samePath(handoff.envelope.manifest_path ?? "", (
+      automaticBuildDispatchManifestPath(
+        target,
+        prepared.manifest.stage,
+        prepared.manifest.dispatch_id,
+        prepared.dispatch_run_id,
+      )
+    ))
+    || stableJson(handoff.envelope.manifest) !== stableJson(prepared.manifest)
+    || handoff.envelope.executor_handoff !== undefined) {
+    throw new Error(`invalid dispatch executor handoff content: ${prepared.manifest.dispatch_id}`);
+  }
+  return ref;
+}
+
+function validatePersistedDispatch(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  dispatchId: string,
+  dispatchRunId: string,
+  value: AutomaticBuildPersistedDispatchV1,
+): AutomaticBuildPersistedDispatchV1 {
+  const prepared = validatePreparedDispatch(target, stage, dispatchId, dispatchRunId, value);
+  let ref = value.executor_handoff;
+  if (!ref) {
+    const handoffPath = automaticBuildDispatchExecutorHandoffPath(
+      target,
+      stage,
+      dispatchId,
+      dispatchRunId,
+    );
+    if (existsSync(handoffPath)) {
+      const bytes = readFileSync(handoffPath);
+      ref = {
+        version: "automatic_build_dispatch_executor_handoff_ref.v1",
+        path: handoffPath,
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+        byte_length: bytes.byteLength,
+      };
+    }
+  }
+  if (!ref) {
+    const hasClaimOrProgress = prepared.manifest.ordered_work_unit_ids.some(
+      (workUnitId) => taskWasClaimed(target, prepared, workUnitId),
+    );
+    throw new AutomaticBuildLegacyPartialDispatchRunError(prepared, hasClaimOrProgress);
+  }
+  validateDispatchExecutorHandoff(target, prepared, ref);
+  return { ...prepared, executor_handoff: ref };
+}
+
+export function prepareAutomaticBuildDispatch(
+  target: AutomaticBuildTarget,
+  manifest: AutomaticBuildExecutorDispatchManifestV1,
+  options: {
+    owner: string;
+    created_at: string;
+    reserve_ttl_ms: number;
+    run_ttl_ms: number;
+    dispatch_run_id?: string;
+  },
+): { prepared: AutomaticBuildPreparedDispatchV1; manifest_path: string } {
+  if (!sameTargetRef(manifest.target_ref, target.target_ref)) throw new Error("dispatch manifest target mismatch");
+  if (!options.owner) throw new Error("dispatch owner must not be empty");
+  if (!Number.isFinite(Date.parse(options.created_at))) throw new Error("dispatch created_at must be an ISO timestamp");
+  positiveInteger(options.reserve_ttl_ms, "reserve_ttl_ms");
+  positiveInteger(options.run_ttl_ms, "run_ttl_ms");
+  const dispatchRunId = options.dispatch_run_id ?? automaticBuildDispatchRunId(options.created_at);
+  const prepared: AutomaticBuildPreparedDispatchV1 = {
+    version: "automatic_build_persisted_dispatch.v1",
+    dispatch_run_id: dispatchRunId,
+    manifest,
+    owner: options.owner,
+    created_at: options.created_at,
+    reserve_ttl_ms: options.reserve_ttl_ms,
+    run_ttl_ms: options.run_ttl_ms,
+  };
+  const manifestPath = automaticBuildDispatchManifestPath(
+    target,
+    manifest.stage,
+    manifest.dispatch_id,
+    dispatchRunId,
+  );
+  return { prepared, manifest_path: manifestPath };
+}
+
+export function persistAutomaticBuildDispatch(
+  target: AutomaticBuildTarget,
+  manifest: AutomaticBuildExecutorDispatchManifestV1,
+  options: {
+    owner: string;
+    created_at: string;
+    reserve_ttl_ms: number;
+    run_ttl_ms: number;
+    executor_handoff: AutomaticBuildDispatchExecutorHandoffRefV1;
+    dispatch_run_id?: string;
+  },
+): { persisted: AutomaticBuildPersistedDispatchV1; manifest_path: string } {
+  const publication = prepareAutomaticBuildDispatch(target, manifest, options);
+  const persisted: AutomaticBuildPersistedDispatchV1 = {
+    ...publication.prepared,
+    executor_handoff: validateDispatchExecutorHandoff(
+      target,
+      publication.prepared,
+      options.executor_handoff,
+    ),
+  };
+  if (existsSync(publication.manifest_path)) {
+    const existing = validatePersistedDispatch(
+      target,
+      manifest.stage,
+      manifest.dispatch_id,
+      publication.prepared.dispatch_run_id,
+      readJson<AutomaticBuildPersistedDispatchV1>(publication.manifest_path),
+    );
+    if (stableJson(existing) !== stableJson(persisted)) {
+      throw new Error(`persisted dispatch manifest conflicts with current publication: ${publication.manifest_path}`);
+    }
+    return { persisted: existing, manifest_path: publication.manifest_path };
+  }
+  writeCreateOnly(publication.manifest_path, persisted);
+  return { persisted, manifest_path: publication.manifest_path };
+}
+
+function validatePersistedDispatchPlan(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  value: AutomaticBuildPersistedDispatchPlanV1,
+): AutomaticBuildPersistedDispatchPlanV1 {
+  if (value.version !== "automatic_build_persisted_dispatch_plan.v1"
+    || !value.accepted_plan_digest
+    || value.dispatch_plan.version !== "automatic_build_executor_dispatch_plan.v1"
+    || value.dispatch_plan.stage !== stage
+    || !sameTargetRef(value.dispatch_plan.target_ref, target.target_ref)
+    || !Number.isFinite(Date.parse(value.created_at))) {
+    throw new Error(`invalid automatic build persisted dispatch plan: ${stage}`);
+  }
+  return value;
+}
+
+export function persistAutomaticBuildDispatchPlan(
+  target: AutomaticBuildTarget,
+  acceptedPlanDigest: string,
+  dispatchPlan: AutomaticBuildExecutorDispatchPlanV1,
+  createdAt: string,
+): AutomaticBuildPersistedDispatchPlanV1 {
+  if (!acceptedPlanDigest) throw new Error("accepted_plan_digest must not be empty");
+  if (dispatchPlan.stage === "paper_reading_guide") {
+    throw new Error("paper_reading_guide cannot create an executor dispatch plan");
+  }
+  const value: AutomaticBuildPersistedDispatchPlanV1 = {
+    version: "automatic_build_persisted_dispatch_plan.v1",
+    accepted_plan_digest: acceptedPlanDigest,
+    dispatch_plan: dispatchPlan,
+    created_at: createdAt,
+  };
+  const file = dispatchPlanPath(target, dispatchPlan.stage, dispatchPlan.dispatch_plan_digest, createdAt);
+  if (existsSync(file)) {
+    const existing = validatePersistedDispatchPlan(
+      target,
+      dispatchPlan.stage,
+      readJson<AutomaticBuildPersistedDispatchPlanV1>(file),
+    );
+    if (stableJson(existing.dispatch_plan) !== stableJson(dispatchPlan)
+      || existing.accepted_plan_digest !== acceptedPlanDigest) {
+      throw new Error(`persisted dispatch plan conflicts with current accepted plan: ${file}`);
+    }
+    return existing;
+  }
+  writeCreateOnly(file, value);
+  return value;
+}
+
+function dispatchPlanRuntimeState(
+  target: AutomaticBuildTarget,
+  record: AutomaticBuildPersistedDispatchPlanV1,
+  now: string,
+  currentPending: ReadonlySet<string>,
+): { active_dispatch_ids: string[]; completed_dispatch_ids: string[] } {
+  const active: string[] = [];
+  const completed: string[] = [];
+  const dispatchRunId = automaticBuildDispatchRunId(record.created_at);
+  for (const dispatch of record.dispatch_plan.dispatches) {
+    const manifestFile = automaticBuildDispatchManifestPath(
+      target,
+      dispatch.stage,
+      dispatch.dispatch_id,
+      dispatchRunId,
+    );
+    if (!existsSync(manifestFile)) {
+      // An accepted plan can outlive work completed through another dispatch run.
+      // Retire the unopened batch; any remaining members stay in the current plan.
+      if (dispatch.ordered_work_unit_ids.some(id => !currentPending.has(id))) {
+        completed.push(dispatch.dispatch_id);
+      }
+      continue;
+    }
+    const receiptFile = dispatchReceiptPath(target, dispatch.stage, dispatch.dispatch_id, dispatchRunId);
+    if (existsSync(receiptFile)) {
+      completed.push(dispatch.dispatch_id);
+      continue;
+    }
+    let persisted: AutomaticBuildPersistedDispatchV1;
+    try {
+      persisted = readAutomaticBuildDispatch(target, dispatch.stage, dispatch.dispatch_id, dispatchRunId);
+    } catch (error) {
+      if (!(error instanceof AutomaticBuildLegacyPartialDispatchRunError)) throw error;
+      if (error.has_claim_or_progress) throw error;
+      finishLegacyUnclaimedDispatch(target, error.prepared, now);
+      completed.push(dispatch.dispatch_id);
+      continue;
+    }
+    const progress = refreshProgress(target, persisted, now);
+    const nextWorkUnitId = dispatch.ordered_work_unit_ids[progress.length];
+    if (!nextWorkUnitId) {
+      finishAutomaticBuildDispatch(target, dispatch.stage, dispatch.dispatch_id, {
+        now,
+        dispatch_run_id: dispatchRunId,
+      });
+      completed.push(dispatch.dispatch_id);
+      continue;
+    }
+    const binding = dispatch.task_bindings?.[nextWorkUnitId];
+    const inspection = inspectAutomaticBuildTaskClaim(target, dispatch.stage, nextWorkUnitId, {
+      now,
+      ...(binding ? { binding, policy_generation: "v3_only" as const } : {}),
+    });
+    if ([
+      "already_leased",
+      "policy_generation_conflict",
+      "policy_generation_migration_required",
+    ].includes(inspection.status)) active.push(dispatch.dispatch_id);
+  }
+  return { active_dispatch_ids: active, completed_dispatch_ids: completed };
+}
+
+function resumableDispatchPlan(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  acceptedPlanDigest: string,
+  now: string,
+  currentPending: ReadonlySet<string>,
+): AutomaticBuildPersistedDispatchPlanV1 | undefined {
+  const directory = dispatchPlanDirectory(target, stage);
+  if (!existsSync(directory)) return undefined;
+  const candidates = readdirSync(directory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+    .map((entry) => validatePersistedDispatchPlan(
+      target,
+      stage,
+      readJson<AutomaticBuildPersistedDispatchPlanV1>(path.join(directory, entry.name)),
+    ))
+    .filter((record) => record.accepted_plan_digest === acceptedPlanDigest)
+    .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at)
+      || right.dispatch_plan.dispatch_plan_digest.localeCompare(left.dispatch_plan.dispatch_plan_digest));
+  return candidates.find((record) => {
+    const state = dispatchPlanRuntimeState(target, record, now, currentPending);
+    return state.completed_dispatch_ids.length < record.dispatch_plan.dispatches.length;
+  });
+}
+
+export function selectAutomaticBuildDispatchHandoff(
+  target: AutomaticBuildTarget,
+  input: {
+    accepted_plan_digest: string;
+    current_dispatch_plan: AutomaticBuildExecutorDispatchPlanV1;
+    available_new_executor_slots: number;
+    created_at: string;
+    held_work_unit_ids?: string[];
+  },
+): {
+  persisted_plan: AutomaticBuildPersistedDispatchPlanV1;
+  active_dispatch_ids: string[];
+  completed_dispatch_ids: string[];
+  selected_manifests: AutomaticBuildExecutorDispatchManifestV1[];
+} {
+  if (!Number.isSafeInteger(input.available_new_executor_slots) || input.available_new_executor_slots < 0) {
+    throw new Error("available_new_executor_slots must be a non-negative safe integer");
+  }
+  const currentPending = new Set(input.current_dispatch_plan.dispatches
+    .flatMap(dispatch => dispatch.ordered_work_unit_ids));
+  const persistedPlan = resumableDispatchPlan(
+    target,
+    input.current_dispatch_plan.stage,
+    input.accepted_plan_digest,
+    input.created_at,
+    currentPending,
+  ) ?? persistAutomaticBuildDispatchPlan(
+    target,
+    input.accepted_plan_digest,
+    input.current_dispatch_plan,
+    input.created_at,
+  );
+  const state = dispatchPlanRuntimeState(target, persistedPlan, input.created_at, currentPending);
+  const totalCapacity = Math.min(3, state.active_dispatch_ids.length + input.available_new_executor_slots);
+  const dispatchRunId = automaticBuildDispatchRunId(persistedPlan.created_at);
+  const held = new Set(input.held_work_unit_ids ?? []);
+  const selectableDispatches = persistedPlan.dispatch_plan.dispatches.filter(dispatch => {
+    if (state.active_dispatch_ids.includes(dispatch.dispatch_id)
+      || state.completed_dispatch_ids.includes(dispatch.dispatch_id)) return true;
+    if (dispatch.ordered_work_unit_ids.some(id => held.has(id))) return false;
+    if (existsSync(automaticBuildDispatchManifestPath(target, dispatch.stage, dispatch.dispatch_id, dispatchRunId))) return true;
+    // A changed ready-work set creates a new plan/run. Its unpublished manifests
+    // must not spend a free executor slot on work leased by an older run.
+    return !dispatch.ordered_work_unit_ids.some(workUnitId => {
+      const binding = dispatch.task_bindings?.[workUnitId];
+      return inspectAutomaticBuildTaskClaim(target, dispatch.stage, workUnitId, {
+        now: input.created_at,
+        ...(binding ? { binding, policy_generation: "v3_only" as const } : {}),
+      }).status === "already_leased";
+    });
+  });
+  const selectedIds = new Set(selectAutomaticBuildDispatchRefill({
+    ...persistedPlan.dispatch_plan, dispatches: selectableDispatches,
+  }, {
+    ...state,
+    available_agent_slots: totalCapacity,
+  }));
+  return {
+    persisted_plan: persistedPlan,
+    ...state,
+    selected_manifests: persistedPlan.dispatch_plan.dispatches.filter(
+      (dispatch) => selectedIds.has(dispatch.dispatch_id),
+    ),
+  };
+}
+
+export function readAutomaticBuildDispatch(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  dispatchId: string,
+  dispatchRunId?: string,
+): AutomaticBuildPersistedDispatchV1 {
+  const resolvedRunId = dispatchRunId ?? (() => {
+    const runs = path.join(dispatchDirectory(target, stage, dispatchId), "runs");
+    if (!existsSync(runs)) return undefined;
+    return readdirSync(runs, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => {
+        const candidateRunId = decodeURIComponent(entry.name);
+        const file = automaticBuildDispatchManifestPath(target, stage, dispatchId, candidateRunId);
+        if (!existsSync(file)) return undefined;
+        return validatePersistedDispatch(
+          target,
+          stage,
+          dispatchId,
+          candidateRunId,
+          readJson<AutomaticBuildPersistedDispatchV1>(file),
+        );
+      })
+      .filter((value): value is AutomaticBuildPersistedDispatchV1 => Boolean(value))
+      .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at)
+        || right.dispatch_run_id.localeCompare(left.dispatch_run_id))[0]?.dispatch_run_id;
+  })();
+  if (!resolvedRunId) throw new Error(`automatic build dispatch has no runtime: ${stage}/${dispatchId}`);
+  const file = automaticBuildDispatchManifestPath(target, stage, dispatchId, resolvedRunId);
+  if (!existsSync(file)) throw new Error(`automatic build dispatch does not exist: ${file}`);
+  const realManifestPath = assertRegularFileWithinWorkspace(
+    target.workspace_dir,
+    file,
+    "automatic build dispatch manifest",
+  );
+  return validatePersistedDispatch(
+    target,
+    stage,
+    dispatchId,
+    resolvedRunId,
+    readJson<AutomaticBuildPersistedDispatchV1>(realManifestPath),
+  );
+}
+
+export function validateAutomaticBuildDispatchHandoff(
+  target: AutomaticBuildTarget,
+  input: {
+    stage: AutomaticBuildStage;
+    dispatch_id: string;
+    dispatch_run_id: string;
+    executor_handoff: AutomaticBuildDispatchExecutorHandoffRefV1;
+  },
+): AutomaticBuildPersistedDispatchV1 {
+  const persisted = readAutomaticBuildDispatch(
+    target,
+    input.stage,
+    input.dispatch_id,
+    input.dispatch_run_id,
+  );
+  if (stableJson(persisted.executor_handoff) !== stableJson(input.executor_handoff)) {
+    throw new Error(`dispatch executor handoff identity changed: ${input.dispatch_id}`);
+  }
+  return persisted;
+}
+
+function compactTaskReceipt(receipt: AutomaticBuildTaskReceiptV2): AutomaticBuildDispatchTaskReceiptV1 {
+  const terminalAt = receipt.committed_at ?? receipt.failed_at;
+  if (!terminalAt) throw new Error(`terminal task receipt is missing terminal time: ${receipt.task_ref}`);
+  return {
+    version: "automatic_build_dispatch_task_receipt.v1",
+    task_ref: receipt.task_ref,
+    state: receipt.state,
+    work_unit_id: receipt.work_unit_id,
+    attempt: receipt.attempt,
+    ...(receipt.attempt_scope_digest ? { attempt_scope_digest: receipt.attempt_scope_digest } : {}),
+    ...(receipt.candidate_sha256 ? { candidate_sha256: receipt.candidate_sha256 } : {}),
+    ...(receipt.artifact_sha256 ? { artifact_sha256: receipt.artifact_sha256 } : {}),
+    ...(receipt.failure_diagnostic ? { diagnostic_code: receipt.failure_diagnostic.code } : {}),
+    terminal_at: terminalAt,
+  };
+}
+
+function terminalReceiptAfterDispatch(
+  target: AutomaticBuildTarget,
+  persisted: AutomaticBuildPersistedDispatchV1,
+  workUnitId: string,
+): AutomaticBuildDispatchTaskReceiptV1 | undefined {
+  const binding = persisted.manifest.task_bindings?.[workUnitId];
+  const expectedScope = binding && isAutomaticBuildTaskPolicyBindingV2(binding)
+    ? createAutomaticBuildAttemptScope({
+    target_ref: target.target_ref,
+    stage: persisted.manifest.stage,
+    work_unit_id: workUnitId,
+    task_binding: binding,
+      })
+    : undefined;
+  const attempts = listAutomaticBuildStoredAttempts(target, persisted.manifest.stage, workUnitId)
+    .filter((attempt) => !expectedScope
+      || (attempt.execution_identity?.version === "automatic_build_execution_identity.v2"
+        && attempt.execution_identity.attempt_scope_digest === expectedScope.attempt_scope_digest))
+    .sort((left, right) => right.physical_attempt - left.physical_attempt);
+  for (const attempt of attempts) {
+    for (const name of ["receipt.json", "failure.json"] as const) {
+      const file = path.join(attempt.attempt_dir, name);
+      if (!existsSync(file)) continue;
+      const receipt = readAutomaticBuildTaskReceiptFile(file);
+      const terminalAt = receipt.committed_at ?? receipt.failed_at;
+      if (receipt.version !== "automatic_build_task_receipt.v2"
+        || receipt.stage !== persisted.manifest.stage
+        || receipt.work_unit_id !== workUnitId
+        || receipt.attempt !== attempt.physical_attempt
+        || !sameTargetRef(receipt.target_ref, target.target_ref)
+        || !terminalAt) {
+        throw new Error(`invalid automatic build task receipt: ${file}`);
+      }
+      if (expectedScope && receipt.attempt_scope_digest !== undefined
+        && receipt.attempt_scope_digest !== expectedScope.attempt_scope_digest) {
+        throw new Error(`automatic build task receipt scope mismatch: ${file}`);
+      }
+      if (Date.parse(terminalAt) >= Date.parse(persisted.created_at)) {
+        return compactTaskReceipt(receipt);
+      }
+    }
+  }
+  return undefined;
+}
+
+function readProgress(
+  target: AutomaticBuildTarget,
+  persisted: AutomaticBuildPersistedDispatchV1,
+  ordinal: number,
+): AutomaticBuildDispatchProgressV1 | undefined {
+  const file = progressPath(target, persisted, ordinal);
+  if (!existsSync(file)) return undefined;
+  const progress = readJson<AutomaticBuildDispatchProgressV1>(file);
+  const expectedId = persisted.manifest.ordered_work_unit_ids[ordinal];
+  if (progress.version !== "automatic_build_dispatch_progress.v1"
+    || progress.dispatch_id !== persisted.manifest.dispatch_id
+    || progress.ordinal !== ordinal
+    || progress.work_unit_id !== expectedId
+    || progress.task_receipt.work_unit_id !== expectedId) {
+    throw new Error(`invalid automatic build dispatch progress: ${file}`);
+  }
+  return progress;
+}
+
+function writeProgressCreateOnly(
+  target: AutomaticBuildTarget,
+  persisted: AutomaticBuildPersistedDispatchV1,
+  value: AutomaticBuildDispatchProgressV1,
+): AutomaticBuildDispatchProgressV1 {
+  const file = progressPath(target, persisted, value.ordinal);
+  mkdirSync(path.dirname(file), { recursive: true });
+  try {
+    writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
+    return value;
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+    if (code !== "EEXIST") throw error;
+    const existing = readProgress(target, persisted, value.ordinal);
+    if (!existing || stableJson(existing.task_receipt) !== stableJson(value.task_receipt)) {
+      throw new Error(`dispatch progress conflicts with canonical task receipt: ${file}`);
+    }
+    return existing;
+  }
+}
+
+function refreshProgress(
+  target: AutomaticBuildTarget,
+  persisted: AutomaticBuildPersistedDispatchV1,
+  now: string,
+): AutomaticBuildDispatchProgressV1[] {
+  const progress: AutomaticBuildDispatchProgressV1[] = [];
+  for (let ordinal = 0; ordinal < persisted.manifest.ordered_work_unit_ids.length; ordinal += 1) {
+    const existing = readProgress(target, persisted, ordinal);
+    if (existing) {
+      progress.push(existing);
+      continue;
+    }
+    const workUnitId = persisted.manifest.ordered_work_unit_ids[ordinal];
+    const terminal = terminalReceiptAfterDispatch(target, persisted, workUnitId);
+    if (!terminal) break;
+    const value: AutomaticBuildDispatchProgressV1 = {
+      version: "automatic_build_dispatch_progress.v1",
+      dispatch_id: persisted.manifest.dispatch_id,
+      ordinal,
+      work_unit_id: workUnitId,
+      task_receipt: terminal,
+      observed_at: now,
+    };
+    progress.push(writeProgressCreateOnly(target, persisted, value));
+  }
+  return progress;
+}
+
+function currentDispatchWorkUnitIdReadOnly(
+  target: AutomaticBuildTarget,
+  persisted: AutomaticBuildPersistedDispatchV1,
+): string | undefined {
+  for (let ordinal = 0; ordinal < persisted.manifest.ordered_work_unit_ids.length; ordinal += 1) {
+    if (readProgress(target, persisted, ordinal)) continue;
+    const workUnitId = persisted.manifest.ordered_work_unit_ids[ordinal];
+    if (terminalReceiptAfterDispatch(target, persisted, workUnitId)) continue;
+    return workUnitId;
+  }
+  return undefined;
+}
+
+function automaticBuildDispatchSlotRef(dispatchId: string, dispatchRunId: string): string {
+  const identity = stableJson({
+    version: "automatic_build_executor_dispatch_slot_identity.v1",
+    dispatch_id: dispatchId,
+    dispatch_run_id: dispatchRunId,
+  });
+  return `abdispatchslot1_${createHash("sha256").update(identity, "utf8").digest("hex")}`;
+}
+
+function bootstrapFailureDirectory(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  identity: AutomaticBuildRecoveryGenerationIdentity,
+): string {
+  return path.join(dispatchRunDirectory(target, stage, identity.dispatch_id, identity.dispatch_run_id),
+    "bootstrap-failures", encodeURIComponent(identity.current_work_unit_id),
+    `${identity.semantic_attempt}-${identity.lease_epoch}`);
+}
+
+function bootstrapEpoch(
+  target: AutomaticBuildTarget, stage: AutomaticBuildStage,
+  identity: AutomaticBuildRecoveryGenerationIdentity,
+): number {
+  const directory = bootstrapFailureDirectory(target, stage, identity);
+  let epoch = 0;
+  while (existsSync(path.join(directory, `${epoch}.json`))) epoch++;
+  return epoch;
+}
+
+/** Called only after the executor registry proves this handoff has never opened. */
+export function recordAutomaticBuildDispatchBootstrapFailure(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  identity: AutomaticBuildRecoveryGenerationIdentity,
+  opaqueHandoffRef: string,
+  now: string,
+): void {
+  recordAutomaticBuildDispatchStartupRelease(target, stage, identity, opaqueHandoffRef, now,
+    "automatic_build_bootstrap_failure.v1");
+}
+
+/** A terminal child's handoff can be replaced before it claims generation, even before open. */
+export function recordAutomaticBuildDispatchTerminalSession(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  identity: AutomaticBuildRecoveryGenerationIdentity,
+  opaqueHandoffRef: string,
+  now: string,
+): boolean {
+  return recordAutomaticBuildDispatchStartupRelease(target, stage, identity, opaqueHandoffRef, now,
+    "automatic_build_terminal_session.v1");
+}
+
+function recordAutomaticBuildDispatchStartupRelease(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  identity: AutomaticBuildRecoveryGenerationIdentity,
+  opaqueHandoffRef: string,
+  now: string,
+  version: "automatic_build_bootstrap_failure.v1" | "automatic_build_terminal_session.v1",
+): boolean {
+  const epoch = identity.version === "automatic_build_recovery_generation_identity.v2"
+    ? identity.bootstrap_epoch : 0;
+  const file = path.join(bootstrapFailureDirectory(target, stage, identity), `${epoch}.json`);
+  const record = { version, opaque_handoff_ref: opaqueHandoffRef,
+    recovery_identity: identity };
+  if (existsSync(file)) {
+    if (stableJson(readJson(file)) !== stableJson(record)) throw new Error("bootstrap failure conflicts");
+    return false;
+  }
+  const current = inspectAutomaticBuildDispatchRecoveryGeneration(target, stage, identity.dispatch_id,
+    { now, dispatch_run_id: identity.dispatch_run_id });
+  if (stableJson(current.recovery_identity) !== stableJson(identity)) return false;
+  const persisted = readAutomaticBuildDispatch(target, stage, identity.dispatch_id, identity.dispatch_run_id);
+  const binding = persisted.manifest.task_bindings?.[identity.current_work_unit_id];
+  if (inspectAutomaticBuildTaskClaim(target, stage, identity.current_work_unit_id, {
+    now, ...(binding ? { binding } : {}),
+    ...(binding && isAutomaticBuildTaskPolicyBindingV2(binding) ? { policy_generation: "v3_only" as const } : {}),
+  }).status === "already_leased") return false;
+  writeCreateOnly(file, record);
+  return true;
+}
+
+export class AutomaticBuildDispatchSettledError extends Error {
+  readonly name = "AutomaticBuildDispatchSettledError";
+}
+
+/** Reconcile a dispatch that became terminal before its executor was published. */
+export function finishAutomaticBuildDispatchIfTerminal(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  dispatchId: string,
+  options: { now: string; dispatch_run_id: string },
+): boolean {
+  const persisted = readAutomaticBuildDispatch(target, stage, dispatchId, options.dispatch_run_id);
+  if (existsSync(dispatchReceiptPath(target, stage, dispatchId, persisted.dispatch_run_id))) return true;
+  if (currentDispatchWorkUnitIdReadOnly(target, persisted)) return false;
+  finishAutomaticBuildDispatch(target, stage, dispatchId, options);
+  return true;
+}
+
+export function inspectAutomaticBuildDispatchRecoveryGeneration(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  dispatchId: string,
+  options: {
+    now?: string;
+    dispatch_run_id?: string;
+    max_semantic_attempts?: number;
+    max_lease_epochs?: number;
+  } = {},
+): AutomaticBuildDispatchRecoveryGenerationInspectionV1 {
+  const persisted = readAutomaticBuildDispatch(target, stage, dispatchId, options.dispatch_run_id);
+  if (existsSync(dispatchReceiptPath(target, stage, dispatchId, persisted.dispatch_run_id))) {
+    throw new AutomaticBuildDispatchSettledError(`finished dispatch has no recovery generation: ${dispatchId}`);
+  }
+  const currentWorkUnitId = currentDispatchWorkUnitIdReadOnly(target, persisted);
+  if (!currentWorkUnitId) {
+    throw new AutomaticBuildDispatchSettledError(`dispatch has no current work unit: ${dispatchId}`);
+  }
+  const binding = persisted.manifest.task_bindings?.[currentWorkUnitId];
+  const inspection = inspectAutomaticBuildTaskClaim(target, stage, currentWorkUnitId, {
+    now: options.now,
+    ...(binding ? { binding } : {}),
+    ...(binding && isAutomaticBuildTaskPolicyBindingV2(binding)
+      ? { policy_generation: "v3_only" as const }
+      : {}),
+    max_semantic_attempts: options.max_semantic_attempts,
+    max_lease_epochs: options.max_lease_epochs,
+  });
+  if (inspection.status !== "ready" && inspection.status !== "already_leased") {
+    throw new Error(`dispatch recovery generation is not launchable: ${inspection.status}`);
+  }
+  const identity: AutomaticBuildRecoveryGenerationIdentityV1 = {
+    version: "automatic_build_recovery_generation_identity.v1",
+    dispatch_id: dispatchId,
+    dispatch_run_id: persisted.dispatch_run_id,
+    current_work_unit_id: currentWorkUnitId,
+    semantic_attempt: inspection.execution_identity.semantic_attempt,
+    lease_epoch: inspection.execution_identity.lease_epoch,
+  };
+  const epoch = bootstrapEpoch(target, stage, identity);
+  return {
+    version: "automatic_build_dispatch_recovery_generation_inspection.v1",
+    dispatch_slot_ref: automaticBuildDispatchSlotRef(dispatchId, persisted.dispatch_run_id),
+    recovery_identity: epoch === 0 ? identity : { ...identity,
+      version: "automatic_build_recovery_generation_identity.v2", bootstrap_epoch: epoch },
+  };
+}
+
+function validateDescriptors(
+  executionProfile: BuildExecutionProfileV1,
+  persisted: AutomaticBuildPersistedDispatchV1,
+  descriptors: WorkUnitDescriptor[],
+  taskBindings: Record<string, AutomaticBuildTaskPolicyBinding>,
+  fromOrdinal: number,
+  throughOrdinal: number,
+): Map<string, WorkUnitDescriptor> {
+  const byId = new Map(descriptors.map((descriptor) => [descriptor.work_unit_id, descriptor]));
+  for (const workUnitId of persisted.manifest.ordered_work_unit_ids.slice(fromOrdinal, throughOrdinal + 1)) {
+    const descriptor = byId.get(workUnitId);
+    if (!descriptor
+      || descriptor.stage !== persisted.manifest.stage
+      || descriptor.kind !== persisted.manifest.kind
+      || stableJson(descriptor.target) !== stableJson(persisted.manifest.target_ref)
+      || stableJson(descriptor.policy_fingerprint) !== stableJson(persisted.manifest.policy_fingerprint)) {
+      throw new Error(`dispatch descriptor identity changed: ${persisted.manifest.stage}/${workUnitId}`);
+    }
+    if (isProofBoundWorkUnitDescriptor(descriptor)) {
+      const binding = taskBindings[workUnitId];
+      if (!binding) {
+        throw new Error(`dispatch task is missing policy binding: ${persisted.manifest.stage}/${workUnitId}`);
+      }
+      validateWorkUnitTaskPolicyBinding(descriptor, binding);
+      if (isWorkUnitDescriptorV3(descriptor)) {
+        validateWorkUnitDescriptorV3(descriptor);
+      } else {
+        validateWorkUnitDescriptorV4(descriptor, executionProfile.transport_profile);
+      }
+      const persistedBinding = persisted.manifest.task_bindings?.[workUnitId];
+      if (!persistedBinding || stableJson(persistedBinding) !== stableJson(binding)) {
+        throw new Error(`dispatch v3 task binding changed: ${persisted.manifest.stage}/${workUnitId}`);
+      }
+    } else {
+      const binding = taskBindings[workUnitId];
+      if (binding) validateWorkUnitTaskPolicyBinding(descriptor, binding);
+      if (persisted.manifest.task_bindings?.[workUnitId]) {
+        throw new Error(`dispatch v2 task unexpectedly carries a v3 binding: ${persisted.manifest.stage}/${workUnitId}`);
+      }
+    }
+  }
+  return byId;
+}
+
+export function advanceAutomaticBuildDispatch(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  dispatchId: string,
+  input: {
+    execution_profile?: BuildExecutionProfileV1;
+    descriptors: WorkUnitDescriptor[];
+    task_bindings: Record<string, AutomaticBuildTaskPolicyBinding>;
+    // Resolve only a prior failed task needed by this advancement, when not already supplied.
+    read_task?: (workUnitId: string) => {
+      descriptor: WorkUnitDescriptor;
+      task_binding: AutomaticBuildTaskPolicyBinding;
+    };
+    dispatch_run_id?: string;
+    now?: string;
+    max_semantic_attempts?: number;
+    max_lease_epochs?: number;
+  },
+): AutomaticBuildDispatchAdvanceResult {
+  const executionProfile = input.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1;
+  const persisted = readAutomaticBuildDispatch(target, stage, dispatchId, input.dispatch_run_id);
+  const finishedPath = dispatchReceiptPath(target, stage, dispatchId, persisted.dispatch_run_id);
+  if (existsSync(finishedPath)) {
+    return {
+      status: "finished",
+      persisted,
+      receipt: readAutomaticBuildExecutorDispatchReceipt(target, persisted, finishedPath),
+    };
+  }
+  const now = input.now ?? new Date().toISOString();
+  const progress = refreshProgress(target, persisted, now);
+  const lastProgress = progress.at(-1);
+  const descriptorStart = lastProgress?.task_receipt.state === "retryable_failure"
+    ? Math.max(0, progress.length - 1)
+    : progress.length;
+  const scopedDescriptors = [...input.descriptors];
+  const taskBindings = { ...input.task_bindings };
+  if (lastProgress?.task_receipt.state === "retryable_failure"
+    && !scopedDescriptors.some(descriptor => descriptor.work_unit_id === lastProgress.work_unit_id)
+    && input.read_task) {
+    const failedTask = input.read_task(lastProgress.work_unit_id);
+    scopedDescriptors.push(failedTask.descriptor);
+    taskBindings[lastProgress.work_unit_id] = failedTask.task_binding;
+  }
+  const descriptors = validateDescriptors(
+    executionProfile,
+    persisted,
+    scopedDescriptors,
+    taskBindings,
+    descriptorStart,
+    progress.length,
+  );
+  if (lastProgress?.task_receipt.state === "retryable_failure") {
+    const failedDescriptor = descriptors.get(lastProgress.work_unit_id);
+    const failedBinding = taskBindings[lastProgress.work_unit_id];
+    if (!failedDescriptor || !failedBinding) {
+      throw new Error(`dispatch failed task is missing its scoped identity: ${stage}/${lastProgress.work_unit_id}`);
+    }
+    const failedInspection = inspectAutomaticBuildTaskClaim(
+      target,
+      stage,
+      lastProgress.work_unit_id,
+      {
+        now,
+        execution_profile: executionProfile,
+        descriptor: failedDescriptor,
+        binding: failedBinding,
+        ...(isProofBoundWorkUnitDescriptor(failedDescriptor)
+          ? { policy_generation: "v3_only" as const }
+          : {}),
+        max_semantic_attempts: input.max_semantic_attempts,
+        max_lease_epochs: input.max_lease_epochs,
+      },
+    );
+    if ([
+      "retry_exhausted",
+      "executor_instability",
+      "policy_generation_conflict",
+      "policy_generation_migration_required",
+    ].includes(failedInspection.status)) {
+      return {
+        status: failedInspection.status as Exclude<
+          AutomaticBuildDispatchAdvanceResult["status"],
+          "leased" | "waiting" | "ready_to_finish" | "finished"
+        >,
+        persisted,
+        work_unit_id: lastProgress.work_unit_id,
+      };
+    }
+  }
+  if (progress.length === persisted.manifest.ordered_work_unit_ids.length) {
+    return { status: "ready_to_finish", persisted, task_receipts: progress.map((item) => item.task_receipt) };
+  }
+  const workUnitId = persisted.manifest.ordered_work_unit_ids[progress.length];
+  const descriptor = descriptors.get(workUnitId)!;
+  const binding = input.task_bindings[workUnitId];
+  if (!binding) throw new Error(`dispatch task is missing policy binding: ${stage}/${workUnitId}`);
+  const inspection = inspectAutomaticBuildTaskClaim(target, stage, workUnitId, {
+    now,
+    execution_profile: executionProfile,
+    descriptor,
+    binding,
+    ...(isProofBoundWorkUnitDescriptor(descriptor) ? { policy_generation: "v3_only" as const } : {}),
+    max_semantic_attempts: input.max_semantic_attempts,
+    max_lease_epochs: input.max_lease_epochs,
+  });
+  if (inspection.status === "already_leased") {
+    return {
+      status: "waiting",
+      persisted,
+      work_unit_id: workUnitId,
+      retry_after_ms: Math.min(persisted.reserve_ttl_ms, 30_000),
+    };
+  }
+  if (inspection.status !== "ready") {
+    return { status: inspection.status, persisted, work_unit_id: workUnitId };
+  }
+  const claim = claimAutomaticBuildTask(target, stage, workUnitId, {
+    owner: persisted.owner,
+    now,
+    reserve_ttl_ms: persisted.reserve_ttl_ms,
+    binding,
+    execution_profile: executionProfile,
+    descriptor,
+    ...(isProofBoundWorkUnitDescriptor(descriptor) ? { policy_generation: "v3_only" as const } : {}),
+    max_semantic_attempts: input.max_semantic_attempts,
+    max_lease_epochs: input.max_lease_epochs,
+  });
+  if (claim.status === "leased") return { status: "leased", persisted, descriptor, claim };
+  if (claim.status === "already_leased") {
+    return {
+      status: "waiting",
+      persisted,
+      work_unit_id: workUnitId,
+      retry_after_ms: Math.min(persisted.reserve_ttl_ms, 30_000),
+    };
+  }
+  return { status: claim.status, persisted, work_unit_id: workUnitId };
+}
+
+function taskWasClaimed(
+  target: AutomaticBuildTarget,
+  persisted: AutomaticBuildPreparedDispatchV1,
+  workUnitId: string,
+): boolean {
+  return listAutomaticBuildStoredAttempts(target, persisted.manifest.stage, workUnitId)
+    .some((attempt) => {
+      const leaseFile = path.join(attempt.attempt_dir, "lease.json");
+      return existsSync(leaseFile) && readJson<{ owner?: string }>(leaseFile).owner === persisted.owner;
+    });
+}
+
+function validateInterruptionInput(
+  input: AutomaticBuildExecutorInterruptionInputV1,
+): AutomaticBuildExecutorInterruptionInputV1 {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("executor interruption must be an object");
+  }
+  const keys = Object.keys(input).sort();
+  const expectedKeys = ["diagnostic_code", "last_command_role", "reporter"];
+  if (keys.length !== expectedKeys.length || keys.some((key, index) => key !== expectedKeys[index])) {
+    throw new Error("executor interruption contains unsupported fields");
+  }
+  if (!AUTOMATIC_BUILD_EXECUTOR_INTERRUPTION_DIAGNOSTIC_CODES.includes(input.diagnostic_code)) {
+    throw new Error("executor interruption diagnostic_code is not allowlisted");
+  }
+  if (!AUTOMATIC_BUILD_EXECUTOR_INTERRUPTION_REPORTERS.includes(input.reporter)) {
+    throw new Error("executor interruption reporter is not allowlisted");
+  }
+  if (!AUTOMATIC_BUILD_EXECUTOR_INTERRUPTION_COMMAND_ROLES.includes(input.last_command_role)) {
+    throw new Error("executor interruption last_command_role is not allowlisted");
+  }
+  return input;
+}
+
+function latestDispatchOwnedAttempt(
+  target: AutomaticBuildTarget,
+  persisted: AutomaticBuildPreparedDispatchV1,
+  workUnitId: string,
+) {
+  return listAutomaticBuildStoredAttempts(target, persisted.manifest.stage, workUnitId)
+    .filter((attempt) => {
+      const leaseFile = path.join(attempt.attempt_dir, "lease.json");
+      return existsSync(leaseFile)
+        && readJson<{ owner?: string }>(leaseFile).owner === persisted.owner;
+    })
+    .sort((left, right) => right.physical_attempt - left.physical_attempt)[0];
+}
+
+function deriveAutomaticBuildExecutorInterruption(
+  target: AutomaticBuildTarget,
+  persisted: AutomaticBuildPreparedDispatchV1,
+  progress: AutomaticBuildDispatchProgressV1[],
+  input: AutomaticBuildExecutorInterruptionInputV1,
+  observedAt: string,
+): AutomaticBuildExecutorInterruptionV1 {
+  if (!Number.isFinite(Date.parse(observedAt))) {
+    throw new Error("executor interruption observed_at must be an ISO timestamp");
+  }
+  const validated = validateInterruptionInput(input);
+  const lastCompletedOrdinal = progress.length - 1;
+  const nextWorkUnitId = persisted.manifest.ordered_work_unit_ids[progress.length];
+  if (!nextWorkUnitId) {
+    return {
+      version: "automatic_build_executor_interruption.v1",
+      ...validated,
+      phase: "finishing",
+      last_completed_ordinal: lastCompletedOrdinal,
+      observed_at: observedAt,
+    };
+  }
+  const claimedAttempt = latestDispatchOwnedAttempt(target, persisted, nextWorkUnitId);
+  if (claimedAttempt) {
+    return {
+      version: "automatic_build_executor_interruption.v1",
+      ...validated,
+      phase: existsSync(path.join(claimedAttempt.attempt_dir, "start.json"))
+        ? "task_running"
+        : "task_reserved",
+      last_completed_ordinal: lastCompletedOrdinal,
+      active_work_unit_id: nextWorkUnitId,
+      observed_at: observedAt,
+    };
+  }
+  return {
+    version: "automatic_build_executor_interruption.v1",
+    ...validated,
+    phase: progress.length === 0 ? "before_first_claim" : "between_tasks",
+    last_completed_ordinal: lastCompletedOrdinal,
+    observed_at: observedAt,
+  };
+}
+
+function validateAutomaticBuildExecutorInterruption(
+  value: AutomaticBuildExecutorInterruptionV1,
+  persisted: AutomaticBuildPreparedDispatchV1,
+  taskReceiptCount: number,
+): AutomaticBuildExecutorInterruptionV1 {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("invalid automatic build executor interruption");
+  }
+  const allowedKeys = new Set([
+    "version",
+    "diagnostic_code",
+    "phase",
+    "reporter",
+    "last_command_role",
+    "last_completed_ordinal",
+    "active_work_unit_id",
+    "observed_at",
+  ]);
+  if (Object.keys(value).some((key) => !allowedKeys.has(key))
+    || value.version !== "automatic_build_executor_interruption.v1"
+    || !AUTOMATIC_BUILD_EXECUTOR_INTERRUPTION_DIAGNOSTIC_CODES.includes(value.diagnostic_code)
+    || !AUTOMATIC_BUILD_EXECUTOR_INTERRUPTION_REPORTERS.includes(value.reporter)
+    || !AUTOMATIC_BUILD_EXECUTOR_INTERRUPTION_COMMAND_ROLES.includes(value.last_command_role)
+    || !Number.isSafeInteger(value.last_completed_ordinal)
+    || value.last_completed_ordinal !== taskReceiptCount - 1
+    || !Number.isFinite(Date.parse(value.observed_at))) {
+    throw new Error("invalid automatic build executor interruption");
+  }
+  const nextWorkUnitId = persisted.manifest.ordered_work_unit_ids[value.last_completed_ordinal + 1];
+  if (value.phase === "before_first_claim") {
+    if (value.last_completed_ordinal !== -1 || value.active_work_unit_id !== undefined) {
+      throw new Error("invalid before_first_claim interruption phase");
+    }
+  } else if (value.phase === "between_tasks") {
+    if (value.last_completed_ordinal < 0 || !nextWorkUnitId || value.active_work_unit_id !== undefined) {
+      throw new Error("invalid between_tasks interruption phase");
+    }
+  } else if (value.phase === "finishing") {
+    if (value.last_completed_ordinal !== persisted.manifest.ordered_work_unit_ids.length - 1
+      || value.active_work_unit_id !== undefined) {
+      throw new Error("invalid finishing interruption phase");
+    }
+  } else if (value.phase === "task_reserved" || value.phase === "task_running") {
+    if (!nextWorkUnitId || value.active_work_unit_id !== nextWorkUnitId) {
+      throw new Error("invalid active task interruption phase");
+    }
+  } else {
+    throw new Error("invalid automatic build executor interruption phase");
+  }
+  return value;
+}
+
+function validateAutomaticBuildExecutorDispatchReceipt(
+  target: AutomaticBuildTarget,
+  persisted: AutomaticBuildPreparedDispatchV1,
+  value: AutomaticBuildExecutorDispatchReceiptV1,
+  requireInterruptedDiagnostic = false,
+): AutomaticBuildExecutorDispatchReceiptV1 {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("invalid automatic build dispatch receipt");
+  }
+  const allowedKeys = new Set([
+    "version",
+    "dispatch_id",
+    "dispatch_run_id",
+    "target_ref",
+    "stage",
+    "task_receipts",
+    "unclaimed_work_unit_ids",
+    "terminal_reason",
+    "interruption",
+    "finished_at",
+  ]);
+  if (Object.keys(value).some((key) => !allowedKeys.has(key))
+    || value.version !== "automatic_build_executor_dispatch_receipt.v1"
+    || value.dispatch_id !== persisted.manifest.dispatch_id
+    || value.dispatch_run_id !== persisted.dispatch_run_id
+    || value.stage !== persisted.manifest.stage
+    || !value.target_ref
+    || !sameTargetRef(value.target_ref, target.target_ref)
+    || !Array.isArray(value.task_receipts)
+    || !Array.isArray(value.unclaimed_work_unit_ids)
+    || !["complete", "task_failure", "executor_interrupted"].includes(value.terminal_reason)
+    || !Number.isFinite(Date.parse(value.finished_at))) {
+    throw new Error("invalid automatic build dispatch receipt");
+  }
+  if (value.task_receipts.some((receipt, ordinal) => (
+    receipt.version !== "automatic_build_dispatch_task_receipt.v1"
+    || receipt.work_unit_id !== persisted.manifest.ordered_work_unit_ids[ordinal]
+  ))) {
+    throw new Error("invalid automatic build dispatch receipt task prefix");
+  }
+  const manifestIds = new Set(persisted.manifest.ordered_work_unit_ids);
+  if (value.unclaimed_work_unit_ids.some((workUnitId) => !manifestIds.has(workUnitId))
+    || new Set(value.unclaimed_work_unit_ids).size !== value.unclaimed_work_unit_ids.length) {
+    throw new Error("invalid automatic build dispatch receipt unclaimed work units");
+  }
+  if (value.interruption !== undefined) {
+    if (value.terminal_reason !== "executor_interrupted") {
+      throw new Error("only executor_interrupted receipts may contain interruption diagnostics");
+    }
+    validateAutomaticBuildExecutorInterruption(value.interruption, persisted, value.task_receipts.length);
+  } else if (requireInterruptedDiagnostic && value.terminal_reason === "executor_interrupted") {
+    throw new Error("new executor_interrupted receipt requires interruption diagnostics");
+  }
+  return value;
+}
+
+function readAutomaticBuildExecutorDispatchReceipt(
+  target: AutomaticBuildTarget,
+  persisted: AutomaticBuildPreparedDispatchV1,
+  file: string,
+): AutomaticBuildExecutorDispatchReceiptV1 {
+  return validateAutomaticBuildExecutorDispatchReceipt(
+    target,
+    persisted,
+    readJson<AutomaticBuildExecutorDispatchReceiptV1>(file),
+  );
+}
+
+function finishLegacyUnclaimedDispatch(
+  target: AutomaticBuildTarget,
+  prepared: AutomaticBuildPreparedDispatchV1,
+  now: string,
+): AutomaticBuildExecutorDispatchReceiptV1 {
+  const file = dispatchReceiptPath(
+    target,
+    prepared.manifest.stage,
+    prepared.manifest.dispatch_id,
+    prepared.dispatch_run_id,
+  );
+  if (existsSync(file)) return readAutomaticBuildExecutorDispatchReceipt(target, prepared, file);
+  const receipt = validateAutomaticBuildExecutorDispatchReceipt(target, prepared, {
+    version: "automatic_build_executor_dispatch_receipt.v1",
+    dispatch_id: prepared.manifest.dispatch_id,
+    dispatch_run_id: prepared.dispatch_run_id,
+    target_ref: target.target_ref,
+    stage: prepared.manifest.stage,
+    task_receipts: [],
+    unclaimed_work_unit_ids: [...prepared.manifest.ordered_work_unit_ids],
+    terminal_reason: "executor_interrupted",
+    interruption: {
+      version: "automatic_build_executor_interruption.v1",
+      diagnostic_code: "legacy_handoff_missing",
+      phase: "before_first_claim",
+      reporter: "build_engine",
+      last_command_role: "unknown",
+      last_completed_ordinal: -1,
+      observed_at: now,
+    },
+    finished_at: now,
+  }, true);
+  if (Buffer.byteLength(JSON.stringify(receipt)) > MAX_DISPATCH_RECEIPT_BYTES) {
+    throw new Error(`dispatch receipt exceeds ${MAX_DISPATCH_RECEIPT_BYTES} bytes`);
+  }
+  writeCreateOnly(file, receipt);
+  return receipt;
+}
+
+export function inspectAutomaticBuildDispatch(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  dispatchId: string,
+  now = new Date().toISOString(),
+  dispatchRunId?: string,
+) {
+  const persisted = readAutomaticBuildDispatch(target, stage, dispatchId, dispatchRunId);
+  const receiptFile = dispatchReceiptPath(target, stage, dispatchId, persisted.dispatch_run_id);
+  if (existsSync(receiptFile)) {
+    return {
+      version: "automatic_build_dispatch_inspection.v1" as const,
+      dispatch_id: dispatchId,
+      state: "finished" as const,
+      manifest: persisted.manifest,
+      receipt: readAutomaticBuildExecutorDispatchReceipt(target, persisted, receiptFile),
+    };
+  }
+  const progress = refreshProgress(target, persisted, now);
+  const nextWorkUnitId = persisted.manifest.ordered_work_unit_ids[progress.length];
+  return {
+    version: "automatic_build_dispatch_inspection.v1" as const,
+    dispatch_id: dispatchId,
+    state: nextWorkUnitId ? "active" as const : "ready_to_finish" as const,
+    manifest: persisted.manifest,
+    task_receipts: progress.map((item) => item.task_receipt),
+    ...(nextWorkUnitId ? { next_work_unit_id: nextWorkUnitId } : {}),
+  };
+}
+
+export function finishAutomaticBuildDispatch(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  dispatchId: string,
+  options: {
+    terminal_reason?: AutomaticBuildExecutorDispatchReceiptV1["terminal_reason"];
+    interruption?: AutomaticBuildExecutorInterruptionInputV1;
+    now?: string;
+    dispatch_run_id?: string;
+  } = {},
+): AutomaticBuildExecutorDispatchReceiptV1 {
+  const persisted = readAutomaticBuildDispatch(target, stage, dispatchId, options.dispatch_run_id);
+  const file = dispatchReceiptPath(target, stage, dispatchId, persisted.dispatch_run_id);
+  if (existsSync(file)) return readAutomaticBuildExecutorDispatchReceipt(target, persisted, file);
+  const now = options.now ?? new Date().toISOString();
+  const progress = refreshProgress(target, persisted, now);
+  const interrupted = options.terminal_reason === "executor_interrupted";
+  const incomplete = progress.length !== persisted.manifest.ordered_work_unit_ids.length;
+  const hasFailure = progress.some((item) => item.task_receipt.state === "retryable_failure");
+  const unclaimedWorkUnitIds = persisted.manifest.ordered_work_unit_ids.filter(
+    (workUnitId) => !taskWasClaimed(target, persisted, workUnitId),
+  );
+  if (options.terminal_reason === "task_failure") {
+    if (!hasFailure) {
+      throw new Error(`dispatch task_failure requires a canonical retryable failure receipt: ${dispatchId}`);
+    }
+    if (incomplete) {
+      const failedCurrent = progress.at(-1)?.task_receipt.state === "retryable_failure";
+      if (!failedCurrent) {
+        throw new Error(`dispatch task_failure requires the current failed work unit to be terminal: ${dispatchId}`);
+      }
+      const activeWorkUnitIds = persisted.manifest.ordered_work_unit_ids.filter((workUnitId) => (
+        [
+          "already_leased",
+          "policy_generation_conflict",
+          "policy_generation_migration_required",
+        ].includes(inspectAutomaticBuildTaskClaim(target, stage, workUnitId, {
+          now,
+          ...(persisted.manifest.task_bindings?.[workUnitId]
+            ? {
+                binding: persisted.manifest.task_bindings[workUnitId],
+                policy_generation: "v3_only" as const,
+              }
+            : {}),
+        }).status)
+      ));
+      if (activeWorkUnitIds.length) {
+        throw new Error(`dispatch task_failure cannot finish with an active lease: ${activeWorkUnitIds.join(",")}`);
+      }
+      const expectedSuffix = persisted.manifest.ordered_work_unit_ids.slice(progress.length);
+      if (expectedSuffix.length !== unclaimedWorkUnitIds.length
+        || expectedSuffix.some((workUnitId, index) => unclaimedWorkUnitIds[index] !== workUnitId)) {
+        throw new Error(`dispatch task_failure requires a strict unclaimed suffix: ${dispatchId}`);
+      }
+    }
+  } else if (!interrupted && incomplete) {
+    throw new Error(`dispatch has unfinished work units: ${dispatchId}`);
+  }
+  const terminalReason = interrupted ? "executor_interrupted" : hasFailure ? "task_failure" : "complete";
+  if (options.terminal_reason && options.terminal_reason !== terminalReason) {
+    throw new Error(`dispatch terminal reason must be ${terminalReason}: ${dispatchId}`);
+  }
+  if (terminalReason === "executor_interrupted" && !options.interruption) {
+    throw new Error("new executor_interrupted receipt requires interruption diagnostics");
+  }
+  if (terminalReason !== "executor_interrupted" && options.interruption !== undefined) {
+    throw new Error("interruption diagnostics require terminal_reason=executor_interrupted");
+  }
+  const interruption = options.interruption
+    ? deriveAutomaticBuildExecutorInterruption(target, persisted, progress, options.interruption, now)
+    : undefined;
+  const receipt = validateAutomaticBuildExecutorDispatchReceipt(target, persisted, {
+    version: "automatic_build_executor_dispatch_receipt.v1",
+    dispatch_id: dispatchId,
+    dispatch_run_id: persisted.dispatch_run_id,
+    target_ref: target.target_ref,
+    stage,
+    task_receipts: progress.map((item) => item.task_receipt),
+    unclaimed_work_unit_ids: unclaimedWorkUnitIds,
+    terminal_reason: terminalReason,
+    ...(interruption ? { interruption } : {}),
+    finished_at: now,
+  }, true);
+  const bytes = Buffer.byteLength(JSON.stringify(receipt));
+  if (bytes > MAX_DISPATCH_RECEIPT_BYTES) {
+    throw new Error(`dispatch receipt exceeds ${MAX_DISPATCH_RECEIPT_BYTES} bytes: ${bytes}`);
+  }
+  mkdirSync(path.dirname(file), { recursive: true });
+  try {
+    writeFileSync(file, `${JSON.stringify(receipt, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
+    return receipt;
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+    if (code !== "EEXIST") throw error;
+    const existing = readAutomaticBuildExecutorDispatchReceipt(target, persisted, file);
+    if (existing.dispatch_id !== dispatchId || existing.terminal_reason !== terminalReason) {
+      throw new Error(`dispatch receipt conflicts with terminal state: ${file}`);
+    }
+    return existing;
+  }
+}

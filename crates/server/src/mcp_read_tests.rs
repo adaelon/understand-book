@@ -79,7 +79,7 @@ impl Fixture {
         )
     }
 }
-fn material(path: &Path, id: &str, enriched: bool) {
+pub(crate) fn material(path: &Path, id: &str, enriched: bool) {
     fs::create_dir_all(path).unwrap();
     let mut source = "\n\n".to_string();
     let mut base = base_schema::sample_base();
@@ -356,6 +356,78 @@ fn reassemble(f: &Fixture, name: &str, args: Value) -> Value {
 }
 
 #[test]
+fn mcp_read_to8_nested_candidate_calls_remain_executable() {
+    let f = Fixture::new();
+    let args = json!({"published_book_ref":f.a,"query":"needle","limit":1});
+    let first = f.call("alice", "book_concept", args.clone()).unwrap();
+    assert_eq!(first["complete"], false);
+    assert!(first["next_calls"].as_array().unwrap().iter().any(|c| c["arguments"]["page"]["path"] == "/candidates/0/next_calls"));
+    let data = reassemble(&f, "book_concept", args);
+    let candidate = &data["candidates"][0];
+    let calls = candidate["next_calls"].as_array().unwrap();
+    assert_eq!(calls.len(), 60);
+    for (lid, call) in candidate["occurrences"].as_array().unwrap().iter().zip(calls) {
+        assert_eq!(call["arguments"]["lid"], *lid);
+        assert_eq!(call["arguments"]["published_book_ref"], json!(f.a));
+    }
+    let last = f.next("alice", calls.last().unwrap()).unwrap();
+    assert!(last["data"]["text"].as_str().unwrap().starts_with("needle 60 "));
+    assert_eq!(last["sources"][0]["start_lid"], "1.60");
+    assert_eq!(last["sources"][0]["published_book_ref"], json!(f.a));
+}
+
+#[test]
+fn mcp_read_to9_context_pagination_and_missing_structure_are_independent() {
+    let f = Fixture::new();
+    let mut samples = Vec::new();
+    // The chapter has 60 children. The transport page size is 20, independent of k.
+    for k in [0, 10, 40, 60] {
+        let args = json!({"published_book_ref":f.b,"lid":"1","granularity":"far","k":k});
+        let first = f.call("bob", "book_context", args.clone()).unwrap();
+        assert_eq!(first["data"]["total_candidates"], 60);
+        assert_eq!(first["data"]["returned_count"], k);
+        assert_eq!(first["data"]["truncated"], k < 60);
+        assert_eq!(first["complete"], k <= 20);
+        let mut items = first["data"]["items"].as_array().unwrap().clone();
+        let mut pending = VecDeque::from(first["next_calls"].as_array().unwrap().clone());
+        let mut pages = Vec::new();
+        while let Some(next) = pending.pop_front() {
+            let page = f.next("bob", &next).unwrap();
+            assert_eq!(page["data_path"], "/items");
+            assert_eq!(page["total_items"], k);
+            assert_eq!(page["published_book_ref"], json!(f.b));
+            items.extend(page["data"].as_array().unwrap().iter().cloned());
+            pending.extend(page["next_calls"].as_array().unwrap().iter().cloned());
+            pages.push(page);
+            assert!(pages.len() <= 2);
+        }
+        assert_eq!(items.len(), k as usize);
+        for (i, item) in items.iter().enumerate() {
+            assert_eq!(item["lid"], format!("1.{}", i + 1));
+            let next = &item["next_calls"][0];
+            assert_eq!(next["name"], "book_text");
+            assert_eq!(next["arguments"]["published_book_ref"], json!(f.b));
+        }
+        if let Some(last) = items.last() {
+            let read = f.next("bob", &last["next_calls"][0]).unwrap();
+            assert!(read["data"]["text"].as_str().unwrap().contains(&format!("needle {k}")));
+        }
+        samples.push(json!({"input":args,"first":first,"pages":pages,"reconstructed_count":items.len()}));
+    }
+    let list = f.call("bob", "book_list", json!({})).unwrap();
+    let available = list["items"][0]["available_tools"].as_array().unwrap();
+    assert!(available.contains(&json!("book_context")));
+    assert!(!available.contains(&json!("book_structure")));
+    let missing = f.call("bob", "book_structure", json!({"published_book_ref":f.b})).unwrap_err();
+    assert_eq!(missing.error_code, "MCP_CAPABILITY_UNAVAILABLE");
+    if let Ok(path) = std::env::var("TO9_REMOTE") {
+        fs::write(path, serde_json::to_vec_pretty(&json!({
+            "samples":samples,"list":list,"missing_structure":missing,
+        })).unwrap()).unwrap();
+    }
+}
+
+#[test]
 fn mcp_read_nested_structure_and_paper_collections_reassemble_without_omissions() {
     let f = Fixture::new();
     let publication = f.library.lock().unwrap().load("alice", &f.a).unwrap();
@@ -379,13 +451,20 @@ fn mcp_read_nested_structure_and_paper_collections_reassemble_without_omissions(
             "{name}"
         );
     }
+    // Collection reconstruction compares the remote shape, including version-bound calls.
+    let mut expected = json!(book.concept_candidates("command", None, None).unwrap());
+    for candidate in expected["candidates"].as_array_mut().unwrap() {
+        candidate["next_calls"] = json!(candidate["occurrences"].as_array().unwrap().iter()
+            .map(|lid| json!({"name":"book_text","arguments":{"lid":lid,"published_book_ref":f.a}}))
+            .collect::<Vec<_>>());
+    }
     assert_eq!(
         reassemble(
             &f,
             "book_concept",
             json!({"published_book_ref":f.a,"query":"command"})
         ),
-        json!(book.concept_candidates("command", None, None).unwrap())
+        expected
     );
     let scoped = f
         .call(
@@ -544,5 +623,52 @@ fn mcp_read_search_context_empty_results_and_remote_parameter_validation() {
             .as_array()
             .unwrap()
             .contains(&json!("published_book_ref")));
+    }
+}
+
+#[test]
+fn mcp_read_to10_reverse_search_preserves_native_and_collection_continuations() {
+    let f = Fixture::new();
+    let input = json!({"published_book_ref":f.a,"query":"needle","match_mode":"exact","scope":{"within_lid":"1"},"order":"reverse_document","page_size":50});
+    let mut pending = VecDeque::from([json!({"name":"book_search_text","arguments":input})]);
+    let mut hits = Vec::new();
+    let mut calls = Vec::new();
+    while let Some(call) = pending.pop_front() {
+        for key in [
+            "published_book_ref",
+            "query",
+            "match_mode",
+            "scope",
+            "order",
+            "page_size",
+        ] {
+            assert_eq!(call["arguments"][key], input[key]);
+        }
+        let result = f.next("alice", &call).unwrap();
+        let occurrences = if result["data_path"] == "" {
+            Some(&result["data"]["occurrences"])
+        } else if result["data_path"] == "/occurrences" {
+            Some(&result["data"])
+        } else {
+            None
+        };
+        if let Some(occurrences) = occurrences {
+            let page: Vec<_> = occurrences
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|v| v["ordinal"].as_u64().unwrap())
+                .collect();
+            assert!(page.windows(2).all(|p| p[0] == p[1] + 1));
+            hits.extend(page);
+        }
+        pending.extend(result["next_calls"].as_array().unwrap().iter().cloned());
+        calls.push(json!({"call":call,"result":result}));
+        assert!(calls.len() < 20);
+    }
+    hits.sort_unstable();
+    assert_eq!(hits, (1..=60).collect::<Vec<_>>());
+    if let Ok(path) = std::env::var("TO10_REMOTE_SEARCH") {
+        fs::write(path, serde_json::to_vec_pretty(&calls).unwrap()).unwrap();
     }
 }

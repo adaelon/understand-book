@@ -1,0 +1,38 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8">
+<style>
+*{box-sizing:border-box}body{margin:0;padding:0;background:white;color:#182536;font:14px sans-serif}
+#intro{height:1100px;padding:20px;max-width:600px}h1{font-size:22px}
+#panel{padding:8px;min-height:210px}button{min-width:100px;min-height:44px;font:inherit}
+#readout{margin:6px 0;font-size:13px}svg{display:block;width:240px;height:70px;background:#f5f5f5}
+#after{height:800px;padding:16px}
+</style>
+<section id="intro"><h1>两段运动的观察</h1><p>向下阅读到操作区。A 方块与 B 方块身份不同；位置单位为格，每个语义步移动一格。色彩与文字共同标识对象。</p></section>
+<section id="panel">
+<button id="select-a">演示 A</button> <button id="select-b">演示 B</button>
+<p id="readout"></p>
+<svg id="drawing" viewBox="0 0 240 70" role="img" aria-label="活动对象与走过的轨迹">
+<path d="M20 58H220" stroke="#182536"/><rect id="trail" x="20" y="52" height="4" fill="#8000ff"/>
+<rect id="object" y="30" width="12" height="16"/><text id="label" x="20" y="18" font-size="13"></text>
+</svg></section><section id="after">比较变化前、变化时和变化后的对象与标签。</section>
+<script>
+const freezeGeometry = false; // Test mutation replaces this one declaration.
+let active='A', semantic_state=0, transition_progress=0, playing=false;
+const el=id=>document.getElementById(id);
+function render(){
+ const t=semantic_state+transition_progress;
+ const drawn=freezeGeometry&&active==='B'?0:t;
+ const wrong=active==='B'&&t>=6.4&&t<=6.6; // Deliberately planted late label fault.
+ el('object').setAttribute('x',20+20*drawn);
+ el('object').setAttribute('fill',active==='B'?'#00a0ff':'#ff4000');
+ el('trail').setAttribute('width',20*drawn);
+ el('label').textContent=(wrong?'A':active)+' 方块';
+ el('readout').textContent=`活动 ${active}；位置 ${t.toFixed(2)} 格；暂停；标签 ${wrong?'A':active}`;
+}
+for(const name of ['a','b']) el('select-'+name).onclick=()=>{
+ active=name.toUpperCase();semantic_state=0;transition_progress=0;playing=false;render();
+ el('panel').scrollIntoView({block:'start',behavior:'instant'});
+};
+window.presentationScene={seek(p){semantic_state=p.semantic_state;transition_progress=p.transition_progress;playing=false;render()},snapshot(){return {semantic_state,transition_progress,playing}}};
+window.presentation?.registerStateReader(()=>({values:{active,semantic_state,transition_progress,playing},visible_step:String(semantic_state)}));
+render();
+</script></html>

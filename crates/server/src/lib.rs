@@ -105,6 +105,7 @@ mod book_title;
 pub mod auth;
 pub mod mcp_access;
 pub mod mcp_read;
+mod mcp_output_schema;
 pub mod mcp_usage;
 pub mod mcp_pack;
 mod remote_mcp;
@@ -3338,6 +3339,7 @@ fn bind_rest_book_input(
         };
         let value = if (id == BookToolId::Context && key == "k")
             || (id == BookToolId::Concept && key == "limit")
+            || (id == BookToolId::Text && key == "start_utf16")
         {
             match value.parse::<usize>() {
                 Ok(value) => json!(value),
@@ -3422,8 +3424,8 @@ fn route_canonical_readonly_book_tool(book: &Book, id: BookToolId, input: BookTo
     match (id, input) {
         (BookToolId::Manifest, BookToolInput::Empty(_)) => ok_json(&book.manifest()),
         (BookToolId::Text, BookToolInput::Text(input)) => {
-            match book.text(&input.lid, input.end_lid.as_deref()) {
-                Ok(text) => ok_json(&json!({ "lid": input.lid, "text": text })),
+            match book.read_text(&input) {
+                Ok(result) => ok_json(&result),
                 Err(error) => err_reply(&error),
             }
         }

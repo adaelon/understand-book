@@ -12,7 +12,7 @@ use time::{format_description::well_known::Rfc3339, Date, Month, OffsetDateTime,
 
 pub const MONTHLY_FREE_UNITS: i64 = 1_000;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct Usage {
     pub month_hk: String,
     pub free_granted: i64,
@@ -25,7 +25,7 @@ pub struct Usage {
 }
 
 /// The debit result explicitly identifies the month or purchased batch.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum DebitSource {
     FreeMonth { month_hk: String },

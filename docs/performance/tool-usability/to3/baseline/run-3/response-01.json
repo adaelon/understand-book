@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+      "id": "call_00_rBohiTN6on95kPYKJC9G1402",
+      "name": "source.present"
+    },
+    {
+      "arguments": "{\"operation\": \"select\", \"move\": {\"move_id\": \"avg_speed_time_weighting_boundary\", \"object_ids\": [], \"kind\": \"explain\", \"prompt\": \"上一段停在一个具体结果上：两段各 60 km、速度 60 和 30，按定义算出来是 40 km/h，而直接把速度数值平均得到 45。这一步往前推一格：把「路程相等」这个条件本身当成变量，看它到底在做什么。\\n\\n## 一、把那次计算写成一般式子\\n\\n设两段路程都是 d，速度分别是 v1、v2（都大于 0）。\\n\\n- 总路程 = 2d\\n- 总时间 = d/v1 + d/v2\\n- 平均速度 = 2d ÷ (d/v1 + d/v2)\\n\\nd 可以约掉，于是：\\n\\n**平均速度 = 2v1v2 / (v1 + v2)**\\n\\n（这个式子和下面两个例子都是我按原文定义推的，不是原文里的内容。）代回去：2×60×30 ÷ 90 = 3600/90 = 40，和上次一致。\\n\\n这个式子的价值在于它说明 45 差在哪里，而不只是「错了」：2v1v2/(v1+v2) 恒不大于 (v1+v2)/2，只有 v1 = v2 时两者相等。所以**只要两段快慢不同、而路程相同，直接平均速度数值一定会偏高**，而且两段速度越悬殊，偏得越多。\\n\\n## 二、把条件翻过来：如果相等的是时间\\n\\n同样两段行程，这次每段各开 t 小时，速度仍是 v1、v2：\\n\\n- 总路程 = v1t + v2t = (v1 + v2)t\\n- 总时间 = 2t\\n- 平均速度 = (v1 + v2)/2\\n\\n结果正好就是直接平均。所以 45 并不是一个「永远错的数」，它对应的是**两段时间相等**的行程：60 和 30 各开一小时，跑 90 km 用 2 小时，平均 45 km/h，完全合规。\\n\\n那 45 在原题里为什么错？因为题目给的是「路程相等」（各 60 km），却按「时间相等」的方式算了。原文第二句 *Equal distances need not take equal times* 拦的正是这个偷换：路程相等就意味着慢的那段用掉更多时间（1 小时 vs 2 小时），时间不等，算术平均的前提已经不存在了。\\n\\n## 三、一条可以随身带的判据\\n\\n定义的分母是**总时间**，所以任何「把速度数值平均一下」的做法，实质上都在默认每段占用的时间一样多——它是一个**时间等权**的平均。判据：\\n\\n- 各段**时间**相等 → 直接把速度数值平均是对的；\\n- 各段**路程**相等 → 不能直接平均，要用 2v1v2/(v1+v2)；慢的那段占时间多，把结果往下拉。\\n\\n再补一句：定义里的「总」不限于两段，三段、四段同理——分母永远是所有时间加总。这也是为什么它只需要两个总量，而不需要知道中途快慢具体怎么变。\\n\\n顺手做个小验证：把第二段路程从 60 km 改成 30 km（速度仍是 30 km/h），先猜平均速度会比 40 大还是小，再用定义算一遍，看看这个新判据是不是立刻生效。\", \"target\": {\"learning_focus\": \"平均速度的定义中「总路程÷总时间」是时间加权的平均：判断什么条件下可以直接平均速度数值，什么条件下不行\", \"expected_performance\": \"能用总路程÷总时间算出多段行程的平均速度，并说明等路程时直接平均速度数值会偏高、等时间时恰好相等，指出差别来自分母是时间总量\", \"capability\": \"apply_definition\", \"source_bindings\": [{\"start_lid\": \"1.1\", \"end_lid\": \"1.1\"}], \"object_refs\": []}, \"continuation\": {\"recommended_option_id\": \"opt_extreme_slow_leg\", \"options\": [{\"option_id\": \"opt_extreme_slow_leg\", \"label\": \"把第二段速度压到几乎为 0（仍然各 60 km），看平均速度被拉到哪\", \"purpose\": \"看到时间权重的极端后果：一段几乎不动，就足以把整趟的平均速度拉向 0，另一段再快也救不回来\", \"move_kind\": \"observe\"}, {\"option_id\": \"opt_three_unequal_legs\", \"label\": \"换成三段、路程各不相等，看平均速度到底按什么加权\", \"purpose\": \"把等路程的两段公式推广开：一般情形下速度以「各段路程占总路程的比例」为权重做调和平均\", \"move_kind\": \"compare\"}]}}}",
+      "id": "call_01_jFkgXNukwUT67q2SFfOi9579",
+      "name": "tutor.step"
+    }
+  ],
+  "usage_total_tokens": 25677
+}

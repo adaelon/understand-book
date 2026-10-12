@@ -8,6 +8,115 @@ fn discovery(f: &Fixture) -> Value {
 }
 
 #[test]
+fn mcp_contract_to12_actual_http_output_schemas_and_charged_retries() {
+    let f = Fixture::with_material(false, true);
+    let tools = discovery(&f);
+    let mut samples = Vec::new();
+    let mut pending = std::collections::VecDeque::from([
+        ("book_list".to_string(), json!({})),
+        ("mcp_usage".to_string(), json!({})),
+    ]);
+    for (name, mut args) in [
+        ("book_text", json!({"lid":"1.1"})),
+        ("book_search_text", json!({"query":"needle","page_size":50})),
+        ("book_search_text", json!({"query":"no-such-text"})),
+        ("book_context", json!({"lid":"1","k":60})),
+        ("book_context", json!({"lid":"1","k":0})),
+        ("book_concept", json!({"query":"command"})),
+        ("book_concept", json!({"query":"no-such-concept"})),
+        ("book_structure", json!({})), ("book_guide_path", json!({})),
+        ("book_paper_metadata", json!({})), ("book_paper_lexicon", json!({})),
+        ("book_paper_reading_guide", json!({"mode":"deep","stage":"creative"})),
+    ] {
+        args["published_book_ref"] = json!(f.reference);
+        pending.push_back((name.into(),args));
+    }
+    while let Some((name, args)) = pending.pop_front() {
+        let reply = f.tool(0, &name, args.clone());
+        assert_eq!(reply["isError"], args["query"] == "no-such-concept", "{name}: {reply}");
+        let body = projection(&reply);
+        for call in body["next_calls"].as_array().into_iter().flatten() {
+            pending.push_back((call["name"].as_str().unwrap().into(),call["arguments"].clone()));
+        }
+        samples.push(json!({"tool":name,"input":args,"reply":reply}));
+        assert!(samples.len() < 250, "continuation failed to converge");
+    }
+    let before = f.count();
+    for _ in 0..2 {
+        let args = json!({"published_book_ref":f.reference,"lid":"1.2"});
+        let reply = f.tool(0, "book_text", args.clone());
+        assert_eq!(reply["isError"],false);
+        assert_eq!(reply["structuredContent"]["usage"]["charged_units"],1);
+        samples.push(json!({"tool":"book_text","input":args,"reply":reply}));
+    }
+    assert_eq!(f.count(),before+2);
+    let error = f.tool(0,"book_text",json!({"published_book_ref":f.reference,"lid":"missing"}));
+    assert_eq!(error["isError"],true);
+    assert_eq!(f.count(),before+2);
+    samples.push(json!({"tool":"book_text","reply":error}));
+    samples.push(json!({"tool":"book_list","reply":f.tool(2,"book_list",json!({}))}));
+    for tool in tools.as_array().unwrap() {
+        assert_eq!(tool["outputSchema"]["type"],"object");
+        let free = matches!(tool["name"].as_str().unwrap(),"book_list"|"mcp_usage");
+        assert_eq!(tool["annotations"]["idempotentHint"], free);
+        assert_eq!(tool["annotations"]["readOnlyHint"], free);
+    }
+    if let Ok(dir) = std::env::var("TO12_DIR") {
+        std::fs::write(std::path::Path::new(&dir).join("remote.json"),
+            serde_json::to_vec_pretty(&json!({"tools":tools,"samples":samples,"charged_calls":f.count()})).unwrap()).unwrap();
+    }
+}
+
+#[test]
+fn mcp_contract_to10_http_text_continuation_preserves_sources_and_charges_each_page() {
+    let f = Fixture::new();
+    let book = read_tools::Book::load(f._input.path().to_str().unwrap()).unwrap();
+    let expected = book.text("1.1", None).unwrap();
+    let mut args = f.text_args();
+    let mut joined = String::new();
+    let mut samples = Vec::new();
+    loop {
+        let response = f.tool(0, "book_text", args.clone());
+        assert_eq!(response["isError"], false, "{response}");
+        let result = projection(&response);
+        assert_usage(&result["usage"], 1);
+        let range = &result["data"]["source_range"];
+        assert_eq!(range["start"], joined.encode_utf16().count());
+        joined.push_str(result["data"]["text"].as_str().unwrap());
+        assert_eq!(range["end"], joined.encode_utf16().count());
+        let source = &result["sources"][0];
+        assert_eq!(source["source_range"], *range);
+        assert_eq!(source["published_book_ref"], json!(f.reference));
+        let url = url::Url::parse(source["source_url"].as_str().unwrap()).unwrap();
+        let query: BTreeMap<_, _> = url.query_pairs().into_owned().collect();
+        assert_eq!(query["publication_id"], f.reference.publication_id);
+        assert_eq!(query["start_utf16"], range["start"].to_string());
+        assert_eq!(query["end_utf16"], range["end"].to_string());
+        samples.push(json!({"input":args,"result":result}));
+        if result["complete"] == true {
+            break;
+        }
+        args = result["next_calls"][0]["arguments"].clone();
+        assert_eq!(args["published_book_ref"], json!(f.reference));
+        assert_eq!(args["start_utf16"], range["end"]);
+        assert!(samples.len() < 10);
+    }
+    assert_eq!(joined, expected);
+    assert_eq!(samples.len(), 2);
+    assert_eq!(f.count(), samples.len() as i64);
+    if let Ok(path) = std::env::var("TO10_HTTP") {
+        std::fs::write(
+            path,
+            serde_json::to_vec_pretty(
+                &json!({"tools":discovery(&f),"samples":samples,"charged_calls":f.count()}),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+    }
+}
+
+#[test]
 #[ignore = "one-time fixture capture; set TOOL_EXAMPLE_REFERENCE to an output path"]
 fn mcp_contract_capture_example_publication() {
     let f = Fixture::with_example_book(true);
@@ -23,19 +132,33 @@ fn mcp_contract_capture_example_publication() {
 #[test]
 #[ignore = "set TOOL_CONTRACT_SNAPSHOT and run explicitly to capture published definitions"]
 fn mcp_contract_export_tool_definitions() {
-    let f = Fixture::new();
-    let resident: Vec<_> = runtime::orchestrator::tool_specs()
-        .into_iter()
-        .map(|spec| json!({"name":spec.name,"description":spec.description,"inputSchema":spec.parameters}))
+    let registry = runtime::tool_registry::ToolRegistry::try_new(runtime::orchestrator::tool_specs()).unwrap();
+    let resident: Vec<_> = registry.registrations()
+        .iter()
+        .map(|entry| json!({
+            "name":entry.spec.name,"description":entry.spec.description,"inputSchema":entry.spec.parameters,
+            "outputSchema":entry.output_schema(),"annotations":entry.annotations(),
+            "routing_card":entry.routing_card,
+            "output_policy":{"result_policy":format!("{:?}", entry.output_policy.result_policy),
+                "max_model_body_bytes":entry.output_policy.max_model_body_bytes},
+            "parallelism":format!("{:?}", entry.parallelism),
+            "input_source":match entry.handler {
+                runtime::tool_registry::ToolHandlerId::Book(_) => "crates/book-tool-contracts/src/lib.rs:input_schema",
+                runtime::tool_registry::ToolHandlerId::Artifact(_) => "crates/artifact-tools/src/lib.rs:artifact_list_input_schema/artifact_search_input_schema/artifact_read_input_schema",
+                runtime::tool_registry::ToolHandlerId::TutorStep => "crates/runtime/src/tutor.rs:spec/spec_for_context",
+                runtime::tool_registry::ToolHandlerId::PresentationAuthor => "crates/runtime/src/presentation_author.rs:spec",
+                runtime::tool_registry::ToolHandlerId::ToolSearch => "crates/runtime/src/tool_registry.rs:tool_search_input_schema_v2",
+                _ => "crates/runtime/src/orchestrator.rs:declared_tool_specs",
+            },
+        }))
         .collect();
     let snapshot = json!({
         "resident": resident,
         "local_mcp": crate::mcp::tools_list_result()["tools"],
-        "remote_mcp": discovery(&f),
+        "remote_mcp": crate::remote_mcp::tools_list_result()["tools"],
     });
     let path = std::env::var("TOOL_CONTRACT_SNAPSHOT").expect("snapshot output path is required");
     std::fs::write(path, serde_json::to_vec_pretty(&snapshot).unwrap()).unwrap();
-    assert_eq!(f.count(), 0);
 }
 
 #[test]
@@ -67,6 +190,7 @@ fn mcp_contract_initialize_and_all_tool_schemas_explain_the_reading_path() {
         assert!(instructions.contains(term), "initialization omits {term}");
     }
     let tools = discovery(&f);
+    assert_eq!(tools, crate::remote_mcp::tools_list_result()["tools"]);
     let tools = tools.as_array().unwrap();
     let expected: BTreeSet<_> = [
         "book_list",
@@ -145,11 +269,7 @@ fn mcp_contract_initialize_and_all_tool_schemas_explain_the_reading_path() {
         }
         let properties = local["properties"].as_object_mut().unwrap();
         properties.remove("published_book_ref");
-        properties.remove(if name == "book_text" {
-            "start_utf16"
-        } else {
-            "page"
-        });
+        if name != "book_text" { properties.remove("page"); }
         let required = local["required"].as_array_mut().unwrap();
         assert!(required.contains(&json!("published_book_ref")));
         required.retain(|v| v != "published_book_ref");
@@ -180,9 +300,13 @@ fn mcp_contract_local_and_resident_keep_common_semantics_without_remote_fields()
         assert!(description.contains(contract.use_when), "{name}");
         assert!(description.contains(&contract.do_not_use_when.replace("book.text", "book_text")), "{name}");
         assert!(!description.contains("book.text"), "{name}");
-        for remote_term in ["published_book_ref", "start_utf16", "next_calls", "charged_units", "source_url"] {
+        for remote_term in ["published_book_ref", "charged_units", "source_url"] {
             assert!(!tool.to_string().contains(remote_term), "{name}: {remote_term}");
         }
+        // TO8 candidate read hints are common results and now appear in the
+        // advertised output schema. Only root transport pagination is remote.
+        assert!(tool["inputSchema"]["properties"].get("next_calls").is_none(), "{name}");
+        assert!(tool["outputSchema"]["properties"].get("next_calls").is_none(), "{name}");
         if let Some(alias) = contract.aliases.resident {
             let spec = resident.iter().find(|s| s.name == alias).unwrap();
             assert_eq!(spec.parameters, schema, "{alias}");
@@ -230,6 +354,93 @@ fn projection(result: &Value) -> &Value {
         *value
     );
     value
+}
+
+#[test]
+fn mcp_contract_to8_candidate_calls_read_the_selected_publication_over_http() {
+    let f = Fixture::with_example_book(true);
+    let book = read_tools::Book::load(f._input.path().to_str().unwrap()).unwrap();
+    let mut snapshots = Vec::new();
+    let mut charged = 0;
+    for (name, collection, mut input) in [
+        ("book_search_text", "occurrences", json!({"query":"threshold","match_mode":"exact","order":"document","page_size":10})),
+        ("book_search_text", "occurrences", json!({"query":"10.\nThe beta","match_mode":"exact","order":"document","page_size":10})),
+        ("book_search_text", "occurrences", json!({"query":"absent-term","match_mode":"exact","order":"document","page_size":10})),
+        ("book_concept", "candidates", json!({"query":"threshold","limit":5})),
+        ("book_context", "items", json!({"lid":"1.1","granularity":"far","k":10})),
+    ] {
+        input["published_book_ref"] = json!(f.reference);
+        let response = f.tool(0, name, input.clone());
+        assert_eq!(response["isError"], false, "{response}");
+        let located = projection(&response);
+        charged += 1;
+        assert_usage(&located["usage"], 1);
+        assert_eq!(located["complete"], true);
+        assert_eq!(located["next_calls"], json!([]), "optional reads are not missing pages");
+        let mut reads = Vec::new();
+        for candidate in located["data"][collection].as_array().unwrap() {
+            for next in candidate["next_calls"].as_array().unwrap() {
+                assert_eq!(next["name"], "book_text");
+                assert!(next.get("tool").is_none());
+                assert_eq!(next["arguments"]["published_book_ref"], json!(f.reference));
+                let response = f.tool(0, next["name"].as_str().unwrap(), next["arguments"].clone());
+                assert_eq!(response["isError"], false, "{response}");
+                let read = projection(&response);
+                charged += 1;
+                assert_usage(&read["usage"], 1);
+                assert_eq!(read["published_book_ref"], json!(f.reference));
+                let args = &next["arguments"];
+                let start = args["lid"].as_str().unwrap();
+                let end = args["end_lid"].as_str().unwrap_or(start);
+                assert_eq!(read["data"]["text"], book.text(start, Some(end)).unwrap());
+                let source = &read["sources"][0];
+                assert_eq!(source["published_book_ref"], json!(f.reference));
+                assert_eq!(source["start_lid"], start);
+                assert_eq!(source["end_lid"], end);
+                assert_eq!(source["source_range"], read["data"]["source_range"]);
+                let url = url::Url::parse(source["source_url"].as_str().unwrap()).unwrap();
+                let query: BTreeMap<_, _> = url.query_pairs().into_owned().collect();
+                assert_eq!(query["publication_id"], f.reference.publication_id);
+                assert_eq!(query["start_lid"], start);
+                assert_eq!(query["end_lid"], end);
+                reads.push(json!({"call":next,"result":read}));
+            }
+        }
+        snapshots.push(json!({"tool":name,"input":input,"located":located,"reads":reads}));
+    }
+    assert_eq!(f.count(), charged);
+    if let Ok(path) = std::env::var("TO8_REMOTE") {
+        std::fs::write(path, serde_json::to_vec_pretty(&json!({"tools":discovery(&f),"samples":snapshots,"charged_calls":charged})).unwrap()).unwrap();
+    }
+}
+
+#[test]
+fn mcp_contract_to9_context_coverage_reaches_http_structured_content() {
+    let f = Fixture::with_example_book(true);
+    let tools = discovery(&f);
+    let context_tool = tools.as_array().unwrap().iter().find(|t| t["name"] == "book_context").unwrap();
+    let description = context_tool["description"].as_str().unwrap();
+    assert!(description.contains("book_structure"));
+    assert!(!description.contains("book.structure"));
+    assert!(context_tool["inputSchema"]["properties"]["k"].to_string().contains("total_candidates"));
+    let mut samples = Vec::new();
+    for k in [0, 1, 2] {
+        let input = json!({"published_book_ref":f.reference,"lid":"1.1","granularity":"far","k":k});
+        let response = f.tool(0, "book_context", input.clone());
+        assert_eq!(response["isError"], false);
+        let result = projection(&response);
+        assert_usage(&result["usage"], 1);
+        assert_eq!(result["data"]["total_candidates"], 2);
+        assert_eq!(result["data"]["returned_count"], k);
+        assert_eq!(result["data"]["truncated"], k < 2);
+        assert_eq!(result["complete"], true);
+        assert_eq!(result["next_calls"], json!([]));
+        samples.push(json!({"input":input,"result":result}));
+    }
+    assert_eq!(f.count(), 3);
+    if let Ok(path) = std::env::var("TO9_HTTP") {
+        std::fs::write(path, serde_json::to_vec_pretty(&json!({"tool":context_tool,"samples":samples,"charged_calls":f.count()})).unwrap()).unwrap();
+    }
 }
 
 #[test]

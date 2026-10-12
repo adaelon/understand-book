@@ -11,7 +11,7 @@ use std::{
     sync::{Arc, Weak},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct PublishedBookRef {
     pub book_id: String,
     pub publication_id: String,

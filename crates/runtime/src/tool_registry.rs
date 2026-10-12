@@ -281,6 +281,7 @@ pub fn tool_search_input_schema_v2() -> Value {
         .collect::<Vec<_>>();
     json!({
         "type": "object",
+        "description": "Matches include use_when/avoid_when. Unmet capabilities have capability-level reasons. Optional next_searches entries are complete arguments for tool.search; choose one only if useful. Discovery and recovery suggestions do not execute matched tools or grant permissions.",
         "properties": {
             "task": {
                 "type": "string",
@@ -320,7 +321,30 @@ pub fn tool_search_input_schema_v2() -> Value {
             "task", "required_capabilities", "scope", "operation", "effect_mode",
             "max_results"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "examples": [
+            {
+                "task": "Outline the main argument of this book without moving the Reader",
+                "required_capabilities": ["structural_index"], "scope": "document",
+                "operation": "summarize", "effect_mode": "read_only", "max_results": 2
+            },
+            {
+                "task": "Find the first literal occurrence of equal time",
+                "required_capabilities": ["lexical_locate"], "scope": "document",
+                "operation": "locate_literal", "effect_mode": "read_only", "max_results": 1
+            },
+            {
+                "task": "Read the passage selected from the search results",
+                "required_capabilities": ["source_read"], "scope": "passage",
+                "operation": "read_source", "effect_mode": "read_only", "max_results": 1
+            },
+            {
+                "task": "Save the user's requested note on the current passage",
+                "required_capabilities": ["reader_write"], "scope": "passage",
+                "operation": "mutate_reader",
+                "effect_mode": "reader_mutation_explicitly_requested", "max_results": 2
+            }
+        ]
     })
 }
 
@@ -334,6 +358,15 @@ pub enum ToolEffect {
     ReaderWrite,
     PresentationWrite,
     GoalWrite,
+}
+
+/// Project the existing Book routing effect without constructing the full registry.
+pub fn book_annotations(id: BookToolId) -> Value {
+    let uses_model = matches!(id, BookToolId::Query | BookToolId::Synthesize);
+    json!({
+        "readOnlyHint":routing_shape(ToolHandlerId::Book(id)).effects == ToolEffect::ReadOnly,
+        "destructiveHint":false,"idempotentHint":!uses_model,"openWorldHint":uses_model
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -460,6 +493,20 @@ pub struct ToolRegistration {
 }
 
 impl ToolRegistration {
+    /// Delivery contract for consumers of the registry. Provider function parameters
+    /// remain input-only; this schema describes the actual tool message envelope.
+    pub fn output_schema(&self) -> Option<Value> {
+        crate::tool_result::book_envelope_schema(&self.spec.name)
+    }
+
+    pub fn annotations(&self) -> Value {
+        if let ToolHandlerId::Book(id) = self.handler { return book_annotations(id); }
+        let read_only = self.routing_card.effects == ToolEffect::ReadOnly;
+        let mut hints = json!({"readOnlyHint":read_only});
+        if read_only { hints["destructiveHint"] = json!(false); }
+        hints
+    }
+
     pub fn activity_label(&self) -> &'static str {
         match self.spec.name.as_str() {
             "book.query" => "检索书内证据",
@@ -1389,8 +1436,8 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
         ),
         Handler::TutorStep => ("Read teaching materials and learning evidence, assess a formal response against its frozen contract, and select one grounded move.", "Do not invent grades or mastery, alter frozen criteria, or advance a paused learning session."),
         Handler::GoalUpdate => (
-            "Revise the current task interpretation or working focus when it actually changes.",
-            "Do not claim a page was delivered or replace a user requirement with a method choice.",
+            "Use working for focus/next_move/plan; refine requirements in the origin turn; revise with the current user's exact quote.",
+            "Do not mix plan fields into refine/revise, replace user requirements with a method, or claim completion from a Goal update.",
         ),
         Handler::Artifact(ArtifactToolId::List) => (
             "Inspect bounded routing metadata for the active accepted artifact overlay.",
@@ -1434,8 +1481,8 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
             "Do not use unresolved targets or treat the route as source evidence.",
         ),
         Handler::MemorySave => (
-            "Save user-requested or genuinely reusable reader context with an honest source anchor.",
-            "Do not write routine question history or present an inference as a user fact.",
+            "Save sourced reader context, an original substantive question, supplied highlight content or a position memory at a verified anchor.",
+            "Use reader.note for notes and reader.highlight for exact source highlighting. Do not write for an explanation alone or present an inference as a user fact.",
         ),
         Handler::MemoryRecall => (
             "Recall reader memory that is relevant to the current book task.",
@@ -1450,12 +1497,12 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
             "Do not mutate the Reader for a read-only request.",
         ),
         Handler::ReaderHighlight => (
-            "Highlight a verified LID when the user explicitly requests it.",
-            "Do not create a highlight without explicit Reader-mutation intent.",
+            "Save an explicitly requested source highlight: exact unique quote or the whole verified LID.",
+            "Use reader.note for note text. Do not highlight for an explanation alone or claim Reader selection when reader_effect is not_applied.",
         ),
         Handler::ReaderNote => (
-            "Attach a user-requested note to a verified LID.",
-            "Do not create a note without explicit Reader-mutation intent.",
+            "Save user-requested note text at a verified source LID and confirm note_id with CREATED/EXISTING status.",
+            "Do not use memory.save for notes, save for an explanation alone, or claim persistence before a successful receipt.",
         ),
         Handler::ReaderLayoutApply => (
             "Apply an explicitly requested typed Reader layout action through the reducer.",

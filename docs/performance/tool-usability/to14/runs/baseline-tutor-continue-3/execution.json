@@ -1,0 +1,7 @@
+{
+  "name": "baseline-tutor-continue-3",
+  "version": "baseline",
+  "task": "tutor-continue",
+  "repetition": 3,
+  "exit_code": 0
+}

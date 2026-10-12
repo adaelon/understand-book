@@ -1,0 +1,177 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling runtime v0.0.0 (E:\allwork\download\agent\understand-book\crates\runtime)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized] target(s) in 40.37s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\runtime-aa2ba5f3b5fb7381.exe)
+
+running 59 tests
+test orchestrator::tests::request_audit_capability_resolution_omits_private_task_text ... ok
+test orchestrator::tests::sample_request_exclusions_hide_tools_from_discovery_and_provider ... ok
+test orchestrator::tests::tool_discovery::tool_search_to7_delivers_recovery_and_never_executes_reader_or_memory_writes ... ok
+test orchestrator::tests::tool_exposure_activation_applies_only_to_the_next_sampling ... ok
+test orchestrator::tests::tool_registry_has_one_complete_registration_per_visible_handler ... ok
+test orchestrator::tests::turn_intent_active_context_budget_includes_seeded_tool_exposure ... ok
+test orchestrator::tests::turn_intent_guided_read_seeds_first_tool_exposure_request_without_mutation ... ok
+test tool_exposure::discovery_tests::tool_search_to7_budget_observation ... ok
+test tool_exposure::discovery_tests::tool_search_to7_examples_preserve_runtime_authority ... ok
+test tool_exposure::discovery_tests::tool_search_to7_public_recovery_is_capability_scoped_and_executable ... ok
+test tool_exposure::discovery_tests::tool_search_to7_recovery_tracks_evidence_permissions_and_sampling ... ok
+test tool_exposure::discovery_tests::tool_search_to7_result_limit_is_not_a_capability_failure ... ok
+test tool_exposure::discovery_tests::tool_search_to7_snapshot ... ok
+test tool_exposure::tests::artifact_exposure_replaces_synthesize_without_exceeding_the_direct_budget ... ok
+test tool_exposure::tests::capability_resolver_changes_plan_with_runtime_evidence_profile_and_permissions ... ok
+test tool_exposure::tests::capability_resolver_covers_a_multi_tool_task_need_before_filling_alternatives ... ok
+test tool_exposure::tests::capability_resolver_requires_runtime_effect_seed_and_audits_without_task_text ... ok
+test tool_exposure::tests::explicit_navigation_is_scoped_through_discovery ... ok
+test tool_exposure::tests::explicit_note_and_highlight_have_separate_authority ... ok
+test tool_exposure::tests::historical_discovery_keeps_match_but_expires_run_local_activation ... ok
+test tool_exposure::tests::precise_routing_cards_keep_tool_search_v1_legacy_result_shape_equivalent ... ok
+test tool_exposure::tests::task_need_rejects_model_spoofing_and_stamps_runtime_authority ... ok
+test tool_exposure::tests::tool_exposure_initial_schema_golden_is_small_and_profile_gated ... ok
+test tool_exposure::tests::tool_exposure_schema_budget_is_hard_and_selection_is_repeatable ... ok
+test tool_exposure::tests::tool_exposure_search_activates_only_deferred_metadata_for_next_sampling ... ok
+test tool_exposure::tests::tool_exposure_search_caps_each_activation_and_never_reveals_hidden_tools ... ok
+test tool_exposure::tests::tool_exposure_source_presentation_is_direct_only_with_turn_evidence ... ok
+test tool_exposure::tests::tool_search_v2_filters_then_matches_structural_index_for_a_cjk_task ... ok
+test tool_exposure::tests::tool_search_v2_keeps_v1_receipts_readable_without_producing_them ... ok
+test tool_exposure::tests::tool_search_v2_order_score_and_max_results_are_repeatable ... ok
+test tool_exposure::tests::tool_search_v2_reader_write_requires_authority_and_permission_and_zero_hit_is_inert ... ok
+test tool_exposure::tests::tool_search_v2_schema_is_closed_bounded_and_provider_equivalent ... ok
+test tool_exposure::tests::turn_intent_negative_and_summary_keep_the_read_only_structural_first_surface ... ok
+test tool_exposure::tests::turn_intent_seed_respects_reader_permissions_and_content_profile ... ok
+test tool_exposure::tests::turn_intent_seeded_exposure_is_complete_profile_gated_and_budgeted ... ok
+test tool_exposure::tests::turn_intent_v1_classifies_only_the_frozen_guided_read_phrases ... ok
+test tool_exposure::tests::turn_intent_v1_prioritizes_negation_and_rejects_summary_or_read_aloud ... ok
+test tool_registry::contract_tests::advertised_example_validation_detects_projection_and_parser_drift ... ok
+test tool_registry::contract_tests::advertised_examples_survive_provider_projection_and_real_validation ... ok
+test tool_registry::contract_tests::artifact_read_exposes_pointer_and_cursor_rules ... ok
+test tool_registry::contract_tests::author_operations_require_complete_inputs ... ok
+test tool_registry::contract_tests::book_common_semantics_and_routing_guidance_reach_the_resident_surface ... ok
+test tool_registry::contract_tests::book_comparison_schema_requires_separate_targets ... ok
+test tool_registry::contract_tests::goal_operations_never_silently_discard_plan_fields ... ok
+test tool_registry::contract_tests::mcp_guide_schema_has_conditional_requirements ... ok
+test tool_registry::contract_tests::note_is_only_exposed_through_reader_note ... ok
+test tool_registry::contract_tests::optional_nulls_match_serde_without_weakening_required_fields ... ok
+test tool_registry::contract_tests::reader_commands_expose_nested_required_fields ... ok
+test tool_registry::contract_tests::search_schemas_expose_existing_length_limits ... ok
+test tool_registry::contract_tests::tutor_examples_follow_final_state_schema_and_provider_requests ... ok
+test tool_registry::contract_tests::tutor_operations_require_their_payloads ... ok
+test tool_registry::contract_tests::tutor_tc2a_misuse_and_help_have_valid_example_counterparts ... ok
+test tool_registry::tests::json_schema_validator_checks_required_types_and_unknown_fields ... ok
+test tool_registry::tests::precise_capability_migration_maps_every_legacy_registration ... ok
+test tool_registry::tests::rejects_missing_handlers_and_book_schema_drift ... ok
+test tool_registry::tests::rejects_unknown_and_duplicate_handlers ... ok
+test tool_registry::tests::routing_card_gate_rejects_empty_unknown_reader_write_and_book_drift ... ok
+test tool_registry::tests::routing_cards_cover_every_handler_and_reuse_book_contract_guidance ... ok
+test tool_registry::tests::tool_search_v2_registry_validation_enforces_closed_bounds ... ok
+
+test result: ok. 59 passed; 0 failed; 0 ignored; 0 measured; 468 filtered out; finished in 1.34s
+

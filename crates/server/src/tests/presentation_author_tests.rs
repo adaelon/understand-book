@@ -15,6 +15,8 @@ mod ex14;
 mod ex14_media;
 #[path = "presentation_edit_tests.rs"]
 mod editing;
+#[path = "presentation_example_tests.rs"]
+mod examples;
 use crate::agent_run::{AppStatePort, BorrowedAppPort, RuntimeStatePort};
 use runtime::{
     presentation_author::*,
@@ -101,6 +103,7 @@ fn ex12_source_list_error_explains_recovery_without_granting_sources() {
     let error = port.author_presentation(request(vec![]), &[binding.clone()], &[], &cancellation).err().unwrap();
     assert!(error.message.contains("UNKNOWN_SOURCE_REF"));
     assert!(error.message.contains("write.source_ref_ids"));
+    assert!(!error.message.contains("patch.source_ref_ids"));
     assert!(error.message.contains("need not be registered again"));
     assert_eq!(port.author_presentation(request(vec!["source-observed".into()]), &[binding], &[], &cancellation).unwrap().body["status"], "candidate_saved");
     assert_eq!(port.author_presentation(request(vec!["source-observed".into()]), &[], &[], &cancellation).err().unwrap().error_code, "PRESENTATION_SOURCE_UNKNOWN");

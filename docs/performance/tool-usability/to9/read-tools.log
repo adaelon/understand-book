@@ -1,0 +1,55 @@
+   Compiling book-tool-contracts v0.0.0 (E:\allwork\download\agent\understand-book\crates\book-tool-contracts)
+   Compiling read-tools v0.0.0 (E:\allwork\download\agent\understand-book\crates\read-tools)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized] target(s) in 18.12s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\read_tools-c7e341cde690a4ec.exe)
+
+running 36 tests
+test export_bindings_bookstructurekeystop ... ok
+test export_bindings_bookstructurekeystoptype ... ok
+test export_bindings_bookstructuresidecar ... ok
+test export_bindings_bookstructurespinerole ... ok
+test export_bindings_bookstructurespineunit ... ok
+test export_bindings_bookstructurethroughline ... ok
+test export_bindings_concept ... ok
+test export_bindings_conceptcandidate ... ok
+test export_bindings_conceptcandidatekind ... ok
+test export_bindings_conceptcandidateset ... ok
+test export_bindings_conceptmatchtier ... ok
+test export_bindings_conceptpreview ... ok
+test export_bindings_context ... ok
+test export_bindings_contextitem ... ok
+test export_bindings_papercodebookstructureitem ... ok
+test export_bindings_structureprojection ... ok
+test tests::concept_candidates_v2_enforces_counts_limits_and_validation ... ok
+test tests::concept_candidates_v2_enforces_strict_tiers_graph_scope_and_stable_identity ... ok
+test tests::concept_candidates_v2_uses_anchor_only_after_lexical_quality ... ok
+test tests::concept_found_and_missing ... ok
+test tests::context_far_accumulates_near_mid_and_long_range ... ok
+test tests::context_near_missing_lid_errors ... ok
+test tests::context_near_tree_adjacency ... ok
+test tests::context_projects_discourse_relations_to_near_and_far ... ok
+test tests::context_rejects_unknown_granularity ... ok
+test tests::context_to9_counts_deduplicated_relations_across_layers ... ok
+test tests::context_to9_counts_known_candidates_before_k_and_preserves_availability ... ok
+test tests::load_bad_book_structure_sidecar_fails_fast ... ok
+test tests::load_missing_book_structure_sidecar_degrades_explicitly ... ok
+test tests::load_valid_book_structure_projects_structure_and_guide_path ... ok
+test tests::paper_minimap_recovers_structured_abstract_and_flattened_major_sections ... ok
+test tests::referent_catalog_characterization_preserves_context_only_anchor_order ... ok
+test tests::route_from_groups_far_edge_concept_and_sibling ... ok
+test tests::source_presentation_accepts_cross_heading_continuity_and_bounds_context ... ok
+test tests::source_presentation_context_keeps_words_and_paragraph_separators ... ok
+test tests::source_presentation_context_obeys_hard_word_limit_and_keeps_nearest_text ... ok
+
+test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 139 filtered out; finished in 0.21s
+

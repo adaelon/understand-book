@@ -1,0 +1,292 @@
+{
+  "continuation": {
+    "arguments": {},
+    "guidance": "retry with a narrower target, scope, stage, or field selection",
+    "kind": "refine_call",
+    "tool": "profile.manifest"
+  },
+  "delivered": {
+    "agent_tools": [
+      {
+        "description": "Apply validated reader layout actions.",
+        "name": "reader.layout.apply"
+      }
+    ],
+    "allowed_layout_actions": [
+      "open_slot",
+      "close_slot",
+      "focus_slot",
+      "set_active_tab",
+      "pin_evidence",
+      "unpin_evidence",
+      "set_panel_size",
+      "reorder_slot",
+      "set_layout_preset",
+      "reset_layout"
+    ],
+    "defaults": {
+      "focused_slot": "technical.agent",
+      "layout_preset": "technical_read",
+      "open_slots": [
+        "technical.structure_map",
+        "technical.agent"
+      ]
+    },
+    "guided_reading_policy": {
+      "default_mode": null,
+      "default_stage": null,
+      "preferred_slot_ids": [
+        "technical.structure_map",
+        "technical.agent"
+      ],
+      "route_tool": "book.guided_route_from"
+    },
+    "layout_presets": [
+      {
+        "description": "Default technical reading workspace.",
+        "focused_slot": "technical.agent",
+        "id": "technical_read",
+        "slots": [
+          {
+            "order": 0,
+            "region": "left",
+            "size": {
+              "kind": "percent",
+              "value": 24.0
+            },
+            "slot_id": "technical.structure_map"
+          },
+          {
+            "order": 0,
+            "region": "right",
+            "size": {
+              "kind": "percent",
+              "value": 30.0
+            },
+            "slot_id": "technical.agent"
+          }
+        ],
+        "title": "Technical read"
+      }
+    ],
+    "memory_policy": {
+      "policy_id": "technical_learning",
+      "policy_version": "technical_learning_memory_v1"
+    },
+    "profile_id": "technical_learning",
+    "profile_version": "technical_learning_v0",
+    "projections": [
+      {
+        "endpoint": "/book/structure",
+        "id": "book.structure",
+        "kind": "structure",
+        "mcp_tool": "book_structure",
+        "required": false,
+        "runtime_tool": "book.structure",
+        "ts_type": "StructureProjection"
+      }
+    ],
+    "ui_slots": [
+      {
+        "allowed_actions": [
+          "open_slot",
+          "focus_slot",
+          "set_active_tab",
+          "pin_evidence",
+          "unpin_evidence",
+          "set_panel_size"
+        ],
+        "default_region": "left",
+        "id": "technical.structure_map",
+        "kind": "map",
+        "primary_projection": "book.structure",
+        "secondary_projections": [
+          "book.guide_path"
+        ],
+        "title": "Structure map"
+      },
+      {
+        "allowed_actions": [
+          "open_slot",
+          "focus_slot",
+          "set_active_tab",
+          "pin_evidence",
+          "unpin_evidence",
+          "set_panel_size"
+        ],
+        "default_region": "right",
+        "id": "technical.agent",
+        "kind": "agent",
+        "primary_projection": null,
+        "secondary_projections": [],
+        "title": "Agent"
+      },
+      {
+        "allowed_actions": [
+          "open_slot",
+          "focus_slot",
+          "set_active_tab",
+          "pin_evidence",
+          "unpin_evidence",
+          "set_panel_size"
+        ],
+        "default_region": "right",
+        "id": "technical.evidence",
+        "kind": "evidence",
+        "primary_projection": null,
+        "secondary_projections": [],
+        "title": "Evidence"
+      }
+    ]
+  },
+  "delivered_bytes": 2128,
+  "input": {},
+  "limit": 2200,
+  "raw": {
+    "agent_tools": [
+      {
+        "description": "Apply validated reader layout actions.",
+        "name": "reader.layout.apply"
+      }
+    ],
+    "allowed_layout_actions": [
+      "open_slot",
+      "close_slot",
+      "focus_slot",
+      "set_active_tab",
+      "pin_evidence",
+      "unpin_evidence",
+      "set_panel_size",
+      "reorder_slot",
+      "set_layout_preset",
+      "reset_layout"
+    ],
+    "defaults": {
+      "focused_slot": "technical.agent",
+      "layout_preset": "technical_read",
+      "open_slots": [
+        "technical.structure_map",
+        "technical.agent"
+      ]
+    },
+    "guided_reading_policy": {
+      "default_mode": null,
+      "default_stage": null,
+      "preferred_slot_ids": [
+        "technical.structure_map",
+        "technical.agent"
+      ],
+      "route_tool": "book.guided_route_from"
+    },
+    "layout_presets": [
+      {
+        "description": "Default technical reading workspace.",
+        "focused_slot": "technical.agent",
+        "id": "technical_read",
+        "slots": [
+          {
+            "order": 0,
+            "region": "left",
+            "size": {
+              "kind": "percent",
+              "value": 24.0
+            },
+            "slot_id": "technical.structure_map"
+          },
+          {
+            "order": 0,
+            "region": "right",
+            "size": {
+              "kind": "percent",
+              "value": 30.0
+            },
+            "slot_id": "technical.agent"
+          }
+        ],
+        "title": "Technical read"
+      }
+    ],
+    "memory_policy": {
+      "policy_id": "technical_learning",
+      "policy_version": "technical_learning_memory_v1"
+    },
+    "profile_id": "technical_learning",
+    "profile_version": "technical_learning_v0",
+    "projections": [
+      {
+        "endpoint": "/book/structure",
+        "id": "book.structure",
+        "kind": "structure",
+        "mcp_tool": "book_structure",
+        "required": false,
+        "runtime_tool": "book.structure",
+        "ts_type": "StructureProjection"
+      },
+      {
+        "endpoint": "/book/guide_path",
+        "id": "book.guide_path",
+        "kind": "route",
+        "mcp_tool": "book_guide_path",
+        "required": false,
+        "runtime_tool": "book.guide_path",
+        "ts_type": "GuidePath"
+      }
+    ],
+    "ui_slots": [
+      {
+        "allowed_actions": [
+          "open_slot",
+          "focus_slot",
+          "set_active_tab",
+          "pin_evidence",
+          "unpin_evidence",
+          "set_panel_size"
+        ],
+        "default_region": "left",
+        "id": "technical.structure_map",
+        "kind": "map",
+        "primary_projection": "book.structure",
+        "secondary_projections": [
+          "book.guide_path"
+        ],
+        "title": "Structure map"
+      },
+      {
+        "allowed_actions": [
+          "open_slot",
+          "focus_slot",
+          "set_active_tab",
+          "pin_evidence",
+          "unpin_evidence",
+          "set_panel_size"
+        ],
+        "default_region": "right",
+        "id": "technical.agent",
+        "kind": "agent",
+        "primary_projection": null,
+        "secondary_projections": [],
+        "title": "Agent"
+      },
+      {
+        "allowed_actions": [
+          "open_slot",
+          "focus_slot",
+          "set_active_tab",
+          "pin_evidence",
+          "unpin_evidence",
+          "set_panel_size"
+        ],
+        "default_region": "right",
+        "id": "technical.evidence",
+        "kind": "evidence",
+        "primary_projection": null,
+        "secondary_projections": [],
+        "title": "Evidence"
+      }
+    ]
+  },
+  "raw_bytes": 2299,
+  "status": "partial",
+  "tool": "profile.manifest",
+  "truncated": true
+}

@@ -1,0 +1,10 @@
+{
+  "text": "我先核对原文，再接着说明：什么时候可以直接把两段速度取平均。",
+  "tool_calls": [
+    {
+      "name": "book.text",
+      "arguments": "{\"lid\":\"1.1\",\"end_lid\":\"1.1\"}"
+    }
+  ],
+  "usage_total_tokens": 31617
+}

@@ -1,0 +1,11 @@
+{
+  "text": "我先重读这段原文，再接着解释什么时候可以直接把两段速度取平均。",
+  "tool_calls": [
+    {
+      "name": "book.text",
+      "arguments": "{\"lid\":\"1.1\",\"end_lid\":\"1.1\"}"
+    }
+  ],
+  "usage_total_tokens": 0,
+  "replayed_from": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\tool-usability\\to14\\runs\\baseline-tutor-continue-2\\sample-00\\events.jsonl"
+}

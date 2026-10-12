@@ -1,0 +1,314 @@
+{
+  "case": "explain-only",
+  "deliveries": [],
+  "elapsed_ms": 40400,
+  "events": [],
+  "http_status": 200,
+  "reader_after": {
+    "layout": {
+      "active_preset": "technical_read",
+      "focused_slot": "technical.agent",
+      "open_slots": [
+        "technical.structure_map",
+        "technical.agent"
+      ],
+      "panel_sizes": {
+        "technical.agent": {
+          "kind": "percent",
+          "value": 30.0
+        },
+        "technical.structure_map": {
+          "kind": "percent",
+          "value": 24.0
+        }
+      },
+      "pinned_evidence": [],
+      "rev": 0,
+      "slot_order": {
+        "left": [
+          "technical.structure_map"
+        ],
+        "right": [
+          "technical.agent"
+        ]
+      }
+    },
+    "open_panels": [],
+    "selection": null,
+    "viewport": {
+      "anchor_lid": "1.1",
+      "bottom_lid": "1.2",
+      "top_lid": "1.1",
+      "visible_lids": [
+        "1.1",
+        "1.2"
+      ],
+      "width": 20
+    }
+  },
+  "reopened_records": [],
+  "reply": {
+    "answer": "平均速度就是：**把整段过程走过的总路程，除以这段过程所用的总时间**。它表示这段时间里平均每单位时间走了多远。\n\n假设走了 120 米，用了 60 秒，平均速度就是 120 ÷ 60 = 2 米/秒；这不表示每一秒都恰好走了 2 米。\n\n原文：“Average speed is total distance divided by total time.”",
+    "answer_view": {
+      "parts": [
+        {
+          "kind": "markdown",
+          "text": "平均速度就是：**把整段过程走过的总路程，除以这段过程所用的总时间**。它表示这段时间里平均每单位时间走了多远。"
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_43d7e3797e6f3aea"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": "\n\n假设走了 120 米，用了 60 秒，平均速度就是 120 ÷ 60 = 2 米/秒；这不表示每一秒都恰好走了 2 米。\n\n原文：“Average speed is total distance divided by total time.”"
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_43d7e3797e6f3aea"
+          ]
+        }
+      ],
+      "sources": [
+        {
+          "label": "正文 · Average speed",
+          "source_ref_id": "source_ref_43d7e3797e6f3aea"
+        }
+      ]
+    },
+    "effects": [],
+    "incomplete": false,
+    "memory_updates": [],
+    "profile_usage": {
+      "claimed_used_fact_ids": [],
+      "influences": [],
+      "injected_fact_ids": [],
+      "snapshot_revision": 0
+    },
+    "tokens_spent": 49394,
+    "trace": [
+      {
+        "args": "{\"quote\":\"Average speed is total distance divided by total time.\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"source_ref_id\":\"source_ref_43d7e3797e6f3aea\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time.\"}",
+        "tool": "source.present"
+      }
+    ],
+    "turns": 2
+  },
+  "turn": {
+    "domain": {
+      "effects": [],
+      "scene": {
+        "anchor_lid": "1.1",
+        "generation": 1,
+        "selection": null,
+        "workspace_id": "local"
+      },
+      "teaching": [
+        {
+          "receipt_ids": [
+            "assets:turn_ac89eb28f600c78e",
+            "usage:observation:tc0-average-speed:user:turn_ac89eb28f600c78e",
+            "binding:turn_ac89eb28f600c78e"
+          ],
+          "revision": 0,
+          "session_id": "observation:tc0-average-speed"
+        },
+        {
+          "receipt_ids": [
+            "usage:observation:tc0-average-speed:assistant:turn_ac89eb28f600c78e"
+          ],
+          "revision": 0,
+          "session_id": "observation:tc0-average-speed"
+        }
+      ]
+    },
+    "goal_ref": {
+      "id": "goal_turn_ac89eb28f600c78e",
+      "revision": 2
+    },
+    "outcome": {
+      "answer": "平均速度就是：**把整段过程走过的总路程，除以这段过程所用的总时间**。它表示这段时间里平均每单位时间走了多远。\n\n假设走了 120 米，用了 60 秒，平均速度就是 120 ÷ 60 = 2 米/秒；这不表示每一秒都恰好走了 2 米。\n\n原文：“Average speed is total distance divided by total time.”",
+      "answer_view": {
+        "parts": [
+          {
+            "kind": "markdown",
+            "text": "平均速度就是：**把整段过程走过的总路程，除以这段过程所用的总时间**。它表示这段时间里平均每单位时间走了多远。"
+          },
+          {
+            "kind": "sources",
+            "source_ref_ids": [
+              "source_ref_43d7e3797e6f3aea"
+            ]
+          },
+          {
+            "kind": "markdown",
+            "text": "\n\n假设走了 120 米，用了 60 秒，平均速度就是 120 ÷ 60 = 2 米/秒；这不表示每一秒都恰好走了 2 米。\n\n原文：“Average speed is total distance divided by total time.”"
+          },
+          {
+            "kind": "sources",
+            "source_ref_ids": [
+              "source_ref_43d7e3797e6f3aea"
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "label": "正文 · Average speed",
+            "source_ref_id": "source_ref_43d7e3797e6f3aea"
+          }
+        ]
+      },
+      "effects": [],
+      "incomplete": false,
+      "memory_updates": [],
+      "profile_usage": {
+        "claimed_used_fact_ids": [],
+        "influences": [],
+        "injected_fact_ids": [],
+        "snapshot_revision": 0
+      },
+      "tokens_spent": 49394,
+      "trace": [
+        {
+          "args": "{\"quote\":\"Average speed is total distance divided by total time.\"}",
+          "model_tool_loop": 1,
+          "result_digest": "{\"source_ref_id\":\"source_ref_43d7e3797e6f3aea\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time.\"}",
+          "tool": "source.present"
+        }
+      ],
+      "turns": 2
+    },
+    "question_anchor_lid": null,
+    "question_quote": {
+      "lid": "1.1",
+      "quote": "Average speed is total distance divided by total time.",
+      "ranges": [
+        {
+          "lid": "1.1",
+          "range": {
+            "end": 71,
+            "start": 17
+          }
+        }
+      ],
+      "raw_quote": "Average speed is total distance divided by total time.",
+      "resolution_basis": "exact",
+      "resolved_quote": "Average speed is total distance divided by total time.",
+      "status": "resolved"
+    },
+    "run_summary": {
+      "activities": [
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 17776.4575,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "gpt-6.1-sol",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 66.2561,
+          "status": "succeeded",
+          "step_id": 1,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": null,
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": 24309
+          },
+          "usage_total_tokens": 24309
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 7.393499999998312,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "整理来源",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "source.present",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 17859.5155,
+          "status": "succeeded",
+          "step_id": 2,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 22184.579200000004,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "gpt-6.1-sol",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 17897.6439,
+          "status": "succeeded",
+          "step_id": 3,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": null,
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": 25085
+          },
+          "usage_total_tokens": 25085
+        }
+      ],
+      "effects": [],
+      "last_seq": null,
+      "trace": [
+        {
+          "args": "{\"quote\":\"Average speed is total distance divided by total time.\"}",
+          "model_tool_loop": 1,
+          "result_digest": "{\"source_ref_id\":\"source_ref_43d7e3797e6f3aea\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time.\"}",
+          "tool": "source.present"
+        }
+      ]
+    },
+    "source_bindings": [
+      {
+        "book_id": "tc0-average-speed",
+        "evidence_range": {
+          "end_lid": "1.1",
+          "ranges": [
+            {
+              "lid": "1.1",
+              "range": {
+                "end": 71,
+                "start": 17
+              }
+            }
+          ],
+          "start_lid": "1.1"
+        },
+        "evidence_text_digest": "source-fnv1a64-b4c560a717856fe2",
+        "label_snapshot": "正文 · Average speed",
+        "preview_snapshot": "Average speed is total distance divided by total time.",
+        "source_ref_id": "source_ref_43d7e3797e6f3aea"
+      }
+    ],
+    "status": "completed",
+    "turn_id": "turn_ac89eb28f600c78e",
+    "user": "只解释选中的平均速度定义，不保存笔记、高亮或记忆。请附原文来源。",
+    "user_turn_ordinal": 1
+  }
+}

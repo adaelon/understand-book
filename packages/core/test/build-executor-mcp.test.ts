@@ -20,6 +20,19 @@ const TEST_CANDIDATE_TRANSPORT = createCandidateTransportContract(
 );
 
 describe("Build Executor root-shared MCP boundary", () => {
+  it("TO6 advertises input delivery and acknowledgement as session writes", () => {
+    const session = createBuildExecutorMcpSession({
+      bootstrap_version: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.version,
+      protocol_generation: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.session_protocol,
+      session_private_root: path.join(REPO_ROOT, ".to6-annotations"),
+    });
+    const listed = session.handle_message({ jsonrpc: "2.0", id: 1, method: "tools/list" }) as {
+      result: { tools: Array<{ name: string; annotations: { readOnlyHint: boolean } }> };
+    };
+    // inputBatchResponse persists an offer; confirmDeliveryBatch persists receipts.
+    expect(listed.result.tools.find(tool => tool.name === "executor.input.next")!.annotations.readOnlyHint).toBe(false);
+  });
+
   it("RG5 maps operation failures to one allowlisted V2 error without private detail", () => {
     const privateSentinel = "RG5_PRIVATE_MESSAGE_CANDIDATE_C:\\private\\candidate.json";
     const refSentinel = `absession1_${"f".repeat(64)}`;

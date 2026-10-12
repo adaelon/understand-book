@@ -4,4 +4,19 @@ import type { ContextItem } from "./ContextItem";
 /**
  * book.context() 返回结构(符 V3 §4.1)。
  */
-export type Context = { anchor: string, items: Array<ContextItem>, };
+export type Context = { anchor: string, 
+/**
+ * Deduplicated pointers recalled by this anchor/granularity's rules before k.
+ * Counts relations, not distinct LIDs or all semantic relationships in the book.
+ */
+total_candidates: number, 
+/**
+ * Pointers selected by k in the canonical result, before transport pagination
+ * or the Resident model-output budget is applied.
+ */
+returned_count: number, 
+/**
+ * Whether k omitted known candidates; false does not imply semantic completeness
+ * or availability of built structure artifacts.
+ */
+truncated: boolean, items: Array<ContextItem>, };

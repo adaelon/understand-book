@@ -1,0 +1,19 @@
+
+> understand-book@0.0.0 docs:tools:test E:\allwork\download\agent\understand-book
+> node --import tsx --test scripts/generate-tool-reference.test.mjs
+
+✔ every exported tool has exactly one entry and preserves its published examples (7.1948ms)
+✔ Tutor contexts, unavailable states and state-projected examples stay paired (2.4316ms)
+✔ exported common fields and examples reach each Book surface in the document (28.3502ms)
+✔ new authority entries are included without editing the generator tool list (26.1796ms)
+✔ Executor directory is the actual MCP projection of the current TypeScript contracts (2.4182ms)
+✔ generated links resolve and examples are valid JSON after Markdown rendering (143.9425ms)
+✔ check detects missing or stale artifacts, accepts CRLF, and never rewrites files (202.921ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2944.0093

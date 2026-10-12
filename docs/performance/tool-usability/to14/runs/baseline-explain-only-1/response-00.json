@@ -1,0 +1,10 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "name": "source.present",
+      "arguments": "{\"quote\":\"Average speed is total distance divided by total time.\"}"
+    }
+  ],
+  "usage_total_tokens": 24309
+}

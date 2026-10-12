@@ -21,6 +21,16 @@ Costs: initialize, tools/list, book_list and mcp_usage cost 0 calls. Each succes
 Use server-returned usage, never calculate your own balance. free_remaining and paid_remaining are shared by all clients of this account; successful content returns the balance after this call with charged_units and charged_from. Monthly free credits (1,000) reset at free_resets_at, on the first day at 00:00 Asia/Hong_Kong; unused free credits do not carry over. Free credits are used first, then valid packs with the earliest expiry. call_packs gives each batch's expiry and available_units; paid_next_expires_at concerns the next still-usable batch. Packs cost CNY 10 per 1,000 calls, are valid for 12 calendar months after activation, and carry across months until expiry.
 Recovery: inspect isError and structuredContent.error_code, message, retryable and next_step (also mirrored as JSON text in content). quota_exhausted: stop content retries, tell the user free_resets_at and top_up_url or, when null, top_up_instruction. Discovery, book_list and mcp_usage remain available with the same tools. unauthenticated (HTTP 401): ask the user to check or recreate the credential. material_unavailable: refresh book_list and select an authorized publication with the needed capability, or ask the user to contact the administrator. invalid_arguments: correct parameters using inputSchema and returned next_calls. service_busy: wait retry_after_seconds; service_unavailable: retry later as directed, without a tight retry loop. Purchases are performed by the user through the administrator; buying calls does not grant material access."#;
 
+/// The published directory, shared by HTTP discovery and explicit documentation export.
+pub(crate) fn tools_list_result() -> Value {
+    let mut tools = mcp_read::tool_definitions();
+    tools.push(json!({"name":"mcp_usage","description":"Check this account's server-calculated call balance before planning more reads or after quota_exhausted. Costs 0 calls, even when exhausted. Takes no arguments. Returns usage: free_remaining, paid_remaining, free_resets_at (next Hong Kong month), paid_next_expires_at and call_packs with per-batch expiry and available_units. Free credits are spent first, then valid packs by earliest expiry; all clients share this account's balance. charged_units is 0 and charged_from is null for this query. If both balances are zero, stop content retries and tell the user the reset time and top_up_url, or top_up_instruction when the URL is null. The user arranges purchase; a purchase does not grant material access. No evidence sources or continuation pages are returned.",
+        "inputSchema":{"type":"object","properties":{},"additionalProperties":false},
+        "outputSchema":crate::mcp_output_schema::usage_result(),
+        "annotations":crate::mcp_output_schema::free_read_annotations()}));
+    json!({"tools":tools})
+}
+
 fn http(status: u16, value: Value) -> HttpReply {
     let mut reply = HttpReply::json(value);
     reply.status = status;
@@ -186,10 +196,7 @@ pub(crate) fn dispatch(
                     "The complete tool list has no cursor",
                 );
             }
-            let mut tools = mcp_read::tool_definitions();
-            tools.push(json!({"name":"mcp_usage","description":"Check this account's server-calculated call balance before planning more reads or after quota_exhausted. Costs 0 calls, even when exhausted. Takes no arguments. Returns usage: free_remaining, paid_remaining, free_resets_at (next Hong Kong month), paid_next_expires_at and call_packs with per-batch expiry and available_units. Free credits are spent first, then valid packs by earliest expiry; all clients share this account's balance. charged_units is 0 and charged_from is null for this query. If both balances are zero, stop content retries and tell the user the reset time and top_up_url, or top_up_instruction when the URL is null. The user arranges purchase; a purchase does not grant material access. No evidence sources or continuation pages are returned.",
-                "inputSchema":{"type":"object","properties":{},"additionalProperties":false}}));
-            success(response_id, json!({"tools":tools}))
+            success(response_id, tools_list_result())
         }
         "tools/call" => {
             let Some(name) = params["name"].as_str() else {

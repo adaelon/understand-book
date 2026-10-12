@@ -1,0 +1,69 @@
+[
+  {
+    "images": [
+      {
+        "candidate_id": null,
+        "caption": "Animation animation-01a12fa6-216f-7562-a2a6-3003470391f6: decoded frame at 0.000s. Inspect before embedding and previewing the page.",
+        "environment_name": null
+      },
+      {
+        "candidate_id": null,
+        "caption": "Animation animation-01a12fa6-216f-7562-a2a6-3003470391f6: decoded frame at 0.500s. Inspect before embedding and previewing the page.",
+        "environment_name": null
+      },
+      {
+        "candidate_id": null,
+        "caption": "Animation animation-01a12fa6-216f-7562-a2a6-3003470391f6: decoded frame at 0.967s. Inspect before embedding and previewing the page.",
+        "environment_name": null
+      }
+    ],
+    "input": {
+      "code": "class PresentationAnimation(Scene):\n    def construct(self):\n        dot = Dot(LEFT)\n        self.add(dot)\n        self.play(dot.animate.shift(RIGHT * data['distance']), run_time=1)\n",
+      "cues": [
+        {
+          "at_seconds": 0.5,
+          "id": "middle",
+          "label": "Midpoint"
+        }
+      ],
+      "data": {
+        "distance": 2
+      },
+      "operation": "render_animation",
+      "size": {
+        "height": 360,
+        "width": 640
+      }
+    },
+    "result": {
+      "asset_path": "assets/animation-01a12fa6-216f-7562-a2a6-3003470391f6.mp4",
+      "asset_ref": "animation-01a12fa6-216f-7562-a2a6-3003470391f6",
+      "code_path": "animations/animation-01a12fa6-216f-7562-a2a6-3003470391f6.py",
+      "cues": [
+        {
+          "at_seconds": 0.5,
+          "id": "middle",
+          "label": "Midpoint"
+        }
+      ],
+      "data_path": "animations/animation-01a12fa6-216f-7562-a2a6-3003470391f6.json",
+      "duration_seconds": 1.0,
+      "fps": 30.0,
+      "height": 360,
+      "poster_path": "assets/animation-01a12fa6-216f-7562-a2a6-3003470391f6.png",
+      "preview_images": [
+        {
+          "at_seconds": 0.0
+        },
+        {
+          "at_seconds": 0.5
+        },
+        {
+          "at_seconds": 0.9666666666666668
+        }
+      ],
+      "status": "animation_rendered",
+      "width": 640
+    }
+  }
+]

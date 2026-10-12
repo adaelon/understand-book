@@ -1,0 +1,124 @@
+{
+  "artifact_versions": {
+    "base.json": {
+      "header": null,
+      "version": null
+    },
+    "book_structure.json": {
+      "header": {
+        "book_id": "tool-example-book",
+        "book_version": "v1",
+        "core_schema_version": "v1",
+        "generated_at": "2026-10-12T04:00:00Z",
+        "profile_id": "technical_learning",
+        "profile_version": "technical_learning_v0"
+      },
+      "version": null
+    }
+  },
+  "build_readiness": {
+    "reasons": [],
+    "route": "reader",
+    "stages": {
+      "book_structure": {
+        "reason": "not required for technical_learning profile",
+        "stage": "book_structure",
+        "status": "done"
+      },
+      "cognitive_materials": {
+        "stage": "cognitive_materials",
+        "status": "missing"
+      },
+      "formal_objects": {
+        "stage": "formal_objects",
+        "status": "missing"
+      },
+      "hybrid_foundation": {
+        "reason": "not required for technical_learning profile",
+        "stage": "hybrid_foundation",
+        "status": "done"
+      },
+      "paper_lexicon": {
+        "reason": "not required for technical_learning profile",
+        "stage": "paper_lexicon",
+        "status": "done"
+      },
+      "paper_metadata": {
+        "reason": "not required for technical_learning profile",
+        "stage": "paper_metadata",
+        "status": "done"
+      },
+      "paper_reading_guide": {
+        "reason": "not required for technical_learning profile",
+        "stage": "paper_reading_guide",
+        "status": "done"
+      },
+      "pass1": {
+        "reason": "not required for technical_learning profile",
+        "stage": "pass1",
+        "status": "done"
+      },
+      "pass2": {
+        "reason": "not required for technical_learning profile",
+        "stage": "pass2",
+        "status": "done"
+      },
+      "profile_sidecar": {
+        "reason": "not required for technical_learning profile",
+        "stage": "profile_sidecar",
+        "status": "done"
+      },
+      "source_reconciliation": {
+        "reason": "not required for technical_learning profile",
+        "stage": "source_reconciliation",
+        "status": "done"
+      },
+      "teaching_publish": {
+        "reason": "正式教学素材尚未发布",
+        "stage": "teaching_publish",
+        "status": "missing"
+      }
+    },
+    "status": "trusted_book"
+  },
+  "capabilities": null,
+  "files": {
+    "base.json": 1325,
+    "book_structure.json": 928,
+    "source.txt": 184
+  },
+  "reference": {
+    "book_id": "tool-example-book",
+    "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+  },
+  "resident_bytes": 15099,
+  "source_fingerprint": "069e98ba4a2582e277338ab661d195ad40d59ab0adc7322ca7bb8e767ecef101",
+  "teaching_readiness": {
+    "limitations": [],
+    "reason": "正式教学素材尚未发布",
+    "source_id": "tool-example-book",
+    "status": "preparing",
+    "teaching_map_revision": null
+  },
+  "tutor_readiness": {
+    "blocked_stage": "profile_sidecar",
+    "reason": "当前来源的 discourse 缺失或无法读取",
+    "source_id": "tool-example-book",
+    "source_revision": "069e98ba4a2582e277338ab661d195ad40d59ab0adc7322ca7bb8e767ecef101",
+    "status": "preparing",
+    "teaching_assets": {
+      "cognitive_materials": {
+        "status": "missing"
+      },
+      "formal_objects": {
+        "status": "missing"
+      },
+      "limitations": [],
+      "reason": "正式教学素材尚未发布",
+      "source_id": "tool-example-book",
+      "status": "preparing",
+      "teaching_map_revision": null
+    }
+  },
+  "version": "book_publication.v1"
+}

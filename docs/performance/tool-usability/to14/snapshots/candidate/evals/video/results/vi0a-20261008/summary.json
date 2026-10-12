@@ -1,0 +1,16 @@
+{
+  "selected_media_bytes": 41398630,
+  "frames_bytes": 5061045,
+  "mp4_bytes": 10053213,
+  "wav_bytes": 26284372,
+  "replay_elapsed_ms": 32543,
+  "tests": {
+    "command": "node --test evals/video/video-media.test.mjs",
+    "passed": 6,
+    "failed": 0
+  },
+  "audio_truth_status": "pending_listening_user_approved",
+  "visual_review": "All 11 original frames and controlled supplement read at 1920x1080; 2026-10-08 Codex image observations",
+  "model_service_calls": 0,
+  "model_service_cost": 0
+}

@@ -4,6 +4,8 @@ use std::sync::mpsc::{self, Receiver, Sender};
 
 const DEADLINE: Duration = Duration::from_secs(15);
 
+mod goal_examples { include!("goal_example_tests.rs"); }
+
 struct ProviderStep {
     request: Value,
     response: Sender<Value>,

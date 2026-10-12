@@ -1,0 +1,108 @@
+{
+  "model": "gpt-6.1-sol",
+  "effort": "medium",
+  "planned": [
+    {
+      "name": "baseline-rainwater-1",
+      "version": "baseline",
+      "task": "rainwater",
+      "repetition": 1
+    },
+    {
+      "name": "candidate-rainwater-1",
+      "version": "candidate",
+      "task": "rainwater",
+      "repetition": 1
+    },
+    {
+      "name": "baseline-tutor-continue-1",
+      "version": "baseline",
+      "task": "tutor-continue",
+      "repetition": 1
+    },
+    {
+      "name": "candidate-tutor-continue-1",
+      "version": "candidate",
+      "task": "tutor-continue",
+      "repetition": 1
+    },
+    {
+      "name": "baseline-rainwater-2",
+      "version": "baseline",
+      "task": "rainwater",
+      "repetition": 2
+    },
+    {
+      "name": "candidate-rainwater-2",
+      "version": "candidate",
+      "task": "rainwater",
+      "repetition": 2
+    },
+    {
+      "name": "baseline-tutor-continue-2",
+      "version": "baseline",
+      "task": "tutor-continue",
+      "repetition": 2
+    },
+    {
+      "name": "candidate-tutor-continue-2",
+      "version": "candidate",
+      "task": "tutor-continue",
+      "repetition": 2
+    },
+    {
+      "name": "baseline-rainwater-3",
+      "version": "baseline",
+      "task": "rainwater",
+      "repetition": 3
+    },
+    {
+      "name": "candidate-rainwater-3",
+      "version": "candidate",
+      "task": "rainwater",
+      "repetition": 3
+    },
+    {
+      "name": "baseline-tutor-continue-3",
+      "version": "baseline",
+      "task": "tutor-continue",
+      "repetition": 3
+    },
+    {
+      "name": "candidate-tutor-continue-3",
+      "version": "candidate",
+      "task": "tutor-continue",
+      "repetition": 3
+    },
+    {
+      "name": "baseline-save-note-1",
+      "version": "baseline",
+      "task": "save-note",
+      "repetition": 1
+    },
+    {
+      "name": "candidate-save-note-1",
+      "version": "candidate",
+      "task": "save-note",
+      "repetition": 1
+    },
+    {
+      "name": "baseline-explain-only-1",
+      "version": "baseline",
+      "task": "explain-only",
+      "repetition": 1
+    },
+    {
+      "name": "candidate-explain-only-1",
+      "version": "candidate",
+      "task": "explain-only",
+      "repetition": 1
+    }
+  ],
+  "binaries": {
+    "baseline": "D:/codex-build/to14-bin/baseline.exe",
+    "candidate": "D:/codex-build/to14-bin/candidate.exe"
+  },
+  "cumulative_token_threshold": 1500000,
+  "per_task_token_threshold": 120000
+}

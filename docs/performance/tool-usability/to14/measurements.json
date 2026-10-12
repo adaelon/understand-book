@@ -1,0 +1,225 @@
+{
+  "formula": "total_tokens = input_tokens + output_tokens; cached_input_tokens is already included in input_tokens; means use the listed runs",
+  "all": {
+    "runs": [
+      "baseline-rainwater-1",
+      "candidate-rainwater-1",
+      "baseline-tutor-continue-1",
+      "candidate-tutor-continue-1",
+      "baseline-rainwater-2",
+      "candidate-rainwater-2",
+      "baseline-tutor-continue-2",
+      "candidate-tutor-continue-2",
+      "baseline-rainwater-3",
+      "candidate-rainwater-3",
+      "baseline-tutor-continue-3",
+      "candidate-tutor-continue-3",
+      "baseline-save-note-1",
+      "candidate-save-note-1",
+      "baseline-explain-only-1",
+      "candidate-explain-only-1"
+    ],
+    "pass": 13,
+    "fail": 2,
+    "unresolved": 1,
+    "input_tokens": 1742579,
+    "cached_input_tokens": 704000,
+    "output_tokens": 11648,
+    "total_tokens": 1754227,
+    "mean_input": 108911.1875,
+    "mean_elapsed_ms": 66093.51451874999,
+    "actual_cost": null
+  },
+  "families": {
+    "rainwater": {
+      "baseline": {
+        "runs": [
+          "baseline-rainwater-1",
+          "baseline-rainwater-2",
+          "baseline-rainwater-3"
+        ],
+        "pass": 3,
+        "fail": 0,
+        "unresolved": 0,
+        "input_tokens": 407751,
+        "cached_input_tokens": 300544,
+        "output_tokens": 1690,
+        "total_tokens": 409441,
+        "mean_input": 135917,
+        "mean_elapsed_ms": 54151.526933333334,
+        "actual_cost": null
+      },
+      "candidate": {
+        "runs": [
+          "candidate-rainwater-1",
+          "candidate-rainwater-2",
+          "candidate-rainwater-3"
+        ],
+        "pass": 3,
+        "fail": 0,
+        "unresolved": 0,
+        "input_tokens": 446031,
+        "cached_input_tokens": 335872,
+        "output_tokens": 1802,
+        "total_tokens": 447833,
+        "mean_input": 148677,
+        "mean_elapsed_ms": 57523.88383333333,
+        "actual_cost": null
+      },
+      "input_change_percent": 9.388082432661115
+    },
+    "tutor-continue": {
+      "baseline": {
+        "runs": [
+          "baseline-tutor-continue-1",
+          "baseline-tutor-continue-2",
+          "baseline-tutor-continue-3"
+        ],
+        "pass": 2,
+        "fail": 0,
+        "unresolved": 1,
+        "input_tokens": 297234,
+        "cached_input_tokens": 0,
+        "output_tokens": 3449,
+        "total_tokens": 300683,
+        "mean_input": 99078,
+        "mean_elapsed_ms": 83440,
+        "actual_cost": null
+      },
+      "candidate": {
+        "runs": [
+          "candidate-tutor-continue-1",
+          "candidate-tutor-continue-2",
+          "candidate-tutor-continue-3"
+        ],
+        "pass": 3,
+        "fail": 0,
+        "unresolved": 0,
+        "input_tokens": 326321,
+        "cached_input_tokens": 22528,
+        "output_tokens": 3056,
+        "total_tokens": 329377,
+        "mean_input": 108773.66666666667,
+        "mean_elapsed_ms": 86036.33333333333,
+        "actual_cost": null
+      },
+      "input_change_percent": 9.785892596405521
+    },
+    "save-note": {
+      "baseline": {
+        "runs": [
+          "baseline-save-note-1"
+        ],
+        "pass": 0,
+        "fail": 1,
+        "unresolved": 0,
+        "input_tokens": 49140,
+        "cached_input_tokens": 0,
+        "output_tokens": 428,
+        "total_tokens": 49568,
+        "mean_input": 49140,
+        "mean_elapsed_ms": 44407,
+        "actual_cost": null
+      },
+      "candidate": {
+        "runs": [
+          "candidate-save-note-1"
+        ],
+        "pass": 0,
+        "fail": 1,
+        "unresolved": 0,
+        "input_tokens": 112665,
+        "cached_input_tokens": 22528,
+        "output_tokens": 651,
+        "total_tokens": 113316,
+        "mean_input": 112665,
+        "mean_elapsed_ms": 87420,
+        "actual_cost": null
+      },
+      "input_change_percent": 129.27350427350427
+    },
+    "explain-only": {
+      "baseline": {
+        "runs": [
+          "baseline-explain-only-1"
+        ],
+        "pass": 1,
+        "fail": 0,
+        "unresolved": 0,
+        "input_tokens": 49116,
+        "cached_input_tokens": 11264,
+        "output_tokens": 278,
+        "total_tokens": 49394,
+        "mean_input": 49116,
+        "mean_elapsed_ms": 40400,
+        "actual_cost": null
+      },
+      "candidate": {
+        "runs": [
+          "candidate-explain-only-1"
+        ],
+        "pass": 1,
+        "fail": 0,
+        "unresolved": 0,
+        "input_tokens": 54321,
+        "cached_input_tokens": 11264,
+        "output_tokens": 294,
+        "total_tokens": 54615,
+        "mean_input": 54321,
+        "mean_elapsed_ms": 41814,
+        "actual_cost": null
+      },
+      "input_change_percent": 10.597361348644018
+    }
+  },
+  "pairedTutor": {
+    "baseline": {
+      "runs": [
+        "baseline-tutor-continue-1",
+        "baseline-tutor-continue-3"
+      ],
+      "pass": 2,
+      "fail": 0,
+      "unresolved": 0,
+      "input_tokens": 198183,
+      "cached_input_tokens": 0,
+      "output_tokens": 2262,
+      "total_tokens": 200445,
+      "mean_input": 99091.5,
+      "mean_elapsed_ms": 81163.5,
+      "actual_cost": null
+    },
+    "candidate": {
+      "runs": [
+        "candidate-tutor-continue-1",
+        "candidate-tutor-continue-3"
+      ],
+      "pass": 2,
+      "fail": 0,
+      "unresolved": 0,
+      "input_tokens": 217415,
+      "cached_input_tokens": 11264,
+      "output_tokens": 1969,
+      "total_tokens": 219384,
+      "mean_input": 108707.5,
+      "mean_elapsed_ms": 84598,
+      "actual_cost": null
+    }
+  },
+  "catalogs": {
+    "baseline": {
+      "tools": 11,
+      "serialized_bytes": 27809,
+      "input_schema_bytes": 12254,
+      "output_schema_bytes": 44,
+      "examples_bytes": 22
+    },
+    "candidate": {
+      "tools": 11,
+      "serialized_bytes": 149814,
+      "input_schema_bytes": 15790,
+      "output_schema_bytes": 116995,
+      "examples_bytes": 1047
+    }
+  }
+}

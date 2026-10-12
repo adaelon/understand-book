@@ -1,0 +1,117 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling runtime v0.0.0 (E:\allwork\download\agent\understand-book\crates\runtime)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+rustc-LLVM ERROR: out of memory
+Allocation failed
+error: could not compile `runtime` (lib test)
+
+Caused by:
+  process didn't exit successfully: `C:\Users\Lenovo\.rustup\toolchains\1.95.0-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name runtime --edition=2021 crates\runtime\src\lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no --test --check-cfg cfg(docsrs,test) --check-cfg "cfg(feature, values())" -C metadata=156910ae4f069fff -C extra-filename=-aa2ba5f3b5fb7381 --out-dir D:/codex-build/understand-book-no-progress-195\debug\deps -C strip=debuginfo -L dependency=D:/codex-build/understand-book-no-progress-195\debug\deps --extern artifact_tools=D:/codex-build/understand-book-no-progress-195\debug\deps\libartifact_tools-9e3267a047f1b202.rlib --extern base_schema=D:/codex-build/understand-book-no-progress-195\debug\deps\libbase_schema-d57cea9e1f8d8d66.rlib --extern book_tool_contracts=D:/codex-build/understand-book-no-progress-195\debug\deps\libbook_tool_contracts-a29bd304db117651.rlib --extern dotenvy=D:/codex-build/understand-book-no-progress-195\debug\deps\libdotenvy-f472c7b05df2b6f4.rlib --extern memory=D:/codex-build/understand-book-no-progress-195\debug\deps\libmemory-e19f6f84ace31c95.rlib --extern read_tools=D:/codex-build/understand-book-no-progress-195\debug\deps\libread_tools-96fa15e7279a2451.rlib --extern reader=D:/codex-build/understand-book-no-progress-195\debug\deps\libreader-51790b8461b8757a.rlib --extern serde=D:/codex-build/understand-book-no-progress-195\debug\deps\libserde-8c364de1e02f15bb.rlib --extern serde_json=D:/codex-build/understand-book-no-progress-195\debug\deps\libserde_json-69d23846204b2a34.rlib --extern sha2=D:/codex-build/understand-book-no-progress-195\debug\deps\libsha2-0a319d9859ffe00b.rlib --extern ts_rs=D:/codex-build/understand-book-no-progress-195\debug\deps\libts_rs-629a12362bd0c5e4.rlib --extern ureq=D:/codex-build/understand-book-no-progress-195\debug\deps\libureq-708225a07e1c53e9.rlib --extern url=D:/codex-build/understand-book-no-progress-195\debug\deps\liburl-fc0f3ab800eaee21.rlib --extern uuid=D:/codex-build/understand-book-no-progress-195\debug\deps\libuuid-9c08dd98ae3ac25c.rlib -L native=D:/codex-build/understand-book-no-progress-195\debug\build\libsqlite3-sys-e86678df414f71ea\out -L native=D:/codex-build/understand-book-no-progress-195\debug\build\ring-1e65fa8452479f13\out` (exit code: 0xc0000409, STATUS_STACK_BUFFER_OVERRUN)

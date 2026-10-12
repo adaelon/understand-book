@@ -1,0 +1,1595 @@
+{
+  "question": "状态复用如何改变容量、传输和恢复成本",
+  "chapter_cards": [
+    {
+      "unit_lid": "4",
+      "title": "第 2 章 模型架构",
+      "display_chapter": 2,
+      "heading": {
+        "from": "4.1",
+        "to": "4.1",
+        "span": {
+          "start": 40628,
+          "end": 40640
+        },
+        "text": "# 第 2 章 模型架构",
+        "lids": [
+          "4.1"
+        ]
+      },
+      "contribution_ref": "unit:4:reduce:004:0000",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-reduce.full.v4/unit%3A4%3Areduce%3A004%3A0000.json",
+      "task_path": ".build/automatic-build/v4/tasks/book_structure/book-structure-reduce.full.v4/unit%3A4%3Areduce%3A004%3A0000.json",
+      "card": {
+        "unit_lid": "4",
+        "role": "method",
+        "summary": {
+          "text": "以计算图统一模型的参数、FLOPs、显存状态和访问流量：投影按维度计成本，注意力按有效配对数计成本，KV 缓存避免重算却仍有查询与历史读取。比较 GQA、MLA、压缩与递推注意力、MoE 时，分别核算上下文长度、状态容量、新增计算、活跃权重和读取。再按层与执行阶段累计成本，结合长上下文、并发、推测解码及模型案例，将配置映射为权重、计算和状态以选择结构。",
+          "evidence_lids": [
+            "4.18.5.21",
+            "4.18.6.94",
+            "4.18.7.57",
+            "4.19.4.10",
+            "4.20.3",
+            "4.20.8.6",
+            "4.21.5.16",
+            "4.23.3.19",
+            "4.23.4.4",
+            "4.27.3"
+          ]
+        },
+        "candidate_key_stops": [
+          {
+            "id": "stop-4-9",
+            "lid": "4.9",
+            "type": "definition",
+            "reason": {
+              "text": "计算图提供成本分析框架。",
+              "evidence_lids": [
+                "4.9"
+              ]
+            }
+          },
+          {
+            "id": "stop-4-frag2-cost-formula",
+            "lid": "4.18.5.21",
+            "type": "formula",
+            "reason": {
+              "text": "投影按 kn 参数和 2mkn 运算计量。",
+              "evidence_lids": [
+                "4.18.5.21"
+              ]
+            }
+          },
+          {
+            "id": "stop-4-reduce-1-pairs",
+            "lid": "4.18.6.94",
+            "type": "formula",
+            "reason": {
+              "text": "注意力成本取决于有效查询—键配对数。",
+              "evidence_lids": [
+                "4.18.6.94"
+              ]
+            }
+          },
+          {
+            "id": "stop-4-12-peak-traffic",
+            "lid": "4.19.4.10",
+            "type": "claim",
+            "reason": {
+              "text": "峰值存活容量与累计访问量应分别核算。",
+              "evidence_lids": [
+                "4.19.4.10"
+              ]
+            }
+          },
+          {
+            "id": "stop-4-20-context-state",
+            "lid": "4.20.3",
+            "type": "definition",
+            "reason": {
+              "text": "区分上下文 token 长度与状态字节容量。",
+              "evidence_lids": [
+                "4.20.3"
+              ]
+            }
+          },
+          {
+            "id": "stop-4-21-5-16",
+            "lid": "4.21.5.16",
+            "type": "formula",
+            "reason": {
+              "text": "MoE 分开计算路由行数对应运算与不同专家对应权重读取。",
+              "evidence_lids": [
+                "4.21.5.16",
+                "4.21.5.17"
+              ]
+            }
+          },
+          {
+            "id": "stop-4-23-3-19",
+            "lid": "4.23.3.19",
+            "type": "formula",
+            "reason": {
+              "text": "按层类别和层数累计模型成本。",
+              "evidence_lids": [
+                "4.23.3.19"
+              ]
+            }
+          },
+          {
+            "id": "stop-4-23-4-4",
+            "lid": "4.23.4.4",
+            "type": "formula",
+            "reason": {
+              "text": "由显存预算与单请求状态估算并发容量。",
+              "evidence_lids": [
+                "4.23.4.4"
+              ]
+            }
+          },
+          {
+            "id": "stop-4-27-3",
+            "lid": "4.27.3",
+            "type": "summary",
+            "reason": {
+              "text": "把结构配置映射到权重、计算、状态与活跃权重。",
+              "evidence_lids": [
+                "4.27.3"
+              ]
+            }
+          }
+        ],
+        "depends_on": [],
+        "evidence_lids": [
+          "4.9",
+          "4.18.5.21",
+          "4.18.6.94",
+          "4.18.7.57",
+          "4.19.4.10",
+          "4.20.3",
+          "4.20.8.6",
+          "4.21.5.16",
+          "4.21.5.17",
+          "4.23.3.19",
+          "4.23.4.4",
+          "4.27.3"
+        ]
+      }
+    },
+    {
+      "unit_lid": "10",
+      "title": "第 8 章 推理优化",
+      "display_chapter": 8,
+      "heading": {
+        "from": "10.1",
+        "to": "10.1",
+        "span": {
+          "start": 500820,
+          "end": 500832
+        },
+        "text": "# 第 8 章 推理优化",
+        "lids": [
+          "10.1"
+        ]
+      },
+      "contribution_ref": "unit:10:reduce:004:0000",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-reduce.full.v4/unit%3A10%3Areduce%3A004%3A0000.json",
+      "task_path": ".build/automatic-build/v4/tasks/book_structure/book-structure-reduce.full.v4/unit%3A10%3Areduce%3A004%3A0000.json",
+      "card": {
+        "unit_lid": "10",
+        "role": "application",
+        "summary": {
+          "text": "本章把在线推理拆为排队、prefill 和 decode，以 TTFT、ITL、吞吐及合格结果衡量服务；先以权重、KV 和缓冲区核算显存，再比较连续批处理、KV 分页与共享、压缩与卸载、推测解码的时间和容量取舍，最终按准入、时限及每个合格结果的成本选择配置。",
+          "evidence_lids": [
+            "10.8.2.5",
+            "10.8.3.14",
+            "10.9.3.8",
+            "10.10.2.4",
+            "10.11.2.3",
+            "10.11.4.11",
+            "10.12.2.2",
+            "10.13.3.11",
+            "10.13.4.45"
+          ]
+        },
+        "candidate_key_stops": [
+          {
+            "id": "stop-10-memory",
+            "lid": "10.8.3.14",
+            "type": "formula",
+            "reason": {
+              "text": "建立权重、KV 与运行时缓冲区的显存容量约束。",
+              "evidence_lids": [
+                "10.8.3.14"
+              ]
+            }
+          },
+          {
+            "id": "stop-10-reserve",
+            "lid": "10.8.3.28",
+            "type": "warning",
+            "reason": {
+              "text": "准入时须为后续生成预留 KV 空间。",
+              "evidence_lids": [
+                "10.8.3.28"
+              ]
+            }
+          },
+          {
+            "id": "stop-10-batch-traffic",
+            "lid": "10.9.2.25",
+            "type": "formula",
+            "reason": {
+              "text": "批内分摊权重读取，各请求的 KV 读取仍相加。",
+              "evidence_lids": [
+                "10.9.2.25"
+              ]
+            }
+          },
+          {
+            "id": "stop-10-paging",
+            "lid": "10.10.2.4",
+            "type": "definition",
+            "reason": {
+              "text": "块表将逻辑 KV 块映射到分散的物理块。",
+              "evidence_lids": [
+                "10.10.2.4"
+              ]
+            }
+          },
+          {
+            "id": "stop-10-11-expected-value",
+            "lid": "10.10.5.13",
+            "type": "formula",
+            "reason": {
+              "text": "以命中概率比较重算与取回成本，再扣除缓存维护成本。",
+              "evidence_lids": [
+                "10.10.5.13"
+              ]
+            }
+          },
+          {
+            "id": "stop-10-12-2-16",
+            "lid": "10.12.2.16",
+            "type": "formula",
+            "reason": {
+              "text": "随机采样按 min(1,p(x)/q(x)) 接受草稿 token。",
+              "evidence_lids": [
+                "10.12.2.16"
+              ]
+            }
+          },
+          {
+            "id": "stop-goodput-formula",
+            "lid": "10.13.3.11",
+            "type": "formula",
+            "reason": {
+              "text": "有效吞吐只计正确且按时完成的请求。",
+              "evidence_lids": [
+                "10.13.3.11"
+              ]
+            }
+          },
+          {
+            "id": "stop-admission-turning-point",
+            "lid": "10.13.3.19",
+            "type": "turning_point",
+            "reason": {
+              "text": "完成吞吐饱和后有效吞吐可能下降，因此须限制新请求。",
+              "evidence_lids": [
+                "10.13.3.19",
+                "10.13.3.20"
+              ]
+            }
+          },
+          {
+            "id": "stop-10-23-2",
+            "lid": "10.13.4.45",
+            "type": "definition",
+            "reason": {
+              "text": "以整批 GPU 时间分摊每个合格结果的成本。",
+              "evidence_lids": [
+                "10.13.4.45"
+              ]
+            }
+          }
+        ],
+        "depends_on": [],
+        "evidence_lids": [
+          "10.8.2.5",
+          "10.8.3.14",
+          "10.8.3.28",
+          "10.9.3.8",
+          "10.9.2.25",
+          "10.10.2.4",
+          "10.10.5.13",
+          "10.11.2.3",
+          "10.11.4.11",
+          "10.12.2.2",
+          "10.12.2.16",
+          "10.13.3.11",
+          "10.13.3.19",
+          "10.13.3.20",
+          "10.13.4.45"
+        ]
+      }
+    },
+    {
+      "unit_lid": "11",
+      "title": "第 9 章 分布式推理",
+      "display_chapter": 9,
+      "heading": {
+        "from": "11.1",
+        "to": "11.1",
+        "span": {
+          "start": 557562,
+          "end": 557575
+        },
+        "text": "# 第 9 章 分布式推理",
+        "lids": [
+          "11.1"
+        ]
+      },
+      "contribution_ref": "unit:11:reduce:004:0000",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-reduce.full.v4/unit%3A11%3Areduce%3A004%3A0000.json",
+      "task_path": ".build/automatic-build/v4/tasks/book_structure/book-structure-reduce.full.v4/unit%3A11%3Areduce%3A004%3A0000.json",
+      "card": {
+        "unit_lid": "11",
+        "role": "method",
+        "summary": {
+          "text": "以资源时间、到达率和状态交接成本比较副本、PD、AF及共享KV部署。PD受两池与KV链路共同约束；AF与专家分离须核算逐层通信、最慢专家、流水效率及背压。共享KV依靠容量、复用收益和完整checkpoint，路由结合排队、取回与重算，兼顾p99。扩缩容和迁移受启动路径、积压排空及状态增长限制；八卡案例以质量、时限和有效成本选择部署，硬件与前缀命中变化后须重估瓶颈。",
+          "evidence_lids": [
+            "11.4",
+            "11.7.2.28",
+            "11.8.4.36",
+            "11.9.5.53",
+            "11.10.4.23",
+            "11.10.3.25",
+            "11.11.3.18",
+            "11.11.3.49",
+            "11.11.4.2",
+            "11.11.5.9",
+            "11.11.5.35",
+            "11.12.3.2",
+            "11.12.3.21",
+            "11.12.4.3",
+            "11.13.3.14",
+            "11.13.4.4",
+            "11.15.5"
+          ]
+        },
+        "candidate_key_stops": [
+          {
+            "id": "stop-11-4",
+            "lid": "11.4",
+            "type": "summary",
+            "reason": {
+              "text": "概括四种部署组织方式。",
+              "evidence_lids": [
+                "11.4"
+              ]
+            }
+          },
+          {
+            "id": "stop-11-7-2-28",
+            "lid": "11.7.2.28",
+            "type": "formula",
+            "reason": {
+              "text": "以λd_r<n_r判断资源容量。",
+              "evidence_lids": [
+                "11.7.2.28"
+              ]
+            }
+          },
+          {
+            "id": "stop-11-8-4-36",
+            "lid": "11.8.4.36",
+            "type": "formula",
+            "reason": {
+              "text": "PD吞吐取两池与KV链路能力的最小值。",
+              "evidence_lids": [
+                "11.8.4.36"
+              ]
+            }
+          },
+          {
+            "id": "stop-11-af-threshold",
+            "lid": "11.9.5.42",
+            "type": "formula",
+            "reason": {
+              "text": "比较PD、AF启动临界值与累计交接成本。",
+              "evidence_lids": [
+                "11.9.5.42",
+                "11.9.5.53"
+              ]
+            }
+          },
+          {
+            "id": "stop-11-10-3-25",
+            "lid": "11.10.3.25",
+            "type": "warning",
+            "reason": {
+              "text": "平均稳定仍需管理突发队列与背压。",
+              "evidence_lids": [
+                "11.10.3.25"
+              ]
+            }
+          },
+          {
+            "id": "stop-reuse-condition",
+            "lid": "11.11.3.49",
+            "type": "formula",
+            "reason": {
+              "text": "保存加k次取回须快于k次重算。",
+              "evidence_lids": [
+                "11.11.3.49"
+              ]
+            }
+          },
+          {
+            "id": "stop-11-route-formula",
+            "lid": "11.11.5.9",
+            "type": "formula",
+            "reason": {
+              "text": "取回与排队重叠时首token时间为max(Q,R)+C。",
+              "evidence_lids": [
+                "11.11.5.9"
+              ]
+            }
+          },
+          {
+            "id": "11-backlog-drain",
+            "lid": "11.12.3.21",
+            "type": "formula",
+            "reason": {
+              "text": "μ>λ时积压排空时间为λT_s/(μ−λ)。",
+              "evidence_lids": [
+                "11.12.3.19",
+                "11.12.3.21"
+              ]
+            }
+          },
+          {
+            "id": "stop-11-27-2",
+            "lid": "11.13.3.14",
+            "type": "formula",
+            "reason": {
+              "text": "有效成本按满足质量和时限的任务数计算。",
+              "evidence_lids": [
+                "11.13.3.13",
+                "11.13.3.14"
+              ]
+            }
+          },
+          {
+            "id": "stop-11-15-2",
+            "lid": "11.15.2",
+            "type": "summary",
+            "reason": {
+              "text": "统一计算与状态放置、交接及服务能力权衡。",
+              "evidence_lids": [
+                "11.15.2"
+              ]
+            }
+          }
+        ],
+        "depends_on": [],
+        "evidence_lids": [
+          "11.4",
+          "11.7.2.28",
+          "11.8.4.36",
+          "11.9.5.42",
+          "11.9.5.53",
+          "11.10.4.23",
+          "11.10.3.25",
+          "11.11.3.18",
+          "11.11.3.49",
+          "11.11.4.2",
+          "11.11.5.9",
+          "11.11.5.35",
+          "11.12.3.2",
+          "11.12.3.19",
+          "11.12.3.21",
+          "11.12.4.3",
+          "11.13.3.13",
+          "11.13.3.14",
+          "11.13.4.4",
+          "11.15.2",
+          "11.15.5"
+        ]
+      }
+    },
+    {
+      "unit_lid": "12",
+      "title": "第 10 章 训练系统",
+      "display_chapter": 10,
+      "heading": {
+        "from": "12.1",
+        "to": "12.1",
+        "span": {
+          "start": 636262,
+          "end": 636275
+        },
+        "text": "# 第 10 章 训练系统",
+        "lids": [
+          "12.1"
+        ]
+      },
+      "contribution_ref": "unit:12:reduce:005:0000",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-reduce.full.v4/unit%3A12%3Areduce%3A005%3A0000.json",
+      "task_path": ".build/automatic-build/v4/tasks/book_structure/book-structure-reduce.full.v4/unit%3A12%3Areduce%3A005%3A0000.json",
+      "card": {
+        "unit_lid": "12",
+        "role": "method",
+        "summary": {
+          "text": "从训练期限、计算量与MFU推导卡数和步时预算，以状态生命周期核算峰值显存，权衡分片、重计算与卸载。拆批保持全局token归一化，流水与通信调度兼顾依赖、争用和激活峰值。长期成本计入数据停顿、快照提交及故障重做；RL串联生成、验证、学习和发布，并保持采样概率、恢复版本及路由对齐。用Amdahl定律评价收益，4090案例落实满足30天期限的48卡方案。",
+          "evidence_lids": [
+            "12.14.5.2",
+            "12.14.5.9",
+            "12.9.3.19",
+            "12.10.2.17",
+            "12.10.3.33",
+            "12.10.4.9",
+            "12.11.3.9",
+            "12.11.4.145",
+            "12.11.5.35",
+            "12.12.3.5",
+            "12.12.5.13",
+            "12.12.6.16",
+            "12.13.2",
+            "12.13.5.20",
+            "12.13.5.57",
+            "12.13.6.8",
+            "12.14.4.7",
+            "12.17.4"
+          ]
+        },
+        "candidate_key_stops": [
+          {
+            "id": "stop-12-step-budget",
+            "lid": "12.9.2.7",
+            "type": "claim",
+            "reason": {
+              "text": "由期限建立端到端步时预算。",
+              "evidence_lids": [
+                "12.9.2.7"
+              ]
+            }
+          },
+          {
+            "id": "stop-12-9-3-19",
+            "lid": "12.9.3.19",
+            "type": "formula",
+            "reason": {
+              "text": "按同时驻留量核算显存峰值。",
+              "evidence_lids": [
+                "12.9.3.19"
+              ]
+            }
+          },
+          {
+            "id": "stop-12-10-4-9",
+            "lid": "12.10.4.9",
+            "type": "formula",
+            "reason": {
+              "text": "T_wait=max(0,V/B-W)判断卸载等待。",
+              "evidence_lids": [
+                "12.10.4.9"
+              ]
+            }
+          },
+          {
+            "id": "stop-12-11-3-9",
+            "lid": "12.11.3.9",
+            "type": "formula",
+            "reason": {
+              "text": "共同token分母与统一更新保持拆批梯度一致。",
+              "evidence_lids": [
+                "12.11.3.9",
+                "12.11.3.10",
+                "12.11.3.12"
+              ]
+            }
+          },
+          {
+            "id": "stop-12-16-3",
+            "lid": "12.11.4.145",
+            "type": "turning_point",
+            "reason": {
+              "text": "按时间或容量约束选择流水调度。",
+              "evidence_lids": [
+                "12.11.4.145"
+              ]
+            }
+          },
+          {
+            "id": "stop-checkpoint-optimum",
+            "lid": "12.12.6.16",
+            "type": "formula",
+            "reason": {
+              "text": "保存间隔√(2c/λ)平衡保存与故障重做成本。",
+              "evidence_lids": [
+                "12.12.6.15",
+                "12.12.6.16"
+              ]
+            }
+          },
+          {
+            "id": "stop-12-29-coverage",
+            "lid": "12.13.5.24",
+            "type": "warning",
+            "reason": {
+              "text": "重要性加权无法恢复截断遗漏的事件。",
+              "evidence_lids": [
+                "12.13.5.24"
+              ]
+            }
+          },
+          {
+            "id": "stop-12-0032-amdahl",
+            "lid": "12.14.4.7",
+            "type": "formula",
+            "reason": {
+              "text": "T'/T=1-f+f/r估算资源替换的总收益。",
+              "evidence_lids": [
+                "12.14.4.7"
+              ]
+            }
+          },
+          {
+            "id": "scale-card-boundary",
+            "lid": "12.14.5.9",
+            "type": "formula",
+            "reason": {
+              "text": "以F=6ND连接规模、效率、期限与卡数。",
+              "evidence_lids": [
+                "12.14.5.2",
+                "12.14.5.9"
+              ]
+            }
+          },
+          {
+            "id": "async-checkpoint-commit",
+            "lid": "12.15.4",
+            "type": "warning",
+            "reason": {
+              "text": "已提交快照才构成恢复点。",
+              "evidence_lids": [
+                "12.15.4"
+              ]
+            }
+          },
+          {
+            "id": "batch-scaling-limit",
+            "lid": "12.15.6",
+            "type": "warning",
+            "reason": {
+              "text": "扩大batch受噪声尺度限制，固定batch强扩展不受此限。",
+              "evidence_lids": [
+                "12.15.6"
+              ]
+            }
+          },
+          {
+            "id": "stop-12-17-4-design-conclusion",
+            "lid": "12.17.4",
+            "type": "summary",
+            "reason": {
+              "text": "32卡约34.3天、48卡约24.6天，48卡满足30天期限。",
+              "evidence_lids": [
+                "12.17.4"
+              ]
+            }
+          }
+        ],
+        "depends_on": [],
+        "evidence_lids": [
+          "12.14.5.2",
+          "12.14.5.9",
+          "12.9.2.7",
+          "12.9.3.19",
+          "12.10.2.17",
+          "12.10.3.33",
+          "12.10.4.9",
+          "12.11.3.9",
+          "12.11.3.10",
+          "12.11.3.12",
+          "12.11.4.145",
+          "12.11.5.35",
+          "12.12.3.5",
+          "12.12.5.13",
+          "12.12.6.15",
+          "12.12.6.16",
+          "12.13.2",
+          "12.13.5.20",
+          "12.13.5.24",
+          "12.13.5.57",
+          "12.13.6.8",
+          "12.14.4.7",
+          "12.15.4",
+          "12.15.6",
+          "12.17.4"
+        ]
+      }
+    },
+    {
+      "unit_lid": "13",
+      "title": "第 11 章 资源调度与运行环境",
+      "display_chapter": 11,
+      "heading": {
+        "from": "13.1",
+        "to": "13.1",
+        "span": {
+          "start": 705629,
+          "end": 705647
+        },
+        "text": "# 第 11 章 资源调度与运行环境",
+        "lids": [
+          "13.1"
+        ]
+      },
+      "contribution_ref": "unit:13:reduce:004:0000",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-reduce.full.v4/unit%3A13%3Areduce%3A004%3A0000.json",
+      "task_path": ".build/automatic-build/v4/tasks/book_structure/book-structure-reduce.full.v4/unit%3A13%3Areduce%3A004%3A0000.json",
+      "card": {
+        "unit_lid": "13",
+        "role": "application",
+        "summary": {
+          "text": "以代码修复任务贯穿模型、工具和环境的系统优化：按串行轮次、驻留与等待计算延迟及容量，合算环境释放、预测准备、调度、缓存和采购成本；以成功且按时完成的任务衡量全部尝试支出。恢复依托持久化结果与完整提交轮次；Amdahl定律和案例揭示局部加速、资源占用与期限之间的权衡。",
+          "evidence_lids": [
+            "13.2",
+            "13.9.2.3",
+            "13.9.3.16",
+            "13.10.4.22",
+            "13.10.5.22",
+            "13.11.5.32",
+            "13.12.3.25",
+            "13.12.5.12",
+            "13.13.3.9",
+            "13.13.3.10",
+            "13.13.2.3",
+            "13.13.2.15",
+            "13.13.4.42",
+            "13.15.2",
+            "13.15.4"
+          ]
+        },
+        "candidate_key_stops": [
+          {
+            "id": "stop-13-duration",
+            "lid": "13.9.2.3",
+            "type": "formula",
+            "reason": {
+              "text": "三轮耗时30秒，超过24秒期限。",
+              "evidence_lids": [
+                "13.6",
+                "13.9.2.3"
+              ]
+            }
+          },
+          {
+            "id": "stop-13-little-environment",
+            "lid": "13.9.3.16",
+            "type": "formula",
+            "reason": {
+              "text": "吞吐乘驻留时间给出平均环境需求。",
+              "evidence_lids": [
+                "13.9.3.16"
+              ]
+            }
+          },
+          {
+            "id": "stop-13-pause-cost",
+            "lid": "13.10.4.22",
+            "type": "formula",
+            "reason": {
+              "text": "释放内存收益须超过转换成本。",
+              "evidence_lids": [
+                "13.10.4.22",
+                "13.10.4.23"
+              ]
+            }
+          },
+          {
+            "id": "stop-13-preemption-reserve",
+            "lid": "13.11.3.11",
+            "type": "warning",
+            "reason": {
+              "text": "保存耗时超过在线等待限度，须预留容量。",
+              "evidence_lids": [
+                "13.11.3.11"
+              ]
+            }
+          },
+          {
+            "id": "system-card-second-cost",
+            "lid": "13.11.5.32",
+            "type": "claim",
+            "reason": {
+              "text": "验证省60卡秒却使系统净增68卡秒。",
+              "evidence_lids": [
+                "13.11.5.30",
+                "13.11.5.31",
+                "13.11.5.32"
+              ]
+            }
+          },
+          {
+            "id": "stop-13-0013-cache-condition",
+            "lid": "13.12.3.25",
+            "type": "formula",
+            "reason": {
+              "text": "缓存节省须摊回创建溢价。",
+              "evidence_lids": [
+                "13.12.3.25",
+                "13.12.3.26"
+              ]
+            }
+          },
+          {
+            "id": "stop-complete-cost",
+            "lid": "13.13.3.9",
+            "type": "formula",
+            "reason": {
+              "text": "全部尝试支出除以成功或按时成功任务数。",
+              "evidence_lids": [
+                "13.13.3.9",
+                "13.13.3.10"
+              ]
+            }
+          },
+          {
+            "id": "agent-transaction",
+            "lid": "13.13.2.15",
+            "type": "definition",
+            "reason": {
+              "text": "以完整轮次恢复，补齐保存缺口才推进。",
+              "evidence_lids": [
+                "13.13.2.13",
+                "13.13.2.15"
+              ]
+            }
+          },
+          {
+            "id": "stop-13-fr23-amdahl",
+            "lid": "13.13.4.42",
+            "type": "formula",
+            "reason": {
+              "text": "耗时占比决定局部加速的整体收益。",
+              "evidence_lids": [
+                "13.13.4.42"
+              ]
+            }
+          },
+          {
+            "id": "stop-13-15-4-deadline",
+            "lid": "13.15.4",
+            "type": "example",
+            "reason": {
+              "text": "缩短三轮延迟会增加GPU工作与副本需求。",
+              "evidence_lids": [
+                "13.15.4"
+              ]
+            }
+          }
+        ],
+        "depends_on": [],
+        "evidence_lids": [
+          "13.2",
+          "13.6",
+          "13.9.2.3",
+          "13.9.3.16",
+          "13.10.4.22",
+          "13.10.4.23",
+          "13.10.5.22",
+          "13.11.3.11",
+          "13.11.5.30",
+          "13.11.5.31",
+          "13.11.5.32",
+          "13.12.3.25",
+          "13.12.3.26",
+          "13.12.5.12",
+          "13.13.2.3",
+          "13.13.2.13",
+          "13.13.2.15",
+          "13.13.3.9",
+          "13.13.3.10",
+          "13.13.4.42",
+          "13.15.2",
+          "13.15.4"
+        ]
+      }
+    }
+  ],
+  "candidates": [
+    {
+      "ref": "unit:10:fragment:0007#stop-10-7-paging",
+      "contribution_ref": "unit:10:fragment:0007",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A10%3Afragment%3A0007.json",
+      "stop": {
+        "id": "stop-10-7-paging",
+        "lid": "10.10.2.4",
+        "type": "definition",
+        "reason": {
+          "text": "定义逻辑块、物理块、块表及分散存储时的 KV 寻址方式。",
+          "evidence_lids": [
+            "10.10.2.4"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:10:fragment:0008#stop-10-8-refcount",
+      "contribution_ref": "unit:10:fragment:0008",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A10%3Afragment%3A0008.json",
+      "stop": {
+        "id": "stop-10-8-refcount",
+        "lid": "10.10.3.2",
+        "type": "definition",
+        "reason": {
+          "text": "定义共享块引用计数及安全回收条件。",
+          "evidence_lids": [
+            "10.10.3.2"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:10:fragment:0008#stop-10-8-cow",
+      "contribution_ref": "unit:10:fragment:0008",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A10%3Afragment%3A0008.json",
+      "stop": {
+        "id": "stop-10-8-cow",
+        "lid": "10.10.3.5",
+        "type": "definition",
+        "reason": {
+          "text": "解释分支修改共享尾块前为何要写时复制。",
+          "evidence_lids": [
+            "10.10.3.5"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:10:fragment:0008#stop-10-8-kv",
+      "contribution_ref": "unit:10:fragment:0008",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A10%3Afragment%3A0008.json",
+      "stop": {
+        "id": "stop-10-8-kv",
+        "lid": "10.10.3.17",
+        "type": "formula",
+        "reason": {
+          "text": "汇总公共与私有部分，得到整批 KV 容量 6048 MiB。",
+          "evidence_lids": [
+            "10.10.3.14",
+            "10.10.3.16",
+            "10.10.3.17"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:10:fragment:0009#stop-10-9-reuse",
+      "contribution_ref": "unit:10:fragment:0009",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A10%3Afragment%3A0009.json",
+      "stop": {
+        "id": "stop-10-9-reuse",
+        "lid": "10.10.4.2",
+        "type": "claim",
+        "reason": {
+          "text": "列出跨请求直接复用前缀KV的状态一致条件。",
+          "evidence_lids": [
+            "10.10.4.2"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:10:fragment:0009#stop-10-9-contiguous",
+      "contribution_ref": "unit:10:fragment:0009",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A10%3Afragment%3A0009.json",
+      "stop": {
+        "id": "stop-10-9-contiguous",
+        "lid": "10.10.4.3",
+        "type": "claim",
+        "reason": {
+          "text": "解释前缀复用止于首个不同token，并引出提示排序方法。",
+          "evidence_lids": [
+            "10.10.4.3"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:10:fragment:0009#stop-10-9-snapshot",
+      "contribution_ref": "unit:10:fragment:0009",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A10%3Afragment%3A0009.json",
+      "stop": {
+        "id": "stop-10-9-snapshot",
+        "lid": "10.10.4.10",
+        "type": "claim",
+        "reason": {
+          "text": "说明递推快照密度在重算量与存储量间的权衡。",
+          "evidence_lids": [
+            "10.10.4.10"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:11:fragment:0003#stop-11-8-3-16",
+      "contribution_ref": "unit:11:fragment:0003",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A11%3Afragment%3A0003.json",
+      "stop": {
+        "id": "stop-11-8-3-16",
+        "lid": "11.8.3.16",
+        "type": "example",
+        "reason": {
+          "text": "用 A100 到 H20 的整份 KV 交接计算链路传输时间。",
+          "evidence_lids": [
+            "11.8.3.16",
+            "11.8.3.17"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:11:fragment:0003#stop-11-8-3-18",
+      "contribution_ref": "unit:11:fragment:0003",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A11%3Afragment%3A0003.json",
+      "stop": {
+        "id": "stop-11-8-3-18",
+        "lid": "11.8.3.18",
+        "type": "claim",
+        "reason": {
+          "text": "区分完整状态交接的带宽主导与逐层小传输的固定开销影响。",
+          "evidence_lids": [
+            "11.8.3.18"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:11:fragment:0004#stop-11-4-kv-publish",
+      "contribution_ref": "unit:11:fragment:0004",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A11%3Afragment%3A0004.json",
+      "stop": {
+        "id": "stop-11-4-kv-publish",
+        "lid": "11.8.3.42",
+        "type": "claim",
+        "reason": {
+          "text": "交代整份双缓冲、完成标记和源缓冲释放的交接顺序，也说明分块传输的释放时机。",
+          "evidence_lids": [
+            "11.8.3.42"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:11:fragment:0004#stop-11-4-network",
+      "contribution_ref": "unit:11:fragment:0004",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A11%3Afragment%3A0004.json",
+      "stop": {
+        "id": "stop-11-4-network",
+        "lid": "11.8.3.47",
+        "type": "turning_point",
+        "reason": {
+          "text": "以 GQA、MLA 与 100 GbE 的数值对比说明表示方式可改变网络队列是否持续增长。",
+          "evidence_lids": [
+            "11.8.3.47"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:11:fragment:0021#stop-11-checkpoint",
+      "contribution_ref": "unit:11:fragment:0021",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A11%3Afragment%3A0021.json",
+      "stop": {
+        "id": "stop-11-checkpoint",
+        "lid": "11.11.4.2",
+        "type": "definition",
+        "reason": {
+          "text": "说明 checkpoint 必须保存继续计算所需的全部状态，并从最后一次完整更新恢复。",
+          "evidence_lids": [
+            "11.11.4.2"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:11:fragment:0021#stop-11-prefix-boundary",
+      "contribution_ref": "unit:11:fragment:0021",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A11%3Afragment%3A0021.json",
+      "stop": {
+        "id": "stop-11-prefix-boundary",
+        "lid": "11.11.4.4",
+        "type": "example",
+        "reason": {
+          "text": "用读入 64 页却仅连续复用 63 页的例子区分读取量与有效复用量。",
+          "evidence_lids": [
+            "11.11.4.4"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:11:fragment:0021#stop-11-recompute",
+      "contribution_ref": "unit:11:fragment:0021",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A11%3Afragment%3A0021.json",
+      "stop": {
+        "id": "stop-11-recompute",
+        "lid": "11.11.4.7",
+        "type": "warning",
+        "reason": {
+          "text": "缺页时无限等待可能比重算更慢，还需在请求完成后处理坏页。",
+          "evidence_lids": [
+            "11.11.4.7"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:12:fragment:0021#stop-12-21-state",
+      "contribution_ref": "unit:12:fragment:0021",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A12%3Afragment%3A0021.json",
+      "stop": {
+        "id": "stop-12-21-state",
+        "lid": "12.12.4.3",
+        "type": "definition",
+        "reason": {
+          "text": "列明继续 Adam 训练所需的优化器、学习率、随机及数据状态。",
+          "evidence_lids": [
+            "12.12.4.3"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:12:fragment:0021#stop-12-21-size",
+      "contribution_ref": "unit:12:fragment:0021",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A12%3Afragment%3A0021.json",
+      "stop": {
+        "id": "stop-12-21-size",
+        "lid": "12.12.4.4",
+        "type": "formula",
+        "reason": {
+          "text": "给出每参数 14 字节、总计约 115 GB 的 checkpoint 状态量。",
+          "evidence_lids": [
+            "12.12.4.4"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:12:fragment:0022#stop-12-22-2",
+      "contribution_ref": "unit:12:fragment:0022",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A12%3Afragment%3A0022.json",
+      "stop": {
+        "id": "stop-12-22-2",
+        "lid": "12.12.4.18",
+        "type": "example",
+        "reason": {
+          "text": "说明丢失打包器残留 token 会改变恢复后的序列、注意力关系与标签。",
+          "evidence_lids": [
+            "12.12.4.18"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:13:fragment:0018#durability-semantics",
+      "contribution_ref": "unit:13:fragment:0018",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A13%3Afragment%3A0018.json",
+      "stop": {
+        "id": "durability-semantics",
+        "lid": "13.13.2.8",
+        "type": "definition",
+        "title": "完成与持久化的保证",
+        "reason": {
+          "text": "界定持久性语义，并要求跨日志、文件与数据库核对一致性。",
+          "evidence_lids": [
+            "13.13.2.8"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:13:fragment:0018#cloud-gap-example",
+      "contribution_ref": "unit:13:fragment:0018",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A13%3Afragment%3A0018.json",
+      "stop": {
+        "id": "cloud-gap-example",
+        "lid": "13.13.2.10",
+        "type": "example",
+        "title": "第二轮上传失败留下缺口",
+        "reason": {
+          "text": "展示本地完整、云端不完整的异步增量保存情形。",
+          "evidence_lids": [
+            "13.13.2.10"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:13:fragment:0018#contiguous-progress",
+      "contribution_ref": "unit:13:fragment:0018",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A13%3Afragment%3A0018.json",
+      "stop": {
+        "id": "contiguous-progress",
+        "lid": "13.13.2.13",
+        "type": "claim",
+        "title": "连续保存位置决定恢复进度",
+        "reason": {
+          "text": "最后收到第三轮不能证明第二轮已保存，须补齐缺口。",
+          "evidence_lids": [
+            "13.13.2.13"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:13:fragment:0018#log-pruning-boundary",
+      "contribution_ref": "unit:13:fragment:0018",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A13%3Afragment%3A0018.json",
+      "stop": {
+        "id": "log-pruning-boundary",
+        "lid": "13.13.2.14",
+        "type": "warning",
+        "title": "缺少日志和状态应返回incomplete",
+        "reason": {
+          "text": "日志删除与位置恢复必须具备完整轮次状态依据。",
+          "evidence_lids": [
+            "13.13.2.14"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:13:fragment:0018#agent-transaction",
+      "contribution_ref": "unit:13:fragment:0018",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A13%3Afragment%3A0018.json",
+      "stop": {
+        "id": "agent-transaction",
+        "lid": "13.13.2.15",
+        "type": "definition",
+        "title": "Agent事务",
+        "reason": {
+          "text": "整轮提交决策、结果和文件版本，并指出本地提交的外部操作边界。",
+          "evidence_lids": [
+            "13.13.2.15"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:13:fragment:0018#batching-tradeoff",
+      "contribution_ref": "unit:13:fragment:0018",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A13%3Afragment%3A0018.json",
+      "stop": {
+        "id": "batching-tradeoff",
+        "lid": "13.13.2.17",
+        "type": "example",
+        "title": "保存频率与重做成本",
+        "reason": {
+          "text": "每10请求提交节省0.72秒，故障最多重做计算增至2秒。",
+          "evidence_lids": [
+            "13.13.2.17",
+            "13.13.2.18"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:13:fragment:0019#stop-state-persistence",
+      "contribution_ref": "unit:13:fragment:0019",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A13%3Afragment%3A0019.json",
+      "stop": {
+        "id": "stop-state-persistence",
+        "lid": "13.13.2.19",
+        "type": "warning",
+        "title": "释放环境前保存状态",
+        "reason": {
+          "text": "把资源释放条件落实为状态可恢复，并指出保存等待与故障重做必须进入调度成本。",
+          "evidence_lids": [
+            "13.13.2.19"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:4:fragment:0010#stop-4-state-reuse",
+      "contribution_ref": "unit:4:fragment:0010",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A4%3Afragment%3A0010.json",
+      "stop": {
+        "id": "stop-4-state-reuse",
+        "lid": "4.19.3.16",
+        "type": "turning_point",
+        "title": "以状态访问换取少量重算",
+        "reason": {
+          "text": "把 KV 缓存明确解释为保存与访问旧状态对重复计算的替代。",
+          "evidence_lids": [
+            "4.19.3.3",
+            "4.19.3.16"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:4:fragment:0011#stop-4-19-3-28",
+      "contribution_ref": "unit:4:fragment:0011",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A4%3Afragment%3A0011.json",
+      "stop": {
+        "id": "stop-4-19-3-28",
+        "lid": "4.19.3.28",
+        "type": "formula",
+        "title": "每 token 的 KV 缓存占用",
+        "reason": {
+          "text": "给出键和值、层数、KV 头数、头维度与元素字节数相乘的容量公式，算出 144 KiB。",
+          "evidence_lids": [
+            "4.19.3.27",
+            "4.19.3.28"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:4:fragment:0015#stop-4-20-four-heads",
+      "contribution_ref": "unit:4:fragment:0015",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A4%3Afragment%3A0015.json",
+      "stop": {
+        "id": "stop-4-20-four-heads",
+        "lid": "4.20.5.37",
+        "type": "example",
+        "title": "四查询头的 KV 共享示例",
+        "reason": {
+          "text": "四查询头示例比较 MHA、GQA、MQA 保存四、二、一份 KV；GQA 存储减半，各查询头仍分别评分。",
+          "evidence_lids": [
+            "4.20.5.29",
+            "4.20.5.37"
+          ]
+        }
+      }
+    },
+    {
+      "ref": "unit:4:fragment:0016#stop-4-20-5-40",
+      "contribution_ref": "unit:4:fragment:0016",
+      "artifact_path": ".build/automatic-build/v3/artifacts/book_structure/book-structure-fragment.full.v4/unit%3A4%3Afragment%3A0016.json",
+      "stop": {
+        "id": "stop-4-20-5-40",
+        "lid": "4.20.5.40",
+        "type": "example",
+        "reason": {
+          "text": "以 Qwen3-8B 的 32 个查询头、8 个 KV 头和 8192 token 容量展示 GQA 的共享收益。",
+          "evidence_lids": [
+            "4.20.5.40"
+          ]
+        }
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "from": "4.19.3.3",
+      "to": "4.19.3.28",
+      "span": {
+        "start": 53472,
+        "end": 54036
+      },
+      "text": "如果每生成一个 token 都把整个前缀重新送入模型，旧 token 的投影与 FFN 会重复执行。因果模型中，旧 token 不能看到后来加入的 token；在权重、token 位置索引与相关计算条件不变时，旧 token 产生的 $K$、$V$ 可以保留。后续查询读取这些上下文 $K$、$V$，并补入当前 token 位置的新 $K$、$V$，就避免了旧 token 的大量重算。\n\n缓存把“重新计算旧 token 的表示”变成“保存并访问旧 token 的状态”。未来 token 位置会产生自己的 $Q$，用它对旧 token 的 $K$ 评分，再根据评分得到的权重汇总 $V$，所以长期保存的是 $K$ 和 $V$。旧查询已经完成了自己的任务，下一步使用新的查询。第 8 章将进一步讨论如何在不同请求之间共享这些状态。\n\nQwen3-8B 的 BF16 KV 每个上下文 token 占：\n\n$$\n\\begin{aligned}c_{\\mathrm{KV}}&=2L n_{\\mathrm{KV}}d_h b_{\\mathrm{KV}}\\\\&=2\\times36\\times8\\times128\\times2\\ \\mathrm{bytes}\\\\&=144\\ \\mathrm{KiB}.\\end{aligned}\n$$",
+      "lids": [
+        "4.19.3.3",
+        "4.19.3.4",
+        "4.19.3.5",
+        "4.19.3.6",
+        "4.19.3.7",
+        "4.19.3.8",
+        "4.19.3.9",
+        "4.19.3.10",
+        "4.19.3.11",
+        "4.19.3.12",
+        "4.19.3.13",
+        "4.19.3.14",
+        "4.19.3.15",
+        "4.19.3.16",
+        "4.19.3.17",
+        "4.19.3.18",
+        "4.19.3.19",
+        "4.19.3.20",
+        "4.19.3.21",
+        "4.19.3.22",
+        "4.19.3.23",
+        "4.19.3.24",
+        "4.19.3.25",
+        "4.19.3.26",
+        "4.19.3.27",
+        "4.19.3.28"
+      ]
+    },
+    {
+      "from": "4.20.5.37",
+      "to": "4.20.5.40",
+      "span": {
+        "start": 58938,
+        "end": 59425
+      },
+      "text": "，后两个共享第二份；MQA 则让四个查询头共用一份。若上下文长度和头宽相同，需要保存的 KV 份数依次为四、二、一。因此，GQA 在此例中把上下文存储量减半。四个查询头仍可给同一段上下文打出四组不同的分数，这正是“共享上下文表示”与“合并查询”之间的区别。\n\n![固定四个查询头，分别为每头、每组和全部查询保存 KV。连线表示使用关系；共享上下文后，各查询仍分别产生自己的评分与输出。](assets/ch02/figure-2-3-sharing.svg)\n\n*图 2-9　固定四个查询头，分别为每头、每组和全部查询保存 KV。连线表示使用关系；共享上下文后，各查询仍分别产生自己的评分与输出。*\n\nQwen3-8B 采用这种共享方式，让每四个查询头共用一组 KV，总计 32 个查询头、8 个 KV 头。如果给每个查询头单独保存 KV，容量会是当前配置的四倍；如果全部查询共享一组，则会是当前配置的八分之一。实际 GQA 配置保存 8192 个 token 需要 1.125 GiB。本节末的容量图固定上下文长度与头宽，只改变 KV 组数，因此柱高之比直接呈现共享比例。",
+      "lids": [
+        "4.20.5.37",
+        "4.20.5.38",
+        "4.20.5.39",
+        "4.20.5.40"
+      ]
+    },
+    {
+      "from": "10.10.2.2",
+      "to": "10.10.2.4",
+      "span": {
+        "start": 513760,
+        "end": 514174
+      },
+      "text": "第 8.1 节按最大输出长度为每条请求预留空间，保证它能持续生成。如果请求提前结束，预留空间的尾部就一直没有使用。另一种办法是随生成过程逐步扩展内存，但若必须保持空间连续，邻接区域被其他请求占用时，就需要搬移数据或等待。\n\n可以把这种分配比作活页册：阅读顺序由页码确定，各页不必放在相邻位置，只要记得每一页在哪里。序列增长时，在任意空位放入新页并记录其位置，就不必为了连续排列而搬动整册内容。\n\n**分页分配**将序列分成固定大小的块。**逻辑块**按序列中的 token 位置编号，相当于页码；**物理块**是实际保存 KV 的内存区域；每条请求维护的**块表**记录逻辑块对应哪个物理块。序列增长到需要新块时，引擎从空闲池分配一个物理块，并增加映射。注意力计算根据块表找到所需位置的 KV，因此物理块可以分散存放。这里讨论的是 KV 在内存中的分块寻址，多级存储之间的换入换出留到第 8.3.4 节和第 8.4.3 节讨论。",
+      "lids": [
+        "10.10.2.2",
+        "10.10.2.3",
+        "10.10.2.4"
+      ]
+    },
+    {
+      "from": "10.10.3.2",
+      "to": "10.10.3.5",
+      "span": {
+        "start": 515458,
+        "end": 516042
+      },
+      "text": "前缀共享图中，B 与 A 引用相同的两个物理块。如果 A 先结束，这两个块仍要留给 B；如果 B 要修改其中的内容，又不能影响 A。要实现共享，就需要确定何时释放共享块，以及如何避免不同请求互相覆盖数据。每张块表中指向某个物理块的记录称为一个**引用**，共享块由多个块表引用；**引用计数**记录还有多少使用者需要它。每当一条请求获得引用，引用数加一；请求结束时释放引用。最后一个引用释放后，该块才能回到空闲池；此时还要确认加速器操作不再访问它。这样，同一份共同上下文既能服务多个分支，也能在其中一条分支结束后继续服务其余分支。\n\n![根据引用计数释放共享块](assets/ch08/figure-8-reference-release.svg)\n\n*图 8-14：A 结束后引用数从 2 降到 1，B 仍可使用；最后一个引用释放且加速器已用完，块才能回到空闲池。*\n\n写入共享尾块需要取得独立副本。例如，可存 4 个 token 的块中已写入三个共同 token 的 KV，两个分支接下来分别写入不同 token。如果写到原块，两条分支会争用块中的第四个 token。**写时复制**是在修改共享内容之前取得私有副本的机制。此时先复制这三个 token，两条分支分别追加；此前已填满的只读块继续共享。随着分支增长，公共前缀保持一份，各分支分别保存自己新增的后缀。",
+      "lids": [
+        "10.10.3.2",
+        "10.10.3.3",
+        "10.10.3.4",
+        "10.10.3.5"
+      ]
+    },
+    {
+      "from": "10.10.3.14",
+      "to": "10.10.3.20",
+      "span": {
+        "start": 516467,
+        "end": 516772
+      },
+      "text": "**公共前缀共享后的整批 KV 容量。** 16 条长请求共享前 6144 个输入 token，其 KV 共占 864 MiB。每条请求的私有部分包含 $8192-6144+255=2303$ 个 token。按每块 16 个 token 分配，需要容纳 2304 个 token，即 324 MiB。因此，整组请求生成完毕时所需的 KV 空间为\n\n$$\nM_{\\mathrm{KV}}=864+16\\times324=6048\\ \\mathrm{MiB}.\n$$\n\n这组请求原来需要 $16\\times1188=19008$ MiB，共享后约为 5.91 GiB，可以放入预留的 12 GiB 内存。一般地，",
+      "lids": [
+        "10.10.3.14",
+        "10.10.3.15",
+        "10.10.3.16",
+        "10.10.3.17",
+        "10.10.3.18",
+        "10.10.3.19",
+        "10.10.3.20"
+      ]
+    },
+    {
+      "from": "10.10.4.2",
+      "to": "10.10.4.10",
+      "span": {
+        "start": 517589,
+        "end": 518724
+      },
+      "text": "第 8.3.2 节计算了同时运行的请求如何共用物理块。这种共享还可以跨越请求的结束时刻：旧请求留下的前缀 KV，能让后来的请求免去同一段输入的计算。如果后续请求的前缀完全相同，并使用相同的模型、位置编码规则、adapter 和状态格式，就能直接使用缓存中的 KV，从前缀末端继续 prefill。章首算例的公共前缀有 6144 个 token，命中缓存后，每条长请求只需处理剩余 2048 个输入 token，再开始生成。\n\n这种复用沿前缀连续发生。假设两条提示前 100 个 token 相同，第 101 个不同，即使后面的文本又相同，它们从第 101 个 token 起所依赖的上下文已经不同。把动态时间戳放在提示最前面，会使后面较长的共同工具定义失去复用机会；把稳定的系统提示与工具定义放在前面，再追加本轮变化，就能保留较长的公共前缀。[^ch08-context]\n\n前缀树把这种结构直接表达出来：从根到分叉点是共同上下文，从分叉点到叶子是私有后缀。图 8-17 的前四轮输入首先共享 206 个 token，后三轮又沿同一条路径延伸。树上的边按新增 token 数标记，叶子给出完整输入长度。\n\n![多轮输入的压缩前缀树与共同前缀长度](assets/ch08/figure-8-6-prefix.svg)\n\n*图 8-17：前四轮代码 Agent 输入的压缩前缀树。根部已有 206 个共同 token，边上是新增数量，叶子是输入轮次。分叉表示后续内容不同。*\n\n![十二轮输入中的共同前缀](assets/ch08/figure-8-prefix-lengths.svg)\n\n*图 8-18：蓝色为与上一轮逐 token 相同的前缀，橙色为其余输入。此图描述输入内容的可复用程度，实际缓存命中还取决于状态是否保留。*\n\n每轮在末尾追加内容，可以保留已有的公共前缀，但上下文越长，KV 占用和后续读取量也越大。\n\n**扩展：混合注意力模型如何确定可恢复的前缀位置。** 全注意力保留逐 token KV，递推模型通常只保留当前状态。设文本匹配到第 10,752 个 token，递推快照分别保存在第 4096 和第 8192 个 token；系统从 8192 恢复，再计算到 10,752，重算 2560 个 token。增加快照可以减少重算的 token 数，但要保存更多状态。以第 2 章的 KDA 为例，一种实现将层内张量分到八张卡（TP=8），此时每卡每份快照约 53.6 MiB，保存 2 份约 107 MiB，保存 32 份约 1714 MiB。快照保存得越密，恢复时需要重算的 token 就越少，保留的状态也越多。[^ch08-hybrid]",
+      "lids": [
+        "10.10.4.2",
+        "10.10.4.3",
+        "10.10.4.4",
+        "10.10.4.5",
+        "10.10.4.6",
+        "10.10.4.7",
+        "10.10.4.8",
+        "10.10.4.9",
+        "10.10.4.10"
+      ]
+    },
+    {
+      "from": "11.8.3.14",
+      "to": "11.8.3.18",
+      "span": {
+        "start": 563083,
+        "end": 563585
+      },
+      "text": "系数 2 分别对应 K 与 V。Qwen3-8B 的固定配置为 36 层、8 个 KV 头、每头 128 维。BF16 状态每个 token 的 KV 占 144 KiB；8192 个 token 占\n\n$$\nV_{KV}=8192\\times144\\ \\mathrm{KiB}=1.125\\ \\mathrm{GiB}.\n$$\n\n**例 9.1　prefill 与 decode 之间的 KV 交接需要多久？** A100 服务器与 H20 服务器之间经 200 Gbit/s 的 RDMA 网卡相连，单向载荷带宽按 25 GB/s 计，采用整份状态直接交接。纯载荷传输时间为\n\n$$\nT_{\\mathrm{payload}}=\\frac{1.125\\times2^{30}}{25\\times10^9}\n\\approx48.3\\ \\mathrm{ms}.\n$$\n\n再加一次 5 μs 的启动与同步，总时间仍约 48.3 ms：对这份完整 KV 数据，固定开销只占万分之一左右，提高载荷带宽更有助于缩短等待时间。而在 AF 逐层交接的小数据量传输中，固定开销会占更大的比例。[^ch09-handoff]",
+      "lids": [
+        "11.8.3.14",
+        "11.8.3.15",
+        "11.8.3.16",
+        "11.8.3.17",
+        "11.8.3.18"
+      ]
+    },
+    {
+      "from": "11.8.3.40",
+      "to": "11.8.3.47",
+      "span": {
+        "start": 564481,
+        "end": 565577
+      },
+      "text": "![交接开始时的两端同时占用内存](assets/ch09/figure-9-kv-residency.svg)\n\n*图 9-6：源 P 保留完整状态，目的 D 同时分配同样大小的接收空间。GQA 状态两端各 1.125 GiB，传输过程共占 2.25 GiB；紧凑 MLA 状态两端各 549 MiB，共占 1.07 GiB。方框宽度按字节数比例绘制。*\n\n采用整份双缓冲交接时，传输结束前源端保留完整状态，目的端分配完整接收缓冲。图 9-6 至图 9-8 依次画出交接开始、传输完成和释放源端三个时刻。载荷全部写入目的端后，P 发出完成标记，D 看到标记才读取状态（图 9-7）；执行权交给 D 之后，P 才释放源缓冲（图 9-8）。采用分块传输时，目的端确认收到某一块后，源端就可以提前释放这一块，缩短两端重复驻留的时间；目的端靠完成标记确定哪些连续的块已经可用。若经主存中转，状态则依次占用源端、主存和目的端的缓冲，主存到 GPU 的拷贝成为新的依赖边。\n\n![传输完成后发布目的状态](assets/ch09/figure-9-kv-publish.svg)\n\n*图 9-7：完整的 1.125 GiB 载荷已经写入目的端，P 随后发出完成标记。标记本身不再搬移数据，只规定先写完、后使用的顺序：D 看到标记才读取状态。*\n\n![交接完成后归还源空间](assets/ch09/figure-9-kv-release.svg)\n\n*图 9-8：本算例将执行权交给 D 后释放 P 的源缓冲，D 保留上下文并继续生成。源端空间用于后续请求。*\n\n请求持续到达时，链路带宽既限制每秒能交接多少份状态，也影响每份状态需要传输多久。每秒 8 次上述交接需要约 9.7 GB/s 的传输带宽；每秒 16 次则需要约 19.3 GB/s。100 GbE（100 Gbit/s 以太网）端口每方向 12.5 GB/s，能满足前者的平均需求，但每个请求仍要等传输完成；后者则不同：即使两池有空闲计算能力，网络队列也会持续增长。前一种情形下每份状态要约 96.6 ms 才能传完，后一种情形每秒还会积累约 6.8 GB 待传数据。传输时间决定了单个请求至少要等待多久，而数据到达速率与传输速率之差决定了队列增长多快。换成 549 MiB 的紧凑 MLA 状态，每秒 8 次和 16 次交接只需约 4.6 和 9.2 GB/s，同一个 100 GbE 端口能满足两者的平均需求，每份状态约 46.1 ms 传完。队列是否增长由状态字节数与链路带宽共同决定，模型换了上下文表示，同一条链路的结论就会翻转。",
+      "lids": [
+        "11.8.3.40",
+        "11.8.3.41",
+        "11.8.3.42",
+        "11.8.3.43",
+        "11.8.3.44",
+        "11.8.3.45",
+        "11.8.3.46",
+        "11.8.3.47"
+      ]
+    },
+    {
+      "from": "11.11.4.2",
+      "to": "11.11.4.7",
+      "span": {
+        "start": 600282,
+        "end": 601414
+      },
+      "text": "上一节假定保存下来的状态能完整取回。实例重启后，目录记录、磁盘数据和可连续复用的前缀可能并不一致，恢复过程需要重新确认哪些计算结果已经保存。持久化让状态在实例重启或任务暂停后仍然可用。完整保存减少恢复时的重算，周期性 checkpoint 减少写入但增加恢复工作，部分重算则用已保留的前缀补齐缺的部分。checkpoint 要保存继续计算所需的全部状态：完整 GQA 保存上下文 K、V；DeepSeek V4 的状态还涉及压缩结果、窗口以及未完成的压缩块。恢复时从 checkpoint 所记录的最后一次完整更新继续计算。[^ch09-v4]\n\n持久化的状态按页保存，恢复时也按页读回。先考虑完整的 GQA 页。Qwen3-8B 每个含 16 个 token 的逻辑页为 2.25 MiB。若各层的 K、V 分片分别搬移，会形成许多小的连续段；若按页汇集，传输次数和所需的布局转换都不同。一个逻辑页按 36 层的 K、V 分开后有 72 个 32 KiB 的连续段；按页汇集后则是一个 2.25 MiB 的对象。前者更容易受每秒操作次数的限制，后者把更多时间花在连续载荷的传输上。\n\n重启后的某个请求读取了 64 页，覆盖 1024 个 token，但可复用的连续前缀只有 1008 个 token，即 63 页。多读的那一页占 2.25 MiB，却没有省掉相应的重算。对该请求，读取量为 144 MiB，有效复用量约为 142 MiB；更能说明问题的说法是“读入 64 页，用上 63 页”。这里的限制发生在读取之后：只有匹配成功、能连续接到已有上下文上的页，才能替代计算。把磁盘读得更快能缩短读取时间，却改变不了该请求要处理的末页。[^ch09-restart]\n\n![读取页与可复用连续前缀](assets/ch09/figure-9-12-cache.svg)\n\n*图 9-36：读入的页不一定全部成为可复用前缀。正常重启后的这一请求读入 64 个各含 16 个 token 的页，只复用前 63 页；末页仍需处理。每页 2.25 MiB，该请求的匹配边界为 1008 个 token。*\n\n页面缺失时，要比较继续等待和重新计算各需要多久。在 A100 上重算 8192 个 token 的整段前缀约需 0.856 秒（第 9.2.3 节的 prefill 时间）；若为取回一个不可用的对象已经等了 1 秒，这一次等待就已超过整段重算的时间。实际的截断页实验里，无条件等待的请求在 60 秒观察窗口内一直没有完成，改为允许放弃等待后，请求靠重算得到了结果。完成当前请求之后，还要隔离或修复坏页，否则下一个请求还会遇到同样的等待。[^ch09-fault]",
+      "lids": [
+        "11.11.4.2",
+        "11.11.4.3",
+        "11.11.4.4",
+        "11.11.4.5",
+        "11.11.4.6",
+        "11.11.4.7"
+      ]
+    },
+    {
+      "from": "12.12.4.2",
+      "to": "12.12.4.4",
+      "span": {
+        "start": 666903,
+        "end": 667434
+      },
+      "text": "设训练刚完成一次参数更新，此时停机。恢复后，要接着训练，需要知道当时的权重、下一批该读哪些数据，以及优化器已经累积了哪些历史。仅有权重，可以执行前向推理，却不足以确定训练的下一次更新。因此，训练 checkpoint 要保存与同一训练进度对应的全部必要状态，恢复后才能接着训练。\n\n本章采用 Adam 的训练需要保存权重、一阶矩与二阶矩、步数、学习率状态、随机状态和下一批数据的组成。学习率控制更新步长，随机状态决定后续随机采样的序列。权重相同而优化器的矩状态不同，下一次参数更新便可能不同；数据读取位置相同而打包时剩余的 token 不同，下一条训练序列也会改变。第 10.2.2 节的激活重计算解决的是一次前向、反向之内哪些中间值可以重建；checkpoint 要解决的是中断之后整个训练过程如何继续。\n\n一次训练迭代结束后，下一批梯度由反向重新产生。此时保存权重 2 bytes、主权重 4 bytes 和两份 Adam 状态 8 bytes，每参数合计 14 bytes。Qwen3-8B 的这部分 checkpoint 约为 115 GB。在一次训练迭代结束时，把模型状态和已处理到的数据位置一同保存，就能确定恢复后该用哪些参数、从哪一批数据继续训练。",
+      "lids": [
+        "12.12.4.2",
+        "12.12.4.3",
+        "12.12.4.4"
+      ]
+    },
+    {
+      "from": "12.12.4.17",
+      "to": "12.12.4.18",
+      "span": {
+        "start": 668105,
+        "end": 668415
+      },
+      "text": "权重可以凭原矩阵的行号重新拼接，训练序列也需要保留足够的信息，才能重新组成同样的输入。图 10-30 中已经准备好但尚未用于训练的数据，同样需要在恢复时重新定位。除了 batch 位置，还要保留数据预处理的中间结果。\n\n打包器若保留 2,000 个 token，下一份数据提供 6,192 个，两者组成下一条 8,192 个 token 的序列。如果丢失这 2,000 个 token，就只能从后续数据中取出额外的 token 来补齐下一条序列，从而改变它的前缀、注意力关系和标签。将已用于训练的数据位置、尚未组成完整序列的 token 与参数更新结果一起保存，恢复后才能继续构造同一批数据。[^ch10-resume]",
+      "lids": [
+        "12.12.4.17",
+        "12.12.4.18"
+      ]
+    },
+    {
+      "from": "13.13.2.8",
+      "to": "13.13.2.19",
+      "span": {
+        "start": 734694,
+        "end": 736958
+      },
+      "text": "Agent 运行时也需要规定清楚：向调用者报告完成时，只保证答案已经生成，还是保证消息、工具结果和恢复位置都已保存。这些约定就是持久性语义。仅对聊天日志调用 `fsync()` 还不够，因为恢复所需的信息可能分别存放在日志、工作目录和外部数据库中；控制器还要核对消息中的操作、目录中的文件和数据库中的结果是否一致。\n\n这里按 ReAct 循环的轮次保存：每轮包括一次模型输出、由此发起的工具调用及其返回结果，可能包含多条消息。控制器将这一轮的记录追加到本地 JSONL 文件，确认整轮保存成功后才进入下一轮；保存失败就立即中止。因此，本地不会在某轮保存失败后，还继续执行并保存后续轮次。这里的“保存成功”还要说明能承受哪种故障：写入本地页缓存、完成本地 `fsync()`，或收到云端持久化确认，提供的保证并不相同。本地文件可以支持进程重启后的恢复，却未必能应对整台机器及其磁盘不可用。\n\n为了减少等待，也可以每轮先保存到本地，再在后台上传该轮新增的记录。假设上传失败后暂不重试，也不中止本地执行：第一轮运行测试、取得失败结果，第二轮修改代码、取得工具确认，第三轮再次测试、取得新结果。三轮记录都已写入本地 JSONL，但第二轮上传失败，第三轮上传成功（图 11-35）。此时本地历史完整，云端却缺少第二轮的模型输出和工具结果。如果本机随后不可用，换一台机器仅凭云端记录恢复，就会遇到这个缺口。若每次上传的是包含此前所有轮次的完整快照，或上传程序必须补齐失败记录才继续，则不能套用这一例子。\n\n![本地三轮记录完整，但第二轮异步上传失败，云端历史只完整到第一轮](assets/ch11/figure-11-recovery-coverage.svg)\n\n*图 11-35：初始状态已在本地和云端保存，每列代表一个 ReAct 轮次。每轮先保存到本地，再异步上传该轮新增记录；本例允许上传失败后继续执行和上传后续轮次。第二轮上传失败后，即使第三轮上传成功，云端历史仍只完整到第一轮。横向排列表示轮次顺序，不表示耗时。*\n\n采用这类异步保存方式时，控制器必须分别跟踪本地和云端的保存进度。云端不仅要记录收到的最后一轮，还要记下从起点连续保存到了哪一轮。不能因为第三轮上传成功，就把连续保存位置从第一轮改成第三轮；只有补齐第二轮，或用完整的本地副本重建并核对后，才能确认云端历史也完整到第三轮。\n\n删除旧日志时也一样。若要删除前两轮的记录，就必须先保存一份能够恢复到第二轮结束时的完整状态，并将状态与对应轮次一起提交。恢复时若既找不到此前的完整日志，也找不到这份状态，即使剩余日志全部读完，也应返回 `incomplete`，表示没有足够依据确认历史完整。如果接口允许按消息位置恢复，还须确认该位置是否对应一个已保存的完整轮次，并核对工作目录版本；轮内位置若没有单独保存，就不能承诺恢复到那里。已经提交到外部系统的操作，也不会因为消息回退而撤销。[^ch11-durability]\n\n对本章的代码修复任务，可以借用数据库事务的做法，把一轮“模型决策—工具执行—保存结果”作为一个整体提交。这一轮的模型消息、工具结果和相关文件版本都保存成功后，控制器才记下这一轮已提交；重启后，再从最后一轮完整提交的结果接着执行。这也是 **Agent 事务（agent transaction）**研究的一项内容：如何在 Agent 执行中实现原子性、一致性、隔离性和持久性，即数据库中的 ACID 性质。[^ch11-agent-transaction] 如果一轮操作还调用了外部服务，就需要对方支持操作标识、幂等接口或补偿处理；仅在本地记下“已提交”，不能保证外部操作也恰好完成一次。\n\n保存得越频繁，故障后通常需要重做的工作越少，但正常执行时的开销也越大。用一个小算例比较：100 个请求依次执行，每个用时 200 ms；每次持久化提交需要 8 ms 的固定开销，另外每写入一个请求的记录需要 2 ms。假设提交期间暂停处理请求，忽略其他开销，结果如下。\n\n| 保存方式 | 保存共用时 | 无故障时总用时 | 故障后最多重做的计算时间 |\n| --- | ---: | ---: | ---: |\n| 每个请求提交一次 | $100(8+2)=1000$ ms | 21 s | 0.2 s |\n| 每 10 个请求提交 | $10(8+10\\times2)=280$ ms | 20.28 s | 2 s |\n\n每 10 个请求一起提交，正常执行可节省 0.72 s；但若恰好在提交前发生故障，就要重做这 10 个请求，共 2 s 的计算。这里假定每次提交要么全部成功，要么全部不生效，未提交的请求都需重做，工具也允许安全重试；表中未计入重建环境和重新保存的时间。若改为异步保存，控制器就可以一边处理后续请求，一边写入已有结果。故障后需要重做多少，取决于当时还有多少记录没有存好。因此，比较保存方式时，除了任务完成时间，还应记录已返回但未保存的请求数，并核对重启后实际能恢复到哪里。\n\n这里仍然需要回答全书反复讨论的两个问题：数据放在哪里，谁必须等它。第 11.2 节在模型调用期间释放工具环境，以节省内存。这样做的前提是下一轮所需的状态已经存到环境之外，或可以在丢失后重新计算。若唯一一份结果还在环境内存中，控制器就要等它保存完成再释放环境，否则只能在丢失后重做。因此，调度器安排资源时，也要计入保存状态的等待时间和故障后的重做成本。",
+      "lids": [
+        "13.13.2.8",
+        "13.13.2.9",
+        "13.13.2.10",
+        "13.13.2.11",
+        "13.13.2.12",
+        "13.13.2.13",
+        "13.13.2.14",
+        "13.13.2.15",
+        "13.13.2.16",
+        "13.13.2.17",
+        "13.13.2.18",
+        "13.13.2.19"
+      ]
+    }
+  ]
+}

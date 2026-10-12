@@ -1,0 +1,15 @@
+{
+  "completed": true,
+  "recovered_errors": [],
+  "usage": {
+    "input_tokens": 24228,
+    "cached_input_tokens": 11264,
+    "output_tokens": 81
+  },
+  "total_tokens": 24309,
+  "actual_cost": null,
+  "final": "{\"text\":null,\"tool_calls\":[{\"name\":\"source.present\",\"arguments\":\"{\\\"quote\\\":\\\"Average speed is total distance divided by total time.\\\"}\"}]}",
+  "exit_code": 0,
+  "timed_out": false,
+  "elapsed_ms": 17350.1761
+}

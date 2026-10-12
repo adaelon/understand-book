@@ -1,0 +1,3610 @@
+{
+  "calls": [
+    {
+      "images": [],
+      "input": {
+        "html": "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script>",
+        "initial_state": {
+          "count": 2
+        },
+        "new_object": true,
+        "operation": "write",
+        "readable_content": "已找到两处证据，共需三处。补齐后为一。",
+        "title": "证据召回率"
+      },
+      "result": {
+        "based_on": null,
+        "candidate_id": "candidate-1791801058631272400-1",
+        "initial_state": {
+          "count": 2
+        },
+        "libraries": [],
+        "next": "Preview with real actions and inspect screenshots. For local changes, search/read/patch this candidate_id. Patch preserves assets and creates a new candidate; preview it again. Use write with full HTML for broad rewrites; based_on is only for a delivered presentation reference. Deliver the final candidate after its required previews.",
+        "status": "candidate_saved"
+      }
+    },
+    {
+      "images": [
+        {
+          "candidate_id": "candidate-1791801058631272400-1",
+          "caption": "Browser observation: candidate candidate-1791801058631272400-1, environment desktop-content (960x720 Mouse), step 0, status preview_ready_for_inspection. Action: null; actual document position x=0, y=0 CSS px (max y=0), viewport 960x720 CSS px. Inspect layout, graphics and agreement with readable content before delivery.",
+          "environment_name": "desktop-content"
+        },
+        {
+          "candidate_id": "candidate-1791801058631272400-1",
+          "caption": "Browser observation: candidate candidate-1791801058631272400-1, environment desktop-content (960x720 Mouse), step 1, status preview_ready_for_inspection. Action: {\"kind\":\"click\",\"selector\":\"#add\"}; actual document position x=0, y=0 CSS px (max y=0), viewport 960x720 CSS px. Inspect layout, graphics and agreement with readable content before delivery.",
+          "environment_name": "desktop-content"
+        }
+      ],
+      "input": {
+        "actions": [
+          {
+            "kind": "click",
+            "selector": "#add"
+          }
+        ],
+        "candidate_id": "candidate-1791801058631272400-1",
+        "operation": "preview",
+        "read_selector": "#result",
+        "width": 960
+      },
+      "result": {
+        "candidate_id": "candidate-1791801058631272400-1",
+        "environment": {
+          "height": 720,
+          "input": "mouse",
+          "width": 960
+        },
+        "environment_name": "desktop-content",
+        "errors": [],
+        "missing_environments": [
+          "narrow-content",
+          "short-content",
+          "desktop-content"
+        ],
+        "observations": [
+          {
+            "action": null,
+            "dom": {
+              "controls": [
+                {
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "text": "0.6666666666666666",
+                  "value": "0.6666666666666666"
+                },
+                {
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "text": "补齐证据",
+                  "value": ""
+                }
+              ],
+              "elements": [
+                {
+                  "height": 30.15625,
+                  "id": "",
+                  "tag": "H1",
+                  "width": 936,
+                  "x": 12,
+                  "y": 12
+                },
+                {
+                  "height": 20,
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "width": 163.359375,
+                  "x": 12,
+                  "y": 67.859375
+                },
+                {
+                  "height": 44,
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "width": 88.375,
+                  "x": 175.359375,
+                  "y": 56.0625
+                },
+                {
+                  "height": 0,
+                  "id": "",
+                  "tag": "SCRIPT",
+                  "width": 0,
+                  "x": 0,
+                  "y": 0
+                }
+              ],
+              "scroll": {
+                "max_y": 0,
+                "viewport_height": 720,
+                "viewport_width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "semantic_text": "证据召回率0.6666666666666666补齐证据",
+              "source_ref_ids": [],
+              "text": "证据召回率\n0.6666666666666666补齐证据",
+              "unsupported_assets": [],
+              "visible_text": "证据召回率\n0.6666666666666666\n补齐证据\n"
+            },
+            "issues": [],
+            "layout": {
+              "contentSize": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "cssContentSize": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "cssLayoutViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "cssVisualViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              },
+              "layoutViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "visualViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              }
+            },
+            "scene": null,
+            "scroll": {
+              "max_y": 0.0,
+              "viewport_height": 720,
+              "viewport_width": 960,
+              "x": 0.0,
+              "y": 0.0
+            },
+            "step": 0
+          },
+          {
+            "action": {
+              "kind": "click",
+              "selector": "#add"
+            },
+            "dom": {
+              "controls": [
+                {
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "text": "1",
+                  "value": "1"
+                },
+                {
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "text": "补齐证据",
+                  "value": ""
+                }
+              ],
+              "elements": [
+                {
+                  "height": 30.15625,
+                  "id": "",
+                  "tag": "H1",
+                  "width": 936,
+                  "x": 12,
+                  "y": 12
+                },
+                {
+                  "height": 20,
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "width": 9.390625,
+                  "x": 12,
+                  "y": 67.859375
+                },
+                {
+                  "height": 44,
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "width": 88.375,
+                  "x": 21.390625,
+                  "y": 56.0625
+                },
+                {
+                  "height": 0,
+                  "id": "",
+                  "tag": "SCRIPT",
+                  "width": 0,
+                  "x": 0,
+                  "y": 0
+                }
+              ],
+              "scroll": {
+                "max_y": 0,
+                "viewport_height": 720,
+                "viewport_width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "semantic_text": "证据召回率1补齐证据",
+              "source_ref_ids": [],
+              "text": "证据召回率\n1补齐证据",
+              "unsupported_assets": [],
+              "visible_text": "证据召回率\n1\n补齐证据\n"
+            },
+            "issues": [],
+            "layout": {
+              "contentSize": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "cssContentSize": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "cssLayoutViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "cssVisualViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              },
+              "layoutViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "visualViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              }
+            },
+            "scene": null,
+            "scroll": {
+              "max_y": 0.0,
+              "viewport_height": 720,
+              "viewport_width": 960,
+              "x": 0.0,
+              "y": 0.0
+            },
+            "step": 1
+          }
+        ],
+        "reading": {
+          "action_step": 1,
+          "controls": [],
+          "page_state": null,
+          "scene": null,
+          "scroll": {
+            "max_y": 0,
+            "viewport_height": 720,
+            "viewport_width": 960,
+            "x": 0,
+            "y": 0
+          },
+          "selector": "#result",
+          "text": "1"
+        },
+        "recorded_environments": [
+          "legacy"
+        ],
+        "status": "preview_ready_for_inspection"
+      }
+    },
+    {
+      "images": [],
+      "input": {
+        "candidate_id": "candidate-1791801058631272400-1",
+        "operation": "deliver"
+      },
+      "result": {
+        "next": "Conclude normally; Runtime attaches this version to the final answer. History commit is still pending.",
+        "reference": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 1
+        },
+        "status": "version_saved"
+      }
+    },
+    {
+      "images": [
+        {
+          "candidate_id": null,
+          "caption": "Matplotlib plot plot-01a12faa-8e55-77e3-9c3c-318b53a3486c, 640x400; inspect the actual labels, axes, values and legend before using it.",
+          "environment_name": null
+        }
+      ],
+      "input": {
+        "code": "ax.plot(data['x'], data['y'], marker='o'); ax.set_xlabel('Required'); ax.set_ylabel('Found')",
+        "data": {
+          "x": [
+            1,
+            2,
+            3
+          ],
+          "y": [
+            1,
+            2,
+            2
+          ]
+        },
+        "operation": "render_plot",
+        "size": {
+          "height": 400,
+          "width": 640
+        }
+      },
+      "result": {
+        "asset_path": "assets/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.svg",
+        "asset_ref": "plot-01a12faa-8e55-77e3-9c3c-318b53a3486c",
+        "font": "Microsoft YaHei",
+        "height": 400,
+        "mime": "image/svg+xml",
+        "next": "Inspect the returned image, then use asset_path in an img src and include asset_ref in write.asset_refs",
+        "status": "plot_rendered",
+        "width": 640
+      }
+    },
+    {
+      "images": [],
+      "input": {
+        "asset_refs": [
+          "plot-01a12faa-8e55-77e3-9c3c-318b53a3486c"
+        ],
+        "based_on": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 1
+        },
+        "html": "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script><img src='assets/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.svg' alt='Required and found evidence'><button data-source-ref='source-to4-observed'>来源</button>",
+        "initial_state": {
+          "count": 2
+        },
+        "operation": "write",
+        "readable_content": "已找到两处证据，共需三处。补齐后为一。 [[source:source-to4-observed]]",
+        "source_ref_ids": [
+          "source-to4-observed"
+        ],
+        "title": "证据召回率与图示"
+      },
+      "result": {
+        "based_on": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 1
+        },
+        "candidate_id": "candidate-1791801069145066000-2",
+        "initial_state": {
+          "count": 2
+        },
+        "libraries": [],
+        "next": "Preview with real actions and inspect screenshots. For local changes, search/read/patch this candidate_id. Patch preserves assets and creates a new candidate; preview it again. Use write with full HTML for broad rewrites; based_on is only for a delivered presentation reference. Deliver the final candidate after its required previews.",
+        "status": "candidate_saved"
+      }
+    },
+    {
+      "images": [
+        {
+          "candidate_id": "candidate-1791801069145066000-2",
+          "caption": "Browser observation: candidate candidate-1791801069145066000-2, environment desktop-content (960x720 Mouse), step 0, status preview_ready_for_inspection. Action: null; actual document position x=0, y=0 CSS px (max y=0), viewport 960x720 CSS px. Inspect layout, graphics and agreement with readable content before delivery.",
+          "environment_name": "desktop-content"
+        },
+        {
+          "candidate_id": "candidate-1791801069145066000-2",
+          "caption": "Browser observation: candidate candidate-1791801069145066000-2, environment desktop-content (960x720 Mouse), step 1, status preview_ready_for_inspection. Action: {\"kind\":\"click\",\"selector\":\"#add\"}; actual document position x=0, y=0 CSS px (max y=0), viewport 960x720 CSS px. Inspect layout, graphics and agreement with readable content before delivery.",
+          "environment_name": "desktop-content"
+        }
+      ],
+      "input": {
+        "actions": [
+          {
+            "kind": "click",
+            "selector": "#add"
+          }
+        ],
+        "candidate_id": "candidate-1791801069145066000-2",
+        "operation": "preview",
+        "read_selector": "#result",
+        "width": 960
+      },
+      "result": {
+        "candidate_id": "candidate-1791801069145066000-2",
+        "environment": {
+          "height": 720,
+          "input": "mouse",
+          "width": 960
+        },
+        "environment_name": "desktop-content",
+        "errors": [],
+        "missing_environments": [
+          "narrow-content",
+          "short-content",
+          "desktop-content"
+        ],
+        "observations": [
+          {
+            "action": null,
+            "dom": {
+              "controls": [
+                {
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "text": "0.6666666666666666",
+                  "value": "0.6666666666666666"
+                },
+                {
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "text": "补齐证据",
+                  "value": ""
+                },
+                {
+                  "id": "",
+                  "tag": "BUTTON",
+                  "text": "正文 [1]",
+                  "value": ""
+                }
+              ],
+              "elements": [
+                {
+                  "height": 30.15625,
+                  "id": "",
+                  "tag": "H1",
+                  "width": 936,
+                  "x": 12,
+                  "y": 12
+                },
+                {
+                  "height": 20,
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "width": 163.359375,
+                  "x": 12,
+                  "y": 424.0625
+                },
+                {
+                  "height": 44,
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "width": 88.375,
+                  "x": 175.359375,
+                  "y": 412.265625
+                },
+                {
+                  "height": 0,
+                  "id": "",
+                  "tag": "SCRIPT",
+                  "width": 0,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "height": 384,
+                  "id": "",
+                  "tag": "IMG",
+                  "width": 614.390625,
+                  "x": 263.734375,
+                  "y": 56.0625
+                },
+                {
+                  "height": 24,
+                  "id": "",
+                  "tag": "BUTTON",
+                  "width": 56.609375,
+                  "x": 880.125,
+                  "y": 424.46875
+                }
+              ],
+              "scroll": {
+                "max_y": 0,
+                "viewport_height": 720,
+                "viewport_width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "semantic_text": "证据召回率0.6666666666666666补齐证据\nRequired and found evidence",
+              "source_ref_ids": [
+                "source-to4-observed"
+              ],
+              "text": "证据召回率\n0.6666666666666666补齐证据正文 [1]",
+              "unsupported_assets": [],
+              "visible_text": "证据召回率\n0.6666666666666666\n补齐证据\n正文 [1]\n"
+            },
+            "issues": [],
+            "layout": {
+              "contentSize": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "cssContentSize": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "cssLayoutViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "cssVisualViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              },
+              "layoutViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "visualViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              }
+            },
+            "scene": null,
+            "scroll": {
+              "max_y": 0.0,
+              "viewport_height": 720,
+              "viewport_width": 960,
+              "x": 0.0,
+              "y": 0.0
+            },
+            "step": 0
+          },
+          {
+            "action": {
+              "kind": "click",
+              "selector": "#add"
+            },
+            "dom": {
+              "controls": [
+                {
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "text": "1",
+                  "value": "1"
+                },
+                {
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "text": "补齐证据",
+                  "value": ""
+                },
+                {
+                  "id": "",
+                  "tag": "BUTTON",
+                  "text": "正文 [1]",
+                  "value": ""
+                }
+              ],
+              "elements": [
+                {
+                  "height": 30.15625,
+                  "id": "",
+                  "tag": "H1",
+                  "width": 936,
+                  "x": 12,
+                  "y": 12
+                },
+                {
+                  "height": 20,
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "width": 9.390625,
+                  "x": 12,
+                  "y": 424.0625
+                },
+                {
+                  "height": 44,
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "width": 88.375,
+                  "x": 21.390625,
+                  "y": 412.265625
+                },
+                {
+                  "height": 0,
+                  "id": "",
+                  "tag": "SCRIPT",
+                  "width": 0,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "height": 384,
+                  "id": "",
+                  "tag": "IMG",
+                  "width": 614.390625,
+                  "x": 109.765625,
+                  "y": 56.0625
+                },
+                {
+                  "height": 24,
+                  "id": "",
+                  "tag": "BUTTON",
+                  "width": 56.609375,
+                  "x": 726.15625,
+                  "y": 424.46875
+                }
+              ],
+              "scroll": {
+                "max_y": 0,
+                "viewport_height": 720,
+                "viewport_width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "semantic_text": "证据召回率1补齐证据\nRequired and found evidence",
+              "source_ref_ids": [
+                "source-to4-observed"
+              ],
+              "text": "证据召回率\n1补齐证据正文 [1]",
+              "unsupported_assets": [],
+              "visible_text": "证据召回率\n1\n补齐证据\n正文 [1]\n"
+            },
+            "issues": [],
+            "layout": {
+              "contentSize": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "cssContentSize": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "cssLayoutViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "cssVisualViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              },
+              "layoutViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "visualViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              }
+            },
+            "scene": null,
+            "scroll": {
+              "max_y": 0.0,
+              "viewport_height": 720,
+              "viewport_width": 960,
+              "x": 0.0,
+              "y": 0.0
+            },
+            "step": 1
+          }
+        ],
+        "reading": {
+          "action_step": 1,
+          "controls": [],
+          "page_state": null,
+          "scene": null,
+          "scroll": {
+            "max_y": 0,
+            "viewport_height": 720,
+            "viewport_width": 960,
+            "x": 0,
+            "y": 0
+          },
+          "selector": "#result",
+          "text": "1"
+        },
+        "recorded_environments": [
+          "legacy"
+        ],
+        "status": "preview_ready_for_inspection"
+      }
+    },
+    {
+      "images": [],
+      "input": {
+        "candidate_id": "candidate-1791801069145066000-2",
+        "operation": "deliver"
+      },
+      "result": {
+        "next": "Conclude normally; Runtime attaches this version to the final answer. History commit is still pending.",
+        "reference": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 2
+        },
+        "status": "version_saved"
+      }
+    },
+    {
+      "images": [],
+      "input": {
+        "asset_refs": [
+          "plot-01a12faa-8e55-77e3-9c3c-318b53a3486c"
+        ],
+        "based_on": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 2
+        },
+        "html": "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script><img src='assets/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.svg' alt='Required and found evidence'><button data-source-ref='source-to4-observed'>来源</button>",
+        "initial_state": {
+          "count": 2
+        },
+        "operation": "write",
+        "readable_content": "已找到两处证据，共需三处。补齐后为一。 [[source:source-to4-observed]]",
+        "source_ref_ids": [
+          "source-to4-observed"
+        ],
+        "title": "证据召回率与图示"
+      },
+      "result": {
+        "based_on": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 2
+        },
+        "candidate_id": "candidate-1791801074995547200-3",
+        "initial_state": {
+          "count": 2
+        },
+        "libraries": [],
+        "next": "Preview with real actions and inspect screenshots. For local changes, search/read/patch this candidate_id. Patch preserves assets and creates a new candidate; preview it again. Use write with full HTML for broad rewrites; based_on is only for a delivered presentation reference. Deliver the final candidate after its required previews.",
+        "status": "candidate_saved"
+      }
+    },
+    {
+      "images": [],
+      "input": {
+        "operation": "read",
+        "reference": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 2
+        }
+      },
+      "result": {
+        "animations": [],
+        "asset_refs": [
+          "plot-01a12faa-8e55-77e3-9c3c-318b53a3486c"
+        ],
+        "assumptions": [],
+        "based_on": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 2
+        },
+        "candidate_id": null,
+        "chunk_characters": 496,
+        "end_offset": 496,
+        "entrypoint": "index.html",
+        "file": "index.html",
+        "files": [
+          "assets/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.svg",
+          "index.html",
+          "plots/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.json",
+          "plots/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.py"
+        ],
+        "initial_state": {
+          "count": 2
+        },
+        "libraries": [],
+        "next_offset": null,
+        "offset": 0,
+        "readable_content": "已找到两处证据，共需三处。补齐后为一。 [[source:source-to4-observed]]",
+        "reference": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 2
+        },
+        "source_ref_ids": [
+          "source-to4-observed"
+        ],
+        "state_contract": null,
+        "status": "version_read",
+        "text": "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script><img src='assets/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.svg' alt='Required and found evidence'><button data-source-ref='source-to4-observed'>来源</button>",
+        "title": "证据召回率与图示",
+        "total_characters": 496
+      }
+    },
+    {
+      "images": [],
+      "input": {
+        "max_matches": 5,
+        "operation": "search",
+        "query": "补齐证据",
+        "reference": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 2
+        }
+      },
+      "result": {
+        "candidate_id": null,
+        "file": "index.html",
+        "matches": [
+          {
+            "context_end": 235,
+            "context_offset": 0,
+            "line": 1,
+            "offset": 111,
+            "text": "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').tex"
+          }
+        ],
+        "next_offset": null,
+        "offset": 0,
+        "query": "补齐证据",
+        "reference": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 2
+        },
+        "status": "source_matches",
+        "total_characters": 496
+      }
+    },
+    {
+      "images": [],
+      "input": {
+        "edits": [
+          {
+            "new_text": "补齐全部证据",
+            "old_text": "补齐证据"
+          }
+        ],
+        "operation": "patch",
+        "reference": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 2
+        }
+      },
+      "result": {
+        "applied_edits": 1,
+        "based_on": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 2
+        },
+        "candidate_id": "candidate-1791801075021692100-4",
+        "initial_state": {
+          "count": 2
+        },
+        "next": "Preview and inspect this new candidate in all required environments before deliver. The base and its preview receipts are unchanged.",
+        "status": "candidate_saved"
+      }
+    },
+    {
+      "images": [],
+      "input": {
+        "candidate_id": "candidate-1791801075021692100-4",
+        "file": "readable_content",
+        "length": 200,
+        "offset": 0,
+        "operation": "read"
+      },
+      "result": {
+        "animations": [],
+        "asset_refs": [
+          "plot-01a12faa-8e55-77e3-9c3c-318b53a3486c"
+        ],
+        "assumptions": [],
+        "based_on": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 2
+        },
+        "candidate_id": "candidate-1791801075021692100-4",
+        "chunk_characters": 50,
+        "end_offset": 50,
+        "entrypoint": "index.html",
+        "file": "readable_content",
+        "files": [
+          "assets/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.svg",
+          "index.html",
+          "plots/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.json",
+          "plots/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.py"
+        ],
+        "initial_state": {
+          "count": 2
+        },
+        "libraries": [],
+        "next_offset": null,
+        "offset": 0,
+        "reference": null,
+        "source_ref_ids": [
+          "source-to4-observed"
+        ],
+        "state_contract": null,
+        "status": "version_read",
+        "text": "已找到两处证据，共需三处。补齐后为一。 [[source:source-to4-observed]]",
+        "title": "证据召回率与图示",
+        "total_characters": 50
+      }
+    },
+    {
+      "images": [],
+      "input": {
+        "candidate_id": "candidate-1791801075021692100-4",
+        "max_matches": 5,
+        "operation": "search",
+        "query": "补齐全部证据"
+      },
+      "result": {
+        "candidate_id": "candidate-1791801075021692100-4",
+        "file": "index.html",
+        "matches": [
+          {
+            "context_end": 237,
+            "context_offset": 0,
+            "line": 1,
+            "offset": 111,
+            "text": "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐全部证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').tex"
+          }
+        ],
+        "next_offset": null,
+        "offset": 0,
+        "query": "补齐全部证据",
+        "reference": null,
+        "status": "source_matches",
+        "total_characters": 498
+      }
+    },
+    {
+      "images": [],
+      "input": {
+        "candidate_id": "candidate-1791801075021692100-4",
+        "edits": [
+          {
+            "new_text": "补齐所需证据",
+            "old_text": "补齐全部证据"
+          }
+        ],
+        "operation": "patch"
+      },
+      "result": {
+        "applied_edits": 1,
+        "based_on": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 2
+        },
+        "candidate_id": "candidate-1791801075049769500-5",
+        "initial_state": {
+          "count": 2
+        },
+        "next": "Preview and inspect this new candidate in all required environments before deliver. The base and its preview receipts are unchanged.",
+        "status": "candidate_saved"
+      }
+    },
+    {
+      "images": [
+        {
+          "candidate_id": "candidate-1791801075049769500-5",
+          "caption": "Browser observation: candidate candidate-1791801075049769500-5, environment narrow-content (320x420 Touch), step 0, status preview_environment_recorded. Action: null; actual document position x=0, y=0 CSS px (max y=0), viewport 320x420 CSS px. Inspect layout, graphics and agreement with readable content before delivery.",
+          "environment_name": "narrow-content"
+        },
+        {
+          "candidate_id": "candidate-1791801075049769500-5",
+          "caption": "Browser observation: candidate candidate-1791801075049769500-5, environment narrow-content (320x420 Touch), step 1, status preview_environment_recorded. Action: {\"kind\":\"click\",\"selector\":\"#add\"}; actual document position x=0, y=0 CSS px (max y=0), viewport 320x420 CSS px. Inspect layout, graphics and agreement with readable content before delivery.",
+          "environment_name": "narrow-content"
+        },
+        {
+          "candidate_id": "candidate-1791801075049769500-5",
+          "caption": "Browser observation: candidate candidate-1791801075049769500-5, environment narrow-content (320x420 Touch), step 2, status preview_environment_recorded. Action: {\"kind\":\"scroll\",\"y\":0}; actual document position x=0, y=0 CSS px (max y=0), viewport 320x420 CSS px. Inspect layout, graphics and agreement with readable content before delivery.",
+          "environment_name": "narrow-content"
+        }
+      ],
+      "input": {
+        "actions": [
+          {
+            "kind": "click",
+            "selector": "#add"
+          },
+          {
+            "kind": "scroll",
+            "y": 0
+          }
+        ],
+        "candidate_id": "candidate-1791801075049769500-5",
+        "operation": "preview",
+        "read_selector": "#result",
+        "viewport": {
+          "height": 420,
+          "input": "touch",
+          "width": 320
+        }
+      },
+      "result": {
+        "candidate_id": "candidate-1791801075049769500-5",
+        "environment": {
+          "height": 420,
+          "input": "touch",
+          "width": 320
+        },
+        "environment_name": "narrow-content",
+        "errors": [],
+        "missing_environments": [
+          "short-content",
+          "desktop-content"
+        ],
+        "observations": [
+          {
+            "action": null,
+            "dom": {
+              "controls": [
+                {
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "text": "0.6666666666666666",
+                  "value": "0.6666666666666666"
+                },
+                {
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "text": "补齐所需证据",
+                  "value": ""
+                },
+                {
+                  "id": "",
+                  "tag": "BUTTON",
+                  "text": "正文 [1]",
+                  "value": ""
+                }
+              ],
+              "elements": [
+                {
+                  "height": 30.15625,
+                  "id": "",
+                  "tag": "H1",
+                  "width": 296,
+                  "x": 12,
+                  "y": 12
+                },
+                {
+                  "height": 20,
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "width": 163.359375,
+                  "x": 12,
+                  "y": 67.859375
+                },
+                {
+                  "height": 44,
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "width": 120.375,
+                  "x": 175.359375,
+                  "y": 56.0625
+                },
+                {
+                  "height": 0,
+                  "id": "",
+                  "tag": "SCRIPT",
+                  "width": 0,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "height": 185,
+                  "id": "",
+                  "tag": "IMG",
+                  "width": 296,
+                  "x": 12,
+                  "y": 100.0625
+                },
+                {
+                  "height": 44,
+                  "id": "",
+                  "tag": "BUTTON",
+                  "width": 56.609375,
+                  "x": 14,
+                  "y": 292.453125
+                }
+              ],
+              "scroll": {
+                "max_y": 0,
+                "viewport_height": 420,
+                "viewport_width": 320,
+                "x": 0,
+                "y": 0
+              },
+              "semantic_text": "证据召回率0.6666666666666666补齐所需证据\nRequired and found evidence",
+              "source_ref_ids": [
+                "source-to4-observed"
+              ],
+              "text": "证据召回率\n0.6666666666666666补齐所需证据正文 [1]",
+              "unsupported_assets": [],
+              "visible_text": "证据召回率\n0.6666666666666666\n补齐所需证据\n正文 [1]\n"
+            },
+            "issues": [],
+            "layout": {
+              "contentSize": {
+                "height": 420,
+                "width": 320,
+                "x": 0,
+                "y": 0
+              },
+              "cssContentSize": {
+                "height": 420,
+                "width": 320,
+                "x": 0,
+                "y": 0
+              },
+              "cssLayoutViewport": {
+                "clientHeight": 420,
+                "clientWidth": 320,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "cssVisualViewport": {
+                "clientHeight": 420,
+                "clientWidth": 320,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              },
+              "layoutViewport": {
+                "clientHeight": 420,
+                "clientWidth": 320,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "visualViewport": {
+                "clientHeight": 420,
+                "clientWidth": 320,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              }
+            },
+            "scene": null,
+            "scroll": {
+              "max_y": 0.0,
+              "viewport_height": 420,
+              "viewport_width": 320,
+              "x": 0.0,
+              "y": 0.0
+            },
+            "step": 0
+          },
+          {
+            "action": {
+              "kind": "click",
+              "selector": "#add"
+            },
+            "dom": {
+              "controls": [
+                {
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "text": "1",
+                  "value": "1"
+                },
+                {
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "text": "补齐所需证据",
+                  "value": ""
+                },
+                {
+                  "id": "",
+                  "tag": "BUTTON",
+                  "text": "正文 [1]",
+                  "value": ""
+                }
+              ],
+              "elements": [
+                {
+                  "height": 30.15625,
+                  "id": "",
+                  "tag": "H1",
+                  "width": 296,
+                  "x": 12,
+                  "y": 12
+                },
+                {
+                  "height": 20,
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "width": 9.390625,
+                  "x": 12,
+                  "y": 67.859375
+                },
+                {
+                  "height": 44,
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "width": 120.375,
+                  "x": 21.390625,
+                  "y": 56.0625
+                },
+                {
+                  "height": 0,
+                  "id": "",
+                  "tag": "SCRIPT",
+                  "width": 0,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "height": 185,
+                  "id": "",
+                  "tag": "IMG",
+                  "width": 296,
+                  "x": 12,
+                  "y": 100.0625
+                },
+                {
+                  "height": 44,
+                  "id": "",
+                  "tag": "BUTTON",
+                  "width": 56.609375,
+                  "x": 14,
+                  "y": 292.453125
+                }
+              ],
+              "scroll": {
+                "max_y": 0,
+                "viewport_height": 420,
+                "viewport_width": 320,
+                "x": 0,
+                "y": 0
+              },
+              "semantic_text": "证据召回率1补齐所需证据\nRequired and found evidence",
+              "source_ref_ids": [
+                "source-to4-observed"
+              ],
+              "text": "证据召回率\n1补齐所需证据正文 [1]",
+              "unsupported_assets": [],
+              "visible_text": "证据召回率\n1\n补齐所需证据\n正文 [1]\n"
+            },
+            "issues": [],
+            "layout": {
+              "contentSize": {
+                "height": 420,
+                "width": 320,
+                "x": 0,
+                "y": 0
+              },
+              "cssContentSize": {
+                "height": 420,
+                "width": 320,
+                "x": 0,
+                "y": 0
+              },
+              "cssLayoutViewport": {
+                "clientHeight": 420,
+                "clientWidth": 320,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "cssVisualViewport": {
+                "clientHeight": 420,
+                "clientWidth": 320,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              },
+              "layoutViewport": {
+                "clientHeight": 420,
+                "clientWidth": 320,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "visualViewport": {
+                "clientHeight": 420,
+                "clientWidth": 320,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              }
+            },
+            "scene": null,
+            "scroll": {
+              "max_y": 0.0,
+              "viewport_height": 420,
+              "viewport_width": 320,
+              "x": 0.0,
+              "y": 0.0
+            },
+            "step": 1
+          },
+          {
+            "action": {
+              "kind": "scroll",
+              "y": 0
+            },
+            "dom": {
+              "controls": [
+                {
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "text": "1",
+                  "value": "1"
+                },
+                {
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "text": "补齐所需证据",
+                  "value": ""
+                },
+                {
+                  "id": "",
+                  "tag": "BUTTON",
+                  "text": "正文 [1]",
+                  "value": ""
+                }
+              ],
+              "elements": [
+                {
+                  "height": 30.15625,
+                  "id": "",
+                  "tag": "H1",
+                  "width": 296,
+                  "x": 12,
+                  "y": 12
+                },
+                {
+                  "height": 20,
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "width": 9.390625,
+                  "x": 12,
+                  "y": 67.859375
+                },
+                {
+                  "height": 44,
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "width": 120.375,
+                  "x": 21.390625,
+                  "y": 56.0625
+                },
+                {
+                  "height": 0,
+                  "id": "",
+                  "tag": "SCRIPT",
+                  "width": 0,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "height": 185,
+                  "id": "",
+                  "tag": "IMG",
+                  "width": 296,
+                  "x": 12,
+                  "y": 100.0625
+                },
+                {
+                  "height": 44,
+                  "id": "",
+                  "tag": "BUTTON",
+                  "width": 56.609375,
+                  "x": 14,
+                  "y": 292.453125
+                }
+              ],
+              "scroll": {
+                "max_y": 0,
+                "viewport_height": 420,
+                "viewport_width": 320,
+                "x": 0,
+                "y": 0
+              },
+              "semantic_text": "证据召回率1补齐所需证据\nRequired and found evidence",
+              "source_ref_ids": [
+                "source-to4-observed"
+              ],
+              "text": "证据召回率\n1补齐所需证据正文 [1]",
+              "unsupported_assets": [],
+              "visible_text": "证据召回率\n1\n补齐所需证据\n正文 [1]\n"
+            },
+            "issues": [],
+            "layout": {
+              "contentSize": {
+                "height": 420,
+                "width": 320,
+                "x": 0,
+                "y": 0
+              },
+              "cssContentSize": {
+                "height": 420,
+                "width": 320,
+                "x": 0,
+                "y": 0
+              },
+              "cssLayoutViewport": {
+                "clientHeight": 420,
+                "clientWidth": 320,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "cssVisualViewport": {
+                "clientHeight": 420,
+                "clientWidth": 320,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              },
+              "layoutViewport": {
+                "clientHeight": 420,
+                "clientWidth": 320,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "visualViewport": {
+                "clientHeight": 420,
+                "clientWidth": 320,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              }
+            },
+            "scene": null,
+            "scroll": {
+              "max_y": 0.0,
+              "viewport_height": 420,
+              "viewport_width": 320,
+              "x": 0.0,
+              "y": 0.0
+            },
+            "step": 2
+          }
+        ],
+        "reading": {
+          "action_step": 2,
+          "controls": [],
+          "page_state": null,
+          "scene": null,
+          "scroll": {
+            "max_y": 0,
+            "viewport_height": 420,
+            "viewport_width": 320,
+            "x": 0,
+            "y": 0
+          },
+          "selector": "#result",
+          "text": "1"
+        },
+        "recorded_environments": [
+          "narrow-content"
+        ],
+        "status": "preview_environment_recorded"
+      }
+    },
+    {
+      "images": [
+        {
+          "candidate_id": "candidate-1791801075049769500-5",
+          "caption": "Browser observation: candidate candidate-1791801075049769500-5, environment short-content (640x240 Touch), step 0, status preview_environment_recorded. Action: null; actual document position x=0, y=0 CSS px (max y=299), viewport 640x240 CSS px. Inspect layout, graphics and agreement with readable content before delivery.",
+          "environment_name": "short-content"
+        },
+        {
+          "candidate_id": "candidate-1791801075049769500-5",
+          "caption": "Browser observation: candidate candidate-1791801075049769500-5, environment short-content (640x240 Touch), step 1, status preview_environment_recorded. Action: {\"kind\":\"click\",\"selector\":\"#add\"}; actual document position x=0, y=0 CSS px (max y=299), viewport 640x240 CSS px. Inspect layout, graphics and agreement with readable content before delivery.",
+          "environment_name": "short-content"
+        },
+        {
+          "candidate_id": "candidate-1791801075049769500-5",
+          "caption": "Browser observation: candidate candidate-1791801075049769500-5, environment short-content (640x240 Touch), step 2, status preview_environment_recorded. Action: {\"kind\":\"scroll\",\"y\":0}; actual document position x=0, y=0 CSS px (max y=299), viewport 640x240 CSS px. Inspect layout, graphics and agreement with readable content before delivery.",
+          "environment_name": "short-content"
+        }
+      ],
+      "input": {
+        "actions": [
+          {
+            "kind": "click",
+            "selector": "#add"
+          },
+          {
+            "kind": "scroll",
+            "y": 0
+          }
+        ],
+        "candidate_id": "candidate-1791801075049769500-5",
+        "operation": "preview",
+        "read_selector": "#result",
+        "viewport": {
+          "height": 240,
+          "input": "touch",
+          "width": 640
+        }
+      },
+      "result": {
+        "candidate_id": "candidate-1791801075049769500-5",
+        "environment": {
+          "height": 240,
+          "input": "touch",
+          "width": 640
+        },
+        "environment_name": "short-content",
+        "errors": [],
+        "missing_environments": [
+          "desktop-content"
+        ],
+        "observations": [
+          {
+            "action": null,
+            "dom": {
+              "controls": [
+                {
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "text": "0.6666666666666666",
+                  "value": "0.6666666666666666"
+                },
+                {
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "text": "补齐所需证据",
+                  "value": ""
+                },
+                {
+                  "id": "",
+                  "tag": "BUTTON",
+                  "text": "正文 [1]",
+                  "value": ""
+                }
+              ],
+              "elements": [
+                {
+                  "height": 30.15625,
+                  "id": "",
+                  "tag": "H1",
+                  "width": 601,
+                  "x": 12,
+                  "y": 12
+                },
+                {
+                  "height": 20,
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "width": 163.359375,
+                  "x": 12,
+                  "y": 67.859375
+                },
+                {
+                  "height": 44,
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "width": 120.375,
+                  "x": 175.359375,
+                  "y": 56.0625
+                },
+                {
+                  "height": 0,
+                  "id": "",
+                  "tag": "SCRIPT",
+                  "width": 0,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "height": 375.625,
+                  "id": "",
+                  "tag": "IMG",
+                  "width": 601,
+                  "x": 12,
+                  "y": 100.0625
+                },
+                {
+                  "height": 44,
+                  "id": "",
+                  "tag": "BUTTON",
+                  "width": 56.609375,
+                  "x": 14,
+                  "y": 483.078125
+                }
+              ],
+              "scroll": {
+                "max_y": 299,
+                "viewport_height": 240,
+                "viewport_width": 640,
+                "x": 0,
+                "y": 0
+              },
+              "semantic_text": "证据召回率0.6666666666666666补齐所需证据\nRequired and found evidence",
+              "source_ref_ids": [
+                "source-to4-observed"
+              ],
+              "text": "证据召回率\n0.6666666666666666补齐所需证据正文 [1]",
+              "unsupported_assets": [],
+              "visible_text": "证据召回率\n0.6666666666666666\n补齐所需证据\n"
+            },
+            "issues": [],
+            "layout": {
+              "contentSize": {
+                "height": 539,
+                "width": 625,
+                "x": 0,
+                "y": 0
+              },
+              "cssContentSize": {
+                "height": 539,
+                "width": 625,
+                "x": 0,
+                "y": 0
+              },
+              "cssLayoutViewport": {
+                "clientHeight": 240,
+                "clientWidth": 625,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "cssVisualViewport": {
+                "clientHeight": 240,
+                "clientWidth": 625,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              },
+              "layoutViewport": {
+                "clientHeight": 240,
+                "clientWidth": 625,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "visualViewport": {
+                "clientHeight": 240,
+                "clientWidth": 625,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              }
+            },
+            "scene": null,
+            "scroll": {
+              "max_y": 299.0,
+              "viewport_height": 240,
+              "viewport_width": 640,
+              "x": 0.0,
+              "y": 0.0
+            },
+            "step": 0
+          },
+          {
+            "action": {
+              "kind": "click",
+              "selector": "#add"
+            },
+            "dom": {
+              "controls": [
+                {
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "text": "1",
+                  "value": "1"
+                },
+                {
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "text": "补齐所需证据",
+                  "value": ""
+                },
+                {
+                  "id": "",
+                  "tag": "BUTTON",
+                  "text": "正文 [1]",
+                  "value": ""
+                }
+              ],
+              "elements": [
+                {
+                  "height": 30.15625,
+                  "id": "",
+                  "tag": "H1",
+                  "width": 601,
+                  "x": 12,
+                  "y": 12
+                },
+                {
+                  "height": 20,
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "width": 9.390625,
+                  "x": 12,
+                  "y": 67.859375
+                },
+                {
+                  "height": 44,
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "width": 120.375,
+                  "x": 21.390625,
+                  "y": 56.0625
+                },
+                {
+                  "height": 0,
+                  "id": "",
+                  "tag": "SCRIPT",
+                  "width": 0,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "height": 375.625,
+                  "id": "",
+                  "tag": "IMG",
+                  "width": 601,
+                  "x": 12,
+                  "y": 100.0625
+                },
+                {
+                  "height": 44,
+                  "id": "",
+                  "tag": "BUTTON",
+                  "width": 56.609375,
+                  "x": 14,
+                  "y": 483.078125
+                }
+              ],
+              "scroll": {
+                "max_y": 299,
+                "viewport_height": 240,
+                "viewport_width": 640,
+                "x": 0,
+                "y": 0
+              },
+              "semantic_text": "证据召回率1补齐所需证据\nRequired and found evidence",
+              "source_ref_ids": [
+                "source-to4-observed"
+              ],
+              "text": "证据召回率\n1补齐所需证据正文 [1]",
+              "unsupported_assets": [],
+              "visible_text": "证据召回率\n1\n补齐所需证据\n"
+            },
+            "issues": [],
+            "layout": {
+              "contentSize": {
+                "height": 539,
+                "width": 625,
+                "x": 0,
+                "y": 0
+              },
+              "cssContentSize": {
+                "height": 539,
+                "width": 625,
+                "x": 0,
+                "y": 0
+              },
+              "cssLayoutViewport": {
+                "clientHeight": 240,
+                "clientWidth": 625,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "cssVisualViewport": {
+                "clientHeight": 240,
+                "clientWidth": 625,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              },
+              "layoutViewport": {
+                "clientHeight": 240,
+                "clientWidth": 625,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "visualViewport": {
+                "clientHeight": 240,
+                "clientWidth": 625,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              }
+            },
+            "scene": null,
+            "scroll": {
+              "max_y": 299.0,
+              "viewport_height": 240,
+              "viewport_width": 640,
+              "x": 0.0,
+              "y": 0.0
+            },
+            "step": 1
+          },
+          {
+            "action": {
+              "kind": "scroll",
+              "y": 0
+            },
+            "dom": {
+              "controls": [
+                {
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "text": "1",
+                  "value": "1"
+                },
+                {
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "text": "补齐所需证据",
+                  "value": ""
+                },
+                {
+                  "id": "",
+                  "tag": "BUTTON",
+                  "text": "正文 [1]",
+                  "value": ""
+                }
+              ],
+              "elements": [
+                {
+                  "height": 30.15625,
+                  "id": "",
+                  "tag": "H1",
+                  "width": 601,
+                  "x": 12,
+                  "y": 12
+                },
+                {
+                  "height": 20,
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "width": 9.390625,
+                  "x": 12,
+                  "y": 67.859375
+                },
+                {
+                  "height": 44,
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "width": 120.375,
+                  "x": 21.390625,
+                  "y": 56.0625
+                },
+                {
+                  "height": 0,
+                  "id": "",
+                  "tag": "SCRIPT",
+                  "width": 0,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "height": 375.625,
+                  "id": "",
+                  "tag": "IMG",
+                  "width": 601,
+                  "x": 12,
+                  "y": 100.0625
+                },
+                {
+                  "height": 44,
+                  "id": "",
+                  "tag": "BUTTON",
+                  "width": 56.609375,
+                  "x": 14,
+                  "y": 483.078125
+                }
+              ],
+              "scroll": {
+                "max_y": 299,
+                "viewport_height": 240,
+                "viewport_width": 640,
+                "x": 0,
+                "y": 0
+              },
+              "semantic_text": "证据召回率1补齐所需证据\nRequired and found evidence",
+              "source_ref_ids": [
+                "source-to4-observed"
+              ],
+              "text": "证据召回率\n1补齐所需证据正文 [1]",
+              "unsupported_assets": [],
+              "visible_text": "证据召回率\n1\n补齐所需证据\n"
+            },
+            "issues": [],
+            "layout": {
+              "contentSize": {
+                "height": 539,
+                "width": 625,
+                "x": 0,
+                "y": 0
+              },
+              "cssContentSize": {
+                "height": 539,
+                "width": 625,
+                "x": 0,
+                "y": 0
+              },
+              "cssLayoutViewport": {
+                "clientHeight": 240,
+                "clientWidth": 625,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "cssVisualViewport": {
+                "clientHeight": 240,
+                "clientWidth": 625,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              },
+              "layoutViewport": {
+                "clientHeight": 240,
+                "clientWidth": 625,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "visualViewport": {
+                "clientHeight": 240,
+                "clientWidth": 625,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              }
+            },
+            "scene": null,
+            "scroll": {
+              "max_y": 299.0,
+              "viewport_height": 240,
+              "viewport_width": 640,
+              "x": 0.0,
+              "y": 0.0
+            },
+            "step": 2
+          }
+        ],
+        "reading": {
+          "action_step": 2,
+          "controls": [],
+          "page_state": null,
+          "scene": null,
+          "scroll": {
+            "max_y": 299,
+            "viewport_height": 240,
+            "viewport_width": 640,
+            "x": 0,
+            "y": 0
+          },
+          "selector": "#result",
+          "text": "1"
+        },
+        "recorded_environments": [
+          "narrow-content",
+          "short-content"
+        ],
+        "status": "preview_environment_recorded"
+      }
+    },
+    {
+      "images": [
+        {
+          "candidate_id": "candidate-1791801075049769500-5",
+          "caption": "Browser observation: candidate candidate-1791801075049769500-5, environment desktop-content (960x720 Mouse), step 0, status preview_ready_for_inspection. Action: null; actual document position x=0, y=0 CSS px (max y=0), viewport 960x720 CSS px. Inspect layout, graphics and agreement with readable content before delivery.",
+          "environment_name": "desktop-content"
+        },
+        {
+          "candidate_id": "candidate-1791801075049769500-5",
+          "caption": "Browser observation: candidate candidate-1791801075049769500-5, environment desktop-content (960x720 Mouse), step 1, status preview_ready_for_inspection. Action: {\"kind\":\"click\",\"selector\":\"#add\"}; actual document position x=0, y=0 CSS px (max y=0), viewport 960x720 CSS px. Inspect layout, graphics and agreement with readable content before delivery.",
+          "environment_name": "desktop-content"
+        },
+        {
+          "candidate_id": "candidate-1791801075049769500-5",
+          "caption": "Browser observation: candidate candidate-1791801075049769500-5, environment desktop-content (960x720 Mouse), step 2, status preview_ready_for_inspection. Action: {\"kind\":\"scroll\",\"y\":0}; actual document position x=0, y=0 CSS px (max y=0), viewport 960x720 CSS px. Inspect layout, graphics and agreement with readable content before delivery.",
+          "environment_name": "desktop-content"
+        }
+      ],
+      "input": {
+        "actions": [
+          {
+            "kind": "click",
+            "selector": "#add"
+          },
+          {
+            "kind": "scroll",
+            "y": 0
+          }
+        ],
+        "candidate_id": "candidate-1791801075049769500-5",
+        "operation": "preview",
+        "read_selector": "#result",
+        "viewport": {
+          "height": 720,
+          "input": "mouse",
+          "width": 960
+        }
+      },
+      "result": {
+        "candidate_id": "candidate-1791801075049769500-5",
+        "environment": {
+          "height": 720,
+          "input": "mouse",
+          "width": 960
+        },
+        "environment_name": "desktop-content",
+        "errors": [],
+        "missing_environments": [],
+        "observations": [
+          {
+            "action": null,
+            "dom": {
+              "controls": [
+                {
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "text": "0.6666666666666666",
+                  "value": "0.6666666666666666"
+                },
+                {
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "text": "补齐所需证据",
+                  "value": ""
+                },
+                {
+                  "id": "",
+                  "tag": "BUTTON",
+                  "text": "正文 [1]",
+                  "value": ""
+                }
+              ],
+              "elements": [
+                {
+                  "height": 30.15625,
+                  "id": "",
+                  "tag": "H1",
+                  "width": 936,
+                  "x": 12,
+                  "y": 12
+                },
+                {
+                  "height": 20,
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "width": 163.359375,
+                  "x": 12,
+                  "y": 424.0625
+                },
+                {
+                  "height": 44,
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "width": 120.375,
+                  "x": 175.359375,
+                  "y": 412.265625
+                },
+                {
+                  "height": 0,
+                  "id": "",
+                  "tag": "SCRIPT",
+                  "width": 0,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "height": 384,
+                  "id": "",
+                  "tag": "IMG",
+                  "width": 614.390625,
+                  "x": 295.734375,
+                  "y": 56.0625
+                },
+                {
+                  "height": 24,
+                  "id": "",
+                  "tag": "BUTTON",
+                  "width": 56.609375,
+                  "x": 14,
+                  "y": 459.671875
+                }
+              ],
+              "scroll": {
+                "max_y": 0,
+                "viewport_height": 720,
+                "viewport_width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "semantic_text": "证据召回率0.6666666666666666补齐所需证据\nRequired and found evidence",
+              "source_ref_ids": [
+                "source-to4-observed"
+              ],
+              "text": "证据召回率\n0.6666666666666666补齐所需证据正文 [1]",
+              "unsupported_assets": [],
+              "visible_text": "证据召回率\n0.6666666666666666\n补齐所需证据\n正文 [1]\n"
+            },
+            "issues": [],
+            "layout": {
+              "contentSize": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "cssContentSize": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "cssLayoutViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "cssVisualViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              },
+              "layoutViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "visualViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              }
+            },
+            "scene": null,
+            "scroll": {
+              "max_y": 0.0,
+              "viewport_height": 720,
+              "viewport_width": 960,
+              "x": 0.0,
+              "y": 0.0
+            },
+            "step": 0
+          },
+          {
+            "action": {
+              "kind": "click",
+              "selector": "#add"
+            },
+            "dom": {
+              "controls": [
+                {
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "text": "1",
+                  "value": "1"
+                },
+                {
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "text": "补齐所需证据",
+                  "value": ""
+                },
+                {
+                  "id": "",
+                  "tag": "BUTTON",
+                  "text": "正文 [1]",
+                  "value": ""
+                }
+              ],
+              "elements": [
+                {
+                  "height": 30.15625,
+                  "id": "",
+                  "tag": "H1",
+                  "width": 936,
+                  "x": 12,
+                  "y": 12
+                },
+                {
+                  "height": 20,
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "width": 9.390625,
+                  "x": 12,
+                  "y": 424.0625
+                },
+                {
+                  "height": 44,
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "width": 120.375,
+                  "x": 21.390625,
+                  "y": 412.265625
+                },
+                {
+                  "height": 0,
+                  "id": "",
+                  "tag": "SCRIPT",
+                  "width": 0,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "height": 384,
+                  "id": "",
+                  "tag": "IMG",
+                  "width": 614.390625,
+                  "x": 141.765625,
+                  "y": 56.0625
+                },
+                {
+                  "height": 24,
+                  "id": "",
+                  "tag": "BUTTON",
+                  "width": 56.609375,
+                  "x": 758.15625,
+                  "y": 424.46875
+                }
+              ],
+              "scroll": {
+                "max_y": 0,
+                "viewport_height": 720,
+                "viewport_width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "semantic_text": "证据召回率1补齐所需证据\nRequired and found evidence",
+              "source_ref_ids": [
+                "source-to4-observed"
+              ],
+              "text": "证据召回率\n1补齐所需证据正文 [1]",
+              "unsupported_assets": [],
+              "visible_text": "证据召回率\n1\n补齐所需证据\n正文 [1]\n"
+            },
+            "issues": [],
+            "layout": {
+              "contentSize": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "cssContentSize": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "cssLayoutViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "cssVisualViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              },
+              "layoutViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "visualViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              }
+            },
+            "scene": null,
+            "scroll": {
+              "max_y": 0.0,
+              "viewport_height": 720,
+              "viewport_width": 960,
+              "x": 0.0,
+              "y": 0.0
+            },
+            "step": 1
+          },
+          {
+            "action": {
+              "kind": "scroll",
+              "y": 0
+            },
+            "dom": {
+              "controls": [
+                {
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "text": "1",
+                  "value": "1"
+                },
+                {
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "text": "补齐所需证据",
+                  "value": ""
+                },
+                {
+                  "id": "",
+                  "tag": "BUTTON",
+                  "text": "正文 [1]",
+                  "value": ""
+                }
+              ],
+              "elements": [
+                {
+                  "height": 30.15625,
+                  "id": "",
+                  "tag": "H1",
+                  "width": 936,
+                  "x": 12,
+                  "y": 12
+                },
+                {
+                  "height": 20,
+                  "id": "result",
+                  "tag": "OUTPUT",
+                  "width": 9.390625,
+                  "x": 12,
+                  "y": 424.0625
+                },
+                {
+                  "height": 44,
+                  "id": "add",
+                  "tag": "BUTTON",
+                  "width": 120.375,
+                  "x": 21.390625,
+                  "y": 412.265625
+                },
+                {
+                  "height": 0,
+                  "id": "",
+                  "tag": "SCRIPT",
+                  "width": 0,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "height": 384,
+                  "id": "",
+                  "tag": "IMG",
+                  "width": 614.390625,
+                  "x": 141.765625,
+                  "y": 56.0625
+                },
+                {
+                  "height": 24,
+                  "id": "",
+                  "tag": "BUTTON",
+                  "width": 56.609375,
+                  "x": 758.15625,
+                  "y": 424.46875
+                }
+              ],
+              "scroll": {
+                "max_y": 0,
+                "viewport_height": 720,
+                "viewport_width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "semantic_text": "证据召回率1补齐所需证据\nRequired and found evidence",
+              "source_ref_ids": [
+                "source-to4-observed"
+              ],
+              "text": "证据召回率\n1补齐所需证据正文 [1]",
+              "unsupported_assets": [],
+              "visible_text": "证据召回率\n1\n补齐所需证据\n正文 [1]\n"
+            },
+            "issues": [],
+            "layout": {
+              "contentSize": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "cssContentSize": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 0
+              },
+              "cssLayoutViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "cssVisualViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              },
+              "layoutViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "pageX": 0,
+                "pageY": 0
+              },
+              "visualViewport": {
+                "clientHeight": 720,
+                "clientWidth": 960,
+                "offsetX": 0,
+                "offsetY": 0,
+                "pageX": 0,
+                "pageY": 0,
+                "scale": 1,
+                "zoom": 1
+              }
+            },
+            "scene": null,
+            "scroll": {
+              "max_y": 0.0,
+              "viewport_height": 720,
+              "viewport_width": 960,
+              "x": 0.0,
+              "y": 0.0
+            },
+            "step": 2
+          }
+        ],
+        "reading": {
+          "action_step": 2,
+          "controls": [],
+          "page_state": null,
+          "scene": null,
+          "scroll": {
+            "max_y": 0,
+            "viewport_height": 720,
+            "viewport_width": 960,
+            "x": 0,
+            "y": 0
+          },
+          "selector": "#result",
+          "text": "1"
+        },
+        "recorded_environments": [
+          "desktop-content",
+          "narrow-content",
+          "short-content"
+        ],
+        "status": "preview_ready_for_inspection"
+      }
+    },
+    {
+      "images": [],
+      "input": {
+        "candidate_id": "candidate-1791801075049769500-5",
+        "operation": "deliver"
+      },
+      "result": {
+        "next": "Conclude normally; Runtime attaches this version to the final answer. History commit is still pending.",
+        "reference": {
+          "presentation_id": "presentation-1791801058631237900-0",
+          "revision": 3
+        },
+        "status": "version_saved"
+      }
+    }
+  ],
+  "delivered": {
+    "based_on": {
+      "presentation_id": "presentation-1791801058631237900-0",
+      "revision": 2
+    },
+    "candidate_id": "candidate-1791801075049769500-5",
+    "content": {
+      "animation_assets": {},
+      "assumptions": [],
+      "content_files": {
+        "assets/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.svg": "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>\r\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"\r\n  \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\r\n<svg xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"460.8pt\" height=\"288pt\" viewBox=\"0 0 460.8 288\" xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">\r\n <metadata>\r\n  <rdf:RDF xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:cc=\"http://creativecommons.org/ns#\" xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\r\n   <cc:Work>\r\n    <dc:type rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\"/>\r\n    <dc:date>2026-10-12T18:31:08.829947</dc:date>\r\n    <dc:format>image/svg+xml</dc:format>\r\n    <dc:creator>\r\n     <cc:Agent>\r\n      <dc:title>Matplotlib v3.10.9, https://matplotlib.org/</dc:title>\r\n     </cc:Agent>\r\n    </dc:creator>\r\n   </cc:Work>\r\n  </rdf:RDF>\r\n </metadata>\r\n <defs>\r\n  <style type=\"text/css\">*{stroke-linejoin: round; stroke-linecap: butt}</style>\r\n </defs>\r\n <g id=\"figure_1\">\r\n  <g id=\"patch_1\">\r\n   <path d=\"M 0 288 \r\nL 460.8 288 \r\nL 460.8 0 \r\nL 0 0 \r\nz\r\n\" style=\"fill: #ffffff\"/>\r\n  </g>\r\n  <g id=\"axes_1\">\r\n   <g id=\"patch_2\">\r\n    <path d=\"M 43.53899 248.84851 \r\nL 457.79976 248.84851 \r\nL 457.79976 3.00024 \r\nL 43.53899 3.00024 \r\nz\r\n\" style=\"fill: #ffffff\"/>\r\n   </g>\r\n   <g id=\"matplotlib.axis_1\">\r\n    <g id=\"xtick_1\">\r\n     <g id=\"line2d_1\">\r\n      <defs>\r\n       <path id=\"mfa98b17080\" d=\"M 0 0 \r\nL 0 3.5 \r\n\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </defs>\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"62.369025\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_1\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"62.369025\" y=\"265.44101\" transform=\"rotate(-0 62.369025 265.44101)\">1.00</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_2\">\r\n     <g id=\"line2d_2\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"109.444113\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_2\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"109.444113\" y=\"265.44101\" transform=\"rotate(-0 109.444113 265.44101)\">1.25</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_3\">\r\n     <g id=\"line2d_3\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"156.5192\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_3\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"156.5192\" y=\"265.44101\" transform=\"rotate(-0 156.5192 265.44101)\">1.50</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_4\">\r\n     <g id=\"line2d_4\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"203.594287\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_4\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"203.594287\" y=\"265.44101\" transform=\"rotate(-0 203.594287 265.44101)\">1.75</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_5\">\r\n     <g id=\"line2d_5\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"250.669375\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_5\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"250.669375\" y=\"265.44101\" transform=\"rotate(-0 250.669375 265.44101)\">2.00</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_6\">\r\n     <g id=\"line2d_6\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"297.744462\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_6\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"297.744462\" y=\"265.44101\" transform=\"rotate(-0 297.744462 265.44101)\">2.25</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_7\">\r\n     <g id=\"line2d_7\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"344.81955\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_7\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"344.81955\" y=\"265.44101\" transform=\"rotate(-0 344.81955 265.44101)\">2.50</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_8\">\r\n     <g id=\"line2d_8\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"391.894637\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_8\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"391.894637\" y=\"265.44101\" transform=\"rotate(-0 391.894637 265.44101)\">2.75</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_9\">\r\n     <g id=\"line2d_9\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"438.969725\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_9\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"438.969725\" y=\"265.44101\" transform=\"rotate(-0 438.969725 265.44101)\">3.00</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"text_10\">\r\n     <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"250.669375\" y=\"282.016635\" transform=\"rotate(-0 250.669375 282.016635)\">Required</text>\r\n    </g>\r\n   </g>\r\n   <g id=\"matplotlib.axis_2\">\r\n    <g id=\"ytick_1\">\r\n     <g id=\"line2d_10\">\r\n      <defs>\r\n       <path id=\"m6c0197bcfc\" d=\"M 0 0 \r\nL -3.5 0 \r\n\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </defs>\r\n      <g>\r\n       <use xlink:href=\"#m6c0197bcfc\" x=\"43.53899\" y=\"237.673589\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_11\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: end\" x=\"36.53899\" y=\"242.469839\" transform=\"rotate(-0 36.53899 242.469839)\">1.0</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"ytick_2\">\r\n     <g id=\"line2d_11\">\r\n      <g>\r\n       <use xlink:href=\"#m6c0197bcfc\" x=\"43.53899\" y=\"192.973903\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_12\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: end\" x=\"36.53899\" y=\"197.770153\" transform=\"rotate(-0 36.53899 197.770153)\">1.2</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"ytick_3\">\r\n     <g id=\"line2d_12\">\r\n      <g>\r\n       <use xlink:href=\"#m6c0197bcfc\" x=\"43.53899\" y=\"148.274218\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_13\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: end\" x=\"36.53899\" y=\"153.070468\" transform=\"rotate(-0 36.53899 153.070468)\">1.4</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"ytick_4\">\r\n     <g id=\"line2d_13\">\r\n      <g>\r\n       <use xlink:href=\"#m6c0197bcfc\" x=\"43.53899\" y=\"103.574532\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_14\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: end\" x=\"36.53899\" y=\"108.370782\" transform=\"rotate(-0 36.53899 108.370782)\">1.6</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"ytick_5\">\r\n     <g id=\"line2d_14\">\r\n      <g>\r\n       <use xlink:href=\"#m6c0197bcfc\" x=\"43.53899\" y=\"58.874847\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_15\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: end\" x=\"36.53899\" y=\"63.671097\" transform=\"rotate(-0 36.53899 63.671097)\">1.8</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"ytick_6\">\r\n     <g id=\"line2d_15\">\r\n      <g>\r\n       <use xlink:href=\"#m6c0197bcfc\" x=\"43.53899\" y=\"14.175161\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_16\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: end\" x=\"36.53899\" y=\"18.971411\" transform=\"rotate(-0 36.53899 18.971411)\">2.0</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"text_17\">\r\n     <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"12.59274\" y=\"125.924375\" transform=\"rotate(-90 12.59274 125.924375)\">Found</text>\r\n    </g>\r\n   </g>\r\n   <g id=\"line2d_16\">\r\n    <path d=\"M 62.369025 237.673589 \r\nL 250.669375 14.175161 \r\nL 438.969725 14.175161 \r\n\" clip-path=\"url(#p33ef04f934)\" style=\"fill: none; stroke: #3c648f; stroke-width: 1.5; stroke-linecap: square\"/>\r\n    <defs>\r\n     <path id=\"mea7e32f119\" d=\"M 0 3 \r\nC 0.795609 3 1.55874 2.683901 2.12132 2.12132 \r\nC 2.683901 1.55874 3 0.795609 3 0 \r\nC 3 -0.795609 2.683901 -1.55874 2.12132 -2.12132 \r\nC 1.55874 -2.683901 0.795609 -3 0 -3 \r\nC -0.795609 -3 -1.55874 -2.683901 -2.12132 -2.12132 \r\nC -2.683901 -1.55874 -3 -0.795609 -3 0 \r\nC -3 0.795609 -2.683901 1.55874 -2.12132 2.12132 \r\nC -1.55874 2.683901 -0.795609 3 0 3 \r\nz\r\n\" style=\"stroke: #3c648f\"/>\r\n    </defs>\r\n    <g clip-path=\"url(#p33ef04f934)\">\r\n     <use xlink:href=\"#mea7e32f119\" x=\"62.369025\" y=\"237.673589\" style=\"fill: #3c648f; stroke: #3c648f\"/>\r\n     <use xlink:href=\"#mea7e32f119\" x=\"250.669375\" y=\"14.175161\" style=\"fill: #3c648f; stroke: #3c648f\"/>\r\n     <use xlink:href=\"#mea7e32f119\" x=\"438.969725\" y=\"14.175161\" style=\"fill: #3c648f; stroke: #3c648f\"/>\r\n    </g>\r\n   </g>\r\n   <g id=\"patch_3\">\r\n    <path d=\"M 43.53899 248.84851 \r\nL 43.53899 3.00024 \r\n\" style=\"fill: none; stroke: #000000; stroke-linejoin: miter; stroke-linecap: square\"/>\r\n   </g>\r\n   <g id=\"patch_4\">\r\n    <path d=\"M 457.79976 248.84851 \r\nL 457.79976 3.00024 \r\n\" style=\"fill: none; stroke: #000000; stroke-linejoin: miter; stroke-linecap: square\"/>\r\n   </g>\r\n   <g id=\"patch_5\">\r\n    <path d=\"M 43.53899 248.84851 \r\nL 457.79976 248.84851 \r\n\" style=\"fill: none; stroke: #000000; stroke-linejoin: miter; stroke-linecap: square\"/>\r\n   </g>\r\n   <g id=\"patch_6\">\r\n    <path d=\"M 43.53899 3.00024 \r\nL 457.79976 3.00024 \r\n\" style=\"fill: none; stroke: #000000; stroke-linejoin: miter; stroke-linecap: square\"/>\r\n   </g>\r\n  </g>\r\n </g>\r\n <defs>\r\n  <clipPath id=\"p33ef04f934\">\r\n   <rect x=\"43.53899\" y=\"3.00024\" width=\"414.26077\" height=\"245.84827\"/>\r\n  </clipPath>\r\n </defs>\r\n</svg>\r\n",
+        "index.html": "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐所需证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script><img src='assets/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.svg' alt='Required and found evidence'><button data-source-ref='source-to4-observed'>来源</button>",
+        "plots/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.json": "{\"x\":[1,2,3],\"y\":[1,2,2]}",
+        "plots/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.py": "ax.plot(data['x'], data['y'], marker='o'); ax.set_xlabel('Required'); ax.set_ylabel('Found')"
+      },
+      "entrypoint": "index.html",
+      "initial_state": {
+        "count": 2
+      },
+      "readable_content": "已找到两处证据，共需三处。补齐后为一。 [[source:source-to4-observed]]",
+      "source_bindings": [
+        {
+          "book_id": "sample-book",
+          "evidence_range": {
+            "end_lid": "1.1",
+            "ranges": [
+              {
+                "lid": "1.1",
+                "range": {
+                  "end": 3,
+                  "start": 0
+                }
+              }
+            ],
+            "start_lid": "1.1"
+          },
+          "evidence_text_digest": "source-fnv1a64-9a2c7a5e9e27f398",
+          "label_snapshot": "正文",
+          "preview_snapshot": "XXX",
+          "source_ref_id": "source-to4-observed"
+        }
+      ],
+      "state_contract": null,
+      "title": "证据召回率与图示"
+    },
+    "created_by_turn_id": "turn_ad22d58e66ad4f70",
+    "owner": {
+      "book_id": "sample-book",
+      "session_id": "chat_2026-09-17T00:00:00Z_0"
+    },
+    "reference": {
+      "presentation_id": "presentation-1791801058631237900-0",
+      "revision": 3
+    }
+  },
+  "initial_reference": {
+    "presentation_id": "presentation-1791801058631237900-0",
+    "revision": 1
+  },
+  "original": {
+    "based_on": {
+      "presentation_id": "presentation-1791801058631237900-0",
+      "revision": 1
+    },
+    "candidate_id": "candidate-1791801069145066000-2",
+    "content": {
+      "animation_assets": {},
+      "assumptions": [],
+      "content_files": {
+        "assets/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.svg": "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>\r\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"\r\n  \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\r\n<svg xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"460.8pt\" height=\"288pt\" viewBox=\"0 0 460.8 288\" xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">\r\n <metadata>\r\n  <rdf:RDF xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:cc=\"http://creativecommons.org/ns#\" xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\r\n   <cc:Work>\r\n    <dc:type rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\"/>\r\n    <dc:date>2026-10-12T18:31:08.829947</dc:date>\r\n    <dc:format>image/svg+xml</dc:format>\r\n    <dc:creator>\r\n     <cc:Agent>\r\n      <dc:title>Matplotlib v3.10.9, https://matplotlib.org/</dc:title>\r\n     </cc:Agent>\r\n    </dc:creator>\r\n   </cc:Work>\r\n  </rdf:RDF>\r\n </metadata>\r\n <defs>\r\n  <style type=\"text/css\">*{stroke-linejoin: round; stroke-linecap: butt}</style>\r\n </defs>\r\n <g id=\"figure_1\">\r\n  <g id=\"patch_1\">\r\n   <path d=\"M 0 288 \r\nL 460.8 288 \r\nL 460.8 0 \r\nL 0 0 \r\nz\r\n\" style=\"fill: #ffffff\"/>\r\n  </g>\r\n  <g id=\"axes_1\">\r\n   <g id=\"patch_2\">\r\n    <path d=\"M 43.53899 248.84851 \r\nL 457.79976 248.84851 \r\nL 457.79976 3.00024 \r\nL 43.53899 3.00024 \r\nz\r\n\" style=\"fill: #ffffff\"/>\r\n   </g>\r\n   <g id=\"matplotlib.axis_1\">\r\n    <g id=\"xtick_1\">\r\n     <g id=\"line2d_1\">\r\n      <defs>\r\n       <path id=\"mfa98b17080\" d=\"M 0 0 \r\nL 0 3.5 \r\n\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </defs>\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"62.369025\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_1\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"62.369025\" y=\"265.44101\" transform=\"rotate(-0 62.369025 265.44101)\">1.00</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_2\">\r\n     <g id=\"line2d_2\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"109.444113\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_2\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"109.444113\" y=\"265.44101\" transform=\"rotate(-0 109.444113 265.44101)\">1.25</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_3\">\r\n     <g id=\"line2d_3\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"156.5192\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_3\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"156.5192\" y=\"265.44101\" transform=\"rotate(-0 156.5192 265.44101)\">1.50</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_4\">\r\n     <g id=\"line2d_4\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"203.594287\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_4\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"203.594287\" y=\"265.44101\" transform=\"rotate(-0 203.594287 265.44101)\">1.75</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_5\">\r\n     <g id=\"line2d_5\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"250.669375\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_5\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"250.669375\" y=\"265.44101\" transform=\"rotate(-0 250.669375 265.44101)\">2.00</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_6\">\r\n     <g id=\"line2d_6\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"297.744462\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_6\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"297.744462\" y=\"265.44101\" transform=\"rotate(-0 297.744462 265.44101)\">2.25</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_7\">\r\n     <g id=\"line2d_7\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"344.81955\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_7\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"344.81955\" y=\"265.44101\" transform=\"rotate(-0 344.81955 265.44101)\">2.50</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_8\">\r\n     <g id=\"line2d_8\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"391.894637\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_8\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"391.894637\" y=\"265.44101\" transform=\"rotate(-0 391.894637 265.44101)\">2.75</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"xtick_9\">\r\n     <g id=\"line2d_9\">\r\n      <g>\r\n       <use xlink:href=\"#mfa98b17080\" x=\"438.969725\" y=\"248.84851\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_9\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"438.969725\" y=\"265.44101\" transform=\"rotate(-0 438.969725 265.44101)\">3.00</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"text_10\">\r\n     <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"250.669375\" y=\"282.016635\" transform=\"rotate(-0 250.669375 282.016635)\">Required</text>\r\n    </g>\r\n   </g>\r\n   <g id=\"matplotlib.axis_2\">\r\n    <g id=\"ytick_1\">\r\n     <g id=\"line2d_10\">\r\n      <defs>\r\n       <path id=\"m6c0197bcfc\" d=\"M 0 0 \r\nL -3.5 0 \r\n\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </defs>\r\n      <g>\r\n       <use xlink:href=\"#m6c0197bcfc\" x=\"43.53899\" y=\"237.673589\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_11\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: end\" x=\"36.53899\" y=\"242.469839\" transform=\"rotate(-0 36.53899 242.469839)\">1.0</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"ytick_2\">\r\n     <g id=\"line2d_11\">\r\n      <g>\r\n       <use xlink:href=\"#m6c0197bcfc\" x=\"43.53899\" y=\"192.973903\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_12\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: end\" x=\"36.53899\" y=\"197.770153\" transform=\"rotate(-0 36.53899 197.770153)\">1.2</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"ytick_3\">\r\n     <g id=\"line2d_12\">\r\n      <g>\r\n       <use xlink:href=\"#m6c0197bcfc\" x=\"43.53899\" y=\"148.274218\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_13\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: end\" x=\"36.53899\" y=\"153.070468\" transform=\"rotate(-0 36.53899 153.070468)\">1.4</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"ytick_4\">\r\n     <g id=\"line2d_13\">\r\n      <g>\r\n       <use xlink:href=\"#m6c0197bcfc\" x=\"43.53899\" y=\"103.574532\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_14\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: end\" x=\"36.53899\" y=\"108.370782\" transform=\"rotate(-0 36.53899 108.370782)\">1.6</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"ytick_5\">\r\n     <g id=\"line2d_14\">\r\n      <g>\r\n       <use xlink:href=\"#m6c0197bcfc\" x=\"43.53899\" y=\"58.874847\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_15\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: end\" x=\"36.53899\" y=\"63.671097\" transform=\"rotate(-0 36.53899 63.671097)\">1.8</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"ytick_6\">\r\n     <g id=\"line2d_15\">\r\n      <g>\r\n       <use xlink:href=\"#m6c0197bcfc\" x=\"43.53899\" y=\"14.175161\" style=\"stroke: #000000; stroke-width: 0.8\"/>\r\n      </g>\r\n     </g>\r\n     <g id=\"text_16\">\r\n      <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: end\" x=\"36.53899\" y=\"18.971411\" transform=\"rotate(-0 36.53899 18.971411)\">2.0</text>\r\n     </g>\r\n    </g>\r\n    <g id=\"text_17\">\r\n     <text style=\"font-size: 12px; font-family: 'Microsoft YaHei'; text-anchor: middle\" x=\"12.59274\" y=\"125.924375\" transform=\"rotate(-90 12.59274 125.924375)\">Found</text>\r\n    </g>\r\n   </g>\r\n   <g id=\"line2d_16\">\r\n    <path d=\"M 62.369025 237.673589 \r\nL 250.669375 14.175161 \r\nL 438.969725 14.175161 \r\n\" clip-path=\"url(#p33ef04f934)\" style=\"fill: none; stroke: #3c648f; stroke-width: 1.5; stroke-linecap: square\"/>\r\n    <defs>\r\n     <path id=\"mea7e32f119\" d=\"M 0 3 \r\nC 0.795609 3 1.55874 2.683901 2.12132 2.12132 \r\nC 2.683901 1.55874 3 0.795609 3 0 \r\nC 3 -0.795609 2.683901 -1.55874 2.12132 -2.12132 \r\nC 1.55874 -2.683901 0.795609 -3 0 -3 \r\nC -0.795609 -3 -1.55874 -2.683901 -2.12132 -2.12132 \r\nC -2.683901 -1.55874 -3 -0.795609 -3 0 \r\nC -3 0.795609 -2.683901 1.55874 -2.12132 2.12132 \r\nC -1.55874 2.683901 -0.795609 3 0 3 \r\nz\r\n\" style=\"stroke: #3c648f\"/>\r\n    </defs>\r\n    <g clip-path=\"url(#p33ef04f934)\">\r\n     <use xlink:href=\"#mea7e32f119\" x=\"62.369025\" y=\"237.673589\" style=\"fill: #3c648f; stroke: #3c648f\"/>\r\n     <use xlink:href=\"#mea7e32f119\" x=\"250.669375\" y=\"14.175161\" style=\"fill: #3c648f; stroke: #3c648f\"/>\r\n     <use xlink:href=\"#mea7e32f119\" x=\"438.969725\" y=\"14.175161\" style=\"fill: #3c648f; stroke: #3c648f\"/>\r\n    </g>\r\n   </g>\r\n   <g id=\"patch_3\">\r\n    <path d=\"M 43.53899 248.84851 \r\nL 43.53899 3.00024 \r\n\" style=\"fill: none; stroke: #000000; stroke-linejoin: miter; stroke-linecap: square\"/>\r\n   </g>\r\n   <g id=\"patch_4\">\r\n    <path d=\"M 457.79976 248.84851 \r\nL 457.79976 3.00024 \r\n\" style=\"fill: none; stroke: #000000; stroke-linejoin: miter; stroke-linecap: square\"/>\r\n   </g>\r\n   <g id=\"patch_5\">\r\n    <path d=\"M 43.53899 248.84851 \r\nL 457.79976 248.84851 \r\n\" style=\"fill: none; stroke: #000000; stroke-linejoin: miter; stroke-linecap: square\"/>\r\n   </g>\r\n   <g id=\"patch_6\">\r\n    <path d=\"M 43.53899 3.00024 \r\nL 457.79976 3.00024 \r\n\" style=\"fill: none; stroke: #000000; stroke-linejoin: miter; stroke-linecap: square\"/>\r\n   </g>\r\n  </g>\r\n </g>\r\n <defs>\r\n  <clipPath id=\"p33ef04f934\">\r\n   <rect x=\"43.53899\" y=\"3.00024\" width=\"414.26077\" height=\"245.84827\"/>\r\n  </clipPath>\r\n </defs>\r\n</svg>\r\n",
+        "index.html": "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script><img src='assets/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.svg' alt='Required and found evidence'><button data-source-ref='source-to4-observed'>来源</button>",
+        "plots/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.json": "{\"x\":[1,2,3],\"y\":[1,2,2]}",
+        "plots/plot-01a12faa-8e55-77e3-9c3c-318b53a3486c.py": "ax.plot(data['x'], data['y'], marker='o'); ax.set_xlabel('Required'); ax.set_ylabel('Found')"
+      },
+      "entrypoint": "index.html",
+      "initial_state": {
+        "count": 2
+      },
+      "readable_content": "已找到两处证据，共需三处。补齐后为一。 [[source:source-to4-observed]]",
+      "source_bindings": [
+        {
+          "book_id": "sample-book",
+          "evidence_range": {
+            "end_lid": "1.1",
+            "ranges": [
+              {
+                "lid": "1.1",
+                "range": {
+                  "end": 3,
+                  "start": 0
+                }
+              }
+            ],
+            "start_lid": "1.1"
+          },
+          "evidence_text_digest": "source-fnv1a64-9a2c7a5e9e27f398",
+          "label_snapshot": "正文",
+          "preview_snapshot": "XXX",
+          "source_ref_id": "source-to4-observed"
+        }
+      ],
+      "state_contract": null,
+      "title": "证据召回率与图示"
+    },
+    "created_by_turn_id": "turn_ad22d58e66ad4f70",
+    "owner": {
+      "book_id": "sample-book",
+      "session_id": "chat_2026-09-17T00:00:00Z_0"
+    },
+    "reference": {
+      "presentation_id": "presentation-1791801058631237900-0",
+      "revision": 2
+    }
+  },
+  "premature_delivery": {
+    "category": "validation",
+    "error_code": "PRESENTATION_AUTHORING_FAILED",
+    "message": "Preview this exact candidate successfully before delivery"
+  },
+  "spec": {
+    "description": "Create or revise rich answers. prepare replaces the complete run-local phase/framework/focus/needs; phase and needs are required. Omitted framework/focus clear previous values. Call prepare alone; selected guidance applies at the next sampling. It does not create or deliver content. read/search/patch require exactly one delivered reference or current-run candidate_id. read returns a file or offset/length range; search returns literal matches and character offsets. patch applies ordered edits, each old_text matching exactly once, atomically producing a new immutable candidate while preserving other content/resources; optional metadata replaces only supplied fields. write saves a complete candidate and requires title, html and readable_content; based_on selects an exact delivered version, never a candidate. render_plot returns a static SVG asset; render_animation returns a fixed movie asset. Include returned asset_refs and selected libraries on every write. preview executes actions and returns candidate/environment-bound DOM, errors and screenshots; width and viewport are mutually exclusive. deliver saves only a candidate meeting the preview and subsequent-observation contract; changed candidates need new previews. Examples illustrate calls, not live object IDs: replace reference/based_on with the exact delivered reference, candidate_id with the current run's write/patch result, and source/asset refs and asset paths with actual observed results. For an edit chain, read/search the delivered reference, patch it, then read/search/patch the returned candidate before preview and deliver. Observe each preview in a later sampling before deliver; explicit viewport previews must cover all environments required by the returned receipt.",
+    "name": "presentation.author",
+    "parameters": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "enum": [
+                  "read",
+                  "search",
+                  "patch"
+                ]
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "oneOf": [
+              {
+                "properties": {
+                  "reference": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "reference"
+                ]
+              },
+              {
+                "properties": {
+                  "candidate_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "candidate_id"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "not": {
+            "properties": {
+              "viewport": {
+                "type": "object"
+              },
+              "width": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "width",
+              "viewport"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "new_object": {
+                "enum": [
+                  true
+                ]
+              }
+            },
+            "required": [
+              "new_object"
+            ]
+          },
+          "then": {
+            "not": {
+              "properties": {
+                "based_on": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "based_on"
+              ]
+            }
+          }
+        }
+      ],
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "focus": {},
+            "framework": {},
+            "needs": {},
+            "operation": {
+              "enum": [
+                "prepare"
+              ]
+            },
+            "phase": {}
+          },
+          "required": [
+            "operation",
+            "phase",
+            "needs"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "code": {},
+            "data": {},
+            "operation": {
+              "enum": [
+                "render_plot"
+              ]
+            },
+            "size": {}
+          },
+          "required": [
+            "operation",
+            "code"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "code": {},
+            "cues": {},
+            "data": {},
+            "operation": {
+              "enum": [
+                "render_animation"
+              ]
+            },
+            "size": {}
+          },
+          "required": [
+            "operation",
+            "code"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "candidate_id": {},
+            "file": {},
+            "length": {},
+            "offset": {},
+            "operation": {
+              "enum": [
+                "read"
+              ]
+            },
+            "reference": {}
+          },
+          "required": [
+            "operation"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "candidate_id": {},
+            "file": {},
+            "max_matches": {},
+            "offset": {},
+            "operation": {
+              "enum": [
+                "search"
+              ]
+            },
+            "query": {},
+            "reference": {}
+          },
+          "required": [
+            "operation",
+            "query"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "candidate_id": {},
+            "edits": {},
+            "initial_state": {},
+            "operation": {
+              "enum": [
+                "patch"
+              ]
+            },
+            "readable_content": {},
+            "reference": {},
+            "state_contract": {},
+            "title": {}
+          },
+          "required": [
+            "operation",
+            "edits"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "asset_refs": {},
+            "assumptions": {},
+            "based_on": {},
+            "html": {},
+            "initial_state": {},
+            "libraries": {},
+            "new_object": {},
+            "operation": {
+              "enum": [
+                "write"
+              ]
+            },
+            "readable_content": {
+              "type": "string"
+            },
+            "source_ref_ids": {},
+            "state_contract": {},
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "operation",
+            "title",
+            "html",
+            "readable_content"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actions": {},
+            "candidate_id": {
+              "type": "string"
+            },
+            "operation": {
+              "enum": [
+                "preview"
+              ]
+            },
+            "read_selector": {},
+            "viewport": {},
+            "width": {}
+          },
+          "required": [
+            "operation",
+            "candidate_id"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "candidate_id": {
+              "type": "string"
+            },
+            "operation": {
+              "enum": [
+                "deliver"
+              ]
+            }
+          },
+          "required": [
+            "operation",
+            "candidate_id"
+          ]
+        }
+      ],
+      "examples": [
+        {
+          "focus": "Revise the existing button label and verify its result.",
+          "framework": "Compare the found evidence with the required total.",
+          "needs": [
+            "editing",
+            "state"
+          ],
+          "operation": "prepare",
+          "phase": "local"
+        },
+        {
+          "code": "ax.plot(data['x'], data['y'], marker='o'); ax.set_xlabel('Required'); ax.set_ylabel('Found')",
+          "data": {
+            "x": [
+              1,
+              2,
+              3
+            ],
+            "y": [
+              1,
+              2,
+              2
+            ]
+          },
+          "operation": "render_plot",
+          "size": {
+            "height": 400,
+            "width": 640
+          }
+        },
+        {
+          "code": "class PresentationAnimation(Scene):\n    def construct(self):\n        dot = Dot(LEFT)\n        self.add(dot)\n        self.play(dot.animate.shift(RIGHT * data['distance']), run_time=1)\n",
+          "cues": [
+            {
+              "at_seconds": 0.5,
+              "id": "middle",
+              "label": "Midpoint"
+            }
+          ],
+          "data": {
+            "distance": 2
+          },
+          "operation": "render_animation",
+          "size": {
+            "height": 360,
+            "width": 640
+          }
+        },
+        {
+          "operation": "read",
+          "reference": {
+            "presentation_id": "PRESENTATION_ID_FROM_DELIVER",
+            "revision": 1
+          }
+        },
+        {
+          "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+          "file": "readable_content",
+          "length": 200,
+          "offset": 0,
+          "operation": "read"
+        },
+        {
+          "max_matches": 5,
+          "operation": "search",
+          "query": "补齐证据",
+          "reference": {
+            "presentation_id": "PRESENTATION_ID_FROM_DELIVER",
+            "revision": 1
+          }
+        },
+        {
+          "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+          "max_matches": 5,
+          "operation": "search",
+          "query": "补齐全部证据"
+        },
+        {
+          "edits": [
+            {
+              "new_text": "补齐全部证据",
+              "old_text": "补齐证据"
+            }
+          ],
+          "operation": "patch",
+          "reference": {
+            "presentation_id": "PRESENTATION_ID_FROM_DELIVER",
+            "revision": 1
+          }
+        },
+        {
+          "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+          "edits": [
+            {
+              "new_text": "补齐所需证据",
+              "old_text": "补齐全部证据"
+            }
+          ],
+          "operation": "patch"
+        },
+        {
+          "html": "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script>",
+          "initial_state": {
+            "count": 2
+          },
+          "new_object": true,
+          "operation": "write",
+          "readable_content": "已找到两处证据，共需三处。补齐后为一。",
+          "title": "证据召回率"
+        },
+        {
+          "asset_refs": [
+            "PLOT_ASSET_REF"
+          ],
+          "based_on": {
+            "presentation_id": "PRESENTATION_ID_FROM_DELIVER",
+            "revision": 1
+          },
+          "html": "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script><img src='assets/PLOT_ASSET_REF.svg' alt='Required and found evidence'><button data-source-ref='SOURCE_REF_FROM_SOURCE_PRESENT'>来源</button>",
+          "initial_state": {
+            "count": 2
+          },
+          "operation": "write",
+          "readable_content": "已找到两处证据，共需三处。补齐后为一。 [[source:SOURCE_REF_FROM_SOURCE_PRESENT]]",
+          "source_ref_ids": [
+            "SOURCE_REF_FROM_SOURCE_PRESENT"
+          ],
+          "title": "证据召回率与图示"
+        },
+        {
+          "actions": [
+            {
+              "kind": "click",
+              "selector": "#add"
+            }
+          ],
+          "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+          "operation": "preview",
+          "read_selector": "#result",
+          "width": 960
+        },
+        {
+          "actions": [
+            {
+              "kind": "click",
+              "selector": "#add"
+            },
+            {
+              "kind": "scroll",
+              "y": 0
+            }
+          ],
+          "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+          "operation": "preview",
+          "read_selector": "#result",
+          "viewport": {
+            "height": 420,
+            "input": "touch",
+            "width": 320
+          }
+        },
+        {
+          "candidate_id": "CANDIDATE_ID_FROM_WRITE_OR_PATCH",
+          "operation": "deliver"
+        }
+      ],
+      "properties": {
+        "actions": {
+          "items": {
+            "additionalProperties": false,
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "click"
+                    ]
+                  },
+                  "selector": {
+                    "description": "Required click target; optional key target to focus before pressing. Without a key target, the current focus receives the key.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "selector"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "key": {},
+                  "kind": {
+                    "enum": [
+                      "key"
+                    ]
+                  },
+                  "selector": {}
+                },
+                "required": [
+                  "kind",
+                  "key"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "seek"
+                    ]
+                  },
+                  "semantic_state": {},
+                  "transition_progress": {}
+                },
+                "required": [
+                  "kind",
+                  "semantic_state",
+                  "transition_progress"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "scroll"
+                    ]
+                  },
+                  "y": {}
+                },
+                "required": [
+                  "kind",
+                  "y"
+                ]
+              }
+            ],
+            "properties": {
+              "key": {
+                "enum": [
+                  "ArrowLeft",
+                  "ArrowRight",
+                  "ArrowUp",
+                  "ArrowDown",
+                  "Home",
+                  "End",
+                  "Enter",
+                  "Tab"
+                ],
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "click",
+                  "key",
+                  "seek",
+                  "scroll"
+                ],
+                "type": "string"
+              },
+              "selector": {
+                "description": "Required click target; optional key target to focus before pressing. Without a key target, the current focus receives the key.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "semantic_state": {
+                "description": "seek: completed semantic step",
+                "maximum": 1000,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "transition_progress": {
+                "description": "seek: visual progress toward the next step",
+                "exclusiveMaximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              "y": {
+                "description": "Required for scroll: absolute document vertical position in CSS pixels, clamped at the page bottom. Changes reading position without focusing or activating controls. Observations report the action, actual scroll position, viewport and visible_text. Each preview starts with a fresh page.",
+                "maximum": 4294967295,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "maxItems": 4,
+          "type": "array"
+        },
+        "asset_refs": {
+          "description": "Refs returned by render_plot/render_animation or listed by read; include each asset used by html.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "based_on": {
+          "additionalProperties": false,
+          "description": "write: exact delivered revision to revise. With a presentation follow-up receipt, must match its reference. Omit only for a new object; a follow-up then requires new_object=true.",
+          "properties": {
+            "presentation_id": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "presentation_id",
+            "revision"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "candidate_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "code": {
+          "description": "render_plot: statements using plt/fig/ax/data. render_animation: define PresentationAnimation(Scene), with Manim symbols and JSON data available.",
+          "type": "string"
+        },
+        "cues": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "at_seconds": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "at_seconds"
+            ],
+            "type": "object"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "data": {
+          "description": "JSON data available as the Python variable data"
+        },
+        "edits": {
+          "description": "patch: ordered exact replacements in the entrypoint; every old_text must match once. All edits succeed or no candidate is saved. Unchanged bytes and version resources are preserved.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "new_text": {
+                "type": "string"
+              },
+              "old_text": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "old_text",
+              "new_text"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "file": {
+          "description": "read/search: logical file name; defaults to entrypoint. Use readable_content for the version's explanatory prose with offset/length or query, without HTML. Omit file to read entrypoint source plus full readable_content metadata. Managed libraries return metadata only.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "focus": {
+          "description": "prepare: current local purpose and its relation to the whole. Omission clears the previous focus.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "framework": {
+          "description": "prepare: brief current whole-work design, as task data. Omission clears the previous framework.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "html": {
+          "type": "string"
+        },
+        "initial_state": {},
+        "length": {
+          "description": "read: maximum characters requested from offset; omitted reads to file end, within model output budget.",
+          "minimum": 1,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "libraries": {
+          "description": "Optional fixed host libraries. Explicitly select dependencies on every write, including based_on revisions; omitted means none.",
+          "items": {
+            "enum": [
+              "konva"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "max_matches": {
+          "description": "search: default 20. Follow next_offset to find subsequent occurrences.",
+          "maximum": 50,
+          "minimum": 1,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "needs": {
+          "description": "Required for prepare, including []: technical guidance needed for the next sampling.",
+          "items": {
+            "enum": [
+              "editing",
+              "static_plot",
+              "state",
+              "continuous_scene",
+              "konva",
+              "manim"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "new_object": {
+          "description": "write: true explicitly creates a separate presentation, including from a follow-up. Use only when the user wants a new object. Cannot be true together with based_on. Defaults to false; without a follow-up or based_on, ordinary creation is unchanged.",
+          "type": "boolean"
+        },
+        "offset": {
+          "description": "read/search: zero-based Unicode character offset (not bytes or UTF-16). For truncated reads follow next_offset and remaining length until null.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "operation": {
+          "enum": [
+            "prepare",
+            "render_plot",
+            "render_animation",
+            "read",
+            "search",
+            "patch",
+            "write",
+            "preview",
+            "deliver"
+          ],
+          "type": "string"
+        },
+        "phase": {
+          "description": "Required for prepare: current design responsibility.",
+          "enum": [
+            "global",
+            "local",
+            "review"
+          ],
+          "type": "string"
+        },
+        "query": {
+          "description": "search: literal case-sensitive source text, not a regular expression.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "read_selector": {
+          "description": "preview: CSS selector matching one visible result region. After the final action, returns its complete rendered text together with live page state, input values and scene position as reading. Use this page-computed reading for numerical claims; keep each value with its parameters and semantic step. action_step counts preview actions, not mathematical iterations. For another state, run another preview with the required actions. A playing scene must be paused/seeked first. Narrow the selected region if its full context exceeds the result budget.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "readable_content": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reference": {
+          "additionalProperties": false,
+          "properties": {
+            "presentation_id": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "presentation_id",
+            "revision"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "size": {
+          "additionalProperties": false,
+          "properties": {
+            "height": {
+              "maximum": 1200,
+              "minimum": 240,
+              "type": "integer"
+            },
+            "width": {
+              "maximum": 1600,
+              "minimum": 320,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "width",
+            "height"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "source_ref_ids": {
+          "description": "write: list every source ref used in HTML or readable_content. patch preserves existing source bindings; use write to change them.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "state_contract": {
+          "description": "Parameter name -> semantic definition string, including units and allowed range. Preserve a definition only when old values retain exactly the same meaning and domain. Saved page parameters with identical definitions and JSON types replace matching initial_state fields; all others keep new defaults.",
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "viewport": {
+          "additionalProperties": false,
+          "description": "Explicit content-container environment. Do not provide width at the same time.",
+          "properties": {
+            "height": {
+              "maximum": 2160,
+              "minimum": 160,
+              "type": "integer"
+            },
+            "input": {
+              "enum": [
+                "mouse",
+                "touch"
+              ],
+              "type": "string"
+            },
+            "width": {
+              "maximum": 1920,
+              "minimum": 240,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "width",
+            "height",
+            "input"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "width": {
+          "description": "Legacy preview width in CSS pixels; defaults to 960. Mutually exclusive with viewport.",
+          "maximum": 1920,
+          "minimum": 240,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "operation"
+      ],
+      "type": "object"
+    }
+  }
+}

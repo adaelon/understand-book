@@ -106,6 +106,8 @@ pub fn tool_definitions() -> Vec<Value> {
             "after":ref_schema,"limit":{"type":"integer","minimum":1,"maximum":50,"default":20,"description":"Maximum publications on this directory page."}}}}),
     ];
     tools[0]["inputSchema"]["properties"]["after"]["description"] = json!("Omit for the first page; copy the after reference from book_list next_calls for later pages.");
+    tools[0]["outputSchema"] = crate::mcp_output_schema::directory(&tools[0]["inputSchema"]);
+    tools[0]["annotations"] = crate::mcp_output_schema::free_read_annotations();
     for id in READ_TOOLS {
         let contract = contract_for(id);
         let mut schema = input_schema(id);
@@ -122,10 +124,7 @@ pub fn tool_definitions() -> Vec<Value> {
                 example["published_book_ref"] = example_reference.clone();
             }
         }
-        if id == BookToolId::Text {
-            schema["properties"]["start_utf16"] = json!({"type":"integer","minimum":0,
-                "description":"Absolute canonical-source UTF-16 position from next_calls; omit for the first page."});
-        } else {
+        if id != BookToolId::Text {
             schema["properties"]["page"] = json!({"type":"object","additionalProperties":false,
                 "description":"Copy a continuation from next_calls to read an omitted collection. data_path identifies its position in the full projection.",
                 "properties":{"path":{"type":"string"},"offset":{"type":"integer","minimum":0,"default":0},
@@ -144,7 +143,9 @@ pub fn tool_definitions() -> Vec<Value> {
             "Copy published_book_ref from book_list and check its available_tools. Costs 1 call on success, including empty results, each continuation page and repeated successful requests; failures cost 0. complete=false means more pages exist; copy needed next_calls name and arguments unchanged. sources gives published_book_ref, start_lid/end_lid, source_range and source_url: cite only evidence actually read, retaining its version and exact range. An empty sources array provides no source citation. usage is the server's post-call balance with charged_units and charged_from; do not infer balance locally. On quota_exhausted stop content retries and report usage.free_resets_at plus top_up_url or top_up_instruction; book_list and mcp_usage remain free.")
             .replace("book.text", "book_text");
         tools.push(
-            json!({"name":contract.aliases.mcp,"description":description,"inputSchema":schema}),
+            json!({"name":contract.aliases.mcp,"description":description,"inputSchema":schema,
+                "outputSchema":crate::mcp_output_schema::remote(id, &schema),
+                "annotations":crate::mcp_output_schema::paid_read_annotations()}),
         );
     }
     tools
@@ -158,7 +159,6 @@ pub(crate) struct PreparedRead {
     pub(crate) reference: PublishedBookRef,
     id: BookToolId,
     input: BookToolInput,
-    start: Option<usize>,
     page: Option<CollectionPage>,
     name: String,
     arguments: Value,
@@ -214,17 +214,6 @@ impl<'a> McpRead<'a> {
                 .remove("published_book_ref")
                 .ok_or_else(|| invalid("published_book_ref is required"))?,
         )?;
-        let start = if id == BookToolId::Text {
-            local
-                .remove("start_utf16")
-                .map(|value| {
-                    serde_json::from_value::<usize>(value)
-                        .map_err(|_| invalid("start_utf16 must be a nonnegative integer"))
-                })
-                .transpose()?
-        } else {
-            None
-        };
         let page = if id != BookToolId::Text {
             local
                 .remove("page")
@@ -250,7 +239,6 @@ impl<'a> McpRead<'a> {
             reference,
             id,
             input,
-            start,
             page,
             name: name.into(),
             arguments,
@@ -266,7 +254,6 @@ impl<'a> McpRead<'a> {
             reference,
             id,
             input,
-            start,
             page,
             name,
             arguments,
@@ -281,7 +268,7 @@ impl<'a> McpRead<'a> {
         let book = &publication.book;
         let mut next_calls = Vec::new();
         if let BookToolInput::Text(input) = input {
-            let page = book.text_page(&input.lid, input.end_lid.as_deref(), start)?;
+            let page = book.text_page(&input.lid, input.end_lid.as_deref(), input.start_utf16)?;
             if let Some(next) = page.next_start_utf16 {
                 let mut args = arguments.clone();
                 args["start_utf16"] = json!(next);
@@ -298,7 +285,7 @@ impl<'a> McpRead<'a> {
                 "complete":next_calls.is_empty(),"next_calls":next_calls}),
             );
         }
-        let data = match (id, input) {
+        let mut data = match (id, input) {
             (BookToolId::SearchText, BookToolInput::SearchText(input)) => {
                 json!(book.search_text(&input)?)
             }
@@ -326,6 +313,7 @@ impl<'a> McpRead<'a> {
             }
             _ => unreachable!("validated pure read tool"),
         };
+        crate::mcp::project_candidate_read_calls(id, &mut data, Some(&reference));
         if data.get("available") == Some(&Value::Bool(false)) {
             return Err(error(
                 "MCP_CAPABILITY_UNAVAILABLE",
@@ -545,4 +533,4 @@ fn collect_lids(value: &Value, path: &str, out: &mut BTreeSet<String>) {
 
 #[cfg(test)]
 #[path = "mcp_read_tests.rs"]
-mod tests;
+pub(crate) mod tests;

@@ -5,6 +5,9 @@
   "type": "module",
   "description": "Local Claude Code plugin: turn a book into a read-only knowledge-graph base + read-time book agent.",
   "scripts": {
+    "docs:tools": "node --import tsx scripts/generate-tool-reference.mjs",
+    "docs:tools:check": "node --import tsx scripts/generate-tool-reference.mjs --check",
+    "docs:tools:test": "node --import tsx --test scripts/generate-tool-reference.test.mjs",
     "test": "pnpm -r --workspace-concurrency=1 test",
     "build": "pnpm --filter @understand-book/web build",
     "gen-schema": "cargo test -p base-schema export_bindings",
@@ -12,6 +15,8 @@
     "eval:semantic:test": "node --test evals/semantic/core.test.mjs evals/semantic/report.test.mjs evals/semantic/provider-recorder.test.mjs evals/semantic/agent-core.test.mjs evals/semantic/agent-report.test.mjs evals/semantic/ablation-report.test.mjs evals/semantic/eval-timing.test.mjs evals/semantic/diagnostic-core.test.mjs",
     "eval:semantic": "node evals/semantic/run.mjs",
     "eval:agent": "node evals/semantic/agent-run.mjs",
+    "eval:tools:test": "node --test evals/tool-usability/report.test.mjs",
+    "eval:tools:report": "node evals/tool-usability/report.mjs",
     "eval:quality": "node evals/semantic/quality-run.mjs",
     "eval:quality:test": "node --test evals/semantic/quality.test.mjs evals/semantic/task-quality.test.mjs evals/semantic/task-quality-basis.test.mjs",
     "verify:observability-release": "node scripts/verify-observability-release.mjs"

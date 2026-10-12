@@ -1,0 +1,237 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling runtime v0.0.0 (E:\allwork\download\agent\understand-book\crates\runtime)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+error[E0432]: unresolved import `read_tools::output_schema`
+ --> crates\runtime\src\book_output_schema.rs:3:17
+  |
+3 | use read_tools::output_schema::schema_for;
+  |                 ^^^^^^^^^^^^^ could not find `output_schema` in `read_tools`
+
+error[E0432]: unresolved import `read_tools::output_schema`
+ --> crates\runtime\src\book_delivery_schema.rs:3:17
+  |
+3 | use read_tools::output_schema::schema_for;
+  |                 ^^^^^^^^^^^^^ could not find `output_schema` in `read_tools`
+
+error[E0433]: cannot find `output_schema` in `read_tools`
+  --> crates\runtime\src\book_output_schema.rs:11:26
+   |
+11 |         _ => read_tools::output_schema::book_output_schema(id),
+   |                          ^^^^^^^^^^^^^ could not find `output_schema` in `read_tools`
+
+error[E0599]: no method named `text_in_source_range` found for reference `&read_tools::Book` in the current scope
+    --> crates\runtime\src\orchestrator.rs:1761:29
+     |
+1761 |                     || book.text_in_source_range(&range).ok().as_deref()
+     |                             ^^^^^^^^^^^^^^^^^^^^ method not found in `&read_tools::Book`
+
+error[E0599]: no method named `read_text` found for reference `&read_tools::Book` in the current scope
+    --> crates\runtime\src\orchestrator.rs:3776:24
+     |
+3776 |             match book.read_text(&input) {
+     |                        ^^^^^^^^^
+     |
+help: there is a method `search_text` with a similar name
+     |
+3776 -             match book.read_text(&input) {
+3776 +             match book.search_text(&input) {
+     |
+
+error[E0277]: the trait bound `EvidenceRange: JsonSchema` is not satisfied
+   --> crates\runtime\src\tool_result.rs:37:28
+    |
+ 37 |     pub accepted_evidence: Vec<EvidenceRange>,
+    |                            ^^^^^^^^^^^^^^^^^^ the trait `JsonSchema` is not implemented for `EvidenceRange`
+    |
+    = help: the following other types implement trait `JsonSchema`:
+              &'a T
+              &'a mut T
+              ()
+              (T0, T1)
+              (T0, T1, T2)
+              (T0, T1, T2, T3)
+              (T0, T1, T2, T3, T4)
+              (T0, T1, T2, T3, T4, T5)
+            and 212 others
+    = note: required for `std::vec::Vec<EvidenceRange>` to implement `JsonSchema`
+note: required by a bound in `schemars::_private::insert_object_property`
+   --> C:\Users\Lenovo\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\schemars-0.8.22\src\_private.rs:126:43
+    |
+126 | pub fn insert_object_property<T: ?Sized + JsonSchema>(
+    |                                           ^^^^^^^^^^ required by this bound in `insert_object_property`
+
+error[E0609]: no field `start_utf16` on type `TextInput`
+   --> crates\runtime\src\tool_result.rs:269:23
+    |
+269 |     let start = input.start_utf16.unwrap_or(first.span.start);
+    |                       ^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `lid`, `end_lid`
+
+error[E0599]: no method named `cursor_after_prefix` found for struct `SearchTextResult` in the current scope
+   --> crates\runtime\src\tool_result.rs:378:10
+    |
+377 |       let cursor = original
+    |  __________________-
+378 | |         .cursor_after_prefix(&input, kept)
+    | |         -^^^^^^^^^^^^^^^^^^^ method not found in `SearchTextResult`
+    | |_________|
+    |
+
+error[E0277]: the trait bound `RankedStep: JsonSchema` is not satisfied
+    --> crates\runtime\src\lib.rs:1821:16
+     |
+1821 |     pub route: Vec<RankedStep>,
+     |                ^^^^^^^^^^^^^^^ the trait `JsonSchema` is not implemented for `RankedStep`
+     |
+     = help: the following other types implement trait `JsonSchema`:
+               &'a T
+               &'a mut T
+               ()
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+               (T0, T1, T2, T3, T4, T5)
+             and 212 others
+     = note: required for `std::vec::Vec<RankedStep>` to implement `JsonSchema`
+note: required by a bound in `schemars::_private::insert_object_property`
+    --> C:\Users\Lenovo\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\schemars-0.8.22\src\_private.rs:126:43
+     |
+ 126 | pub fn insert_object_property<T: ?Sized + JsonSchema>(
+     |                                           ^^^^^^^^^^ required by this bound in `insert_object_property`
+
+error[E0277]: the trait bound `RankedStep: JsonSchema` is not satisfied
+    --> crates\runtime\src\lib.rs:1822:19
+     |
+1822 |     pub frontier: Vec<RankedStep>,
+     |                   ^^^^^^^^^^^^^^^ the trait `JsonSchema` is not implemented for `RankedStep`
+     |
+     = help: the following other types implement trait `JsonSchema`:
+               &'a T
+               &'a mut T
+               ()
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+               (T0, T1, T2, T3, T4, T5)
+             and 212 others
+     = note: required for `std::vec::Vec<RankedStep>` to implement `JsonSchema`
+note: required by a bound in `schemars::_private::insert_object_property`
+    --> C:\Users\Lenovo\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\schemars-0.8.22\src\_private.rs:126:43
+     |
+ 126 | pub fn insert_object_property<T: ?Sized + JsonSchema>(
+     |                                           ^^^^^^^^^^ required by this bound in `insert_object_property`
+
+Some errors have detailed explanations: E0277, E0432, E0433, E0599, E0609.
+For more information about an error, try `rustc --explain E0277`.
+error: could not compile `runtime` (lib) due to 10 previous errors

@@ -6,10 +6,18 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 
+#[cfg(test)]
+#[path = "structured_result_tests.rs"]
+mod structured_tests;
+
+#[path = "book_delivery_schema.rs"]
+mod book_delivery_schema;
+pub use book_delivery_schema::book_envelope_schema;
+
 pub const TOOL_RESULT_ENVELOPE_VERSION: &str = "tool_result_envelope.v1";
 pub const ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES: usize = 48 * 1024;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum HistoricalToolStatus {
     Ok,
@@ -17,7 +25,7 @@ pub enum HistoricalToolStatus {
     LegacyUnparsed,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
 pub struct HistoricalToolReceipt {
     pub version: String,
     pub tool: String,
@@ -32,7 +40,7 @@ pub struct HistoricalToolReceipt {
     pub opaque_result_digest: String,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum ToolResultStatus {
     Ok,
@@ -40,7 +48,7 @@ pub(crate) enum ToolResultStatus {
     Error,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub(crate) enum ToolContinuation {
     ToolCursor {
@@ -59,7 +67,7 @@ pub(crate) enum ToolContinuation {
     },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
 pub(crate) struct ToolResultEnvelope {
     pub version: String,
     pub status: ToolResultStatus,
@@ -224,192 +232,168 @@ fn first_citation_lid(value: &Value) -> Option<&str> {
         .as_str()
 }
 
+fn next_text_call(arguments: &str, start: usize, reason: &str) -> Option<ToolContinuation> {
+    let mut next: Value = serde_json::from_str(arguments).ok()?;
+    next.as_object_mut()?
+        .insert("start_utf16".into(), json!(start));
+    Some(ToolContinuation::NextCall {
+        tool: "book.text".into(),
+        arguments: next,
+        reason: reason.into(),
+    })
+}
+
 fn project_text(arguments: &str, raw: &Value, limit: usize, book: &Book) -> ToolResultDraft {
     let input = serde_json::from_str::<Value>(arguments)
         .ok()
         .and_then(|value| validate_input(BookToolId::Text, value).ok());
     let Some(BookToolInput::Text(input)) = input else {
-        return ToolResultDraft {
-            status: ToolResultStatus::Partial,
-            model_body: bounded_value(raw.clone(), limit, &[]),
-            truncated: true,
-            continuation: Some(refine_continuation(
-                "book.text",
-                arguments,
-                "retry with a narrower LID range",
-            )),
-            evidence_arguments: arguments.into(),
-        };
+        return project_error(
+            arguments,
+            &json!({"error_code":"BOOK_TOOL_INPUT_INVALID"}),
+            limit,
+        );
     };
-    let end_lid = input.end_lid.as_deref().unwrap_or(&input.lid);
-    let start = book
+    let first = book
         .base
         .lid_nodes
         .iter()
-        .find(|node| node.lid == input.lid);
-    let end = book.base.lid_nodes.iter().find(|node| node.lid == end_lid);
-    let mut leaves = match (start, end) {
-        (Some(start), Some(end)) => book
-            .base
-            .lid_nodes
-            .iter()
-            .filter(|node| {
-                node.children.is_empty()
-                    && node.span.start >= start.span.start
-                    && node.span.end <= end.span.end
-            })
-            .collect::<Vec<_>>(),
-        _ => Vec::new(),
-    };
-    leaves.sort_by_key(|node| (node.span.start, node.span.end));
-
-    let Some(first) = leaves.first() else {
-        return ToolResultDraft {
-            status: ToolResultStatus::Partial,
-            model_body: bounded_value(raw.clone(), limit, &[]),
-            truncated: true,
-            continuation: Some(refine_continuation(
-                "book.text",
-                arguments,
-                "retry with a narrower child LID",
-            )),
-            evidence_arguments: arguments.into(),
+        .find(|n| n.lid == input.lid)
+        .expect("successful text start");
+    let last = book
+        .base
+        .lid_nodes
+        .iter()
+        .find(|n| n.lid == input.end_lid.as_deref().unwrap_or(&input.lid))
+        .expect("successful text end");
+    let start = input.start_utf16.unwrap_or(first.span.start);
+    let text = raw["text"].as_str().expect("successful canonical text");
+    // Count serialized bytes, including JSON escapes, without repeatedly cloning
+    // the full passage. A cut always preserves an exact Unicode prefix.
+    let mut body = json!({"lid":input.lid,"text":"",
+        "source_range":{"start":start,"end":last.span.end},
+        "requested_range":{"start":first.span.start,"end":last.span.end},
+        "next_start_utf16":last.span.end});
+    let overhead = json_len(&body);
+    let mut bytes = overhead;
+    let mut end = start;
+    let mut cut = 0;
+    for (at, ch) in text.char_indices() {
+        let cost = match ch {
+            '"' | '\\' | '\n' | '\r' | '\t' | '\u{08}' | '\u{0c}' => 2,
+            ch if ch < ' ' => 6,
+            ch => ch.len_utf8(),
         };
-    };
-
-    let mut best: Option<(usize, Value)> = None;
-    for (index, last) in leaves.iter().enumerate() {
-        let Ok(text) = book.text(
-            &first.lid,
-            (first.lid != last.lid).then_some(last.lid.as_str()),
-        ) else {
-            break;
-        };
-        let candidate = json!({"lid": first.lid, "text": text});
-        if json_len(&candidate) > limit {
+        if bytes + cost > limit {
             break;
         }
-        best = Some((index, candidate));
+        bytes += cost;
+        end += ch.len_utf16();
+        cut = at + ch.len_utf8();
     }
-
-    let Some((last_index, model_body)) = best else {
-        return ToolResultDraft {
-            status: ToolResultStatus::Partial,
-            model_body: bounded_value(raw.clone(), limit, &[]),
-            truncated: true,
-            continuation: Some(refine_continuation(
-                "book.text",
-                arguments,
-                "the selected LID is too large; request a narrower child LID or nearby context",
-            )),
-            evidence_arguments: arguments.into(),
-        };
+    // Prefer a whole leaf when one fits; keep headings and inter-leaf gaps in
+    // the continuous range, and use offsets when an individual leaf is large.
+    if let Some(boundary) = book
+        .base
+        .lid_nodes
+        .iter()
+        .filter(|n| n.children.is_empty() && n.span.end > start && n.span.end <= end)
+        .map(|n| n.span.end)
+        .max()
+    {
+        if boundary < end {
+            let mut position = start;
+            cut = text
+                .char_indices()
+                .find_map(|(at, ch)| {
+                    if position == boundary {
+                        Some(at)
+                    } else {
+                        position += ch.len_utf16();
+                        None
+                    }
+                })
+                .unwrap_or(cut);
+            end = boundary;
+        }
+    }
+    body["text"] = json!(&text[..cut]);
+    body["source_range"]["end"] = json!(end);
+    body["next_start_utf16"] = if end < last.span.end {
+        json!(end)
+    } else {
+        Value::Null
     };
-    let included_end = &leaves[last_index].lid;
-    let evidence_arguments = serde_json::to_string(&json!({
-        "lid": first.lid,
-        "end_lid": included_end,
-    }))
-    .unwrap_or_else(|_| arguments.into());
-    let continuation = leaves
-        .get(last_index + 1)
-        .map(|next| ToolContinuation::NextCall {
-            tool: "book.text".into(),
-            arguments: json!({"lid": next.lid, "end_lid": leaves.last().unwrap().lid}),
-            reason: "continue the omitted LID range".into(),
-        });
+    if cut == 0 {
+        body = bounded_value(
+            json!({"projection":"budget_exhausted","message":"No source text delivered; retry the continuation when model-body budget is available."}),
+            limit,
+            &[],
+        );
+    }
     ToolResultDraft {
         status: ToolResultStatus::Partial,
-        model_body,
+        model_body: body,
         truncated: true,
-        continuation,
-        evidence_arguments,
+        continuation: (end < last.span.end)
+            .then(|| {
+                next_text_call(
+                    arguments,
+                    end,
+                    "continue the canonical source after the delivered UTF-16 range",
+                )
+            })
+            .flatten(),
+        evidence_arguments: arguments.into(),
     }
 }
 
 fn project_search(arguments: &str, raw: &Value, limit: usize) -> ToolResultDraft {
-    let Ok(mut projected) = serde_json::from_value::<SearchTextResult>(raw.clone()) else {
-        return ToolResultDraft {
-            status: ToolResultStatus::Partial,
-            model_body: bounded_value(raw.clone(), limit, &["occurrences", "section_counts"]),
-            truncated: true,
-            continuation: Some(refine_continuation(
-                "book.search_text",
-                arguments,
-                "retry with a smaller page_size or narrower scope",
-            )),
-            evidence_arguments: arguments.into(),
-        };
-    };
-    let original = projected.clone();
-    while serde_json::to_vec(&projected).map_or(0, |bytes| bytes.len()) > limit
-        && !projected.occurrences.is_empty()
-    {
-        projected.occurrences.pop();
-    }
-    if serde_json::to_vec(&projected).map_or(0, |bytes| bytes.len()) > limit {
-        projected.section_counts.clear();
-    }
-    projected.exhaustive = false;
-    projected.next_cursor = None;
-    while serde_json::to_vec(&projected).map_or(0, |bytes| bytes.len()) > limit
-        && projected
-            .occurrences
-            .last()
-            .is_some_and(|occurrence| occurrence.excerpt.chars().count() > 32)
-    {
-        let occurrence = projected
-            .occurrences
-            .last_mut()
-            .expect("last occurrence was checked");
-        let keep = (occurrence.excerpt.chars().count() / 2).max(16);
-        occurrence.excerpt = format!(
-            "{}...[truncated]",
-            occurrence.excerpt.chars().take(keep).collect::<String>()
+    let (Ok(original), Ok(BookToolInput::SearchText(input))) = (
+        serde_json::from_value::<SearchTextResult>(raw.clone()),
+        serde_json::from_str(arguments)
+            .map_err(|e| e.to_string())
+            .and_then(|v| validate_input(BookToolId::SearchText, v).map_err(|e| e.message)),
+    ) else {
+        return project_error(
+            arguments,
+            &json!({"error_code":"BOOK_TOOL_INPUT_INVALID"}),
+            limit,
         );
+    };
+    let mut projected = original.clone();
+    // The aggregate scan remains exhaustive. The envelope marks delivery
+    // truncation; its continuation replaces the raw page's cursor.
+    projected.next_cursor = None;
+    projected.section_counts.clear();
+    let mut body = serde_json::to_value(&projected).unwrap();
+    body["delivery"] = json!({"returned_count":projected.occurrences.len(),"section_counts_omitted":!original.section_counts.is_empty()});
+    while json_len(&body) > limit && !projected.occurrences.is_empty() {
+        projected.occurrences.pop();
+        body["occurrences"] = json!(projected.occurrences);
+        body["delivery"]["returned_count"] = json!(projected.occurrences.len());
     }
-    let model_body = bounded_value(
-        serde_json::to_value(&projected).unwrap_or(Value::Null),
-        limit,
-        &["section_counts", "occurrences"],
-    );
-    let kept = model_body
-        .get("occurrences")
-        .and_then(Value::as_array)
-        .map_or(0, Vec::len);
-    let omitted = original.occurrences.get(kept);
-    let continuation = omitted
-        .and_then(|occurrence| {
-            let mut next = serde_json::from_str::<Value>(arguments).ok()?;
-            let object = next.as_object_mut()?;
-            object.remove("cursor");
-            object.insert("page_size".into(), Value::from(1));
-            object.insert("scope".into(), json!({"within_lid": occurrence.start_lid}));
-            Some(ToolContinuation::NextCall {
-                tool: "book.search_text".into(),
-                arguments: next,
-                reason: "continue from the first occurrence omitted by the model-body budget"
-                    .into(),
-            })
-        })
-        .or_else(|| next_search_cursor("book.search_text", arguments, raw))
-        .or_else(|| {
-            Some(refine_continuation(
-                "book.search_text",
-                arguments,
-                "retry with a smaller page_size or narrower scope",
-            ))
-        });
+    let kept = projected.occurrences.len();
+    let cursor = original
+        .cursor_after_prefix(&input, kept)
+        .expect("validated search request");
+    let continuation = cursor.map(|cursor| {
+        let mut next: Value = serde_json::from_str(arguments).unwrap();
+        next["cursor"] = json!(cursor);
+        ToolContinuation::NextCall { tool:"book.search_text".into(), arguments:next,
+            reason:if kept == 0 { "No occurrence fits; retry when model-body budget is available.".into() }
+                else { "continue the original search after the delivered occurrences; query, scope, order and page_size are unchanged".into() } }
+    });
     ToolResultDraft {
         status: ToolResultStatus::Partial,
-        model_body,
+        model_body: bounded_value(body, limit, &["section_counts"]),
         truncated: true,
         continuation,
         evidence_arguments: arguments.into(),
     }
 }
 
-fn project_structured(
+fn project_legacy_structured(
     tool: &str,
     arguments: &str,
     raw: &Value,
@@ -447,7 +431,20 @@ fn project_structured(
             "questions",
         ][..],
     };
-    let model_body = bounded_value(raw.clone(), limit, drop_order);
+    let mut model_body = bounded_value(raw.clone(), limit, drop_order);
+    if tool == "book.concept" {
+        // The budget trims occurrences independently. Keep optional reads attached only
+        // to locations still delivered in this candidate and accepted by the locator ledger.
+        if let Some(candidates) = model_body.get_mut("candidates").and_then(Value::as_array_mut) {
+            for candidate in candidates {
+                let lids: HashSet<String> = candidate["occurrences"].as_array().into_iter().flatten()
+                    .filter_map(Value::as_str).map(str::to_owned).collect();
+                if let Some(calls) = candidate.get_mut("next_calls").and_then(Value::as_array_mut) {
+                    calls.retain(|call| call["arguments"]["lid"].as_str().is_some_and(|lid| lids.contains(lid)));
+                }
+            }
+        }
+    }
     let continuation = first_citation_lid(raw)
         .map(|lid| ToolContinuation::NextCall {
             tool: "book.text".into(),
@@ -470,8 +467,359 @@ fn project_structured(
     }
 }
 
+// These are collection boundaries owned by the actual result types. Everything
+// else (warnings, support verdicts, bindings, source identity) stays atomic.
+fn structured_paths(tool: &str, raw: &Value) -> Option<Vec<String>> {
+    let fields: &[&str] = match tool {
+        "tool.search" => &["matches"],
+        "book.context" => &["items"],
+        "book.concept" => {
+            let mut paths = Vec::new();
+            for field in ["next_calls", "previews", "occurrences"] {
+                for index in 0..raw["candidates"].as_array().map_or(0, Vec::len) {
+                    paths.push(format!("/candidates/{index}/{field}"));
+                }
+            }
+            paths.push("/candidates".into());
+            return Some(paths);
+        }
+        "book.query" => &["model_supplement", "candidates", "citations"],
+        "book.synthesize" => &[
+            "model_supplement",
+            "suggested_probing",
+            "related_concepts",
+            "evidence_chain",
+            "citations",
+        ],
+        "book.structure" => &["throughlines", "key_stops"],
+        "book.guide_path" => &["segments"],
+        "book.paper_lexicon" => &["entries"],
+        "book.paper_metadata" => &[
+            "references/value",
+            "authors/value",
+            "affiliations/value",
+            "keywords/value",
+            "field_labels/value",
+            "datasets/value",
+            "code_links/value",
+            "funding/value",
+        ],
+        "book.paper_reading_guide" => &[
+            "questions",
+            "codebook/terms",
+            "codebook/throughlines",
+            "codebook/key_stops",
+            "abstract_aid/key_terms",
+            "abstract_aid/comprehension_checks",
+            "abstract_aid/excerpts",
+        ],
+        "profile.manifest" => &["layout_presets", "ui_slots", "projections", "agent_tools"],
+        "source.present" => &[],
+        _ => return None,
+    };
+    Some(fields.iter().map(|field| format!("/{field}")).collect())
+}
+
+fn update_structured_delivery(body: &mut Value, raw: &Value, paths: &[String], tool: &str) {
+    let mut collections = serde_json::Map::new();
+    for path in paths {
+        if let (Some(original), Some(delivered)) = (
+            raw.pointer(path).and_then(Value::as_array),
+            body.pointer(path).and_then(Value::as_array),
+        ) {
+            collections.insert(
+                path.clone(),
+                json!({"total":original.len(),"delivered":delivered.len()}),
+            );
+        }
+    }
+    body["delivery"]["collections"] = Value::Object(collections);
+    // Omitted quote text is not evidence. Its original LID remains a locator,
+    // so the caller can read the canonical text without rerunning inference.
+    let sources: &[(&str, &str)] = match tool {
+        "book.query" | "book.synthesize" => &[("/citations", "/lid")],
+        "book.structure" => &[("/key_stops", "/lid"), ("/throughlines", "/lids/0")],
+        "book.guide_path" => &[("/segments", "/spine_unit/lid")],
+        _ => &[],
+    };
+    let mut lids = Vec::new();
+    for (path, lid_path) in sources {
+        let delivered = body
+            .pointer(path)
+            .and_then(Value::as_array)
+            .map_or(0, Vec::len);
+        for item in raw
+            .pointer(path)
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .skip(delivered)
+        {
+            if let Some(lid) = item.pointer(lid_path).and_then(Value::as_str) {
+                if !lids.contains(&lid) {
+                    lids.push(lid);
+                }
+            }
+        }
+    }
+    if !lids.is_empty() {
+        body["delivery"]["read_lids"] = json!(lids);
+    }
+}
+
+fn structured_recovery(
+    tool: &str,
+    arguments: &str,
+    body: &Value,
+    raw: &Value,
+) -> Option<ToolContinuation> {
+    let mut args: Value = serde_json::from_str(arguments).ok()?;
+    let original = args.clone();
+    let read = |lid: &str, reason: &str| {
+        Some(ToolContinuation::NextCall {
+            tool: "book.text".into(),
+            arguments: json!({"lid":lid}),
+            reason: reason.into(),
+        })
+    };
+    let guidance = match tool {
+        "book.query" | "book.synthesize" => {
+            let lid = body
+                .pointer("/delivery/read_lids/0")
+                .and_then(Value::as_str)
+                .or_else(|| first_citation_lid(body))
+                .or_else(|| {
+                    body.pointer("/candidates/0/excerpts/0/lid")
+                        .and_then(Value::as_str)
+                })?;
+            return read(lid, "read source text from the returned query; this does not regenerate the omitted answer");
+        }
+        "book.concept" => {
+            let candidate = body["candidates"].as_array()?.first()?;
+            let occurrences = candidate["occurrences"].as_array()?;
+            let calls = candidate["next_calls"].as_array().map_or(0, Vec::len);
+            if let Some(lid) = occurrences
+                .get(calls)
+                .or_else(|| occurrences.first())
+                .and_then(Value::as_str)
+            {
+                return read(lid, "read a returned occurrence; other returned LIDs can be read with book.text, and this is not candidate pagination");
+            }
+            args["limit"] = json!(1);
+            "Recall one candidate; this narrows candidate selection and does not page occurrences."
+        }
+        "book.context" => {
+            let count = body["items"].as_array()?.len();
+            args["k"] = json!(count.max(1));
+            "Request fewer context pointers; this narrows selection and does not retrieve the omitted tail."
+        }
+        "book.structure" | "book.guide_path" => {
+            let lid = body
+                .pointer("/delivery/read_lids/0")
+                .and_then(Value::as_str)
+                .or_else(|| body.pointer("/spine_unit/lid").and_then(Value::as_str))?;
+            args["at"] = json!(lid);
+            if tool == "book.guide_path" {
+                // at selects a current segment but does not shorten guide_path.
+                return Some(ToolContinuation::NextCall { tool: "book.structure".into(), arguments: json!({"at":lid}),
+                    reason: "inspect the omitted route segment's structure without repeating the whole guide".into() });
+            }
+            if args == original {
+                return read(
+                    lid,
+                    "read the returned structural location as canonical text",
+                );
+            }
+            "Inspect the returned location's structure; this is a focused view, not collection pagination."
+        }
+        "tool.search" => {
+            let next = body["blocked"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .find_map(|entry| entry["next_searches"].as_array().and_then(|a| a.first()));
+            if let Some(next) = next {
+                // Public capability recovery already carries valid TaskNeed fields.
+                args = next.clone();
+            } else {
+                let delivered = body["matches"].as_array()?.len();
+                let omitted = raw["matches"].as_array()?.get(delivered)?;
+                args["required_capabilities"] =
+                    json!([omitted["matched_capabilities"].as_array()?.first()?]);
+                args["max_results"] = json!(1);
+            }
+            "Discover the reported capability with a smaller request; this is not pagination of the original matches."
+        }
+        "book.paper_reading_guide" => {
+            if !matches!(args["stage"].as_str(), Some("critical" | "creative")) {
+                return None;
+            }
+            args["stage"] = json!("passive");
+            "Request the passive stage without critique/research answer slots; this changes the selected reading scope."
+        }
+        _ => return None,
+    };
+    if args == original {
+        return None;
+    }
+    Some(ToolContinuation::RefineCall {
+        tool: tool.into(),
+        arguments: args,
+        guidance: guidance.into(),
+    })
+}
+
+fn semantic_budget_failure(raw: &Value, limit: usize) -> Value {
+    let mut body = json!({
+        "projection":"semantic_budget_exceeded",
+        "delivery":{"status":"omitted","reason":"Required semantics exceed the model-body budget; no content or evidence was delivered. Retry in a fresh turn with sufficient budget; this tool may have no paging API."}
+    });
+    for key in [
+        "available",
+        "error_code",
+        "category",
+        "required_capability",
+        "profile_id",
+        "profile_version",
+    ] {
+        if let Some(value) = raw.get(key) {
+            body[key] = value.clone();
+        }
+    }
+    if json_len(&body) <= limit {
+        return body;
+    }
+    let compact = json!({"projection":"semantic_budget_exceeded","delivery":{"status":"omitted"}});
+    if json_len(&compact) <= limit {
+        compact
+    } else {
+        Value::Null
+    }
+}
+
+fn project_structured(
+    tool: &str,
+    arguments: &str,
+    raw: &Value,
+    limit: usize,
+    result_policy: ToolResultPolicy,
+) -> ToolResultDraft {
+    let Some(paths) = structured_paths(tool, raw) else {
+        return project_legacy_structured(tool, arguments, raw, limit, result_policy);
+    };
+    let mut body = raw.clone();
+    body["delivery"] = json!({"status":"partial"});
+    if matches!(
+        tool,
+        "profile.manifest" | "book.paper_metadata" | "book.paper_lexicon" | "source.present"
+    ) {
+        body["delivery"]["recovery"] =
+            json!("No paging or smaller selection API; retry only with sufficient result budget.");
+    }
+    if tool == "tool.search" {
+        let redundant = ["description", "matched_fields", "matched_terms", "score"];
+        for item in body["matches"].as_array_mut().into_iter().flatten() {
+            for key in redundant {
+                item.as_object_mut().unwrap().remove(key);
+            }
+        }
+        body["delivery"]["omitted_match_fields"] = json!(redundant);
+    }
+    update_structured_delivery(&mut body, raw, &paths, tool);
+    if tool == "source.present" {
+        for field in ["preview", "label"] {
+            if json_len(&body) <= limit {
+                break;
+            }
+            if body.as_object_mut().unwrap().remove(field).is_some() {
+                if body["delivery"]["omitted_fields"].is_null() {
+                    body["delivery"]["omitted_fields"] = json!([]);
+                }
+                body["delivery"]["omitted_fields"]
+                    .as_array_mut()
+                    .unwrap()
+                    .push(json!(format!("/{field}")));
+            }
+        }
+    }
+    // Never shorten a generated statement into a different claim. Citations,
+    // support verdicts and bindings remain separate from the omitted prose.
+    if matches!(tool, "book.query" | "book.synthesize")
+        && json_len(&body) > limit
+        && !body["answer"].is_null()
+    {
+        body["answer"] = Value::Null;
+        body["delivery"]["omitted_fields"] = json!(["/answer"]);
+    }
+    for path in &paths {
+        while json_len(&body) > limit {
+            let Some(items) = body.pointer_mut(path).and_then(Value::as_array_mut) else {
+                break;
+            };
+            let minimum = usize::from(tool == "book.concept" && path.ends_with("/next_calls"));
+            if items.len() <= minimum {
+                break;
+            }
+            items.pop();
+            if tool == "book.concept" && path.ends_with("/occurrences") {
+                let parent = path.strip_suffix("/occurrences").unwrap();
+                let candidate = body.pointer_mut(parent).unwrap();
+                let lids: HashSet<String> = candidate["occurrences"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .map(str::to_owned)
+                    .collect();
+                if let Some(calls) = candidate["next_calls"].as_array_mut() {
+                    calls.retain(|c| {
+                        c["arguments"]["lid"]
+                            .as_str()
+                            .is_some_and(|lid| lids.contains(lid))
+                    });
+                }
+            }
+            update_structured_delivery(&mut body, raw, &paths, tool);
+        }
+    }
+    if json_len(&body) > limit {
+        body = semantic_budget_failure(raw, limit);
+    }
+    let continuation = structured_recovery(tool, arguments, &body, raw);
+    if continuation.is_none()
+        && body.get("delivery").is_some()
+        && body["projection"].is_null()
+        && body["delivery"].get("recovery").is_none()
+    {
+        body["delivery"]["recovery"] = json!("No executable continuation is available for the omitted fields. Do not repeat the same call at the same budget; use a fresh turn with sufficient budget or choose a smaller supported request.");
+        // Recovery prose must not push a previously bounded body over budget.
+        if json_len(&body) > limit {
+            body["delivery"].as_object_mut().unwrap().remove("recovery");
+        }
+    }
+    ToolResultDraft {
+        status: ToolResultStatus::Partial,
+        model_body: body,
+        truncated: true,
+        continuation,
+        evidence_arguments: arguments.into(),
+    }
+}
+
 fn project_error(arguments: &str, raw: &Value, limit: usize) -> ToolResultDraft {
-    let model_body = bounded_value(raw.clone(), limit, &[]);
+    let mut model_body = raw.clone();
+    if json_len(&model_body) > limit {
+        if model_body
+            .as_object_mut()
+            .and_then(|o| o.remove("details"))
+            .is_some()
+        {
+            model_body["delivery"] = json!({"status":"partial","omitted_fields":["/details"]});
+        }
+        if json_len(&model_body) > limit {
+            model_body = semantic_budget_failure(raw, limit);
+        }
+    }
     ToolResultDraft {
         status: ToolResultStatus::Error,
         truncated: model_body != *raw,
@@ -644,9 +992,11 @@ pub(crate) fn project_tool_result(
     if json_len(&raw) <= limit {
         return ToolResultDraft {
             status: ToolResultStatus::Ok,
-            continuation: (tool == "book.search_text")
-                .then(|| next_search_cursor(tool, arguments, &raw))
-                .flatten(),
+            continuation: if tool == "book.text" {
+                raw["next_start_utf16"].as_u64().and_then(|start| next_text_call(arguments,start as usize,"continue the native text page"))
+            } else if tool == "book.search_text" {
+                next_search_cursor(tool,arguments,&raw)
+            } else { None },
             model_body: raw,
             truncated: false,
             evidence_arguments: arguments.into(),
@@ -1121,20 +1471,21 @@ mod tests {
             "book.text",
             r#"{"lid":"1"}"#,
             &raw,
-            policy(ToolResultPolicy::EvidenceProjection, 700),
-            700,
+            policy(ToolResultPolicy::EvidenceProjection, 850),
+            850,
             &book,
         );
 
         assert_eq!(draft.status, ToolResultStatus::Partial);
         assert!(draft.truncated);
-        assert!(draft.model_body_json().len() <= 700);
-        assert_eq!(draft.model_body["lid"], "1.1");
+        assert!(draft.model_body_json().len() <= 850);
+        assert_eq!(draft.model_body["lid"], "1");
         assert_eq!(draft.model_body["text"].as_str().unwrap().len(), 600);
         assert_eq!(
             serde_json::from_str::<Value>(&draft.evidence_arguments).unwrap(),
-            json!({"lid":"1.1","end_lid":"1.1"})
+            json!({"lid":"1"})
         );
+        assert_eq!(draft.model_body["source_range"], json!({"start":0,"end":600}));
         assert!(matches!(
             draft.continuation,
             Some(ToolContinuation::NextCall { ref tool, .. }) if tool == "book.text"
@@ -1271,7 +1622,10 @@ mod tests {
             assert_eq!(draft.status, ToolResultStatus::Partial);
             assert!(draft.truncated);
             assert!(draft.model_body_json().len() <= 1_024);
-            assert!(draft.continuation.is_some());
+            // A manifest has neither paging nor a field-selection parameter.
+            // Its delivery metadata explains the budget limit instead of
+            // suggesting the same ineffective request as a refinement.
+            assert_eq!(draft.continuation.is_some(), tool == "book.query");
         }
 
         let error = json!({

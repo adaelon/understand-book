@@ -1,0 +1,10 @@
+{
+  "text": "我来把这条笔记保存到当前段落。",
+  "tool_calls": [
+    {
+      "name": "tool.search",
+      "arguments": "{\"task\":\"把‘平均速度＝总路程／总时间’保存为当前段落的阅读笔记\",\"required_capabilities\":[\"memory_write\"],\"scope\":\"passage\",\"operation\":\"mutate_reader\",\"effect_mode\":\"reader_mutation_explicitly_requested\",\"max_results\":1}"
+    }
+  ],
+  "usage_total_tokens": 26980
+}

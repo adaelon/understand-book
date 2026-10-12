@@ -1,0 +1,27 @@
+{
+  "continuation": {
+    "arguments": {},
+    "guidance": "retry with a narrower target, scope, stage, or field selection",
+    "kind": "refine_call",
+    "tool": "book.structure"
+  },
+  "delivered": {
+    "available": false,
+    "key_stops": [],
+    "throughlines": [],
+    "warning": "BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attac...[truncated]"
+  },
+  "delivered_bytes": 322,
+  "input": {},
+  "limit": 512,
+  "raw": {
+    "available": false,
+    "key_stops": [],
+    "throughlines": [],
+    "warning": "BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. BookStructure is not attached. "
+  },
+  "raw_bytes": 1925,
+  "status": "partial",
+  "tool": "book.structure",
+  "truncated": true
+}

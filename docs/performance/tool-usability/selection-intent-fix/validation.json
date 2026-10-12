@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-12",
+  "tests": {
+    "red": {
+      "passed": 0,
+      "failed": 1
+    },
+    "green": {
+      "passed": 3,
+      "failed": 0
+    },
+    "server-ui": {
+      "passed": 1,
+      "failed": 0
+    },
+    "runtime-exposure": {
+      "passed": 31,
+      "failed": 0
+    },
+    "runtime-write": {
+      "passed": 3,
+      "failed": 0
+    }
+  },
+  "green_total": 38,
+  "documentation_links_checked": 11,
+  "checkpoint_lines": 46,
+  "real_model_invocations": 0,
+  "production_deployed": false
+}

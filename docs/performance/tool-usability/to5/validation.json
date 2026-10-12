@@ -1,0 +1,32 @@
+{
+  "tools": 4,
+  "advertised_examples": 10,
+  "schema_rejected_invalid_inputs": 26,
+  "executed_successful_calls": 11,
+  "goal_basis_rejections": 3,
+  "unchanged_goal_domain_update": true,
+  "input_constraints_unchanged": true,
+  "tool_definition_bytes": {
+    "goal.update": {
+      "before": 3089,
+      "after": 4371
+    },
+    "reader.note": {
+      "before": 327,
+      "after": 957
+    },
+    "reader.highlight": {
+      "before": 502,
+      "after": 859
+    },
+    "memory.save": {
+      "before": 793,
+      "after": 1819
+    }
+  },
+  "total_definition_bytes": {
+    "before": 4711,
+    "after": 8006
+  },
+  "model_sampling": false
+}

@@ -1,0 +1,16 @@
+{
+  "book_id": "tc0-average-speed",
+  "title": "Average speed",
+  "focus_lid": "1.1",
+  "quote": "Average speed is total distance divided by total time.",
+  "answer": "Use total distance divided by total time, not the mean of the two speeds.",
+  "answer_excerpt": "not the mean of the two speeds",
+  "draft": "Keep my unsent question",
+  "continuation": {
+    "recommended_option_id": "compare",
+    "options": [
+      { "option_id": "compare", "label": "Compare two equal-distance journeys", "purpose": "See why elapsed time changes the average", "move_kind": "compare" },
+      { "option_id": "example", "label": "Work through one journey with numbers", "purpose": "Connect total distance to total time", "move_kind": "explain" }
+    ]
+  }
+}
