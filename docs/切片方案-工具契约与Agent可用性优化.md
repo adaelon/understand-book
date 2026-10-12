@@ -120,6 +120,8 @@ rg -n 'examplesFor|outputSchema|annotations|batch_decompile|binary_overview' $re
 
 术语沿用 [CONTEXT](../CONTEXT.md) 中的 BookToolContractRegistry、工具暴露计划、本轮证据账本、历史 Tool 回执、Provider 历史投影、Concept Candidate Set、Reader UI Control Plane。下文“示例”“覆盖字段”“后续调用”是现有契约的表示与说明，不增加领域实体。
 
+与 TB 并行时采用 [Tutor 使命方案的分工](切片方案-Tutor使命与认知积木.md#to-与-tb-的并行边界)：TO 在主工作区维护 `tutor::spec/spec_for_context`、工具示例、`presentation_author::spec` 与共同结果投影；TB 在 reading-share 维护教学指导、支撑选择、回应适配及相关界面。同一文件按符号归属改动；共同合同缺口由原所有者先修订，再接入另一侧。两侧分别更新本支线的 checkpoint 和实施记录，集成时按接手方向保留当前 checkpoint。TB 对照固定同一 TO 版本。
+
 ## 8. 切片顺序与全工具覆盖
 
 | 切片 | 交付 | 前置 | 状态 |

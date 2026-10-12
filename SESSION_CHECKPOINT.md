@@ -1,39 +1,41 @@
-# SESSION_CHECKPOINT — 2026-10-12（Asia/Hong_Kong）
+# SESSION_CHECKPOINT — 2026-10-12（TO 主工作区）
 
 ## 新鲜度自检
-- 当前分支 main；整合应用提交 `8497f29` 已推送并于 2026-10-12 08:53 HKT 上线。
-- main 原未提交成果已保存于 `45b08ba`；MCP0–MCP9 已保存于 `8e7e5fe`（`codex/reading-share`）。
-- MCP10 发布脚本、运行单和证据在 main 后续提交；精确提交号以 `git log -1` 为准。[发布运行单](docs/内测MCP-发布运行单.md)、[验收记录](docs/performance/mcp10-20261012/README.md)。
+- 工作区：E:/allwork/download/agent/understand-book；分支 main。
+- 写入时最新提交：b45c2b6602c72d3cd9604fa45c2df7ce72a97f3a — feat: preserve TO1-TO2 tool contracts and executable examples。
+- TO0–TO2 代码、夹具、日志和快照已提交；本 checkpoint 随 TB 设计与并行分工保存。接手时对照 git log -3 和目标文件实际状态。
 
 ## 当前在做什么
-Tutor TC0–TC6、运行时修复、构建及阅读器改进与 MCP0–MCP9 已整合并整体发布；MCP10 已完成，当前无在途发布操作。后续可从 Tutor TC7 或实际 MCP 使用反馈接手。
+TO2 已完成，下一片为 TO3：Tutor 当前状态的有效示例。TB 已完成设计，reading-share 从 TB1 接手；两条线的符号所有权见 [并行边界](docs/切片方案-Tutor使命与认知积木.md#to-与-tb-的并行边界)。
 
 ## 下一步（可直接接手）
-1. 先读 [整合记录](docs/performance/integration-mcp-tutor-20261012.md)：Web 273、Admin 30、Rust 295 项通过；Core 累计 206 通过，1 项原有 BookStructure 测试仍失败，更新该用例须遵循当前大纲／发现路线。
-2. Tutor 继续 [切片方案](docs/切片方案-Tutor下一步协商与低门槛阅读入口.md) TC7、第 9／11 节：补齐工程矩阵、固定材料轨迹及真实读者验收。
-3. TC7 通过后进入 TC8，验证旧二进制读取、同版本撤入口／指导的降级及发布准备。
-4. MCP0–MCP10 已完成；后续先读 [实施入口](docs/内测MCP-实施入口.md) 与正式接入／恢复运行单，再按实际客户端或运营问题开新切片。
-5. 生产恢复必须保留 schema 12 新增事实；旧服务实测返回 `CONTROL_SCHEMA_INCOMPATIBLE`，不得把旧快照覆盖到新根。
+1. 阅读 [TO3](docs/切片方案-工具契约与Agent可用性优化.md#to3tutor-当前状态的有效示例)、[TO2 实施记录](docs/performance/tool-usability/to2/README.md) 和 TB 并行边界；TO 负责 tutor::spec/spec_for_context，教学指导由 TB 负责。
+2. 对照 crates/runtime/src/tutor.rs、tool_schema.rs 的当前状态投影及 TC2A 轨迹，固定受支持 operation、嵌套 move 和原参数拒绝场景。
+3. 用原 Tutor 测试上下文构造 source/action/fact refs；最终状态 schema 只发布可执行示例，保留原动作权限。
+4. 复用 tool_registry::contract_tests 的最终 schema、真实解析与 Native/ReAct 请求验证，补状态分派的受影响用例；按固定预算分别记录参数错误和教学内容错误。
+5. 导出定义并记录 TO3 的实际结果、输入体积和剩余问题，更新 TO 方案、代码链路及本 checkpoint；与 TB 集成时保持共同合同和指导一致。
 
-## 已保存成果与未完成
-- TC0–TC6：类型化阅读入口、建议交付与单次接纳、普通／演示宿主、恢复、真实用户表达与理解／画像证据分流。见 [TC6 实施记录](docs/performance/tutor-continuation-tc6.md)。
-- main 其他成果：Tutor 回合上下文／压缩／输出预算及无进展修复、构建缓存与写入恢复、前端体验和产品首页，随合并应用版本整体发布。
-- MCP0–MCP9：凭证、获准读取、月度免费次数及付费调用包、远程协议、来源定位、运营管理和集成验收；见 [MCP9](docs/内测MCP-MCP9实现.md) 与 [验收记录](docs/performance/beta-mcp/README.md)。
-- MCP10：Linux 全部构建、schema 9 → 12／12 恢复、旧程序行为和正式 HTTPS 已验证；28 次赠送／消费相符、原 1,000 免费次数保留、付费与模型消费 0。8,000 字符页 1／4／8 路通过，最大约 2.16 秒，首批按 4 个活跃任务规划。
-- TC7–TC8 未实施；真实读者验收、通用教学质量和旧教学事件兼容仍待各自切片，本次发布不等于完成这些验收。
-- TC6 实模仅一条脚本化纠正轨迹，真实读者为 0；TC2 公开内容质量问题仍保留。旧二进制对新增教学事件／Move／准备记录的兼容性待 TC8。
-- MCP 原验收记录中的 MU4 旧夹具已改为事件写入，相关 13 项回归通过；原始失败记录保留。一个原有 Core BookStructure 用例仍待独立更新。
-- 本地临时目录、测试输出和历史实验仍保留；两个原 worktree 均保留。Computer Use 继续保持先前停止状态。
+## 未提交 / 未完成
+- TO3–TO14、TB1–TB6 待实施；本轮准备不算实现这些切片。
+- 主目录仍保留独立首页改版：Web 首页、CONTEXT 首页定义、架构及代码链路的首页段落，另有首页新增组件和测试。按 git 状态保留，不混入 TO 提交。
+- reading-share 用本支线 checkpoint 接手 TB1；合并该支线时保留 main 的 TO 接手状态，TB 进度由其方案及实施记录提供。
+- 既有本地/Resident 逆序正文范围可能在 Book::text 切片时 panic，远程 text_page 已校验；按 TO1 已知限制独立处理。
+- Tutor TC7–TC8、真实读者验收、TC2 教学内容质量、旧教学事件兼容及原有 Core BookStructure 用例，沿各自方案保留未结项。
+- MCP0–MCP10 已完成，生产状态沿 MCP 运行单；本轮 TO/TB 准备未部署。临时输出及其他 worktree 保留。
 
 ## 冷启动读序
-1. 本 checkpoint、Git 状态及整合验证记录；根据准备接手的工作线选择下面入口。
-2. Tutor：[切片方案](docs/切片方案-Tutor下一步协商与低门槛阅读入口.md) TC7、第 7／9／11 节，[ADR-0163](docs/adr/0163-tutor-continuation-and-contextual-reading-entry.md) §4–§7，[TC6 实施记录](docs/performance/tutor-continuation-tc6.md)及其真实轨迹。
-3. Tutor 实现：`crates/server/src/interaction_input.rs`、`teaching.rs`、`tests/tutor_continuation_tests.rs`；`crates/memory/src/teaching.rs`、`learning_evidence.rs`；`packages/web/src/components/TutorContinuation.vue`、`App.vue` 与 `local-reading-action.ts`。
-4. MCP：[实施入口](docs/内测MCP-实施入口.md)、[MCP10 运行单](docs/内测MCP-发布运行单.md)、[MCP10 证据](docs/performance/mcp10-20261012/README.md)、[MCP 接入](docs/MCP接入.md)；需追溯 Agent 验收再读 [MCP9](docs/performance/beta-mcp/README.md)。
-5. MCP 实现：`crates/server/src/control_store.rs`、`mcp_access.sql`、`mcp_usage.sql`、`mcp_packs.sql`、`remote_mcp.rs`、`mcp_acceptance_tests.rs` 与 `scripts/linux/nginx-multi-reader.conf.example`。
+1. [TO 方案](docs/切片方案-工具契约与Agent可用性优化.md) 第 7 节、TO3、第 9/11/12 节 — 所有权、下一片、检查与限制。
+2. [TB 方案](docs/切片方案-Tutor使命与认知积木.md) 的指导装配与并行边界、[ADR-0164](docs/adr/0164-tutor-mission-and-cognitive-building-blocks.md) — 教学职责和契约职责。
+3. [TO2 实施记录](docs/performance/tool-usability/to2/README.md)、同目录 after.json / sizes.json、[代码链路](docs/代码链路.md) — 已完成成果与实际证据。
+4. [TC2A 轨迹](docs/performance/tutor-continuation-tc2a.md)、tutor.rs、tool_schema.rs、tool_contract_tests.rs — 使用错误、状态投影和验证入口。
+5. TO 方案第 6 节 R1/R3 的固定源码链接 — 选择权、示例和最终发布验证原则。
 
-## 环境
-- Linux：release `/opt/understand-book/releases/mcp10-20261012`；生产根 `/opt/understand-book/data/multi-reader-mcp10-20261012`；schema 12；恢复点 `/opt/understand-book/backups/mcp10-20261012`。正式 MCP：`https://understandbook.top/mcp`。
-- Rust `+1.95.0`，沿用 `CARGO_TARGET_DIR=D:/codex-build/understand-book-no-progress-195`；dev/test debug=0、incremental=0，TEMP/TMP 使用 D 盘，`-j 2`。
-- 实模与外部 Agent 验收入口默认忽略；本轮整合回归使用确定性测试，不将忽略项计为通过。
-- 原 main／MCP 的完整 checkpoint 分别保存在 `45b08ba:SESSION_CHECKPOINT.md` 和 `8e7e5fe:SESSION_CHECKPOINT.md`。
+## 本会话决策摘要
+- TO 维护工具契约/示例/共同结果投影，TB 维护教学指导/帮助适配/相关界面；共享合同由原所有者修订。
+- 同组 TB 对照固定同一 TO 实现、材料、模型和采样预算；实际参数、教学内容与学习者表现分别给依据。
+
+## 验证与环境
+- 沿用 TO2 已完成的 42 项正确性测试、61 个最终 schema 和 23 个发布示例验证；TO1 的 5 项 Context 验证也已归档。本次准备未修改执行代码。
+- Rust +1.95.0；TO 沿用 CARGO_TARGET_DIR=D:/codex-build/understand-book-no-progress-195，dev/test debug=0、incremental=0、构建并行度 2，TEMP/TMP 在 D:/codex-build 下。
+- TB 使用独立构建输出目录，避免两条支线反复覆盖构建缓存；环境细节以各片记录为准。
+- 实模收益与真人学习表现尚未由 TO2 证明；默认忽略入口需按对应切片预算显式执行。
