@@ -12,6 +12,7 @@ import BookCover from './components/BookCover.vue';
 import { bookTitle } from './book-title';
 import LoadingAnimation from './components/LoadingAnimation.vue';
 import type { ScrollAnchor } from './reader-text-anchor';
+import { readWindowText } from './reader-window-text';
 import { typographyHtml } from './reader-typography';
 import { recoverSubmissions, recoverWorkspaceBinding, pendingSubmissions } from './network-client';
 import type { RecapTarget } from './session-recap';
@@ -1490,7 +1491,7 @@ async function refreshAnnotations(): Promise<MemoryRecord[]> {
 type SegmentLoadMode = "replace" | "append" | "prepend";
 
 async function hydrateSegments(lids: string[]): Promise<Segment[]> {
-  const texts = await Promise.all(lids.map((lid) => api.text(lid)));
+  const texts = await readWindowText(lids, sourceManifestTree.value?.tree ?? [], api.text);
   return Promise.all(
     texts.map(async (t) => {
       const kind = kindOf(t.lid);
@@ -1512,7 +1513,7 @@ function mergeSegments(current: Segment[], incoming: Segment[], mode: SegmentLoa
   return mode === "append" ? [...current, ...unique] : [...unique, ...current];
 }
 
-// 视口加载:逐 visible_lid 取真原文。replace 用于 goto/sync;append/prepend 用于正文连续滚动缓冲。
+// 视口加载:连续 visible_lid 合并读取后按原文坐标拆回各段。
 async function loadWindow(
   vp: Viewport,
   mode: SegmentLoadMode = "replace",

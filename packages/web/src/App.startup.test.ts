@@ -157,6 +157,27 @@ afterEach(() => {
 });
 
 describe("workspace startup", () => {
+  it('opens a contiguous first window with one range read and preserves paragraph text', async () => {
+    api.manifest.mockResolvedValue({ tree: [
+      { lid: '1', kind: 'chapter', children: ['1.1', '1.2'], span: { start: 0, end: 8 }, title: '# 首章' },
+      { lid: '1.1', kind: 'paragraph', children: [], span: { start: 0, end: 3 } },
+      { lid: '1.2', kind: 'paragraph', children: [], span: { start: 5, end: 8 } },
+    ], stats_by_lid: {} });
+    const state = await api.state();
+    api.state.mockResolvedValue({ ...state, viewport: { ...state.viewport, visible_lids: ['1.1', '1.2'], bottom_lid: '1.2' } });
+    const text = deferred<{ lid: string; text: string }>();
+    api.text.mockReturnValue(text.promise);
+    const wrapper = start(); await flushPromises();
+    expect(wrapper.find('.app-loading').exists()).toBe(true);
+    expect(api.text.mock.calls).toEqual([['1.1', '1.2']]);
+    text.resolve({ lid: '1.1', text: '甲😀\n\n乙丙丁' });
+    await flushPromises();
+    expect(wrapper.find('.app-loading').exists()).toBe(false);
+    expect(wrapper.getComponent({ name: 'ReaderPane' }).props('segments').map((segment: { lid: string; text: string }) => ({ lid: segment.lid, text: segment.text }))).toEqual([
+      { lid: '1.1', text: '甲😀' }, { lid: '1.2', text: '乙丙丁' },
+    ]);
+  });
+
   it.each(['new-chat', 'select-chat'])('unlocks %s as soon as history is ready, before profile refresh', async action => {
     installIdentity({ user_id: 'A', csrf_token: 'csrf' });
     installWorkspace({ workspace_id: 'w', generation: 1, revision: 1, selected_chat: 'startup-chat',
