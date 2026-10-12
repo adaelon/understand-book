@@ -1,0 +1,263 @@
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.46
+   Compiling unicode-ident v1.0.24
+   Compiling cfg-if v1.0.4
+   Compiling stable_deref_trait v1.2.1
+   Compiling find-msvc-tools v0.1.9
+   Compiling shlex v2.0.1
+   Compiling syn v2.0.118
+   Compiling cc v1.2.65
+   Compiling windows-link v0.2.1
+   Compiling version_check v0.9.5
+   Compiling serde_core v1.0.228
+   Compiling generic-array v0.14.7
+   Compiling itoa v1.0.18
+   Compiling zmij v1.0.21
+   Compiling synstructure v0.13.2
+   Compiling zerofrom-derive v0.1.7
+   Compiling yoke-derive v0.8.2
+   Compiling zerofrom v0.1.8
+   Compiling zerovec-derive v0.11.3
+   Compiling yoke v0.8.3
+   Compiling displaydoc v0.2.6
+   Compiling zerovec v0.11.6
+   Compiling serde_json v1.0.150
+   Compiling subtle v2.6.1
+   Compiling typenum v1.20.1
+   Compiling serde v1.0.228
+   Compiling serde_derive v1.0.228
+   Compiling windows-sys v0.61.2
+   Compiling memchr v2.8.2
+   Compiling thiserror v2.0.18
+   Compiling winapi-util v0.1.11
+   Compiling tinystr v0.8.3
+   Compiling thiserror-impl v2.0.18
+   Compiling serde_derive_internals v0.29.1
+   Compiling schemars v0.8.22
+   Compiling smallvec v1.15.2
+   Compiling litemap v0.8.2
+   Compiling writeable v0.6.3
+   Compiling icu_locale_core v2.2.0
+   Compiling schemars_derive v0.8.22
+   Compiling termcolor v1.4.1
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling potential_utf v0.1.5
+   Compiling zerotrie v0.2.4
+   Compiling getrandom v0.2.17
+   Compiling icu_properties_data v2.2.0
+   Compiling dyn-clone v1.0.20
+   Compiling icu_normalizer_data v2.2.0
+   Compiling utf8_iter v1.0.4
+   Compiling icu_collections v2.2.0
+   Compiling icu_provider v2.2.0
+   Compiling ts-rs-macros v10.1.0
+   Compiling digest v0.10.7
+   Compiling ring v0.17.14
+   Compiling vcpkg v0.2.15
+   Compiling zeroize v1.9.0
+   Compiling pkg-config v0.3.33
+   Compiling tinyvec_macros v0.1.1
+   Compiling lazy_static v1.5.0
+   Compiling ts-rs v10.1.0
+   Compiling libsqlite3-sys v0.38.2
+   Compiling tinyvec v1.12.0
+   Compiling rustls-pki-types v1.14.1
+   Compiling cpufeatures v0.2.17
+   Compiling foldhash v0.2.0
+   Compiling zerocopy v0.8.57
+   Compiling simd-adler32 v0.3.9
+   Compiling crc32fast v1.5.0
+   Compiling getrandom v0.3.4
+   Compiling hashbrown v0.17.1
+   Compiling icu_normalizer v2.2.0
+   Compiling icu_properties v2.2.0
+   Compiling unicode-normalization v0.1.25
+   Compiling untrusted v0.9.0
+   Compiling unicode-casefold v0.2.0
+   Compiling adler2 v2.0.1
+   Compiling getrandom v0.4.3
+   Compiling log v0.4.33
+   Compiling miniz_oxide v0.8.9
+   Compiling idna_adapter v1.2.2
+   Compiling hashlink v0.12.2
+   Compiling base-schema v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\base-schema)
+   Compiling book-tool-contracts v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\book-tool-contracts)
+   Compiling bitflags v2.13.0
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling once_cell v1.21.4
+   Compiling fallible-iterator v0.3.0
+   Compiling percent-encoding v2.3.2
+   Compiling rustls v0.23.41
+   Compiling form_urlencoded v1.2.2
+   Compiling rusqlite v0.40.2
+   Compiling read-tools v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\read-tools)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_core v0.9.5
+   Compiling flate2 v1.1.9
+   Compiling rustls-webpki v0.103.13
+   Compiling idna v1.1.0
+   Compiling webpki-roots v1.0.8
+   Compiling httparse v1.10.1
+   Compiling base64 v0.22.1
+   Compiling memory v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\memory)
+   Compiling webpki-roots v0.26.11
+   Compiling url v2.5.8
+   Compiling rand_chacha v0.9.0
+   Compiling sha2 v0.10.9
+   Compiling rand_core v0.6.4
+   Compiling bytes v1.12.1
+   Compiling base64ct v1.8.3
+   Compiling password-hash v0.5.0
+   Compiling http v1.4.2
+   Compiling artifact-tools v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\artifact-tools)
+   Compiling rand v0.9.5
+   Compiling ureq v2.12.1
+   Compiling reader v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\reader)
+   Compiling uuid v1.23.4
+   Compiling fdeflate v0.3.7
+   Compiling sha1 v0.10.7
+   Compiling blake2 v0.10.6
+   Compiling num-conv v0.2.2
+   Compiling powerfmt v0.2.0
+   Compiling deranged v0.5.8
+   Compiling bitflags v1.3.2
+   Compiling fastrand v2.4.1
+   Compiling data-encoding v2.11.1
+   Compiling utf-8 v0.7.6
+   Compiling time-core v0.1.9
+   Compiling ascii v1.1.0
+   Compiling chunked_transfer v1.5.0
+   Compiling httpdate v1.0.3
+   Compiling dotenvy v0.15.7
+   Compiling tiny_http v0.12.0
+   Compiling runtime v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\runtime)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling time v0.3.53
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling tungstenite v0.28.0
+   Compiling tempfile v3.27.0
+   Compiling png v0.17.16
+   Compiling argon2 v0.5.3
+   Compiling server v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\server)
+error[E0609]: no field `revision` on type `TutorState`
+  --> crates\server\src\tests\tutor_building_blocks_tests.rs:27:64
+   |
+27 |         "operation_id":"tb1-mode","expected_revision":learning.revision,
+   |                                                                ^^^^^^^^ unknown field
+   |
+help: one of the expressions' fields has a field of the same name
+   |
+27 |         "operation_id":"tb1-mode","expected_revision":learning.control.revision,
+   |                                                                ++++++++
+
+For more information about this error, try `rustc --explain E0609`.
+error: could not compile `server` (lib test) due to 1 previous error

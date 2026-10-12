@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"&foo\", \"page_size\": 20}",
+      "id": "call_00_nHw35Zm5m7UUeqcFfXOI4678",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"query\": \"bar\", \"page_size\": 30}",
+      "id": "call_01_vw6QACmWSAM7g3G9zobT4966",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 12789
+}

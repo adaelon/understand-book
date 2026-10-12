@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"match_mode\": \"normalized\", \"query\": \"let bar = foo\"}",
+      "id": "call_00_tKyl23buhUt3kHlPcbQ83701",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"anchor_lid\": \"1.1\", \"intent\": \"explanation\", \"query\": \"In this book's ownership section, what happens when a value is assigned to a new variable without using &, and why can the original variable no longer be used afterward?\", \"targets\": [\"所有权移动\", \"let bar = foo\"], \"obligations\": [{\"requirement\": \"State what happens to the original variable's ownership when assignment occurs without &.\"}, {\"requirement\": \"State whether the original variable can still be used (e.g. printed) after that assignment, and why.\"}]}",
+      "id": "call_01_o6gD4cZ5cGXrvaSZ2dqj5305",
+      "name": "book.query"
+    }
+  ],
+  "usage_total_tokens": 18279
+}

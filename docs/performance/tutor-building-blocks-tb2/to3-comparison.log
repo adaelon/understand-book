@@ -1,0 +1,190 @@
+{
+  "cases": [
+    {
+      "case": "starting-assignment",
+      "same_input_and_initial_tools": true,
+      "sampled_teaching_requests": 8,
+      "native_teaching_requests": 8,
+      "before": {
+        "status": "failed",
+        "incomplete": null,
+        "delivery_count": 0,
+        "http_calls": 1,
+        "known_total_tokens": 0,
+        "elapsed_ms": 541
+      },
+      "after": {
+        "status": "completed",
+        "incomplete": false,
+        "delivery_count": 1,
+        "http_calls": 10,
+        "known_total_tokens": 192768,
+        "elapsed_ms": 103541
+      },
+      "before_tool_errors": [],
+      "after_tool_errors": [],
+      "initial_guidance_utf8_bytes": [
+        7820,
+        9153
+      ],
+      "initial_tool_utf8_bytes": [
+        30331,
+        30331
+      ],
+      "initial_estimated_input_tokens": [
+        14084,
+        14418
+      ],
+      "intent": [
+        "direct_explanation"
+      ],
+      "origin": [
+        "current_request"
+      ],
+      "delivered_source_count": 4,
+      "raw_source_marker_count": 0
+    },
+    {
+      "case": "starting-ownership",
+      "same_input_and_initial_tools": true,
+      "sampled_teaching_requests": 7,
+      "native_teaching_requests": 7,
+      "before": {
+        "status": "failed",
+        "incomplete": null,
+        "delivery_count": 0,
+        "http_calls": 0,
+        "known_total_tokens": 0,
+        "elapsed_ms": 66
+      },
+      "after": {
+        "status": "completed",
+        "incomplete": false,
+        "delivery_count": 1,
+        "http_calls": 7,
+        "known_total_tokens": 163081,
+        "elapsed_ms": 78279
+      },
+      "before_tool_errors": [],
+      "after_tool_errors": [],
+      "initial_guidance_utf8_bytes": [
+        7820,
+        9153
+      ],
+      "initial_tool_utf8_bytes": [
+        30331,
+        30331
+      ],
+      "initial_estimated_input_tokens": [
+        14159,
+        14493
+      ],
+      "intent": [
+        "guided_inquiry"
+      ],
+      "origin": [
+        "current_request"
+      ],
+      "delivered_source_count": 0,
+      "raw_source_marker_count": 8
+    },
+    {
+      "case": "misconception-copy",
+      "same_input_and_initial_tools": true,
+      "sampled_teaching_requests": 6,
+      "native_teaching_requests": 6,
+      "before": {
+        "status": "failed",
+        "incomplete": null,
+        "delivery_count": 0,
+        "http_calls": 0,
+        "known_total_tokens": 0,
+        "elapsed_ms": 73
+      },
+      "after": {
+        "status": "failed",
+        "incomplete": null,
+        "delivery_count": 0,
+        "http_calls": 6,
+        "known_total_tokens": 141787,
+        "elapsed_ms": 56285
+      },
+      "before_tool_errors": [],
+      "after_tool_errors": [
+        {
+          "error_code": "TEACHING_INVALID",
+          "category": "validation",
+          "message": "教学文字来源无效"
+        }
+      ],
+      "initial_guidance_utf8_bytes": [
+        7820,
+        9153
+      ],
+      "initial_tool_utf8_bytes": [
+        30331,
+        30331
+      ],
+      "initial_estimated_input_tokens": [
+        14063,
+        14397
+      ],
+      "intent": [],
+      "origin": [],
+      "delivered_source_count": 0,
+      "raw_source_marker_count": 0
+    },
+    {
+      "case": "direct-explanation",
+      "same_input_and_initial_tools": true,
+      "sampled_teaching_requests": 10,
+      "native_teaching_requests": 10,
+      "before": {
+        "status": "failed",
+        "incomplete": null,
+        "delivery_count": 0,
+        "http_calls": 0,
+        "known_total_tokens": 0,
+        "elapsed_ms": 74
+      },
+      "after": {
+        "status": "completed",
+        "incomplete": false,
+        "delivery_count": 1,
+        "http_calls": 10,
+        "known_total_tokens": 221969,
+        "elapsed_ms": 60825
+      },
+      "before_tool_errors": [],
+      "after_tool_errors": [
+        {
+          "error_code": "TEACHING_INVALID",
+          "category": "validation",
+          "message": "教学文字来源无效"
+        }
+      ],
+      "initial_guidance_utf8_bytes": [
+        7820,
+        9153
+      ],
+      "initial_tool_utf8_bytes": [
+        30331,
+        30331
+      ],
+      "initial_estimated_input_tokens": [
+        14130,
+        14464
+      ],
+      "intent": [
+        "direct_explanation"
+      ],
+      "origin": [
+        "current_request"
+      ],
+      "delivered_source_count": 3,
+      "raw_source_marker_count": 0
+    }
+  ],
+  "human_readers": 0,
+  "monetary_cost": null
+}

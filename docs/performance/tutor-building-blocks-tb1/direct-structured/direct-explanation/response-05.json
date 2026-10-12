@@ -1,0 +1,21 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"match_mode\": \"exact\", \"page_size\": 20, \"query\": \"可变借用\"}",
+      "id": "call_00_Jf5FEmRLCp9ClboeqpQK2279",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"match_mode\": \"exact\", \"page_size\": 20, \"query\": \"Copy\"}",
+      "id": "call_01_oDf8QdbIg0fXWoqhKf4T0062",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"anchor_lid\": \"1.1\", \"intent\": \"explanation\", \"query\": \"对值创建不可变借用（共享引用）之后，原来的所有者变量为什么仍然可以被使用；如果没有写 & 而直接赋值，所有权会发生什么变化？\", \"obligations\": [{\"requirement\": \"说明不可变借用的效果：不取得所有权，只是临时访问值。\"}, {\"requirement\": \"说明被借用的变量（foo）之后仍可被使用的原因。\"}, {\"requirement\": \"说明不写 & 时赋值语句在所有权上的后果。\"}], \"targets\": [\"不可变借用\", \"所有权\"]}",
+      "id": "call_02_uuiabdVOFfwmf5kR8QkG1424",
+      "name": "book.query"
+    }
+  ],
+  "usage_total_tokens": 23408
+}

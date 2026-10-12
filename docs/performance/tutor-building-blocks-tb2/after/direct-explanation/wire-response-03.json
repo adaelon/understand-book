@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "redacted_reasoning_chars": 752,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"match_mode\": \"exact\", \"page_size\": 20, \"query\": \"struct Foo\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_00_e0GOqvNIPyT3xz2mqYOM8471",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"anchor_lid\": \"1.1\", \"intent\": \"comparison\", \"obligations\": [{\"requirement\": \"说明把 Foo 值直接赋给另一个变量（不带 &）时发生了什么，原变量之后能否使用。\"}, {\"requirement\": \"说明带 & 的借用创建了什么，为什么借用后原变量和引用都能使用。\"}, {\"requirement\": \"说明共享引用 &T 下能否通过该引用修改被借用的值。\"}], \"query\": \"借用示例之前的代码是 let foo = Foo(0); let bar = foo; 若去掉 & 直接赋值会怎样？移动语义与共享借用 &T 有何区别？\", \"targets\": [\"移动\", \"不可变借用 &T\"]}",
+              "name": "book_query"
+            },
+            "id": "call_01_HRiEP0vhGmF3XF22j0WG0742",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 515,
+    "completion_tokens_details": {
+      "reasoning_tokens": 216
+    },
+    "prompt_cache_hit_tokens": 16512,
+    "prompt_cache_miss_tokens": 911,
+    "prompt_tokens": 17423,
+    "prompt_tokens_details": {
+      "cached_tokens": 16512
+    },
+    "total_tokens": 17938
+  }
+}

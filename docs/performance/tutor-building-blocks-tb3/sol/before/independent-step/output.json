@@ -1,0 +1,52 @@
+{
+  "evidence": {
+    "operation": "evidence",
+    "nature": "hypothesis",
+    "operation_id": "tb3-independent-borrow-copy",
+    "target": {
+      "capability": "explanation",
+      "expected_performance": "自行选择判断方法，解释 Foo 实现 Copy 时通过 &Foo 修改字段是否允许，并区分赋值复制条件与引用访问权限。",
+      "learning_focus": "Copy 条件与共享引用访问权限的区别",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "start_lid": "1.1",
+          "end_lid": "1.1"
+        }
+      ]
+    },
+    "fact_refs": [
+      "usage:tutor-begin-1:user:turn_1caed49ba376ec45"
+    ],
+    "interpretation": "学习者在此前完整讲解之后，自行改名并准确说明 a: Foo 拥有值、b: &Foo 提供共享访问且没有复制 Foo；能对照非 Copy 的直接赋值解释移动后的使用限制，并主动提出实现 Copy 会改变直接赋值后的可用性。此处支持已能迁移这组所有权与借用关系的可修正假设；不是无帮助条件下的正式测评，也尚未证明能区分 Copy 与引用的修改权限。当前“请少给提示”只作为本次请求。",
+    "teaching_implication": "不重复基础讲解或提供判断步骤；沿用学习者自行提出的 Copy 条件，给一个共享引用修改字段的变式，让其自己选方法并解释。"
+  },
+  "select": {
+    "operation": "select",
+    "move": {
+      "move_id": "tb3-independent-copy-shared-access",
+      "kind": "question",
+      "capability": "explanation",
+      "interaction_intent": "guided_inquiry",
+      "intent_origin": "user_request",
+      "object_ids": [],
+      "interpretation_refs": [
+        "interpretation:tb3-independent-borrow-copy"
+      ],
+      "target": {
+        "capability": "explanation",
+        "expected_performance": "自行选择判断方法，解释 Foo 实现 Copy 时通过 &Foo 修改字段是否允许，并区分赋值复制条件与引用访问权限。",
+        "learning_focus": "Copy 条件与共享引用访问权限的区别",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "start_lid": "1.1",
+            "end_lid": "1.1"
+          }
+        ]
+      },
+      "prompt": "简短确认学习者对借用与直接赋值的解释，给出 Foo 派生 Debug、Clone、Copy 但 b 仍为 &a 的代码，请其自行选方法判断 b.0 = 9 是否允许并说明理由；不提供推理顺序，不代答，不设置正式评分。"
+    }
+  },
+  "answer": "你的解释是对的：改名不改变这些关系；对于直接赋值，`Copy` 条件会改变后续能否继续使用原变量。\n\n这次把你提出的 `Copy` 条件放进共享借用的例子。以下是基于原例的变式；原文中 `&Foo` 是不可变引用。[[source:source_ref_9af277d1d3d785d4]]\n\n```rust\n#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let a = Foo(7);\n    let b = &a;\n    b.0 = 9;\n    println!(\"{:?} {:?}\", a, b);\n}\n```\n\n这里已经让 `Foo` 实现了 `Copy`。请你自己选判断方法：**`b.0 = 9` 能否通过编译？为什么？** 写出你的判断和依据即可。"
+}

@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"match_mode\": \"exact\", \"page_size\": 30, \"query\": \"借用\"}",
+      "id": "call_00_AbZ53Em5UOb2qqFKZXjr3108",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"match_mode\": \"exact\", \"page_size\": 30, \"query\": \"mut\"}",
+      "id": "call_01_MKzl1Hzq3nrCZjlPruFQ9762",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 22899
+}

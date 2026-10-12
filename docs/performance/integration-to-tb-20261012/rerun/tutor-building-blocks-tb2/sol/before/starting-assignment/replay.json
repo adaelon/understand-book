@@ -1,0 +1,875 @@
+{
+  "external_provider_calls": 0,
+  "facts": [
+    {
+      "binding": {
+        "chat_session_id": "chat_tb2-sol_0",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_ab532cab6797fd00",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "causal_refs": [],
+      "event_id": "assets:turn_ab532cab6797fd00",
+      "kind": "turn_bound",
+      "occurred_at": "tb2-sol",
+      "payload": {}
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat_tb2-sol_0",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_ab532cab6797fd00",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "causal_refs": [],
+      "event_id": "usage:tutor-begin-1:user:turn_ab532cab6797fd00",
+      "kind": "usage_observed",
+      "occurred_at": "tb2-sol",
+      "payload": {
+        "interaction": null,
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat_tb2-sol_0",
+          "turn_id": "turn_ab532cab6797fd00"
+        },
+        "presentation_follow_up": null,
+        "question_anchor_lid": null,
+        "response": "我只会整数变量和赋值，能跟着执行 println；还没学过所有权，也不知道 &Foo 是什么。\n原文里 let bar = &foo; 后面为什么还能分别打印 foo 和 bar？帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
+        "teaching_ref": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat_tb2-sol_0",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_ab532cab6797fd00",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "causal_refs": [],
+      "event_id": "binding:turn_ab532cab6797fd00",
+      "kind": "turn_bound",
+      "occurred_at": "tb2-sol",
+      "payload": {
+        "binding": {
+          "chat_session_id": "chat_tb2-sol_0",
+          "control_revision": 3,
+          "session_revision": 2,
+          "source_id": "tb1-mastering-rust-borrowing-v1",
+          "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+          "turn_id": "turn_ab532cab6797fd00",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "confirmed_preferences": [],
+        "constraints": [],
+        "current_request": "我只会整数变量和赋值，能跟着执行 println；还没学过所有权，也不知道 &Foo 是什么。\n原文里 let bar = &foo; 后面为什么还能分别打印 foo 和 bar？帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
+        "default_teaching_intent": "guided_inquiry",
+        "learner_context": {
+          "confirmed_background": [],
+          "confirmed_preferences": [],
+          "constraints": [],
+          "current_request": "我只会整数变量和赋值，能跟着执行 println；还没学过所有权，也不知道 &Foo 是什么。\n原文里 let bar = &foo; 后面为什么还能分别打印 foo 和 bar？帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
+          "current_target": null,
+          "details": "Recent interpretations only; tutor.step understanding with after pages current records. evidence_ref reads exact details; trace pages earlier facts and event_id reads exact content.",
+          "entries": [],
+          "evidence_watermark": 0,
+          "interpretations": [],
+          "path_progress": [],
+          "pending_activity": null,
+          "pending_assessment_refs": [],
+          "projection_watermark": 0,
+          "recent_facts": [
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat_tb2-sol_0",
+                "control_revision": 3,
+                "session_revision": 2,
+                "source_id": "tb1-mastering-rust-borrowing-v1",
+                "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+                "turn_id": "turn_ab532cab6797fd00",
+                "tutor_session_id": "tutor-begin-1"
+              },
+              "causal_refs": [],
+              "continuation": null,
+              "event_id": "usage:tutor-begin-1:user:turn_ab532cab6797fd00",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "interaction": null,
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "tb2-sol",
+              "original_ref": {
+                "book_id": "tb1-mastering-rust-borrowing-v1",
+                "kind": "chat_turn",
+                "session_id": "chat_tb2-sol_0",
+                "turn_id": "turn_ab532cab6797fd00"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "我只会整数变量和赋值，能跟着执行 println；还没学过所有权，也不知道 &Foo 是什么。\n原文里 let bar = &foo; 后面为什么还能分别打印 foo 和 bar？帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "user_message"
+              }
+            }
+          ],
+          "session_focus": {
+            "capability_targets": [],
+            "interpretation": "",
+            "target_object_refs": []
+          },
+          "stale": false,
+          "uninterpreted_fact_refs": [
+            "usage:tutor-begin-1:user:turn_ab532cab6797fd00"
+          ],
+          "unknown_when_absent": true,
+          "user_intent": "理解当前阅读材料；从当前问题或阅读位置开始"
+        },
+        "limitations": [],
+        "object_count": 0,
+        "objects": [],
+        "recent_facts": [
+          {
+            "action": null,
+            "answer_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "assistance_count": 0,
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat_tb2-sol_0",
+              "control_revision": 3,
+              "session_revision": 2,
+              "source_id": "tb1-mastering-rust-borrowing-v1",
+              "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+              "turn_id": "turn_ab532cab6797fd00",
+              "tutor_session_id": "tutor-begin-1"
+            },
+            "causal_refs": [],
+            "continuation": null,
+            "event_id": "usage:tutor-begin-1:user:turn_ab532cab6797fd00",
+            "help_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "interaction": null,
+            "kind": "usage_observed",
+            "move_id": null,
+            "occurred_at": "tb2-sol",
+            "original_ref": {
+              "book_id": "tb1-mastering-rust-borrowing-v1",
+              "kind": "chat_turn",
+              "session_id": "chat_tb2-sol_0",
+              "turn_id": "turn_ab532cab6797fd00"
+            },
+            "prompt_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "response_preview": {
+              "text": "我只会整数变量和赋值，能跟着执行 println；还没学过所有权，也不知道 &Foo 是什么。\n原文里 let bar = &foo; 后面为什么还能分别打印 foo 和 bar？帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
+              "truncated": false
+            },
+            "target": null,
+            "usage": {
+              "kind": "user_message"
+            }
+          }
+        ],
+        "status": "active",
+        "teaching_assets": {
+          "cognitive_materials": {
+            "status": "missing"
+          },
+          "formal_objects": {
+            "status": "missing"
+          },
+          "limitations": [],
+          "reason": "正式教学素材尚未发布",
+          "source_id": "tb1-mastering-rust-borrowing-v1",
+          "status": "preparing",
+          "teaching_map_revision": null
+        },
+        "user_intent": "理解当前阅读材料；从当前问题或阅读位置开始"
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat_tb2-sol_0",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_ab532cab6797fd00",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "causal_refs": [
+        "binding:turn_ab532cab6797fd00"
+      ],
+      "event_id": "move:turn_ab532cab6797fd00:explain-borrow-from-assignment",
+      "kind": "move_selected",
+      "occurred_at": "2026-10-12T13:26:48.7005203Z",
+      "payload": {
+        "help_policy": "preserve_exposure",
+        "move": {
+          "actions": [],
+          "assessment": null,
+          "capability": "explanation",
+          "explanation": null,
+          "hint": null,
+          "intent_origin": "current_request",
+          "intent_quote": "帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
+          "interaction_intent": "direct_explanation",
+          "interpretation_refs": [],
+          "kind": "explain",
+          "move_id": "explain-borrow-from-assignment",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "从读者已知的变量赋值出发，解释 Foo(0)、foo、&foo 与 &Foo 的关系，用逐行执行说明借用不取得所有权、两个 println 为什么都能访问值及不可变引用的限制；完成解释后，请读者判断将原例中的 let bar = &foo 改为 let bar = foo 后能否照旧分别打印，并说明理由，停在读者回答处，不提前揭晓该判断。",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "解释 foo 保有值而 bar 通过 &Foo 引用访问该值，并尝试判断原例去掉 & 后两个打印是否仍可执行",
+            "learning_focus": "let bar = &foo 创建不可变引用，借用使 foo 与 bar 都能访问同一个 Foo 值",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tb1-mastering-rust-borrowing-v1",
+                "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "retry_policy": "append_attempt",
+        "scorer_version": "assessment.v1",
+        "scoring_sources": {}
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat_tb2-sol_0",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_ab532cab6797fd00",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "causal_refs": [
+        "usage:tutor-begin-1:user:turn_ab532cab6797fd00"
+      ],
+      "event_id": "usage:tutor-begin-1:assistant:turn_ab532cab6797fd00",
+      "kind": "usage_observed",
+      "occurred_at": "tb2-sol",
+      "payload": {
+        "answer": "`let bar = &foo;` 之后还能分别打印，是因为这一步让 `bar` **借用 `foo` 的值，没有把值的所有权拿走**。先把“所有权”理解为：这个值归谁持有；借用则是临时访问这个值。\n\n我们沿着原例走一遍：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n第一行的 `Foo(0)` 是一个装着整数 `0` 的 `Foo` 值，`foo` 是持有它的变量。这里 `Foo` 是原文用 `struct Foo(u32);` 定义的类型名。你暂时只需把它看成一个装整数的小盒子。\n\n第二行先计算右边的 `&foo`：`&` 创建一个引用，让代码可以借着这个引用访问 `foo` 的值。再把这个引用赋给 `bar`。所以这行赋值给 `bar` 的是**引用**，而借用本身没有取得那个 `Foo` 值的所有权。\n\n`&Foo` 是 `bar` 的**类型名**，读作“对 `Foo` 的不可变引用”。表达式 `&foo` 负责创建引用，类型 `&Foo` 说明创建出来的是什么。你可以这样记这两者的关系：`foo` 持有那个小盒子，`bar` 是访问那个盒子的引用；不能通过 `bar` 修改盒子里的数。\n\n于是，第三行仍可通过 `foo` 打印它持有的值，第四行则通过 `bar` 的引用打印所借用的值。原例的两行都能执行，关键就在第二行的 `&`：`bar` 获得了访问途径，`foo` 没有因这次借用失去值的所有权。\n\n现在由你判断：保持原例的 `Foo` 和两行打印不变，只把第二行改成下面这样：\n\n```rust\nlet bar = foo;\n```\n\n后面还能照旧先打印 `foo`，再打印 `bar` 吗？说说你的猜测，以及你认为这次赋给 `bar` 的是引用还是 `Foo` 值。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "`let bar = &foo;` 之后还能分别打印，是因为这一步让 `bar` **借用 `foo` 的值，没有把值的所有权拿走**。先把“所有权”理解为：这个值归谁持有；借用则是临时访问这个值。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_b7cdf804a5f27a0d"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n我们沿着原例走一遍：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n第一行的 `Foo(0)` 是一个装着整数 `0` 的 `Foo` 值，`foo` 是持有它的变量。这里 `Foo` 是原文用 `struct Foo(u32);` 定义的类型名。你暂时只需把它看成一个装整数的小盒子。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_4c3de5a75d5bc2f7",
+                "source_ref_e2f1f69dfb7b32e3"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n第二行先计算右边的 `&foo`：`&` 创建一个引用，让代码可以借着这个引用访问 `foo` 的值。再把这个引用赋给 `bar`。所以这行赋值给 `bar` 的是**引用**，而借用本身没有取得那个 `Foo` 值的所有权。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_b7cdf804a5f27a0d",
+                "source_ref_9af277d1d3d785d4"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n`&Foo` 是 `bar` 的**类型名**，读作“对 `Foo` 的不可变引用”。表达式 `&foo` 负责创建引用，类型 `&Foo` 说明创建出来的是什么。你可以这样记这两者的关系：`foo` 持有那个小盒子，`bar` 是访问那个盒子的引用；不能通过 `bar` 修改盒子里的数。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_9af277d1d3d785d4"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n于是，第三行仍可通过 `foo` 打印它持有的值，第四行则通过 `bar` 的引用打印所借用的值。原例的两行都能执行，关键就在第二行的 `&`：`bar` 获得了访问途径，`foo` 没有因这次借用失去值的所有权。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_e2f1f69dfb7b32e3",
+                "source_ref_b7cdf804a5f27a0d",
+                "source_ref_1a3ec5f7971d4632"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n现在由你判断：保持原例的 `Foo` 和两行打印不变，只把第二行改成下面这样：\n\n```rust\nlet bar = foo;\n```\n\n后面还能照旧先打印 `foo`，再打印 `bar` 吗？说说你的猜测，以及你认为这次赋给 `bar` 的是引用还是 `Foo` 值。"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+            },
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_4c3de5a75d5bc2f7"
+            },
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+            },
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_9af277d1d3d785d4"
+            },
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_1a3ec5f7971d4632"
+            }
+          ]
+        },
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat_tb2-sol_0",
+          "turn_id": "turn_ab532cab6797fd00"
+        },
+        "source_bindings": [
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 106,
+                    "start": 4
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-fd7f03c8ea712ddf",
+            "label_snapshot": "正文",
+            "preview_snapshot": "借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。",
+            "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+          },
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 300,
+                    "start": 267
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-796c937ac573c1c7",
+            "label_snapshot": "正文",
+            "preview_snapshot": "#[derive(Debug)] struct Foo(u32);",
+            "source_ref_id": "source_ref_4c3de5a75d5bc2f7"
+          },
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 424,
+                    "start": 301
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-7c1ee9bf46295b00",
+            "label_snapshot": "正文",
+            "preview_snapshot": "fn main() { let foo = Foo(0); let bar = &foo; println!(\"Foo is {:?}\", foo); println!(\"Bar is {:?}\", bar); }",
+            "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+          },
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 589,
+                    "start": 499
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-f5cd22051d5a642d",
+            "label_snapshot": "正文",
+            "preview_snapshot": "注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。",
+            "source_ref_id": "source_ref_9af277d1d3d785d4"
+          },
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 462,
+                    "start": 434
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-4cd269dca2f5346c",
+            "label_snapshot": "正文",
+            "preview_snapshot": "这一次，程序可以编译，因为 main 中的第二行变成了：",
+            "source_ref_id": "source_ref_1a3ec5f7971d4632"
+          }
+        ],
+        "usage": {
+          "kind": "assistant_delivery"
+        }
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat_tb2-sol_0",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_ab532cab6797fd00",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "causal_refs": [
+        "move:turn_ab532cab6797fd00:explain-borrow-from-assignment"
+      ],
+      "event_id": "delivery:turn_ab532cab6797fd00:explain-borrow-from-assignment",
+      "kind": "message_delivered",
+      "occurred_at": "tb2-sol",
+      "payload": {
+        "answer": "`let bar = &foo;` 之后还能分别打印，是因为这一步让 `bar` **借用 `foo` 的值，没有把值的所有权拿走**。先把“所有权”理解为：这个值归谁持有；借用则是临时访问这个值。\n\n我们沿着原例走一遍：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n第一行的 `Foo(0)` 是一个装着整数 `0` 的 `Foo` 值，`foo` 是持有它的变量。这里 `Foo` 是原文用 `struct Foo(u32);` 定义的类型名。你暂时只需把它看成一个装整数的小盒子。\n\n第二行先计算右边的 `&foo`：`&` 创建一个引用，让代码可以借着这个引用访问 `foo` 的值。再把这个引用赋给 `bar`。所以这行赋值给 `bar` 的是**引用**，而借用本身没有取得那个 `Foo` 值的所有权。\n\n`&Foo` 是 `bar` 的**类型名**，读作“对 `Foo` 的不可变引用”。表达式 `&foo` 负责创建引用，类型 `&Foo` 说明创建出来的是什么。你可以这样记这两者的关系：`foo` 持有那个小盒子，`bar` 是访问那个盒子的引用；不能通过 `bar` 修改盒子里的数。\n\n于是，第三行仍可通过 `foo` 打印它持有的值，第四行则通过 `bar` 的引用打印所借用的值。原例的两行都能执行，关键就在第二行的 `&`：`bar` 获得了访问途径，`foo` 没有因这次借用失去值的所有权。\n\n现在由你判断：保持原例的 `Foo` 和两行打印不变，只把第二行改成下面这样：\n\n```rust\nlet bar = foo;\n```\n\n后面还能照旧先打印 `foo`，再打印 `bar` 吗？说说你的猜测，以及你认为这次赋给 `bar` 的是引用还是 `Foo` 值。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "`let bar = &foo;` 之后还能分别打印，是因为这一步让 `bar` **借用 `foo` 的值，没有把值的所有权拿走**。先把“所有权”理解为：这个值归谁持有；借用则是临时访问这个值。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_b7cdf804a5f27a0d"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n我们沿着原例走一遍：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n第一行的 `Foo(0)` 是一个装着整数 `0` 的 `Foo` 值，`foo` 是持有它的变量。这里 `Foo` 是原文用 `struct Foo(u32);` 定义的类型名。你暂时只需把它看成一个装整数的小盒子。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_4c3de5a75d5bc2f7",
+                "source_ref_e2f1f69dfb7b32e3"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n第二行先计算右边的 `&foo`：`&` 创建一个引用，让代码可以借着这个引用访问 `foo` 的值。再把这个引用赋给 `bar`。所以这行赋值给 `bar` 的是**引用**，而借用本身没有取得那个 `Foo` 值的所有权。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_b7cdf804a5f27a0d",
+                "source_ref_9af277d1d3d785d4"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n`&Foo` 是 `bar` 的**类型名**，读作“对 `Foo` 的不可变引用”。表达式 `&foo` 负责创建引用，类型 `&Foo` 说明创建出来的是什么。你可以这样记这两者的关系：`foo` 持有那个小盒子，`bar` 是访问那个盒子的引用；不能通过 `bar` 修改盒子里的数。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_9af277d1d3d785d4"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n于是，第三行仍可通过 `foo` 打印它持有的值，第四行则通过 `bar` 的引用打印所借用的值。原例的两行都能执行，关键就在第二行的 `&`：`bar` 获得了访问途径，`foo` 没有因这次借用失去值的所有权。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_e2f1f69dfb7b32e3",
+                "source_ref_b7cdf804a5f27a0d",
+                "source_ref_1a3ec5f7971d4632"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n现在由你判断：保持原例的 `Foo` 和两行打印不变，只把第二行改成下面这样：\n\n```rust\nlet bar = foo;\n```\n\n后面还能照旧先打印 `foo`，再打印 `bar` 吗？说说你的猜测，以及你认为这次赋给 `bar` 的是引用还是 `Foo` 值。"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+            },
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_4c3de5a75d5bc2f7"
+            },
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+            },
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_9af277d1d3d785d4"
+            },
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_1a3ec5f7971d4632"
+            }
+          ]
+        },
+        "assessment_contract_ref": null,
+        "move": {
+          "actions": [],
+          "capability": "explanation",
+          "intent_origin": "current_request",
+          "intent_quote": "帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
+          "interaction_intent": "direct_explanation",
+          "interpretation_refs": [],
+          "kind": "explain",
+          "move_id": "explain-borrow-from-assignment",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "从读者已知的变量赋值出发，解释 Foo(0)、foo、&foo 与 &Foo 的关系，用逐行执行说明借用不取得所有权、两个 println 为什么都能访问值及不可变引用的限制；完成解释后，请读者判断将原例中的 let bar = &foo 改为 let bar = foo 后能否照旧分别打印，并说明理由，停在读者回答处，不提前揭晓该判断。",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "解释 foo 保有值而 bar 通过 &Foo 引用访问该值，并尝试判断原例去掉 & 后两个打印是否仍可执行",
+            "learning_focus": "let bar = &foo 创建不可变引用，借用使 foo 与 bar 都能访问同一个 Foo 值",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tb1-mastering-rust-borrowing-v1",
+                "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "presentation": null,
+        "source_bindings": [
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 106,
+                    "start": 4
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-fd7f03c8ea712ddf",
+            "label_snapshot": "正文",
+            "preview_snapshot": "借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。",
+            "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+          },
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 300,
+                    "start": 267
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-796c937ac573c1c7",
+            "label_snapshot": "正文",
+            "preview_snapshot": "#[derive(Debug)] struct Foo(u32);",
+            "source_ref_id": "source_ref_4c3de5a75d5bc2f7"
+          },
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 424,
+                    "start": 301
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-7c1ee9bf46295b00",
+            "label_snapshot": "正文",
+            "preview_snapshot": "fn main() { let foo = Foo(0); let bar = &foo; println!(\"Foo is {:?}\", foo); println!(\"Bar is {:?}\", bar); }",
+            "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+          },
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 589,
+                    "start": 499
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-f5cd22051d5a642d",
+            "label_snapshot": "正文",
+            "preview_snapshot": "注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。",
+            "source_ref_id": "source_ref_9af277d1d3d785d4"
+          },
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 462,
+                    "start": 434
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-4cd269dca2f5346c",
+            "label_snapshot": "正文",
+            "preview_snapshot": "这一次，程序可以编译，因为 main 中的第二行变成了：",
+            "source_ref_id": "source_ref_1a3ec5f7971d4632"
+          }
+        ]
+      }
+    }
+  ],
+  "http_status": 200,
+  "outcome": {
+    "answer": "`let bar = &foo;` 之后还能分别打印，是因为这一步让 `bar` **借用 `foo` 的值，没有把值的所有权拿走**。先把“所有权”理解为：这个值归谁持有；借用则是临时访问这个值。\n\n我们沿着原例走一遍：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n第一行的 `Foo(0)` 是一个装着整数 `0` 的 `Foo` 值，`foo` 是持有它的变量。这里 `Foo` 是原文用 `struct Foo(u32);` 定义的类型名。你暂时只需把它看成一个装整数的小盒子。\n\n第二行先计算右边的 `&foo`：`&` 创建一个引用，让代码可以借着这个引用访问 `foo` 的值。再把这个引用赋给 `bar`。所以这行赋值给 `bar` 的是**引用**，而借用本身没有取得那个 `Foo` 值的所有权。\n\n`&Foo` 是 `bar` 的**类型名**，读作“对 `Foo` 的不可变引用”。表达式 `&foo` 负责创建引用，类型 `&Foo` 说明创建出来的是什么。你可以这样记这两者的关系：`foo` 持有那个小盒子，`bar` 是访问那个盒子的引用；不能通过 `bar` 修改盒子里的数。\n\n于是，第三行仍可通过 `foo` 打印它持有的值，第四行则通过 `bar` 的引用打印所借用的值。原例的两行都能执行，关键就在第二行的 `&`：`bar` 获得了访问途径，`foo` 没有因这次借用失去值的所有权。\n\n现在由你判断：保持原例的 `Foo` 和两行打印不变，只把第二行改成下面这样：\n\n```rust\nlet bar = foo;\n```\n\n后面还能照旧先打印 `foo`，再打印 `bar` 吗？说说你的猜测，以及你认为这次赋给 `bar` 的是引用还是 `Foo` 值。",
+    "answer_view": {
+      "parts": [
+        {
+          "kind": "markdown",
+          "text": "`let bar = &foo;` 之后还能分别打印，是因为这一步让 `bar` **借用 `foo` 的值，没有把值的所有权拿走**。先把“所有权”理解为：这个值归谁持有；借用则是临时访问这个值。"
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_b7cdf804a5f27a0d"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": "\n\n我们沿着原例走一遍：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n第一行的 `Foo(0)` 是一个装着整数 `0` 的 `Foo` 值，`foo` 是持有它的变量。这里 `Foo` 是原文用 `struct Foo(u32);` 定义的类型名。你暂时只需把它看成一个装整数的小盒子。"
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_4c3de5a75d5bc2f7",
+            "source_ref_e2f1f69dfb7b32e3"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": "\n\n第二行先计算右边的 `&foo`：`&` 创建一个引用，让代码可以借着这个引用访问 `foo` 的值。再把这个引用赋给 `bar`。所以这行赋值给 `bar` 的是**引用**，而借用本身没有取得那个 `Foo` 值的所有权。"
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_b7cdf804a5f27a0d",
+            "source_ref_9af277d1d3d785d4"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": "\n\n`&Foo` 是 `bar` 的**类型名**，读作“对 `Foo` 的不可变引用”。表达式 `&foo` 负责创建引用，类型 `&Foo` 说明创建出来的是什么。你可以这样记这两者的关系：`foo` 持有那个小盒子，`bar` 是访问那个盒子的引用；不能通过 `bar` 修改盒子里的数。"
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_9af277d1d3d785d4"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": "\n\n于是，第三行仍可通过 `foo` 打印它持有的值，第四行则通过 `bar` 的引用打印所借用的值。原例的两行都能执行，关键就在第二行的 `&`：`bar` 获得了访问途径，`foo` 没有因这次借用失去值的所有权。"
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_e2f1f69dfb7b32e3",
+            "source_ref_b7cdf804a5f27a0d",
+            "source_ref_1a3ec5f7971d4632"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": "\n\n现在由你判断：保持原例的 `Foo` 和两行打印不变，只把第二行改成下面这样：\n\n```rust\nlet bar = foo;\n```\n\n后面还能照旧先打印 `foo`，再打印 `bar` 吗？说说你的猜测，以及你认为这次赋给 `bar` 的是引用还是 `Foo` 值。"
+        }
+      ],
+      "sources": [
+        {
+          "label": "正文",
+          "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+        },
+        {
+          "label": "正文",
+          "source_ref_id": "source_ref_4c3de5a75d5bc2f7"
+        },
+        {
+          "label": "正文",
+          "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+        },
+        {
+          "label": "正文",
+          "source_ref_id": "source_ref_9af277d1d3d785d4"
+        },
+        {
+          "label": "正文",
+          "source_ref_id": "source_ref_1a3ec5f7971d4632"
+        }
+      ]
+    },
+    "effects": [],
+    "incomplete": false,
+    "memory_updates": [],
+    "profile_usage": {
+      "claimed_used_fact_ids": [],
+      "influences": [],
+      "injected_fact_ids": [],
+      "snapshot_revision": 0
+    },
+    "tokens_spent": 39445,
+    "trace": [
+      {
+        "args": "{\"end_lid\":\"1.1\",\"lid\":\"1.1\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"lid\":\"1.1\",\"text\":\"借用\\n\\n借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。这里的 & 是 Rust 的借用运算符，不能简单等同于 C 中不带有效性约束的取地址操作。在 Rust 中有两种借用值的方式。\\n\\n不可变借",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"quote\":\"借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"source_ref_id\":\"source_ref_b7cdf804a5f27a0d\",\"label\":\"正文\",\"preview\":\"借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。\"}",
+        "tool": "source.present"
+      },
+      {
+        "args": "{\"quote\":\"fn main() {\\n    let foo = Foo(0);\\n    let bar = &foo;\\n    println!(\\\"Foo is {:?}\\\", foo);\\n    println!(\\\"Bar is {:?}\\\", bar);\\n}\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"source_ref_id\":\"source_ref_e2f1f69dfb7b32e3\",\"label\":\"正文\",\"preview\":\"fn main() { let foo = Foo(0); let bar = &foo; println!(\\\"Foo is {:?}\\\", foo); println!(\\\"Bar is {:?}\\\", bar); }\"}",
+        "tool": "source.present"
+      },
+      {
+        "args": "{\"quote\":\"#[derive(Debug)]\\nstruct Foo(u32);\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"source_ref_id\":\"source_ref_4c3de5a75d5bc2f7\",\"label\":\"正文\",\"preview\":\"#[derive(Debug)] struct Foo(u32);\"}",
+        "tool": "source.present"
+      },
+      {
+        "args": "{\"quote\":\"这一次，程序可以编译，因为 main 中的第二行变成了：\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"source_ref_id\":\"source_ref_1a3ec5f7971d4632\",\"label\":\"正文\",\"preview\":\"这一次，程序可以编译，因为 main 中的第二行变成了：\"}",
+        "tool": "source.present"
+      },
+      {
+        "args": "{\"quote\":\"注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"source_ref_id\":\"source_ref_9af277d1d3d785d4\",\"label\":\"正文\",\"preview\":\"注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。\"}",
+        "tool": "source.present"
+      },
+      {
+        "args": "{\"move\":{\"capability\":\"explanation\",\"intent_origin\":\"current_request\",\"intent_quote\":\"帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。\",\"interaction_intent\":\"direct_explanation\",\"interpretation_refs\":[],\"kind\":\"explain\",\"move_id\":\"explain-borrow-from-assignment\",\"object_ids\":[],\"prompt\":\"从读者已知的变量赋值出发，解释 Foo(0)、foo、&foo 与 &Foo 的关系，用逐行执行说明借用不取得所有权、两个 println 为什么都能访问值及不可变引用的限制；完成解释后，请读者判断将原例中的 let bar = &foo 改为 let bar = foo 后能否照旧分别打印，并说明理由，停在读者回答处，不提前揭晓该判断。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"解释 foo 保有值而 bar 通过 &Foo 引用访问该值，并尝试判断原例去掉 & 后两个打印是否仍可执行\",\"learning_focus\":\"let bar = &foo 创建不可变引用，借用使 foo 与 bar 都能访问同一个 Foo 值\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+        "model_tool_loop": 3,
+        "result_digest": "{\"instruction\":\"Deliver this move in the final answer. Saved candidate is not displayed.\",\"selected\":\"move:turn_ab532cab6797fd00:explain-borrow-from-assignment\"}",
+        "tool": "tutor.step"
+      }
+    ],
+    "turns": 4
+  },
+  "source_identity_rebound_from_exact_quotes": true
+}

@@ -61,7 +61,7 @@ fn fixture_with_assets(published: bool) -> (tempfile::TempDir, AppState) {
     let source = "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. ".repeat(3);
     fixture_with_book(published, Book::new(sample_base(), &source), &source)
 }
-fn fixture_with_book(published: bool, book: Book, source: &str) -> (tempfile::TempDir, AppState) {
+pub(super) fn fixture_with_book(published: bool, book: Book, source: &str) -> (tempfile::TempDir, AppState) {
     let root = tempfile::tempdir().unwrap();
     let mut state = state_named(&format!(
         "tutor-loop-{}",

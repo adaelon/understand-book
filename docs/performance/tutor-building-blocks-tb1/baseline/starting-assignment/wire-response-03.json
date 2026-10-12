@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "redacted_reasoning_chars": 327,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"match_mode\": \"normalized\", \"query\": \"let bar = foo;\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_00_7ULNZDz7Jz6zpeMsYuNr2131",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"match_mode\": \"normalized\", \"query\": \"移动\", \"page_size\": 20}",
+              "name": "book_search_text"
+            },
+            "id": "call_01_qZj1wOaIZLUrvHp4Rkqm7769",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 208,
+    "completion_tokens_details": {
+      "reasoning_tokens": 84
+    },
+    "prompt_cache_hit_tokens": 15872,
+    "prompt_cache_miss_tokens": 580,
+    "prompt_tokens": 16452,
+    "prompt_tokens_details": {
+      "cached_tokens": 15872
+    },
+    "total_tokens": 16660
+  }
+}

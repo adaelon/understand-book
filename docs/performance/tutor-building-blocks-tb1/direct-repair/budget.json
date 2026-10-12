@@ -1,0 +1,7 @@
+{
+  "http_calls": 42,
+  "monetary_cost": null,
+  "stopped": false,
+  "token_limit": 2000000,
+  "tokens_or_reserved": 944158
+}

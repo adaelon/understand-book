@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "redacted_reasoning_chars": 924,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"match_mode\": \"exact\", \"page_size\": 40, \"query\": \"所有权\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_00_e5gRRTAgDfmwFqb5BFJ70084",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"query\": \"移动 move 所有权 ownership\", \"limit\": 15}",
+              "name": "book_concept"
+            },
+            "id": "call_01_qdV1cinxGwkQ60crj1F61211",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 333,
+    "completion_tokens_details": {
+      "reasoning_tokens": 210
+    },
+    "prompt_cache_hit_tokens": 17920,
+    "prompt_cache_miss_tokens": 907,
+    "prompt_tokens": 18827,
+    "prompt_tokens_details": {
+      "cached_tokens": 17920
+    },
+    "total_tokens": 19160
+  }
+}

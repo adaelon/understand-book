@@ -1,0 +1,59 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": "The passage is located. Let me register the supporting passages as visible sources.",
+        "redacted_reasoning_chars": 35648,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"quote\": \"借用让代码在不取得所有权的情况下临时访问值。\"}",
+              "name": "source_present"
+            },
+            "id": "call_00_uvbFZUxV2jpdMc8o3M9a4839",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"quote\": \"不可变借用：在表达式中的值前写 &，会创建对该值的不可变借用。相应的引用类型写作 &T。\"}",
+              "name": "source_present"
+            },
+            "id": "call_01_slWrJny2tCsUg2E6VSey0153",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"quote\": \"这一次，程序可以编译，因为 main 中的第二行变成了：\"}",
+              "name": "source_present"
+            },
+            "id": "call_02_STWub7ttaD5GzzeWlJAr3595",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"quote\": \"注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。\"}",
+              "name": "source_present"
+            },
+            "id": "call_03_8KR9zMjUVfLBKd2gHbHw1234",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 9626,
+    "completion_tokens_details": {
+      "reasoning_tokens": 9396
+    },
+    "prompt_cache_hit_tokens": 20736,
+    "prompt_cache_miss_tokens": 945,
+    "prompt_tokens": 21681,
+    "prompt_tokens_details": {
+      "cached_tokens": 20736
+    },
+    "total_tokens": 31307
+  }
+}

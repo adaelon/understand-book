@@ -1,0 +1,23 @@
+
+> @understand-book/core@0.0.0 test E:\allwork\download\agent\understand-book-integrate-to-tb\packages\core
+> vitest run "test/automatic-build-executor-session.test.ts" "test/build-executor-mcp.test.ts" "test/build-executor-tool-adapter.test.ts" "test/dsh-build-session.test.ts"
+
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-integrate-to-tb/packages/core
+
+ ✓ test/build-executor-tool-adapter.test.ts (9 tests) 37ms
+ ✓ test/build-executor-mcp.test.ts (14 tests) 36ms
+ ❯ test/dsh-build-session.test.ts (8 tests | 5 failed) 4408ms
+   × DSH Engine records and real session > TO6 acknowledges non-final batches with the shared advertised request versions 433ms
+     → expected TO6 DSH dispatch
+   ✓ DSH Engine records and real session > accepts three workers and fences live controllers until their matching release 247ms
+   ✓ DSH Engine records and real session > reclaims a proven dead controller but an old release cannot remove its replacement  2824ms
+   × DSH Engine records and real session > records bounded host uncertainty once, rejects foreign slots and leaves V1 closed 180ms
+     → Cannot read properties of undefined (reading '0')
+   × DSH Engine records and real session > zero-call DSH bootstrap failure uses a new recovery handoff in the same slot 245ms
+     → Cannot read properties of undefined (reading '0')
+   × DSH Engine records and real session > controlled Codex to DSH takeover retains accepted Pass1 and starts at the next stage 230ms
+     → expected Codex work
+   ✓ DSH Engine records and real session > requires explicit initialization without claiming a handoff 10ms
+   × DSH Engine records and real session > persists confirmation/runtime, rejects drift and cross-host access, replays then commits a public handoff 235ms
+     → {"version":"automatic_build_step.v1","action":{"kind":"NEEDS_USER","request_id":"abreq1_4a0b3170a38153c9daf6b3f2a5f3967366b42035d10422c6d9b0f38f18168732","reason":"installation_incompatible","message":"The installed build runtime is incompatible with this protocol.","choices":[],"projection":{"category":"installation_incompatible","stage":"pass1"}},"build_progress":{"version":"automatic_build_progress.v1","status":"needs_user","completion_condition":"all_plan_artifacts_published","private_artifact_count":0,"stages":[{"stage":"pass1","status":"pending","work":{"scope":"discovered","total":1,"eligible":1,"skipped":0,"pending":1,"committed":0}},{"stage":"profile_sidecar","status":"awaiting_dependencies"},{"stage":"pass2","status":"awaiting_dependencies"},{"stage":"book_structure","status":"awaiting_dependencies"},{"stage":"formal_objects","status":"awaiting_dependencies"},{"stage":"cognitive_materials","status":"awaiting_dependencies"},{"stage":"teaching_publish","status":"awaiting_dependencies"}],"current_stage":"pass1","current_stage_forecast":{"stage":"pass1","remaining_work_units":1,"remaining_dispatches":1,"service_time":{"scope":"current_stage_service_only","confidence":"low","sample_count":0}}}}: expected 'NEEDS_USER' to be 'SPAWN_EXECUTORS' // Object.is equality

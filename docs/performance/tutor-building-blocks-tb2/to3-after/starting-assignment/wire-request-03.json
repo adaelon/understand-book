@@ -1,0 +1,22 @@
+{
+  "max_tokens": 32768,
+  "messages": [
+    {
+      "content": "You are the bounded PlanGate and referent resolver. Return one JSON object. Check that query, targets, and obligations preserve the same request. Classify every candidate as direct_match, semantic_match, plausible, or reject. Do not infer from anchor-neighbor text. If lexical recall failed, emit at most three short lexical probes total. Reasons must be short verdict summaries, never hidden chain-of-thought.",
+      "role": "system"
+    },
+    {
+      "content": "{\"candidate_groups\":[{\"candidates\":[],\"target\":\"所有权移动\",\"target_index\":0},{\"candidates\":[],\"target\":\"let bar = foo\",\"target_index\":1}],\"request\":{\"anchor_lid\":\"1.1\",\"intent\":\"explanation\",\"obligations\":[{\"requirement\":\"State what happens to the original variable's ownership when assignment occurs without &.\"},{\"requirement\":\"State whether the original variable can still be used (e.g. printed) after that assignment, and why.\"}],\"query\":\"In this book's ownership section, what happens when a value is assigned to a new variable without using &, and why can the original variable no longer be used afterward?\",\"targets\":[\"所有权移动\",\"let bar = foo\"]},\"response_schema\":{\"candidate_fits\":[{\"candidate_id\":\"id\",\"fit\":\"direct_match\",\"reason\":\"short\",\"target_index\":0}],\"plan_gate\":{\"missing_requirements\":[],\"target_issues\":[],\"valid\":true},\"probes\":[{\"query\":\"lexical probe\",\"target_index\":0}]}}",
+      "role": "user"
+    }
+  ],
+  "model": "deepseek-v4-flash",
+  "response_format": {
+    "type": "json_object"
+  },
+  "stream": true,
+  "stream_options": {
+    "include_usage": true
+  },
+  "temperature": 0
+}

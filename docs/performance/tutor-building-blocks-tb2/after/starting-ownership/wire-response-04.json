@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "redacted_reasoning_chars": 1570,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"query\": \"移动\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_00_nalvSL4LNdviPm9lHNKb1000",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"query\": \"所有权\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_01_i10114IQ3qu9SmdWVEmg6455",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 447,
+    "completion_tokens_details": {
+      "reasoning_tokens": 379
+    },
+    "prompt_cache_hit_tokens": 17536,
+    "prompt_cache_miss_tokens": 973,
+    "prompt_tokens": 18509,
+    "prompt_tokens_details": {
+      "cached_tokens": 17536
+    },
+    "total_tokens": 18956
+  }
+}

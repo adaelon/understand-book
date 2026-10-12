@@ -44,7 +44,7 @@ createApp(defineComponent({ setup() {
   const control = () => showTutor ? h(TutorControl, { enabled: !!tutor.state.value?.control.enabled, label: tutor.label.value,
     busy: tutor.busy.value, unavailable: !tutor.state.value || !!tutor.pending.value, error: tutor.error.value,
     onToggle: () => tutorAction({ kind: 'set_enabled', enabled: !tutor.state.value?.control.enabled }), onRetry: tutor.retry }) : null;
-  const chat = ref<any[]>([{ teachingRef: fixture.teaching_ref, turnId: fixture.turn_id, user: "解释证据召回率", outcome: fixture.outcome, pending: false,
+  const chat = ref<any[]>([{ teachingRef: fixture.teaching_ref, turnId: fixture.turn_id, user: fixture.user_request ?? "解释证据召回率", outcome: fixture.outcome, pending: false,
     questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] }]);
   return () => h("main", { style: "max-width:760px;margin:24px auto;padding:8px" }, [
     rn2 ? h('button', { onClick: async () => {

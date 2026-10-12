@@ -1,0 +1,26 @@
+{
+  "select": {
+    "operation": "select",
+    "move": {
+      "move_id": "explain-borrowing-from-known-move",
+      "object_ids": [],
+      "capability": "explanation",
+      "kind": "explain",
+      "prompt": "从读者已理解非 Copy 值赋值会移动、且能区分值与变量的起点，解释 let bar = &foo 中右侧产生 &Foo 引用而非交出 Foo 的所有权，说明 foo 和 bar 分别打印同一个值的两种访问路径及不可变借用的限制；最后请读者判断只去掉 & 后两次打印会怎样，等待其回答，不提前揭示判断答案。",
+      "interaction_intent": "direct_explanation",
+      "intent_origin": "current_request",
+      "intent_quote": "帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
+      "interpretation_refs": [],
+      "target": {
+        "capability": "explanation",
+        "learning_focus": "Foo 与 &Foo 在赋值中的区别，以及共享借用如何保留 foo 的所有权",
+        "expected_performance": "说明 let bar = &foo 为什么没有移动 Foo，并根据右侧表达式的类型判断去掉 & 后原绑定与两次打印的可用性。",
+        "source_bindings": [
+          { "start_lid": "1.1", "end_lid": "1.1" }
+        ],
+        "object_refs": []
+      }
+    }
+  },
+  "answer": "你已经知道 `Foo` 的赋值会移动；这里关键是先看**等号右边产生的是什么**。\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\n```\n\n第一行让 `foo` 拥有一个 `Foo` 值。第二行的右侧不是直接把这个 `Foo` 值交出去，而是用 `&foo` 创建一个指向它的共享引用。因此，赋给 `bar` 的是引用，`bar` 的类型是 `&Foo`；原来的 `Foo` 仍由 `foo` 拥有。借用就是这样在不取得所有权的情况下临时访问值。[[source:source_ref_b7cdf804a5f27a0d]] [[source:source_ref_9af277d1d3d785d4]]\n\n可以把此时的关系画成：\n\n```text\nfoo ──拥有──▶ Foo(0)\nbar ──引用──▶ 同一个 Foo(0)\n```\n\n这里没有产生第二个 `Foo`。所以后面的两次打印走的是两条访问路径：`println!(\"Foo is {:?}\", foo)` 使用仍然拥有值的 `foo`；`println!(\"Bar is {:?}\", bar)` 通过引用 `bar` 显示它所引用的值。原文的代码允许这两次打印，正是因为 `let bar = &foo;` 没有移走 `foo` 拥有的值。[[source:source_ref_e2f1f69dfb7b32e3]] [[source:source_ref_1a3ec5f7971d4632]] [[source:source_ref_9af277d1d3d785d4]]\n\n但这份访问权限有边界：`bar` 是不可变引用，你可以通过它访问这个值，却不能通过它修改 `Foo` 中的内容。借用并没有放宽所有权规则，它本身就是所有权模型的一部分。[[source:source_ref_9af277d1d3d785d4]] [[source:source_ref_b7cdf804a5f27a0d]]\n\n现在只去掉第二行的 `&`，其他行保持原样：\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n请你判断：这次赋给 `bar` 的是什么类型的值？赋值后谁拥有那个 `Foo`，两次打印中哪一次会出问题？"
+}

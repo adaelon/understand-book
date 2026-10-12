@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": "I'll locate the borrowing example in the source first.",
+        "redacted_reasoning_chars": 960,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"query\": \"&foo\", \"match_mode\": \"exact\", \"page_size\": 20}",
+              "name": "book_search_text"
+            },
+            "id": "call_00_HqGptEHLonQxdiupfHSo6737",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{}",
+              "name": "book_structure"
+            },
+            "id": "call_01_TYseAqAQDCslr6XgEbPF6867",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 347,
+    "completion_tokens_details": {
+      "reasoning_tokens": 250
+    },
+    "prompt_cache_hit_tokens": 10752,
+    "prompt_cache_miss_tokens": 1717,
+    "prompt_tokens": 12469,
+    "prompt_tokens_details": {
+      "cached_tokens": 10752
+    },
+    "total_tokens": 12816
+  }
+}

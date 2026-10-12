@@ -1,0 +1,13 @@
+{
+  "local_links_checked": 79,
+  "missing_links": [],
+  "checkpoint_lines": 45,
+  "next_slice": "TB6",
+  "new_files_whitespace": "passed",
+  "component_tests": 20,
+  "server_record_test": 1,
+  "browser_host_test": 1,
+  "browser_scenarios": 1,
+  "web_typecheck": "passed",
+  "new_model_calls": 0
+}

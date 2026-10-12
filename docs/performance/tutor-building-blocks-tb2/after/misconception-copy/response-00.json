@@ -1,0 +1,16 @@
+{
+  "text": "I'll locate the source material for your snippet before diagnosing.",
+  "tool_calls": [
+    {
+      "arguments": "{}",
+      "id": "call_00_WhttP07S7TUlLE6OLVtu4753",
+      "name": "book.structure"
+    },
+    {
+      "arguments": "{\"query\": \"&foo\"}",
+      "id": "call_01_hwcKqWeuLrsUeDgCmj8H4052",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 12857
+}

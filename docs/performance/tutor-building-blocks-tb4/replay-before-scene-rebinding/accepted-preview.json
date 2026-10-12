@@ -1,0 +1,8 @@
+{
+  "result": "Same repaired page; current desktop render inspected, five fresh receipts error-free. Only browser source-navigation assertion changed.",
+  "inspected": [
+    "preview-10-0.png"
+  ],
+  "candidate_id": "candidate-1791796731561219600-1",
+  "inherited_visual_review": "replay-source-navigation-assertion/accepted-preview.json"
+}

@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"移动\"}",
+      "id": "call_00_nalvSL4LNdviPm9lHNKb1000",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"query\": \"所有权\"}",
+      "id": "call_01_i10114IQ3qu9SmdWVEmg6455",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 18956
+}

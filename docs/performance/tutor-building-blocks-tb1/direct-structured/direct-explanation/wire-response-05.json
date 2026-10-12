@@ -1,0 +1,51 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "redacted_reasoning_chars": 3028,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"match_mode\": \"exact\", \"page_size\": 20, \"query\": \"可变借用\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_00_Jf5FEmRLCp9ClboeqpQK2279",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"match_mode\": \"exact\", \"page_size\": 20, \"query\": \"Copy\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_01_oDf8QdbIg0fXWoqhKf4T0062",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"anchor_lid\": \"1.1\", \"intent\": \"explanation\", \"query\": \"对值创建不可变借用（共享引用）之后，原来的所有者变量为什么仍然可以被使用；如果没有写 & 而直接赋值，所有权会发生什么变化？\", \"obligations\": [{\"requirement\": \"说明不可变借用的效果：不取得所有权，只是临时访问值。\"}, {\"requirement\": \"说明被借用的变量（foo）之后仍可被使用的原因。\"}, {\"requirement\": \"说明不写 & 时赋值语句在所有权上的后果。\"}], \"targets\": [\"不可变借用\", \"所有权\"]}",
+              "name": "book_query"
+            },
+            "id": "call_02_uuiabdVOFfwmf5kR8QkG1424",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 1139,
+    "completion_tokens_details": {
+      "reasoning_tokens": 798
+    },
+    "prompt_cache_hit_tokens": 20736,
+    "prompt_cache_miss_tokens": 1533,
+    "prompt_tokens": 22269,
+    "prompt_tokens_details": {
+      "cached_tokens": 20736
+    },
+    "total_tokens": 23408
+  }
+}

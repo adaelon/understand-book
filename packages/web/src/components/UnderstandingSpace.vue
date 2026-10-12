@@ -45,13 +45,16 @@ async function run(action: () => Promise<void>, message: string) {
 }
 async function refreshView(rebuild = false, more = false) {
   let result = await api.tutorUnderstanding(more ? view.value?.next ?? 0 : 0, rebuild);
-  if (more && view.value) result = { ...result, rows: [...view.value.rows, ...result.rows] };
+  if (more && view.value) result = { ...result, rows: [...view.value.rows, ...result.rows],
+    interpretations: [...view.value.interpretations ?? [], ...result.interpretations ?? []] };
   else {
     // Refresh loaded pages too: a correction on a later page must keep its object visible.
     const count = view.value?.rows.length ?? 0;
-    while (result.next != null && result.rows.length < count) {
+    const interpretationCount = view.value?.interpretations?.length ?? 0;
+    while (result.next != null && (result.rows.length < count || (result.interpretations?.length ?? 0) < interpretationCount)) {
       const page = await api.tutorUnderstanding(result.next);
-      result = { ...page, rows: [...result.rows, ...page.rows] };
+      result = { ...page, rows: [...result.rows, ...page.rows],
+        interpretations: [...result.interpretations ?? [], ...page.interpretations ?? []] };
     }
   }
   if (disposed) return;
@@ -197,18 +200,22 @@ onBeforeUnmount(() => { disposed = true; observer?.disconnect(); window.removeEv
       </section>
       <article v-if="selected" aria-label="表现依据" class="evidence">
         <section class="explanation"><h5>{{ explanationTitle }} · 系统解释</h5><p>{{ selected.interpretation }}</p></section>
+        <section v-if="selected.nature === 'hypothesis'" class="context" aria-label="适用目标与帮助条件">
+          <h5>适用目标与帮助条件</h5><p>{{ selected.prompt || '此条记录未保留适用目标。' }}</p>
+          <p v-if="selected.assistance_count" class="conditions">这次交流前已展示 {{ selected.assistance_count }} 条活动帮助，理解需结合当时的帮助来看。</p>
+        </section>
         <section class="quote"><h5>你的原话</h5><blockquote>{{ selected.learner_quote || '此条记录未保留原话。' }}</blockquote></section>
-        <p v-if="selected.nature === 'hypothesis'" class="conditions">这是依据实际使用形成的暂定判断，可随你的纠正和新表现修订。</p>
+        <p v-if="selected.nature === 'hypothesis'" class="conditions">这是普通交流中的暂定理解，未评分，可随你的纠正和新表现修订。</p>
         <template v-else>
           <p class="conditions">第 {{ selected.attempt }} 次作答；{{ selected.assistance_count ? '帮助后作答，回答前已展示帮助' : '未记录到事先展示的帮助' }}<span v-if="selected.attempt > 1">；改答后记录</span>。</p>
           <p v-if="status[selected.status]">{{ status[selected.status] }}</p>
         </template>
         <p v-if="selected.correction" class="correction">你的纠正：{{ selected.correction }}</p>
-        <section v-if="selected.teaching_implication" class="implication"><CornerDownRight aria-hidden="true" /><div><h5>接下来可以学</h5><p>{{ selected.teaching_implication }}</p></div></section>
+        <section v-if="selected.teaching_implication" class="implication"><CornerDownRight aria-hidden="true" /><div><h5>接下来怎样帮助你</h5><p>{{ selected.teaching_implication }}</p></div></section>
         <details :key="selected.evidence_id" :open="detailsOpen" class="facts" @toggle="detailsOpen = ($event.target as HTMLDetailsElement).open">
           <summary>查看详细依据</summary>
           <div v-if="detailsOpen">
-            <h5>{{ selected.nature === 'hypothesis' ? '适用目标' : '当时的活动' }}</h5><p>{{ selected.prompt || '此条记录未保留活动说明。' }}</p>
+            <template v-if="selected.nature !== 'hypothesis'"><h5>当时的活动</h5><p>{{ selected.prompt || '此条记录未保留活动说明。' }}</p></template>
             <p v-if="selected.feedback_hidden">详细判定依据会在本活动请求直接讲解后揭示。</p>
             <ul v-else-if="selected.source_quotes?.length" ref="feedback" :data-feedback-ref="selected.assessment_ref ?? undefined">
               <li v-for="(item, index) in selected.source_quotes" :key="index"><p v-if="item.reason">{{ item.reason }}</p><blockquote v-if="item.response_quote">作答片段：{{ item.response_quote }}</blockquote><blockquote v-if="item.quote">{{ item.quote }}</blockquote><blockquote v-for="(source, i) in item.sources" :key="i">{{ source.quote }}</blockquote></li>

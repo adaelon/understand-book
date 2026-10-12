@@ -1,0 +1,460 @@
+{
+  "deliver": {
+    "next": "Conclude normally; Runtime attaches this version to the final answer. History commit is still pending.",
+    "reference": {
+      "presentation_id": "presentation-1791795667736900500-0",
+      "revision": 1
+    },
+    "status": "version_saved"
+  },
+  "discover": {
+    "activated": [
+      "presentation.author"
+    ],
+    "deferred_remaining": 16,
+    "matches": [
+      {
+        "description": "Create or revise rich answers. prepare replaces the complete run-local phase/framework/focus/needs; phase and needs are required. Omitted framework/focus clear previous values. Call prepare alone; selected guidance applies at the next sampling. It does not create or deliver content. read/search/patch require exactly one delivered reference or current-run candidate_id. read returns a file or offset/length range; search returns literal matches and character offsets. patch applies ordered edits, each old_text matching exactly once, atomically producing a new immutable candidate while preserving other content/resources; optional metadata replaces only supplied fields. write saves a complete candidate and requires title, html and readable_content; based_on selects an exact delivered version, never a candidate. render_plot returns a static SVG asset; render_animation returns a fixed movie asset. Include returned asset_refs and selected libraries on every write. preview executes actions and returns candidate/environment-bound DOM, errors and screenshots; width and viewport are mutually exclusive. deliver saves only a candidate meeting the preview and subsequent-observation contract; changed candidates need new previews.",
+        "effect_mode": "presentation_write",
+        "matched_capabilities": [
+          "presentation_authoring"
+        ],
+        "matched_fields": [
+          "authorized_effect_mode",
+          "content_profile",
+          "evidence_state",
+          "operation",
+          "permissions",
+          "required_capabilities",
+          "scope",
+          "use_when"
+        ],
+        "matched_terms": [
+          "interactive"
+        ],
+        "name": "presentation.author",
+        "preconditions": [
+          "book_available"
+        ],
+        "score": 2000003500250107,
+        "visibility": "next_sampling"
+      }
+    ],
+    "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+    "task": "build interactive borrowing comparison",
+    "version": "tool_search_result.v2",
+    "visible_from": "next_sampling"
+  },
+  "global": {
+    "changed": true,
+    "needs": [],
+    "phase": "global",
+    "status": "authoring_context_prepared"
+  },
+  "local": {
+    "changed": true,
+    "needs": [
+      "state"
+    ],
+    "phase": "local",
+    "status": "authoring_context_prepared"
+  },
+  "preview-0": {
+    "candidate_id": "candidate-1791795667736919900-1",
+    "environment": {
+      "height": 420,
+      "input": "touch",
+      "width": 320
+    },
+    "environment_name": "narrow-content",
+    "errors": [],
+    "missing_environments": [
+      "short-content",
+      "desktop-content"
+    ],
+    "projection": "selected_result",
+    "reading": {
+      "action_step": 4,
+      "controls": [
+        {
+          "id": "leftCopy",
+          "name": "",
+          "type": "select-one",
+          "value": "true"
+        },
+        {
+          "id": "leftMutable",
+          "name": "",
+          "type": "select-one",
+          "value": "false"
+        },
+        {
+          "id": "rightCopy",
+          "name": "",
+          "type": "select-one",
+          "value": "false"
+        },
+        {
+          "id": "rightMutable",
+          "name": "",
+          "type": "select-one",
+          "value": "false"
+        }
+      ],
+      "page_state": {
+        "values": {
+          "leftCopy": true,
+          "leftMutable": false,
+          "leftRevealed": true,
+          "rightCopy": false,
+          "rightMutable": false,
+          "rightRevealed": true
+        },
+        "visible_step": "observed-right"
+      },
+      "scene": null,
+      "scroll": {
+        "max_y": 1780,
+        "viewport_height": 420,
+        "viewport_width": 320,
+        "x": 0,
+        "y": 1480
+      },
+      "selector": "#right",
+      "text": "对照 B\nFoo 的派生实现\nDebug, Clone, Copy\nDebug\nb 的绑定表达式\n&a\n&mut a\n#[derive(Debug)]\nstruct Foo(u32);\n\nfn main() {\n    let mut a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"b = {:?}\", b);\n    println!(\"a = {:?}\", a);\n}\n查看 B 的结果\n当前：Foo 未实现 Copy，b = &a。\n编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。"
+    },
+    "recorded_environments": [
+      "narrow-content"
+    ],
+    "status": "preview_environment_recorded"
+  },
+  "preview-1": {
+    "candidate_id": "candidate-1791795667736919900-1",
+    "environment": {
+      "height": 240,
+      "input": "touch",
+      "width": 640
+    },
+    "environment_name": "short-content",
+    "errors": [],
+    "missing_environments": [
+      "desktop-content"
+    ],
+    "projection": "selected_result",
+    "reading": {
+      "action_step": 4,
+      "controls": [
+        {
+          "id": "leftCopy",
+          "name": "",
+          "type": "select-one",
+          "value": "true"
+        },
+        {
+          "id": "leftMutable",
+          "name": "",
+          "type": "select-one",
+          "value": "false"
+        },
+        {
+          "id": "rightCopy",
+          "name": "",
+          "type": "select-one",
+          "value": "false"
+        },
+        {
+          "id": "rightMutable",
+          "name": "",
+          "type": "select-one",
+          "value": "false"
+        }
+      ],
+      "page_state": {
+        "values": {
+          "leftCopy": true,
+          "leftMutable": false,
+          "leftRevealed": true,
+          "rightCopy": false,
+          "rightMutable": false,
+          "rightRevealed": true
+        },
+        "visible_step": "observed-right"
+      },
+      "scene": null,
+      "scroll": {
+        "max_y": 1402,
+        "viewport_height": 240,
+        "viewport_width": 640,
+        "x": 0,
+        "y": 1217
+      },
+      "selector": "#right",
+      "text": "对照 B\nFoo 的派生实现\nDebug, Clone, Copy\nDebug\nb 的绑定表达式\n&a\n&mut a\n#[derive(Debug)]\nstruct Foo(u32);\n\nfn main() {\n    let mut a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"b = {:?}\", b);\n    println!(\"a = {:?}\", a);\n}\n查看 B 的结果\n当前：Foo 未实现 Copy，b = &a。\n编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。"
+    },
+    "recorded_environments": [
+      "narrow-content",
+      "short-content"
+    ],
+    "status": "preview_environment_recorded"
+  },
+  "preview-2": {
+    "candidate_id": "candidate-1791795667736919900-1",
+    "environment": {
+      "height": 720,
+      "input": "mouse",
+      "width": 960
+    },
+    "environment_name": "desktop-content",
+    "errors": [],
+    "missing_environments": [],
+    "projection": "selected_result",
+    "reading": {
+      "action_step": 4,
+      "controls": [
+        {
+          "id": "leftCopy",
+          "name": "",
+          "type": "select-one",
+          "value": "true"
+        },
+        {
+          "id": "leftMutable",
+          "name": "",
+          "type": "select-one",
+          "value": "false"
+        },
+        {
+          "id": "rightCopy",
+          "name": "",
+          "type": "select-one",
+          "value": "false"
+        },
+        {
+          "id": "rightMutable",
+          "name": "",
+          "type": "select-one",
+          "value": "false"
+        }
+      ],
+      "page_state": {
+        "values": {
+          "leftCopy": true,
+          "leftMutable": false,
+          "leftRevealed": true,
+          "rightCopy": false,
+          "rightMutable": false,
+          "rightRevealed": true
+        },
+        "visible_step": "observed-right"
+      },
+      "scene": null,
+      "scroll": {
+        "max_y": 853,
+        "viewport_height": 720,
+        "viewport_width": 960,
+        "x": 0,
+        "y": 828
+      },
+      "selector": "#right",
+      "text": "对照 B\nFoo 的派生实现\nDebug, Clone, Copy\nDebug\nb 的绑定表达式\n&a\n&mut a\n#[derive(Debug)]\nstruct Foo(u32);\n\nfn main() {\n    let mut a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"b = {:?}\", b);\n    println!(\"a = {:?}\", a);\n}\n查看 B 的结果\n当前：Foo 未实现 Copy，b = &a。\n编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。"
+    },
+    "recorded_environments": [
+      "desktop-content",
+      "narrow-content",
+      "short-content"
+    ],
+    "status": "preview_ready_for_inspection"
+  },
+  "preview-3": {
+    "candidate_id": "candidate-1791795667736919900-1",
+    "environment": {
+      "height": 720,
+      "input": "mouse",
+      "width": 960
+    },
+    "environment_name": "desktop-content",
+    "errors": [],
+    "missing_environments": [],
+    "projection": "selected_result",
+    "reading": {
+      "action_step": 3,
+      "controls": [
+        {
+          "id": "leftCopy",
+          "name": "",
+          "type": "select-one",
+          "value": "true"
+        },
+        {
+          "id": "leftMutable",
+          "name": "",
+          "type": "select-one",
+          "value": "false"
+        },
+        {
+          "id": "rightCopy",
+          "name": "",
+          "type": "select-one",
+          "value": "true"
+        },
+        {
+          "id": "rightMutable",
+          "name": "",
+          "type": "select-one",
+          "value": "true"
+        }
+      ],
+      "page_state": {
+        "values": {
+          "leftCopy": true,
+          "leftMutable": false,
+          "leftRevealed": false,
+          "rightCopy": true,
+          "rightMutable": true,
+          "rightRevealed": true
+        },
+        "visible_step": "observed-right"
+      },
+      "scene": null,
+      "scroll": {
+        "max_y": 879,
+        "viewport_height": 720,
+        "viewport_width": 960,
+        "x": 0,
+        "y": 802
+      },
+      "selector": "#right",
+      "text": "对照 B\nFoo 的派生实现\nDebug, Clone, Copy\nDebug\nb 的绑定表达式\n&a\n&mut a\n#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let mut a = Foo(7);\n    let b = &mut a;\n    b.0 = 8;\n    println!(\"b = {:?}\", b);\n    println!(\"a = {:?}\", a);\n}\n查看 B 的结果\n当前：Foo 实现 Copy，b = &mut a。\n编译通过。运行输出：\nb = Foo(8)\na = Foo(8)"
+    },
+    "recorded_environments": [
+      "desktop-content",
+      "narrow-content",
+      "short-content"
+    ],
+    "status": "preview_ready_for_inspection"
+  },
+  "preview-4": {
+    "candidate_id": "candidate-1791795667736919900-1",
+    "environment": {
+      "height": 720,
+      "input": "mouse",
+      "width": 960
+    },
+    "environment_name": "desktop-content",
+    "errors": [],
+    "missing_environments": [],
+    "projection": "selected_result",
+    "reading": {
+      "action_step": 3,
+      "controls": [
+        {
+          "id": "leftCopy",
+          "name": "",
+          "type": "select-one",
+          "value": "true"
+        },
+        {
+          "id": "leftMutable",
+          "name": "",
+          "type": "select-one",
+          "value": "true"
+        },
+        {
+          "id": "rightCopy",
+          "name": "",
+          "type": "select-one",
+          "value": "true"
+        },
+        {
+          "id": "rightMutable",
+          "name": "",
+          "type": "select-one",
+          "value": "false"
+        }
+      ],
+      "page_state": {
+        "values": {
+          "leftCopy": true,
+          "leftMutable": true,
+          "leftRevealed": true,
+          "rightCopy": true,
+          "rightMutable": false,
+          "rightRevealed": false
+        },
+        "visible_step": "observed-left"
+      },
+      "scene": null,
+      "scroll": {
+        "max_y": 879,
+        "viewport_height": 720,
+        "viewport_width": 960,
+        "x": 0,
+        "y": 322
+      },
+      "selector": "#left",
+      "text": "对照 A\nFoo 的派生实现\nDebug, Clone, Copy\nDebug\nb 的绑定表达式\n&a\n&mut a\n#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let mut a = Foo(7);\n    let b = &mut a;\n    b.0 = 8;\n    println!(\"b = {:?}\", b);\n    println!(\"a = {:?}\", a);\n}\n查看 A 的结果\n当前：Foo 实现 Copy，b = &mut a。\n编译通过。运行输出：\nb = Foo(8)\na = Foo(8)"
+    },
+    "recorded_environments": [
+      "desktop-content",
+      "narrow-content",
+      "short-content"
+    ],
+    "status": "preview_ready_for_inspection"
+  },
+  "read": {
+    "lid": "1.1",
+    "text": "借用\n\n借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。这里的 & 是 Rust 的借用运算符，不能简单等同于 C 中不带有效性约束的取地址操作。在 Rust 中有两种借用值的方式。\n\n不可变借用：在表达式中的值前写 &，会创建对该值的不可变借用。相应的引用类型写作 &T。前面所有权一节中的例子可以改写为使用借用：\n\n<code>// borrowing_basics.rs\n#[derive(Debug)]\nstruct Foo(u32);\nfn main() {\n    let foo = Foo(0);\n    let bar = &foo;\n    println!(\"Foo is {:?}\", foo);\n    println!(\"Bar is {:?}\", bar);\n}\n</code>\n\n这一次，程序可以编译，因为 main 中的第二行变成了：\n\n<code>    let bar = &foo;\n</code>\n\n注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。\n\n"
+  },
+  "review": {
+    "changed": true,
+    "needs": [
+      "state"
+    ],
+    "phase": "review",
+    "status": "authoring_context_prepared"
+  },
+  "select": {
+    "instruction": "Deliver this move in the final answer. Saved candidate is not displayed.",
+    "selected": "move:turn_66d6b3abd91fef1e:tb4-copy-reference-self-selected-comparison"
+  },
+  "source-0": {
+    "label": "正文",
+    "preview": "借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。",
+    "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+  },
+  "source-1": {
+    "label": "正文",
+    "preview": "fn main() { let foo = Foo(0); let bar = &foo; println!(\"Foo is {:?}\", foo); println!(\"Bar is {:?}\", bar); }",
+    "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+  },
+  "source-2": {
+    "label": "正文",
+    "preview": "#[derive(Debug)] struct Foo(u32);",
+    "source_ref_id": "source_ref_4c3de5a75d5bc2f7"
+  },
+  "source-3": {
+    "label": "正文",
+    "preview": "这一次，程序可以编译，因为 main 中的第二行变成了：",
+    "source_ref_id": "source_ref_1a3ec5f7971d4632"
+  },
+  "source-4": {
+    "label": "正文",
+    "preview": "注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。",
+    "source_ref_id": "source_ref_9af277d1d3d785d4"
+  },
+  "write": {
+    "based_on": null,
+    "candidate_id": "candidate-1791795667736919900-1",
+    "initial_state": {
+      "leftCopy": true,
+      "leftMutable": false,
+      "leftRevealed": false,
+      "rightCopy": true,
+      "rightMutable": false,
+      "rightRevealed": false
+    },
+    "libraries": [],
+    "next": "Preview with real actions and inspect screenshots. For local changes, search/read/patch this candidate_id. Patch preserves assets and creates a new candidate; preview it again. Use write with full HTML for broad rewrites; based_on is only for a delivered presentation reference. Deliver the final candidate after its required previews.",
+    "status": "candidate_saved"
+  }
+}

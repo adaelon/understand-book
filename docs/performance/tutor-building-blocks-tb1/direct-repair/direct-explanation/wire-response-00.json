@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": "I'll first locate the exact borrowing code in your book, since no excerpt is attached to this turn.",
+        "redacted_reasoning_chars": 2530,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"query\": \"&foo\", \"match_mode\": \"exact\", \"page_size\": 20}",
+              "name": "book_search_text"
+            },
+            "id": "call_00_z6jxO2t4lnthvRiqqZuW1694",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"query\": \"bar\", \"match_mode\": \"exact\", \"page_size\": 20}",
+              "name": "book_search_text"
+            },
+            "id": "call_01_6xn6DJ9CjbYo9YbObCP00664",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 741,
+    "completion_tokens_details": {
+      "reasoning_tokens": 583
+    },
+    "prompt_cache_hit_tokens": 12159,
+    "prompt_cache_miss_tokens": 134,
+    "prompt_tokens": 12293,
+    "prompt_tokens_details": {
+      "cached_tokens": 12159
+    },
+    "total_tokens": 13034
+  }
+}

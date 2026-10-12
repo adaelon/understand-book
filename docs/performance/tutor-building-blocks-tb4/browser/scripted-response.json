@@ -1,0 +1,4 @@
+{
+  "identity": "authored test fixture; not a human reader",
+  "response": "我现在选的 A 是 Copy 加 &a，B 是没有 Copy 加 &a，两组都显示 E0594。我还试过 B 的 &mut a，看到 Foo(8)。这些结果是教具给的；我推断 Copy 本身没有让共享引用能写入。下一步让我自己选一个对照说明理由，先别讲完整结论。"
+}

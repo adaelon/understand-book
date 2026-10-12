@@ -1,0 +1,15 @@
+
+> @understand-book/web@0.0.0 test E:\allwork\download\agent\understand-book-integrate-to-tb\packages\web
+> vitest run "src/components/TutorPanel.test.ts" "src/components/UnderstandingSpace.test.ts"
+
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-integrate-to-tb/packages/web
+
+ ✓ src/components/UnderstandingSpace.test.ts (12 tests) 562ms
+ ✓ src/components/TutorPanel.test.ts (8 tests) 1087ms
+
+ Test Files  2 passed (2)
+      Tests  20 passed (20)
+   Start at  21:21:50
+   Duration  10.98s (transform 1.20s, setup 0ms, collect 2.95s, tests 1.65s, environment 10.63s, prepare 2.03s)
+

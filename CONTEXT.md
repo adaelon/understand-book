@@ -895,12 +895,12 @@ Agent 基于当前材料、相关历史与会话学习意图采用的当前学�
 Agent 在原生学习环境中持续观察使用过程、修订理解判断、选择教学动作并利用反馈的读时循环，以全局 Tutor 开启、有效教学会话与 Tutor 可用就绪为前提。它从当前请求、会话教法及已确认偏好解析交互意图，结合普通对话与教学活动的实际事实、适用理解假设、可信原文和可用素材选择有界 TeachingMove；系统维护真实状态与证据，Agent 的具体教学选择随反馈调整，PathPlanner、ContextBuilder 与 Estimator 继续是其内部职责。状态:BOUNDARY_CHANGE（[ADR-0143](docs/adr/0143-teaching-trace-assessment-and-learning-evidence.md)、[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)，T16 Server 准入与 T17 持续观察已实现）。
 
 ## 认知积木
-学习者能够从已有理解出发理解、操作和组合，用于建立新理解的知识关系、模型、方法或表征；其范围、表达方式与提供时机取决于当前目标、实际表现和所需帮助。同一内容可以形成适合不同学习起点的认知积木，价值体现为学习者能够借它完成具体判断、解释或运用。状态：NEW，设计已接受、行为实现待完成（2026-10-12，[ADR-0164](docs/adr/0164-tutor-mission-and-cognitive-building-blocks.md)）。
+学习者能够从已有理解出发理解、操作和组合，用于建立新理解的知识关系、模型、方法或表征；其范围、表达方式与提供时机取决于当前目标、实际表现和所需帮助。同一内容可以形成适合不同学习起点的认知积木，价值体现为学习者能够借它完成具体判断、解释或运用。状态：NEW，设计已接受；TB2 文字教学、TB3 回应与记忆接续、TB4 操作教具及现场接续通过工程与子代理内容验收（2026-10-12，[ADR-0164](docs/adr/0164-tutor-mission-and-cognitive-building-blocks.md)）。
 
 ## TeachingMove
 `TutorLoop` 围绕当前交互意图、暂定学习目标、目标能力、Learner 状态与可信原文选择或合成的一个有界认知动作，适用正式对象可通过 `LearningObjectRef` 关联。它可以是问题、检索线索、例子/反例、对比、来源聚焦、关系支架、程序动作或局部解释，不以问句为本体、不默认要求判题，也不允许用完整答案或连续题目替代 Learner 本应执行的目标认知活动；来源推论未闭合时可围绕证据缺口推进理解，补充解释保留假设身份。状态:BOUNDARY_CHANGE（见 `grill.md` Q85/Q88、[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)，T16 来源教学与 T17 反馈扩展已实现）。
 
-教学使命补充：围绕学习者当前能够借助什么完成什么，提供或复用认知积木，保留学习者亲自完成的认知活动，并依据实际回应调整帮助。状态：BOUNDARY_CHANGE，设计已接受、行为实现待完成（2026-10-12，[ADR-0164](docs/adr/0164-tutor-mission-and-cognitive-building-blocks.md)）。
+教学使命补充：围绕学习者当前能够借助什么完成什么，提供或复用认知积木，保留学习者亲自完成的认知活动，并依据实际回应调整帮助。状态：BOUNDARY_CHANGE，设计已接受；TB2–TB4 通过工程与子代理内容验收，已覆盖帮助条件、修订后接续及教具操作后的实际现场（2026-10-12，[ADR-0164](docs/adr/0164-tutor-mission-and-cognitive-building-blocks.md)）。
 
 ## GuidedInquiryPolicy
 `TutorLoop` 在 `ResolvedInteractionIntent` 为引导学习且当前对象、能力目标与 Learner 前置状态适合主动生成、辨析、预测或重建时，优先让 Learner 先执行目标认知活动的 `TeachingMove` 选择策略。它不是全局“全程提问”流程、content profile 或评分模式；本回合明确要求直接答案、总结、翻译或完整解释时不得启用。状态:BOUNDARY_CHANGE(见 `grill.md` Q85/Q86)。

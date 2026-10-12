@@ -246,7 +246,7 @@ fn continuation_tc6_live_correction_trajectory() {
     assert_eq!(saved.status,AgentAssistantStatus::Completed);
     assert!(!saved.outcome.as_ref().unwrap().incomplete);
     assert!(store.evidence_is_superseded(old_ref).unwrap(),"real correction must revise the previous hypothesis");
-    let current=store.current_interpretations(&source,state.workspace.book.source_fingerprint(),None,20).unwrap();
+    let current=store.current_interpretations(&source,state.workspace.book.source_fingerprint(),0,20).unwrap();
     assert!(current.iter().all(|(_,e)|e.evidence_id!=old_ref));
     let deliveries=store.teaching_deliveries(&state.user.agent_history.sessions[0].id,&saved.turn_id).unwrap();
     assert!(deliveries.iter().any(|d| d.payload["move"]["interpretation_refs"].as_array().is_some_and(|refs|
@@ -1401,6 +1401,7 @@ pub(super) struct TutorRequestRecorder {
 impl ModelAdapter for TutorRequestRecorder {
     fn model_runtime_profile(&self) -> runtime::ModelRuntimeProfile { self.inner.model_runtime_profile() }
     fn complete(&self, request: CompletionRequest) -> Result<ParsedResponse, AdapterError> { self.inner.complete(request) }
+    fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> { self.inner.complete_structured(request) }
     fn chat(&self, request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
         let mut input = serde_json::to_value(&request.input).unwrap();
         for message in input.as_array_mut().into_iter().flatten() {

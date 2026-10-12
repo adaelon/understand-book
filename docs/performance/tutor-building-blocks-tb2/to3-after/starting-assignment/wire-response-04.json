@@ -1,0 +1,26 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "message": {
+        "content": "{\"candidate_fits\":[],\"plan_gate\":{\"missing_requirements\":[],\"target_issues\":[],\"valid\":true},\"probes\":[{\"query\":\"所有权移动 赋值 原变量\",\"target_index\":0},{\"query\":\"let bar = foo 所有权\",\"target_index\":1}]}",
+        "redacted_reasoning_chars": 2415,
+        "role": "assistant",
+        "tool_calls": []
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 602,
+    "completion_tokens_details": {
+      "reasoning_tokens": 538
+    },
+    "prompt_cache_hit_tokens": 128,
+    "prompt_cache_miss_tokens": 232,
+    "prompt_tokens": 360,
+    "prompt_tokens_details": {
+      "cached_tokens": 128
+    },
+    "total_tokens": 962
+  }
+}

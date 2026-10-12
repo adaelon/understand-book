@@ -321,9 +321,9 @@ impl LearningStore {
 
     /// Current source-bound interpretations, including source-only performances.
     /// Replacement is resolved before the page limit, so superseded claims never reappear.
-    pub fn current_interpretations(&self, source: &str, revision: &str, before: Option<u64>, limit: u32) -> Result<Vec<(u64, LearningEvidence)>, ToolError> {
-        let mut q = self.connection.prepare("SELECT e.seq,e.evidence FROM learning_evidence e WHERE e.source_id=? AND json_extract(e.evidence,'$.source_revision')=? AND e.seq<? AND NOT EXISTS (SELECT 1 FROM learning_evidence n WHERE json_extract(n.evidence,'$.supersedes')=e.evidence_id) ORDER BY e.seq DESC LIMIT ?").map_err(storage)?;
-        let rows = q.query_map(params![source, revision, before.unwrap_or(i64::MAX as u64), limit.min(20)], |r|Ok((r.get::<_,u64>(0)?,r.get::<_,String>(1)?))).map_err(storage)?;
+    pub fn current_interpretations(&self, source: &str, revision: &str, after: u64, limit: u32) -> Result<Vec<(u64, LearningEvidence)>, ToolError> {
+        let mut q = self.connection.prepare("SELECT e.seq,e.evidence FROM learning_evidence e WHERE e.source_id=? AND json_extract(e.evidence,'$.source_revision')=? AND NOT EXISTS (SELECT 1 FROM learning_evidence n WHERE json_extract(n.evidence,'$.supersedes')=e.evidence_id) ORDER BY e.seq DESC LIMIT ? OFFSET ?").map_err(storage)?;
+        let rows = q.query_map(params![source, revision, limit.min(20), after], |r|Ok((r.get::<_,u64>(0)?,r.get::<_,String>(1)?))).map_err(storage)?;
         rows.map(|r| { let (seq,text)=r.map_err(storage)?; Ok((seq,serde_json::from_str(&text).map_err(storage)?)) }).collect()
     }
 

@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "redacted_reasoning_chars": 927,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"lid\": \"1.1\", \"granularity\": \"near\", \"k\": 10}",
+              "name": "book_context"
+            },
+            "id": "call_00_cUa25DJELlrQ1jsDGVE32847",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"match_mode\": \"exact\", \"page_size\": 20, \"query\": \"移动\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_01_DeOJYddkS25s7LcmfuBg9031",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 369,
+    "completion_tokens_details": {
+      "reasoning_tokens": 231
+    },
+    "prompt_cache_hit_tokens": 16640,
+    "prompt_cache_miss_tokens": 956,
+    "prompt_tokens": 17596,
+    "prompt_tokens_details": {
+      "cached_tokens": 16640
+    },
+    "total_tokens": 17965
+  }
+}

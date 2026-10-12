@@ -1,0 +1,9 @@
+{
+  "source_from": "sol/repair/independent-step/output.json",
+  "source": "#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"{:?} {:?}\", a, b);\n}\n",
+  "rust_toolchain": "1.95.0",
+  "compile_exit": 1,
+  "diagnostic_codes": [
+    "E0594"
+  ]
+}

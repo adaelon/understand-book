@@ -1,0 +1,21 @@
+{
+  "messages": [
+    {
+      "content": "You are the bounded PlanGate and referent resolver. Return one JSON object. Check that query, targets, and obligations preserve the same request. Classify every candidate as direct_match, semantic_match, plausible, or reject. Do not infer from anchor-neighbor text. If lexical recall failed, emit at most three short lexical probes total. Reasons must be short verdict summaries, never hidden chain-of-thought.\n\nReturn exactly one JSON object and no Markdown code fence, in this shape:\n{\"sufficient\": true or false, \"answer\": \"answer text or null\", \"citations\": [{\"lid\": \"LID from evidence\", \"text\": \"quoted source passage\", \"role\": \"support or contrast\"}], \"model_supplement\": [{\"text\": \"outside knowledge not covered by source text\"}]}\nRules:\n- If any evidence passage supports an answer, put the synthesized answer in answer and set sufficient=true.\n- Every citation lid must come from evidence marked [LID] above, and citation text must quote source that supports the answer.\n- Use model_supplement only for extensions that the evidence cannot support and that rely entirely on outside knowledge; never put the main answer there.\n- Set sufficient=false and answer=null only when the evidence cannot support any answer.",
+      "role": "system"
+    },
+    {
+      "content": "{\"candidate_groups\":[{\"candidates\":[],\"target\":\"所有权\",\"target_index\":0},{\"candidates\":[],\"target\":\"借用\",\"target_index\":1}],\"request\":{\"anchor_lid\":\"1.1\",\"intent\":\"relation\",\"obligations\":[{\"requirement\":\"描述不加 & 的赋值（let bar = foo;）对 foo 所有权的影响。\"},{\"requirement\":\"说明为什么借用版本中 foo 与 bar 都能被打印。\"}],\"query\":\"在借用一节之前的所有权示例中，把 foo 直接赋给 bar（不加 &）会发生什么，为什么之后不能再使用或打印 foo；采用借用的版本为什么可以让 foo 与 bar 都被打印？\",\"targets\":[\"所有权\",\"借用\"]},\"response_schema\":{\"candidate_fits\":[{\"candidate_id\":\"id\",\"fit\":\"direct_match\",\"reason\":\"short\",\"target_index\":0}],\"plan_gate\":{\"missing_requirements\":[],\"target_issues\":[],\"valid\":true},\"probes\":[{\"query\":\"lexical probe\",\"target_index\":0}]}}",
+      "role": "user"
+    }
+  ],
+  "model": "deepseek-v4-flash",
+  "response_format": {
+    "type": "json_object"
+  },
+  "stream": true,
+  "stream_options": {
+    "include_usage": true
+  },
+  "temperature": 0
+}

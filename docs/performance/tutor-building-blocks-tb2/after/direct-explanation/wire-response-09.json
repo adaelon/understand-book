@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "redacted_reasoning_chars": 907,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"match_mode\": \"exact\", \"page_size\": 30, \"query\": \"借用\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_00_AbZ53Em5UOb2qqFKZXjr3108",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"match_mode\": \"exact\", \"page_size\": 30, \"query\": \"mut\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_01_MKzl1Hzq3nrCZjlPruFQ9762",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 366,
+    "completion_tokens_details": {
+      "reasoning_tokens": 228
+    },
+    "prompt_cache_hit_tokens": 21632,
+    "prompt_cache_miss_tokens": 901,
+    "prompt_tokens": 22533,
+    "prompt_tokens_details": {
+      "cached_tokens": 21632
+    },
+    "total_tokens": 22899
+  }
+}

@@ -1,0 +1,9 @@
+
+running 4 tests
+test tests::tutor_adaptation_tests::tutor_tb3_referenced_chat_keeps_displayed_help_on_usage_hypothesis ... ok
+test tests::tutor_adaptation_tests::tutor_tb3_understanding_pages_preserve_older_revisions_and_long_facts ... ok
+test tests::tutor_loop_tests::tutor_t17a_usage_trace_reads_only_committed_presentations_and_exact_scene ... ok
+test tests::tutor_presentation_tests::tutor_tb4_keeps_tb3_help_and_unanswered_judgment ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 819 filtered out; finished in 6.68s
+

@@ -1,0 +1,51 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "redacted_reasoning_chars": 3290,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"query\": \"&foo\", \"match_mode\": \"exact\", \"page_size\": 20}",
+              "name": "book_search_text"
+            },
+            "id": "call_00_wMQbrS2sOrfq9kcMRAVj7483",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"query\": \"bar\", \"match_mode\": \"exact\", \"page_size\": 20}",
+              "name": "book_search_text"
+            },
+            "id": "call_01_1iCFAjBbMyoJiAZSJe407041",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"query\": \"借用 引用 foo bar 共享引用\", \"limit\": 12}",
+              "name": "book_concept"
+            },
+            "id": "call_02_N3FrJ2jC6QGXT26C6tuF1886",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 1096,
+    "completion_tokens_details": {
+      "reasoning_tokens": 906
+    },
+    "prompt_cache_hit_tokens": 12159,
+    "prompt_cache_miss_tokens": 134,
+    "prompt_tokens": 12293,
+    "prompt_tokens_details": {
+      "cached_tokens": 12159
+    },
+    "total_tokens": 13389
+  }
+}

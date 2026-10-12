@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": "I'll locate the source material for your snippet before diagnosing.",
+        "redacted_reasoning_chars": 1536,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{}",
+              "name": "book_structure"
+            },
+            "id": "call_00_WhttP07S7TUlLE6OLVtu4753",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"query\": \"&foo\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_01_hwcKqWeuLrsUeDgCmj8H4052",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 429,
+    "completion_tokens_details": {
+      "reasoning_tokens": 366
+    },
+    "prompt_cache_hit_tokens": 10624,
+    "prompt_cache_miss_tokens": 1804,
+    "prompt_tokens": 12428,
+    "prompt_tokens_details": {
+      "cached_tokens": 10624
+    },
+    "total_tokens": 12857
+  }
+}

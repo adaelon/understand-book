@@ -1,0 +1,26 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "message": {
+        "content": "{\"candidate_fits\":[],\"plan_gate\":{\"missing_requirements\":[],\"target_issues\":[],\"valid\":true},\"probes\":[{\"query\":\"移动语义 let bar = foo\",\"target_index\":0},{\"query\":\"不可变借用 &T 修改\",\"target_index\":1},{\"query\":\"共享引用 修改 Foo\",\"target_index\":1}]}",
+        "redacted_reasoning_chars": 2172,
+        "role": "assistant",
+        "tool_calls": []
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 600,
+    "completion_tokens_details": {
+      "reasoning_tokens": 523
+    },
+    "prompt_cache_hit_tokens": 256,
+    "prompt_cache_miss_tokens": 134,
+    "prompt_tokens": 390,
+    "prompt_tokens_details": {
+      "cached_tokens": 256
+    },
+    "total_tokens": 990
+  }
+}

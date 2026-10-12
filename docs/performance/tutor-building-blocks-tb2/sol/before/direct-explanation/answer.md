@@ -1,0 +1,24 @@
+你已经知道非 Copy 值移动后旧变量不能再用。这段代码的关键是：`let bar = &foo;` 创建一个引用，让 `bar` 可以访问 `foo` 中的值，同时 `foo` 保留该值的所有权。借用本来就是所有权模型的一部分。[[source:source_ref_b7cdf804a5f27a0d]]
+
+```rust
+#[derive(Debug)]
+struct Foo(u32);
+
+fn main() {
+    let foo = Foo(0);
+    let bar = &foo;
+    println!("Foo is {:?}", foo);
+    println!("Bar is {:?}", bar);
+}
+```
+[[source:source_ref_4c3de5a75d5bc2f7]] [[source:source_ref_e2f1f69dfb7b32e3]]
+
+**先区分 `foo` 和 `bar`。** `Foo(u32)` 定义了一个含有一个 `u32` 字段的类型；`Foo(0)` 创建这个类型的值。于是 `foo` 的类型是 `Foo`，拥有这个值。执行下一行后，`bar` 的类型是 `&Foo`：它保存的是对这个值的不可变引用。这里没有再创建一个 `Foo(0)`，也没有把原来的 `Foo` 移给 `bar`。[[source:source_ref_4c3de5a75d5bc2f7]] [[source:source_ref_e2f1f69dfb7b32e3]] [[source:source_ref_9af277d1d3d785d4]]
+
+**`&foo` 做的是共享借用。** `&` 是借用运算符，作用于 `foo` 所在的位置，创建一个引用。可以把这里的关系读成：`foo` 拥有值，`bar` 借用它来访问值。这个访问仍然受 Rust 的所有权与有效性约束，不能把它简单理解成一个没有这些约束的取地址操作。[[source:source_ref_b7cdf804a5f27a0d]]
+
+**为什么两个变量都能打印？** 因为创建 `bar` 时没有移动 `foo`，所以第三行仍然可以访问 `foo`；第四行则通过 `bar` 的引用访问同一个 `Foo`。示例使用 `{:?}` 输出调试形式，类型上有 `#[derive(Debug)]`，因此两行分别会显示 `Foo is Foo(0)` 和 `Bar is Foo(0)`。输出中的内容相同，是因为它们访问的是同一个值，并不表示 `bar` 也拥有了一份 `Foo`。[[source:source_ref_e2f1f69dfb7b32e3]] [[source:source_ref_4c3de5a75d5bc2f7]] [[source:source_ref_9af277d1d3d785d4]]
+
+**去掉 `&`，就变成了移动。** 写成 `let bar = foo;` 后，`bar` 的类型会是 `Foo`。这个例子中的 `Foo` 只派生了 `Debug`，没有实现 `Copy`，因此这次赋值把值从 `foo` 移给 `bar`。接着原代码仍然要打印 `foo`，就会触发你已经知道的规则：移动后的旧变量不能再用，程序因此不能编译。此时值由 `bar` 拥有，打印 `bar` 本身没有问题；出问题的是移动后还打印 `foo`。原文说改成 `&foo` 后可以编译，关键就在于把移动换成了借用。[[source:source_ref_4c3de5a75d5bc2f7]] [[source:source_ref_e2f1f69dfb7b32e3]] [[source:source_ref_1a3ec5f7971d4632]]
+
+**不能通过这里的 `bar` 修改 `Foo`。** 它是 `&Foo`，也就是不可变引用，所以尝试 `bar.0 = 1;` 不被允许。这里限制的是通过这个引用修改被借用的值。原文也介绍了 `&mut` 可以创建可变借用，但当前代码使用的是 `&foo`，并没有获得可变访问权限。[[source:source_ref_9af277d1d3d785d4]] [[source:source_ref_b7cdf804a5f27a0d]]

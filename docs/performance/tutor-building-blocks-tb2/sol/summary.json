@@ -1,0 +1,113 @@
+{
+  "model": "gpt-6.1-sol",
+  "reasoning": "model default (spawn override omitted for every agent)",
+  "fork_turns": "none",
+  "sampling": "four cases once per version; one prerequisite repair sample",
+  "runs": 9,
+  "deepseek_calls": 0,
+  "codex_token_usage": null,
+  "monetary_cost": null,
+  "temperature": "not exposed by subagent tool",
+  "human_readers": 0,
+  "cases": [
+    {
+      "variant": "after",
+      "case": "direct-explanation",
+      "paired_input": true,
+      "intent": "direct_explanation",
+      "intent_matches_request": true,
+      "source_count": 4,
+      "input_utf8_bytes": 45999,
+      "replay_delivered": true,
+      "learner_response": false
+    },
+    {
+      "variant": "after",
+      "case": "misconception-copy",
+      "paired_input": true,
+      "intent": "guided_inquiry",
+      "intent_matches_request": true,
+      "source_count": 2,
+      "input_utf8_bytes": 45959,
+      "replay_delivered": true,
+      "learner_response": false
+    },
+    {
+      "variant": "after",
+      "case": "starting-assignment",
+      "paired_input": true,
+      "intent": "guided_inquiry",
+      "intent_matches_request": true,
+      "source_count": 5,
+      "input_utf8_bytes": 45974,
+      "replay_delivered": true,
+      "learner_response": false
+    },
+    {
+      "variant": "after",
+      "case": "starting-ownership",
+      "paired_input": true,
+      "intent": "guided_inquiry",
+      "intent_matches_request": true,
+      "source_count": 4,
+      "input_utf8_bytes": 46021,
+      "replay_delivered": true,
+      "learner_response": false
+    },
+    {
+      "variant": "before",
+      "case": "direct-explanation",
+      "paired_input": true,
+      "intent": "direct_explanation",
+      "intent_matches_request": true,
+      "source_count": 5,
+      "input_utf8_bytes": 44151,
+      "replay_delivered": true,
+      "learner_response": false
+    },
+    {
+      "variant": "before",
+      "case": "misconception-copy",
+      "paired_input": true,
+      "intent": "guided_inquiry",
+      "intent_matches_request": true,
+      "source_count": 3,
+      "input_utf8_bytes": 44111,
+      "replay_delivered": true,
+      "learner_response": false
+    },
+    {
+      "variant": "before",
+      "case": "starting-assignment",
+      "paired_input": true,
+      "intent": "direct_explanation",
+      "intent_matches_request": false,
+      "source_count": 5,
+      "input_utf8_bytes": 44126,
+      "replay_delivered": true,
+      "learner_response": false
+    },
+    {
+      "variant": "before",
+      "case": "starting-ownership",
+      "paired_input": true,
+      "intent": "direct_explanation",
+      "intent_matches_request": false,
+      "source_count": 4,
+      "input_utf8_bytes": 44173,
+      "replay_delivered": true,
+      "learner_response": false
+    },
+    {
+      "variant": "prerequisite-repair",
+      "case": "starting-assignment",
+      "paired_input": true,
+      "intent": "guided_inquiry",
+      "intent_matches_request": true,
+      "source_count": 4,
+      "input_utf8_bytes": 46175,
+      "replay_delivered": true,
+      "learner_response": false
+    }
+  ]
+}

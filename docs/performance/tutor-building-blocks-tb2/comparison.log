@@ -1,0 +1,253 @@
+{
+  "cases": [
+    {
+      "case": "starting-assignment",
+      "same_input_and_initial_tools": true,
+      "sampled_teaching_requests": 11,
+      "native_teaching_requests": 11,
+      "before": {
+        "status": "completed",
+        "incomplete": true,
+        "delivery_count": 0,
+        "http_calls": 10,
+        "known_total_tokens": 215613,
+        "elapsed_ms": 83798
+      },
+      "after": {
+        "status": "failed",
+        "incomplete": null,
+        "delivery_count": 0,
+        "http_calls": 12,
+        "known_total_tokens": 235033,
+        "elapsed_ms": 103683
+      },
+      "before_tool_errors": [
+        {
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "category": "validation",
+          "message": "$.move.move_id is required"
+        },
+        {
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "category": "validation",
+          "message": "$.move.object_ids is required"
+        },
+        {
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "category": "validation",
+          "message": "$.move.interaction_intent is required"
+        }
+      ],
+      "after_tool_errors": [
+        {
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "category": "validation",
+          "message": "$.target must be a JSON \"object\""
+        },
+        {
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "category": "validation",
+          "message": "$.move is required"
+        },
+        {
+          "error_code": "TEACHING_INVALID",
+          "category": "validation",
+          "message": "教学目标的能力、对象与所用修订不一致"
+        }
+      ],
+      "initial_guidance_utf8_bytes": [
+        7820,
+        8887
+      ],
+      "initial_tool_utf8_bytes": [
+        26582,
+        26582
+      ],
+      "initial_estimated_input_tokens": [
+        13147,
+        13414
+      ],
+      "intent": [],
+      "origin": []
+    },
+    {
+      "case": "starting-ownership",
+      "same_input_and_initial_tools": true,
+      "sampled_teaching_requests": 9,
+      "native_teaching_requests": 9,
+      "before": {
+        "status": "completed",
+        "incomplete": false,
+        "delivery_count": 1,
+        "http_calls": 12,
+        "known_total_tokens": 303406,
+        "elapsed_ms": 99089
+      },
+      "after": {
+        "status": "completed",
+        "incomplete": false,
+        "delivery_count": 1,
+        "http_calls": 9,
+        "known_total_tokens": 201661,
+        "elapsed_ms": 72643
+      },
+      "before_tool_errors": [
+        {
+          "error_code": "TEACHING_INVALID",
+          "category": "validation",
+          "message": "当前正式活动尚未完成，请省略下一步建议并沿用原活动帮助"
+        },
+        {
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "category": "validation",
+          "message": "$.move.hint is required"
+        }
+      ],
+      "after_tool_errors": [
+        {
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "category": "validation",
+          "message": "$.move is required"
+        }
+      ],
+      "initial_guidance_utf8_bytes": [
+        7820,
+        8887
+      ],
+      "initial_tool_utf8_bytes": [
+        26582,
+        26582
+      ],
+      "initial_estimated_input_tokens": [
+        13222,
+        13489
+      ],
+      "intent": [
+        "guided_inquiry"
+      ],
+      "origin": [
+        "current_request"
+      ]
+    },
+    {
+      "case": "misconception-copy",
+      "same_input_and_initial_tools": true,
+      "sampled_teaching_requests": 7,
+      "native_teaching_requests": 7,
+      "before": {
+        "status": "completed",
+        "incomplete": false,
+        "delivery_count": 1,
+        "http_calls": 5,
+        "known_total_tokens": 99209,
+        "elapsed_ms": 42028
+      },
+      "after": {
+        "status": "completed",
+        "incomplete": false,
+        "delivery_count": 1,
+        "http_calls": 7,
+        "known_total_tokens": 157322,
+        "elapsed_ms": 70454
+      },
+      "before_tool_errors": [],
+      "after_tool_errors": [
+        {
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "category": "validation",
+          "message": "tool arguments are not valid JSON: EOF while parsing an object at line 1 column 4290"
+        },
+        {
+          "error_code": "TEACHING_INVALID",
+          "category": "validation",
+          "message": "评分活动必须允许提交"
+        }
+      ],
+      "initial_guidance_utf8_bytes": [
+        7820,
+        8887
+      ],
+      "initial_tool_utf8_bytes": [
+        26582,
+        26582
+      ],
+      "initial_estimated_input_tokens": [
+        13126,
+        13393
+      ],
+      "intent": [
+        "guided_inquiry"
+      ],
+      "origin": [
+        "current_request"
+      ]
+    },
+    {
+      "case": "direct-explanation",
+      "same_input_and_initial_tools": true,
+      "sampled_teaching_requests": 11,
+      "native_teaching_requests": 11,
+      "before": {
+        "status": "failed",
+        "incomplete": null,
+        "delivery_count": 0,
+        "http_calls": 12,
+        "known_total_tokens": 243465,
+        "elapsed_ms": 92025
+      },
+      "after": {
+        "status": "failed",
+        "incomplete": null,
+        "delivery_count": 0,
+        "http_calls": 12,
+        "known_total_tokens": 214323,
+        "elapsed_ms": 72844
+      },
+      "before_tool_errors": [
+        {
+          "error_code": "CONCEPT_NOT_FOUND",
+          "category": "not_found",
+          "message": "未找到相关概念/实体候选: 借用 引用 foo bar 共享引用"
+        },
+        {
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "category": "validation",
+          "message": "$.move.move_id is required"
+        },
+        {
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "category": "validation",
+          "message": "$.move.object_ids is required"
+        }
+      ],
+      "after_tool_errors": [
+        {
+          "error_code": "CONCEPT_NOT_FOUND",
+          "category": "not_found",
+          "message": "未找到相关概念/实体候选: 移动 move 所有权 ownership"
+        },
+        {
+          "error_code": "TOOL_ARGUMENTS_INVALID",
+          "category": "validation",
+          "message": "$.target must be a JSON \"object\""
+        }
+      ],
+      "initial_guidance_utf8_bytes": [
+        7820,
+        8887
+      ],
+      "initial_tool_utf8_bytes": [
+        26582,
+        26582
+      ],
+      "initial_estimated_input_tokens": [
+        13193,
+        13461
+      ],
+      "intent": [],
+      "origin": []
+    }
+  ],
+  "human_readers": 0,
+  "monetary_cost": null
+}

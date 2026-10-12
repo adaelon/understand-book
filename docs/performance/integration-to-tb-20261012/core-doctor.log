@@ -1,0 +1,13 @@
+{
+  "status": "compatible",
+  "checks": {
+    "release_contract": "compatible",
+    "prompt_provider": "compatible",
+    "handoff_preparation": "compatible",
+    "plugin_shape": "compatible",
+    "executor_role": "compatible",
+    "shared_executor_mcp": "compatible",
+    "connection_integrity": "compatible",
+    "semantic_reuse_identity": "compatible"
+  }
+}

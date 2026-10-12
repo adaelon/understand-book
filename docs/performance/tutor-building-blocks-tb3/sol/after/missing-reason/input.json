@@ -1,0 +1,2070 @@
+{
+  "protocol": "tb3.sol.v1",
+  "task": "Act as Tutor for this one turn. The original text, source receipts, current context and reread facts below have already been obtained. Return JSON with evidence (one tutor.step evidence argument object, or null if no warranted update), select (one tutor.step select argument object), and answer (actual final teaching text in Chinese). An evidence call returns evidence_ref=interpretation:<operation_id>, which can be adopted in select. Use only actual fact IDs from this packet. Do not simulate any later learner answer. Do not call external providers or change files other than the designated output.",
+  "guidance": [
+    {
+      "name": "COMMON",
+      "text": "Tutor evidence and request boundaries:\nFollow the current request before session defaults or preferences. Follow current_action.accepted_request within its original source scope; real user_supplement takes precedence. A pure UI click and an assistant answer supply no learner understanding evidence. For answer continuation, advance one useful step from the referenced answer and verify its claims against the original source.\nContinuation displayed/chosen facts and repeated choices describe interaction only, never performance or permanent preferences. clarify_answer requests a smaller step or a different explanation of the referenced answer; it does not diagnose missing prerequisites. continue_answer requests further help, not a claim of difficulty. Answer excerpts are assistant-authored context. Only actual learner expression belongs in uninterpreted_fact_refs; absent choice or returning to reading says nothing about understanding.\nRead the relevant current interpretations and recent_facts; reuse applicable understanding to adjust the starting point, depth or example. User corrections supersede system interpretations, never the user's original words. Keep unknowns unknown: absent or stale evidence is not low ability, and exposure, browsing or fluent chat do not prove mastery. Separate independent, assisted and revised performances. Stable preferences use ProfileFact confirmation.\nRead the needed original text this turn with book tools; BookStructure and locators are not source evidence. A TeachingTarget declares whole LIDs: read their full text, not only the selected substring. Distinguish source claims from supplementary rules, examples and analogies you supply; preserve their conditions and limits in examples and recaps too. State the property that makes a rule apply to this case; a broad category label is not a substitute for that condition. Keep private keys, rubrics and unrevealed help out of public text and presentation files. The latest control state and actual tool contract determine permissions; guidance grants none."
+    },
+    {
+      "name": "DISCOVERY",
+      "text": "Optional Tutor workflows:\nOrdinary questions, restatements and corrections can support a correctable understanding hypothesis without an exercise or active teaching session. When relevant facts need interpretation or revision, tutor.step understanding reads the current view and loads the update workflow for the next sampling; trace rereads exact delivered facts. No hypothesis is required for uninformative input.\nFor a formal submit/revise response, trace can recover its original action_ref; assess uses the private evaluator when available. Ungraded observations are not scores. Use only operations in this sampling's tool contract. Rich explanation can be discovered with tool.search presentation_authoring; its current phase supplies the authoring workflow."
+    },
+    {
+      "name": "SELECT",
+      "text": "Select one teaching move:\nTutor mission: start from the learner's current understanding, provide cognitive building blocks they can understand, use and combine to build new understanding, and help them gradually use it independently.\nStart from learner_context's current request, intent, constraints, stated background, current target and actual facts. Reuse relevant understanding without treating a self-report as demonstrated ability. Unknown background permits a correctable starting point; do not demand a full profile or placement test.\nChoose one bounded capability for this step: what the learner can judge, explain or do, with which support. Connect the TeachingTarget and move to a usable relationship, model, method or representation and the concrete activity the learner will perform. Use available relevant material; missing formal objects or cognitive materials do not block teaching from the read source.\nBefore inviting a prediction or explanation, supply the concepts and rules needed to start. If a necessary connection is missing, explain it or demonstrate a small analogous step, then leave the target inference to the learner. A prerequisite absent from the read passage may be supplied as a clearly identified supplementary rule with its conditions; do not require a missing optional asset before helping. Make that rule operational: explain what remains usable or permitted after the change, not only the name of the relationship or operation. Leave applying the rule to the target example to the learner. Do not make an unknown prerequisite the quiz, or merely offer choices with no basis for deciding. Reuse what this learner already knows; change the support with the starting point, not just the length or vocabulary. A short example, comparison or table can be enough. Correct an expressed misconception at its specific faulty connection, then let the learner try the repaired relationship.\nResolve the whole request: an explanation or correction followed by the learner's own judgment or explanation is guided_inquiry. Give the requested support, then leave that judgment to them; kind=explain can supply support within guided inquiry. Do not classify the whole turn as direct_explanation just because it includes an explanation. When the user requests a complete explanation, answer, summary or translation without reserving a learner activity, deliver the whole requested content and show reusable relationships without requiring an answer first. Respect the resolved action intent in the current contract; real supplementary text and natural-language preferences still need interpretation. Adopt applicable interpretations and adapt the support concretely. If outside the learning intent, use outside and answer ordinarily. Do not change the user's learning goal.\nAfter a learner response, choose the next support from what they actually did and the help they had. If they cannot start, demonstrate one smaller connection and leave a doable step. If the conclusion is right but its reason is missing, acknowledge the conclusion and work on that specific connection; do not repeat the whole lesson or credit an unsupported reason. If they say the support does not fit, use their stated alternative or ask one concrete locating question when the obstacle is unclear. If their explanation or application supports less help on this task, let them choose a method or handle one changed condition without supplying its solution; distinguish this local performance from copied reasoning, self-report and wider transfer. These are judgments, not a fixed sequence or an error-count ladder.\nSelect before final delivery. Deliver the support itself and, when guiding, one clear activity the learner can start; identify the exact expression or example part to work on, consistent with the source. Do not fill in their answer or carry out later steps. Stop at the user response boundary. The final answer is the actual teaching text, not a report of plans. Delivery alone does not establish understanding."
+    },
+    {
+      "name": "CONTINUATION",
+      "text": "Optional next-step suggestions:\nFirst answer the current request. Omit move.continuation when the answer is sufficient, the reader asks to stop at this answer, or no distinct useful next step exists. Never replace the requested explanation with a menu.\nWhen useful, attach at most one continuation set in this turn's select: one recommended option and optionally one distinct alternative. Each option has a stable option_id, a specific user-facing request label, a concrete purpose, and move_kind explain, compare or observe. Inherit this move's verified target and fully read source ranges; stay within its current learning focus. Prefer already read material; read any newly needed source before selection. Promise only a step that can be fulfilled in that scope, and do not repeat what this answer already completes.\nBefore select, settle the current answer's scope in move.prompt, then compare each proposed option against it. If the answer will already give that explanation, example or comparison, discard the option. Preserve the full answer the reader requested; omit suggestions rather than withholding required content. After select, deliver that scope and leave the optional follow-up work for the reader's choice; do not complete it as bonus content in the final answer.\nPrefer one next step that changes the reader's cognitive task: examine a changed condition, distinguish two interpretations, or observe a consequence not yet covered. A second worked example of the same calculation, re-explaining the definition, or re-stating an already explained validity condition is repetition, even with different numbers or wording. Each purpose must name what is new beyond move.prompt; if it cannot, omit that option. Give an alternative only for a meaningfully different choice, not to fill two slots.\nSuggestions are requests for future help, not executed moves, exercises, answers or presentations. Do not select additional moves for unchosen options or put private grading criteria, hidden help or tool arguments in their text. Omit suggestions while a formal activity on this focus awaits an answer, including when selecting a new assessment. learner_context.pending_activity identifies the current unfinished activity. The runtime publishes the set with the successfully saved answer; do not duplicate the menu in the final text."
+    },
+    {
+      "name": "UNDERSTANDING",
+      "text": "Understanding update workflow:\nInterpret the relevant learner words and facts in this same Resident turn. When a supported understanding hypothesis changes, first read the relevant original text this turn, then use tutor.step evidence with nature=hypothesis, operation_id, target, fact_refs, interpretation and teaching_implication. Use supersedes to revise an earlier interpretation. Trace rereads truncated facts; understanding rereads interpretation details.\nConnect the actual response to the relevant delivered support and any displayed help before interpreting it. Keep what the learner supplied, what was already demonstrated, and what remains unknown distinct. An empty assistance list in ordinary conversation does not mean independent performance: prior explanations and examples may have supplied the reasoning. Preserve exact learner words, uncertainty and help conditions in the interpretation, including the task and the part they performed. Do not invent a hypothesis for unrelated or uninformative input; a request to continue alone adds no performance.\nRecent facts and interpretations are bounded views, not complete histories. When a judgment depends on missing or truncated words, support, independence or a correction, follow trace/understanding pages and read the relevant event_id/evidence_ref chunks through next. Read the delivered content as needed, not merely the selected plan. Absence from a page means not returned here, not never happened.\nRevise contradicted interpretations with supersedes while preserving original learner facts. Make teaching_implication a concrete change to the support or the part left to the learner. Use the resulting evidence_ref in move.interpretation_refs when selecting, and actually adjust the starting point, depth or example. On a later turn or a reopened valid session, recover and adopt the applicable current interpretation and its help conditions; carry its implication into the new delivery instead of restarting the old explanation. If no new evidence changes it, reuse it without duplicating the hypothesis. No scoring activity is required.\nFor an existing ungraded source-discrimination activity with capability=evaluation, evidence with action_ref, object_id, operation_id, response_quote, sources and interpretation records a correctable observation, not a score."
+    }
+  ],
+  "tool_contract": {
+    "description": "Select one source-grounded move after reading original text this turn with book tools. Supply target with learning_focus, expected_performance, capability, exact source_bindings (start_lid, end_lid; omit source_id/source_revision to use the runtime-bound current source), and optional object_refs. object_ids may be empty when no applicable formal objects exist. If using available objects, read them with material and include their exact revisions in target.object_refs; missing cognitive material does not block teaching. trace rereads private delivered facts. Explicit direct explanation overrides guided inquiry. Select with operation=select and a move; final delivery presents it. Optional presentation must already be delivered in this turn. Optional assessment freezes private criteria before delivery. assess evaluates an existing formal response in one isolated model call; understanding reads evidence; evidence proposes a sourced ungraded interpretation. Page calculations never assess correctness. Private keys and help must not enter public text. No direct mastery updates. Examples use an average-speed teaching fixture, not learner facts. Replace its content, locations and references with actual material and events from this turn; read the source before selecting or interpreting.",
+    "name": "tutor.step",
+    "parameters": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "after": {},
+            "object_id": {},
+            "operation": {
+              "enum": [
+                "material"
+              ]
+            }
+          },
+          "required": [
+            "operation"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "after": {},
+            "event_id": {},
+            "operation": {
+              "enum": [
+                "trace"
+              ]
+            }
+          },
+          "required": [
+            "operation"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "move": {},
+            "operation": {
+              "enum": [
+                "select"
+              ]
+            }
+          },
+          "required": [
+            "operation",
+            "move"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "enum": [
+                "outside"
+              ]
+            }
+          },
+          "required": [
+            "operation"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action_ref": {},
+            "operation": {
+              "enum": [
+                "assess"
+              ]
+            }
+          },
+          "required": [
+            "operation",
+            "action_ref"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "after": {},
+            "evidence_ref": {},
+            "object_id": {},
+            "operation": {
+              "enum": [
+                "understanding"
+              ]
+            }
+          },
+          "required": [
+            "operation"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action_ref": {},
+            "interpretation": {},
+            "object_id": {},
+            "operation": {
+              "enum": [
+                "evidence"
+              ]
+            },
+            "operation_id": {},
+            "response_quote": {},
+            "sources": {},
+            "supersedes": {}
+          },
+          "required": [
+            "operation",
+            "action_ref",
+            "object_id",
+            "operation_id",
+            "response_quote",
+            "sources",
+            "interpretation"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "fact_refs": {},
+            "interpretation": {},
+            "nature": {
+              "enum": [
+                "hypothesis"
+              ]
+            },
+            "operation": {
+              "enum": [
+                "evidence"
+              ]
+            },
+            "operation_id": {},
+            "supersedes": {},
+            "target": {},
+            "teaching_implication": {}
+          },
+          "required": [
+            "operation",
+            "nature",
+            "operation_id",
+            "target",
+            "fact_refs",
+            "interpretation",
+            "teaching_implication"
+          ]
+        }
+      ],
+      "examples": [
+        {
+          "operation": "material"
+        },
+        {
+          "after": 0,
+          "operation": "trace"
+        },
+        {
+          "move": {
+            "capability": "explanation",
+            "intent_origin": "neutral",
+            "interaction_intent": "neutral",
+            "kind": "explain",
+            "move_id": "explain-speed",
+            "object_ids": [],
+            "prompt": "Explain average speed using total distance and total time.",
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Explain why total time is the denominator",
+              "learning_focus": "Average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          },
+          "operation": "select"
+        },
+        {
+          "move": {
+            "actions": [
+              "request_hint",
+              "reveal"
+            ],
+            "capability": "explanation",
+            "explanation": "At different positive speeds, equal distances take different times.",
+            "hint": "Time equals distance divided by speed.",
+            "intent_origin": "neutral",
+            "interaction_intent": "neutral",
+            "kind": "compare",
+            "move_id": "compare-times",
+            "object_ids": [],
+            "prompt": "Compare the travel times for two equal distances at different speeds.",
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Explain why total time is the denominator",
+              "learning_focus": "Average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          },
+          "operation": "select"
+        },
+        {
+          "move": {
+            "actions": [
+              "submit"
+            ],
+            "assessment": {
+              "feedback": "after_submit",
+              "rule": {
+                "items": [
+                  {
+                    "criterion": "Uses the total time of the journey; equivalent wording is accepted.",
+                    "id": "total-time",
+                    "source_lids": [
+                      "1.1"
+                    ]
+                  }
+                ],
+                "kind": "open"
+              },
+              "source_lids": [
+                "1.1"
+              ],
+              "source_sufficient": true
+            },
+            "capability": "explanation",
+            "intent_origin": "neutral",
+            "interaction_intent": "neutral",
+            "kind": "question",
+            "move_id": "explain-denominator",
+            "object_ids": [],
+            "prompt": "Explain which time belongs in the denominator of average speed.",
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Explain why total time is the denominator",
+              "learning_focus": "Average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          },
+          "operation": "select"
+        },
+        {
+          "operation": "outside"
+        },
+        {
+          "operation": "understanding"
+        },
+        {
+          "action_ref": "action:to3-discrimination",
+          "interpretation": "The response distinguishes a source-supported quantity from an unsupported property.",
+          "object_id": "speed",
+          "operation": "evidence",
+          "operation_id": "to3-discrimination-evidence",
+          "response_quote": "The source supports total distance",
+          "sources": [
+            {
+              "lid": "1.1",
+              "quote": "total distance"
+            }
+          ]
+        },
+        {
+          "fact_refs": [
+            "usage:tutor-begin-1:user:turn_9af8a58ae8ac8352"
+          ],
+          "interpretation": "The response names total distance but leaves the role of total time unknown.",
+          "nature": "hypothesis",
+          "operation": "evidence",
+          "operation_id": "to3-hypothesis",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "Explain why total time is the denominator",
+            "learning_focus": "Average speed",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          "teaching_implication": "Ask the learner to connect total time to the denominator."
+        }
+      ],
+      "properties": {
+        "action_ref": {
+          "description": "An actual response event_id from context or trace. assess requires an unassessed formal submit/revise with a frozen open rubric; it runs one isolated, budgeted evaluator. Ungraded evidence requires a response to an evaluation activity with a formal object and no scoring contract.",
+          "type": "string"
+        },
+        "after": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "event_id": {
+          "description": "Read one exact trace event in bounded JSON text chunks; after is its character offset. Without event_id, after is the trace cursor.",
+          "type": "string"
+        },
+        "evidence_ref": {
+          "description": "Read one evidence interpretation with operation=understanding; after is the character offset.",
+          "type": "string"
+        },
+        "fact_refs": {
+          "description": "Actual learner-expression event_ids from the current context or trace. UI clicks and assistant deliveries cannot support a hypothesis.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "interpretation": {
+          "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+          "type": "string"
+        },
+        "move": {
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "actions": {
+                    "contains": {
+                      "enum": [
+                        "request_hint"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "actions"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "hint": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "hint"
+                ]
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "actions": {
+                    "contains": {
+                      "enum": [
+                        "reveal"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "actions"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "explanation": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "explanation"
+                ]
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "assessment": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "assessment"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "actions": {
+                    "contains": {
+                      "enum": [
+                        "submit"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "actions"
+                ]
+              }
+            }
+          ],
+          "properties": {
+            "actions": {
+              "items": {
+                "enum": [
+                  "submit",
+                  "revise",
+                  "request_hint",
+                  "reveal",
+                  "skip",
+                  "self_report"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "assessment": {
+              "additionalProperties": false,
+              "description": "Optional private frozen scoring contract. {rule:{kind:choice_set,choices:[tokens],correct:[tokens]} OR rule:{kind:open,items:[{id,criterion,source_lids:[LID]}]},source_lids:[LID],source_sufficient:boolean,feedback:after_submit|on_reveal}. Open criterion states necessary conditions, equivalent expressions and acceptable omissions. Use only source text read this turn. Never copy the private key/rubric into page files or final text. Choice tokens belong in the public prompt; responses are a token or JSON array. Help and revised attempts are retained separately.",
+              "properties": {
+                "feedback": {
+                  "description": "Criterion-level feedback is private until the learner explicitly reveals it.",
+                  "enum": [
+                    "after_submit",
+                    "on_reveal"
+                  ],
+                  "type": "string"
+                },
+                "rule": {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "description": "Canonical choice tokens, submitted as a JSON array (or a single token).",
+                      "properties": {
+                        "choices": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "correct": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "kind": {
+                          "enum": [
+                            "choice_set"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "choices",
+                        "correct",
+                        "kind"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "items": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "criterion": {
+                                "description": "Includes necessary conditions, accepted equivalents and permitted omissions.",
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string"
+                              },
+                              "source_lids": {
+                                "items": {
+                                  "type": "string"
+                                },
+                                "type": "array"
+                              }
+                            },
+                            "required": [
+                              "criterion",
+                              "id",
+                              "source_lids"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "kind": {
+                          "enum": [
+                            "open"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "kind"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                "source_lids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "source_sufficient": {
+                  "description": "An explicitly incomplete source cannot justify a correctness judgment.",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "feedback",
+                "rule",
+                "source_lids",
+                "source_sufficient"
+              ],
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "capability": {
+              "type": "string"
+            },
+            "continuation": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "Optional future help AFTER this answer. Draft the full current explanation first; then prefer one genuinely distinct next step. Omit continuation entirely when no new in-scope insight remains. An alternative is useful only when it offers a different learning choice.",
+                  "properties": {
+                    "options": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "label": {
+                            "description": "A concrete request the reader can choose, phrased as the reader's action. Offer a new comparison, changed condition or observation within the parent target, not an explanation or worked example already in move.prompt.",
+                            "maxLength": 240,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "move_kind": {
+                            "enum": [
+                              "explain",
+                              "compare",
+                              "observe"
+                            ],
+                            "type": "string"
+                          },
+                          "option_id": {
+                            "maxLength": 64,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "purpose": {
+                            "description": "State the specific NEW insight beyond this turn's completed explanation. If this benefit is already delivered by move.prompt, remove the option. Repeating the same calculation with different numbers is not a new insight.",
+                            "maxLength": 240,
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "option_id",
+                          "label",
+                          "purpose",
+                          "move_kind"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 2,
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "recommended_option_id": {
+                      "maxLength": 64,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "recommended_option_id",
+                    "options"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "explanation": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "hint": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "intent_origin": {
+              "description": "current_action requires the frozen current_action snapshot. Its accepted_request is a public UI action, not user-authored text; omit intent_quote. For explain_selection use direct_explanation with kind=explain; for continue_answer use neutral even when kind=explain. current_request quotes only the real user_supplement, which takes priority over the UI action.",
+              "enum": [
+                "current_request",
+                "current_action",
+                "session_default",
+                "confirmed_preference",
+                "neutral"
+              ],
+              "type": "string"
+            },
+            "intent_quote": {
+              "description": "Exact quote from current request when resolving an explicit interaction intent.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "interaction_intent": {
+              "enum": [
+                "direct_explanation",
+                "guided_inquiry",
+                "neutral"
+              ],
+              "type": "string"
+            },
+            "interpretation_refs": {
+              "description": "Current evidence references actually adopted for this move; superseded interpretations cannot be adopted.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "enum": [
+                "explain",
+                "observe",
+                "compare",
+                "question",
+                "source_focus"
+              ],
+              "type": "string"
+            },
+            "move_id": {
+              "type": "string"
+            },
+            "object_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "preference_ref": {
+              "description": "Confirmed preference fact_id from frozen context; only a weak default after current request and session mode.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "presentation": {
+              "properties": {
+                "presentation_id": {
+                  "type": "string"
+                },
+                "revision": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "presentation_id",
+                "revision"
+              ],
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "target": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "A source-grounded focus; formal object identity is optional.",
+                  "properties": {
+                    "capability": {
+                      "type": "string"
+                    },
+                    "expected_performance": {
+                      "type": "string"
+                    },
+                    "learning_focus": {
+                      "type": "string"
+                    },
+                    "object_refs": {
+                      "default": [],
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "object_id": {
+                            "type": "string"
+                          },
+                          "object_revision": {
+                            "format": "uint64",
+                            "minimum": 0.0,
+                            "type": "integer"
+                          },
+                          "source_id": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "object_id",
+                          "object_revision",
+                          "source_id"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "source_bindings": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "end_lid": {
+                            "type": "string"
+                          },
+                          "source_id": {
+                            "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                            "type": "string"
+                          },
+                          "source_revision": {
+                            "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                            "type": "string"
+                          },
+                          "start_lid": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "end_lid",
+                          "start_lid"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "capability",
+                    "expected_performance",
+                    "learning_focus",
+                    "source_bindings"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "move_id",
+            "object_ids",
+            "capability",
+            "kind",
+            "prompt",
+            "interaction_intent",
+            "intent_origin"
+          ],
+          "type": "object"
+        },
+        "nature": {
+          "enum": [
+            "hypothesis"
+          ],
+          "type": "string"
+        },
+        "object_id": {
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "material",
+            "trace",
+            "select",
+            "outside",
+            "assess",
+            "understanding",
+            "evidence"
+          ],
+          "type": "string"
+        },
+        "operation_id": {
+          "description": "A new identity for this interpretation; retry the same input with the same identity.",
+          "type": "string"
+        },
+        "response_quote": {
+          "description": "Exact learner words from the referenced ungraded source-discrimination response.",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "properties": {
+              "lid": {
+                "type": "string"
+              },
+              "quote": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "lid",
+              "quote"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "supersedes": {
+          "description": "An existing evidence_ref being revised, obtained from understanding.",
+          "type": "string"
+        },
+        "target": {
+          "additionalProperties": false,
+          "description": "A source-grounded focus; formal object identity is optional.",
+          "properties": {
+            "capability": {
+              "type": "string"
+            },
+            "expected_performance": {
+              "type": "string"
+            },
+            "learning_focus": {
+              "type": "string"
+            },
+            "object_refs": {
+              "default": [],
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "object_id": {
+                    "type": "string"
+                  },
+                  "object_revision": {
+                    "format": "uint64",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  },
+                  "source_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "object_id",
+                  "object_revision",
+                  "source_id"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "source_bindings": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "end_lid": {
+                    "type": "string"
+                  },
+                  "source_id": {
+                    "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                    "type": "string"
+                  },
+                  "source_revision": {
+                    "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                    "type": "string"
+                  },
+                  "start_lid": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "end_lid",
+                  "start_lid"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "capability",
+            "expected_performance",
+            "learning_focus",
+            "source_bindings"
+          ],
+          "type": "object"
+        },
+        "teaching_implication": {
+          "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation"
+      ],
+      "type": "object"
+    }
+  },
+  "citation_contract": "Use returned [[source:<source_ref_id>]] markers only for supported claims, using presented_sources.",
+  "original_text": "借用\n\n借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。这里的 & 是 Rust 的借用运算符，不能简单等同于 C 中不带有效性约束的取地址操作。在 Rust 中有两种借用值的方式。\n\n不可变借用：在表达式中的值前写 &，会创建对该值的不可变借用。相应的引用类型写作 &T。前面所有权一节中的例子可以改写为使用借用：\n\n<code>// borrowing_basics.rs\n#[derive(Debug)]\nstruct Foo(u32);\nfn main() {\n    let foo = Foo(0);\n    let bar = &foo;\n    println!(\"Foo is {:?}\", foo);\n    println!(\"Bar is {:?}\", bar);\n}\n</code>\n\n这一次，程序可以编译，因为 main 中的第二行变成了：\n\n<code>    let bar = &foo;\n</code>\n\n注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。\n\n",
+  "user_request": "我选第一条 println 不能编译，但我是看你刚才的问题猜的。我说不出 bar 的类型，也解释不了所有权到底在哪。请帮我接上理由，再让我自己说。",
+  "context": {
+    "binding": {
+      "chat_session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+      "control_revision": 3,
+      "session_revision": 2,
+      "source_id": "tb1-mastering-rust-borrowing-v1",
+      "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+      "turn_id": "turn_a9e39c59d9a45693",
+      "tutor_session_id": "tutor-begin-1"
+    },
+    "confirmed_preferences": [],
+    "constraints": [],
+    "current_request": "我选第一条 println 不能编译，但我是看你刚才的问题猜的。我说不出 bar 的类型，也解释不了所有权到底在哪。请帮我接上理由，再让我自己说。",
+    "default_teaching_intent": "guided_inquiry",
+    "learner_context": {
+      "confirmed_background": [],
+      "confirmed_preferences": [],
+      "constraints": [],
+      "current_request": "我选第一条 println 不能编译，但我是看你刚才的问题猜的。我说不出 bar 的类型，也解释不了所有权到底在哪。请帮我接上理由，再让我自己说。",
+      "current_target": {
+        "capability": "explanation",
+        "expected_performance": "在引用与所有权关系的说明支持下，解释原文两次打印成立的原因，并自行判断去掉 & 后的类型、所有权和旧绑定使用情况。",
+        "learning_focus": "区分把 Foo 值交给新绑定与创建并绑定 &Foo 引用，解释借用后的访问",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "end_lid": "1.1",
+            "source_id": "tb1-mastering-rust-borrowing-v1",
+            "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+            "start_lid": "1.1"
+          }
+        ]
+      },
+      "details": "Recent interpretations only; tutor.step understanding with after pages current records. evidence_ref reads exact details; trace pages earlier facts and event_id reads exact content.",
+      "entries": [],
+      "evidence_watermark": 0,
+      "interpretations": [],
+      "path_progress": [],
+      "pending_activity": null,
+      "pending_assessment_refs": [],
+      "projection_watermark": 0,
+      "recent_facts": [
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+            "control_revision": 3,
+            "session_revision": 2,
+            "source_id": "tb1-mastering-rust-borrowing-v1",
+            "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+            "turn_id": "turn_a9e39c59d9a45693",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "causal_refs": [],
+          "continuation": null,
+          "event_id": "usage:tutor-begin-1:user:turn_a9e39c59d9a45693",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "tb3",
+          "original_ref": {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "kind": "chat_turn",
+            "session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+            "turn_id": "turn_a9e39c59d9a45693"
+          },
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "response_preview": {
+            "text": "我选第一条 println 不能编译，但我是看你刚才的问题猜的。我说不出 bar 的类型，也解释不了所有权到底在哪。请帮我接上理由，再让我自己说。",
+            "truncated": false
+          },
+          "target": null,
+          "usage": {
+            "kind": "user_message"
+          }
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "你已经知道非 Copy 的值交给新绑定会移动。这里要接上的一步是：**先看右侧表达式产生什么，再看它交给了哪个绑定。**\n\n在原文这两行里：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\n```\n\n第一行让 `foo` 拥有一个 `Foo` 值。第二行的右侧是 `&foo`：它创建一个指向这个值的不可变引用，类型是 `&Foo`；`bar` 接收的是这个引用。创建引用不取得被引用值的所有权，所以 `Foo` 的所有权仍在 `foo` 那里。\n\n可以把此时的关系写成：\n\n```text\nfoo ──拥有──▶ Foo(0)\nbar ──引用──▶ 同一个 Foo(0)\n```\n\n因此，`Foo` 和 `&Foo` 的区别在这里具体表现为：前者是那个值的类型，后者是访问那个值的引用类型。`bar` 并没有得到另一个 `Foo` 值，也没有接走 `foo` 的所有权；它能通过引用读取这个值，但不能通过这个不可变引用修改它。\n\n原文随后分别打印 `foo` 和 `bar`，因为 `foo` 仍然拥有这个值，而 `bar` 可以借用访问它。这两次打印体现了两条访问路径，不表示有两个各自拥有的 `Foo`。原文给出的整个程序可以编译。\n\n现在只改第二行，其他行保持原样：\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n请沿着“右侧产生什么 → 谁拥有值 → 哪个绑定还能用”判断一次：**此时 `bar` 的类型是什么，`Foo` 的所有权归谁，两行打印中哪一行会不能编译？** 用你已经知道的非 Copy 移动规则说明原因。",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+            "control_revision": 3,
+            "session_revision": 2,
+            "source_id": "tb1-mastering-rust-borrowing-v1",
+            "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+            "turn_id": "turn_a9e39d59d9a45846",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "causal_refs": [
+            "move:turn_a9e39d59d9a45846:borrowing-from-known-move"
+          ],
+          "continuation": null,
+          "event_id": "delivery:turn_a9e39d59d9a45846:borrowing-from-known-move",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "kind": "message_delivered",
+          "move_id": "borrowing-from-known-move",
+          "occurred_at": "tb3",
+          "original_ref": null,
+          "prompt_preview": {
+            "text": "从学习者已陈述的非 Copy 值赋值会移动、值与变量的区别出发，说明 let bar = &foo 的右侧创建 &Foo 引用，bar 接收引用而非 foo 所拥有的 Foo；说明 foo 保留所有权、bar 可借用访问但不能通过它修改值，因此原文两次打印可以成立。随后只让学习者判断把这一行改成 let bar = foo 后，bar 的类型和所有权归属如何变化，以及两行打印中哪一行不能成立并解释原因，不提前给出这个判断。",
+            "truncated": false
+          },
+          "response_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "在引用与所有权关系的说明支持下，解释原文两次打印成立的原因，并自行判断去掉 & 后的类型、所有权和旧绑定使用情况。",
+            "learning_focus": "区分把 Foo 值交给新绑定与创建并绑定 &Foo 引用，解释借用后的访问",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tb1-mastering-rust-borrowing-v1",
+                "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          "usage": null
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "你已经知道非 Copy 的值交给新绑定会移动。这里要接上的一步是：**先看右侧表达式产生什么，再看它交给了哪个绑定。**\n\n在原文这两行里：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\n```\n\n第一行让 `foo` 拥有一个 `Foo` 值。第二行的右侧是 `&foo`：它创建一个指向这个值的不可变引用，类型是 `&Foo`；`bar` 接收的是这个引用。创建引用不取得被引用值的所有权，所以 `Foo` 的所有权仍在 `foo` 那里。\n\n可以把此时的关系写成：\n\n```text\nfoo ──拥有──▶ Foo(0)\nbar ──引用──▶ 同一个 Foo(0)\n```\n\n因此，`Foo` 和 `&Foo` 的区别在这里具体表现为：前者是那个值的类型，后者是访问那个值的引用类型。`bar` 并没有得到另一个 `Foo` 值，也没有接走 `foo` 的所有权；它能通过引用读取这个值，但不能通过这个不可变引用修改它。\n\n原文随后分别打印 `foo` 和 `bar`，因为 `foo` 仍然拥有这个值，而 `bar` 可以借用访问它。这两次打印体现了两条访问路径，不表示有两个各自拥有的 `Foo`。原文给出的整个程序可以编译。\n\n现在只改第二行，其他行保持原样：\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n请沿着“右侧产生什么 → 谁拥有值 → 哪个绑定还能用”判断一次：**此时 `bar` 的类型是什么，`Foo` 的所有权归谁，两行打印中哪一行会不能编译？** 用你已经知道的非 Copy 移动规则说明原因。",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+            "control_revision": 3,
+            "session_revision": 2,
+            "source_id": "tb1-mastering-rust-borrowing-v1",
+            "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+            "turn_id": "turn_a9e39d59d9a45846",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "causal_refs": [
+            "usage:tutor-begin-1:user:turn_a9e39d59d9a45846"
+          ],
+          "continuation": null,
+          "event_id": "usage:tutor-begin-1:assistant:turn_a9e39d59d9a45846",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "tb3",
+          "original_ref": {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "kind": "chat_turn",
+            "session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+            "turn_id": "turn_a9e39d59d9a45846"
+          },
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "response_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "target": null,
+          "usage": {
+            "kind": "assistant_delivery"
+          }
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+            "control_revision": 3,
+            "session_revision": 2,
+            "source_id": "tb1-mastering-rust-borrowing-v1",
+            "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+            "turn_id": "turn_a9e39d59d9a45846",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "causal_refs": [],
+          "continuation": null,
+          "event_id": "usage:tutor-begin-1:user:turn_a9e39d59d9a45846",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "tb3",
+          "original_ref": {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "kind": "chat_turn",
+            "session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+            "turn_id": "turn_a9e39d59d9a45846"
+          },
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "response_preview": {
+            "text": "我知道非 Copy 的 Foo 赋值会移动，旧绑定之后不能再用；也能分清值和变量。但还没弄清 &Foo 和 Foo 在赋值时有什么区别。\n原文里 let bar = &foo; 后面为什么还能分别打印 foo 和 bar？帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
+            "truncated": false
+          },
+          "target": null,
+          "usage": {
+            "kind": "user_message"
+          }
+        }
+      ],
+      "session_focus": {
+        "capability_targets": [],
+        "interpretation": "",
+        "target_object_refs": []
+      },
+      "stale": false,
+      "uninterpreted_fact_refs": [
+        "usage:tutor-begin-1:user:turn_a9e39c59d9a45693",
+        "usage:tutor-begin-1:user:turn_a9e39d59d9a45846"
+      ],
+      "unknown_when_absent": true,
+      "user_intent": "理解当前阅读材料；从当前问题或阅读位置开始"
+    },
+    "limitations": [],
+    "object_count": 0,
+    "objects": [],
+    "recent_facts": [
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+          "control_revision": 3,
+          "session_revision": 2,
+          "source_id": "tb1-mastering-rust-borrowing-v1",
+          "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+          "turn_id": "turn_a9e39c59d9a45693",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "causal_refs": [],
+        "continuation": null,
+        "event_id": "usage:tutor-begin-1:user:turn_a9e39c59d9a45693",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "kind": "usage_observed",
+        "move_id": null,
+        "occurred_at": "tb3",
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+          "turn_id": "turn_a9e39c59d9a45693"
+        },
+        "prompt_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "response_preview": {
+          "text": "我选第一条 println 不能编译，但我是看你刚才的问题猜的。我说不出 bar 的类型，也解释不了所有权到底在哪。请帮我接上理由，再让我自己说。",
+          "truncated": false
+        },
+        "target": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      },
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "你已经知道非 Copy 的值交给新绑定会移动。这里要接上的一步是：**先看右侧表达式产生什么，再看它交给了哪个绑定。**\n\n在原文这两行里：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\n```\n\n第一行让 `foo` 拥有一个 `Foo` 值。第二行的右侧是 `&foo`：它创建一个指向这个值的不可变引用，类型是 `&Foo`；`bar` 接收的是这个引用。创建引用不取得被引用值的所有权，所以 `Foo` 的所有权仍在 `foo` 那里。\n\n可以把此时的关系写成：\n\n```text\nfoo ──拥有──▶ Foo(0)\nbar ──引用──▶ 同一个 Foo(0)\n```\n\n因此，`Foo` 和 `&Foo` 的区别在这里具体表现为：前者是那个值的类型，后者是访问那个值的引用类型。`bar` 并没有得到另一个 `Foo` 值，也没有接走 `foo` 的所有权；它能通过引用读取这个值，但不能通过这个不可变引用修改它。\n\n原文随后分别打印 `foo` 和 `bar`，因为 `foo` 仍然拥有这个值，而 `bar` 可以借用访问它。这两次打印体现了两条访问路径，不表示有两个各自拥有的 `Foo`。原文给出的整个程序可以编译。\n\n现在只改第二行，其他行保持原样：\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n请沿着“右侧产生什么 → 谁拥有值 → 哪个绑定还能用”判断一次：**此时 `bar` 的类型是什么，`Foo` 的所有权归谁，两行打印中哪一行会不能编译？** 用你已经知道的非 Copy 移动规则说明原因。",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+          "control_revision": 3,
+          "session_revision": 2,
+          "source_id": "tb1-mastering-rust-borrowing-v1",
+          "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+          "turn_id": "turn_a9e39d59d9a45846",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "causal_refs": [
+          "move:turn_a9e39d59d9a45846:borrowing-from-known-move"
+        ],
+        "continuation": null,
+        "event_id": "delivery:turn_a9e39d59d9a45846:borrowing-from-known-move",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "kind": "message_delivered",
+        "move_id": "borrowing-from-known-move",
+        "occurred_at": "tb3",
+        "original_ref": null,
+        "prompt_preview": {
+          "text": "从学习者已陈述的非 Copy 值赋值会移动、值与变量的区别出发，说明 let bar = &foo 的右侧创建 &Foo 引用，bar 接收引用而非 foo 所拥有的 Foo；说明 foo 保留所有权、bar 可借用访问但不能通过它修改值，因此原文两次打印可以成立。随后只让学习者判断把这一行改成 let bar = foo 后，bar 的类型和所有权归属如何变化，以及两行打印中哪一行不能成立并解释原因，不提前给出这个判断。",
+          "truncated": false
+        },
+        "response_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "在引用与所有权关系的说明支持下，解释原文两次打印成立的原因，并自行判断去掉 & 后的类型、所有权和旧绑定使用情况。",
+          "learning_focus": "区分把 Foo 值交给新绑定与创建并绑定 &Foo 引用，解释借用后的访问",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "tb1-mastering-rust-borrowing-v1",
+              "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+              "start_lid": "1.1"
+            }
+          ]
+        },
+        "usage": null
+      },
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "你已经知道非 Copy 的值交给新绑定会移动。这里要接上的一步是：**先看右侧表达式产生什么，再看它交给了哪个绑定。**\n\n在原文这两行里：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\n```\n\n第一行让 `foo` 拥有一个 `Foo` 值。第二行的右侧是 `&foo`：它创建一个指向这个值的不可变引用，类型是 `&Foo`；`bar` 接收的是这个引用。创建引用不取得被引用值的所有权，所以 `Foo` 的所有权仍在 `foo` 那里。\n\n可以把此时的关系写成：\n\n```text\nfoo ──拥有──▶ Foo(0)\nbar ──引用──▶ 同一个 Foo(0)\n```\n\n因此，`Foo` 和 `&Foo` 的区别在这里具体表现为：前者是那个值的类型，后者是访问那个值的引用类型。`bar` 并没有得到另一个 `Foo` 值，也没有接走 `foo` 的所有权；它能通过引用读取这个值，但不能通过这个不可变引用修改它。\n\n原文随后分别打印 `foo` 和 `bar`，因为 `foo` 仍然拥有这个值，而 `bar` 可以借用访问它。这两次打印体现了两条访问路径，不表示有两个各自拥有的 `Foo`。原文给出的整个程序可以编译。\n\n现在只改第二行，其他行保持原样：\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n请沿着“右侧产生什么 → 谁拥有值 → 哪个绑定还能用”判断一次：**此时 `bar` 的类型是什么，`Foo` 的所有权归谁，两行打印中哪一行会不能编译？** 用你已经知道的非 Copy 移动规则说明原因。",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+          "control_revision": 3,
+          "session_revision": 2,
+          "source_id": "tb1-mastering-rust-borrowing-v1",
+          "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+          "turn_id": "turn_a9e39d59d9a45846",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "causal_refs": [
+          "usage:tutor-begin-1:user:turn_a9e39d59d9a45846"
+        ],
+        "continuation": null,
+        "event_id": "usage:tutor-begin-1:assistant:turn_a9e39d59d9a45846",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "kind": "usage_observed",
+        "move_id": null,
+        "occurred_at": "tb3",
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+          "turn_id": "turn_a9e39d59d9a45846"
+        },
+        "prompt_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "response_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "target": null,
+        "usage": {
+          "kind": "assistant_delivery"
+        }
+      },
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+          "control_revision": 3,
+          "session_revision": 2,
+          "source_id": "tb1-mastering-rust-borrowing-v1",
+          "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+          "turn_id": "turn_a9e39d59d9a45846",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "causal_refs": [],
+        "continuation": null,
+        "event_id": "usage:tutor-begin-1:user:turn_a9e39d59d9a45846",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "kind": "usage_observed",
+        "move_id": null,
+        "occurred_at": "tb3",
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+          "turn_id": "turn_a9e39d59d9a45846"
+        },
+        "prompt_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "response_preview": {
+          "text": "我知道非 Copy 的 Foo 赋值会移动，旧绑定之后不能再用；也能分清值和变量。但还没弄清 &Foo 和 Foo 在赋值时有什么区别。\n原文里 let bar = &foo; 后面为什么还能分别打印 foo 和 bar？帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
+          "truncated": false
+        },
+        "target": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      }
+    ],
+    "status": "active",
+    "teaching_assets": {
+      "cognitive_materials": {
+        "status": "missing"
+      },
+      "formal_objects": {
+        "status": "missing"
+      },
+      "limitations": [],
+      "reason": "正式教学素材尚未发布",
+      "source_id": "tb1-mastering-rust-borrowing-v1",
+      "status": "preparing",
+      "teaching_map_revision": null
+    },
+    "user_intent": "理解当前阅读材料；从当前问题或阅读位置开始"
+  },
+  "presented_sources": [
+    {
+      "quote": "借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。",
+      "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+    },
+    {
+      "quote": "fn main() {\n    let foo = Foo(0);\n    let bar = &foo;\n    println!(\"Foo is {:?}\", foo);\n    println!(\"Bar is {:?}\", bar);\n}",
+      "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+    },
+    {
+      "quote": "#[derive(Debug)]\nstruct Foo(u32);",
+      "source_ref_id": "source_ref_4c3de5a75d5bc2f7"
+    },
+    {
+      "quote": "这一次，程序可以编译，因为 main 中的第二行变成了：",
+      "source_ref_id": "source_ref_1a3ec5f7971d4632"
+    },
+    {
+      "quote": "注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。",
+      "source_ref_id": "source_ref_9af277d1d3d785d4"
+    }
+  ],
+  "prior_delivery": {
+    "binding": {
+      "chat_session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+      "control_revision": 3,
+      "session_revision": 2,
+      "source_id": "tb1-mastering-rust-borrowing-v1",
+      "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+      "turn_id": "turn_a9e39d59d9a45846",
+      "tutor_session_id": "tutor-begin-1"
+    },
+    "causal_refs": [
+      "move:turn_a9e39d59d9a45846:borrowing-from-known-move"
+    ],
+    "event_id": "delivery:turn_a9e39d59d9a45846:borrowing-from-known-move",
+    "kind": "message_delivered",
+    "occurred_at": "tb3",
+    "payload": {
+      "answer": "你已经知道非 Copy 的值交给新绑定会移动。这里要接上的一步是：**先看右侧表达式产生什么，再看它交给了哪个绑定。**\n\n在原文这两行里：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\n```\n\n第一行让 `foo` 拥有一个 `Foo` 值。第二行的右侧是 `&foo`：它创建一个指向这个值的不可变引用，类型是 `&Foo`；`bar` 接收的是这个引用。创建引用不取得被引用值的所有权，所以 `Foo` 的所有权仍在 `foo` 那里。\n\n可以把此时的关系写成：\n\n```text\nfoo ──拥有──▶ Foo(0)\nbar ──引用──▶ 同一个 Foo(0)\n```\n\n因此，`Foo` 和 `&Foo` 的区别在这里具体表现为：前者是那个值的类型，后者是访问那个值的引用类型。`bar` 并没有得到另一个 `Foo` 值，也没有接走 `foo` 的所有权；它能通过引用读取这个值，但不能通过这个不可变引用修改它。\n\n原文随后分别打印 `foo` 和 `bar`，因为 `foo` 仍然拥有这个值，而 `bar` 可以借用访问它。这两次打印体现了两条访问路径，不表示有两个各自拥有的 `Foo`。原文给出的整个程序可以编译。\n\n现在只改第二行，其他行保持原样：\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n请沿着“右侧产生什么 → 谁拥有值 → 哪个绑定还能用”判断一次：**此时 `bar` 的类型是什么，`Foo` 的所有权归谁，两行打印中哪一行会不能编译？** 用你已经知道的非 Copy 移动规则说明原因。",
+      "answer_view": {
+        "parts": [
+          {
+            "kind": "markdown",
+            "text": "你已经知道非 Copy 的值交给新绑定会移动。这里要接上的一步是：**先看右侧表达式产生什么，再看它交给了哪个绑定。**\n\n在原文这两行里：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\n```\n\n第一行让 `foo` 拥有一个 `Foo` 值。第二行的右侧是 `&foo`：它创建一个指向这个值的不可变引用，类型是 `&Foo`；`bar` 接收的是这个引用。创建引用不取得被引用值的所有权，所以 `Foo` 的所有权仍在 `foo` 那里。"
+          },
+          {
+            "kind": "sources",
+            "source_ref_ids": [
+              "source_ref_b7cdf804a5f27a0d",
+              "source_ref_9af277d1d3d785d4"
+            ]
+          },
+          {
+            "kind": "markdown",
+            "text": "\n\n可以把此时的关系写成：\n\n```text\nfoo ──拥有──▶ Foo(0)\nbar ──引用──▶ 同一个 Foo(0)\n```\n\n因此，`Foo` 和 `&Foo` 的区别在这里具体表现为：前者是那个值的类型，后者是访问那个值的引用类型。`bar` 并没有得到另一个 `Foo` 值，也没有接走 `foo` 的所有权；它能通过引用读取这个值，但不能通过这个不可变引用修改它。"
+          },
+          {
+            "kind": "sources",
+            "source_ref_ids": [
+              "source_ref_9af277d1d3d785d4"
+            ]
+          },
+          {
+            "kind": "markdown",
+            "text": "\n\n原文随后分别打印 `foo` 和 `bar`，因为 `foo` 仍然拥有这个值，而 `bar` 可以借用访问它。这两次打印体现了两条访问路径，不表示有两个各自拥有的 `Foo`。原文给出的整个程序可以编译。"
+          },
+          {
+            "kind": "sources",
+            "source_ref_ids": [
+              "source_ref_e2f1f69dfb7b32e3",
+              "source_ref_1a3ec5f7971d4632"
+            ]
+          },
+          {
+            "kind": "markdown",
+            "text": "\n\n现在只改第二行，其他行保持原样：\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n请沿着“右侧产生什么 → 谁拥有值 → 哪个绑定还能用”判断一次：**此时 `bar` 的类型是什么，`Foo` 的所有权归谁，两行打印中哪一行会不能编译？** 用你已经知道的非 Copy 移动规则说明原因。"
+          }
+        ],
+        "sources": [
+          {
+            "label": "正文",
+            "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+          },
+          {
+            "label": "正文",
+            "source_ref_id": "source_ref_9af277d1d3d785d4"
+          },
+          {
+            "label": "正文",
+            "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+          },
+          {
+            "label": "正文",
+            "source_ref_id": "source_ref_1a3ec5f7971d4632"
+          }
+        ]
+      },
+      "assessment_contract_ref": null,
+      "move": {
+        "actions": [],
+        "capability": "explanation",
+        "intent_origin": "current_request",
+        "intent_quote": "原文里 let bar = &foo; 后面为什么还能分别打印 foo 和 bar？帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
+        "interaction_intent": "guided_inquiry",
+        "interpretation_refs": [],
+        "kind": "explain",
+        "move_id": "borrowing-from-known-move",
+        "object_ids": [],
+        "preference_ref": null,
+        "presentation": null,
+        "prompt": "从学习者已陈述的非 Copy 值赋值会移动、值与变量的区别出发，说明 let bar = &foo 的右侧创建 &Foo 引用，bar 接收引用而非 foo 所拥有的 Foo；说明 foo 保留所有权、bar 可借用访问但不能通过它修改值，因此原文两次打印可以成立。随后只让学习者判断把这一行改成 let bar = foo 后，bar 的类型和所有权归属如何变化，以及两行打印中哪一行不能成立并解释原因，不提前给出这个判断。",
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "在引用与所有权关系的说明支持下，解释原文两次打印成立的原因，并自行判断去掉 & 后的类型、所有权和旧绑定使用情况。",
+          "learning_focus": "区分把 Foo 值交给新绑定与创建并绑定 &Foo 引用，解释借用后的访问",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "tb1-mastering-rust-borrowing-v1",
+              "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+              "start_lid": "1.1"
+            }
+          ]
+        }
+      },
+      "object_versions": [],
+      "presentation": null,
+      "source_bindings": [
+        {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "evidence_range": {
+            "end_lid": "1.1",
+            "ranges": [
+              {
+                "lid": "1.1",
+                "range": {
+                  "end": 106,
+                  "start": 4
+                }
+              }
+            ],
+            "start_lid": "1.1"
+          },
+          "evidence_text_digest": "source-fnv1a64-fd7f03c8ea712ddf",
+          "label_snapshot": "正文",
+          "preview_snapshot": "借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。",
+          "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+        },
+        {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "evidence_range": {
+            "end_lid": "1.1",
+            "ranges": [
+              {
+                "lid": "1.1",
+                "range": {
+                  "end": 589,
+                  "start": 499
+                }
+              }
+            ],
+            "start_lid": "1.1"
+          },
+          "evidence_text_digest": "source-fnv1a64-f5cd22051d5a642d",
+          "label_snapshot": "正文",
+          "preview_snapshot": "注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。",
+          "source_ref_id": "source_ref_9af277d1d3d785d4"
+        },
+        {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "evidence_range": {
+            "end_lid": "1.1",
+            "ranges": [
+              {
+                "lid": "1.1",
+                "range": {
+                  "end": 424,
+                  "start": 301
+                }
+              }
+            ],
+            "start_lid": "1.1"
+          },
+          "evidence_text_digest": "source-fnv1a64-7c1ee9bf46295b00",
+          "label_snapshot": "正文",
+          "preview_snapshot": "fn main() { let foo = Foo(0); let bar = &foo; println!(\"Foo is {:?}\", foo); println!(\"Bar is {:?}\", bar); }",
+          "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+        },
+        {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "evidence_range": {
+            "end_lid": "1.1",
+            "ranges": [
+              {
+                "lid": "1.1",
+                "range": {
+                  "end": 462,
+                  "start": 434
+                }
+              }
+            ],
+            "start_lid": "1.1"
+          },
+          "evidence_text_digest": "source-fnv1a64-4cd269dca2f5346c",
+          "label_snapshot": "正文",
+          "preview_snapshot": "这一次，程序可以编译，因为 main 中的第二行变成了：",
+          "source_ref_id": "source_ref_1a3ec5f7971d4632"
+        }
+      ]
+    }
+  },
+  "read_facts": [
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_a9e39c59d9a45693",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "content": {
+        "interaction": null,
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+          "turn_id": "turn_a9e39c59d9a45693"
+        },
+        "presentation_follow_up": null,
+        "question_anchor_lid": null,
+        "response": "我选第一条 println 不能编译，但我是看你刚才的问题猜的。我说不出 bar 的类型，也解释不了所有权到底在哪。请帮我接上理由，再让我自己说。",
+        "teaching_ref": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      },
+      "event_id": "usage:tutor-begin-1:user:turn_a9e39c59d9a45693",
+      "kind": "usage_observed",
+      "presentations": []
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_a9e39d59d9a45846",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "content": {
+        "answer": "你已经知道非 Copy 的值交给新绑定会移动。这里要接上的一步是：**先看右侧表达式产生什么，再看它交给了哪个绑定。**\n\n在原文这两行里：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\n```\n\n第一行让 `foo` 拥有一个 `Foo` 值。第二行的右侧是 `&foo`：它创建一个指向这个值的不可变引用，类型是 `&Foo`；`bar` 接收的是这个引用。创建引用不取得被引用值的所有权，所以 `Foo` 的所有权仍在 `foo` 那里。\n\n可以把此时的关系写成：\n\n```text\nfoo ──拥有──▶ Foo(0)\nbar ──引用──▶ 同一个 Foo(0)\n```\n\n因此，`Foo` 和 `&Foo` 的区别在这里具体表现为：前者是那个值的类型，后者是访问那个值的引用类型。`bar` 并没有得到另一个 `Foo` 值，也没有接走 `foo` 的所有权；它能通过引用读取这个值，但不能通过这个不可变引用修改它。\n\n原文随后分别打印 `foo` 和 `bar`，因为 `foo` 仍然拥有这个值，而 `bar` 可以借用访问它。这两次打印体现了两条访问路径，不表示有两个各自拥有的 `Foo`。原文给出的整个程序可以编译。\n\n现在只改第二行，其他行保持原样：\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n请沿着“右侧产生什么 → 谁拥有值 → 哪个绑定还能用”判断一次：**此时 `bar` 的类型是什么，`Foo` 的所有权归谁，两行打印中哪一行会不能编译？** 用你已经知道的非 Copy 移动规则说明原因。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "你已经知道非 Copy 的值交给新绑定会移动。这里要接上的一步是：**先看右侧表达式产生什么，再看它交给了哪个绑定。**\n\n在原文这两行里：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\n```\n\n第一行让 `foo` 拥有一个 `Foo` 值。第二行的右侧是 `&foo`：它创建一个指向这个值的不可变引用，类型是 `&Foo`；`bar` 接收的是这个引用。创建引用不取得被引用值的所有权，所以 `Foo` 的所有权仍在 `foo` 那里。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_b7cdf804a5f27a0d",
+                "source_ref_9af277d1d3d785d4"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n可以把此时的关系写成：\n\n```text\nfoo ──拥有──▶ Foo(0)\nbar ──引用──▶ 同一个 Foo(0)\n```\n\n因此，`Foo` 和 `&Foo` 的区别在这里具体表现为：前者是那个值的类型，后者是访问那个值的引用类型。`bar` 并没有得到另一个 `Foo` 值，也没有接走 `foo` 的所有权；它能通过引用读取这个值，但不能通过这个不可变引用修改它。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_9af277d1d3d785d4"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n原文随后分别打印 `foo` 和 `bar`，因为 `foo` 仍然拥有这个值，而 `bar` 可以借用访问它。这两次打印体现了两条访问路径，不表示有两个各自拥有的 `Foo`。原文给出的整个程序可以编译。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_e2f1f69dfb7b32e3",
+                "source_ref_1a3ec5f7971d4632"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n现在只改第二行，其他行保持原样：\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n请沿着“右侧产生什么 → 谁拥有值 → 哪个绑定还能用”判断一次：**此时 `bar` 的类型是什么，`Foo` 的所有权归谁，两行打印中哪一行会不能编译？** 用你已经知道的非 Copy 移动规则说明原因。"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+            },
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_9af277d1d3d785d4"
+            },
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+            },
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_1a3ec5f7971d4632"
+            }
+          ]
+        },
+        "assessment_contract_ref": null,
+        "move": {
+          "actions": [],
+          "capability": "explanation",
+          "intent_origin": "current_request",
+          "intent_quote": "原文里 let bar = &foo; 后面为什么还能分别打印 foo 和 bar？帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
+          "interaction_intent": "guided_inquiry",
+          "interpretation_refs": [],
+          "kind": "explain",
+          "move_id": "borrowing-from-known-move",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "从学习者已陈述的非 Copy 值赋值会移动、值与变量的区别出发，说明 let bar = &foo 的右侧创建 &Foo 引用，bar 接收引用而非 foo 所拥有的 Foo；说明 foo 保留所有权、bar 可借用访问但不能通过它修改值，因此原文两次打印可以成立。随后只让学习者判断把这一行改成 let bar = foo 后，bar 的类型和所有权归属如何变化，以及两行打印中哪一行不能成立并解释原因，不提前给出这个判断。",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "在引用与所有权关系的说明支持下，解释原文两次打印成立的原因，并自行判断去掉 & 后的类型、所有权和旧绑定使用情况。",
+            "learning_focus": "区分把 Foo 值交给新绑定与创建并绑定 &Foo 引用，解释借用后的访问",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tb1-mastering-rust-borrowing-v1",
+                "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "presentation": null,
+        "source_bindings": [
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 106,
+                    "start": 4
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-fd7f03c8ea712ddf",
+            "label_snapshot": "正文",
+            "preview_snapshot": "借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。",
+            "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+          },
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 589,
+                    "start": 499
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-f5cd22051d5a642d",
+            "label_snapshot": "正文",
+            "preview_snapshot": "注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。",
+            "source_ref_id": "source_ref_9af277d1d3d785d4"
+          },
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 424,
+                    "start": 301
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-7c1ee9bf46295b00",
+            "label_snapshot": "正文",
+            "preview_snapshot": "fn main() { let foo = Foo(0); let bar = &foo; println!(\"Foo is {:?}\", foo); println!(\"Bar is {:?}\", bar); }",
+            "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+          },
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 462,
+                    "start": 434
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-4cd269dca2f5346c",
+            "label_snapshot": "正文",
+            "preview_snapshot": "这一次，程序可以编译，因为 main 中的第二行变成了：",
+            "source_ref_id": "source_ref_1a3ec5f7971d4632"
+          }
+        ]
+      },
+      "event_id": "delivery:turn_a9e39d59d9a45846:borrowing-from-known-move",
+      "kind": "message_delivered"
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_a9e39d59d9a45846",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "content": {
+        "answer": "你已经知道非 Copy 的值交给新绑定会移动。这里要接上的一步是：**先看右侧表达式产生什么，再看它交给了哪个绑定。**\n\n在原文这两行里：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\n```\n\n第一行让 `foo` 拥有一个 `Foo` 值。第二行的右侧是 `&foo`：它创建一个指向这个值的不可变引用，类型是 `&Foo`；`bar` 接收的是这个引用。创建引用不取得被引用值的所有权，所以 `Foo` 的所有权仍在 `foo` 那里。\n\n可以把此时的关系写成：\n\n```text\nfoo ──拥有──▶ Foo(0)\nbar ──引用──▶ 同一个 Foo(0)\n```\n\n因此，`Foo` 和 `&Foo` 的区别在这里具体表现为：前者是那个值的类型，后者是访问那个值的引用类型。`bar` 并没有得到另一个 `Foo` 值，也没有接走 `foo` 的所有权；它能通过引用读取这个值，但不能通过这个不可变引用修改它。\n\n原文随后分别打印 `foo` 和 `bar`，因为 `foo` 仍然拥有这个值，而 `bar` 可以借用访问它。这两次打印体现了两条访问路径，不表示有两个各自拥有的 `Foo`。原文给出的整个程序可以编译。\n\n现在只改第二行，其他行保持原样：\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n请沿着“右侧产生什么 → 谁拥有值 → 哪个绑定还能用”判断一次：**此时 `bar` 的类型是什么，`Foo` 的所有权归谁，两行打印中哪一行会不能编译？** 用你已经知道的非 Copy 移动规则说明原因。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "你已经知道非 Copy 的值交给新绑定会移动。这里要接上的一步是：**先看右侧表达式产生什么，再看它交给了哪个绑定。**\n\n在原文这两行里：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\n```\n\n第一行让 `foo` 拥有一个 `Foo` 值。第二行的右侧是 `&foo`：它创建一个指向这个值的不可变引用，类型是 `&Foo`；`bar` 接收的是这个引用。创建引用不取得被引用值的所有权，所以 `Foo` 的所有权仍在 `foo` 那里。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_b7cdf804a5f27a0d",
+                "source_ref_9af277d1d3d785d4"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n可以把此时的关系写成：\n\n```text\nfoo ──拥有──▶ Foo(0)\nbar ──引用──▶ 同一个 Foo(0)\n```\n\n因此，`Foo` 和 `&Foo` 的区别在这里具体表现为：前者是那个值的类型，后者是访问那个值的引用类型。`bar` 并没有得到另一个 `Foo` 值，也没有接走 `foo` 的所有权；它能通过引用读取这个值，但不能通过这个不可变引用修改它。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_9af277d1d3d785d4"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n原文随后分别打印 `foo` 和 `bar`，因为 `foo` 仍然拥有这个值，而 `bar` 可以借用访问它。这两次打印体现了两条访问路径，不表示有两个各自拥有的 `Foo`。原文给出的整个程序可以编译。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_e2f1f69dfb7b32e3",
+                "source_ref_1a3ec5f7971d4632"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n现在只改第二行，其他行保持原样：\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n请沿着“右侧产生什么 → 谁拥有值 → 哪个绑定还能用”判断一次：**此时 `bar` 的类型是什么，`Foo` 的所有权归谁，两行打印中哪一行会不能编译？** 用你已经知道的非 Copy 移动规则说明原因。"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+            },
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_9af277d1d3d785d4"
+            },
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+            },
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_1a3ec5f7971d4632"
+            }
+          ]
+        },
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+          "turn_id": "turn_a9e39d59d9a45846"
+        },
+        "source_bindings": [
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 106,
+                    "start": 4
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-fd7f03c8ea712ddf",
+            "label_snapshot": "正文",
+            "preview_snapshot": "借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。",
+            "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+          },
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 589,
+                    "start": 499
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-f5cd22051d5a642d",
+            "label_snapshot": "正文",
+            "preview_snapshot": "注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。",
+            "source_ref_id": "source_ref_9af277d1d3d785d4"
+          },
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 424,
+                    "start": 301
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-7c1ee9bf46295b00",
+            "label_snapshot": "正文",
+            "preview_snapshot": "fn main() { let foo = Foo(0); let bar = &foo; println!(\"Foo is {:?}\", foo); println!(\"Bar is {:?}\", bar); }",
+            "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+          },
+          {
+            "book_id": "tb1-mastering-rust-borrowing-v1",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 462,
+                    "start": 434
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-4cd269dca2f5346c",
+            "label_snapshot": "正文",
+            "preview_snapshot": "这一次，程序可以编译，因为 main 中的第二行变成了：",
+            "source_ref_id": "source_ref_1a3ec5f7971d4632"
+          }
+        ],
+        "usage": {
+          "kind": "assistant_delivery"
+        }
+      },
+      "event_id": "usage:tutor-begin-1:assistant:turn_a9e39d59d9a45846",
+      "kind": "usage_observed",
+      "presentations": []
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+        "control_revision": 3,
+        "session_revision": 2,
+        "source_id": "tb1-mastering-rust-borrowing-v1",
+        "source_revision": "2215d43953f6ee999ea57812844f484efe030ba0ddb1bef7a81a3547638a487c",
+        "turn_id": "turn_a9e39d59d9a45846",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "content": {
+        "interaction": null,
+        "original_ref": {
+          "book_id": "tb1-mastering-rust-borrowing-v1",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12f1a-7e68-7210-9b96-ba72b2c84caf",
+          "turn_id": "turn_a9e39d59d9a45846"
+        },
+        "presentation_follow_up": null,
+        "question_anchor_lid": null,
+        "response": "我知道非 Copy 的 Foo 赋值会移动，旧绑定之后不能再用；也能分清值和变量。但还没弄清 &Foo 和 Foo 在赋值时有什么区别。\n原文里 let bar = &foo; 后面为什么还能分别打印 foo 和 bar？帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
+        "teaching_ref": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      },
+      "event_id": "usage:tutor-begin-1:user:turn_a9e39d59d9a45846",
+      "kind": "usage_observed",
+      "presentations": []
+    }
+  ],
+  "understanding": {
+    "estimator_version": "learner.conditions.v2",
+    "evidence_watermark": 0,
+    "interpretations": [],
+    "next": null,
+    "projection_watermark": 0,
+    "rows": [],
+    "stale": false
+  }
+}

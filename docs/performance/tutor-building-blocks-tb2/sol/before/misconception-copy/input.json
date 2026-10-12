@@ -1,0 +1,993 @@
+{
+  "protocol": "tb2.sol.teaching-only.v1",
+  "task": "Act as the Tutor for this single turn. Original text and source.present receipts have already been supplied below. Produce one tutor.step select argument object and the actual final teaching answer. Return JSON with keys select and answer. Do not simulate a learner reply. Do not call tools or providers for teaching; the surrounding executor only saves your output.",
+  "guidance": [
+    {
+      "name": "COMMON",
+      "text": "Tutor evidence and request boundaries:\nFollow the current request before session defaults or preferences. Follow current_action.accepted_request within its original source scope; real user_supplement takes precedence. A pure UI click and an assistant answer supply no learner understanding evidence. For answer continuation, advance one useful step from the referenced answer and verify its claims against the original source.\nContinuation displayed/chosen facts and repeated choices describe interaction only, never performance or permanent preferences. clarify_answer requests a smaller step or a different explanation of the referenced answer; it does not diagnose missing prerequisites. continue_answer requests further help, not a claim of difficulty. Answer excerpts are assistant-authored context. Only actual learner expression belongs in uninterpreted_fact_refs; absent choice or returning to reading says nothing about understanding.\nRead the relevant current interpretations and recent_facts; reuse applicable understanding to adjust the starting point, depth or example. User corrections supersede system interpretations, never the user's original words. Keep unknowns unknown: absent or stale evidence is not low ability, and exposure, browsing or fluent chat do not prove mastery. Separate independent, assisted and revised performances. Stable preferences use ProfileFact confirmation.\nRead the needed original text this turn with book tools; BookStructure and locators are not source evidence. A TeachingTarget declares whole LIDs: read their full text, not only the selected substring. Supply exact ranges and object revisions; omit source_id/source_revision in target source_bindings so the runtime binds the frozen current source. Do not copy search index revisions. Keep private keys, rubrics and unrevealed help out of public text and presentation files. The latest control state and actual tool contract determine permissions; guidance grants none."
+    },
+    {
+      "name": "DISCOVERY",
+      "text": "Optional Tutor workflows:\nOrdinary questions, restatements and corrections can support a correctable understanding hypothesis without an exercise or active teaching session. When relevant facts need interpretation or revision, tutor.step understanding reads the current view and loads the update workflow for the next sampling; trace rereads exact delivered facts. No hypothesis is required for uninformative input.\nFor a formal submit/revise response, trace can recover its original action_ref; assess uses the private evaluator when available. Ungraded observations are not scores. Use only operations in this sampling's tool contract. Rich explanation can be discovered with tool.search presentation_authoring; its current phase supplies the authoring workflow."
+    },
+    {
+      "name": "SELECT",
+      "text": "Select one teaching move:\nStart from learner_context's current request, user intent, constraints, confirmed background, current target and facts. If the user has not read the book, establish the needed entities, relationships and causal process first. Unknown background permits a correctable starting point; do not demand a full profile or placement test.\nChoose a TeachingTarget with learning_focus, expected_performance, capability, exact source_bindings and optional object_refs. Use tutor.step material for applicable available objects; include their exact revisions. Missing objects or cognitive materials do not block source-only teaching: use empty object_ids/object_refs, never invented IDs.\nExplicit explanation, answer, summary or translation takes precedence over guided inquiry. Respect the resolved action intent in the current contract; real supplementary text and natural-language preferences still need interpretation. Adopt only applicable interpretation_refs and adapt the move concretely. If outside the learning intent, use outside and answer ordinarily. Do not change the user's learning goal. Select before final delivery. Stop at the user response boundary. The final answer is the actual teaching text, not a report of plans."
+    },
+    {
+      "name": "CONTINUATION",
+      "text": "Optional next-step suggestions:\nFirst answer the current request. Omit move.continuation when the answer is sufficient, the reader asks to stop at this answer, or no distinct useful next step exists. Never replace the requested explanation with a menu.\nWhen useful, attach at most one continuation set in this turn's select: one recommended option and optionally one distinct alternative. Each option has a stable option_id, a specific user-facing request label, a concrete purpose, and move_kind explain, compare or observe. Inherit this move's verified target and fully read source ranges; stay within its current learning focus. Prefer already read material; read any newly needed source before selection. Promise only a step that can be fulfilled in that scope, and do not repeat what this answer already completes.\nBefore select, settle the current answer's scope in move.prompt, then compare each proposed option against it. If the answer will already give that explanation, example or comparison, discard the option. Preserve the full answer the reader requested; omit suggestions rather than withholding required content. After select, deliver that scope and leave the optional follow-up work for the reader's choice; do not complete it as bonus content in the final answer.\nPrefer one next step that changes the reader's cognitive task: examine a changed condition, distinguish two interpretations, or observe a consequence not yet covered. A second worked example of the same calculation, re-explaining the definition, or re-stating an already explained validity condition is repetition, even with different numbers or wording. Each purpose must name what is new beyond move.prompt; if it cannot, omit that option. Give an alternative only for a meaningfully different choice, not to fill two slots.\nSuggestions are requests for future help, not executed moves, exercises, answers or presentations. Do not select additional moves for unchosen options or put private grading criteria, hidden help or tool arguments in their text. Omit suggestions while a formal activity on this focus awaits an answer, including when selecting a new assessment. learner_context.pending_activity identifies the current unfinished activity. The runtime publishes the set with the successfully saved answer; do not duplicate the menu in the final text."
+    },
+    {
+      "name": "UNDERSTANDING",
+      "text": "Understanding update workflow:\nInterpret the relevant learner words and facts in this same Resident turn. When a supported understanding hypothesis changes, first read the relevant original text this turn, then use tutor.step evidence with nature=hypothesis, operation_id, target, fact_refs, interpretation and teaching_implication. Use supersedes to revise an earlier interpretation. Trace rereads truncated facts; understanding rereads interpretation details.\nPreserve exact learner words, uncertainty and help conditions. Do not invent a hypothesis for unrelated or uninformative input. Use the resulting evidence_ref in move.interpretation_refs when selecting, and actually adjust the starting point, depth or example. No scoring activity is required.\nFor an existing ungraded source-discrimination activity with capability=evaluation, evidence with action_ref, object_id, operation_id, response_quote, sources and interpretation records a correctable observation, not a score."
+    }
+  ],
+  "tool_contract": {
+    "description": "Select one source-grounded move after reading original text this turn with book tools. Supply target with learning_focus, expected_performance, capability, exact source_bindings (start_lid, end_lid; omit source_id/source_revision to use the runtime-bound current source), and optional object_refs. object_ids may be empty when no applicable formal objects exist. If using available objects, read them with material and include their exact revisions in target.object_refs; missing cognitive material does not block teaching. trace rereads private delivered facts. Explicit direct explanation overrides guided inquiry. Select with operation=select and a move; final delivery presents it. Optional presentation must already be delivered in this turn. Optional assessment freezes private criteria before delivery. assess evaluates an existing formal response in one isolated model call; understanding reads evidence; evidence proposes a sourced ungraded interpretation. Page calculations never assess correctness. Private keys and help must not enter public text. No direct mastery updates. Examples use an average-speed teaching fixture, not learner facts. Replace its content, locations and references with actual material and events from this turn; read the source before selecting or interpreting.",
+    "name": "tutor.step",
+    "parameters": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "after": {},
+            "object_id": {},
+            "operation": {
+              "enum": [
+                "material"
+              ]
+            }
+          },
+          "required": [
+            "operation"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "after": {},
+            "event_id": {},
+            "operation": {
+              "enum": [
+                "trace"
+              ]
+            }
+          },
+          "required": [
+            "operation"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "move": {},
+            "operation": {
+              "enum": [
+                "select"
+              ]
+            }
+          },
+          "required": [
+            "operation",
+            "move"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "enum": [
+                "outside"
+              ]
+            }
+          },
+          "required": [
+            "operation"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action_ref": {},
+            "operation": {
+              "enum": [
+                "assess"
+              ]
+            }
+          },
+          "required": [
+            "operation",
+            "action_ref"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "after": {},
+            "evidence_ref": {},
+            "object_id": {},
+            "operation": {
+              "enum": [
+                "understanding"
+              ]
+            }
+          },
+          "required": [
+            "operation"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action_ref": {},
+            "interpretation": {},
+            "object_id": {},
+            "operation": {
+              "enum": [
+                "evidence"
+              ]
+            },
+            "operation_id": {},
+            "response_quote": {},
+            "sources": {},
+            "supersedes": {}
+          },
+          "required": [
+            "operation",
+            "action_ref",
+            "object_id",
+            "operation_id",
+            "response_quote",
+            "sources",
+            "interpretation"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "fact_refs": {},
+            "interpretation": {},
+            "nature": {
+              "enum": [
+                "hypothesis"
+              ]
+            },
+            "operation": {
+              "enum": [
+                "evidence"
+              ]
+            },
+            "operation_id": {},
+            "supersedes": {},
+            "target": {},
+            "teaching_implication": {}
+          },
+          "required": [
+            "operation",
+            "nature",
+            "operation_id",
+            "target",
+            "fact_refs",
+            "interpretation",
+            "teaching_implication"
+          ]
+        }
+      ],
+      "examples": [
+        {
+          "operation": "material"
+        },
+        {
+          "after": 0,
+          "operation": "trace"
+        },
+        {
+          "move": {
+            "capability": "explanation",
+            "intent_origin": "neutral",
+            "interaction_intent": "neutral",
+            "kind": "explain",
+            "move_id": "explain-speed",
+            "object_ids": [],
+            "prompt": "Explain average speed using total distance and total time.",
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Explain why total time is the denominator",
+              "learning_focus": "Average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          },
+          "operation": "select"
+        },
+        {
+          "move": {
+            "actions": [
+              "request_hint",
+              "reveal"
+            ],
+            "capability": "explanation",
+            "explanation": "At different positive speeds, equal distances take different times.",
+            "hint": "Time equals distance divided by speed.",
+            "intent_origin": "neutral",
+            "interaction_intent": "neutral",
+            "kind": "compare",
+            "move_id": "compare-times",
+            "object_ids": [],
+            "prompt": "Compare the travel times for two equal distances at different speeds.",
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Explain why total time is the denominator",
+              "learning_focus": "Average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          },
+          "operation": "select"
+        },
+        {
+          "move": {
+            "actions": [
+              "submit"
+            ],
+            "assessment": {
+              "feedback": "after_submit",
+              "rule": {
+                "items": [
+                  {
+                    "criterion": "Uses the total time of the journey; equivalent wording is accepted.",
+                    "id": "total-time",
+                    "source_lids": [
+                      "1.1"
+                    ]
+                  }
+                ],
+                "kind": "open"
+              },
+              "source_lids": [
+                "1.1"
+              ],
+              "source_sufficient": true
+            },
+            "capability": "explanation",
+            "intent_origin": "neutral",
+            "interaction_intent": "neutral",
+            "kind": "question",
+            "move_id": "explain-denominator",
+            "object_ids": [],
+            "prompt": "Explain which time belongs in the denominator of average speed.",
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Explain why total time is the denominator",
+              "learning_focus": "Average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          },
+          "operation": "select"
+        },
+        {
+          "operation": "outside"
+        },
+        {
+          "operation": "understanding"
+        },
+        {
+          "action_ref": "action:to3-discrimination",
+          "interpretation": "The response distinguishes a source-supported quantity from an unsupported property.",
+          "object_id": "speed",
+          "operation": "evidence",
+          "operation_id": "to3-discrimination-evidence",
+          "response_quote": "The source supports total distance",
+          "sources": [
+            {
+              "lid": "1.1",
+              "quote": "total distance"
+            }
+          ]
+        },
+        {
+          "fact_refs": [
+            "usage:tutor-begin-1:user:turn_9af8a58ae8ac8352"
+          ],
+          "interpretation": "The response names total distance but leaves the role of total time unknown.",
+          "nature": "hypothesis",
+          "operation": "evidence",
+          "operation_id": "to3-hypothesis",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "Explain why total time is the denominator",
+            "learning_focus": "Average speed",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          "teaching_implication": "Ask the learner to connect total time to the denominator."
+        }
+      ],
+      "properties": {
+        "action_ref": {
+          "description": "An actual response event_id from context or trace. assess requires an unassessed formal submit/revise with a frozen open rubric; it runs one isolated, budgeted evaluator. Ungraded evidence requires a response to an evaluation activity with a formal object and no scoring contract.",
+          "type": "string"
+        },
+        "after": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "event_id": {
+          "description": "Read one exact trace event in bounded JSON text chunks; after is its character offset. Without event_id, after is the trace cursor.",
+          "type": "string"
+        },
+        "evidence_ref": {
+          "description": "Read one evidence interpretation with operation=understanding; after is the character offset.",
+          "type": "string"
+        },
+        "fact_refs": {
+          "description": "Actual learner-expression event_ids from the current context or trace. UI clicks and assistant deliveries cannot support a hypothesis.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "interpretation": {
+          "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+          "type": "string"
+        },
+        "move": {
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "actions": {
+                    "contains": {
+                      "enum": [
+                        "request_hint"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "actions"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "hint": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "hint"
+                ]
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "actions": {
+                    "contains": {
+                      "enum": [
+                        "reveal"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "actions"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "explanation": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "explanation"
+                ]
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "assessment": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "assessment"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "actions": {
+                    "contains": {
+                      "enum": [
+                        "submit"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "actions"
+                ]
+              }
+            }
+          ],
+          "properties": {
+            "actions": {
+              "items": {
+                "enum": [
+                  "submit",
+                  "revise",
+                  "request_hint",
+                  "reveal",
+                  "skip",
+                  "self_report"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "assessment": {
+              "additionalProperties": false,
+              "description": "Optional private frozen scoring contract. {rule:{kind:choice_set,choices:[tokens],correct:[tokens]} OR rule:{kind:open,items:[{id,criterion,source_lids:[LID]}]},source_lids:[LID],source_sufficient:boolean,feedback:after_submit|on_reveal}. Open criterion states necessary conditions, equivalent expressions and acceptable omissions. Use only source text read this turn. Never copy the private key/rubric into page files or final text. Choice tokens belong in the public prompt; responses are a token or JSON array. Help and revised attempts are retained separately.",
+              "properties": {
+                "feedback": {
+                  "description": "Criterion-level feedback is private until the learner explicitly reveals it.",
+                  "enum": [
+                    "after_submit",
+                    "on_reveal"
+                  ],
+                  "type": "string"
+                },
+                "rule": {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "description": "Canonical choice tokens, submitted as a JSON array (or a single token).",
+                      "properties": {
+                        "choices": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "correct": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "kind": {
+                          "enum": [
+                            "choice_set"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "choices",
+                        "correct",
+                        "kind"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "items": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "criterion": {
+                                "description": "Includes necessary conditions, accepted equivalents and permitted omissions.",
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string"
+                              },
+                              "source_lids": {
+                                "items": {
+                                  "type": "string"
+                                },
+                                "type": "array"
+                              }
+                            },
+                            "required": [
+                              "criterion",
+                              "id",
+                              "source_lids"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "kind": {
+                          "enum": [
+                            "open"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "kind"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                "source_lids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "source_sufficient": {
+                  "description": "An explicitly incomplete source cannot justify a correctness judgment.",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "feedback",
+                "rule",
+                "source_lids",
+                "source_sufficient"
+              ],
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "capability": {
+              "type": "string"
+            },
+            "continuation": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "Optional future help AFTER this answer. Draft the full current explanation first; then prefer one genuinely distinct next step. Omit continuation entirely when no new in-scope insight remains. An alternative is useful only when it offers a different learning choice.",
+                  "properties": {
+                    "options": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "label": {
+                            "description": "A concrete request the reader can choose, phrased as the reader's action. Offer a new comparison, changed condition or observation within the parent target, not an explanation or worked example already in move.prompt.",
+                            "maxLength": 240,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "move_kind": {
+                            "enum": [
+                              "explain",
+                              "compare",
+                              "observe"
+                            ],
+                            "type": "string"
+                          },
+                          "option_id": {
+                            "maxLength": 64,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "purpose": {
+                            "description": "State the specific NEW insight beyond this turn's completed explanation. If this benefit is already delivered by move.prompt, remove the option. Repeating the same calculation with different numbers is not a new insight.",
+                            "maxLength": 240,
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "option_id",
+                          "label",
+                          "purpose",
+                          "move_kind"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 2,
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "recommended_option_id": {
+                      "maxLength": 64,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "recommended_option_id",
+                    "options"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "explanation": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "hint": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "intent_origin": {
+              "description": "current_action requires the frozen current_action snapshot. Its accepted_request is a public UI action, not user-authored text; omit intent_quote. For explain_selection use direct_explanation with kind=explain; for continue_answer use neutral even when kind=explain. current_request quotes only the real user_supplement, which takes priority over the UI action.",
+              "enum": [
+                "current_request",
+                "current_action",
+                "session_default",
+                "confirmed_preference",
+                "neutral"
+              ],
+              "type": "string"
+            },
+            "intent_quote": {
+              "description": "Exact quote from current request when resolving an explicit interaction intent.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "interaction_intent": {
+              "enum": [
+                "direct_explanation",
+                "guided_inquiry",
+                "neutral"
+              ],
+              "type": "string"
+            },
+            "interpretation_refs": {
+              "description": "Current evidence references actually adopted for this move; superseded interpretations cannot be adopted.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "enum": [
+                "explain",
+                "observe",
+                "compare",
+                "question",
+                "source_focus"
+              ],
+              "type": "string"
+            },
+            "move_id": {
+              "type": "string"
+            },
+            "object_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "preference_ref": {
+              "description": "Confirmed preference fact_id from frozen context; only a weak default after current request and session mode.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "presentation": {
+              "properties": {
+                "presentation_id": {
+                  "type": "string"
+                },
+                "revision": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "presentation_id",
+                "revision"
+              ],
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "target": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "A source-grounded focus; formal object identity is optional.",
+                  "properties": {
+                    "capability": {
+                      "type": "string"
+                    },
+                    "expected_performance": {
+                      "type": "string"
+                    },
+                    "learning_focus": {
+                      "type": "string"
+                    },
+                    "object_refs": {
+                      "default": [],
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "object_id": {
+                            "type": "string"
+                          },
+                          "object_revision": {
+                            "format": "uint64",
+                            "minimum": 0.0,
+                            "type": "integer"
+                          },
+                          "source_id": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "object_id",
+                          "object_revision",
+                          "source_id"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "source_bindings": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "end_lid": {
+                            "type": "string"
+                          },
+                          "source_id": {
+                            "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                            "type": "string"
+                          },
+                          "source_revision": {
+                            "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                            "type": "string"
+                          },
+                          "start_lid": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "end_lid",
+                          "start_lid"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "capability",
+                    "expected_performance",
+                    "learning_focus",
+                    "source_bindings"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "move_id",
+            "object_ids",
+            "capability",
+            "kind",
+            "prompt",
+            "interaction_intent",
+            "intent_origin"
+          ],
+          "type": "object"
+        },
+        "nature": {
+          "enum": [
+            "hypothesis"
+          ],
+          "type": "string"
+        },
+        "object_id": {
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "material",
+            "trace",
+            "select",
+            "outside",
+            "assess",
+            "understanding",
+            "evidence"
+          ],
+          "type": "string"
+        },
+        "operation_id": {
+          "description": "A new identity for this interpretation; retry the same input with the same identity.",
+          "type": "string"
+        },
+        "response_quote": {
+          "description": "Exact learner words from the referenced ungraded source-discrimination response.",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "properties": {
+              "lid": {
+                "type": "string"
+              },
+              "quote": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "lid",
+              "quote"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "supersedes": {
+          "description": "An existing evidence_ref being revised, obtained from understanding.",
+          "type": "string"
+        },
+        "target": {
+          "additionalProperties": false,
+          "description": "A source-grounded focus; formal object identity is optional.",
+          "properties": {
+            "capability": {
+              "type": "string"
+            },
+            "expected_performance": {
+              "type": "string"
+            },
+            "learning_focus": {
+              "type": "string"
+            },
+            "object_refs": {
+              "default": [],
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "object_id": {
+                    "type": "string"
+                  },
+                  "object_revision": {
+                    "format": "uint64",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  },
+                  "source_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "object_id",
+                  "object_revision",
+                  "source_id"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "source_bindings": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "end_lid": {
+                    "type": "string"
+                  },
+                  "source_id": {
+                    "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                    "type": "string"
+                  },
+                  "source_revision": {
+                    "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                    "type": "string"
+                  },
+                  "start_lid": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "end_lid",
+                  "start_lid"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "capability",
+            "expected_performance",
+            "learning_focus",
+            "source_bindings"
+          ],
+          "type": "object"
+        },
+        "teaching_implication": {
+          "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation"
+      ],
+      "type": "object"
+    }
+  },
+  "citation_contract": "Use only returned [[source:<source_ref_id>]] markers after the supported sentence, with the exact ID from presented_sources.",
+  "context": {
+    "status": "active",
+    "default_teaching_intent": "guided_inquiry",
+    "formal_objects": [],
+    "interpretations": [],
+    "prior_learner_evidence": [],
+    "source_lids": {
+      "start_lid": "1.1",
+      "end_lid": "1.1"
+    }
+  },
+  "original_text": "借用\n\n借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。这里的 & 是 Rust 的借用运算符，不能简单等同于 C 中不带有效性约束的取地址操作。在 Rust 中有两种借用值的方式。\n\n不可变借用：在表达式中的值前写 &，会创建对该值的不可变借用。相应的引用类型写作 &T。前面所有权一节中的例子可以改写为使用借用：\n\n<code>// borrowing_basics.rs\n#[derive(Debug)]\nstruct Foo(u32);\nfn main() {\n    let foo = Foo(0);\n    let bar = &foo;\n    println!(\"Foo is {:?}\", foo);\n    println!(\"Bar is {:?}\", bar);\n}\n</code>\n\n这一次，程序可以编译，因为 main 中的第二行变成了：\n\n<code>    let bar = &foo;\n</code>\n\n注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。\n\n",
+  "presented_sources": [
+    {
+      "quote": "借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。",
+      "source_ref_id": "source_ref_b7cdf804a5f27a0d"
+    },
+    {
+      "quote": "fn main() {\n    let foo = Foo(0);\n    let bar = &foo;\n    println!(\"Foo is {:?}\", foo);\n    println!(\"Bar is {:?}\", bar);\n}",
+      "source_ref_id": "source_ref_e2f1f69dfb7b32e3"
+    },
+    {
+      "quote": "#[derive(Debug)]\nstruct Foo(u32);",
+      "source_ref_id": "source_ref_4c3de5a75d5bc2f7"
+    },
+    {
+      "quote": "这一次，程序可以编译，因为 main 中的第二行变成了：",
+      "source_ref_id": "source_ref_1a3ec5f7971d4632"
+    },
+    {
+      "quote": "注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。",
+      "source_ref_id": "source_ref_9af277d1d3d785d4"
+    }
+  ],
+  "user_request": "我知道变量可以赋值，但对引用的理解是它会复制原值。\n我觉得 let bar = &foo 是把 Foo 复制了一份给 bar，所以两个 println 都能用。这样理解对吗？帮我找出该改哪一步，再让我试着解释。"
+}

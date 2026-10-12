@@ -1,0 +1,33 @@
+{
+  "original_material": "exact UTF-16 source slice matches",
+  "rustc": "rustc 1.95.0 (59807616e 2026-04-14)",
+  "cases": [
+    {
+      "case": "original",
+      "source": "// borrowing_basics.rs\n#[derive(Debug)]\nstruct Foo(u32);\nfn main() {\n    let foo = Foo(0);\n    let bar = &foo;\n    println!(\"Foo is {:?}\", foo);\n    println!(\"Bar is {:?}\", bar);\n}\n",
+      "compile_exit": 0,
+      "diagnostic_codes": [
+        "dead_code"
+      ],
+      "stdout": "Foo is Foo(0)\nBar is Foo(0)\n"
+    },
+    {
+      "case": "move_without_ampersand",
+      "source": "// borrowing_basics.rs\n#[derive(Debug)]\nstruct Foo(u32);\nfn main() {\n    let foo = Foo(0);\n    let bar = foo;\n    println!(\"Foo is {:?}\", foo);\n    println!(\"Bar is {:?}\", bar);\n}\n",
+      "compile_exit": 1,
+      "diagnostic_codes": [
+        "E0382"
+      ],
+      "stdout": null
+    },
+    {
+      "case": "write_through_shared_reference",
+      "source": "// borrowing_basics.rs\n#[derive(Debug)]\nstruct Foo(u32);\nfn main() {\n    let foo = Foo(0);\n    let bar = &foo;\n    bar.0 = 1;\n    println!(\"Foo is {:?}\", foo);\n    println!(\"Bar is {:?}\", bar);\n}\n",
+      "compile_exit": 1,
+      "diagnostic_codes": [
+        "E0594"
+      ],
+      "stdout": null
+    }
+  ]
+}

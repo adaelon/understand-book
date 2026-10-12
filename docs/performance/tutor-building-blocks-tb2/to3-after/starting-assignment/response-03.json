@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"lid\": \"1.1\", \"granularity\": \"near\", \"k\": 15}",
+      "id": "call_00_9vmGRzK78kn9Nc2FgGrw7174",
+      "name": "book.context"
+    },
+    {
+      "arguments": "{\"match_mode\": \"exact\", \"query\": \"所有权\", \"page_size\": 20}",
+      "id": "call_01_Q9Nd6pCawfBcpiVDqVoI6781",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 19374
+}
