@@ -1,0 +1,21 @@
+{
+  "mcp_tool_count": 11,
+  "charged_free_calls": 1,
+  "paid_calls": 0,
+  "canonical_text_matches": true,
+  "status": "passed",
+  "phase": "after",
+  "checks": [
+    "/ and referenced assets readable and match new release",
+    "/?account=mcp and referenced assets readable and match new release",
+    "/admin/users/reader and referenced assets readable and match new release",
+    "Catalog, model allowance and MCP balance equal pre-deployment response",
+    "Reader login, authorized materials, search, manifest, Tutor readiness and PDF Range work",
+    "11 MCP tools publish output schemas, annotations, examples and UTF-16 continuation input",
+    "One real MCP read matches Reader canonical text and exact publication; exactly one free call consumed"
+  ],
+  "publication_count": 10,
+  "model_requests": 0,
+  "test_credential_revoked": true,
+  "test_session_logged_out": true
+}

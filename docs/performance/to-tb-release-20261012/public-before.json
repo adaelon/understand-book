@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "phase": "before",
+  "checks": [
+    "/ and referenced assets readable",
+    "/?account=mcp and referenced assets readable",
+    "/admin/users/reader and referenced assets readable",
+    "Reader login, authorized materials, search, manifest, Tutor readiness and PDF Range work"
+  ],
+  "publication_count": 10,
+  "model_requests": 0,
+  "test_session_logged_out": true
+}
