@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>页页 · 第一组动画</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root { color-scheme: light; --ink:#332b25; --paper:#f7f3eb; --orange:#b65a17; --muted:#817165; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:"Microsoft YaHei UI","PingFang SC",system-ui,sans-serif; }
+    main { max-width:1240px; margin:auto; padding:42px 38px 32px; }
+    header { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; }
+    .eyebrow { color:var(--orange); font-size:12px; letter-spacing:.2em; font-weight:700; margin:0 0 12px; }
+    h1 { margin:0; font-size:30px; line-height:1.35; letter-spacing:.02em; font-weight:650; }
+    .intro { margin:12px 0 0; color:var(--muted); font-size:14px; line-height:1.8; }
+    .backgrounds { display:flex; gap:6px; flex-shrink:0; }
+    button,a { -webkit-tap-highlight-color:transparent; }
+    button { font:inherit; cursor:pointer; color:inherit; }
+    .backgrounds button { border:1px solid #d7c9b9; background:transparent; border-radius:30px; padding:7px 13px; font-size:12px; }
+    .backgrounds button[aria-pressed=true] { color:#fff; border-color:var(--orange); background:var(--orange); }
+    .gallery { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:32px; margin-top:38px; }
+    article { min-width:0; }
+    .stage { aspect-ratio:1; width:100%; border-radius:22px; transition:background-color .2s; }
+    .stage svg { width:100%; height:100%; display:block; }
+    body[data-background=white] .stage { background:#fff; }
+    body[data-background=dark] .stage { background:#272421; }
+    .caption { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin:14px 8px 0; }
+    h2 { font-size:18px; margin:0; font-weight:650; }
+    .timing { font-size:11px; letter-spacing:.04em; color:var(--muted); white-space:nowrap; }
+    .description { color:var(--muted); font-size:13px; line-height:1.7; margin:8px 8px 18px; min-height:44px; }
+    .controls { margin:0 8px; display:flex; align-items:center; gap:12px; }
+    .toggle { border:0; background:var(--orange); color:white; padding:9px 16px; border-radius:24px; font-size:12px; min-width:66px; }
+    .toggle:disabled { opacity:.5; cursor:wait; }
+    .scrub { min-width:0; flex:1; accent-color:var(--orange); height:3px; cursor:pointer; }
+    .clock { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; min-width:28px; text-align:right; }
+    footer { display:flex; justify-content:space-between; gap:24px; border-top:1px solid #ded2c4; margin-top:44px; padding-top:18px; color:var(--muted); font-size:11px; line-height:1.8; }
+    footer p { margin:0; }
+    footer a { color:var(--orange); text-decoration:none; }
+    footer a:hover { text-decoration:underline; }
+    button:focus-visible,a:focus-visible,input:focus-visible { outline:2px solid var(--orange); outline-offset:4px; }
+    @media(max-width:760px) { main{padding:28px 22px} header{align-items:flex-start;flex-direction:column;gap:18px} h1{font-size:26px} .gallery{grid-template-columns:1fr;margin-top:20px;gap:36px} article{max-width:410px;width:100%;margin:auto} .stage{max-height:390px} .description{min-height:0} footer{flex-direction:column;gap:8px} }
+    @media(prefers-reduced-motion:reduce) { *{transition:none!important} }
+  </style>
+</head>
+<body data-background="paper">
+<main>
+  <header>
+    <div>
+      <p class="eyebrow">YEYE / MOTION 01</p>
+      <h1>页页的第一组动画</h1>
+      <p class="intro">一点机灵，一点陪伴。阅读的时候，轻轻动就好。</p>
+    </div>
+    <div class="backgrounds" aria-label="预览背景">
+      <button type="button" data-bg="paper" aria-pressed="true">纸色</button>
+      <button type="button" data-bg="white" aria-pressed="false">白色</button>
+      <button type="button" data-bg="dark" aria-pressed="false">深色</button>
+    </div>
+  </header>
+  <section class="gallery" aria-label="页页动画预览">
+    <article data-scene="idle">
+      <div class="stage" role="img" aria-label="页页抱着书，轻轻呼吸并眨眼"></div>
+      <div class="caption"><h2>日常眨眼</h2><span class="timing">4 秒 · 循环</span></div>
+      <p class="description">安静地陪在一旁，偶尔眨一下眼。</p>
+      <div class="controls"><button class="toggle" disabled>加载中</button><input class="scrub" aria-label="日常眨眼进度" type="range" min="0" max="119" step="1" value="0"><output class="clock">0.0s</output></div>
+    </article>
+    <article data-scene="reading">
+      <div class="stage" role="img" aria-label="页页低头阅读，书页从右侧轻轻翻向左侧"></div>
+      <div class="caption"><h2>阅读翻页</h2><span class="timing">5 秒 · 循环</span></div>
+      <p class="description">读完这一页，再轻轻翻过一页。</p>
+      <div class="controls"><button class="toggle" disabled>加载中</button><input class="scrub" aria-label="阅读翻页进度" type="range" min="0" max="149" step="1" value="0"><output class="clock">0.0s</output></div>
+    </article>
+    <article data-scene="success">
+      <div class="stage" role="img" aria-label="页页带着抬爪姿态轻轻回弹，并俏皮地眨一只眼"></div>
+      <div class="caption"><h2>完成反馈</h2><span class="timing">2.5 秒 · 单次</span></div>
+      <p class="description">开心地回弹一下，再给你一个会意的眨眼。</p>
+      <div class="controls"><button class="toggle" disabled>加载中</button><input class="scrub" aria-label="完成反馈进度" type="range" min="0" max="74" step="1" value="0"><output class="clock">0.0s</output></div>
+    </article>
+  </section>
+  <footer>
+    <p>沿用确认版页页 · 透明背景 · 可拖动进度查看动作<br>日常与阅读可循环，完成反馈播放一次后停留。</p>
+    <p><a href="idle/lottie.json" download>日常 JSON</a> · <a href="reading/lottie.json" download>阅读 JSON</a> · <a href="success/lottie.json" download>完成 JSON</a><br><a href="licenses/lottie-web-MIT.txt">Lottie Web · MIT</a> / <a href="licenses/diffusionstudio-lottie-MIT.txt">Text-to-Lottie · MIT</a></p>
+  </footer>
+</main>
+<script src="vendor/lottie-5.13.0.min.js"></script>
+<script type="module" src="preview.js"></script>
+</body>
+</html>

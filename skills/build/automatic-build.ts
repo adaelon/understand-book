@@ -1857,6 +1857,18 @@ function expandAction(
             },
           };
         }
+        if (handoff.waiting_reason) {
+          return {
+            snapshot,
+            preflight,
+            action: {
+              kind: "waiting" as const,
+              reason: handoff.waiting_reason,
+              stage: action.stage,
+              retry_after_ms: Math.min(leaseOptions.reserve_ttl_ms, 30_000),
+            },
+          };
+        }
         return {
           snapshot,
           preflight,

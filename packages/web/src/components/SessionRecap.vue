@@ -115,7 +115,7 @@ function trapFocus(event: KeyboardEvent) {
 .session-recap { background: var(--canvas, #fffaf2); color: var(--ink, #222); width: min(820px, 100%); max-height: calc(100dvh - 40px); overflow: auto; border: 1px solid var(--hairline, #ddd); border-radius: 24px; padding: 24px; box-sizing: border-box; }
 header, .recap-range, footer { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
 header { position: sticky; top: -24px; padding: 12px 0; background: var(--canvas, #fff); z-index: 1; }
-h2 { font-size: 22px; margin: 4px 0; } h3 { font-size: 17px; margin: 26px 0 12px; } h3 span { opacity: .55; font-size: 13px; margin-left: 8px; } h4, p { margin: 8px 0; }
+h2 { font: 400 24px/1.45 var(--font-display); font-synthesis: none; margin: 4px 0; } h3 { font-size: 17px; margin: 26px 0 12px; } h3 span { opacity: .55; font-size: 13px; margin-left: 8px; } h4, p { margin: 8px 0; }
 .recap-kicker, small, .recap-hint, .recap-empty { font-size: 13px; color: var(--ink-secondary, #666); }
 article { border: 1px solid var(--hairline, #ddd); border-radius: 14px; padding: 16px; margin: 12px 0; overflow-wrap: anywhere; }
 article.is-focused { border-color: var(--accent, #ba6451); }

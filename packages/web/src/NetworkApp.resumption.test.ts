@@ -2,7 +2,7 @@
 import { mount, flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installIdentity, network, workspaceStorageKey, type NetworkWorkspace } from './network-context';
-vi.mock('./App.vue', () => ({ default: { name: 'App', methods: { beforeNoteLeave: async () => true },
+vi.mock('./App.vue', () => ({ default: { name: 'App', props: ['readerVisible'], methods: { beforeNoteLeave: async () => true },
   emits: ['show-library'], template: '<div class="reader"><button @click="$emit(\'show-library\')">打开书</button><textarea /></div>' } }));
 import NetworkApp from './NetworkApp.vue';
 
@@ -100,11 +100,14 @@ it('previews only this window, then restores the exact publication, chat and sav
   expect(wrapper!.find('.network-library').exists()).toBe(false);
   // Returning to the shelf leaves the reader and its unfinished text intact.
   const reader = wrapper!.getComponent({ name: 'App' }).vm;
+  expect(wrapper!.getComponent({ name: 'App' }).props('readerVisible')).toBe(true);
   await wrapper!.get('textarea').setValue('未发送的想法');
   await wrapper!.get('.reader button').trigger('click'); await flushPromises();
   expect(wrapper!.getComponent({ name: 'App' }).vm).toBe(reader);
+  expect(wrapper!.getComponent({ name: 'App' }).props('readerVisible')).toBe(false);
   await wrapper!.get('.resumption-continue').trigger('click'); await flushPromises();
   expect((wrapper!.get('textarea').element as HTMLTextAreaElement).value).toBe('未发送的想法');
+  expect(wrapper!.getComponent({ name: 'App' }).props('readerVisible')).toBe(true);
 });
 it('does not invent a question and leaves the normal grid when no workspace was saved', async () => {
   question = null; await start();
@@ -114,6 +117,30 @@ it('does not invent a question and leaves the normal grid when no workspace was 
   await start();
   expect(wrapper!.find('[aria-label="阅读接续"]').exists()).toBe(false);
   expect(wrapper!.findAll('.network-book-card')).toHaveLength(3);
+  expect(calls.some(call => call.includes('/workspaces/'))).toBe(false);
+});
+it('keeps the initial read failure actionable without inventing a continuation', async () => {
+  const original = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation((input, init) => String(input).endsWith('/resumption')
+    ? Promise.resolve(Response.json({ message: '读取失败' }, { status: 500 })) : original(input, init));
+  await start();
+  expect(wrapper!.find('.reading-resumption').exists()).toBe(false);
+  expect(wrapper!.findAll('.network-book-card')).toHaveLength(3);
+  expect(wrapper!.get('.resumption-status').text()).toContain('接续记录暂时无法读取，请重试。');
+  vi.mocked(fetch).mockImplementation(original);
+  await wrapper!.get('.resumption-status button').trigger('click'); await flushPromises();
+  expect(wrapper!.get('.reading-resumption').text()).toContain('为什么守恒？');
+  expect(calls.every(call => call.startsWith('GET '))).toBe(true);
+});
+it('keeps the administrator access message for an account with no materials', async () => {
+  sessionStorage.clear();
+  const original = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation((input, init) => String(input) === '/api/library'
+    ? Promise.resolve(Response.json({ books: [] })) : original(input, init));
+  await start();
+  expect(wrapper!.text()).toContain('账号已创建，等待管理员开通材料。');
+  expect(wrapper!.find('.reading-resumption').exists()).toBe(false);
+  expect(wrapper!.findAll('.network-book-card')).toHaveLength(0);
   expect(calls.some(call => call.includes('/workspaces/'))).toBe(false);
 });
 it('removes an unavailable continuation on recheck and does not attach after access is revoked', async () => {

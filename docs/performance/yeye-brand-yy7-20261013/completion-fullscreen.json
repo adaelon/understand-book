@@ -1,0 +1,10 @@
+{
+  "nods": [
+    {
+      "animation": "yeye-nod-80f3f5e6",
+      "identity": "fullscreen"
+    }
+  ],
+  "transform": "matrix(0.999972, 0.00747555, -0.00747555, 0.999972, 0, 0.122378)",
+  "width": 1440
+}

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ListChecks, Settings } from "@lucide/vue";
 import { ref, watch } from "vue";
+import brandLogo from '../assets/brand/understand-book-logo.svg';
 
 const props = defineProps<{
   typographyAvailable?: boolean;
@@ -55,7 +56,7 @@ function closeMobileAfterAction(event: MouseEvent) {
     @keydown.esc="emit('close-mobile')"
   >
     <div class="topbar-brand">
-      <span class="brand-mark">understand-book</span>
+      <span class="brand-mark"><img :src="brandLogo" class="brand-logo" width="26" height="26" alt="" />understand-book</span>
       <span class="breadcrumb">{{ chapterTitle || "阅读工作区" }}</span>
     </div>
     <div class="topbar-actions">

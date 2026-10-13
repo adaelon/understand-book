@@ -2,6 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import App from './App.vue';
 import BookCover from './components/BookCover.vue';
+import YeyeMascot from './components/YeyeMascot.vue';
+import brandLogo from './assets/brand/understand-book-logo.svg';
 import { bookTitle } from './book-title';
 import LoadingAnimation from './components/LoadingAnimation.vue';
 import AccountAllowance from './components/AccountAllowance.vue';
@@ -316,6 +318,7 @@ onBeforeUnmount(() => {
   <AccountAccess v-if="accountView" :key="accountView" :view="accountView" :token="resetToken" @login="accountLogin" @reset="passwordChanged" @forgot="showAccount('forgot-password')" />
   <main v-else-if="checking && !network.workspace" class="network-loading"><LoadingAnimation /></main>
   <main v-else-if="!network.identity" class="network-login">
+    <a class="brand-signature" href="/home.html"><img :src="brandLogo" class="brand-logo" width="36" height="36" alt="" /><span>Understand Book</span></a>
     <h1>回到你的阅读</h1>
     <form @submit.prevent="login">
       <label>邮箱或账号<input v-model="username" autocomplete="username" required></label>
@@ -343,7 +346,7 @@ onBeforeUnmount(() => {
     </div>
     <AgentPresentation v-if="!suspended && network.linked && linkedPresentation && network.workspace" :key="key" :session-id="linkedPresentation.session_id" :turn-id="linkedPresentation.turn_id" :reference="linkedPresentation.reference" @follow-up="followUp" @source="showLinkedSource" />
     <main v-else-if="openingRecap" class="network-loading"><LoadingAnimation /></main>
-    <App ref="readerApp" v-else-if="!suspended && network.workspace" v-show="!libraryOpen" :key="appKey" v-model:chat-draft="chatDraft" :recap-target="recapTarget" :mcp-source="sourceTarget" @mcp-source-consumed="sourceConsumed" @mcp-source-error="sourceFailed" @show-library="showLibrary" @show-allowance="allowanceOpen = true" @recap-consumed="recapTarget = null" @recap-publication="openRecapPublication">
+    <App ref="readerApp" v-else-if="!suspended && network.workspace" v-show="!libraryOpen" :reader-visible="!libraryOpen" :key="appKey" v-model:chat-draft="chatDraft" :recap-target="recapTarget" :mcp-source="sourceTarget" @mcp-source-consumed="sourceConsumed" @mcp-source-error="sourceFailed" @show-library="showLibrary" @show-allowance="allowanceOpen = true" @recap-consumed="recapTarget = null" @recap-publication="openRecapPublication">
       <template #account>
         <details class="network-account">
           <summary>账号</summary>
@@ -360,7 +363,7 @@ onBeforeUnmount(() => {
     <p v-else-if="linkedRequested" role="status">请保持原阅读窗口打开；附属连接失效后请从原窗口重新打开。</p>
     <main v-if="!linkedRequested && (libraryOpen || !network.workspace)" class="network-library">
       <header class="network-library-head">
-        <div><p class="network-library-kicker">你的书架</p><h1>选择阅读材料</h1></div>
+        <div><p class="network-library-kicker brand-signature"><img :src="brandLogo" class="brand-logo" width="28" height="28" alt="" />你的书架</p><h1>选择阅读材料</h1></div>
         <p><span class="account-email">{{ network.identity.email || network.identity.user_id }}</span> <button @click="settingsOpen = true">个人设置</button> <button @click="showMcp">MCP 接入</button> <button @click="allowanceOpen = true">使用额度</button> <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a> <button @click="logout">退出登录</button></p>
       </header>
       <section v-if="resumption && resumptionBook" class="reading-resumption" aria-label="阅读接续" :aria-busy="resumptionLoading">
@@ -373,6 +376,7 @@ onBeforeUnmount(() => {
           <div v-if="resumption.last_question" class="resumption-question"><span>上次的问题</span><p>{{ resumption.last_question }}</p></div>
           <button class="resumption-continue" :disabled="busy || resumptionLoading" @click="continueReading">{{ resumptionLoading ? '正在更新…' : '继续阅读' }}</button>
         </div>
+        <YeyeMascot class="resumption-mascot" :size="144" :motion="busy || resumptionLoading || resumptionError ? 'static' : 'idle'" />
       </section>
       <p v-if="resumptionLoading && !resumptionBook" class="resumption-status" role="status">正在读取接续记录…</p>
       <p v-else-if="resumptionError" class="resumption-status" role="status">{{ resumptionError }} <button :disabled="busy" @click="showLibrary">重试</button></p>
@@ -399,6 +403,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .network-loading { height: 100%; flex: 1; min-height: 0; display: grid; place-items: center; background: var(--reader-canvas); }
 .network-login { max-width: 32rem; margin: 12vh auto; padding: 1.5rem; }
+.network-login h1, .network-library-head h1 { font-family: var(--font-display); font-weight: 400; font-synthesis: none; line-height: 1.45; }
 .network-library { flex: 1; min-height: 0; overflow: auto; width: 100%; padding: clamp(20px, 5vw, 64px); box-sizing: border-box; }
 .network-library-head { max-width: 1100px; margin: 0 auto 32px; display: flex; justify-content: space-between; align-items: center; gap: 20px; }
 .network-library-head h1 { margin: 6px 0 0; font-size: clamp(24px, 3vw, 32px); }
@@ -407,14 +412,15 @@ onBeforeUnmount(() => {
 .network-library-kicker { margin: 0; color: var(--muted); font-size: 13px; }
 .reading-resumption { max-width: 1100px; box-sizing: border-box; margin: 0 auto 40px; padding: clamp(20px, 4vw, 40px); display: flex; gap: clamp(20px, 4vw, 44px); align-items: center; border-radius: 28px; background: var(--surface, #f4f0e8); border: 1px solid var(--line); }
 .resumption-cover { width: clamp(90px, 16vw, 155px); flex-shrink: 0; }
-.resumption-content { min-width: 0; }
+.resumption-content { flex: 1; min-width: 0; }
 .resumption-content h2 { margin: 8px 0 16px; font-family: var(--serif, Georgia, serif); font-size: clamp(21px, 3vw, 30px); overflow-wrap: anywhere; }
 .resumption-position { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
 .resumption-excerpt, .resumption-question p { margin: 0; line-height: 1.7; overflow-wrap: anywhere; white-space: pre-line; }
 .resumption-excerpt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .resumption-question { margin-top: 20px; }
 .resumption-question span { display: block; margin-bottom: 5px; color: var(--muted); font-size: 12px; }
-.resumption-continue { margin-top: 24px; padding: 10px 22px; border: 0; border-radius: 24px; background: var(--accent); color: white; cursor: pointer; }
+.resumption-continue { margin-top: 24px; padding: 10px 22px; border: 0; border-radius: 24px; background: var(--brand-accent); color: var(--brand-on-accent); cursor: pointer; }
+.resumption-continue:hover:not(:disabled) { background: var(--brand-accent-deep); }
 .resumption-continue:disabled { opacity: .6; cursor: wait; }
 .resumption-status { max-width: 1100px; margin: 0 auto 24px; }
 .network-library-grid { max-width: 1100px; margin: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 28px 24px; }
@@ -425,6 +431,9 @@ onBeforeUnmount(() => {
 .network-book-card strong { display: block; margin-top: 14px; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
 .network-book-card:nth-child(3n + 2) { --cover-color: #ece2d4; }
 .network-book-card:nth-child(3n) { --cover-color: #dfe6ee; }
+@media (max-width: 900px) {
+  .reading-resumption .resumption-mascot { display: none; }
+}
 @media (max-width: 540px) {
   .reading-resumption { display: block; margin-bottom: 28px; border-radius: 24px; }
   .resumption-cover { float: right; width: 72px; margin: 0 0 12px 16px; }

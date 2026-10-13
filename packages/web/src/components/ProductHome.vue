@@ -2,6 +2,8 @@
 import { ref } from 'vue';
 import { ArrowDown, ArrowRight, ArrowUpRight, BookOpen, ChevronDown, CornerDownRight, Maximize2, Quote, Sparkles, X } from '@lucide/vue';
 import HomeLearningDemo from './HomeLearningDemo.vue';
+import YeyeMascot from './YeyeMascot.vue';
+import brandLogo from '../assets/brand/understand-book-logo.svg';
 import readerScreenshot from '../assets/home/reading-workspace.png';
 import presentationScreenshot from '../assets/home/interactive-explanation.png';
 
@@ -69,7 +71,7 @@ const questions = [
     <a class="home-skip" href="#learning-story">跳到动手体验</a>
     <header class="home-nav home-width">
       <a href="#top" class="home-brand" aria-label="Understand Book 首页">
-        <span class="home-brand-symbol"><BookOpen :size="23" :stroke-width="1.5" /></span>
+        <span class="home-brand-symbol"><img :src="brandLogo" class="brand-logo" width="37" height="37" alt="" /></span>
         <span>Understand <i>Book</i></span>
       </a>
       <nav class="home-nav-links" aria-label="首页导航">
@@ -100,6 +102,10 @@ const questions = [
 
         <figure class="home-hero-illustration" aria-label="两次学习情境示意：尝试用围栏围花园，再探索借用一面墙会怎样">
           <div class="home-illustration-orbit" aria-hidden="true"></div>
+          <div class="home-hero-companion">
+            <YeyeMascot :size="240" motion="idle" />
+            <p><strong>页页</strong><span>陪你把一本书读懂</span></p>
+          </div>
           <div class="home-note home-note-first">
             <div class="home-note-meta"><span><span class="home-tiny-dot"></span> 今天 · 第一次学习</span><span>01</span></div>
             <p class="home-note-chapter">一个猜想 / 一次尝试</p>
@@ -175,7 +181,7 @@ const questions = [
       </section>
     </main>
 
-    <footer class="home-footer home-width"><a href="#top" class="home-brand"><BookOpen :size="20" :stroke-width="1.5" /><span>Understand <i>Book</i></span></a><p>让每一次阅读，都接着上一次的理解。</p><a href="#top">回到开头 <ArrowUpRight :size="14" /></a></footer>
+    <footer class="home-footer home-width"><a href="#top" class="home-brand"><img :src="brandLogo" class="brand-logo" width="30" height="30" alt="" /><span>Understand <i>Book</i></span></a><p>让每一次阅读，都接着上一次的理解。</p><a href="#top">回到开头 <ArrowUpRight :size="14" /></a></footer>
     <dialog ref="imageDialog" class="home-image-dialog" aria-labelledby="home-image-title" @click="($event.target === $event.currentTarget) && imageDialog?.close()">
       <div class="home-image-dialog-content">
         <header class="home-image-toolbar">

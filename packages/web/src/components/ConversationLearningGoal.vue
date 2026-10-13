@@ -47,7 +47,7 @@ function save() {
     <div v-if="editing" class="goal-editor-overlay" @click.self="cancelEdit">
     <form role="dialog" aria-modal="true" aria-label="调整目标" @submit.prevent="save" @keydown="onEditorKeydown">
       <h3>调整目标</h3>
-      <label>学习目标<input ref="goalInput" v-model="draft" :disabled="busy || !available" /></label>
+      <label>学习目标<input ref="goalInput" v-model="draft" data-workspace-input="learning-goal" :disabled="busy || !available" /></label>
       <div class="goal-actions"><button :disabled="busy || !available || !draft.trim()">保存目标</button><button type="button" :disabled="busy" @click="cancelEdit">取消</button></div>
       <p v-if="error" role="alert">{{ error }} <button type="button" :disabled="busy" @click="emit('retry')">重试</button></p>
     </form>

@@ -53,7 +53,7 @@ const sendCount = ref(0);
 const newChatCount = ref(0);
 const mobileGlobalActionsOpen = ref(false);
 const focusReading = ref(false);
-const workspace = ref<{ toggleOutline: () => void; toggleFocus: () => void } | null>(null);
+const workspace = ref<{ toggleOutline: () => void; toggleFocus: () => void; showReader: () => void } | null>(null);
 
 function onSelection(snapshot: ReaderSelectionSnapshot | null) {
   if (snapshot) selectionText.value = snapshot.text;
@@ -116,6 +116,9 @@ function onSelection(snapshot: ReaderSelectionSnapshot | null) {
       :requested-tab="requestedTab"
       :requested-tab-revision="requestedTabRevision"
       :fullscreen="fullscreen"
+      :learning-title="learning ? learningSession.user_intent : undefined"
+      @return-reading="fullscreen = false; workspace?.showReader()"
+      @workspace-menu="mobileGlobalActionsOpen = true"
       @toggle-fullscreen="fullscreen = !fullscreen"
       :chat-sessions="[]"
       active-chat-session-id="fixture-chat"

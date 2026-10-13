@@ -10,8 +10,8 @@ import type { PresentationRef } from '../generated/PresentationRef';
 import type { PresentationFollowUp } from '../generated/PresentationFollowUp';
 const props = withDefaults(defineProps<{ sessionId: string; turnId: string; reference?: PresentationRef;
   snapshot?: () => Promise<PresentationFollowUp>; ready?: boolean; sources?: AgentAnswerSource[];
-  answerText?: string; answerTarget?: () => HTMLElement | undefined }>(), { ready: true, sources: () => [] });
-const emit = defineEmits<{ (e: 'source', id: string, anchor: HTMLElement): void; (e: 'response-available', available: boolean): void }>();
+  answerText?: string; answerTarget?: () => HTMLElement | undefined; responseActionsTarget?: HTMLElement | null }>(), { ready: true, sources: () => [] });
+const emit = defineEmits<{ (e: 'source', id: string, anchor: HTMLElement): void; (e: 'response-available', available: boolean): void; (e: 'editing-response', editing: boolean): void }>();
 const root = ref<HTMLElement>();
 const activities = ref<TutorActivity[]>([]);
 // A delivered follow-up may repeat the answer verbatim. Observe that answer instead of rendering it twice.
@@ -48,6 +48,12 @@ function openSource(text: string, event: MouseEvent) {
   emit('source', part.source_ref_ids[0], button);
 }
 const responses = ref<Record<string, string>>({});
+const editingDelivery = ref<string | null>(null);
+function beginResponseEditing(deliveryRef: string) { editingDelivery.value = deliveryRef; emit('editing-response', true); }
+function endResponseEditing() {
+  if (root.value?.contains(document.activeElement)) (document.activeElement as HTMLElement)?.blur();
+  editingDelivery.value = null; emit('editing-response', false);
+}
 const helps = ref<Record<string, { event_id: string; text: string }>>({});
 const error = ref(''); const busy = ref(false);
 const visible = new Set<string>();
@@ -92,7 +98,7 @@ function focusActivity(moveId: string, response?: string) {
   if (typeof response === 'string') responses.value[activity.delivery_ref] = response;
   root.value?.scrollIntoView({ block: 'nearest' });
 }
-defineExpose({ focusActivity, focusResponse });
+defineExpose({ focusActivity, focusResponse, endResponseEditing });
 function continueLearning(eventId: string, text: string) {
   root.value?.dispatchEvent(new CustomEvent('tutor-response', { bubbles: true, detail: { eventId, text } }));
 }
@@ -123,6 +129,7 @@ async function send() {
     await observeVisibleContent();
     await acknowledgeHelp(request.delivery_ref);
   } else {
+    endResponseEditing();
     continueLearning(result.event_id, request.response || '我跳过了这个活动，请调整接下来的讲法。');
   }
   await load();
@@ -184,7 +191,8 @@ onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEvent
       <header v-if="activity.move.actions.length" class="activity-heading"><MessageCircle :size="17" aria-hidden="true" /><span>{{ activity.attempted ? '继续完善你的回答' : '轮到你了' }}</span><small>用自己的话试一试</small></header>
       <div class="activity-text md" v-html="renderText(activity.move.prompt)" @click="openSource(activity.move.prompt, $event)"></div>
       <p v-if="activity.status !== 'active'" role="status">{{ activity.status === 'paused' ? '学习已暂停，可查看已交付内容和帮助。' : '原教学来源不可用，暂不能提交。' }}</p>
-      <textarea v-if="activity.move.actions.some(a => ['submit', 'revise', 'self_report'].includes(a))" v-model="responses[activity.delivery_ref]" aria-label="活动回答" placeholder="写下你的理解，或还不确定的地方…" rows="3" />
+      <textarea v-if="activity.move.actions.some(a => ['submit', 'revise', 'self_report'].includes(a))" v-model="responses[activity.delivery_ref]" data-workspace-input="tutor" aria-label="活动回答" placeholder="写下你的理解，或还不确定的地方…" rows="3" @focus="beginResponseEditing(activity.delivery_ref)" />
+      <Teleport :to="responseActionsTarget || 'body'" :disabled="!responseActionsTarget || editingDelivery !== activity.delivery_ref">
       <div v-if="activity.move.actions.length" class="activity-actions">
       <template v-for="action in activity.move.actions" :key="action">
         <button v-if="!(action === 'submit' && activity.attempted) && !(action === 'revise' && !activity.attempted)"
@@ -192,6 +200,7 @@ onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEvent
           :data-help-action="['request_hint', 'reveal'].includes(action) ? action : undefined" :disabled="busy || !!pending || (activity.status !== 'active' && ['submit', 'revise', 'skip'].includes(action))" @click="act(activity, action)">{{ labels[action] }}</button>
       </template>
       </div>
+      </Teleport>
       <div v-if="helps[activity.delivery_ref]" class="help activity-text md" :data-help-for="activity.delivery_ref" role="status" v-html="renderText(helps[activity.delivery_ref].text)" @click="openSource(helps[activity.delivery_ref].text, $event)"></div>
       <small v-if="activity.move.actions.length && !activity.move.actions.some(a => ['request_hint', 'reveal'].includes(a))">当前题目未提供提示或直接讲解，可保留题目并返回原文阅读。</small>
       <small v-if="activity.help_seen.length">此活动已展示过帮助；重开页面会保留这项记录。</small>

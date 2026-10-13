@@ -1,0 +1,50 @@
+{
+  "created": "2026-10-13",
+  "format": "lossless WebP with source alpha",
+  "export": "Lanczos3 downscale; preserve original square composition and transparency",
+  "display": {
+    "fullBodyCssPx": [
+      120,
+      128,
+      160,
+      220,
+      300
+    ],
+    "avatarCssPx": [
+      24,
+      32
+    ]
+  },
+  "assets": [
+    {
+      "variant": "idle",
+      "source": "../v7/yeye-idle.png",
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "output": "packages/web/src/assets/yeye/yeye-idle.webp",
+      "width": 600,
+      "height": 600,
+      "bytes": 157832
+    },
+    {
+      "variant": "reading",
+      "source": "../v7/yeye-reading-cream.png",
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "output": "packages/web/src/assets/yeye/yeye-reading-cream.webp",
+      "width": 600,
+      "height": 600,
+      "bytes": 162772
+    },
+    {
+      "variant": "avatar",
+      "source": "../avatar-v1/yeye-avatar.png",
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "output": "packages/web/src/assets/yeye/yeye-avatar.webp",
+      "width": 96,
+      "height": 96,
+      "bytes": 6532
+    }
+  ]
+}

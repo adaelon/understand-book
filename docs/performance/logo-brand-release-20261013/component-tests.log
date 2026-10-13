@@ -1,0 +1,43 @@
+
+> @understand-book/web@0.0.0 test E:\allwork\download\agent\understand-book\packages\web
+> vitest run "src/yeye-feedback.test.ts" "src/components/YeyeMascot.test.ts" "src/components/RightRail.test.ts" "src/NetworkApp.resumption.test.ts" "src/reading-share.test.ts" "src/components/ShareImagePanel.test.ts"
+
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/web
+
+ ✓ src/yeye-feedback.test.ts (22 tests) 11ms
+stderr | src/reading-share.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/reading-share.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/reading-share.test.ts (9 tests) 74ms
+stderr | src/components/ShareImagePanel.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/ShareImagePanel.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/YeyeMascot.test.ts (20 tests) 316ms
+ ✓ src/components/ShareImagePanel.test.ts (8 tests) 355ms
+stderr | src/NetworkApp.resumption.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.resumption.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/NetworkApp.resumption.test.ts (11 tests) 302ms
+ ✓ src/components/RightRail.test.ts (58 tests) 3870ms
+
+ Test Files  6 passed (6)
+      Tests  128 passed (128)
+   Start at  16:37:47
+   Duration  17.42s (transform 5.13s, setup 0ms, collect 15.08s, tests 4.93s, environment 33.60s, prepare 7.45s)
+

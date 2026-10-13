@@ -1444,9 +1444,9 @@ onBeforeUnmount(() => {
   color: var(--ink);
 }
 .pdf-reader-tools button.active {
-  border-color: rgba(182, 83, 59, 0.45);
+  border-color: var(--brand-accent-line);
   background: #fffaf5;
-  color: var(--reader-coral);
+  color: var(--brand-green-deep);
 }
 .pdf-reader-tools button:disabled {
   cursor: default;
@@ -1599,7 +1599,7 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   border: 2px solid var(--reader-coral);
   border-radius: 3px;
-  background: rgba(182, 83, 59, 0.14);
+  background: var(--reader-coral-soft);
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.72);
   pointer-events: none;
 }
@@ -1612,7 +1612,7 @@ onBeforeUnmount(() => {
   margin: 0;
   padding: 0.5rem 0.75rem;
   transform: translateX(-50%);
-  border: 1px solid rgba(182, 83, 59, 0.4);
+  border: 1px solid var(--brand-accent-line);
   border-radius: 8px;
   background: rgba(255, 250, 245, 0.96);
   box-shadow: 0 4px 14px rgba(42, 36, 31, 0.14);
@@ -1629,11 +1629,11 @@ onBeforeUnmount(() => {
   min-width: 28px;
   height: 28px;
   padding: 0 5px;
-  border: 1px solid rgba(182, 83, 59, 0.38);
+  border: 1px solid var(--brand-accent-line);
   border-radius: 7px;
   background: #fffaf5;
   box-shadow: 0 2px 8px rgba(42, 36, 31, 0.18);
-  color: var(--reader-coral);
+  color: var(--brand-green-deep);
   font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
   line-height: 1;

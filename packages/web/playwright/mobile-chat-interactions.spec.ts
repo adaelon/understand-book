@@ -46,21 +46,22 @@ test('selection menu follows scrolling and clears on collapse or leaving the con
   await expect(menu).toHaveCount(0);
   await selectAnswer(page, 1);
   await expect(menu).toBeVisible();
-  await page.locator('.workspace-mobile-nav').getByRole('button', { name: '阅读', exact: true }).tap();
+  await page.getByRole('button', { name: '返回阅读', exact: true }).tap();
   await expect(menu).toHaveCount(0);
 });
 
 test('goal and teaching controls leave most of the mobile screen for answers with direct entries', async ({ page }) => {
   const transcript = page.locator('.transcript');
-  await expect.poll(async () => (await transcript.boundingBox())!.height).toBeGreaterThan(669 * .60);
+  await expect.poll(async () => (await transcript.boundingBox())!.height).toBeGreaterThan(669 * .75);
   await test.info().attach('mobile-layout-390', { body: JSON.stringify({ viewportHeight: 669, transcriptHeight: (await transcript.boundingBox())!.height }), contentType: 'application/json' });
   await page.screenshot({ path: test.info().outputPath('conversation-390.png') });
-  await expect(page.locator('.agent-head').getByRole('button', { name: '1 项待办', exact: true })).toBeVisible();
-  await page.locator('.agent-head').getByRole('button', { name: '1 项待办', exact: true }).tap();
+  await page.getByRole('button', { name: '学习与会话', exact: true }).tap();
+  await page.getByRole('button', { name: '1 项待办', exact: true }).tap();
   await expect(page.getByRole('dialog', { name: '当前任务详情' })).toBeVisible();
   await page.getByRole('button', { name: '关闭任务详情' }).tap();
-  await page.locator('.agent-input').getByRole('button', { name: '我的理解', exact: true }).tap();
+  await page.locator('.agent-head').getByRole('button', { name: '我的理解', exact: true }).tap();
   await expect(page.locator('.fixture-learning-action')).toHaveText('understanding');
+  await page.getByRole('button', { name: '学习与会话', exact: true }).tap();
   await page.getByRole('button', { name: '调整目标', exact: true }).tap();
   const goalDialog = page.getByRole('dialog', { name: '调整目标', exact: true });
   await expect(goalDialog).toBeVisible();
@@ -68,13 +69,12 @@ test('goal and teaching controls leave most of the mobile screen for answers wit
   await goalDialog.getByRole('button', { name: '保存目标', exact: true }).tap();
   await expect(goalDialog).toHaveCount(0);
   await expect(page.locator('.goal-text')).toHaveText('理解软硬件分工');
-  await page.getByRole('button', { name: '问答操作', exact: true }).tap();
   await page.getByRole('button', { name: '学习详情', exact: true }).tap();
   await expect(page.locator('.fixture-learning-action')).toHaveText('details');
   await page.setViewportSize({ width: 320, height: 568 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   await expect(page.locator('.agent-input textarea')).toBeInViewport();
-  await expect.poll(async () => (await transcript.boundingBox())!.height).toBeGreaterThan(568 * .55);
+  await expect.poll(async () => (await transcript.boundingBox())!.height).toBeGreaterThan(568 * .70);
   await test.info().attach('mobile-layout-320', { body: JSON.stringify({ viewportHeight: 568, transcriptHeight: (await transcript.boundingBox())!.height }), contentType: 'application/json' });
   await page.screenshot({ path: test.info().outputPath('conversation-320.png') });
 });

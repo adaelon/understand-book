@@ -1,0 +1,846 @@
+{
+  "base": "http://127.0.0.1:4174",
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 900,
+      "answer": {
+        "color": "rgb(37, 35, 32)",
+        "fontSize": "17px",
+        "lineHeight": "31.45px",
+        "width": 944.015625
+      }
+    },
+    {
+      "width": 390,
+      "height": 900,
+      "answer": {
+        "color": "rgb(37, 35, 32)",
+        "fontSize": "17px",
+        "lineHeight": "31.45px",
+        "width": 357
+      }
+    }
+  ],
+  "colors": [
+    {
+      "name": "home CTA 1440",
+      "mode": "text",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        182,
+        90,
+        23
+      ],
+      "ratio": 4.704454070613756,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home CTA hover 1440",
+      "mode": "text",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        145,
+        66,
+        15
+      ],
+      "ratio": 7.023100759063624,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home CTA focus 1440",
+      "mode": "focus",
+      "foreground": [
+        182,
+        90,
+        23
+      ],
+      "background": [
+        248,
+        246,
+        239
+      ],
+      "ratio": 4.350499370857828,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "2px solid",
+      "focusVisible": true
+    },
+    {
+      "name": "home text link 1440",
+      "mode": "text",
+      "foreground": [
+        145,
+        66,
+        15
+      ],
+      "background": [
+        248,
+        246,
+        239
+      ],
+      "ratio": 6.494695234593134,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home text link hover 1440",
+      "mode": "text",
+      "foreground": [
+        130,
+        64,
+        19
+      ],
+      "background": [
+        248,
+        246,
+        239
+      ],
+      "ratio": 7.2141618729849615,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home selected choice 1440",
+      "mode": "text",
+      "foreground": [
+        44,
+        51,
+        44
+      ],
+      "background": [
+        244,
+        229,
+        216
+      ],
+      "ratio": 10.54172596453728,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home selected tab 1440",
+      "mode": "text",
+      "foreground": [
+        145,
+        66,
+        15
+      ],
+      "background": [
+        244,
+        229,
+        216
+      ],
+      "ratio": 5.70072361691474,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home verify disabled 1440",
+      "mode": "disabled",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        182,
+        90,
+        23
+      ],
+      "ratio": 4.704454070613756,
+      "opacity": "0.5",
+      "disabled": true,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home verify enabled 1440",
+      "mode": "text",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        182,
+        90,
+        23
+      ],
+      "ratio": 4.704454070613756,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home register 1440",
+      "mode": "text",
+      "foreground": [
+        145,
+        66,
+        15
+      ],
+      "background": [
+        244,
+        229,
+        216
+      ],
+      "ratio": 5.70072361691474,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "2px solid",
+      "focusVisible": true
+    },
+    {
+      "name": "home dark section focus 1440",
+      "mode": "focus",
+      "foreground": [
+        215,
+        172,
+        139
+      ],
+      "background": [
+        37,
+        35,
+        32
+      ],
+      "ratio": 7.58488938271982,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "2px solid",
+      "focusVisible": true
+    },
+    {
+      "name": "library resume 1440",
+      "mode": "text",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        182,
+        90,
+        23
+      ],
+      "ratio": 4.704454070613756,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "library resume hover 1440",
+      "mode": "text",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        145,
+        66,
+        15
+      ],
+      "ratio": 7.023100759063624,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "library resume focus 1440",
+      "mode": "focus",
+      "foreground": [
+        182,
+        90,
+        23
+      ],
+      "background": [
+        239,
+        233,
+        222
+      ],
+      "ratio": 3.893606721633148,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "2px solid",
+      "focusVisible": true
+    },
+    {
+      "name": "chat history badge 1440",
+      "mode": "text",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        182,
+        90,
+        23
+      ],
+      "ratio": 4.704454070613756,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "chat send 1440",
+      "mode": "text",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        182,
+        90,
+        23
+      ],
+      "ratio": 4.704454070613756,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "chat send hover 1440",
+      "mode": "text",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        145,
+        66,
+        15
+      ],
+      "ratio": 7.023100759063624,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "chat send focus 1440",
+      "mode": "focus",
+      "foreground": [
+        182,
+        90,
+        23
+      ],
+      "background": [
+        250,
+        249,
+        245
+      ],
+      "ratio": 4.465554243160407,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "2px solid",
+      "focusVisible": true
+    },
+    {
+      "name": "chat send disabled 1440",
+      "mode": "disabled",
+      "foreground": [
+        170,
+        166,
+        156
+      ],
+      "background": [
+        239,
+        233,
+        222
+      ],
+      "ratio": 2.0107570746889585,
+      "opacity": "1",
+      "disabled": true,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "PDF note marker 1440",
+      "mode": "text",
+      "foreground": [
+        145,
+        66,
+        15
+      ],
+      "background": [
+        255,
+        250,
+        245
+      ],
+      "ratio": 6.770522397481743,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "PDF selected tool 1440",
+      "mode": "text",
+      "foreground": [
+        145,
+        66,
+        15
+      ],
+      "background": [
+        255,
+        250,
+        245
+      ],
+      "ratio": 6.770522397481743,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "PDF note label 1440",
+      "mode": "text",
+      "foreground": [
+        145,
+        66,
+        15
+      ],
+      "background": [
+        245,
+        240,
+        232
+      ],
+      "ratio": 6.190953549411446,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home CTA 390",
+      "mode": "text",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        182,
+        90,
+        23
+      ],
+      "ratio": 4.704454070613756,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home CTA hover 390",
+      "mode": "text",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        145,
+        66,
+        15
+      ],
+      "ratio": 7.023100759063624,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home CTA focus 390",
+      "mode": "focus",
+      "foreground": [
+        182,
+        90,
+        23
+      ],
+      "background": [
+        248,
+        246,
+        239
+      ],
+      "ratio": 4.350499370857828,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "2px solid",
+      "focusVisible": true
+    },
+    {
+      "name": "home text link 390",
+      "mode": "text",
+      "foreground": [
+        145,
+        66,
+        15
+      ],
+      "background": [
+        248,
+        246,
+        239
+      ],
+      "ratio": 6.494695234593134,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home text link hover 390",
+      "mode": "text",
+      "foreground": [
+        130,
+        64,
+        19
+      ],
+      "background": [
+        248,
+        246,
+        239
+      ],
+      "ratio": 7.2141618729849615,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home selected choice 390",
+      "mode": "text",
+      "foreground": [
+        44,
+        51,
+        44
+      ],
+      "background": [
+        244,
+        229,
+        216
+      ],
+      "ratio": 10.54172596453728,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home selected tab 390",
+      "mode": "text",
+      "foreground": [
+        145,
+        66,
+        15
+      ],
+      "background": [
+        244,
+        229,
+        216
+      ],
+      "ratio": 5.70072361691474,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home verify disabled 390",
+      "mode": "disabled",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        182,
+        90,
+        23
+      ],
+      "ratio": 4.704454070613756,
+      "opacity": "0.5",
+      "disabled": true,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home verify enabled 390",
+      "mode": "text",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        182,
+        90,
+        23
+      ],
+      "ratio": 4.704454070613756,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "home register 390",
+      "mode": "text",
+      "foreground": [
+        145,
+        66,
+        15
+      ],
+      "background": [
+        244,
+        229,
+        216
+      ],
+      "ratio": 5.70072361691474,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "2px solid",
+      "focusVisible": true
+    },
+    {
+      "name": "home dark section focus 390",
+      "mode": "focus",
+      "foreground": [
+        215,
+        172,
+        139
+      ],
+      "background": [
+        37,
+        35,
+        32
+      ],
+      "ratio": 7.58488938271982,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "2px solid",
+      "focusVisible": true
+    },
+    {
+      "name": "library resume 390",
+      "mode": "text",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        182,
+        90,
+        23
+      ],
+      "ratio": 4.704454070613756,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "library resume hover 390",
+      "mode": "text",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        145,
+        66,
+        15
+      ],
+      "ratio": 7.023100759063624,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "library resume focus 390",
+      "mode": "focus",
+      "foreground": [
+        182,
+        90,
+        23
+      ],
+      "background": [
+        239,
+        233,
+        222
+      ],
+      "ratio": 3.893606721633148,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "2px solid",
+      "focusVisible": true
+    },
+    {
+      "name": "chat send 390",
+      "mode": "text",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        182,
+        90,
+        23
+      ],
+      "ratio": 4.704454070613756,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "chat send hover 390",
+      "mode": "text",
+      "foreground": [
+        255,
+        255,
+        255
+      ],
+      "background": [
+        145,
+        66,
+        15
+      ],
+      "ratio": 7.023100759063624,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "chat send focus 390",
+      "mode": "focus",
+      "foreground": [
+        182,
+        90,
+        23
+      ],
+      "background": [
+        250,
+        249,
+        245
+      ],
+      "ratio": 4.465554243160407,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "2px solid",
+      "focusVisible": true
+    },
+    {
+      "name": "chat send disabled 390",
+      "mode": "disabled",
+      "foreground": [
+        108,
+        106,
+        100
+      ],
+      "background": [
+        245,
+        240,
+        232
+      ],
+      "ratio": 4.767066074849948,
+      "opacity": "1",
+      "disabled": true,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "PDF note marker 390",
+      "mode": "text",
+      "foreground": [
+        145,
+        66,
+        15
+      ],
+      "background": [
+        255,
+        250,
+        245
+      ],
+      "ratio": 6.770522397481743,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "PDF selected tool 390",
+      "mode": "text",
+      "foreground": [
+        145,
+        66,
+        15
+      ],
+      "background": [
+        255,
+        250,
+        245
+      ],
+      "ratio": 6.770522397481743,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    },
+    {
+      "name": "PDF note label 390",
+      "mode": "text",
+      "foreground": [
+        145,
+        66,
+        15
+      ],
+      "background": [
+        245,
+        240,
+        232
+      ],
+      "ratio": 6.190953549411446,
+      "opacity": "1",
+      "disabled": false,
+      "outline": "3px none",
+      "focusVisible": false
+    }
+  ],
+  "errors": [],
+  "status": "passed"
+}

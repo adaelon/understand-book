@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-13",
+  "officialPlayer": {
+    "project": "https://github.com/diffusionstudio/lottie",
+    "commit": "3c72912fad543897f90045ed4d355813837927fc",
+    "engine": "Skia Skottie / CanvasKit",
+    "contextDiscovery": "Three Yeye scenes present in /__context",
+    "framesInspected": {
+      "idle": [0, 45, 60, 119],
+      "reading": [0, 56, 64, 75, 149],
+      "success": [0, 27, 37, 74]
+    },
+    "refinements": [
+      "Expanded success eyelid mask to cover the higher white cap.",
+      "Replaced the thin page strip with a complete paper surface occluded by the original book cover."
+    ]
+  },
+  "webRuntime": {
+    "name": "lottie-web",
+    "version": "5.13.0",
+    "renderer": "svg",
+    "externalAssetPreview": "Rendered all three scenes through local HTTP",
+    "embeddedAssetPreview": "Rendered all three scenes through local HTTP",
+    "playback": "Idle and reading continue looping; success reaches frame 74 and exposes Replay; pause controls stop the loops",
+    "backgrounds": "Paper and dark preview controls work; transparent canvas preserved",
+    "proof": "proof/lottie-web-preview.png"
+  },
+  "exports": {
+    "gif": { "width": 1080, "height": 372, "fps": 20, "frames": 100, "seconds": 5 },
+    "mp4": { "codec": "h264", "width": 1080, "height": 372, "fps": 20, "frames": 100, "seconds": 5 }
+  },
+  "deliveryChecks": [
+    "All Lottie image paths resolve to bundled PNG files.",
+    "All layer parent references resolve.",
+    "Full MIT notices are bundled; the single-file HTML embeds the Lottie Web MIT notice."
+  ],
+  "limitations": [
+    "Animations retain PNG artwork and are not fully vector-rigged characters.",
+    "The dark fur silhouette has reduced contrast on dark backgrounds; prefer paper or light surfaces.",
+    "The standalone HTML was checked over local HTTP; direct file-protocol execution was not tested in the embedded browser."
+  ]
+}

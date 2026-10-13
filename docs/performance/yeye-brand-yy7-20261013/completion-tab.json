@@ -1,0 +1,10 @@
+{
+  "nods": [
+    {
+      "animation": "yeye-nod-80f3f5e6",
+      "identity": "tab"
+    }
+  ],
+  "transform": "matrix(0.999972, 0.00747432, -0.00747432, 0.999972, 0, 0.122357)",
+  "width": 1440
+}

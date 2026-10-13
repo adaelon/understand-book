@@ -350,6 +350,27 @@ describe("automatic build safe concurrent execution", () => {
     expect(three.work_units.pending).toBe(one.work_units.pending);
   });
 
+  it("waits when the only pending work is held despite two free executor slots", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "understand-book-held-work-"));
+    const source = path.join(root, "guide.md");
+    writeFileSync(source, "# Guide\n\nA semantic paragraph.\n", "utf8");
+    const buildPlan = confirmedStandardBuildPlan(source, root);
+    const plan = automaticBuildPlan(source, root, {
+      requested_workers: 3, available_agent_slots: 2, budget, build_plan: buildPlan,
+    });
+    if (!plan.preflight) throw new Error("expected dispatch preflight");
+    const held = plan.preflight.dispatch_plan.dispatches.flatMap(dispatch => dispatch.ordered_work_unit_ids);
+    expect(held).toHaveLength(1);
+    const options = {
+      available_agent_slots: 2, budget, build_plan: buildPlan, executor_dispatches: true,
+      accepted_plan_digest: plan.preflight.descriptor_plan_digest,
+    };
+    const waiting = automaticBuildNext(source, root, 3, { ...options, held_work_unit_ids: held });
+    expect(waiting.action).toMatchObject({ kind: "waiting", reason: "active_executors", stage: "pass1" });
+    expect(readAutomaticBuildAttemptSnapshot(resolveAutomaticBuildTarget(source, root)).stages).toEqual({});
+    expect(automaticBuildNext(source, root, 3, options).action.kind).toBe("dispatch");
+  });
+
   it("returns executor_unavailable with zero live slots and creates no task state", () => {
     const root = mkdtempSync(path.join(tmpdir(), "understand-book-no-slots-"));
     const source = path.join(root, "guide.md");

@@ -623,7 +623,7 @@ function reject() {
 .confirm-button {
   border-color: var(--brand-green);
   background: var(--brand-green);
-  color: var(--ink);
+  color: var(--brand-on-accent);
 }
 .confirmed-state {
   width: 100%;

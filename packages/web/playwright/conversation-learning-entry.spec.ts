@@ -91,7 +91,9 @@ async function setup(page: Page, session?: TutorSession, enabled = false) {
   await page.goto('/learning-entry-fixture');
   await expect(page.locator('.app-loading')).toHaveCount(0);
   if((page.viewportSize()?.width ?? 1280)<1024) await page.locator('.workspace-mobile-nav').getByRole('button',{name:'问答',exact:true}).click();
-  await expect(page.getByRole('switch',{name:'连续教学',exact:true})).toBeVisible();
+  if((page.viewportSize()?.width ?? 1280)<1024) {
+    await expect(page.getByRole('button',{name:'学习与会话',exact:true})).toBeVisible();
+  } else await expect(page.getByRole('switch',{name:'连续教学',exact:true})).toBeVisible();
   return {mutations,questions,errors,state,starts:()=>starts,failNext:()=>{failNext=true;}};
 }
 
@@ -165,22 +167,29 @@ test('failed saves preserve confirmed state and the goal draft, then retry the s
   expect(fixture.errors).toEqual([]);
 });
 
-for(const width of [390,320]) test(`phone layout, full screen and direct understanding at ${width}px`,async({page})=>{
+for(const width of [390,320]) test(`phone learning sheet, keyboard-sized viewport and direct understanding at ${width}px`,async({page})=>{
   await page.setViewportSize({width,height:844});
   const fixture=await setup(page,makeSession('book','paused'),true);
   const input=page.locator('.agent-input textarea');
   await input.fill('保留这份草稿');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await expect(input).toBeInViewport();
+  await page.getByRole('button',{name:'学习与会话',exact:true}).click();
   await expect(page.getByRole('button',{name:'继续这次学习',exact:false})).toBeInViewport();
   mkdirSync(output,{recursive:true}); await page.screenshot({path:resolve(output,`paused-${width}.png`)});
+  await page.getByRole('button',{name:'关闭学习与会话',exact:true}).click();
   await page.getByRole('button',{name:'我的理解',exact:true}).click();
   const panel=page.getByRole('dialog',{name:'学习详情',exact:true});
   await expect(panel.getByRole('tab',{name:'我的理解',exact:true})).toHaveAttribute('aria-selected','true');
   await panel.getByRole('button',{name:'关闭',exact:true}).click();
   await expect(input).toHaveValue('保留这份草稿');
-  await page.getByRole('button',{name:'问答全屏',exact:true}).click();
+  await page.getByRole('button',{name:'学习与会话',exact:true}).click();
   await expect(page.getByRole('switch',{name:'连续教学'})).toHaveCount(1);
+  await page.getByRole('button',{name:'学习详情',exact:true}).click();
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole('button',{name:'关闭',exact:true})).toBeFocused();
+  await panel.getByRole('button',{name:'关闭',exact:true}).click();
+  await expect(page.getByRole('button',{name:'学习与会话',exact:true})).toBeFocused();
   await page.setViewportSize({width,height:500});
   await expect(input).toBeInViewport();
   await expect(page.locator('.agent-input').getByRole('button',{name:'发送',exact:true})).toBeInViewport();
@@ -204,3 +213,57 @@ test('a different book offers an explicit new goal without resuming or overwriti
   expect(fixture.questions).toHaveLength(0);
   expect(fixture.errors).toEqual([]);
 });
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 669 }, { width: 320, height: 568 }]) {
+  test(`YY4 welcome becomes a compact identity after the first question at ${viewport.width}px`, async ({ page }, info) => {
+    await page.setViewportSize(viewport);
+    const fixture = await setup(page);
+    const evidence = resolve('../../docs/performance/yeye-brand-yy4-20261013');
+    mkdirSync(evidence, { recursive: true });
+    const welcome = page.locator('.conversation-welcome');
+    const input = page.locator('.agent-input textarea');
+    const identity = page.locator(viewport.width < 1024 ? '.mobile-learning-title' : '#reader-tab-agent');
+    await expect(welcome.getByRole('heading')).toHaveText('这一节，想先弄明白什么？');
+    await expect(welcome.locator('img')).toBeInViewport();
+    await expect(identity.locator('img')).toBeVisible();
+    for (const image of [welcome.locator('img'), identity.locator('img')]) {
+      await expect.poll(() => image.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+    }
+    await expect(welcome.locator('.yeye-mascot')).toHaveAttribute('aria-hidden', 'true');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await expect(input).toBeInViewport();
+    await page.screenshot({ path: resolve(evidence, `welcome-${viewport.width}.png`) });
+    if (viewport.width >= 1024) {
+      await page.getByRole('button', { name: '问答全屏', exact: true }).click();
+      await expect(page.locator('.rail-title img')).toBeVisible();
+      await expect(welcome).toHaveCSS('max-width', '360px');
+      await page.screenshot({ path: resolve(evidence, 'welcome-fullscreen.png') });
+    }
+    await page.getByRole('button', { name: '帮我讲清当前这一节' }).click();
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue('帮我梳理当前这一节的核心概念。');
+    expect(fixture.questions).toEqual([]);
+    await input.press('Control+Enter');
+    await expect(welcome).toHaveCount(0);
+    await expect(page.locator('.a-msg')).toBeVisible();
+    expect(fixture.questions).toEqual(['帮我梳理当前这一节的核心概念。']);
+    // Mobile intentionally blurs on sending to dismiss the keyboard; the composer stays mounted.
+    if (viewport.width >= 1024) await expect(input).toBeFocused();
+    else await expect(input).not.toBeFocused();
+    await input.fill('下一条问题先留在这里');
+    await expect(input).toBeInViewport();
+    await expect(page.locator('.transcript .yeye-mascot')).toHaveCount(0);
+    await page.screenshot({ path: resolve(evidence, `conversation-${viewport.width}.png`) });
+    await info.attach('YY4-layout', { body: JSON.stringify({ viewport, transcript: await page.locator('.transcript').boundingBox(), input: await input.boundingBox() }), contentType: 'application/json' });
+    if (viewport.width < 1024) {
+      await page.getByRole('button', { name: '返回阅读', exact: true }).click();
+      await page.locator('.workspace-mobile-nav').getByRole('button', { name: '问答', exact: true }).click();
+    } else {
+      await page.getByRole('button', { name: '退出问答全屏', exact: true }).click();
+    }
+    await expect(input).toHaveValue('下一条问题先留在这里');
+    await expect(identity.locator('img')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(fixture.errors).toEqual([]);
+  });
+}

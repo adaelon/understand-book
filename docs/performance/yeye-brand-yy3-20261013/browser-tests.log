@@ -1,0 +1,27 @@
+
+> @understand-book/web@0.0.0 test:e2e E:\allwork\download\agent\understand-book\packages\web
+> playwright test "--config" "../../docs/performance/yeye-brand-yy3-20261013/playwright.config.ts"
+
+[WebServer] (node:3288) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:36360) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 12 tests using 1 worker
+
+(node:35988) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 playwright\reading-resumption.spec.ts:7:42 › reading resumption preserves the saved scene at 320px (1.9s)
+  ok  2 playwright\reading-resumption.spec.ts:7:42 › reading resumption preserves the saved scene at 320px with long content (1.4s)
+  ok  3 playwright\reading-resumption.spec.ts:7:42 › reading resumption preserves the saved scene at 390px (1.6s)
+  ok  4 playwright\reading-resumption.spec.ts:7:42 › reading resumption preserves the saved scene at 390px with long content (1.3s)
+  ok  5 playwright\reading-resumption.spec.ts:7:42 › reading resumption preserves the saved scene at 768px (894ms)
+  ok  6 playwright\reading-resumption.spec.ts:7:42 › reading resumption preserves the saved scene at 768px with long content (801ms)
+  ok  7 playwright\reading-resumption.spec.ts:7:42 › reading resumption preserves the saved scene at 901px (834ms)
+  ok  8 playwright\reading-resumption.spec.ts:7:42 › reading resumption preserves the saved scene at 901px with long content (858ms)
+  ok  9 playwright\reading-resumption.spec.ts:7:42 › reading resumption preserves the saved scene at 1024px (881ms)
+  ok 10 playwright\reading-resumption.spec.ts:7:42 › reading resumption preserves the saved scene at 1024px with long content (861ms)
+  ok 11 playwright\reading-resumption.spec.ts:7:42 › reading resumption preserves the saved scene at 1440px (951ms)
+  ok 12 playwright\reading-resumption.spec.ts:7:42 › reading resumption preserves the saved scene at 1440px with long content (935ms)
+
+  12 passed (22.2s)

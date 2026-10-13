@@ -1,4 +1,70 @@
 import { expect, test } from '@playwright/test';
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
+
+for (const width of [320, 390, 768, 1000, 1024, 1440]) {
+  test(`YY5 reading companion shares the learning scene without obscuring it at ${width}px`, async ({ page }) => {
+    const height = width === 390 ? 844 : 900;
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width, height });
+    await page.goto('/home.html');
+    await page.evaluate(() => document.fonts.ready);
+    const companion = page.locator('.home-hero-companion');
+    await expect(companion).toContainText('页页');
+    await expect(companion.locator('.yeye-mascot')).toHaveAttribute('aria-hidden', 'true');
+    const pictures = page.locator('.home-nav .brand-logo, .home-hero-companion img');
+    await expect(pictures).toHaveCount(2);
+    await expect.poll(() => pictures.evaluateAll(images => images.every(image => {
+      const img = image as HTMLImageElement;
+      return img.complete && img.naturalWidth > 0;
+    }))).toBe(true);
+    await expect(page.locator('.home-note-first')).toContainText('今天 · 第一次学习');
+    await expect(page.locator('.home-note-next')).toContainText('下一次 · 接着往下学');
+
+    const bounds = await page.locator('.home-hero-copy, .home-hero-companion, .home-note-first, .home-note-next')
+      .evaluateAll(elements => elements.map(element => {
+        const { left, right, top, bottom } = element.getBoundingClientRect();
+        return { left, right, top, bottom };
+      }));
+    for (const box of bounds) {
+      expect(box.left).toBeGreaterThanOrEqual(0);
+      expect(box.right).toBeLessThanOrEqual(width);
+    }
+    for (let i = 0; i < bounds.length; i++) {
+      for (const b of bounds.slice(i + 1)) {
+        const a = bounds[i]!;
+        expect(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top).toBe(true);
+      }
+    }
+    const [copy, mascot, first, next] = bounds;
+    expect(first!.bottom).toBeLessThanOrEqual(next!.top);
+    if (width <= 640) {
+      expect(copy!.bottom).toBeLessThanOrEqual(mascot!.top);
+      expect(mascot!.bottom).toBeLessThanOrEqual(first!.top);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+    const start = page.getByRole('link', { name: '试着想明白一个问题', exact: true });
+    if (width === 390 || width === 1440) {
+      await expect(start).toBeInViewport({ ratio: 1 });
+      await expect(companion.locator('img')).toBeInViewport({ ratio: 1 });
+      const output = path.resolve('../../docs/performance/yeye-brand-yy5-20261013');
+      mkdirSync(output, { recursive: true });
+      await page.screenshot({ path: path.join(output, `home-viewport-${width}.png`) });
+      await page.locator('.home-hero').screenshot({ path: path.join(output, `home-scene-${width}.png`) });
+    }
+    await start.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/#learning-story$/);
+    await expect(page.getByRole('radio', { name: '把一边拉得越长越好', exact: true })).toBeInViewport();
+    await page.locator('.home-hero-actions').getByRole('link', { name: '参与内测', exact: false }).click();
+    await expect(page).toHaveURL(/#begin$/);
+    await expect(page.getByRole('link', { name: '已有内测码，开始注册', exact: false })).toBeInViewport();
+    await expect(page.getByRole('link', { name: '已经有账号？继续阅读', exact: false })).toHaveAttribute('href', './?account=login');
+    expect(errors).toEqual([]);
+  });
+}
 
 for (const width of [1440, 390]) {
   test(`garden experiment keeps attempts and checks changed conditions at ${width}px`, async ({ page }) => {

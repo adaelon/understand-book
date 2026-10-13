@@ -1,0 +1,19 @@
+
+> @understand-book/web@0.0.0 test:e2e E:\allwork\download\agent\understand-book\packages\web
+> playwright test "--config" "../../docs/performance/yeye-brand-yy7-20261013/playwright.config.ts" "--grep" "YY7 (changing chats|a late saved|a failed saved|invalidates)"
+
+[WebServer] (node:44736) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:26024) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 4 tests using 1 worker
+
+(node:20668) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 playwright\yeye-integration.spec.ts:256:1 › YY7 invalidates a completion when the host hides and returns during the saved-history read (1.6s)
+  ok 2 playwright\yeye-integration.spec.ts:280:1 › YY7 changing chats, returning to completed history and reloading never replay the nod (2.2s)
+  ok 3 playwright\yeye-integration.spec.ts:292:1 › YY7 a late saved read cannot deliver feedback into another chat (1.3s)
+  ok 4 playwright\yeye-integration.spec.ts:303:1 › YY7 a failed saved-history read remains static and reloading only establishes history (1.3s)
+
+  4 passed (13.5s)

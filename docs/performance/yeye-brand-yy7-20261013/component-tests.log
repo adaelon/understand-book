@@ -1,0 +1,29 @@
+
+> @understand-book/web@0.0.0 test E:\allwork\download\agent\understand-book\packages\web
+> vitest run "src/yeye-feedback.test.ts" "src/components/YeyeMascot.test.ts" "src/components/RightRail.test.ts" "src/NetworkApp.resumption.test.ts"
+
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/web
+
+ ✓ src/yeye-feedback.test.ts (22 tests) 12ms
+ ✓ src/components/YeyeMascot.test.ts (20 tests) 173ms
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.resumption.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.resumption.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/NetworkApp.resumption.test.ts (11 tests) 316ms
+ ✓ src/components/RightRail.test.ts (58 tests) 3691ms
+
+ Test Files  4 passed (4)
+      Tests  111 passed (111)
+   Start at  15:53:26
+   Duration  14.11s (transform 3.65s, setup 0ms, collect 8.56s, tests 4.19s, environment 13.02s, prepare 4.60s)
+

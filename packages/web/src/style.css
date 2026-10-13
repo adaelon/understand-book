@@ -1,3 +1,4 @@
+@import './brand.css';
 @import './reader-typography.css';
 
 :root {
@@ -20,13 +21,13 @@
   --code-border: #e0d7c8;
   --canvas-parchment: #f2ece3;
   --apple-ink: #141413;
-  --focus-blue: #cc785c;
+  --focus-blue: var(--brand-accent);
   --soft-ring: rgba(20, 20, 19, 0.08);
   --frosted: rgba(250, 249, 245, 0.86);
   --hairline: #e6dfd8;
   --hairline-soft: #ebe6df;
-  --brand-green: #cc785c;
-  --brand-green-deep: #a9583e;
+  --brand-green: var(--brand-accent);
+  --brand-green-deep: var(--brand-accent-deep);
   --brand-error: #c64545;
   --brand-tag: #5db8a6;
   --hl: #f7e4a5;
@@ -38,13 +39,13 @@
   --reader-card-warm: #f6f0e7;
   --reader-note: #f5f0e8;
   --reader-highlight: #fff6d7;
-  --reader-coral: #cc785c;
-  --reader-coral-soft: rgba(204, 120, 92, 0.14);
+  --reader-coral: var(--brand-accent);
+  --reader-coral-soft: color-mix(in srgb, var(--brand-accent) 14%, transparent);
   --reader-amber: #d4a017;
   --reader-teal: #5db8a6;
   --fg: var(--ink);
   --line: var(--hairline);
-  --accent: var(--brand-green);
+  --accent: var(--brand-accent-deep);
   --mono: "Geist Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
@@ -122,6 +123,9 @@ html[data-workspace-keyboard="true"] :is(.workspace-mobile-top, .workspace-mobil
   .topbar-expand, .topbar-collapse { display: none; }
 }
 .brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   flex: 0 0 auto;
   font-size: 0.9rem;
   font-weight: 600;
@@ -429,9 +433,9 @@ html[data-workspace-keyboard="true"] :is(.workspace-mobile-top, .workspace-mobil
   padding: 0.28rem 0.7rem;
 }
 .workspace-reader-surface-switch button[aria-pressed="true"] {
-  border-color: rgba(204, 120, 92, 0.38);
+  border-color: var(--brand-accent-line);
   background: var(--reader-coral-soft);
-  color: var(--reader-coral);
+  color: var(--brand-green-deep);
 }
 .workspace-return-desktop {
   position: absolute;
@@ -669,7 +673,7 @@ html[data-workspace-keyboard="true"] :is(.workspace-mobile-top, .workspace-mobil
   background: var(--reader-canvas);
 }
 .reader-pane:focus {
-  outline: 2px solid rgba(204, 120, 92, 0.26);
+  outline: 2px solid var(--focus-blue);
   outline-offset: -2px;
 }
 .annotation-marker {
@@ -843,7 +847,7 @@ html[data-workspace-keyboard="true"] :is(.workspace-mobile-top, .workspace-mobil
 .asset-code {
   border-top: 1px solid var(--code-border);
   background:
-    linear-gradient(90deg, rgba(204, 120, 92, 0.08), rgba(204, 120, 92, 0) 3.5rem),
+    linear-gradient(90deg, color-mix(in srgb, var(--brand-accent) 8%, transparent), transparent 3.5rem),
     var(--surface-code);
   color: var(--code-ink);
   white-space: pre;
@@ -963,7 +967,7 @@ html[data-workspace-keyboard="true"] :is(.workspace-mobile-top, .workspace-mobil
   display: inline-block;
   max-width: 100%;
   vertical-align: -0.04em;
-  border: 1px solid rgba(204, 120, 92, 0.22);
+  border: 1px solid var(--brand-accent-line);
   border-radius: 5px;
   background: rgba(255, 253, 248, 0.72);
   color: var(--reader-ink);
@@ -976,8 +980,8 @@ html[data-workspace-keyboard="true"] :is(.workspace-mobile-top, .workspace-mobil
   overflow-wrap: anywhere;
 }
 .formula-open:hover {
-  background: rgba(204, 120, 92, 0.1);
-  border-color: rgba(204, 120, 92, 0.44);
+  background: var(--brand-accent-soft);
+  border-color: var(--brand-accent);
 }
 .formula-open-source {
   min-width: 0;
@@ -1145,7 +1149,7 @@ html[data-workspace-keyboard="true"] :is(.workspace-mobile-top, .workspace-mobil
 }
 .note-kind,
 .note-fold {
-  color: var(--reader-coral);
+  color: var(--brand-green-deep);
   font-size: 0.74rem;
   font-weight: 650;
   text-transform: uppercase;
@@ -1196,13 +1200,13 @@ html[data-workspace-keyboard="true"] :is(.workspace-mobile-top, .workspace-mobil
   min-height: 30px;
   font-size: 0.78rem;
   padding: 0.14rem 0.52rem;
-  border-color: rgba(204, 120, 92, 0.2);
+  border-color: var(--brand-accent-line);
   background: rgba(255, 253, 248, 0.62);
   color: var(--reader-muted);
 }
 .note-btn:hover {
   color: var(--reader-ink);
-  border-color: rgba(204, 120, 92, 0.38);
+  border-color: var(--brand-accent);
 }
 .note-btn.del {
   color: var(--brand-error);
@@ -1227,7 +1231,7 @@ html[data-workspace-keyboard="true"] :is(.workspace-mobile-top, .workspace-mobil
   padding: 0.1em 0 0.1em 0.75em;
   color: var(--slate);
   border-left: 2px solid var(--reader-coral);
-  background: rgba(204, 120, 92, 0.07);
+  background: color-mix(in srgb, var(--brand-accent) 7%, transparent);
 }
 .md table {
   width: 100%;
@@ -1296,8 +1300,10 @@ button:active:not(:disabled) {
 }
 button:focus-visible,
 input:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid rgba(204, 120, 92, 0.34);
+textarea:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--focus-blue);
   outline-offset: 2px;
 }
 button:disabled {
@@ -1305,11 +1311,16 @@ button:disabled {
   background: var(--surface);
   cursor: default;
 }
-.ghost-pill.active,
-button.primary {
+.ghost-pill.active:not(:disabled),
+button.primary:not(:disabled) {
   border-color: var(--brand-green);
   background: var(--brand-green);
-  color: var(--ink);
+  color: var(--brand-on-accent);
+}
+.ghost-pill.active:hover:not(:disabled),
+button.primary:hover:not(:disabled) {
+  border-color: var(--brand-green-deep);
+  background: var(--brand-green-deep);
 }
 input,
 textarea {
@@ -1322,7 +1333,7 @@ textarea {
 }
 textarea:focus,
 input:focus {
-  outline: 2px solid rgba(204, 120, 92, 0.24);
+  outline: 2px solid var(--focus-blue);
   border-color: var(--brand-green);
 }
 
@@ -1347,8 +1358,8 @@ input:focus {
 }
 .block-actions button:hover {
   color: var(--reader-ink);
-  border-color: rgba(204, 120, 92, 0.38);
-  background: rgba(204, 120, 92, 0.08);
+  border-color: var(--brand-accent-line);
+  background: var(--brand-accent-soft);
 }
 .asset-actions {
   margin: 0;
@@ -1466,8 +1477,8 @@ input:focus {
     background: transparent;
   }
   .workspace-mobile-nav button.active {
-    color: var(--reader-coral);
-    border-color: rgba(204, 120, 92, 0.28);
+    color: var(--brand-green-deep);
+    border-color: var(--brand-accent-line);
     background: var(--reader-coral-soft);
   }
   .workspace-shell[data-navigation="compact"] .workspace-mobile-top {
@@ -1686,6 +1697,9 @@ input:focus {
   padding: 8px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--canvas); box-shadow: 0 -8px 24px #0002;
 }
 .workspace-mobile-nav { position: relative; }
+@media (max-width: 1023px) {
+  .workspace-shell[data-foreground="assistant"]:has(.right-rail.conversation-mobile) > :is(.workspace-mobile-top, .workspace-mobile-nav, .workspace-reader-surface-switch) { display: none; }
+}
 .workspace-mobile-nav .workspace-more-items button { max-width: none; text-align: left; }
 .workspace-shell[data-focus-reading="true"] .workspace-grid {
   grid-template-columns: minmax(0, 1fr);

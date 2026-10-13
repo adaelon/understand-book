@@ -1,0 +1,258 @@
+{
+  "base": "/yy2/",
+  "viewports": [
+    {
+      "width": 1440,
+      "deviceScaleFactor": 1,
+      "assets": [
+        {
+          "sample": "idle",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-idle--NunAlcP.webp",
+          "naturalWidth": 600,
+          "width": 300,
+          "height": 300,
+          "tabIndex": -1
+        },
+        {
+          "sample": "reading",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-reading-cream-CMx_fYTk.webp",
+          "naturalWidth": 600,
+          "width": 300,
+          "height": 300,
+          "tabIndex": -1
+        },
+        {
+          "sample": "avatar-paper-24",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "naturalWidth": 96,
+          "width": 24,
+          "height": 24,
+          "tabIndex": -1
+        },
+        {
+          "sample": "avatar-paper-32",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "naturalWidth": 96,
+          "width": 32,
+          "height": 32,
+          "tabIndex": -1
+        },
+        {
+          "sample": "avatar-white-24",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "naturalWidth": 96,
+          "width": 24,
+          "height": 24,
+          "tabIndex": -1
+        },
+        {
+          "sample": "avatar-white-32",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "naturalWidth": 96,
+          "width": 32,
+          "height": 32,
+          "tabIndex": -1
+        },
+        {
+          "sample": "avatar-tint-24",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "naturalWidth": 96,
+          "width": 24,
+          "height": 24,
+          "tabIndex": -1
+        },
+        {
+          "sample": "avatar-tint-32",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "naturalWidth": 96,
+          "width": 32,
+          "height": 32,
+          "tabIndex": -1
+        },
+        {
+          "sample": "body-120",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-idle--NunAlcP.webp",
+          "naturalWidth": 600,
+          "width": 120,
+          "height": 120,
+          "tabIndex": -1
+        },
+        {
+          "sample": "body-128",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-idle--NunAlcP.webp",
+          "naturalWidth": 600,
+          "width": 128,
+          "height": 128,
+          "tabIndex": -1
+        },
+        {
+          "sample": "body-160",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-idle--NunAlcP.webp",
+          "naturalWidth": 600,
+          "width": 160,
+          "height": 160,
+          "tabIndex": -1
+        },
+        {
+          "sample": "body-220",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-idle--NunAlcP.webp",
+          "naturalWidth": 600,
+          "width": 220,
+          "height": 220,
+          "tabIndex": -1
+        },
+        {
+          "sample": "named-avatar",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "naturalWidth": 96,
+          "width": 32,
+          "height": 32,
+          "tabIndex": -1
+        }
+      ],
+      "responses": [
+        {
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-idle--NunAlcP.webp",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-reading-cream-CMx_fYTk.webp",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "status": 200
+        }
+      ],
+      "layoutStable": true,
+      "noOverflow": true
+    },
+    {
+      "width": 390,
+      "deviceScaleFactor": 2,
+      "assets": [
+        {
+          "sample": "idle",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-idle--NunAlcP.webp",
+          "naturalWidth": 600,
+          "width": 300,
+          "height": 300,
+          "tabIndex": -1
+        },
+        {
+          "sample": "reading",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-reading-cream-CMx_fYTk.webp",
+          "naturalWidth": 600,
+          "width": 300,
+          "height": 300,
+          "tabIndex": -1
+        },
+        {
+          "sample": "avatar-paper-24",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "naturalWidth": 96,
+          "width": 24,
+          "height": 24,
+          "tabIndex": -1
+        },
+        {
+          "sample": "avatar-paper-32",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "naturalWidth": 96,
+          "width": 32,
+          "height": 32,
+          "tabIndex": -1
+        },
+        {
+          "sample": "avatar-white-24",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "naturalWidth": 96,
+          "width": 24,
+          "height": 24,
+          "tabIndex": -1
+        },
+        {
+          "sample": "avatar-white-32",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "naturalWidth": 96,
+          "width": 32,
+          "height": 32,
+          "tabIndex": -1
+        },
+        {
+          "sample": "avatar-tint-24",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "naturalWidth": 96,
+          "width": 24,
+          "height": 24,
+          "tabIndex": -1
+        },
+        {
+          "sample": "avatar-tint-32",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "naturalWidth": 96,
+          "width": 32,
+          "height": 32,
+          "tabIndex": -1
+        },
+        {
+          "sample": "body-120",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-idle--NunAlcP.webp",
+          "naturalWidth": 600,
+          "width": 120,
+          "height": 120,
+          "tabIndex": -1
+        },
+        {
+          "sample": "body-128",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-idle--NunAlcP.webp",
+          "naturalWidth": 600,
+          "width": 128,
+          "height": 128,
+          "tabIndex": -1
+        },
+        {
+          "sample": "body-160",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-idle--NunAlcP.webp",
+          "naturalWidth": 600,
+          "width": 160,
+          "height": 160,
+          "tabIndex": -1
+        },
+        {
+          "sample": "body-220",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-idle--NunAlcP.webp",
+          "naturalWidth": 600,
+          "width": 220,
+          "height": 220,
+          "tabIndex": -1
+        },
+        {
+          "sample": "named-avatar",
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "naturalWidth": 96,
+          "width": 32,
+          "height": 32,
+          "tabIndex": -1
+        }
+      ],
+      "responses": [
+        {
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-idle--NunAlcP.webp",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-reading-cream-CMx_fYTk.webp",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:6194/yy2/assets/yeye-avatar-B_Tl0K4K.webp",
+          "status": 200
+        }
+      ],
+      "layoutStable": true,
+      "noOverflow": true
+    }
+  ],
+  "errors": []
+}

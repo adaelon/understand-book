@@ -1,0 +1,20 @@
+
+> @understand-book/web@0.0.0 test E:\allwork\download\agent\understand-book\packages\web
+> vitest run "src/components/RightRail.test.ts"
+
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/web
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/RightRail.test.ts (56 tests) 2649ms
+
+ Test Files  1 passed (1)
+      Tests  56 passed (56)
+   Start at  14:14:32
+   Duration  11.56s (transform 1.90s, setup 0ms, collect 3.28s, tests 2.65s, environment 3.56s, prepare 894ms)
+

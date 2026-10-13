@@ -63,11 +63,13 @@ for (const { width, height } of [{ width: 1907, height: 879 }, { width: 1526, he
   });
   await page.setViewportSize({ width, height });
   await page.reload();
-  if (width < 1024) await page.locator('.workspace-mobile-nav').getByRole('button', { name: '问答', exact: true }).click();
-  await page.getByRole('button', { name: '问答全屏', exact: true }).click();
+  if (width < 1024) {
+    await page.locator('.workspace-mobile-nav').getByRole('button', { name: '问答', exact: true }).click();
+  } else await page.getByRole('button', { name: '问答全屏', exact: true }).click();
   const input = page.locator('.agent-input textarea');
   await input.fill('保留这份尚未发送的想法');
-  await input.blur();
+  if (width < 1024) await input.press('Escape');
+  else await input.blur();
   const dock = page.getByRole('group', { name: '当前回答的学习操作' });
   await expect(dock.getByRole('button', { name: '回答问题', exact: true })).toBeVisible();
   await page.locator('.transcript').evaluate(node => { node.scrollTop = 0; });

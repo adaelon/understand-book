@@ -1,0 +1,13 @@
+vite v6.4.3 building for production...
+transforming...
+✓ 19 modules transformed.
+rendering chunks...
+computing gzip size...
+../../tmp/yy2-production/yeye-preview.html                          0.46 kB │ gzip:  0.32 kB
+../../tmp/yy2-production/assets/yeye-avatar-B_Tl0K4K.webp           6.53 kB
+../../tmp/yy2-production/assets/yeye-idle--NunAlcP.webp           157.83 kB
+../../tmp/yy2-production/assets/yeye-reading-cream-CMx_fYTk.webp  162.77 kB
+../../tmp/yy2-production/assets/yeye-preview-Ccp_x7d_.css           1.65 kB │ gzip:  0.76 kB
+../../tmp/yy2-production/assets/yeye-preview-CmbUsG_r.js           64.07 kB │ gzip: 25.82 kB
+✓ built in 1.20s
+YY2 production verification passed: 2 viewports, 26 image instances, 3 built assets, stable delayed-image layout.

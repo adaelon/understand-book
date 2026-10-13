@@ -1,0 +1,11 @@
+{
+  "name": "页页",
+  "asset": "专用头像",
+  "created": "2026-10-13",
+  "file": "yeye-avatar.png",
+  "reference": "../v7/yeye-idle.png",
+  "tool": "内置 image_gen",
+  "source": "C:/Users/Lenovo/.codex/generated_images/01a133ad-238c-7683-ab46-04782616b9b9/exec-ec441d4b-9be2-4dac-9ebf-856fdd416211.png",
+  "prompt": "Use case: identity-preserve.\nAsset type: dedicated tiny UI avatar PNG for the reading companion Yeye, displayed at 24 and 32 CSS pixels.\nInput image: the approved v7 full-body Yeye is the identity reference. Derive a head-only avatar of this exact character.\nPreserve the recognizable large tilted bean-shaped head, slightly asymmetrical round triangle ears, broad warm cream cheek cloud, orange nose, apricot cheek spots, coherent pupils gazing slightly toward viewer-right, attentive clever friendly expression and tiny asymmetric closed smile. Same warm brown #332B25, cream #F7F3EB and baked orange #B65A17 palette. Keep the original soft geometric illustrated character; do not redesign as a different cat.\nComposition: a SINGLE isolated head only, both ears and both cheeks fully visible, centered on a square transparent canvas, head occupying about 92% of canvas width with minimal even clear margins. No neck, body, book, paws or tail. Adapt the eye whites, pupils and mouth stroke only as needed to remain unmistakable at 24px; strong simple contours, no fine texture. Avoid adding eyebrow marks, fur detail, accessories, outlines around a badge, or shadows. No circular background or frame, no text, no scenery, no sheet of variants. Clean alpha edges with real transparency, no white fringe.",
+  "production": "../production-v1/manifest.json"
+}

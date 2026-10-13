@@ -1,0 +1,938 @@
+{
+  "surfaces": [
+    {
+      "label": "home",
+      "width": 320,
+      "titles": [
+        {
+          "text": "把答案，学成自己的理解。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 300,
+          "width": 280,
+          "scrollWidth": 280
+        },
+        {
+          "text": "页页",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 210.796875,
+          "right": 290.796875,
+          "width": 80,
+          "scrollWidth": 80
+        },
+        {
+          "text": "听懂一个答案之后，你还想自己想明白。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 300,
+          "width": 280,
+          "scrollWidth": 280
+        },
+        {
+          "text": "从“好像懂了”，走到说得清、用得上。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 300,
+          "width": 280,
+          "scrollWidth": 280
+        },
+        {
+          "text": "给孩子保留“我先试试”的空间。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 300,
+          "width": 280,
+          "scrollWidth": 280
+        },
+        {
+          "text": "先有自己的想法，再看看它是否成立。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 300,
+          "width": 280,
+          "scrollWidth": 280
+        },
+        {
+          "text": "沿着原文，把问题想深一点。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 300,
+          "width": 280,
+          "scrollWidth": 280
+        },
+        {
+          "text": "原文在眼前，问题就在旁边。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 300,
+          "width": 280,
+          "scrollWidth": 280
+        },
+        {
+          "text": "把解释变成可以试的东西。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 300,
+          "width": 280,
+          "scrollWidth": 280
+        },
+        {
+          "text": "持续学习，不止于一次回答。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 300,
+          "width": 280,
+          "scrollWidth": 280
+        },
+        {
+          "text": "沿着原文，问下去。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 300,
+          "width": 280,
+          "scrollWidth": 280
+        },
+        {
+          "text": "让想法，经得起检验。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 300,
+          "width": 280,
+          "scrollWidth": 280
+        },
+        {
+          "text": "把前后，连起来。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 300,
+          "width": 280,
+          "scrollWidth": 280
+        },
+        {
+          "text": "开始之前，聊清楚几件事。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 300,
+          "width": 280,
+          "scrollWidth": 280
+        },
+        {
+          "text": "从一节内容，一个想弄明白的问题开始。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 43,
+          "right": 263.8125,
+          "width": 221,
+          "scrollWidth": 221
+        }
+      ]
+    },
+    {
+      "label": "home",
+      "width": 390,
+      "titles": [
+        {
+          "text": "把答案，学成自己的理解。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 370,
+          "width": 350,
+          "scrollWidth": 350
+        },
+        {
+          "text": "页页",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 267.5,
+          "right": 347.5,
+          "width": 80,
+          "scrollWidth": 80
+        },
+        {
+          "text": "听懂一个答案之后，你还想自己想明白。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 370,
+          "width": 350,
+          "scrollWidth": 350
+        },
+        {
+          "text": "从“好像懂了”，走到说得清、用得上。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 370,
+          "width": 350,
+          "scrollWidth": 350
+        },
+        {
+          "text": "给孩子保留“我先试试”的空间。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 370,
+          "width": 350,
+          "scrollWidth": 350
+        },
+        {
+          "text": "先有自己的想法，再看看它是否成立。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 370,
+          "width": 350,
+          "scrollWidth": 350
+        },
+        {
+          "text": "沿着原文，把问题想深一点。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 370,
+          "width": 350,
+          "scrollWidth": 350
+        },
+        {
+          "text": "原文在眼前，问题就在旁边。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 370,
+          "width": 350,
+          "scrollWidth": 350
+        },
+        {
+          "text": "把解释变成可以试的东西。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 370,
+          "width": 350,
+          "scrollWidth": 350
+        },
+        {
+          "text": "持续学习，不止于一次回答。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 370,
+          "width": 350,
+          "scrollWidth": 350
+        },
+        {
+          "text": "沿着原文，问下去。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 370,
+          "width": 350,
+          "scrollWidth": 350
+        },
+        {
+          "text": "让想法，经得起检验。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 370,
+          "width": 350,
+          "scrollWidth": 350
+        },
+        {
+          "text": "把前后，连起来。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 370,
+          "width": 350,
+          "scrollWidth": 350
+        },
+        {
+          "text": "开始之前，聊清楚几件事。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 370,
+          "width": 350,
+          "scrollWidth": 350
+        },
+        {
+          "text": "从一节内容，一个想弄明白的问题开始。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 43,
+          "right": 263.8125,
+          "width": 221,
+          "scrollWidth": 221
+        }
+      ]
+    },
+    {
+      "label": "home",
+      "width": 768,
+      "titles": [
+        {
+          "text": "把答案，学成自己的理解。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 736,
+          "width": 704,
+          "scrollWidth": 704
+        },
+        {
+          "text": "页页",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 54,
+          "right": 274,
+          "width": 220,
+          "scrollWidth": 220
+        },
+        {
+          "text": "听懂一个答案之后，你还想自己想明白。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 366.5,
+          "width": 335,
+          "scrollWidth": 335
+        },
+        {
+          "text": "从“好像懂了”，走到说得清、用得上。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 339,
+          "width": 307,
+          "scrollWidth": 307
+        },
+        {
+          "text": "给孩子保留“我先试试”的空间。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 430,
+          "right": 736,
+          "width": 306,
+          "scrollWidth": 306
+        },
+        {
+          "text": "先有自己的想法，再看看它是否成立。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 226.40625,
+          "width": 194,
+          "scrollWidth": 194
+        },
+        {
+          "text": "沿着原文，把问题想深一点。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 204.8125,
+          "width": 173,
+          "scrollWidth": 173
+        },
+        {
+          "text": "原文在眼前，问题就在旁边。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 234,
+          "right": 736,
+          "width": 502,
+          "scrollWidth": 502
+        },
+        {
+          "text": "把解释变成可以试的东西。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 234,
+          "right": 736,
+          "width": 502,
+          "scrollWidth": 502
+        },
+        {
+          "text": "持续学习，不止于一次回答。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 204.8125,
+          "width": 173,
+          "scrollWidth": 173
+        },
+        {
+          "text": "沿着原文，问下去。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 245.65625,
+          "width": 214,
+          "scrollWidth": 214
+        },
+        {
+          "text": "让想法，经得起检验。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 288.65625,
+          "right": 480.328125,
+          "width": 192,
+          "scrollWidth": 192
+        },
+        {
+          "text": "把前后，连起来。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 523.328125,
+          "right": 736,
+          "width": 213,
+          "scrollWidth": 213
+        },
+        {
+          "text": "开始之前，聊清楚几件事。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 301.59375,
+          "width": 270,
+          "scrollWidth": 270
+        },
+        {
+          "text": "从一节内容，一个想弄明白的问题开始。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 61,
+          "right": 301,
+          "width": 240,
+          "scrollWidth": 240
+        }
+      ]
+    },
+    {
+      "label": "home",
+      "width": 1024,
+      "titles": [
+        {
+          "text": "把答案，学成自己的理解。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 455.421875,
+          "width": 423,
+          "scrollWidth": 423
+        },
+        {
+          "text": "页页",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 479.421875,
+          "right": 639.421875,
+          "width": 160,
+          "scrollWidth": 160
+        },
+        {
+          "text": "听懂一个答案之后，你还想自己想明白。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 472,
+          "width": 440,
+          "scrollWidth": 440
+        },
+        {
+          "text": "从“好像懂了”，走到说得清、用得上。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 467,
+          "width": 435,
+          "scrollWidth": 435
+        },
+        {
+          "text": "给孩子保留“我先试试”的空间。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 558,
+          "right": 992,
+          "width": 434,
+          "scrollWidth": 434
+        },
+        {
+          "text": "先有自己的想法，再看看它是否成立。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 262.40625,
+          "width": 230,
+          "scrollWidth": 230
+        },
+        {
+          "text": "沿着原文，把问题想深一点。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 236.8125,
+          "width": 205,
+          "scrollWidth": 205
+        },
+        {
+          "text": "原文在眼前，问题就在旁边。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 234,
+          "right": 992,
+          "width": 758,
+          "scrollWidth": 758
+        },
+        {
+          "text": "把解释变成可以试的东西。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 234,
+          "right": 992,
+          "width": 758,
+          "scrollWidth": 758
+        },
+        {
+          "text": "持续学习，不止于一次回答。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 236.8125,
+          "width": 205,
+          "scrollWidth": 205
+        },
+        {
+          "text": "沿着原文，问下去。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 321,
+          "width": 289,
+          "scrollWidth": 289
+        },
+        {
+          "text": "让想法，经得起检验。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 384,
+          "right": 641,
+          "width": 257,
+          "scrollWidth": 257
+        },
+        {
+          "text": "把前后，连起来。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 704,
+          "right": 992,
+          "width": 288,
+          "scrollWidth": 288
+        },
+        {
+          "text": "开始之前，聊清楚几件事。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 32,
+          "right": 412.375,
+          "width": 380,
+          "scrollWidth": 380
+        },
+        {
+          "text": "从一节内容，一个想弄明白的问题开始。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 67,
+          "right": 326.203125,
+          "width": 259,
+          "scrollWidth": 259
+        }
+      ]
+    },
+    {
+      "label": "home",
+      "width": 1440,
+      "titles": [
+        {
+          "text": "把答案，学成自己的理解。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 130,
+          "right": 649.328125,
+          "width": 519,
+          "scrollWidth": 519
+        },
+        {
+          "text": "页页",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 681.328125,
+          "right": 901.328125,
+          "width": 220,
+          "scrollWidth": 220
+        },
+        {
+          "text": "听懂一个答案之后，你还想自己想明白。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 130,
+          "right": 680,
+          "width": 550,
+          "scrollWidth": 550
+        },
+        {
+          "text": "从“好像懂了”，走到说得清、用得上。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 130,
+          "right": 675,
+          "width": 545,
+          "scrollWidth": 545
+        },
+        {
+          "text": "给孩子保留“我先试试”的空间。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 766,
+          "right": 1310,
+          "width": 544,
+          "scrollWidth": 544
+        },
+        {
+          "text": "先有自己的想法，再看看它是否成立。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 130,
+          "right": 360.40625,
+          "width": 230,
+          "scrollWidth": 230
+        },
+        {
+          "text": "沿着原文，把问题想深一点。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 130,
+          "right": 334.8125,
+          "width": 205,
+          "scrollWidth": 205
+        },
+        {
+          "text": "原文在眼前，问题就在旁边。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 332,
+          "right": 1310,
+          "width": 978,
+          "scrollWidth": 978
+        },
+        {
+          "text": "把解释变成可以试的东西。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 332,
+          "right": 1310,
+          "width": 978,
+          "scrollWidth": 978
+        },
+        {
+          "text": "持续学习，不止于一次回答。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 130,
+          "right": 334.8125,
+          "width": 205,
+          "scrollWidth": 205
+        },
+        {
+          "text": "沿着原文，问下去。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 130,
+          "right": 492.328125,
+          "width": 362,
+          "scrollWidth": 362
+        },
+        {
+          "text": "让想法，经得起检验。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 555.328125,
+          "right": 885.65625,
+          "width": 330,
+          "scrollWidth": 330
+        },
+        {
+          "text": "把前后，连起来。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 948.65625,
+          "right": 1310,
+          "width": 361,
+          "scrollWidth": 361
+        },
+        {
+          "text": "开始之前，聊清楚几件事。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 130,
+          "right": 603.875,
+          "width": 474,
+          "scrollWidth": 474
+        },
+        {
+          "text": "从一节内容，一个想弄明白的问题开始。",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 183,
+          "right": 442.203125,
+          "width": 259,
+          "scrollWidth": 259
+        }
+      ]
+    },
+    {
+      "label": "login",
+      "width": 390,
+      "titles": [
+        {
+          "text": "回到你的阅读",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 24,
+          "right": 366,
+          "width": 342,
+          "scrollWidth": 342
+        }
+      ]
+    },
+    {
+      "label": "register",
+      "width": 390,
+      "titles": [
+        {
+          "text": "创建阅读账号",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 24,
+          "right": 366,
+          "width": 342,
+          "scrollWidth": 342
+        }
+      ]
+    },
+    {
+      "label": "bookshelf",
+      "width": 390,
+      "titles": [
+        {
+          "text": "选择阅读材料",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 20,
+          "right": 135.203125,
+          "width": 115,
+          "scrollWidth": 115
+        }
+      ]
+    },
+    {
+      "label": "welcome",
+      "width": 390,
+      "titles": [
+        {
+          "text": "这一节，想先弄明白什么？",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 17,
+          "right": 374,
+          "width": 357,
+          "scrollWidth": 357
+        }
+      ]
+    },
+    {
+      "label": "learning",
+      "width": 390,
+      "titles": [
+        {
+          "text": "学习详情",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 79,
+          "right": 244,
+          "width": 165,
+          "scrollWidth": 165
+        },
+        {
+          "text": "这次，想弄懂什么？",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 27,
+          "right": 363,
+          "width": 336,
+          "scrollWidth": 336
+        }
+      ]
+    },
+    {
+      "label": "understanding",
+      "width": 390,
+      "titles": [
+        {
+          "text": "看见理解的变化",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 27,
+          "right": 363,
+          "width": 336,
+          "scrollWidth": 336
+        }
+      ]
+    },
+    {
+      "label": "recap",
+      "width": 390,
+      "titles": [
+        {
+          "text": "本次阅读回顾",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 17,
+          "right": 132.203125,
+          "width": 115,
+          "scrollWidth": 115
+        }
+      ]
+    },
+    {
+      "label": "login",
+      "width": 1440,
+      "titles": [
+        {
+          "text": "回到你的阅读",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 488,
+          "right": 952,
+          "width": 464,
+          "scrollWidth": 464
+        }
+      ]
+    },
+    {
+      "label": "register",
+      "width": 1440,
+      "titles": [
+        {
+          "text": "创建阅读账号",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 488,
+          "right": 952,
+          "width": 464,
+          "scrollWidth": 464
+        }
+      ]
+    },
+    {
+      "label": "bookshelf",
+      "width": 1440,
+      "titles": [
+        {
+          "text": "选择阅读材料",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 170,
+          "right": 323.609375,
+          "width": 154,
+          "scrollWidth": 154
+        }
+      ]
+    },
+    {
+      "label": "welcome",
+      "width": 1440,
+      "titles": [
+        {
+          "text": "这一节，想先弄明白什么？",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 1073,
+          "right": 1424,
+          "width": 351,
+          "scrollWidth": 351
+        }
+      ]
+    },
+    {
+      "label": "learning",
+      "width": 1440,
+      "titles": [
+        {
+          "text": "学习详情",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 435,
+          "right": 615,
+          "width": 180,
+          "scrollWidth": 180
+        },
+        {
+          "text": "这次，想弄懂什么？",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 378,
+          "right": 1062,
+          "width": 684,
+          "scrollWidth": 684
+        }
+      ]
+    },
+    {
+      "label": "understanding",
+      "width": 1440,
+      "titles": [
+        {
+          "text": "看见理解的变化",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 378,
+          "right": 1062,
+          "width": 684,
+          "scrollWidth": 684
+        }
+      ]
+    },
+    {
+      "label": "recap",
+      "width": 1440,
+      "titles": [
+        {
+          "text": "本次阅读回顾",
+          "family": "\"Smiley Sans\", \"Noto Sans SC Variable\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "weight": "400",
+          "left": 335,
+          "right": 450.203125,
+          "width": 115,
+          "scrollWidth": 115
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

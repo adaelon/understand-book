@@ -273,5 +273,6 @@ textarea { display: block; width: 100%; box-sizing: border-box; font: inherit; l
 .save { background: var(--brand-green-deep); color: var(--reader-card); border-color: var(--brand-green-deep); min-height: 44px; }
 .history { margin-top: 24px; }.history h5 { margin-top: 16px; }.evidence-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }[aria-pressed='true'] { border-color: var(--brand-green-deep); background: var(--reader-coral-soft); }
 [role='alert'], [role='status'], .empty { margin: 12px 0; font-size: 13px; }[role='alert'] { color: var(--brand-error); }.empty { padding: 28px 0; color: var(--tutor-muted, var(--reader-muted)); }
+.space-heading h3 { font-family: var(--font-display); font-weight: 400; font-synthesis: none; }
 @media (max-width: 480px) { .space-heading h3 { font-size: 22px; }.reading-title { font-size: 23px; }.quote { padding: 16px; }.concept { gap: 10px; }.concept-icon { width: 32px; height: 36px; }textarea { font-size: 16px; } }
 </style>

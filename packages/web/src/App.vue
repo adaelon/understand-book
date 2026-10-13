@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, toRaw, watch } from "vue";
+import { createYeyeFeedback } from './yeye-feedback';
 import ShareImagePanel from './components/ShareImagePanel.vue';
 import { answerShareSource, deliveredAnswerText, excerptShareSource, noteShareSource, shareHighlightKey, shareNoteKey, sharePresentationKey, type ShareSource } from './reading-share';
 import { FolderOpen, Highlighter, Languages, MessageSquareText, RotateCcw, Save, Sparkles, X } from "@lucide/vue";
@@ -17,7 +18,7 @@ import { typographyHtml } from './reader-typography';
 import { recoverSubmissions, recoverWorkspaceBinding, pendingSubmissions } from './network-client';
 import type { RecapTarget } from './session-recap';
 import { resolveMcpSource, displayedSourceRange, type McpSource } from './mcp-source';
-const recapProps = defineProps<{ recapTarget?: RecapTarget | null; mcpSource?: McpSource | null; chatDraft?: ChatDraft | null }>();
+const recapProps = withDefaults(defineProps<{ recapTarget?: RecapTarget | null; mcpSource?: McpSource | null; chatDraft?: ChatDraft | null; readerVisible?: boolean }>(), { readerVisible: true });
 const recapEmit = defineEmits<{ (e: 'mcp-source-consumed'): void; (e: 'mcp-source-error', message: string): void; (e: 'recap-publication', target: RecapTarget): void; (e: 'recap-consumed'): void; (e: 'update:chatDraft', draft: ChatDraft): void; (e: 'show-allowance'): void; (e: 'show-library'): void }>();
 import { spendNotice, type SpendNotice } from './account-allowance';
 const api = bindSceneApi(sharedApi, readerKey);
@@ -268,9 +269,11 @@ const workspaceRef = ref<{
   toggleFocus: () => void;
 } | null>(null);
 const focusReading = ref(false);
+const assistantVisible = ref(false);
 const previousPdfAnchor = ref<PdfReadingAnchor | null>(null);
 const mobileGlobalActionsOpen = ref(false);
 const rightRailRef = ref<{
+  prepareCompletionFeedback: () => (() => void) | undefined;
   focusActivityHelp: (deliveryRefs: string[]) => void; scrollToTurn: (turnId: string) => Promise<boolean>;
   showMemory: (memId: string) => Promise<boolean>;
   replaceMemory?: (oldId: string, record: MemoryRecord) => void;
@@ -3434,6 +3437,8 @@ function collapseNoteOutside(event: PointerEvent) {
 const workspaceContextKey = computed(() => `${network.value.enabled ? sceneKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}:${activeChatSessionId.value || "no-chat"}`);
 const readerContextKey = computed(() => `${network.value.enabled ? readerKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}`);
 const chatSceneKey = computed(() => network.value.enabled ? sceneKey() : 'local');
+const yeyeFeedback = createYeyeFeedback();
+watch(workspaceContextKey, () => yeyeFeedback.reset(), { flush: 'sync' });
 const workspaceLogicalState = computed<WorkspaceLogicalState>(() => ({
   // Reader layout belongs to the book; recovering a chat must not replay saved focus.
   contextKey: buildWorkbenchSnapshot.value?.book_id ?? "no-book",
@@ -3479,6 +3484,9 @@ function requestWorkspaceTab(tab: WorkspaceAuxTab) {
   workspaceAuxTabRevision.value += 1;
 }
 function handleWorkspaceProjection(projection: WorkspaceProjection) {
+  // The wide CSS layout always renders the auxiliary column; saved slots only
+  // govern the adaptive single/compare foreground.
+  assistantVisible.value = projection.mode === 'wide' || projection.visibleRegions.includes('assistant');
   if (projection.navigation === "desktop") mobileGlobalActionsOpen.value = false;
 }
 let displayReadingPoint: { point: ReadingReturnPoint; interaction: number; navigation: number } | null = null;
@@ -3507,6 +3515,14 @@ let submissionSequence = 0;
 const residentRun = useAgentRun((snapshot) => { void finishResidentRun(snapshot).catch(fail); });
 const sending = computed(() => acceptingRun.value || residentRun.active.value);
 const runConnection = computed(() => residentRun.connection.value);
+const waitingTurnId = computed(() => {
+  const snapshot = residentRun.snapshot.value;
+  return snapshot?.descriptor.session_id === activeChatSessionId.value
+    && runConnection.value === 'connected' && !snapshot.error
+    && snapshot.persistence_state === 'pending'
+    && ['queued', 'waiting_model', 'running'].includes(snapshot.execution_state)
+    && !snapshot.draft?.view?.parts.length ? snapshot.descriptor.turn_id : null;
+});
 watch([residentRun.snapshot, residentRun.connection], ([snapshot]) => {
   if (!snapshot || snapshot.descriptor.session_id !== activeChatSessionId.value) return;
   const turn = chat.value.find(t => t.turnId === snapshot.descriptor.turn_id);
@@ -3583,13 +3599,23 @@ async function stopResidentRun() {
 }
 async function finishResidentRun(snapshot: RunSnapshot) {
   if (snapshot.descriptor.session_id !== activeChatSessionId.value || snapshot.descriptor.book_id !== buildWorkbenchSnapshot.value?.book_id) return;
+  const context = workspaceContextKey.value;
+  const current = () => !disposed && context === workspaceContextKey.value && runOwnsCurrentScene(snapshot);
+  if (!current()) return;
+  const feedback = rightRailRef.value?.prepareCompletionFeedback();
   const outcome = runOwnsCurrentScene(snapshot) ? snapshot.final_view?.outcome : null;
   const proposalEffect = outcome?.effects.find(effect => effect.kind === "LayoutProposal");
   if (proposalEffect?.kind === "LayoutProposal") pendingLayoutProposal.value = proposalEffect.proposal;
   const minimapEffect = [...(outcome?.effects ?? [])].reverse().find(effect => effect.kind === "PaperMinimap");
   if (minimapEffect?.kind === "PaperMinimap") lastPaperMinimapEffect.value = minimapEffect.effect;
   await refreshAnnotations();
-  if (snapshot.persistence_state === "saved" && snapshot.descriptor.session_id === activeChatSessionId.value) await refreshAgentHistory();
+  if (!current()) return;
+  if (snapshot.persistence_state === 'saved') {
+    const history = await api.agentHistory();
+    if (!current()) return;
+    const completed = applyAgentHistory(history, snapshot);
+    if (completed && !sending.value) feedback?.();
+  }
   submittedRunDrafts.delete(snapshot.descriptor.turn_id);
   window.dispatchEvent(new Event("tutor-state-changed"));
   await refreshProfileSurface(true);
@@ -3738,10 +3764,11 @@ function chatTurnFromHistory(turn: StoredAgentChatTurn, previous?: ChatTurn): Ch
   };
 }
 
-function applyAgentHistory(history: AgentHistoryResponse) {
+function applyAgentHistory(history: AgentHistoryResponse, completedRun?: RunSnapshot) {
   if (residentRun.snapshot.value && residentRun.snapshot.value.descriptor.session_id !== history.current.id) residentRun.forget();
   const previousChat = activeChatSessionId.value === history.active_session_id ? chat.value : [];
   activeChatSessionId.value = history.active_session_id;
+  const completed = yeyeFeedback.observe(workspaceContextKey.value, history, completedRun);
   chatSessions.value = history.sessions;
   chatGoals.value = history.current.goals ?? [];
   if (!chatGoals.value.some(goal => goal.id === targetGoalId.value && goal.status === "open")) targetGoalId.value = null;
@@ -3776,10 +3803,7 @@ function applyAgentHistory(history: AgentHistoryResponse) {
       restoreAllowanceDraft(current);
     }
   }
-}
-
-async function refreshAgentHistory() {
-  applyAgentHistory(await api.agentHistory());
+  return completed;
 }
 
 async function loadStartupHistory() {
@@ -5022,6 +5046,8 @@ async function submitOpenBook(dir = bookPickerDir.value) {
 
       <RightRail
         :key="chatSceneKey"
+        :companion-visible="recapProps.readerVisible !== false && appSurface === 'reader' && !focusReading && assistantVisible"
+        :waiting-turn-id="waitingTurnId"
         v-model:presentation-workspace="presentationWorkspace"
         ref="rightRailRef"
         @recap-publication="recapEmit('recap-publication', $event)"
@@ -5039,11 +5065,14 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         :tutor-enabled="tutor.state.value?.control.enabled"
         :tutor-enable-busy="tutor.busy.value || !!tutor.pending.value || !tutor.state.value"
         :continuation-label="tutor.label.value"
+        :learning-title="tutor.currentForSource.value?.user_intent"
+        :learning-attention="tutor.error.value || (tutor.currentForSource.value && tutor.currentForSource.value.status !== 'active' ? tutor.label.value : '')"
         @enable-tutor="tutorAction({ kind: 'set_enabled', enabled: true })"
         @continue-answer="continueAnswer"
         @clarify-answer="clarifyAnswer"
         @choose-continuation="chooseContinuation"
-        @return-reading="workspaceRef?.showReader()"
+        @return-reading="agentFullscreen = false; workspaceRef?.showReader()"
+        @workspace-menu="mobileGlobalActionsOpen = true"
         :run-connection="runConnection"
         :can-stop="residentRun.active.value"
         @stop-agent="stopResidentRun"
@@ -6117,7 +6146,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
 }
 .source-preview-code {
   background:
-    linear-gradient(90deg, rgba(204, 120, 92, 0.08), rgba(204, 120, 92, 0) 3.5rem),
+    linear-gradient(90deg, color-mix(in srgb, var(--brand-accent) 8%, transparent), transparent 3.5rem),
     var(--surface-code);
   color: var(--code-ink);
   border-color: var(--code-border);

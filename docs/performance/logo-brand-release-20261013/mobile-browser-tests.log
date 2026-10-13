@@ -1,0 +1,46 @@
+
+> @understand-book/web@0.0.0 test:e2e E:\allwork\download\agent\understand-book\packages\web
+> playwright test "--config" "../../docs/performance/logo-brand-release-20261013/playwright-dev.config.ts"
+
+[WebServer] (node:38564) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:34636) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 29 tests using 2 workers
+
+(node:20744) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36276) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 playwright\conversation-learning-design.spec.ts:43:154 › long teaching keeps help and the real answer reachable at 1907px (5.5s)
+  ok  2 playwright\conversation-learning-entry.spec.ts:100:1 › actual App starts from chat, opens understanding directly, and preserves pause and drafts (6.0s)
+  ok  3 playwright\conversation-learning-design.spec.ts:43:154 › long teaching keeps help and the real answer reachable at 1526px (2.2s)
+  ok  4 playwright\conversation-learning-entry.spec.ts:143:1 › failed saves preserve confirmed state and the goal draft, then retry the same operation (1.7s)
+  ok  6 playwright\conversation-learning-entry.spec.ts:170:31 › phone learning sheet, keyboard-sized viewport and direct understanding at 390px (1.5s)
+  ok  5 playwright\conversation-learning-design.spec.ts:43:154 › long teaching keeps help and the real answer reachable at 1440px (2.1s)
+  ok  7 playwright\conversation-learning-entry.spec.ts:170:31 › phone learning sheet, keyboard-sized viewport and direct understanding at 320px (1.3s)
+  ok  9 playwright\conversation-learning-entry.spec.ts:200:1 › a different book offers an explicit new goal without resuming or overwriting the old session (1.1s)
+  ok  8 playwright\conversation-learning-design.spec.ts:43:154 › long teaching keeps help and the real answer reachable at 390px (1.8s)
+  ok 11 playwright\display-font-share.spec.ts:3:1 › share titles load and embed Smiley Sans while body text keeps its reading font (1.4s)
+  ok 10 playwright\conversation-learning-entry.spec.ts:218:3 › YY4 welcome becomes a compact identity after the first question at 1440px (1.6s)
+  ok 12 playwright\mobile-chat-interactions.spec.ts:21:1 › touch selection offers notes beside the selected answer and taps save the excerpt (836ms)
+  ok 13 playwright\conversation-learning-entry.spec.ts:218:3 › YY4 welcome becomes a compact identity after the first question at 390px (1.3s)
+  ok 14 playwright\mobile-chat-interactions.spec.ts:37:1 › selection menu follows scrolling and clears on collapse or leaving the conversation (1.0s)
+  ok 15 playwright\conversation-learning-entry.spec.ts:218:3 › YY4 welcome becomes a compact identity after the first question at 320px (1.3s)
+  ok 16 playwright\mobile-chat-interactions.spec.ts:53:1 › goal and teaching controls leave most of the mobile screen for answers with direct entries (1.3s)
+  ok 18 playwright\mobile-chat-interactions.spec.ts:82:1 › selection actions fit a narrow viewport and also work with the keyboard (693ms)
+  ok 17 playwright\mobile-learning-preview.spec.ts:4:3 › mobile reading, drafts and response at 390x669 (1.6s)
+  ok 19 playwright\mobile-workspace.spec.ts:3:34 › reader hides saved tool diagnostics at 1440px (1.1s)
+  ok 20 playwright\mobile-learning-preview.spec.ts:4:3 › mobile reading, drafts and response at 390x844 (1.6s)
+  ok 21 playwright\mobile-workspace.spec.ts:3:34 › reader hides saved tool diagnostics at 390px (1.1s)
+  ok 22 playwright\mobile-learning-preview.spec.ts:4:3 › mobile reading, drafts and response at 320x568 (1.5s)
+  ok 23 playwright\mobile-workspace.spec.ts:24:1 › mobile QA gives long answers the screen and preserves reading through menus (1.9s)
+  ok 24 playwright\mobile-learning-preview.spec.ts:67:1 › response editor and submit follow the visible viewport when the keyboard opens (604ms)
+  ok 25 playwright\mobile-workspace.spec.ts:64:1 › mobile QA keeps input visible when only the visual viewport shrinks (1.1s)
+  ok 26 playwright\mobile-workspace.spec.ts:99:1 › keeps one core tree through repeated region and orientation-sized projections (580ms)
+  ok 27 playwright\mobile-workspace.spec.ts:152:1 › freezes a document selection independently of mouseup and preserves source text (605ms)
+  ok 28 playwright\mobile-workspace.spec.ts:179:1 › does not submit while an IME composition is active (627ms)
+  ok 29 playwright\mobile-workspace.spec.ts:196:1 › RE5 focus returns to the original projection and preserves live slots and draft (979ms)
+
+  29 passed (31.8s)

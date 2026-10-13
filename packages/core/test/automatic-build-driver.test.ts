@@ -1241,6 +1241,32 @@ describe("S0 deterministic automatic-build driver protocol", () => {
     }
   }, 30_000);
 
+  it("returns WAIT with spare slots while the last executor owns all remaining work", async () => {
+    const driver = expectedDriver();
+    const value = fixture("last-held-executor");
+    const invocation = await createInvocation(driver, value, { max_parallel: 3 });
+    const first = await driver.automaticBuildStep({ version: "automatic_build_step_request.v1",
+      invocation_ref: invocation.invocation_ref, available_agent_slots: 3 });
+    if (first.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected one launch");
+    expect(first.action.executors).toHaveLength(1);
+    const launch = first.action.executors[0]!;
+    const live = { [launch.dispatch_slot_ref!]: { child: "last-child", opaque_handoff_ref: launch.opaque_handoff_ref } };
+    const refill = { version: "automatic_build_refill_request.v1", invocation_ref: invocation.invocation_ref,
+      capacity_limit: 3, live_by_slot: live, completed_refs: [], terminal_children: [] };
+    const waiting = await driver.runAutomaticBuildDriverCommand(refill) as import("../../../skills/build/automatic-build-refill").AutomaticBuildRefillResponseV1;
+    expect(waiting.available_agent_slots).toBe(2);
+    expect(waiting.live_by_slot).toEqual(live);
+    expect(waiting.ready_executors).toEqual([]);
+    expect(waiting.step.action).toMatchObject({ kind: "WAIT", reason: "active_executors" });
+    expect(waiting.step.build_progress?.status).toBe("running");
+    const released = await driver.runAutomaticBuildDriverCommand({ ...refill, terminal_children: ["last-child"] }) as import("../../../skills/build/automatic-build-refill").AutomaticBuildRefillResponseV1;
+    expect(released.available_agent_slots).toBe(3);
+    expect(released.live_by_slot).toEqual({});
+    expect(released.completed_refs).toContain(launch.opaque_handoff_ref);
+    expect(released.ready_executors).toHaveLength(1);
+    expect(released.ready_executors[0]!.opaque_handoff_ref).not.toBe(launch.opaque_handoff_ref);
+  }, 30_000);
+
   it("L1 refills the released slot while sibling children have not opened yet", async () => {
     const driver = expectedDriver();
     const value = fixture("l1-unopened-siblings", { body: `# Guide\n\n${Array.from({ length: 900 }, (_, i) =>

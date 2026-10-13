@@ -4,6 +4,8 @@ import { nextTick, reactive } from 'vue';
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import RightRail from "./RightRail.vue";
+import YeyeMascot from './YeyeMascot.vue';
+import { yeyeAssets } from '../yeye-assets';
 import { api } from '../api';
 import { renderMarkdown } from '../md';
 import { network, installIdentity, installWorkspace } from '../network-context';
@@ -39,6 +41,79 @@ it('puts the first-question learning entry in the conversation', () => {
   expect(wrapper.get('#reader-panel-agent').text()).toContain('这次想弄懂什么？');
   expect(wrapper.get('textarea[data-workspace-input="agent"]').attributes('placeholder')).toContain('学习目标');
   wrapper.unmount();
+});
+
+it('exchanges the welcome illustration for a compact identity without replacing the focused draft', async () => {
+  const wrapper = mount(RightRail, { props: baseProps, attachTo: document.body });
+  try {
+    const input = wrapper.get<HTMLTextAreaElement>('.agent-input textarea');
+    expect(wrapper.get('.conversation-welcome h3').text()).toBe('这一节，想先弄明白什么？');
+    expect(wrapper.get('.welcome-mascot img').attributes('src')).toBe(yeyeAssets.idle);
+    expect(wrapper.get('.welcome-mascot').attributes('aria-hidden')).toBe('true');
+    await wrapper.get('.question-example').trigger('click');
+    expect(document.activeElement).toBe(input.element);
+    expect(wrapper.emitted('send-agent')).toBeUndefined();
+    await wrapper.setProps({ agentInput: '帮我梳理当前这一节的核心概念。' });
+    await wrapper.get('.send-agent').trigger('click');
+    expect(wrapper.emitted('send-agent')).toHaveLength(1);
+    await wrapper.setProps({ sending: true, agentInput: '下一条问题的草稿', chat: [{
+      turnId: 'first-question', user: '帮我梳理当前这一节的核心概念。', pending: true, outcome: null,
+      questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+    }] });
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(false);
+    expect(wrapper.get('.u-msg').text()).toBe('帮我梳理当前这一节的核心概念。');
+    expect(wrapper.get('.agent-input textarea').element).toBe(input.element);
+    expect(document.activeElement).toBe(input.element);
+    expect(input.element.value).toBe('下一条问题的草稿');
+    for (const selector of ['#reader-tab-agent', '.rail-title', '.mobile-learning-title']) {
+      expect(wrapper.get(`${selector} .yeye-mascot img`).attributes('src')).toBe(yeyeAssets.avatar);
+    }
+    await wrapper.setProps({ sending: false, chat: [], activeChatSessionId: 'new-chat' });
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(true);
+    expect(input.element.value).toBe('下一条问题的草稿');
+  } finally { wrapper.unmount(); }
+});
+
+it.each([{ sending: true }, { canStop: true }])('keeps the welcome out of an active run: %j', async state => {
+  const wrapper = mount(RightRail, { props: { ...baseProps, ...state }, shallow: true });
+  try {
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(false);
+    await wrapper.setProps({ sending: false, canStop: false });
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(true);
+    await wrapper.setProps({ presentationWorkspace: { turnId: 'saved-turn', reference: { presentation_id: 'scene', revision: 1 } } });
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(false);
+  } finally { wrapper.unmount(); }
+});
+
+it('passes host and tab visibility to the welcome without rebuilding the draft', async () => {
+  const wrapper = mount(RightRail, { props: baseProps, shallow: true });
+  try {
+    const mascot = () => wrapper.findAllComponents(YeyeMascot).find(item => item.props('motion') === 'idle')!;
+    expect(mascot().props('active')).toBe(true);
+    await wrapper.setProps({ companionVisible: false }); expect(mascot().props('active')).toBe(false);
+    await wrapper.setProps({ companionVisible: true, requestedTab: 'notes', requestedTabRevision: 1 });
+    expect(mascot().props('active')).toBe(false);
+    await wrapper.setProps({ requestedTab: 'agent', requestedTabRevision: 2 }); expect(mascot().props('active')).toBe(true);
+  } finally { wrapper.unmount(); }
+});
+
+it('uses a full reading pose only for the current pending wait in a wide conversation', async () => {
+  const match = vi.spyOn(window, 'matchMedia').mockImplementation(query => ({
+    matches: query.includes('min-width'), addEventListener() {}, removeEventListener() {},
+  } as unknown as MediaQueryList));
+  const pending = { turnId: 'wait', user: '解释这一步', pending: true, outcome: null,
+    questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [], runStatus: '正在等待模型资源' };
+  const wrapper = mount(RightRail, { props: { ...baseProps, sending: true, canStop: true, chat: [pending], waitingTurnId: 'wait' }, shallow: true });
+  try {
+    expect(wrapper.find('.waiting-mascot').exists()).toBe(false);
+    await wrapper.setProps({ fullscreen: true }); expect(wrapper.find('.waiting-mascot').exists()).toBe(true);
+    expect(wrapper.get('.run-status').text()).toBe('正在等待模型资源');
+    await wrapper.setProps({ companionVisible: false });
+    expect(wrapper.findAllComponents(YeyeMascot).find(item => item.props('motion') === 'waiting')!.props('active')).toBe(false);
+    await wrapper.setProps({ waitingTurnId: null }); expect(wrapper.find('.waiting-mascot').exists()).toBe(false);
+    await wrapper.setProps({ waitingTurnId: 'wait', chat: [{ ...pending, draft: { message_id: 0, revision: 1, operation: 'replace', view: { parts: [{ kind: 'markdown', text: '正在出现的回答' }], sources: [] } } }] });
+    expect(wrapper.find('.waiting-mascot').exists()).toBe(false);
+  } finally { wrapper.unmount(); match.mockRestore(); }
 });
 
 it('keeps learning actions in the chat and the teaching switch next to the composer', async () => {
@@ -118,7 +193,7 @@ describe("RightRail history visibility", () => {
     try {
       expect(wrapper.get(".chat-actions .history-button span").text()).toBe(String(count));
       if (count === 0) {
-        expect(wrapper.get(".transcript .empty").text()).toContain("哪里还没读懂");
+        expect(wrapper.get(".transcript .empty").text()).toContain("这一节，想先弄明白什么？");
         expect(wrapper.find(".empty-history-button").exists()).toBe(false);
       } else {
         expect(wrapper.get(".transcript .empty").text()).toContain("1 段历史对话");
@@ -226,13 +301,17 @@ describe("RightRail history recovery", () => {
   it("keeps the draft editable, blocks chat changes until recovery, and offers retry", async () => {
     const wrapper = mount(RightRail, { props: { ...baseProps, agentInput: "保留草稿", historyLoading: true } });
     expect(wrapper.get('[role="status"]').text()).toContain("正在恢复对话");
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(false);
     expect((wrapper.get(".new-chat").element as HTMLButtonElement).disabled).toBe(true);
     expect((wrapper.get(".agent-input textarea").element as HTMLTextAreaElement).disabled).toBe(false);
-    expect((wrapper.get(".agent-input button:last-child").element as HTMLButtonElement).disabled).toBe(true);
+    expect((wrapper.get(".agent-input .send-agent").element as HTMLButtonElement).disabled).toBe(true);
     await wrapper.setProps({ historyLoading: false, historyError: "暂时无法连接" });
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(false);
+    expect(wrapper.get('[role="alert"]').text()).toContain('暂时无法连接');
     await wrapper.get('[role="alert"] button').trigger("click");
     expect(wrapper.emitted("retry-history")).toHaveLength(1);
     await wrapper.setProps({ historyError: null });
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(true);
     expect((wrapper.get(".agent-input button:last-child").element as HTMLButtonElement).disabled).toBe(false);
     wrapper.unmount();
   });

@@ -2,6 +2,7 @@ import { renderMarkdown } from './md';
 import katexCss from 'katex/dist/katex.min.css?inline';
 import type { ShareDraft } from './reading-share';
 import slowerArtwork from './assets/share-slower.svg?raw';
+import './brand.css';
 
 const minimumDiagramScale = .75;
 const diagramHorizontalSpace = 192;
@@ -33,7 +34,7 @@ const css = `
 .share-sheet.excerpt .paper > .share-section:first-child > .identity::before { content:'“'; display:block; font:90px/1.2 Georgia,serif; color:var(--ink); opacity:.65; }
 .share-sheet .caption { text-align:center; padding-top:38px; }
 .share-sheet .eyebrow { font:400 20px/1.7 "Noto Sans SC Variable"; letter-spacing:3px; color:#7b846e; }
-.share-sheet .caption h1 { font:500 60px/1.4 "Noto Serif SC Variable"; color:var(--accent); margin:14px 0 0; letter-spacing:4px; overflow-wrap:anywhere; }
+.share-sheet .caption h1 { font:400 60px/1.4 "Smiley Sans", "Noto Sans SC Variable", sans-serif; font-synthesis:none; color:var(--accent); margin:14px 0 0; letter-spacing:2px; overflow-wrap:anywhere; }
 .share-sheet .reflection { text-align:center; margin:24px 0 0; font-size:30px; color:var(--accent); }
 .share-sheet .reflection .identity { font-size:18px; margin-bottom:6px; color:#7b846e; }
 .share-sheet .reflection p:last-child { margin:0; }
@@ -113,6 +114,7 @@ async function fontsReady(text: string) {
       document.fonts.load('400 44px "Noto Serif SC Variable"', text),
       document.fonts.load('600 56px "Noto Serif SC Variable"', text),
       document.fonts.load('400 28px "Noto Sans SC Variable"', text),
+      document.fonts.load('400 60px "Smiley Sans"', text),
     ]);
     if (faces.some(list => !list.length)) throw new Error('missing font');
     await document.fonts.ready;
@@ -295,7 +297,7 @@ async function embeddedFonts(text: string, includeMath: boolean): Promise<string
   for (const sheet of document.styleSheets) walk(sheet);
   const selected = rules.filter(({ rule }) => {
     const family = rule.style.fontFamily;
-    if (!/Noto (Serif|Sans) SC Variable/.test(family) && !(includeMath && /KaTeX_/.test(family))) return false;
+    if (!/Noto (Serif|Sans) SC Variable|Smiley Sans/.test(family) && !(includeMath && /KaTeX_/.test(family))) return false;
     const ranges = rule.style.getPropertyValue('unicode-range');
     return !ranges || ranges.split(',').some(range => {
       const [start, end = start] = range.trim().replace(/^U\+/i, '').split('-');

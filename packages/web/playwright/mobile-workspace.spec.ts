@@ -6,9 +6,9 @@ for (const width of [1440, 390]) test(`reader hides saved tool diagnostics at ${
   if (width < 1024) {
     const nav = page.locator('.workspace-mobile-nav');
     await nav.getByRole('button', { name: '问答', exact: true }).click();
-    await nav.locator('summary').click();
-    await expect(nav.getByRole('button', { name: '轨迹', exact: true, includeHidden: true })).toHaveCount(0);
-    await nav.locator('summary').click();
+    await page.getByRole('button', { name: '学习与会话', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: '学习与会话', exact: true }).getByRole('button', { name: '轨迹', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: '关闭学习与会话', exact: true }).click();
   } else {
     await page.getByRole('button', { name: '阅读工具', exact: true }).click();
   }
@@ -31,22 +31,23 @@ test('mobile QA gives long answers the screen and preserves reading through menu
   await page.setViewportSize({ width: 390, height: 560 });
   await expect.poll(async () => (await transcript.boundingBox())!.height).toBeGreaterThan(560 * .6);
   await transcript.evaluate(el => { el.scrollTop = 150; el.dispatchEvent(new Event('scroll')); });
-  await nav.getByRole('button', { name: '阅读', exact: true }).click();
+  await page.getByRole('button', { name: '返回阅读', exact: true }).click();
   await nav.getByRole('button', { name: '问答', exact: true }).click();
   expect(await transcript.evaluate(el => el.scrollTop)).toBeCloseTo(150, 0);
   await expect(nav.getByRole('button', { name: '轨迹', exact: true, includeHidden: true })).toHaveCount(0);
   await expect(page.locator('#reader-tab-trace, #reader-panel-trace, .trace-toggle')).toHaveCount(0);
   for (const [label, id] of [['成果', 'artifacts'], ['画像', 'profile'], ['公式', 'formula']]) {
-    await nav.locator('summary').click();
-    await nav.getByRole('button', { name: label, exact: true }).click();
+    await page.getByRole('button', { name: '学习与会话', exact: true }).click();
+    await page.getByRole('dialog', { name: '学习与会话', exact: true }).getByRole('button', { name: label, exact: true }).click();
     await expect(page.locator(`#reader-panel-${id}`)).toBeVisible();
+    await nav.getByRole('button', { name: '问答', exact: true }).click();
   }
-  await nav.getByRole('button', { name: '问答', exact: true }).click();
-  await page.getByRole('button', { name: '问答操作', exact: true }).click();
+  await page.getByRole('button', { name: '学习与会话', exact: true }).click();
   await page.getByRole('button', { name: '本书历史', exact: false }).click();
   await expect(page.locator('.history-dialog')).toBeVisible();
   await page.getByRole('button', { name: '关闭历史', exact: true }).click();
-  await nav.getByRole('button', { name: '菜单', exact: true }).click();
+  await page.getByRole('button', { name: '学习与会话', exact: true }).click();
+  await page.getByRole('button', { name: '阅读设置', exact: true }).click();
   await expect(page.locator('.topbar').getByRole('button', { name: '新对话', exact: true })).toBeVisible();
   await page.locator('.topbar-mobile-close').click();
   const input = page.locator('.agent-input textarea');
@@ -66,8 +67,9 @@ test('mobile QA keeps input visible when only the visual viewport shrinks', asyn
   await page.locator('.workspace-mobile-nav').getByRole('button', { name: '问答', exact: true }).click();
   for (const fullscreen of [false, true]) {
     if (fullscreen) {
-      await page.getByRole('button', { name: '问答操作', exact: true }).click();
+      await page.setViewportSize({ width: 1440, height: 900 });
       await page.getByRole('button', { name: '问答全屏', exact: true }).click();
+      await page.setViewportSize({ width: 390, height: 669 });
     }
     await page.locator('.agent-input textarea').focus();
     await page.evaluate(() => {
@@ -129,12 +131,12 @@ test("keeps one core tree through repeated region and orientation-sized projecti
     await expect(page.locator(".fixture-new-chat-count")).toHaveAttribute("data-count", "1");
     for (let index = 0; index < 10; index += 1) {
       await page.getByRole("button", { name: "问答" }).click();
-      await page.getByRole("button", { name: "阅读", exact: true }).click();
+      await page.getByRole("button", { name: "返回阅读", exact: true }).click();
     }
     await expect(page.locator('.reader-pane[data-instance="reader-stable"]')).toHaveCount(1);
     await page.getByRole("button", { name: "问答" }).click();
     await expect(page.locator(".agent-input textarea")).toHaveValue("未发送草稿");
-    await page.getByRole("button", { name: "阅读", exact: true }).click();
+    await page.getByRole("button", { name: "返回阅读", exact: true }).click();
   } else {
     await expect(shell).toHaveAttribute("data-mode", "wide");
     await expect(page.locator(".topbar")).toBeVisible();
@@ -203,7 +205,8 @@ test('RE5 focus returns to the original projection and preserves live slots and 
   await expect(page.locator('.right-rail')).toBeHidden();
   await page.locator('.workspace-mobile-nav').getByRole('button', { name: '问答', exact: true }).click();
   await expect(page.locator('.agent-input textarea')).toHaveValue('未发送草稿');
-  await page.locator('.workspace-mobile-nav').getByRole('button', { name: '阅读', exact: true }).click();
+  if (page.viewportSize()!.width < 1024) await page.getByRole('button', { name: '返回阅读', exact: true }).click();
+  else await page.locator('.workspace-mobile-nav').getByRole('button', { name: '阅读', exact: true }).click();
   if (page.viewportSize()!.width >= 1024) await page.getByRole('button', { name: '展开工具栏', exact: true }).click();
   await page.getByRole('button', { name: '退出专注', exact: true }).filter({ visible: true }).click();
   await expect(shell).toHaveAttribute('data-mode', originalMode!);

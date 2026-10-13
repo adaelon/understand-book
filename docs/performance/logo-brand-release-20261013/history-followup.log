@@ -1,0 +1,34 @@
+
+> @understand-book/web@0.0.0 test:e2e E:\allwork\download\agent\understand-book\packages\web
+> playwright test "--config" "../../docs/performance/logo-brand-release-20261013/playwright.config.ts" "--grep" "late saved read|changing chats|saved task nods once" "--repeat-each" "3"
+
+[WebServer] (node:26760) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:26412) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 15 tests using 2 workers
+
+(node:43636) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23404) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 playwright\yeye-integration.spec.ts:202:64 › YY7 saved task nods once in the tab identity and preserves the draft (1.8s)
+  ok  2 playwright\yeye-integration.spec.ts:202:64 › YY7 saved task nods once in the tab identity and preserves the draft (1.8s)
+  ok  4 playwright\yeye-integration.spec.ts:202:64 › YY7 saved task nods once in the fullscreen identity and preserves the draft (1.5s)
+  ok  3 playwright\yeye-integration.spec.ts:202:64 › YY7 saved task nods once in the fullscreen identity and preserves the draft (1.5s)
+  ok  5 playwright\yeye-integration.spec.ts:202:64 › YY7 saved task nods once in the mobile identity and preserves the draft (1.4s)
+  ok  6 playwright\yeye-integration.spec.ts:202:64 › YY7 saved task nods once in the mobile identity and preserves the draft (1.5s)
+  ok  7 playwright\yeye-integration.spec.ts:280:1 › YY7 changing chats, returning to completed history and reloading never replay the nod (2.5s)
+  ok  8 playwright\yeye-integration.spec.ts:280:1 › YY7 changing chats, returning to completed history and reloading never replay the nod (2.6s)
+  ok  9 playwright\yeye-integration.spec.ts:292:1 › YY7 a late saved read cannot deliver feedback into another chat (1.6s)
+  ok 10 playwright\yeye-integration.spec.ts:292:1 › YY7 a late saved read cannot deliver feedback into another chat (1.6s)
+(node:1580) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 11 playwright\yeye-integration.spec.ts:202:64 › YY7 saved task nods once in the tab identity and preserves the draft (1.5s)
+  ok 12 playwright\yeye-integration.spec.ts:202:64 › YY7 saved task nods once in the fullscreen identity and preserves the draft (1.3s)
+  ok 13 playwright\yeye-integration.spec.ts:202:64 › YY7 saved task nods once in the mobile identity and preserves the draft (1.2s)
+  ok 14 playwright\yeye-integration.spec.ts:280:1 › YY7 changing chats, returning to completed history and reloading never replay the nod (2.1s)
+  ok 15 playwright\yeye-integration.spec.ts:292:1 › YY7 a late saved read cannot deliver feedback into another chat (1.4s)
+
+  15 passed (23.8s)

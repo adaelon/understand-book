@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { ApiError } from '../api';
 import { networkFetch } from '../network-client';
+import brandLogo from '../assets/brand/understand-book-logo.svg';
 import { accountError, passwordHint, validPassword, type AccountView } from '../account-forms';
 
 const props = defineProps<{ view: AccountView; token: string }>();
@@ -55,7 +56,7 @@ onBeforeUnmount(() => { active = false; clearInterval(timer); password.value = '
 
 <template>
   <main class="account-access">
-    <p class="eyebrow">UNDERSTAND BOOK</p><h1>{{ title }}</h1>
+    <a class="brand-signature" href="/home.html"><img :src="brandLogo" class="brand-logo" width="36" height="36" alt="" /><span>Understand Book</span></a><h1>{{ title }}</h1>
     <template v-if="view === 'register'">
       <form v-if="!pending" @submit.prevent="submit('start')">
         <p>使用管理员提供的一次性内测码注册，验证邮箱后即可登录。</p>
@@ -99,7 +100,7 @@ onBeforeUnmount(() => { active = false; clearInterval(timer); password.value = '
 </template>
 <style scoped>
 .account-access { box-sizing: border-box; width: min(100%, 32rem); max-height: 100%; margin: 0 auto; padding: clamp(24px, 6vh, 64px) 24px; overflow: auto; overflow-wrap: anywhere; }
-.eyebrow { font-size: 12px; letter-spacing: .12em; color: var(--muted); } h1 { font-size: 28px; }
+.eyebrow { font-size: 12px; letter-spacing: .12em; color: var(--muted); } h1 { font: 400 28px/1.45 var(--font-display); font-synthesis: none; }
 label { display: grid; gap: 8px; margin: 18px 0; } input { box-sizing: border-box; width: 100%; min-width: 0; padding: 12px; font: inherit; border: 1px solid var(--line, #bbb); border-radius: 6px; }
 button { padding: 10px 16px; margin: 6px 8px 6px 0; font: inherit; cursor: pointer; } .hint { font-size: 13px; color: var(--muted); } [role="alert"] { color: #a32620; }
 </style>
