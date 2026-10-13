@@ -1,8 +1,8 @@
-# SESSION_CHECKPOINT — 2026-10-13 品牌版本发布中
+# SESSION_CHECKPOINT — 2026-10-13 17:01 +08:00 品牌版本已上线
 
 ## 当前状态
 
-- 工作区：E:/allwork/download/agent/understand-book；分支 main；发布前基线 6b77e35。
+- 工作区：E:/allwork/download/agent/understand-book；分支 main；已部署源码 ac14134cefe529088821035b53542d242a599fb2，main 已推送。
 - 用户已确认焙橙书本与歪头页页负形 logo，并明确授权它与近期未上线改动一起发布。无需再次请求上线批准。
 - 主标识 SVG、透明 PNG、浏览器／触屏图标已接入；YY0–YY7、手机学习布局、得意黑及自动构建等待修复已整合。
 - 128 项组件／分享测试、97 项自动构建测试、29 项手机／分享浏览器场景、多用户生产构建通过。生产浏览器 37 个不同场景均有通过证据；一次历史切换测试首轮失败及后续定向结果记录于发布目录。
@@ -11,7 +11,9 @@
 
 - [本次发布记录](docs/performance/logo-brand-release-20261013/README.md)；本地发布脚本 tmp/logo-brand-release-20261013/publish.py。
 - 线上 https://understandbook.top/；服务器既有 release 为 /opt/understand-book/releases/to-tb-20261012。本次替换 dist-multi 静态文件、同步 Web 源码，不更换 Rust 服务或数据目录。
-- 下一步：提交候选源码；比对线上前端基线 7b94889；备份入口及源码；上传新资源并原子替换 HTML；线上浏览器与资源验证；记录实际提交、恢复点并推送。
+- 发布已于 16:58:10 +08:00 完成，17:00:57 正式域名浏览器验证通过。桌面／手机首页、注册、登录、新图标、得意黑与按需动画加载正常，无页面或静态资源错误。
+- 已比对线上 461 个源文件；服务 PID 642476 保持 active；旧资源保留；恢复点 /opt/understand-book/backups/logo-brand-20261013T085759Z。
+- 发布工作已完成。继续新任务前阅读发布记录；本地制作草稿和其他书籍产物仍按原位置保留。
 
 ## 接手读序
 

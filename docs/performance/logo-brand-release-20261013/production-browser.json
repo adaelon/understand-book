@@ -1,0 +1,72 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-10-13T09:00:57.401Z",
+  "checks": [
+    {
+      "width": 1440,
+      "route": "/",
+      "logoLoaded": true,
+      "displayFont": "Smiley Sans",
+      "fitsViewport": true
+    },
+    {
+      "width": 1440,
+      "route": "/?account=register → login",
+      "registrationVisible": true,
+      "passwordFieldVisible": true,
+      "logoVisible": true
+    },
+    {
+      "width": 390,
+      "route": "/",
+      "logoLoaded": true,
+      "displayFont": "Smiley Sans",
+      "fitsViewport": true
+    },
+    {
+      "width": 390,
+      "route": "/?account=register → login",
+      "registrationVisible": true,
+      "passwordFieldVisible": true,
+      "logoVisible": true
+    }
+  ],
+  "pageErrors": [],
+  "assetFailures": [],
+  "loadedAssets": [
+    "https://understandbook.top/assets/understand-book-logo-B0I1ntSd.css",
+    "https://understandbook.top/assets/home-3JKXYe5o.css",
+    "https://understandbook.top/assets/home-C0Mc0F9Q.js",
+    "https://understandbook.top/assets/understand-book-logo-CYLiJSZo.js",
+    "https://understandbook.top/assets/reading-workspace-BVYP9pPg.png",
+    "https://understandbook.top/assets/yeye-idle--NunAlcP.webp",
+    "https://understandbook.top/assets/interactive-explanation-C30axrXJ.png",
+    "https://understandbook.top/assets/noto-sans-sc-118-wght-normal-BPEb0gM9.woff2",
+    "https://understandbook.top/assets/noto-sans-sc-latin-wght-normal-DYAKOyvl.woff2",
+    "https://understandbook.top/assets/noto-serif-sc-latin-wght-normal-C94SydbU.woff2",
+    "https://understandbook.top/assets/noto-sans-sc-116-wght-normal-vdFVzbO2.woff2",
+    "https://understandbook.top/assets/noto-sans-sc-110-wght-normal-D2JBr045.woff2",
+    "https://understandbook.top/assets/noto-sans-sc-115-wght-normal-BN__2iBG.woff2",
+    "https://understandbook.top/assets/noto-serif-sc-118-wght-normal-DgpSdJgq.woff2",
+    "https://understandbook.top/assets/noto-sans-sc-117-wght-normal-Dsz3vkzU.woff2",
+    "https://understandbook.top/assets/noto-sans-sc-114-wght-normal-CRH9SDZu.woff2",
+    "https://understandbook.top/assets/noto-serif-sc-119-wght-normal-BO-8DIcz.woff2",
+    "https://understandbook.top/assets/noto-sans-sc-112-wght-normal-CiZxJMyY.woff2",
+    "https://understandbook.top/assets/noto-serif-sc-117-wght-normal-XTbr9ZZT.woff2",
+    "https://understandbook.top/assets/noto-sans-sc-113-wght-normal-OgQXOX6x.woff2",
+    "https://understandbook.top/assets/noto-serif-sc-112-wght-normal-MAZT2qqq.woff2",
+    "https://understandbook.top/assets/noto-serif-sc-115-wght-normal-CLw93OJ2.woff2",
+    "https://understandbook.top/assets/noto-serif-sc-116-wght-normal-dLgproop.woff2",
+    "https://understandbook.top/assets/noto-sans-sc-111-wght-normal-ClFr5QXM.woff2",
+    "https://understandbook.top/assets/SmileySans-Oblique-K8hpreXB.woff2",
+    "https://understandbook.top/assets/noto-serif-sc-114-wght-normal-rN6TP-iN.woff2",
+    "https://understandbook.top/assets/noto-sans-sc-119-wght-normal-BfzSEbFz.woff2",
+    "https://understandbook.top/assets/_commonjsHelpers-CqkleIqs.js",
+    "https://understandbook.top/assets/lottie-DG5NakNH.js",
+    "https://understandbook.top/assets/idle-DpMVN4B5.json",
+    "https://understandbook.top/assets/reader-be2sVTb0.css",
+    "https://understandbook.top/assets/reader-n39bLZFV.js"
+  ],
+  "model_requests": 0,
+  "account_writes": 0
+}

@@ -1,0 +1,29 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-10-13T09:00:09.022904+00:00",
+  "public": [
+    {
+      "route": "/index.html?login=1",
+      "entry_matches": true,
+      "assets_match": [
+        "/assets/reader-n39bLZFV.js",
+        "/assets/understand-book-logo-CYLiJSZo.js",
+        "/assets/_commonjsHelpers-CqkleIqs.js",
+        "/assets/understand-book-logo-B0I1ntSd.css",
+        "/assets/reader-be2sVTb0.css"
+      ]
+    },
+    {
+      "route": "/",
+      "entry_matches": true,
+      "assets_match": [
+        "/assets/home-C0Mc0F9Q.js",
+        "/assets/understand-book-logo-CYLiJSZo.js",
+        "/assets/understand-book-logo-B0I1ntSd.css",
+        "/assets/home-3JKXYe5o.css"
+      ]
+    }
+  ],
+  "service_unchanged": true,
+  "model_requests": 0
+}
