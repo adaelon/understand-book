@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue';
+import { Target } from '@lucide/vue';
 import type { TutorSession } from '../generated/TutorSession';
 const props = defineProps<{ session: TutorSession | null; enabled: boolean; busy: boolean; available: boolean; ready: boolean; otherSession: boolean; error: string }>();
 const emit = defineEmits<{ (e: 'goal', value: string): void; (e: 'resume'): void; (e: 'manage'): void; (e: 'retry'): void }>();
@@ -33,7 +34,8 @@ function save() {
   <section v-if="session || otherSession || editing" class="conversation-learning-goal" aria-label="本次学习目标">
     <template v-if="session">
       <div class="goal-heading">
-        <span class="goal-label">目标</span>
+        <span class="goal-icon" aria-hidden="true"><Target :size="18" /></span>
+        <span class="goal-label">本次学习</span>
         <p class="goal-text">{{ session.user_intent }}</p>
         <div class="goal-actions"><button ref="editButton" type="button" aria-label="调整目标" :disabled="busy || !available" @click="edit"><span class="desktop-adjust">调整目标</span><span class="mobile-adjust">调整</span></button><button class="goal-manage" type="button" @click="emit('manage')">详情</button></div>
       </div>
@@ -53,15 +55,18 @@ function save() {
   </section>
 </template>
 <style scoped>
-.conversation-learning-goal { flex: 0 0 auto; margin: 0 16px 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); font-size: .82rem; min-width: 0; }
-.goal-heading { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 8px; color: var(--steel); font-size: .76rem; }
-.goal-heading .goal-actions { grid-column: 2; grid-row: 1; }
+.conversation-learning-goal { flex: 0 0 auto; margin: 8px 16px 0; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: .82rem; min-width: 0; }
+.goal-heading { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 12px; color: var(--steel); font-size: .76rem; }
+.goal-icon { grid-row: 1 / 3; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: var(--reader-coral-soft); color: var(--brand-green-deep); }
+.goal-label { grid-column: 2; font-size: .7rem; letter-spacing: .06em; }
+.goal-heading .goal-actions { grid-column: 3; grid-row: 1 / 3; }
 .goal-resume { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 8px; color: var(--steel); font-size: .76rem; }
 .goal-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 p { margin: 4px 0; line-height: 1.6; overflow-wrap: anywhere; }
-.goal-text { grid-column: 1 / -1; grid-row: 2; color: var(--ink); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.goal-text { grid-column: 2; grid-row: 2; margin: 2px 0 0; color: var(--ink); font-size: .85rem; font-weight: 500; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .mobile-adjust { display: none; }
-button { font: inherit; color: var(--brand-green-deep); background: transparent; border: none; cursor: pointer; min-height: 36px; padding: 4px 3px; }
+button { font: inherit; color: var(--steel); background: transparent; border: none; border-radius: 6px; cursor: pointer; min-height: 36px; padding: 4px 6px; }
+button:hover:not(:disabled) { color: var(--brand-green-deep); background: var(--surface-soft); }
 button:disabled { opacity: .5; cursor: default; }
 .goal-editor-overlay { position: absolute; inset: 0; z-index: 20; display: flex; align-items: flex-end; background: #0003; }
 form { width: 100%; max-height: 100%; overflow-y: auto; box-sizing: border-box; margin: 0; padding: 16px; border: 1px solid var(--line); border-radius: 14px 14px 0 0; background: var(--canvas); }
@@ -70,10 +75,12 @@ form .goal-actions { margin-top: 12px; }
 input { display: block; box-sizing: border-box; width: 100%; font: inherit; margin-top: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--canvas); color: var(--ink); }
 @media (pointer: coarse) { button { min-height: 44px; } input { font-size: 16px; } }
 @media (max-width: 1023px) {
-  .conversation-learning-goal { margin: 0; padding: 0 12px; border: 0; border-radius: 0; }
+  .conversation-learning-goal { margin: 0; padding: 0 12px; }
   .goal-heading { grid-template-columns: auto minmax(0, 1fr) auto; min-height: 44px; }
+  .goal-icon { display: none; }
+  .goal-label { grid-column: 1; font-size: .7rem; letter-spacing: 0; }
   .goal-text { grid-row: 1; grid-column: 2; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .goal-heading .goal-actions { grid-column: 3; }
+  .goal-heading .goal-actions { grid-column: 3; grid-row: 1; }
   .goal-manage, .desktop-adjust { display: none; }
   .mobile-adjust { display: inline; }
   .goal-heading button { min-height: 44px; min-width: 44px; }

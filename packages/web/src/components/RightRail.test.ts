@@ -57,6 +57,31 @@ it('keeps learning actions in the chat and the teaching switch next to the compo
   wrapper.unmount();
 });
 
+it('keeps help bound to the latest delivered answer and focuses the existing draft without sending it', async () => {
+  const turn = { turnId: 'current-answer', user: '解释这一步', pending: false,
+    questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+    outcome: { answer: '一段较长的讲解', warning: null, effects: [], trace: [], memory_updates: [], turns: 1, tokens_spent: 0, incomplete: false,
+      profile_usage: { snapshot_revision: 0, injected_fact_ids: [], claimed_used_fact_ids: [], influences: [] } } };
+  const wrapper = mount(RightRail, { attachTo: document.body, shallow: true,
+    props: { ...baseProps, agentInput: '尚未发送的想法', chat: [turn] } });
+  try {
+    await wrapper.get('.learning-help').trigger('click');
+    expect(wrapper.emitted('clarify-answer')).toEqual([['current-answer']]);
+    await wrapper.get('.learning-respond').trigger('click');
+    await nextTick();
+    expect(document.activeElement).toBe(wrapper.get('.agent-input textarea').element);
+    expect((document.activeElement as HTMLTextAreaElement).value).toBe('尚未发送的想法');
+    expect(wrapper.emitted('send-agent')).toBeUndefined();
+    expect(wrapper.emitted('update:agentInput')).toBeUndefined();
+    await wrapper.setProps({ sending: true });
+    expect(wrapper.get('.learning-help').attributes('disabled')).toBeDefined();
+    await wrapper.setProps({ sending: false, chat: [turn, { ...turn, turnId: 'new-turn', outcome: null, pending: true }] });
+    expect(wrapper.find('.learning-dock').exists()).toBe(false);
+    await wrapper.setProps({ chat: [], activeChatSessionId: 'another-chat' });
+    expect(wrapper.find('.learning-dock').exists()).toBe(false);
+  } finally { wrapper.unmount(); }
+});
+
 describe("RightRail history visibility", () => {
   it('ADM8 exposes allowance from a stop while retaining partial answers and requiring an explicit click', async () => {
     installIdentity({ user_id: 'A', csrf_token: 'a' });

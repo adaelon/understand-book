@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { MessageCircle } from '@lucide/vue';
 import { api as sharedApi, ApiError, type TutorActivity } from '../api';
 import { answerDisplayParts, sourceMarkedParts } from '../answer-markdown';
 import type { AgentAnswerSource } from '../generated/AgentAnswerSource';
@@ -10,7 +11,7 @@ import type { PresentationFollowUp } from '../generated/PresentationFollowUp';
 const props = withDefaults(defineProps<{ sessionId: string; turnId: string; reference?: PresentationRef;
   snapshot?: () => Promise<PresentationFollowUp>; ready?: boolean; sources?: AgentAnswerSource[];
   answerText?: string; answerTarget?: () => HTMLElement | undefined }>(), { ready: true, sources: () => [] });
-const emit = defineEmits<{ (e: 'source', id: string, anchor: HTMLElement): void }>();
+const emit = defineEmits<{ (e: 'source', id: string, anchor: HTMLElement): void; (e: 'response-available', available: boolean): void }>();
 const root = ref<HTMLElement>();
 const activities = ref<TutorActivity[]>([]);
 // A delivered follow-up may repeat the answer verbatim. Observe that answer instead of rendering it twice.
@@ -21,6 +22,18 @@ function usesAnswer(activity: TutorActivity) {
     && withoutSources === props.answerText.replace(/[ \t]+$/gm, '').trim();
 }
 const visibleActivities = computed(() => activities.value.filter(activity => !usesAnswer(activity)));
+const responseActivity = computed(() => visibleActivities.value.find(activity => activity.status === 'active'
+  && activity.move.actions.some(action => action === 'self_report' || action === (activity.attempted ? 'revise' : 'submit'))));
+watch(responseActivity, activity => emit('response-available', !!activity), { immediate: true });
+function focusResponse() {
+  const activity = responseActivity.value;
+  if (!activity) return;
+  const article = Array.from(root.value?.querySelectorAll<HTMLElement>('[data-delivery-ref]') ?? [])
+    .find(node => node.dataset.deliveryRef === activity.delivery_ref);
+  const input = article?.querySelector('textarea');
+  input?.scrollIntoView({ block: 'center' });
+  input?.focus({ preventScroll: true });
+}
 const answerDeliveries = new Map<Element, string[]>();
 function renderText(text: string) {
   return answerDisplayParts(sourceMarkedParts(text, props.sources), props.sources)
@@ -79,7 +92,7 @@ function focusActivity(moveId: string, response?: string) {
   if (typeof response === 'string') responses.value[activity.delivery_ref] = response;
   root.value?.scrollIntoView({ block: 'nearest' });
 }
-defineExpose({ focusActivity });
+defineExpose({ focusActivity, focusResponse });
 function continueLearning(eventId: string, text: string) {
   root.value?.dispatchEvent(new CustomEvent('tutor-response', { bubbles: true, detail: { eventId, text } }));
 }
@@ -167,14 +180,18 @@ onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEvent
 <template>
   <section ref="root" class="tutor-activities" aria-label="教学活动">
     <p v-if="error" role="alert">{{ error }} <button :disabled="busy" @click="retry">重试</button></p>
-    <article v-for="activity in visibleActivities" :key="activity.delivery_ref" :data-delivery-ref="activity.delivery_ref">
+    <article v-for="activity in visibleActivities" :key="activity.delivery_ref" :data-delivery-ref="activity.delivery_ref" :class="{ interactive: activity.move.actions.length }">
+      <header v-if="activity.move.actions.length" class="activity-heading"><MessageCircle :size="17" aria-hidden="true" /><span>{{ activity.attempted ? '继续完善你的回答' : '轮到你了' }}</span><small>用自己的话试一试</small></header>
       <div class="activity-text md" v-html="renderText(activity.move.prompt)" @click="openSource(activity.move.prompt, $event)"></div>
       <p v-if="activity.status !== 'active'" role="status">{{ activity.status === 'paused' ? '学习已暂停，可查看已交付内容和帮助。' : '原教学来源不可用，暂不能提交。' }}</p>
-      <textarea v-if="activity.move.actions.some(a => ['submit', 'revise', 'self_report'].includes(a))" v-model="responses[activity.delivery_ref]" aria-label="活动回答" rows="2" />
+      <textarea v-if="activity.move.actions.some(a => ['submit', 'revise', 'self_report'].includes(a))" v-model="responses[activity.delivery_ref]" aria-label="活动回答" placeholder="写下你的理解，或还不确定的地方…" rows="3" />
+      <div v-if="activity.move.actions.length" class="activity-actions">
       <template v-for="action in activity.move.actions" :key="action">
         <button v-if="!(action === 'submit' && activity.attempted) && !(action === 'revise' && !activity.attempted)"
+          :class="{ primary: ['submit', 'revise', 'self_report'].includes(action) }"
           :data-help-action="['request_hint', 'reveal'].includes(action) ? action : undefined" :disabled="busy || !!pending || (activity.status !== 'active' && ['submit', 'revise', 'skip'].includes(action))" @click="act(activity, action)">{{ labels[action] }}</button>
       </template>
+      </div>
       <div v-if="helps[activity.delivery_ref]" class="help activity-text md" :data-help-for="activity.delivery_ref" role="status" v-html="renderText(helps[activity.delivery_ref].text)" @click="openSource(helps[activity.delivery_ref].text, $event)"></div>
       <small v-if="activity.move.actions.length && !activity.move.actions.some(a => ['request_hint', 'reveal'].includes(a))">当前题目未提供提示或直接讲解，可保留题目并返回原文阅读。</small>
       <small v-if="activity.help_seen.length">此活动已展示过帮助；重开页面会保留这项记录。</small>
@@ -187,10 +204,22 @@ onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEvent
 </template>
 <style scoped>
 .tutor-activities:empty { display: none; }
-article { padding: 12px 16px; border-top: 1px solid var(--line); }
-textarea { display: block; width: 100%; box-sizing: border-box; font: inherit; }
-button { min-height: 44px; margin: 4px; font: inherit; }
-small { display: block; margin-top: 8px; }
-.activity-text { line-height: 1.58; overflow-wrap: anywhere; }
+article { margin-top: 24px; min-width: 0; scroll-margin-block: 20px; }
+article.interactive { padding: 22px; border: 1px solid color-mix(in srgb, var(--brand-green) 28%, var(--line)); border-radius: 16px; background: var(--surface-soft); }
+.activity-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; color: var(--brand-green-deep); font-size: .85rem; font-weight: 600; }
+.activity-heading small { margin: 0 0 0 auto; font-weight: 400; }
+textarea { display: block; width: 100%; box-sizing: border-box; min-height: 100px; margin: 18px 0 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); color: var(--ink); font: inherit; font-size: 16px; line-height: 1.65; resize: vertical; }
+textarea::placeholder { color: var(--steel); }
+textarea:focus { outline: 2px solid var(--reader-coral); outline-offset: 2px; }
+.activity-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+button { min-height: 42px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--canvas); color: var(--slate); font: inherit; font-size: .82rem; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--brand-green); color: var(--brand-green-deep); }
+button.primary { background: var(--brand-green-deep); border-color: var(--brand-green-deep); color: #fff; font-weight: 600; }
+button.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--brand-green-deep) 88%, var(--ink)); color: #fff; }
+button:disabled { opacity: .5; cursor: default; }
+small { display: block; margin-top: 10px; color: var(--steel); font-size: .75rem; line-height: 1.6; }
+.activity-text { line-height: 1.85; overflow-wrap: anywhere; }
+.help { margin-top: 18px; padding: 14px; border-left: 2px solid var(--brand-green); background: var(--canvas); border-radius: 0 8px 8px 0; }
+@media (max-width: 600px) { article.interactive { padding: 16px; border-radius: 12px; } .activity-heading small { flex-basis: 100%; margin-left: 25px; } }
 .activity-text :deep(.agent-source-button) { display: inline-flex; align-items: center; gap: 0.3rem; max-width: 100%; margin: 0 0.2rem; padding: 0.18rem 0.42rem; border: 1px solid var(--line); border-radius: 6px; color: var(--accent); background: var(--canvas); font: inherit; font-size: 0.8em; cursor: pointer; }
 </style>

@@ -26,7 +26,7 @@ button { font: inherit; color: var(--ink); cursor: pointer; }
 .switch-track > span { width: 11px; height: 11px; border-radius: 50%; background: var(--canvas); }
 [aria-checked=true] .switch-track { justify-content: flex-end; background: var(--brand-green-deep); }
 .teaching-hint, .teaching-scope { color: var(--steel); font-size: .73rem; overflow-wrap: anywhere; }
-.teaching-scope { margin: 0; }
+.teaching-scope { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .teaching-error { margin: 6px 0 0; color: var(--ink); overflow-wrap: anywhere; }
 .teaching-error button { min-height: 36px; padding: 3px 6px; border: 0; background: transparent; color: var(--brand-green-deep); }
 button:disabled { opacity: .5; cursor: default; }

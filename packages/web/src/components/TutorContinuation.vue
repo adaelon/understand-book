@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { ArrowRight } from '@lucide/vue';
 import { api as sharedApi } from '../api';
 import { bindSceneApi } from '../network-context';
 import type { TutorContinuationView } from '../generated/TutorContinuationView';
@@ -100,12 +101,17 @@ onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEvent
 <template>
   <section ref="root" class="tutor-continuation" aria-label="接着理解">
     <template v-if="view">
+      <div class="continuation-heading"><span>接着理解</span><span class="continuation-hint">选一个方向，往前走一步</span></div>
       <p class="focus">{{ view.target_summary }}</p>
+      <div class="continuation-options">
       <div v-for="option in options" :key="option.option_id" :data-option-id="option.option_id" class="option">
         <button v-if="view.availability.status === 'eligible' && enabled && head === view.expected_chat_head"
-          :class="{ recommended: option.option_id === view.continuation.recommended_option_id }" :disabled="!actionable" @click="choose(option.option_id)">{{ option.label }}</button>
-        <span v-else>{{ option.label }}</span>
-        <small>{{ option.purpose }}</small>
+          :class="{ recommended: option.option_id === view.continuation.recommended_option_id }" :aria-label="option.label" :disabled="!actionable" @click="choose(option.option_id)">
+          <span class="option-top"><span v-if="option.option_id === view.continuation.recommended_option_id" class="recommendation">建议先试</span><ArrowRight :size="17" aria-hidden="true" /></span>
+          <span class="option-label">{{ option.label }}</span><small>{{ option.purpose }}</small>
+        </button>
+        <div v-else class="past-option"><span class="option-label">{{ option.label }}</span><small>{{ option.purpose }}</small></div>
+      </div>
       </div>
       <button v-if="view.availability.status === 'consumed'" @click="emit('locate', view.availability.accepted_turn_id)">查看已接纳的任务</button>
       <small v-else-if="view.availability.status !== 'eligible' || !enabled || head !== view.expected_chat_head">这是之前的建议，可对原回答继续提问。</small>
@@ -116,13 +122,25 @@ onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEvent
 </template>
 <style scoped>
 .tutor-continuation:empty { display: none; }
-.tutor-continuation { padding: 8px 16px; min-width: 0; }
-.focus, small { color: var(--muted); font-size: 12px; line-height: 1.6; }
-.option { margin: 8px 0; overflow-wrap: anywhere; }
-.option small { display: block; margin-top: 3px; }
-button { font: inherit; color: inherit; cursor: pointer; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 8px 12px; text-align: left; max-width: 100%; overflow-wrap: anywhere; }
-.recommended { border-color: var(--accent); }
+.tutor-continuation { container-type: inline-size; padding: 24px 0 4px; margin-top: 24px; border-top: 1px solid var(--line); min-width: 0; scroll-margin-top: 24px; }
+.continuation-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; color: var(--brand-green-deep); font-size: .76rem; font-weight: 600; }
+.continuation-hint { color: var(--steel); font-size: .73rem; font-weight: 400; }
+.focus { margin: 8px 0 16px; color: var(--ink); font-size: 1.06rem; font-weight: 600; line-height: 1.6; }
+small { color: var(--steel); font-size: .78rem; line-height: 1.7; }
+.continuation-options { display: grid; gap: 10px; }
+.option { min-width: 0; overflow-wrap: anywhere; }
+.option small { display: block; margin-top: 6px; font-weight: 400; }
+button { font: inherit; color: inherit; cursor: pointer; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--canvas); padding: 12px 16px; text-align: left; max-width: 100%; overflow-wrap: anywhere; transition: border-color var(--motion-fast), background var(--motion-fast); }
+.option > button { width: 100%; height: 100%; }
+.option-top { display: flex; align-items: center; justify-content: flex-end; min-height: 22px; margin-bottom: 8px; color: var(--brand-green-deep); }
+.recommendation { margin-right: auto; padding: 2px 7px; border-radius: 4px; background: var(--reader-coral-soft); font-size: .67rem; font-weight: 500; }
+.option-label { display: block; color: var(--ink); font-size: .9rem; font-weight: 600; }
+button.recommended { border-color: color-mix(in srgb, var(--brand-green) 50%, var(--line)); background: var(--surface-soft); }
+.option button:hover:not(:disabled) { border-color: var(--brand-green); background: var(--surface-soft); }
+.past-option { padding: 12px 0; border-bottom: 1px solid var(--hairline-soft); }
 button:disabled { opacity: .55; cursor: default; }
-.exits { display: flex; flex-wrap: wrap; gap: 8px; }
-.exits button { border-color: transparent; font-size: 13px; }
+.exits { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
+.exits button { border-color: transparent; background: transparent; padding-inline: 10px; color: var(--steel); font-size: .78rem; }
+.exits button:hover { color: var(--brand-green-deep); background: var(--surface-soft); }
+@container (min-width: 540px) { .continuation-options { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>

@@ -3,7 +3,7 @@ import { inject } from 'vue';
 import { deliveredAnswerText, shareHighlightKey } from '../reading-share';
 const shareHighlight = inject(shareHighlightKey, null);
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type ComputedRef } from "vue";
-import { ChevronDown, ExternalLink, Maximize2, Minimize2, Undo2, X } from "@lucide/vue";
+import { ArrowRight, BookOpen, ChevronDown, CircleHelp, ExternalLink, Maximize2, Minimize2, Undo2, X } from "@lucide/vue";
 import { api as sharedApi } from "../api";
 import { bindSceneApi, network, readerKey } from '../network-context';
 const api = bindSceneApi(sharedApi, readerKey);
@@ -196,10 +196,41 @@ const workspace = defineModel<PresentationWorkspace | null>('presentationWorkspa
 const workspaceVisible = computed(() => !!workspace.value && !workspace.value.suspended);
 const workspaceKey = computed(() => workspace.value ? presentationKey(workspace.value.turnId, workspace.value.reference) : '');
 const chatHead = computed(() => props.chat.filter(t => t.turnId).at(-1)?.turnId ?? null);
+const latestAnswerTurn = computed(() => {
+  const turn = props.chat.at(-1);
+  return turn?.turnId && !turn.pending && (!turn.error || turn.spendStop) && deliveredAnswerText(turn) ? turn : null;
+});
+const responseTurns = ref(new Set<string>());
+const activityInstances = new Map<string, InstanceType<typeof TutorActivities>>();
+function responseAvailable(turnId: string, available: boolean) {
+  if (available) responseTurns.value.add(turnId); else responseTurns.value.delete(turnId);
+}
+const learningResponseLabel = computed(() => {
+  const turnId = latestAnswerTurn.value?.turnId;
+  if (turnId && responseTurns.value.has(turnId)) return '回答问题';
+  if (turnId && hasSuggestion(turnId)) return '查看下一步';
+  return '说说我的理解';
+});
+function focusLearningResponse() {
+  const turnId = latestAnswerTurn.value?.turnId;
+  if (!turnId) return;
+  if (responseTurns.value.has(turnId)) { activityInstances.get(turnId)?.focusResponse(); return; }
+  if (hasSuggestion(turnId)) {
+    const turn = Array.from(transcriptRef.value?.querySelectorAll<HTMLElement>('[data-turn-id]') ?? [])
+      .find(node => node.dataset.turnId === turnId);
+    const continuation = turn?.querySelector<HTMLElement>('.tutor-continuation');
+    if (continuation) {
+      continuation.scrollIntoView({ block: 'start' });
+      continuation.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true });
+      return;
+    }
+  }
+  editQuestion();
+}
 const suggestionHosts = ref(new Set<string>());
 function suggestionAvailable(key: string, available: boolean) { if (available) suggestionHosts.value.add(key); else suggestionHosts.value.delete(key); }
 function hasSuggestion(turnId: string) { return [...suggestionHosts.value].some(key => key.startsWith(`${turnId}:`)); }
-watch(() => props.activeChatSessionId, () => suggestionHosts.value.clear());
+watch(() => props.activeChatSessionId, () => { suggestionHosts.value.clear(); responseTurns.value.clear(); activityInstances.clear(); });
 function editQuestion() {
   discussionOpen.value = true;
   void nextTick(() => document.querySelector<HTMLTextAreaElement>('.agent-input textarea')?.focus());
@@ -1042,7 +1073,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       <button class="discussion-toggle" @click="discussionOpen = !discussionOpen">{{ discussionOpen ? '收起讨论' : '展开讨论' }}</button>
     </div>
     <div v-if="!workspaceVisible" class="rail-toolbar agent-head">
-      <h3 class="rail-title">问这本书</h3>
+      <h3 class="rail-title"><BookOpen :size="20" aria-hidden="true" />问这本书</h3>
       <div v-if="!props.fullscreen" class="context-tabs" role="tablist" aria-label="辅助阅读功能">
       <button
         v-for="tab in tabs.slice(0, 2)"
@@ -1211,7 +1242,11 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
               </template>
             </div>
             <p v-else class="ans-text">暂无回答。</p>
-            <button v-if="deliveredAnswerText(turn) && turn.turnId && !workspaceVisible" class="clarify-answer" :disabled="sending || historyLoading || !!historyError" @click="emit('clarify-answer', turn.turnId)">这一步没跟上</button>
+            <TutorActivities v-if="turn.turnId && !turn.pending && (turn.hasTeaching || turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step'))"
+              :ref="instance => { if (instance) activityInstances.set(turn.turnId!, instance as InstanceType<typeof TutorActivities>); else activityInstances.delete(turn.turnId!); }"
+              :session-id="props.activeChatSessionId" :turn-id="turn.turnId" :answer-text="turn.outcome.answer ?? undefined" :answer-target="() => answerRoots.get(turn.turnId!)" :sources="turn.outcome.answer_view?.sources ?? []"
+              @response-available="responseAvailable(turn.turnId!, $event)" @source="(id, anchor) => openAgentSources(turn, [id], { currentTarget: anchor })" />
+            <button v-if="deliveredAnswerText(turn) && turn.turnId && !workspaceVisible" class="clarify-answer" :disabled="sending || historyLoading || !!historyError" @click="emit('clarify-answer', turn.turnId)"><CircleHelp :size="16" aria-hidden="true" />这一步没跟上</button>
             <TutorContinuation v-if="turn.turnId && deliveredAnswerText(turn) && (turn.hasTeaching || turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step')) && !workspaceVisible"
               :session-id="activeChatSessionId" :turn-id="turn.turnId" :head="chatHead" :enabled="!!continuationEnabled" :busy="sending || historyLoading || !!historyError"
               @available="suggestionAvailable(`${turn.turnId}:plain`, $event)"
@@ -1228,7 +1263,6 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
               <summary>回答操作</summary>
               <button @click="emit('share-answer', turn)">生成理解卡</button>
             </details>
-            <TutorActivities v-if="turn.turnId && !turn.pending && (turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step'))" :session-id="props.activeChatSessionId" :turn-id="turn.turnId" :answer-text="turn.outcome.answer ?? undefined" :answer-target="() => answerRoots.get(turn.turnId!)" :sources="turn.outcome.answer_view?.sources ?? []" @source="(id, anchor) => openAgentSources(turn, [id], { currentTarget: anchor })" />
             <p v-if="incompleteNotice(turn.outcome)" class="incomplete">
               未完成: {{ incompleteNotice(turn.outcome) }}
             </p>
@@ -1305,6 +1339,11 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       </div>
 
       <div class="agent-input" :class="{ composing: composeExpanded }">
+        <div v-if="latestAnswerTurn && !workspaceVisible && !historyLoading && !historyError" class="learning-dock" role="group" aria-label="当前回答的学习操作">
+          <div class="learning-dock-copy"><span>读到这里</span><p>{{ responseTurns.has(latestAnswerTurn.turnId!) ? '试着把理解变成自己的话' : '有疑问，随时停下来聊一聊' }}</p></div>
+          <button type="button" class="learning-help" :disabled="sending" @click="emit('clarify-answer', latestAnswerTurn.turnId!)"><CircleHelp :size="17" aria-hidden="true" />这一步没跟上</button>
+          <button type="button" class="learning-respond" :disabled="sending" @click="focusLearningResponse">{{ learningResponseLabel }}<ArrowRight :size="16" aria-hidden="true" /></button>
+        </div>
         <div v-if="$slots['tutor-control'] || $slots['learning-actions']" class="agent-input-tools">
           <slot name="tutor-control" />
           <div v-if="$slots['learning-actions']" class="conversation-learning-actions" role="group" aria-label="学习记录"><slot name="learning-actions" /></div>
@@ -1338,7 +1377,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           :value="props.agentInput"
           rows="1"
           aria-label="围绕当前阅读内容提问"
-          :placeholder="props.askDraft ? '围绕引用来源提问...' : !props.chat.length ? '输入问题或学习目标…' : '从当前阅读位置提问...'"
+          :placeholder="props.askDraft ? '围绕引用来源提问...' : !props.chat.length ? '输入问题或学习目标…' : '说说你的想法，或继续提问…'"
           @input="emit('update:agentInput', ($event.target as HTMLTextAreaElement).value)"
           @focus="composeExpanded = true"
           @keydown="onAgentInputKeydown"
@@ -1605,8 +1644,11 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 </template>
 
 <style scoped>
-.reading-continuation { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 12px; }
-.reading-continuation small { color: var(--muted); line-height: 1.5; }
+.reading-continuation { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 16px; }
+.reading-continuation small { color: var(--steel); line-height: 1.6; font-size: .75rem; }
+.reading-continuation > button { min-height: 42px; padding: 9px 15px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-soft); color: var(--brand-green-deep); font-size: .84rem; }
+.clarify-answer { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; margin-top: 18px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--canvas); color: var(--steel); font-size: .8rem; }
+.clarify-answer:hover:not(:disabled) { color: var(--brand-green-deep); border-color: var(--brand-green); background: var(--surface-soft); }
 .note-search-controls { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
 .note-search-controls input { width: 100%; min-width: 0; }
 .note-search-controls input, .note-search-controls select { min-height: 40px; padding: 8px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); color: var(--ink); }
@@ -1672,16 +1714,18 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .right-rail.fullscreen .agent-head,
 .right-rail.fullscreen .agent-input {
   width: 100%;
-  max-width: 72rem;
+  max-width: 56rem;
   margin-inline: auto;
 }
 .right-rail.fullscreen .transcript > * {
-  max-width: 72rem;
+  max-width: 52rem;
   margin-inline: auto;
 }
 .right-rail.fullscreen .transcript {
   min-height: 0;
 }
+.right-rail.fullscreen :deep(.conversation-learning-goal) { width: calc(100% - 48px); max-width: 52rem; margin-inline: auto; }
+.right-rail.fullscreen .transcript { padding: 30px 24px 32px; }
 .fullscreen-button {
   min-height: 40px;
   border: 1px solid var(--hairline);
@@ -2052,11 +2096,9 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   overflow-y: auto;
   overflow-wrap: anywhere;
 }
-.u-msg {
-  margin: 0 0 0.35rem;
-  font-weight: 600;
-}
-.a-msg,
+.u-msg { width: fit-content; max-width: 90%; margin: 0 0 24px auto; padding: 10px 16px; border-radius: 16px 16px 4px 16px; background: var(--surface-soft); color: var(--slate); font-size: .88rem; line-height: 1.65; font-weight: 400; }
+.a-msg { padding: 0; }
+.turn + .turn { padding-top: 28px; }
 .formula-card,
 .memory-card {
   background: var(--canvas);
@@ -2065,8 +2107,14 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   padding: 0.7rem 0.8rem;
 }
 .ans-text {
-  line-height: 1.58;
+  color: var(--charcoal);
+  line-height: 1.85;
 }
+.a-msg :deep(.md h2) { margin: 1.5em 0 .75em; font-size: 1.4em; line-height: 1.5; letter-spacing: -.025em; }
+.a-msg :deep(.md h3) { margin: 1.6em 0 .65em; font-size: 1.1em; line-height: 1.6; }
+.a-msg :deep(.md p) { margin: .8em 0; }
+.a-msg :deep(.md blockquote) { margin: 1em 0; padding: .5em 1em; border-left: 2px solid color-mix(in srgb, var(--brand-green) 65%, var(--line)); border-radius: 0 8px 8px 0; background: var(--surface-soft); color: var(--steel); font-size: .94em; }
+.a-msg :deep(.md blockquote p) { margin: .25em 0; }
 .answer-markdown {
   display: contents;
 }
@@ -2162,8 +2210,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   white-space: nowrap;
 }
 .answer-popover button:first-child { color: var(--brand-green-deep); }
-.answer-actions { margin-top:8px; font-size:12px; color:var(--ink-muted); }
-.answer-actions summary { cursor:pointer; }
+.answer-actions { margin-top: 12px; font-size: .75rem; color: var(--steel); }
+.answer-actions summary { width: fit-content; padding: 6px 0; cursor: pointer; }
 .answer-actions button { margin-top:6px; min-height:36px; }
 .ask-draft {
   border: 1px solid var(--hairline-soft);
@@ -2394,7 +2442,19 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  background: var(--canvas);
 }
+.learning-dock { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 8px 0 12px; border-bottom: 1px solid var(--hairline-soft); }
+.learning-dock-copy { display: none; margin-right: auto; }
+.learning-dock-copy > span { font-size: .87rem; font-weight: 600; color: var(--ink); }
+.learning-dock-copy p { margin: 3px 0 0; color: var(--steel); font-size: .75rem; }
+.learning-dock button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 11px; font-size: .84rem; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background var(--motion-fast), border-color var(--motion-fast); }
+.learning-dock .learning-help { color: var(--brand-green-deep); border-color: color-mix(in srgb, var(--brand-green) 32%, var(--line)); background: var(--surface-soft); }
+.learning-dock .learning-help:hover:not(:disabled) { border-color: var(--brand-green); background: var(--reader-coral-soft); }
+.learning-dock .learning-respond { background: var(--brand-green-deep); border-color: var(--brand-green-deep); color: #fff; box-shadow: 0 2px 4px #a9583e16; }
+.learning-dock .learning-respond:hover:not(:disabled) { background: color-mix(in srgb, var(--brand-green-deep) 88%, var(--ink)); }
+.learning-dock button:disabled { opacity: .5; cursor: default; }
+@media (min-width: 1024px) { .right-rail.fullscreen .learning-dock-copy { display: block; } }
 .goal-list { display: grid; gap: 0.5rem; }
 .goal-card { border: 1px solid var(--hairline); border-radius: 0.6rem; padding: 0.6rem; background: var(--canvas-parchment); }
 .goal-card strong { display: block; font-size: 0.83rem; overflow-wrap: anywhere; }
@@ -2425,7 +2485,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .transcript { min-height: 0; padding: 12px 16px 16px; }
 .rail-toolbar.agent-head { flex: 0 0 auto; min-height: 52px; padding: 4px 12px; align-items: center; flex-wrap: nowrap; gap: 8px; border-bottom: 1px solid var(--hairline-soft); z-index: 6; }
 .rail-title { display: none; margin: 0; white-space: nowrap; }
-.right-rail.fullscreen .rail-title { display: block; }
+.right-rail.fullscreen .rail-title { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.rail-title svg { color: var(--brand-green-deep); }
 .rail-toolbar .context-tabs { display: flex; align-items: center; gap: 2px; padding: 0; border: 0; background: transparent; position: static; }
 .rail-toolbar .tab { padding: 6px 10px; min-height: 40px; white-space: nowrap; }
 .context-tools, .chat-actions { position: relative; }
@@ -2459,7 +2520,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   .secondary-tabs { left: auto; right: 0; }
 }
 @media (max-width: 1023px) {
-  .rail-title { display: block; }
+  .rail-title { display: flex; align-items: center; gap: 8px; }
   .rail-toolbar .context-tabs { display: none; }
   .rail-toolbar.agent-head { min-height: 48px; padding: 0 8px 0 12px; gap: 4px; }
   .rail-title { font-size: 1rem; margin-right: auto; }
@@ -2468,6 +2529,11 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   .task-summary-toggle { display: none; }
   .presentation-workspace .task-summary-toggle { display: flex; }
   .agent-input { padding-top: 0; gap: 0; }
+  .learning-dock { gap: 8px; padding: 10px 0; flex-wrap: nowrap; justify-content: space-between; }
+  .learning-dock button { padding: 9px 11px; font-size: .8rem; gap: 6px; }
+  .learning-dock .learning-respond { flex: 1; }
+  .right-rail.fullscreen :deep(.conversation-learning-goal) { width: 100%; }
+  .right-rail.fullscreen .transcript { padding: 20px 16px 24px; }
   .agent-input-context, .compose-caption { margin-bottom: 8px; }
   .conversation-learning-actions :deep(button) { min-height: 44px; padding: 4px 0 4px 6px; white-space: nowrap; }
   .goal-overlay { z-index: 10; display: flex; align-items: flex-end; padding: 0; }

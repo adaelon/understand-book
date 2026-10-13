@@ -87,6 +87,26 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
+it('focuses the active response from the learning dock without replacing a draft or submitting it', async () => {
+  const wrapper = mount(TutorActivities, { attachTo: document.body, props: { sessionId: 'chat', turnId: 'turn' } });
+  try {
+    await flushPromises();
+    expect(wrapper.emitted('response-available')?.at(-1)).toEqual([true]);
+    const input = wrapper.get('textarea');
+    await input.setValue('还没写完的判断');
+    const scroll = vi.fn(); input.element.scrollIntoView = scroll;
+    wrapper.vm.focusResponse();
+    expect(scroll).toHaveBeenCalledWith({ block: 'center' });
+    expect(document.activeElement).toBe(input.element);
+    expect(input.element.value).toBe('还没写完的判断');
+    expect(api.tutorAction).not.toHaveBeenCalled();
+    api.tutorActivities.mockResolvedValue({ activities: [{ delivery_ref: 'question', status: 'paused', attempted: false, help_seen: [],
+      move: { prompt: 'What changed?', actions: ['submit', 'request_hint'] } }] });
+    window.dispatchEvent(new Event('tutor-state-changed')); await flushPromises();
+    expect(wrapper.emitted('response-available')?.at(-1)).toEqual([false]);
+  } finally { wrapper.unmount(); }
+});
+
 it.each(['submit', 'request_hint'])('registers a visible ordinary chat question before %s without a ready prop', async action => {
   const wrapper = mount(TutorActivities, { props: { sessionId: 'chat', turnId: 'turn' } });
   try {
