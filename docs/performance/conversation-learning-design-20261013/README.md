@@ -1,6 +1,6 @@
 # 教学问答的阅读布局与行动入口
 
-2026-10-13。本地实现及验证完成。
+状态：**已上线**。2026-10-13 **09:38:32（Asia/Hong_Kong）** 切换静态入口，09:39:13 完成正式 HTTPS 产物复核；桌面与手机登录页正常加载，无脚本错误或失败资源。
 
 ## 呈现与交互
 
@@ -30,4 +30,15 @@
 
 ## 已知限制
 
-预览采用测试内容；本次完成本地修改与构建，尚未发布到线上。
+教学预览采用测试内容；教学交互由前述 App 夹具验证，正式站点验收覆盖新资源及桌面、手机登录页加载。
+
+## 生产版本与恢复点
+
+- 前端应用提交：`18aae9e93bb4003661b111345d748da6039eb1b6`，main 已推送。
+- 静态目录：`/opt/understand-book/releases/to-tb-20261012/packages/web/dist-multi`；前端源码同步到同一 release。
+- 使用 `VITE_MULTI_USER=1 pnpm --filter @understand-book/web build --outDir dist-multi` 构建；上传 `reader-DJnGri3V.js` 与 `reader-CNKIi8WI.css`，复用 267 个既有资源。
+- 恢复点：`/opt/understand-book/backups/conversation-learning-design-20261013T013827Z`，保存旧入口及前端源码基线；旧静态资源保留。
+- 发布前 461 个前端基线文件与上次应用提交逐文件比较一致。正式首页、Reader 入口及直接引用的 JS／CSS 与此次产物逐字节一致。
+- 服务 PID `642476` 保持运行，后端仍为 `55e767f`，数据根仍为 `/opt/understand-book/data/multi-reader-to-tb-20261012`。
+
+证据：[部署回执](deployment.json)、[正式资源复核](public-verification.json)、[桌面／手机浏览器结果](production-browser.json)、[网站构建日志](build-multi.log)。发布脚本：主工作区 `tmp/conversation-learning-design-20261013/publish.py`。

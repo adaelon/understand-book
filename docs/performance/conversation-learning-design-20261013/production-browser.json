@@ -1,0 +1,29 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-10-13T01:38:59.072Z",
+  "checks": [
+    {
+      "width": 1440,
+      "url": "https://understandbook.top/index.html?login=1",
+      "passwordFieldVisible": true,
+      "assets": [
+        "https://understandbook.top/assets/reader-DJnGri3V.js",
+        "https://understandbook.top/assets/reader-CNKIi8WI.css",
+        "https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920"
+      ]
+    },
+    {
+      "width": 390,
+      "url": "https://understandbook.top/index.html?login=1",
+      "passwordFieldVisible": true,
+      "assets": [
+        "https://understandbook.top/assets/reader-DJnGri3V.js",
+        "https://understandbook.top/assets/reader-CNKIi8WI.css",
+        "https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920"
+      ]
+    }
+  ],
+  "pageErrors": [],
+  "assetFailures": [],
+  "model_requests": 0
+}
