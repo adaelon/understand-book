@@ -1,0 +1,23 @@
+{
+  "source_commit": "7b9488991fb3c00e29828b96c21f286c53b4e9a5",
+  "source_base": "18aae9e93bb4003661b111345d748da6039eb1b6",
+  "release": "/opt/understand-book/releases/to-tb-20261012",
+  "web_root": "/opt/understand-book/releases/to-tb-20261012/packages/web/dist-multi",
+  "service_before": "MainPID=642476\nWorkingDirectory=/opt/understand-book/releases/to-tb-20261012\nActiveState=active\n",
+  "base_files_compared": 461,
+  "published_at_utc": "2026-10-13T02:09:54.022123+00:00",
+  "backup": "/opt/understand-book/backups/conversation-sidebars-20261013T020948Z",
+  "assets_uploaded": [
+    "assets/reader-D5Rm1WOT.css",
+    "assets/reader-DO2hmBKd.js"
+  ],
+  "assets_reused": 267,
+  "source_files_updated": [
+    "packages/web/playwright/conversation-learning-design.spec.ts",
+    "packages/web/src/components/RightRail.test.ts",
+    "packages/web/src/components/RightRail.vue"
+  ],
+  "backend_restarted": false,
+  "old_assets_retained": true,
+  "service_after": "MainPID=642476\nWorkingDirectory=/opt/understand-book/releases/to-tb-20261012\nActiveState=active\n"
+}

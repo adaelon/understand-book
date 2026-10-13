@@ -1,6 +1,6 @@
 # 全屏问答的三栏布局
 
-状态：实现与本地验证完成，准备发布。
+状态：**已上线**。2026-10-13 **10:09:54（Asia/Hong_Kong）** 切换静态入口，10:10:31 完成正式 HTTPS 资源复核；桌面与手机登录页加载正常，无脚本错误或失败资源。
 
 ## 页面变化
 
@@ -48,4 +48,11 @@
 
 ## 发布
 
-沿用现网 release 的静态部署流程；发布脚本为主工作区 `tmp/conversation-sidebars-20261013/publish.py`，正式资源切换后补充版本与恢复点。
+- 前端应用提交：`7b9488991fb3c00e29828b96c21f286c53b4e9a5`，main 已推送。
+- 静态目录：`/opt/understand-book/releases/to-tb-20261012/packages/web/dist-multi`；前端源码同步到同一 release。
+- 使用 `VITE_MULTI_USER=1 pnpm --filter @understand-book/web build --outDir dist-multi` 构建，上传 `reader-DO2hmBKd.js` 与 `reader-D5Rm1WOT.css`，复用 267 个既有资源。
+- 恢复点：`/opt/understand-book/backups/conversation-sidebars-20261013T020948Z`，保存旧页面入口及前端源码基线；旧静态资源保留。
+- 发布前 461 个前端基线文件与上一版 `18aae9e` 逐文件比较一致；正式首页、Reader 入口及直接引用的 JS／CSS 与此次产物逐字节一致。
+- 后端进程 PID `642476`、数据根 `/opt/understand-book/data/multi-reader-to-tb-20261012` 保持运行；后端源码仍为 `55e767f`。
+
+证据：[部署回执](deployment.json)、[正式资源复核](public-verification.json)、[桌面／手机浏览器结果](production-browser.json)。发布脚本为主工作区 `tmp/conversation-sidebars-20261013/publish.py`。
