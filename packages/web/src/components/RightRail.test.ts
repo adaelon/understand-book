@@ -34,6 +34,7 @@ const baseProps = {
 
 it('puts the first-question learning entry in the conversation', () => {
   const wrapper = mount(RightRail, { props: baseProps, shallow: true,
+    global: { stubs: { Teleport: false } },
     slots: { 'learning-goal': '<p>这次想弄懂什么？</p>' } });
   expect(wrapper.get('#reader-panel-agent').text()).toContain('这次想弄懂什么？');
   expect(wrapper.get('textarea[data-workspace-input="agent"]').attributes('placeholder')).toContain('学习目标');
@@ -41,7 +42,7 @@ it('puts the first-question learning entry in the conversation', () => {
 });
 
 it('keeps learning actions in the chat and the teaching switch next to the composer', async () => {
-  const wrapper = mount(RightRail, { props:baseProps, shallow:true, slots:{
+  const wrapper = mount(RightRail, { props:baseProps, shallow:true, global: { stubs: { Teleport: false } }, slots:{
     'learning-actions':'<button>我的理解</button><button>学习详情</button>',
     'tutor-control':'<button role="switch">连续教学</button>',
   } });
@@ -63,6 +64,7 @@ it('keeps help bound to the latest delivered answer and focuses the existing dra
     outcome: { answer: '一段较长的讲解', warning: null, effects: [], trace: [], memory_updates: [], turns: 1, tokens_spent: 0, incomplete: false,
       profile_usage: { snapshot_revision: 0, injected_fact_ids: [], claimed_used_fact_ids: [], influences: [] } } };
   const wrapper = mount(RightRail, { attachTo: document.body, shallow: true,
+    global: { stubs: { Teleport: false } },
     props: { ...baseProps, agentInput: '尚未发送的想法', chat: [turn] } });
   try {
     await wrapper.get('.learning-help').trigger('click');

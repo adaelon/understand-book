@@ -1,0 +1,245 @@
+{
+  "config": {
+    "argv": [
+      "D:\\fate\\node\\node.exe",
+      "E:\\allwork\\download\\agent\\understand-book\\node_modules\\playwright\\cli.js",
+      "test",
+      "playwright/conversation-learning-design.spec.ts",
+      "--workers=1",
+      "--reporter=json"
+    ],
+    "configFile": "E:\\allwork\\download\\agent\\understand-book\\packages\\web\\playwright.config.ts",
+    "rootDir": "E:/allwork/download/agent/understand-book/packages/web/playwright",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "E:/allwork/download/agent/understand-book/packages/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "E:/allwork/download/agent/understand-book/packages/web/playwright",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.61.1",
+    "workers": 1,
+    "webServer": {
+      "command": "pnpm dev --host 127.0.0.1 --port 4174",
+      "url": "http://127.0.0.1:4174/paper-minimap-visual.html",
+      "reuseExistingServer": true
+    }
+  },
+  "suites": [
+    {
+      "title": "conversation-learning-design.spec.ts",
+      "file": "conversation-learning-design.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "long teaching keeps help and the real answer reachable at 1907px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4417,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-13T02:05:30.763Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "reading-space",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3aWR0aCI6IDE5MDcsCiAgImhlaWdodCI6IDg3OSwKICAidHJhbnNjcmlwdCI6IHsKICAgICJ4IjogMjQ4LAogICAgInkiOiA1MiwKICAgICJ3aWR0aCI6IDEzOTUsCiAgICAiaGVpZ2h0IjogNzU4CiAgfSwKICAiZ29hbCI6IHsKICAgICJ4IjogMTYsCiAgICAieSI6IDc2LAogICAgIndpZHRoIjogMjE1LAogICAgImhlaWdodCI6IDEyMy4zNTkzNzUKICB9LAogICJyZXNwb25zZURvY2siOiB7CiAgICAieCI6IDE2NjAsCiAgICAieSI6IDc2LAogICAgIndpZHRoIjogMjMxLAogICAgImhlaWdodCI6IDIwNC4zNzUKICB9LAogICJyZWFkaW5nIjogewogICAgIngiOiAyODAsCiAgICAieSI6IDgwLAogICAgIndpZHRoIjogMTMzMSwKICAgICJoZWlnaHQiOiAxNDg0LjU2MjUKICB9LAogICJjb21wb3NlciI6IHsKICAgICJ4IjogMjcyLAogICAgInkiOiA4MTAsCiAgICAid2lkdGgiOiAxMzQ3LAogICAgImhlaWdodCI6IDY5CiAgfQp9"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0835b11b413324df5514-352a1d002823a45d5e4f",
+          "file": "conversation-learning-design.spec.ts",
+          "line": 43,
+          "column": 154
+        },
+        {
+          "title": "long teaching keeps help and the real answer reachable at 1526px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1756,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-13T02:05:35.512Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "reading-space",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3aWR0aCI6IDE1MjYsCiAgImhlaWdodCI6IDcwMywKICAidHJhbnNjcmlwdCI6IHsKICAgICJ4IjogMjEzLjYyNSwKICAgICJ5IjogNTIsCiAgICAid2lkdGgiOiAxMDY4LjIxODc1LAogICAgImhlaWdodCI6IDU4MgogIH0sCiAgImdvYWwiOiB7CiAgICAieCI6IDE2LAogICAgInkiOiA3NiwKICAgICJ3aWR0aCI6IDE4MC42MjUsCiAgICAiaGVpZ2h0IjogMTUwLjcxODc1CiAgfSwKICAicmVzcG9uc2VEb2NrIjogewogICAgIngiOiAxMjk4Ljg0Mzc1LAogICAgInkiOiA3NiwKICAgICJ3aWR0aCI6IDIxMS4xNTYyNSwKICAgICJoZWlnaHQiOiAyMDQuMzc1CiAgfSwKICAicmVhZGluZyI6IHsKICAgICJ4IjogMjQ1LjYyNSwKICAgICJ5IjogODAsCiAgICAid2lkdGgiOiAxMDA0LjIxODc1LAogICAgImhlaWdodCI6IDE2MDAuNDY4NzUKICB9LAogICJjb21wb3NlciI6IHsKICAgICJ4IjogMjM3LjYyNSwKICAgICJ5IjogNjM0LAogICAgIndpZHRoIjogMTAyMC4yMTg3NSwKICAgICJoZWlnaHQiOiA2OQogIH0KfQ=="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0835b11b413324df5514-614511c16e4b173de139",
+          "file": "conversation-learning-design.spec.ts",
+          "line": 43,
+          "column": 154
+        },
+        {
+          "title": "long teaching keeps help and the real answer reachable at 1440px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2085,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-13T02:05:37.286Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "reading-space",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3aWR0aCI6IDE0NDAsCiAgImhlaWdodCI6IDkwMCwKICAidHJhbnNjcmlwdCI6IHsKICAgICJ4IjogMjAxLjU5Mzc1LAogICAgInkiOiA1MiwKICAgICJ3aWR0aCI6IDEwMDguMDE1NjI1LAogICAgImhlaWdodCI6IDc3OQogIH0sCiAgImdvYWwiOiB7CiAgICAieCI6IDE2LAogICAgInkiOiA3NiwKICAgICJ3aWR0aCI6IDE2OC41OTM3NSwKICAgICJoZWlnaHQiOiAxNTAuNzE4NzUKICB9LAogICJyZXNwb25zZURvY2siOiB7CiAgICAieCI6IDEyMjYuNjA5Mzc1LAogICAgInkiOiA3NiwKICAgICJ3aWR0aCI6IDE5Ny4zOTA2MjUsCiAgICAiaGVpZ2h0IjogMjA0LjM3NQogIH0sCiAgInJlYWRpbmciOiB7CiAgICAieCI6IDIzMy41OTM3NSwKICAgICJ5IjogODAsCiAgICAid2lkdGgiOiA5NDQuMDE1NjI1LAogICAgImhlaWdodCI6IDE1NDcuNDM3NQogIH0sCiAgImNvbXBvc2VyIjogewogICAgIngiOiAyMjUuNTkzNzUsCiAgICAieSI6IDgzMSwKICAgICJ3aWR0aCI6IDk2MC4wMTU2MjUsCiAgICAiaGVpZ2h0IjogNjkKICB9Cn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0835b11b413324df5514-4e15236d3a388c68403b",
+          "file": "conversation-learning-design.spec.ts",
+          "line": 43,
+          "column": 154
+        },
+        {
+          "title": "long teaching keeps help and the real answer reachable at 390px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1686,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-13T02:05:39.386Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "reading-space",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3aWR0aCI6IDM5MCwKICAiaGVpZ2h0IjogODQ0LAogICJ0cmFuc2NyaXB0IjogewogICAgIngiOiAwLAogICAgInkiOiA5MywKICAgICJ3aWR0aCI6IDM5MCwKICAgICJoZWlnaHQiOiA1ODUKICB9LAogICJnb2FsIjogewogICAgIngiOiAwLAogICAgInkiOiA0OCwKICAgICJ3aWR0aCI6IDM5MCwKICAgICJoZWlnaHQiOiA0NQogIH0sCiAgInJlc3BvbnNlRG9jayI6IHsKICAgICJ4IjogMTIsCiAgICAieSI6IDY3OSwKICAgICJ3aWR0aCI6IDM2NiwKICAgICJoZWlnaHQiOiA2NQogIH0sCiAgInJlYWRpbmciOiB7CiAgICAieCI6IDE2LAogICAgInkiOiAxMTMsCiAgICAid2lkdGgiOiAzNTgsCiAgICAiaGVpZ2h0IjogMjEyNy4xMjUKICB9LAogICJjb21wb3NlciI6IHsKICAgICJ4IjogMCwKICAgICJ5IjogNjc4LAogICAgIndpZHRoIjogMzkwLAogICAgImhlaWdodCI6IDE2NgogIH0KfQ=="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0835b11b413324df5514-4108f8bbee47ffb88d3d",
+          "file": "conversation-learning-design.spec.ts",
+          "line": 43,
+          "column": 154
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-13T02:05:24.021Z",
+    "duration": 17628.476,
+    "expected": 4,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

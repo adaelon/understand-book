@@ -39,12 +39,14 @@ SmartNIC 是能够在网卡上执行部分数据处理的设备。它让一部�
 回到那三个空：① 变大的量，② 被占用的资源，③ 凭什么搬。试着用自己的话把它们连成一句解释。
 `;
 
-for (const width of [1440, 390]) test(`long teaching keeps help and the real answer reachable at ${width}px`, async ({ page }, info) => {
+// 1526 × 703 also covers the effective viewport of a 1907 × 879 window at 125% zoom.
+for (const { width, height } of [{ width: 1907, height: 879 }, { width: 1526, height: 703 }, { width: 1440, height: 900 }, { width: 390, height: 844 }]) test(`long teaching keeps help and the real answer reachable at ${width}px`, async ({ page }, info) => {
   const fixture = await setup(page, 'markdown', true, true, true);
+  const answer = width === 1526 ? '接着上一站，看看网络需求如何改变架构选择。' : lesson;
   const original = fixture.turns[0].outcome as Record<string, unknown>;
   fixture.turns[0] = { ...fixture.turns[0], user: '带我理解：需求如何推动架构设计', question_quote: null,
     domain: { teaching: ['question'] },
-    outcome: { ...original, trace: [], answer: lesson, answer_view: { parts: [{ kind: 'markdown', text: lesson }], sources: [] } } };
+    outcome: { ...original, trace: [], answer, answer_view: { parts: [{ kind: 'markdown', text: answer }], sources: [] } } };
   const actions: Record<string, unknown>[] = [];
   let attempted = false;
   const session = { id: 'learning', revision: 1, status: 'active', user_intent: '学懂 1.4 需求如何推动架构设计', explicit_constraints: [],
@@ -53,13 +55,13 @@ for (const width of [1440, 390]) test(`long teaching keeps help and the real ans
   await page.route('**/api/tutor/state', route => route.fulfill({ json: { control: { enabled: true, revision: 1, current_tutor_session_id: 'learning' }, sessions: { learning: session } } }));
   await page.route('**/api/tutor/activities', route => route.fulfill({ json: { activities: route.request().postDataJSON().turn_id === 'tc0-answer' ? [
     { delivery_ref: 'question', status: 'active', attempted, help_seen: [],
-      move: { move_id: 'question', prompt: '如果网络带宽提高、策略也更复杂，为什么把部分工作交给 SmartNIC？\n\n试着把「需求 → 资源 → 工作去向」连起来。', actions: ['submit', 'revise', 'request_hint', 'skip'] } },
+      move: { move_id: 'question', prompt: (width === 1526 ? lesson + '\n\n' : '') + '如果网络带宽提高、策略也更复杂，为什么把部分工作交给 SmartNIC？\n\n试着把「需求 → 资源 → 工作去向」连起来。', actions: ['submit', 'revise', 'request_hint', 'skip'] } },
   ] : [] } }));
   await page.route('**/api/tutor/action', route => {
     actions.push(route.request().postDataJSON()); attempted = true;
     return route.fulfill({ json: { event_id: 'answer-recorded' } });
   });
-  await page.setViewportSize({ width, height: 900 });
+  await page.setViewportSize({ width, height });
   await page.reload();
   if (width < 1024) await page.locator('.workspace-mobile-nav').getByRole('button', { name: '问答', exact: true }).click();
   await page.getByRole('button', { name: '问答全屏', exact: true }).click();
@@ -72,8 +74,23 @@ for (const width of [1440, 390]) test(`long teaching keeps help and the real ans
   await expect(dock.getByRole('button', { name: '这一步没跟上', exact: true })).toBeInViewport();
   await expect(dock.getByRole('button', { name: '回答问题', exact: true })).toBeInViewport();
   await expect(page.locator('.turn .clarify-answer')).not.toBeInViewport();
+  const transcript = await page.locator('.transcript').boundingBox();
   const goal = await page.locator('.conversation-learning-goal').boundingBox();
-  if (width > 1024) expect(goal!.width).toBeLessThan(900);
+  const responseDock = await dock.boundingBox();
+  const reading = await page.locator('.turn').boundingBox();
+  const composer = await page.locator('.agent-input').boundingBox();
+  if (width >= 1280) {
+    expect(goal!.x + goal!.width).toBeLessThanOrEqual(transcript!.x);
+    expect(responseDock!.x).toBeGreaterThanOrEqual(transcript!.x + transcript!.width);
+    expect(reading!.width).toBeGreaterThan(width * .63);
+    expect(transcript!.height).toBeGreaterThan(height * .8);
+    expect(composer!.height).toBeLessThan(90);
+    await expect(page.getByRole('complementary', { name: '学习与会话', exact: true }).getByRole('switch', { name: '连续教学' })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: '学习助手', exact: true }).getByRole('button', { name: '我的理解', exact: true })).toBeVisible();
+  } else {
+    await expect(page.getByRole('complementary', { name: '学习与会话', exact: true })).not.toBeVisible();
+  }
+  await info.attach('reading-space', { body: JSON.stringify({ width, height, transcript, goal, responseDock, reading, composer }, null, 2), contentType: 'application/json' });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: info.outputPath(`reading-${width}.png`) });
   await dock.getByRole('button', { name: '回答问题', exact: true }).click();
@@ -85,6 +102,24 @@ for (const width of [1440, 390]) test(`long teaching keeps help and the real ans
   await expect(input).toHaveValue('保留这份尚未发送的想法');
   await response.fill('网络处理挤占了 CPU 的能力，因此把适合的工作交给网卡。');
   await page.screenshot({ path: info.outputPath(`responding-${width}.png`) });
+  if (width === 1440) {
+    // Moving controls into or out of the sidebars must retain the same editors.
+    await page.getByRole('button', { name: '调整目标', exact: true }).click();
+    const goalDialog = page.getByRole('dialog', { name: '调整目标', exact: true });
+    const goalInput = goalDialog.getByRole('textbox', { name: '学习目标', exact: true });
+    await goalInput.fill('尚未保存的学习目标');
+    await page.setViewportSize({ width: 1024, height });
+    await expect(goalInput).toHaveValue('尚未保存的学习目标');
+    await expect(input).toHaveValue('保留这份尚未发送的想法');
+    await expect(response).toHaveValue('网络处理挤占了 CPU 的能力，因此把适合的工作交给网卡。');
+    await page.setViewportSize({ width, height });
+    await expect(goalInput).toHaveValue('尚未保存的学习目标');
+    await goalDialog.getByRole('button', { name: '取消', exact: true }).click();
+    const history = page.getByRole('navigation', { name: '本书会话', exact: true }).getByRole('button', { name: /^本书历史/ });
+    await history.click();
+    await page.getByRole('dialog', { name: '对话历史', exact: true }).getByRole('button', { name: '关闭历史', exact: true }).click();
+    await expect(history).toBeFocused();
+  }
   await page.getByRole('button', { name: '提交回答', exact: true }).click();
   await expect.poll(() => actions.length).toBe(1);
   expect(actions[0]).toMatchObject({ delivery_ref: 'question', action: 'submit', response: '网络处理挤占了 CPU 的能力，因此把适合的工作交给网卡。' });

@@ -1,0 +1,35 @@
+
+Running 1 test using 1 worker
+
+  x  1 playwright\mobile-chat-interactions.spec.ts:53:1 › goal and teaching controls leave most of the mobile screen for answers with direct entries (7.2s)
+
+
+  1) playwright\mobile-chat-interactions.spec.ts:53:1 › goal and teaching controls leave most of the mobile screen for answers with direct entries 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 401.4
+    Received:   361
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      53 | test('goal and teaching controls leave most of the mobile screen for answers with direct entries', async ({ page }) => {
+      54 |   const transcript = page.locator('.transcript');
+    > 55 |   await expect.poll(async () => (await transcript.boundingBox())!.height).toBeGreaterThan(669 * .60);
+         |                                                                           ^
+      56 |   await test.info().attach('mobile-layout-390', { body: JSON.stringify({ viewportHeight: 669, transcriptHeight: (await transcript.boundingBox())!.height }), contentType: 'application/json' });
+      57 |   await page.screenshot({ path: test.info().outputPath('conversation-390.png') });
+      58 |   await expect(page.locator('.agent-head').getByRole('button', { name: '1 项待办', exact: true })).toBeVisible();
+        at E:\allwork\download\agent\understand-book\packages\web\playwright\mobile-chat-interactions.spec.ts:55:75
+
+    Error Context: test-results\mobile-chat-interactions-g-87f7b-answers-with-direct-entries\error-context.md
+
+  1 failed
+    playwright\mobile-chat-interactions.spec.ts:53:1 › goal and teaching controls leave most of the mobile screen for answers with direct entries 
+[WebServer] (node:35336) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:36424) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+(node:29552) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
