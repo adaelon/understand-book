@@ -3,6 +3,7 @@ import type { PresentationState } from './generated/PresentationState';
 import type { ShareSource } from './reading-share';
 import { presentationDocument } from './presentation-document';
 import { acceptsPresentationMessage } from './presentation-host';
+import brandLogo from './assets/brand/understand-book-logo.svg?raw';
 
 export type StaticScene = { image: { svg: string; width: number; height: number; resources?: string[] }; state: PresentationState; parameters?: { label: string; value: string }[] };
 
@@ -81,11 +82,24 @@ export async function presentationShareSource(view: PresentationView, scene: Sta
   } catch { throw new Error('图解的背景或 SVG 图片资源加载失败，请重试。'); }
   const image = new Image();
   image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(scene.image.svg)}`;
-  try { await image.decode(); } catch { throw new Error('图解静态画面无法解码，请重新导出。'); }
+  const logo = new Image();
+  logo.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(brandLogo)}`;
+  try { await Promise.all([image.decode(), logo.decode()]); } catch { throw new Error('图解静态画面无法解码，请重新导出。'); }
   await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-  const canvas = document.createElement('canvas'); canvas.width = scene.image.width * 2; canvas.height = scene.image.height * 2;
+  const scale = 4, headerHeight = 72, height = scene.image.height + headerHeight;
+  // Draw the vector snapshot at export resolution so text and SVG detail remain sharp on zoom.
+  const canvas = document.createElement('canvas'); canvas.width = scene.image.width * scale; canvas.height = height * scale;
   const context = canvas.getContext('2d'); if (!context) throw new Error('当前浏览器无法生成图解。');
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  context.scale(scale, scale);
+  // The brand occupies its own header; the captured page keeps its original width and layout.
+  context.fillStyle = '#fbfaf7'; context.fillRect(0, 0, scene.image.width, headerHeight);
+  context.font = '600 18px Georgia, serif'; context.textBaseline = 'middle';
+  const name = 'understand-book', logoSize = 32, gap = 10;
+  const left = (scene.image.width - logoSize - gap - context.measureText(name).width) / 2;
+  context.drawImage(logo, left, (headerHeight - logoSize) / 2, logoSize, logoSize);
+  context.fillStyle = '#91420f'; context.fillText(name, left + logoSize + gap, headerHeight / 2);
+  context.fillStyle = '#e6dfd8'; context.fillRect(0, headerHeight - 1, scene.image.width, 1);
+  context.drawImage(image, 0, headerHeight, scene.image.width, scene.image.height);
   let png: string;
   try { png = canvas.toDataURL('image/png'); } catch { throw new Error('图解包含无法导出的资源。'); }
   const sources = await Promise.all(view.sources.map(async source => {
@@ -102,6 +116,6 @@ export async function presentationShareSource(view: PresentationView, scene: Sta
     ].filter(part => part.text.trim()) as ShareSource['parts'],
     sources: sources.length ? sources : ['无已记录出处'],
     association: `${retained ? '记录时的图解' : '当前图解'} · 版本 ${view.reference.revision} · 图解与说明由助手提供`,
-    diagram: { png, width: scene.image.width, height: scene.image.height, title: view.title },
+    diagram: { png, width: scene.image.width, height, title: view.title },
   };
 }

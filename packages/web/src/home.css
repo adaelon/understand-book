@@ -200,7 +200,7 @@ svg { flex-shrink: 0; }
 .home-screenshot-notes > div > span { display: flex; align-items: center; gap: 7px; }
 .home-screenshot-notes > div > span::before { content: ''; width: 4px; height: 4px; background: #9aa78a; border-radius: 50%; }
 .home-screenshot-notes > span { white-space: nowrap; color: #929787; }
-body:has(.home-image-dialog[open]) { overflow: hidden; }
+body:has(.home-image-dialog[open], .home-info-dialog[open]) { overflow: hidden; }
 .home-image-dialog { width: min(1680px, calc(100vw - 48px)); max-width: none; max-height: calc(100dvh - 48px); padding: 0; border: 1px solid #d7dbcd; border-radius: 10px; color: var(--home-ink); background: #f8f6ef; box-shadow: 0 25px 100px #16221955; }
 .home-image-dialog::backdrop { background: #1e2a23b8; }
 .home-image-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 16px 22px; }
@@ -239,15 +239,40 @@ body:has(.home-image-dialog[open]) { overflow: hidden; }
 .home-begin h2 { font-size: 27px; }
 .home-begin-inner > div:first-child > p:last-child { color: #d6d0c6; font-size: 12px; line-height: 1.95; margin: 18px 0 0; }
 .home-begin-actions { display: flex; flex-direction: column; align-items: center; }
+.home-beta-contact { width: min(100%, 280px); margin: 0 0 25px; text-align: center; }
+.home-beta-contact figcaption { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
+.home-beta-contact figcaption strong { font-size: 18px; font-weight: 500; }
+.home-beta-contact figcaption span { color: #d6d0c6; font-size: 13px; }
+.home-beta-contact > a { display: block; width: min(100%, 240px); margin: 0 auto; border-radius: 6px; overflow: hidden; background: #fff; }
+.home-beta-contact img { display: block; width: 100%; height: auto; }
+.home-beta-contact > p { color: #bdb6aa; font-size: 11px; line-height: 1.8; margin: 12px 0 0; }
 .home-button-light { background: var(--brand-accent-soft); color: var(--brand-accent-deep); white-space: nowrap; font-size: 12px; padding: 17px 21px; }
 .home-button-light:hover { background: #fbfaf7; }
 .home-begin-login { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--brand-accent-soft); margin-top: 19px; }
 .home-begin-login:hover { color: var(--brand-on-accent); }
 .home-begin-actions > p { font-size: 10px; line-height: 1.95; color: #bdb6aa; margin: 23px 0 0; text-align: center; }
-.home-footer { display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 0 0 40px; color: #6a7561; }
-.home-footer .home-brand { font-size: 17px; }
-.home-footer > p { color: #8e9682; font-size: 10px; }
-.home-footer > a:last-child { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #8d967f; }
+.home-footer { padding: 0 0 38px; text-align: center; color: #727769; }
+.home-footer-tagline { margin: 0 0 10px; font-size: 15px; line-height: 1.8; color: #5a6155; }
+.home-footer-bottom { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; column-gap: 16px; row-gap: 2px; font-size: 12px; line-height: 1.8; }
+.home-copyright { margin: 0; }
+.home-footer-links { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; column-gap: 16px; }
+.home-footer-links > * { display: inline-flex; align-items: center; min-height: 40px; padding: 0; border: 0; background: none; color: inherit; font-size: inherit; white-space: nowrap; }
+.home-footer-links > :hover { color: var(--brand-accent-deep); text-decoration: underline; text-underline-offset: 4px; }
+.home-info-dialog { width: min(660px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 48px); padding: 0; overflow: hidden; border: 1px solid var(--home-line); border-radius: 12px; color: var(--home-ink); background: #f8f6ef; box-shadow: 0 24px 90px #16221944; }
+.home-info-dialog::backdrop { background: #1e2a23a8; }
+.home-info-panel { display: flex; flex-direction: column; max-height: calc(100dvh - 50px); }
+.home-info-header { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 20px; padding: 25px 30px 20px; border-bottom: 1px solid var(--home-line); }
+.home-info-header p { margin: 0 0 6px; color: var(--home-muted); font-size: 12px; }
+.home-info-header h2 { margin: 0; font: 500 26px/1.4 var(--home-serif); }
+.home-info-header button { display: grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; border: 1px solid var(--home-line); border-radius: 50%; background: transparent; color: var(--home-ink); }
+.home-info-header button:hover { background: var(--brand-accent-soft); }
+.home-info-content { overflow-y: auto; overscroll-behavior: contain; padding: 22px 30px 30px; font-size: 14px; line-height: 1.9; }
+.home-info-date { margin: 0 0 16px; color: var(--home-muted); font-size: 12px; }
+.home-info-intro { margin: 0 0 22px; }
+.home-info-content section + section { margin-top: 22px; }
+.home-info-content h3 { margin: 0 0 7px; font-size: 15px; font-weight: 600; }
+.home-info-content section p { margin: 0; color: #5a6155; }
+.home-info-contact { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 24px; color: var(--brand-accent-deep); text-decoration: underline; text-underline-offset: 4px; }
 
 @media (min-width: 1600px) { .home-hero { padding-top: 95px; padding-bottom: 95px; } }
 @media (max-width: 1100px) {
@@ -412,12 +437,19 @@ body:has(.home-image-dialog[open]) { overflow: hidden; }
   .home-begin h2 { font-size: 23px; }
   .home-begin-inner > div:first-child > p:last-child { font-size: 11px; }
   .home-begin-actions { width: 100%; align-items: stretch; }
+  .home-beta-contact { align-self: center; }
   .home-begin-login { justify-content: center; margin-top: 18px; }
   .home-button-light { padding-block: 15px; gap: 23px; }
   .home-begin-actions > p { margin-top: 20px; font-size: 9px; }
-  .home-footer { flex-wrap: wrap; gap: 14px; padding-bottom: 28px; }
-  .home-footer .home-brand { font-size: 17px; }
-  .home-footer > p { order: 3; width: 100%; margin: 2px 0 0; font-size: 9px; }
+  .home-footer { padding-bottom: 28px; }
+  .home-footer-tagline { font-size: 13px; margin-bottom: 12px; }
+  .home-footer-bottom { flex-direction: column; font-size: 11px; gap: 3px; }
+  .home-footer-links { column-gap: 18px; }
+  .home-info-dialog { max-height: calc(100dvh - 24px); }
+  .home-info-panel { max-height: calc(100dvh - 26px); }
+  .home-info-header { padding: 20px; }
+  .home-info-header h2 { font-size: 23px; }
+  .home-info-content { padding: 20px; font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

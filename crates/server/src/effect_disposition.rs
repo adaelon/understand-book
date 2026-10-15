@@ -447,6 +447,7 @@ pub(crate) fn route(
                         key,
                         SessionBookProgress {
                             top_lid: state.workspace.reader.viewport().top_lid,
+                            visible_position: state.workspace.reader.visible_position().cloned(),
                         },
                     );
                     let bytes = serde_json::to_vec(&session)

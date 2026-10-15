@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, toRaw, watch } from "vue";
+import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, toRaw, watch } from "vue";
 import { createYeyeFeedback } from './yeye-feedback';
 import ShareImagePanel from './components/ShareImagePanel.vue';
 import { answerShareSource, deliveredAnswerText, excerptShareSource, noteShareSource, shareHighlightKey, shareNoteKey, sharePresentationKey, type ShareSource } from './reading-share';
@@ -13,7 +13,9 @@ import BookCover from './components/BookCover.vue';
 import { bookTitle } from './book-title';
 import LoadingAnimation from './components/LoadingAnimation.vue';
 import type { ScrollAnchor } from './reader-text-anchor';
+import type { PaginationSource } from './reader-pagination';
 import { readWindowText } from './reader-window-text';
+import { FocusSource } from './reader-focus-source';
 import { typographyHtml } from './reader-typography';
 import { recoverSubmissions, recoverWorkspaceBinding, pendingSubmissions } from './network-client';
 import type { RecapTarget } from './session-recap';
@@ -252,11 +254,14 @@ let manualReaderBoundary: Promise<void> = Promise.resolve();
 let manualReaderState: { book_id: string; revision: number } | null = null;
 const edgeLoading = ref(false);
 const readerPaneRef = ref<{
+  prepareFocus: (cursor?: { index: number; offset: number }) => Promise<void>;
+  leaveFocus: (anchor: ScrollAnchor | null) => Promise<void>;
+  suspendFocus: () => void;
   cancelTypographyRestore: () => void;
   captureScrollAnchor: (candidateLids: string[]) => ScrollAnchor | null;
   restoreScrollAnchor: (anchor: ScrollAnchor | null, current?: () => boolean) => Promise<void>;
   scrollLidIntoView: (lid: string) => Promise<boolean>;
-  scrollSourceIntoView: (lid: string) => Promise<boolean>;
+  scrollSourceIntoView: (lid: string, range?: { start: number; end: number }) => Promise<boolean>;
 } | null>(null);
 const pdfReaderPaneRef = ref<{
   captureReadingAnchor: () => PdfReadingAnchor | null;
@@ -269,6 +274,8 @@ const workspaceRef = ref<{
   toggleFocus: () => void;
 } | null>(null);
 const focusReading = ref(false);
+const focusPaginationActive = ref(false);
+const readerRegionVisible = ref(true);
 const assistantVisible = ref(false);
 const previousPdfAnchor = ref<PdfReadingAnchor | null>(null);
 const mobileGlobalActionsOpen = ref(false);
@@ -288,6 +295,7 @@ interface Segment {
   imageAsset: ImageAssetManifestEntry | null;
 }
 const segments = ref<Segment[]>([]); // 视口内连续正文(LID 隐形)
+const focusVisible = shallowRef<{ position: ScrollAnchor; ranges: { lid: string; start: number; end: number }[]; sources: PaginationSource[] } | null>(null);
 const annotations = ref<MemoryRecord[]>([]); // 当前书全部标注(客户端按 lid 过滤)
 const pdfAnnotationProjection = ref<PdfUserAnnotationProjection>(EMPTY_PDF_ANNOTATION_PROJECTION);
 const pdfAnnotationProjectionError = ref<string | null>(null);
@@ -297,6 +305,9 @@ const selectedLid = ref<string | null>(null);
 const currentReadingLid = ref<string | null>(null);
 const outlineNavigationLid = ref<string | null>(null);
 const formulaDialog = ref<Segment | null>(null);
+const formulaLoading = ref(false);
+const formulaError = ref<string | null>(null);
+let formulaRequest = 0;
 const chapterTitle = ref<string>("");
 interface SourceFocus {
   lid: string;
@@ -518,10 +529,15 @@ const pdfMappedLids = computed(() => new Set(
   (pdfSourceMap.value?.entries ?? []).filter(pdfEntryHasRegion).map((entry) => entry.lid),
 ));
 const pdfActiveLid = computed(() => selectedLid.value ?? readingAnchorLid.value);
+const pdfViewportAnchorLid = ref<string | null>(null);
 function pdfEntryHasRegion(entry: PdfSourceMapEntry | null | undefined): boolean {
   return !!entry?.primary_region || !!entry?.regions.length;
 }
-const selectedSegment = computed(() => segments.value.find((seg) => seg.lid === selectedLid.value) ?? null);
+const selectedSegment = computed<Segment | null>(() => {
+  if (!focusPaginationActive.value) return segments.value.find(seg => seg.lid === selectedLid.value) ?? null;
+  const source = focusVisible.value?.sources.find(s => s.lid === selectedLid.value);
+  return source ? { ...source, kind: source.kind as NodeKind, formula: formulaDialog.value?.lid === source.lid ? formulaDialog.value.formula : null, imageAsset: imageAssetFor(source.lid) } : null;
+});
 const selectedFormula = computed(() => selectedSegment.value?.formula ?? null);
 const segmentByLid = computed(() => new Map(segments.value.map((seg) => [seg.lid, seg])));
 function lidOrderIndex(lid: string | null | undefined): number {
@@ -560,7 +576,7 @@ const visibleNotes = computed(() => {
   return annotations.value
     .filter((r) =>
       !!r.anchor.lid
-      && order.has(r.anchor.lid)
+      && (focusPaginationActive.value || order.has(r.anchor.lid))
       && isMarkdownInlineNote(r, noteSourceFingerprint.value)
     )
     .sort((a, b) => (order.get(a.anchor.lid ?? "") ?? 0) - (order.get(b.anchor.lid ?? "") ?? 0));
@@ -649,7 +665,7 @@ async function flushPaperPositionSync() {
         && Number(lastPaperMinimapEffect.value.after_state_rev) !== Number(state.rev)) {
         lastPaperMinimapEffect.value = null;
       }
-      if (state.viewport_position.anchor_lid) currentReadingLid.value = state.viewport_position.anchor_lid;
+      if (state.viewport_position.anchor_lid && !(focusReading.value && activeReaderSurface.value === 'pdf')) currentReadingLid.value = state.viewport_position.anchor_lid;
     }
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
@@ -670,6 +686,11 @@ async function flushPaperPositionSync() {
 }
 
 function onPdfViewportChange(position: PaperViewportPosition) {
+  if (focusReading.value && activeReaderSurface.value === 'pdf') {
+    pdfViewportAnchorLid.value = position.anchor_lid;
+    currentReadingLid.value = position.anchor_lid;
+    selectedLid.value = null;
+  }
   if (!paperMinimapSnapshot.value) return;
   const bounded = normalizePaperViewportForMinimap(
     position,
@@ -1495,18 +1516,16 @@ type SegmentLoadMode = "replace" | "append" | "prepend";
 
 async function hydrateSegments(lids: string[]): Promise<Segment[]> {
   const texts = await readWindowText(lids, sourceManifestTree.value?.tree ?? [], api.text);
-  return Promise.all(
-    texts.map(async (t) => {
+  return texts.map((t) => {
       const kind = kindOf(t.lid);
       return {
         lid: t.lid,
         text: t.text,
         kind,
-        formula: await formulaFor(t.lid, kind),
+        formula: null,
         imageAsset: kind === "image" ? imageAssetFor(t.lid) : null,
       };
-    }),
-  );
+    });
 }
 
 function mergeSegments(current: Segment[], incoming: Segment[], mode: SegmentLoadMode): Segment[] {
@@ -1524,7 +1543,7 @@ async function loadWindow(
   stillCurrent: () => boolean = () => true,
   withAnnotations = true,
 ) {
-  const next = await hydrateSegments(vp.visible_lids);
+  const next = focusPaginationActive.value ? [] : await hydrateSegments(vp.visible_lids);
   if (!stillCurrent()) return;
   viewport.value = vp;
   if (mode === "replace") {
@@ -1746,6 +1765,7 @@ async function syncViewport(forcePaperProjection = false, preferReaderSelection 
     ? resolveReaderStateNavigationTarget(st.viewport.top_lid, st.selection, leafOrder.value)
     : st.viewport.top_lid;
   await loadWindow(st.viewport, "replace", navigationTargetLid);
+  if (st.visible_position) await restoreVisiblePosition(st.visible_position);
   await loadPaperProjectionData(forcePaperProjection);
 }
 
@@ -2240,6 +2260,9 @@ async function init() {
   const current = () => !disposed && request === workspaceLoadSeq;
   try {
     appSurface.value = "loading";
+    focusTransition++;
+    focusReading.value = false;
+    focusPaginationActive.value = false;
     startupHistoryRequestSeq += 1;
     agentHistoryLoading.value = true;
     agentHistoryError.value = null;
@@ -2309,6 +2332,8 @@ async function init() {
     ]);
     if (!current()) return;
     appSurface.value = "reader";
+    await nextTick();
+    if (current() && st.visible_position) await restoreVisiblePosition(st.visible_position);
     void refreshAnnotations().catch(error => { if (current()) fail(error); });
     recordIntentUsage("reader_ready");
     void loadPaperProjectionData();
@@ -2335,6 +2360,10 @@ async function recoverWorkspaceState() {
       if (source.book_id !== expectedBookId) {
         residentRun.forget();
         resetBookSessionUi();
+        await init();
+        return;
+      }
+      if (source.source_fingerprint !== noteSourceFingerprint.value) {
         await init();
         return;
       }
@@ -2368,6 +2397,7 @@ async function refreshLinkedReader() {
     const state = await api.state();
     await applyReaderState(state);
     await loadWindow(state.viewport, "replace", resolveReaderStateNavigationTarget(state.viewport.top_lid, state.selection, leafOrder.value));
+    if (state.visible_position) await restoreVisiblePosition(state.visible_position);
   } catch (error) { if (!disposed) fail(error); }
 }
 
@@ -2528,7 +2558,7 @@ onBeforeUnmount(() => {
 
 // ── 四动作 ──
 async function onScrollEdge(direction: "up" | "down") {
-  if (edgeLoading.value || !viewport.value) return;
+  if (focusPaginationActive.value || edgeLoading.value || !viewport.value) return;
   const loaded = segments.value;
   if (!loaded.length || !leafOrder.value.length) return;
   const firstIdx = leafOrder.value.indexOf(loaded[0].lid);
@@ -2547,6 +2577,7 @@ async function onScrollEdge(direction: "up" | "down") {
     banner.value = "";
     if (!sourceFocus.value?.ranges) sourceFocus.value = null;
     const next = await hydrateSegments(nextLids);
+    if (focusPaginationActive.value) return;
     segments.value = mergeSegments(segments.value, next, direction === "down" ? "append" : "prepend");
     if (direction === "up") await readerPaneRef.value?.restoreScrollAnchor(anchor);
   } catch (e) {
@@ -2556,16 +2587,31 @@ async function onScrollEdge(direction: "up" | "down") {
   }
 }
 let readerNavigationRequest = 0;
-async function doGoto(lid: string, focusQuote?: string | null, restoreCurrent?: () => boolean): Promise<boolean> {
+async function doGoto(lid: string, focusQuote?: string | null, restoreCurrent?: () => boolean, sourceRanges?: Map<string, [number, number]>): Promise<boolean> {
   if (!lid) return false;
   if (!restoreCurrent) readingContinuity.cancelRestore();
   const request = ++readerNavigationRequest;
-  const contextKey = workspaceContextKey.value;
-  const current = () => !disposed && request === readerNavigationRequest && contextKey === workspaceContextKey.value && (restoreCurrent?.() ?? true);
+  const contextKey = readerContextKey.value;
+  const current = () => !disposed && request === readerNavigationRequest && contextKey === readerContextKey.value && (restoreCurrent?.() ?? true);
   readerPaneRef.value?.cancelTypographyRestore();
   try {
     banner.value = "";
-    sourceFocus.value = focusQuote === undefined ? null : { lid, quote: focusQuote };
+    pendingFocusPosition = null;
+    await focusPositionWrite;
+    if (!current()) return false;
+    sourceFocus.value = sourceRanges ? { lid, quote: focusQuote ?? null, ranges: sourceRanges } : focusQuote === undefined ? null : { lid, quote: focusQuote };
+    if (focusPaginationActive.value) {
+      const target = resolveReaderNavigationTarget(lid, leafOrder.value) ?? lid;
+      let offset = sourceRanges?.get(target)?.[0] ?? 0;
+      if (focusQuote && !sourceRanges) {
+        const source = await api.text(target);
+        if (!current()) return false;
+        offset = Math.max(0, source.text.indexOf(focusQuote));
+        sourceFocus.value = { lid: target, quote: focusQuote, ranges: new Map([[target, [offset, offset + focusQuote.length]]]) };
+      }
+      outlineNavigationLid.value = lid;
+      return await readerPaneRef.value?.scrollSourceIntoView(target, { start: offset, end: offset + 1 }) ?? false;
+    }
     const gotoEffect = await api.goto(lid);
     if (!current()) return false;
     outlineNavigationLid.value = lid;
@@ -2645,6 +2691,11 @@ async function selectReaderSurface(surface: ReaderSurface) {
     return;
   }
   const lid = pdfAnchor?.anchorLid;
+  if (focusReading.value) {
+    const index = focusPaginationSource.value.leaves.findIndex(node => node.lid === (lid ?? readingAnchorLid.value));
+    await readerPaneRef.value?.prepareFocus(index < 0 ? undefined : { index, offset: 0 });
+    return;
+  }
   if (!lid) {
     banner.value = "当前 PDF 位置没有可靠的 Markdown 映射，已保留此前正文读位。";
     return;
@@ -2656,9 +2707,15 @@ async function selectReaderSurface(surface: ReaderSurface) {
   }
 }
 async function focusSource(source: { lid: string; quote: string | null; memId?: string }) {
-  await openSourcePreview(source, 'notes', source.memId);
+  const record = annotations.value.find(r => r.mem_id === source.memId);
+  const ranges = new Map<string, [number, number]>();
+  for (const r of record?.selection_context?.ranges ?? (record?.range ? [{ lid: source.lid, range: record.range }] : [])) {
+    const previous = ranges.get(r.lid);
+    ranges.set(r.lid, previous ? [Math.min(previous[0], r.range.start), Math.max(previous[1], r.range.end)] : [r.range.start, r.range.end]);
+  }
+  await openSourcePreview({ ...source, ...(ranges.size ? { ranges } : {}) }, 'notes', source.memId);
 }
-function focusLocalSource(source: { lid: string; quote: string | null }) {
+function focusLocalSource(source: SourceFocus) {
   void openSourcePreview(source, 'reader');
 }
 function sourcePreviewCenterLid(lid: string): string {
@@ -2692,7 +2749,7 @@ async function openSourcePreview(source: SourceFocus, origin: 'reader' | 'notes'
   sourcePreviewReturn = { ...captureReadingReturnPoint(''), origin, memId };
   sourcePreviewTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const centerLid = sourcePreviewCenterLid(source.lid);
-  const focus: SourceFocus = { lid: centerLid, quote: source.quote };
+  const focus: SourceFocus = { ...source, lid: centerLid };
   sourcePreview.value = { focus, segments: [], loading: true, error: null };
   try {
     banner.value = "";
@@ -2718,7 +2775,7 @@ async function openSourceInReader() {
   const point = sourcePreviewReturn;
   closeSourcePreview();
   workspaceRef.value?.showReader();
-  if (await doGoto(focus.lid, focus.quote) && point?.contextKey === workspaceContextKey.value) {
+  if (await doGoto(focus.lid, focus.quote, undefined, focus.ranges) && point?.contextKey === workspaceContextKey.value) {
     readingContinuity.push(point);
     updateReadingReturn();
   }
@@ -2859,6 +2916,14 @@ interface MarkdownSelectionPopover {
   resolvedText: string;
 }
 const hlPopover = ref<MarkdownSelectionPopover | null>(null);
+const markdownSelectionToolbar = ref<HTMLElement | null>(null);
+watch(hlPopover, (popover) => {
+  const toolbar = markdownSelectionToolbar.value;
+  if (!popover || !toolbar) return;
+  const { width, height } = toolbar.getBoundingClientRect();
+  popover.x = Math.max(8 + width / 2, Math.min(window.innerWidth - 8 - width / 2, popover.x));
+  popover.y = Math.max(8, Math.min(window.innerHeight - height - 8, popover.y - height - 8)) + 40;
+}, { flush: 'post' });
 
 function lidElementOf(node: Node | null): HTMLElement | null {
   const el = node && node.nodeType === 3 ? node.parentElement : (node as HTMLElement | null);
@@ -3144,15 +3209,42 @@ function clearOutlineNavigation() {
   outlineNavigationLid.value = null;
 }
 
-function openFormulaDialog(seg: Segment) {
-  if (!seg.formula) return;
+async function openFormulaDialog(seg: Segment) {
   selectedLid.value = seg.lid;
   currentReadingLid.value = seg.lid;
   sourceFocus.value = null;
-  formulaDialog.value = seg;
+  formulaDialog.value = { ...seg };
+  await loadFormulaProfile(seg);
+}
+
+async function loadFormulaProfile(seg: Segment) {
+  const request = ++formulaRequest;
+  const context = workspaceContextKey.value;
+  formulaError.value = null;
+  formulaLoading.value = !seg.formula;
+  if (seg.formula) return;
+  try {
+    const formula = await formulaFor(seg.lid, seg.kind);
+    if (request !== formulaRequest || context !== workspaceContextKey.value || selectedLid.value !== seg.lid) return;
+    const loaded = segments.value.find(value => value.lid === seg.lid && value.text === seg.text);
+    if (loaded) loaded.formula = formula;
+    if (formulaDialog.value?.lid === seg.lid) formulaDialog.value = { ...seg, formula };
+  } catch (error) {
+    if (request === formulaRequest && context === workspaceContextKey.value) formulaError.value = errorMessage(error);
+  } finally {
+    if (request === formulaRequest) formulaLoading.value = false;
+  }
+}
+
+function requestSelectedFormula() {
+  const seg = selectedSegment.value;
+  if (seg?.kind === 'formula') void loadFormulaProfile(seg);
+  else { formulaRequest++; formulaLoading.value = false; formulaError.value = null; }
 }
 
 function closeFormulaDialog() {
+  formulaRequest++;
+  formulaLoading.value = false;
   formulaDialog.value = null;
 }
 
@@ -3164,13 +3256,13 @@ function onProseSelection(snapshot: ReaderSelectionSnapshot | null) {
     return;
   }
   const range = snapshot.range;
-  const ranges = selectionRanges(range);
+  const ranges = snapshot.canonical?.ranges ?? selectionRanges(range);
   if (ranges.length === 0) {
     hlPopover.value = null;
     return;
   }
   const quote = rangeToMarkdown(range);
-  const resolvedQuote = resolvedSelectionQuote(ranges);
+  const resolvedQuote = snapshot.canonical?.resolvedText ?? resolvedSelectionQuote(ranges);
   if (!quote.trim() || !resolvedQuote.trim()) {
     hlPopover.value = null;
     return;
@@ -3194,11 +3286,11 @@ async function confirmHighlight() {
   }
   try {
     banner.value = "";
-    const groupId = p.ranges.length > 1 ? newHighlightGroupId() : undefined;
-    await Promise.all(p.ranges.map((r) => api.highlight(r.lid, { start: r.start, end: r.end }, groupId)));
     selectedLid.value = p.anchorLid;
     hlPopover.value = null;
     window.getSelection()?.removeAllRanges();
+    const groupId = p.ranges.length > 1 ? newHighlightGroupId() : undefined;
+    await Promise.all(p.ranges.map((r) => api.highlight(r.lid, { start: r.start, end: r.end }, groupId)));
     await refreshAnnotations();
   } catch (e) {
     fail(e);
@@ -3435,6 +3527,88 @@ function collapseNoteOutside(event: PointerEvent) {
   if (event.target instanceof Element && !event.target.closest('.note-editor-panel, .note-resume, .share-image-panel, [data-share-note]')) noteCollapsed.value = true;
 }
 const workspaceContextKey = computed(() => `${network.value.enabled ? sceneKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}:${activeChatSessionId.value || "no-chat"}`);
+const focusPaginationSource = computed(() => {
+  // Rebuild on the existing scene/source identities; no new source identity.
+  void workspaceContextKey.value; void noteSourceFingerprint.value;
+  const assets = imageAssetByLid.value;
+  return markRaw(new FocusSource(sourceManifestTree.value?.tree ?? [], api.text, lid => assets.get(lid)));
+});
+function onPaginationActive(active: boolean) {
+  focusPaginationActive.value = active;
+  if (active) segments.value = [];
+  else focusVisible.value = null;
+}
+function onFocusVisible(value: NonNullable<typeof focusVisible.value>) {
+  focusVisible.value = value;
+  displayReadingPoint = { point: { contextKey: workspaceContextKey.value, turnId: '', anchor: { surface: 'markdown', ...value.position } }, interaction: readerInteractionRevision, navigation: readerNavigationRequest };
+  selectedLid.value = null;
+  hlPopover.value = null;
+}
+async function restoreVisiblePosition(position: import('./api').VisibleReadingPosition) {
+  const anchor: ScrollAnchor = { lid: position.lid, top: 0,
+    ...(position.text_position ? { textPosition: { ...position.text_position, top: 0 } } : {}) };
+  displayReadingPoint = { point: { contextKey: workspaceContextKey.value, turnId: '', anchor: { surface: 'markdown', ...anchor } }, interaction: readerInteractionRevision, navigation: readerNavigationRequest };
+  await readerPaneRef.value?.restoreScrollAnchor(anchor);
+}
+let pendingFocusPosition: { value: import('./api').VisibleReadingPosition; context: string } | null = null;
+let focusPositionTimer: ReturnType<typeof setTimeout> | undefined;
+let focusPositionWrite: Promise<void> | null = null;
+function confirmFocusPosition() {
+  const visible = focusVisible.value;
+  if (!visible || !focusPaginationActive.value) return;
+  const p = visible.position;
+  pendingFocusPosition = { context: workspaceContextKey.value, value: { lid: p.lid,
+    ...(p.textPosition ? { text_position: { start: p.textPosition.start, end: p.textPosition.end, text: p.textPosition.text } } : {}), ranges: visible.ranges } };
+  clearTimeout(focusPositionTimer);
+  focusPositionTimer = setTimeout(() => { void flushFocusPosition(); }, 0);
+}
+async function flushFocusPosition(): Promise<void> {
+  clearTimeout(focusPositionTimer);
+  if (focusPositionWrite) { await focusPositionWrite; if (pendingFocusPosition) await flushFocusPosition(); return; }
+  const pending = pendingFocusPosition; pendingFocusPosition = null;
+  if (!pending || disposed || pending.context !== workspaceContextKey.value) return;
+  focusPositionWrite = api.confirmReadingPosition(pending.value).then(effect => {
+    if (pending.context === workspaceContextKey.value && !pendingFocusPosition) viewport.value = effect.viewport;
+  }).catch(error => { if (pending.context === workspaceContextKey.value) fail(error); }).finally(() => { focusPositionWrite = null; });
+  await focusPositionWrite;
+  if (pendingFocusPosition) await flushFocusPosition();
+}
+watch(workspaceContextKey, () => { pendingFocusPosition = null; focusVisible.value = null; clearTimeout(focusPositionTimer); });
+onBeforeUnmount(() => { clearTimeout(focusPositionTimer); pendingFocusPosition = null; });
+let focusTransition = 0;
+async function onFocusChange(active: boolean) {
+  const request = ++focusTransition, context = workspaceContextKey.value;
+  focusReading.value = active;
+  if (activeReaderSurface.value !== 'markdown') return;
+  if (active) {
+    const anchor = displayReadingPoint?.point.anchor;
+    const index = anchor?.surface === 'markdown' ? focusPaginationSource.value.leaves.findIndex(n => n.lid === anchor.lid) : -1;
+    await nextTick();
+    if (request === focusTransition) await readerPaneRef.value?.prepareFocus(index < 0 ? undefined : { index, offset: anchor?.surface === 'markdown' ? anchor.textPosition?.start ?? 0 : 0 });
+  } else if (focusPaginationActive.value) {
+    const anchor = readerPaneRef.value?.captureScrollAnchor([]) ?? null;
+    readerPaneRef.value?.suspendFocus();
+    const index = focusPaginationSource.value.leaves.findIndex(n => n.lid === anchor?.lid);
+    const lastVisible = focusPaginationSource.value.leaves.findIndex(n => n.lid === focusVisible.value?.ranges.at(-1)?.lid);
+    const lids = focusPaginationSource.value.leaves.slice(Math.max(0, index - 4), Math.max(index + 12, lastVisible + 1)).map(n => n.lid);
+    try {
+      const loaded = await hydrateSegments(lids);
+      if (request !== focusTransition || context !== workspaceContextKey.value) return;
+      segments.value = loaded;
+      await nextTick(); await readerPaneRef.value?.leaveFocus(anchor);
+    } catch (error) { if (request === focusTransition) fail(error); }
+  }
+}
+function onFocusTool(tool: string) {
+  if (tool === 'return') void returnToAgentAnswer();
+  else if (tool === 'outline') workspaceRef.value?.toggleOutline();
+  else if (tool === 'settings') typography.open.value = true;
+  else if (tool === 'surface') selectReaderSurface(activeReaderSurface.value === 'pdf' ? 'markdown' : 'pdf');
+  else if (tool === 'exit') workspaceRef.value?.toggleFocus();
+  else if (tool === 'agent' || tool === 'notes') workspaceRef.value?.showAssistant(tool);
+}
+watch(workspaceContextKey, closeFormulaDialog);
+watch(noteSourceFingerprint, closeFormulaDialog);
 const readerContextKey = computed(() => `${network.value.enabled ? readerKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}`);
 const chatSceneKey = computed(() => network.value.enabled ? sceneKey() : 'local');
 const yeyeFeedback = createYeyeFeedback();
@@ -3459,6 +3633,7 @@ let pendingReadingReturnPoint: ReadingReturnPoint | null = null;
 watch(workspaceContextKey, (contextKey, previous) => {
   previousPdfAnchor.value = null;
   const recoveringFirstChat = previous === `${network.value.enabled ? sceneKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}:no-chat`;
+  if (recoveringFirstChat && displayReadingPoint?.point.contextKey === previous) displayReadingPoint.point.contextKey = contextKey;
   if (!recoveringFirstChat) {
     hlPopover.value = null;
     window.getSelection()?.removeAllRanges();
@@ -3484,6 +3659,7 @@ function requestWorkspaceTab(tab: WorkspaceAuxTab) {
   workspaceAuxTabRevision.value += 1;
 }
 function handleWorkspaceProjection(projection: WorkspaceProjection) {
+  readerRegionVisible.value = projection.mode === 'wide' || projection.visibleRegions.includes('reader');
   // The wide CSS layout always renders the auxiliary column; saved slots only
   // govern the adaptive single/compare foreground.
   assistantVisible.value = projection.mode === 'wide' || projection.visibleRegions.includes('assistant');
@@ -3993,7 +4169,13 @@ async function chooseContinuation(view: import('./generated/TutorContinuationVie
 async function submitAgentMessage(msg: string, displayUser: string, draft: AskDraft | null, presentationFollowUp?: import("./generated/PresentationFollowUp").PresentationFollowUp, goalMeta: AgentChatMeta = {}, submittedDraft?: ChatDraft) {
   if (sending.value || agentHistoryLoading.value || agentHistoryError.value) return;
   if (hasUnconfirmedReadingRequest()) { banner.value = '原操作结果待核对，请先核对或重试原操作。'; return; }
-  const questionAnchorLid = goalMeta.answer_ref || goalMeta.teaching_choice ? null : draft?.lid ?? selectedLid.value ?? viewport.value?.top_lid ?? null;
+  if (!draft && focusPaginationActive.value && !goalMeta.answer_ref && !goalMeta.teaching_choice && focusVisible.value) {
+    const visible = focusVisible.value;
+    const quote = visible.ranges.map(r => visible.sources.find(s => s.lid === r.lid)!.text.slice(r.start, r.end)).join('');
+    draft = { lid: visible.position.lid, quote, raw_quote: quote, resolved_quote: quote, status: 'resolved', resolution_basis: 'exact',
+      ranges: visible.ranges.map(r => ({ lid: r.lid, range: { start: r.start, end: r.end } })) };
+  }
+  const questionAnchorLid = goalMeta.answer_ref || goalMeta.teaching_choice ? null : draft?.lid ?? selectedLid.value ?? readingAnchorLid.value;
   const turn: ChatTurn = {
     teachingRef: goalMeta.teaching_ref,
     presentationFollowUp,
@@ -4014,6 +4196,7 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
   acceptingRun.value = true;
   banner.value = "";
   try {
+    await flushFocusPosition();
     const result = await api.agentRunCreate(msg, {
       presentation_follow_up: presentationFollowUp,
       ...goalMeta,
@@ -4460,6 +4643,9 @@ function closeBookPicker() {
 }
 
 function resetBookSessionUi() {
+  focusTransition++;
+  focusReading.value = false;
+  focusPaginationActive.value = false;
   startupHistoryRequestSeq += 1;
   agentHistoryLoading.value = true;
   agentHistoryError.value = null;
@@ -4926,7 +5112,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       :style="workspaceStyle"
       @tab-request="requestWorkspaceTab"
       @before-display-change="preserveDisplayReadingPosition"
-      @focus-change="focusReading = $event"
+      @focus-change="onFocusChange"
       @projection-change="handleWorkspaceProjection"
       @global-actions-request="mobileGlobalActionsOpen = !mobileGlobalActionsOpen"
       @return="returnToAgentAnswer"
@@ -4975,6 +5161,10 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         :source-map="pdfSourceMap"
         :pdf-url="api.pdfOriginalUrl()"
         :initial-reading-anchor="previousPdfAnchor"
+        :focus-reading="focusReading"
+        :reader-active="recapProps.readerVisible && readerRegionVisible"
+        :focus-return-label="returnToAnswerAvailable ? readingReturnLabel : undefined"
+        :viewport-anchor-lid="pdfViewportAnchorLid"
         :active-lid="pdfActiveLid"
         :selected-lid="selectedLid"
         :annotation-projection="pdfAnnotationProjection"
@@ -4982,6 +5172,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         :render-markdown="renderMarkdown"
         :note-placement-active="notePlacementState.phase === 'placing' && notePlacementSurface === 'pdf'"
         @goto="doGoto"
+        @focus-tool="onFocusTool"
         @viewport-change="onPdfViewportChange"
         @focus-source="focusLocalSource"
         @selection-capture="onPdfSelectionCapture"
@@ -5001,8 +5192,13 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         v-else
         ref="readerPaneRef"
         :typography="typography.preferences.value"
+        :focus-source="focusPaginationSource"
+        :reader-active="recapProps.readerVisible && readerRegionVisible"
         :context-key="workspaceContextKey"
         :segments="segments"
+        :source-focus="sourceFocus" :annotation-revision="annotations"
+        :focus-return-label="returnToAnswerAvailable ? readingReturnLabel : undefined"
+        :focus-surface-label="pdfReaderAvailable ? 'PDF 原版' : undefined"
         :viewport-anchor="readingAnchorLid"
         :selected-lid="selectedLid"
         :note-placement-active="notePlacementState.phase === 'placing' && notePlacementSurface === 'markdown'"
@@ -5024,6 +5220,9 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @note-placement-target="onMarkdownNotePlacementTarget"
         @note-placement-invalid="onMarkdownNotePlacementInvalid"
         @scroll-edge="onScrollEdge"
+        @pagination-active="onPaginationActive"
+        @focus-visible="onFocusVisible" @focus-confirmed="confirmFocusPosition"
+        @focus-tool="onFocusTool"
         @goto="doGoto"
         @focus-source-local="focusLocalSource"
         @open-formula="openFormulaDialog"
@@ -5086,6 +5285,10 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         :note-source-fingerprint="noteSourceFingerprint"
         :selected-lid="selectedLid"
         :selected-formula="selectedFormula"
+        :formula-selected="selectedSegment?.kind === 'formula'"
+        :formula-loading="formulaLoading"
+        :formula-error="formulaError"
+        @request-formula="requestSelectedFormula"
         :context-notes="allNotes"
         :context-highlights="allHighlights"
         :note-book-order="noteBookOrder" :note-source-labels="noteSourceLabels" :note-scope-key="noteMaterialKey"
@@ -5275,6 +5478,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
 
     <div
       v-if="hlPopover"
+      ref="markdownSelectionToolbar"
       class="hl-popover"
       :style="{ left: hlPopover.x + 'px', top: hlPopover.y - 40 + 'px' }"
     >
@@ -5301,6 +5505,9 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         </header>
         <div class="formula-dialog-body">
           <pre class="formula-dialog-source" v-html="renderSeg(formulaDialog)"></pre>
+          <p v-if="formulaLoading" role="status">正在读取公式解释…</p>
+          <p v-else-if="formulaError" role="alert">{{ formulaError }} <button @click="openFormulaDialog(formulaDialog)">重试</button></p>
+          <p v-else-if="!formulaDialog.formula">这条公式暂时没有解释资料。</p>
           <div v-if="formulaDialog.formula" class="formula-dialog-profile">
             <p class="formula-dialog-meaning">{{ formulaDialog.formula.composition.meaning }}</p>
             <div v-if="formulaDialog.formula.parameters.length" class="formula-dialog-section">
@@ -5623,6 +5830,13 @@ async function submitOpenBook(dir = bookPickerDir.value) {
   border-radius: 999px;
   background: var(--ink);
   box-shadow: none;
+}
+.hl-popover:not(.pdf-selection-toolbar) {
+  width: max-content;
+  max-width: calc(100vw - 16px);
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 .hl-popover button {
   background: transparent;

@@ -51534,7 +51534,7 @@
                 "reveal"
               ],
               "capability": "explanation",
-              "explanation": "At different positive speeds, equal distances take different times.",
+              "explanation": "At positive speeds over the same distance, time equals distance divided by speed, so the faster trip takes less time.",
               "hint": "Time equals distance divided by speed.",
               "intent_origin": "neutral",
               "interaction_intent": "neutral",
@@ -51560,14 +51560,15 @@
           {
             "move": {
               "actions": [
-                "submit"
+                "submit",
+                "reveal"
               ],
               "assessment": {
                 "feedback": "after_submit",
                 "rule": {
                   "items": [
                     {
-                      "criterion": "Uses the total time of the journey; equivalent wording is accepted.",
+                      "criterion": "Rejects A's claim: A's total journey time includes the stop, giving 15 minutes versus B's 12; for the same distance, B has the greater average speed. Equivalent wording or time units are accepted; numerical speed calculations may be omitted. Repeating the definition without applying it to these journeys is insufficient.",
                       "id": "total-time",
                       "source_lids": [
                         "1.1"
@@ -51582,15 +51583,16 @@
                 "source_sufficient": true
               },
               "capability": "explanation",
+              "explanation": "For the whole trip, average speed uses total distance divided by all elapsed time. A takes 10 + 5 = 15 minutes and B takes 12; over the same 10 km, B has the greater whole-trip average speed. Excluding the stop gives A's moving-only average speed; that answers a different question and cannot support A's whole-trip claim.",
               "intent_origin": "neutral",
               "interaction_intent": "neutral",
               "kind": "question",
-              "move_id": "explain-denominator",
+              "move_id": "compare-journey-times",
               "object_ids": [],
-              "prompt": "Explain which time belongs in the denominator of average speed.",
+              "prompt": "A and B each travel 10 km. A takes 10 minutes moving and stops for 5 minutes; B takes 12 minutes without stopping. A says, 'I moved faster, so my average speed for the whole trip was higher.' Is that claim correct? Explain using both journeys.",
               "target": {
                 "capability": "explanation",
-                "expected_performance": "Explain why total time is the denominator",
+                "expected_performance": "Use total elapsed time, including a stop, to judge whether higher moving speed implies higher whole-trip average speed for equal-distance journeys.",
                 "learning_focus": "Average speed",
                 "object_refs": [],
                 "source_bindings": [
@@ -51647,7 +51649,7 @@
                 }
               ]
             },
-            "teaching_implication": "Ask the learner to connect total time to the denominator."
+            "teaching_implication": "Build on the stated distance quantity and make the time relationship concrete; confirm it only if the learner's request leaves an activity for them."
           }
         ],
         "properties": {
@@ -51675,7 +51677,7 @@
             "type": "array"
           },
           "interpretation": {
-            "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+            "description": "What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation.",
             "type": "string"
           },
           "move": {
@@ -52058,6 +52060,7 @@
                         "type": "string"
                       },
                       "expected_performance": {
+                        "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                         "type": "string"
                       },
                       "learning_focus": {
@@ -52201,6 +52204,7 @@
                 "type": "string"
               },
               "expected_performance": {
+                "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                 "type": "string"
               },
               "learning_focus": {
@@ -52269,7 +52273,7 @@
             "type": "object"
           },
           "teaching_implication": {
-            "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+            "description": "A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. Do not prescribe repeating source wording or a fixed teaching template.",
             "type": "string"
           }
         },
@@ -52726,7 +52730,7 @@
                   "reveal"
                 ],
                 "capability": "explanation",
-                "explanation": "At different positive speeds, equal distances take different times.",
+                "explanation": "At positive speeds over the same distance, time equals distance divided by speed, so the faster trip takes less time.",
                 "hint": "Time equals distance divided by speed.",
                 "intent_origin": "neutral",
                 "interaction_intent": "neutral",
@@ -52752,14 +52756,15 @@
             {
               "move": {
                 "actions": [
-                  "submit"
+                  "submit",
+                  "reveal"
                 ],
                 "assessment": {
                   "feedback": "after_submit",
                   "rule": {
                     "items": [
                       {
-                        "criterion": "Uses the total time of the journey; equivalent wording is accepted.",
+                        "criterion": "Rejects A's claim: A's total journey time includes the stop, giving 15 minutes versus B's 12; for the same distance, B has the greater average speed. Equivalent wording or time units are accepted; numerical speed calculations may be omitted. Repeating the definition without applying it to these journeys is insufficient.",
                         "id": "total-time",
                         "source_lids": [
                           "1.1"
@@ -52774,15 +52779,16 @@
                   "source_sufficient": true
                 },
                 "capability": "explanation",
+                "explanation": "For the whole trip, average speed uses total distance divided by all elapsed time. A takes 10 + 5 = 15 minutes and B takes 12; over the same 10 km, B has the greater whole-trip average speed. Excluding the stop gives A's moving-only average speed; that answers a different question and cannot support A's whole-trip claim.",
                 "intent_origin": "neutral",
                 "interaction_intent": "neutral",
                 "kind": "question",
-                "move_id": "explain-denominator",
+                "move_id": "compare-journey-times",
                 "object_ids": [],
-                "prompt": "Explain which time belongs in the denominator of average speed.",
+                "prompt": "A and B each travel 10 km. A takes 10 minutes moving and stops for 5 minutes; B takes 12 minutes without stopping. A says, 'I moved faster, so my average speed for the whole trip was higher.' Is that claim correct? Explain using both journeys.",
                 "target": {
                   "capability": "explanation",
-                  "expected_performance": "Explain why total time is the denominator",
+                  "expected_performance": "Use total elapsed time, including a stop, to judge whether higher moving speed implies higher whole-trip average speed for equal-distance journeys.",
                   "learning_focus": "Average speed",
                   "object_refs": [],
                   "source_bindings": [
@@ -52841,7 +52847,7 @@
               "type": "array"
             },
             "interpretation": {
-              "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+              "description": "What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation.",
               "type": "string"
             },
             "move": {
@@ -53224,6 +53230,7 @@
                           "type": "string"
                         },
                         "expected_performance": {
+                          "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                           "type": "string"
                         },
                         "learning_focus": {
@@ -53367,6 +53374,7 @@
                   "type": "string"
                 },
                 "expected_performance": {
+                  "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                   "type": "string"
                 },
                 "learning_focus": {
@@ -53435,7 +53443,7 @@
               "type": "object"
             },
             "teaching_implication": {
-              "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+              "description": "A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. Do not prescribe repeating source wording or a fixed teaching template.",
               "type": "string"
             }
           },
@@ -53648,7 +53656,7 @@
                   "reveal"
                 ],
                 "capability": "explanation",
-                "explanation": "At different positive speeds, equal distances take different times.",
+                "explanation": "At positive speeds over the same distance, time equals distance divided by speed, so the faster trip takes less time.",
                 "hint": "Time equals distance divided by speed.",
                 "intent_origin": "neutral",
                 "interaction_intent": "neutral",
@@ -53674,14 +53682,15 @@
             {
               "move": {
                 "actions": [
-                  "submit"
+                  "submit",
+                  "reveal"
                 ],
                 "assessment": {
                   "feedback": "after_submit",
                   "rule": {
                     "items": [
                       {
-                        "criterion": "Uses the total time of the journey; equivalent wording is accepted.",
+                        "criterion": "Rejects A's claim: A's total journey time includes the stop, giving 15 minutes versus B's 12; for the same distance, B has the greater average speed. Equivalent wording or time units are accepted; numerical speed calculations may be omitted. Repeating the definition without applying it to these journeys is insufficient.",
                         "id": "total-time",
                         "source_lids": [
                           "1.1"
@@ -53696,15 +53705,16 @@
                   "source_sufficient": true
                 },
                 "capability": "explanation",
+                "explanation": "For the whole trip, average speed uses total distance divided by all elapsed time. A takes 10 + 5 = 15 minutes and B takes 12; over the same 10 km, B has the greater whole-trip average speed. Excluding the stop gives A's moving-only average speed; that answers a different question and cannot support A's whole-trip claim.",
                 "intent_origin": "neutral",
                 "interaction_intent": "neutral",
                 "kind": "question",
-                "move_id": "explain-denominator",
+                "move_id": "compare-journey-times",
                 "object_ids": [],
-                "prompt": "Explain which time belongs in the denominator of average speed.",
+                "prompt": "A and B each travel 10 km. A takes 10 minutes moving and stops for 5 minutes; B takes 12 minutes without stopping. A says, 'I moved faster, so my average speed for the whole trip was higher.' Is that claim correct? Explain using both journeys.",
                 "target": {
                   "capability": "explanation",
-                  "expected_performance": "Explain why total time is the denominator",
+                  "expected_performance": "Use total elapsed time, including a stop, to judge whether higher moving speed implies higher whole-trip average speed for equal-distance journeys.",
                   "learning_focus": "Average speed",
                   "object_refs": [],
                   "source_bindings": [
@@ -53761,7 +53771,7 @@
                   }
                 ]
               },
-              "teaching_implication": "Ask the learner to connect total time to the denominator."
+              "teaching_implication": "Build on the stated distance quantity and make the time relationship concrete; confirm it only if the learner's request leaves an activity for them."
             }
           ],
           "properties": {
@@ -53789,7 +53799,7 @@
               "type": "array"
             },
             "interpretation": {
-              "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+              "description": "What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation.",
               "type": "string"
             },
             "move": {
@@ -54172,6 +54182,7 @@
                           "type": "string"
                         },
                         "expected_performance": {
+                          "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                           "type": "string"
                         },
                         "learning_focus": {
@@ -54315,6 +54326,7 @@
                   "type": "string"
                 },
                 "expected_performance": {
+                  "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                   "type": "string"
                 },
                 "learning_focus": {
@@ -54383,7 +54395,7 @@
               "type": "object"
             },
             "teaching_implication": {
-              "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+              "description": "A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. Do not prescribe repeating source wording or a fixed teaching template.",
               "type": "string"
             }
           },
@@ -54582,7 +54594,7 @@
                   "request_hint",
                   "reveal"
                 ],
-                "explanation": "At different positive speeds, equal distances take different times.",
+                "explanation": "At positive speeds over the same distance, time equals distance divided by speed, so the faster trip takes less time.",
                 "hint": "Time equals distance divided by speed.",
                 "kind": "compare",
                 "move_id": "compare-times",
@@ -54649,7 +54661,7 @@
               "type": "array"
             },
             "interpretation": {
-              "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+              "description": "What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation.",
               "type": "string"
             },
             "move": {
@@ -54990,6 +55002,7 @@
                       "type": "string"
                     },
                     "expected_performance": {
+                      "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                       "type": "string"
                     },
                     "learning_focus": {
@@ -55126,6 +55139,7 @@
                   "type": "string"
                 },
                 "expected_performance": {
+                  "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                   "type": "string"
                 },
                 "learning_focus": {
@@ -55194,7 +55208,7 @@
               "type": "object"
             },
             "teaching_implication": {
-              "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+              "description": "A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. Do not prescribe repeating source wording or a fixed teaching template.",
               "type": "string"
             }
           },
@@ -55454,7 +55468,7 @@
               "type": "array"
             },
             "interpretation": {
-              "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+              "description": "What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation.",
               "type": "string"
             },
             "move": {
@@ -55795,6 +55809,7 @@
                       "type": "string"
                     },
                     "expected_performance": {
+                      "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                       "type": "string"
                     },
                     "learning_focus": {
@@ -55931,6 +55946,7 @@
                   "type": "string"
                 },
                 "expected_performance": {
+                  "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                   "type": "string"
                 },
                 "learning_focus": {
@@ -55999,7 +56015,7 @@
               "type": "object"
             },
             "teaching_implication": {
-              "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+              "description": "A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. Do not prescribe repeating source wording or a fixed teaching template.",
               "type": "string"
             }
           },
@@ -56259,7 +56275,7 @@
               "type": "array"
             },
             "interpretation": {
-              "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+              "description": "What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation.",
               "type": "string"
             },
             "move": {
@@ -56600,6 +56616,7 @@
                       "type": "string"
                     },
                     "expected_performance": {
+                      "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                       "type": "string"
                     },
                     "learning_focus": {
@@ -56736,6 +56753,7 @@
                   "type": "string"
                 },
                 "expected_performance": {
+                  "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                   "type": "string"
                 },
                 "learning_focus": {
@@ -56804,7 +56822,7 @@
               "type": "object"
             },
             "teaching_implication": {
-              "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+              "description": "A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. Do not prescribe repeating source wording or a fixed teaching template.",
               "type": "string"
             }
           },
@@ -57060,7 +57078,7 @@
               "type": "array"
             },
             "interpretation": {
-              "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+              "description": "What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation.",
               "type": "string"
             },
             "move": {
@@ -57401,6 +57419,7 @@
                       "type": "string"
                     },
                     "expected_performance": {
+                      "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                       "type": "string"
                     },
                     "learning_focus": {
@@ -57537,6 +57556,7 @@
                   "type": "string"
                 },
                 "expected_performance": {
+                  "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                   "type": "string"
                 },
                 "learning_focus": {
@@ -57605,7 +57625,7 @@
               "type": "object"
             },
             "teaching_implication": {
-              "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+              "description": "A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. Do not prescribe repeating source wording or a fixed teaching template.",
               "type": "string"
             }
           },
@@ -57829,7 +57849,7 @@
                   "request_hint",
                   "reveal"
                 ],
-                "explanation": "At different positive speeds, equal distances take different times.",
+                "explanation": "At positive speeds over the same distance, time equals distance divided by speed, so the faster trip takes less time.",
                 "hint": "Time equals distance divided by speed.",
                 "intent_origin": "neutral",
                 "interaction_intent": "neutral",
@@ -57855,14 +57875,15 @@
             {
               "move": {
                 "actions": [
-                  "submit"
+                  "submit",
+                  "reveal"
                 ],
                 "assessment": {
                   "feedback": "after_submit",
                   "rule": {
                     "items": [
                       {
-                        "criterion": "Uses the total time of the journey; equivalent wording is accepted.",
+                        "criterion": "Rejects A's claim: A's total journey time includes the stop, giving 15 minutes versus B's 12; for the same distance, B has the greater average speed. Equivalent wording or time units are accepted; numerical speed calculations may be omitted. Repeating the definition without applying it to these journeys is insufficient.",
                         "id": "total-time",
                         "source_lids": [
                           "1.1"
@@ -57876,15 +57897,16 @@
                   ],
                   "source_sufficient": true
                 },
+                "explanation": "For the whole trip, average speed uses total distance divided by all elapsed time. A takes 10 + 5 = 15 minutes and B takes 12; over the same 10 km, B has the greater whole-trip average speed. Excluding the stop gives A's moving-only average speed; that answers a different question and cannot support A's whole-trip claim.",
                 "intent_origin": "neutral",
                 "interaction_intent": "neutral",
                 "kind": "question",
-                "move_id": "explain-denominator",
+                "move_id": "compare-journey-times",
                 "object_ids": [],
-                "prompt": "Explain which time belongs in the denominator of average speed.",
+                "prompt": "A and B each travel 10 km. A takes 10 minutes moving and stops for 5 minutes; B takes 12 minutes without stopping. A says, 'I moved faster, so my average speed for the whole trip was higher.' Is that claim correct? Explain using both journeys.",
                 "target": {
                   "capability": "explanation",
-                  "expected_performance": "Explain why total time is the denominator",
+                  "expected_performance": "Use total elapsed time, including a stop, to judge whether higher moving speed implies higher whole-trip average speed for equal-distance journeys.",
                   "learning_focus": "Average speed",
                   "object_refs": [],
                   "source_bindings": [
@@ -57943,7 +57965,7 @@
               "type": "array"
             },
             "interpretation": {
-              "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+              "description": "What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation.",
               "type": "string"
             },
             "move": {
@@ -58321,6 +58343,7 @@
                       "type": "string"
                     },
                     "expected_performance": {
+                      "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                       "type": "string"
                     },
                     "learning_focus": {
@@ -58459,6 +58482,7 @@
                   "type": "string"
                 },
                 "expected_performance": {
+                  "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                   "type": "string"
                 },
                 "learning_focus": {
@@ -58527,7 +58551,7 @@
               "type": "object"
             },
             "teaching_implication": {
-              "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+              "description": "A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. Do not prescribe repeating source wording or a fixed teaching template.",
               "type": "string"
             }
           },
@@ -58743,7 +58767,7 @@
                   "request_hint",
                   "reveal"
                 ],
-                "explanation": "At different positive speeds, equal distances take different times.",
+                "explanation": "At positive speeds over the same distance, time equals distance divided by speed, so the faster trip takes less time.",
                 "hint": "Time equals distance divided by speed.",
                 "kind": "compare",
                 "move_id": "compare-times",
@@ -58767,14 +58791,15 @@
             {
               "move": {
                 "actions": [
-                  "submit"
+                  "submit",
+                  "reveal"
                 ],
                 "assessment": {
                   "feedback": "after_submit",
                   "rule": {
                     "items": [
                       {
-                        "criterion": "Uses the total time of the journey; equivalent wording is accepted.",
+                        "criterion": "Rejects A's claim: A's total journey time includes the stop, giving 15 minutes versus B's 12; for the same distance, B has the greater average speed. Equivalent wording or time units are accepted; numerical speed calculations may be omitted. Repeating the definition without applying it to these journeys is insufficient.",
                         "id": "total-time",
                         "source_lids": [
                           "1.1"
@@ -58788,13 +58813,14 @@
                   ],
                   "source_sufficient": true
                 },
+                "explanation": "For the whole trip, average speed uses total distance divided by all elapsed time. A takes 10 + 5 = 15 minutes and B takes 12; over the same 10 km, B has the greater whole-trip average speed. Excluding the stop gives A's moving-only average speed; that answers a different question and cannot support A's whole-trip claim.",
                 "kind": "question",
-                "move_id": "explain-denominator",
+                "move_id": "compare-journey-times",
                 "object_ids": [],
-                "prompt": "Explain which time belongs in the denominator of average speed.",
+                "prompt": "A and B each travel 10 km. A takes 10 minutes moving and stops for 5 minutes; B takes 12 minutes without stopping. A says, 'I moved faster, so my average speed for the whole trip was higher.' Is that claim correct? Explain using both journeys.",
                 "target": {
                   "capability": "explanation",
-                  "expected_performance": "Explain why total time is the denominator",
+                  "expected_performance": "Use total elapsed time, including a stop, to judge whether higher moving speed implies higher whole-trip average speed for equal-distance journeys.",
                   "learning_focus": "Average speed",
                   "object_refs": [],
                   "source_bindings": [
@@ -58853,7 +58879,7 @@
               "type": "array"
             },
             "interpretation": {
-              "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+              "description": "What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation.",
               "type": "string"
             },
             "move": {
@@ -59198,6 +59224,7 @@
                       "type": "string"
                     },
                     "expected_performance": {
+                      "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                       "type": "string"
                     },
                     "learning_focus": {
@@ -59334,6 +59361,7 @@
                   "type": "string"
                 },
                 "expected_performance": {
+                  "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                   "type": "string"
                 },
                 "learning_focus": {
@@ -59402,7 +59430,7 @@
               "type": "object"
             },
             "teaching_implication": {
-              "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+              "description": "A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. Do not prescribe repeating source wording or a fixed teaching template.",
               "type": "string"
             }
           },
@@ -59658,7 +59686,7 @@
               "type": "array"
             },
             "interpretation": {
-              "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+              "description": "What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation.",
               "type": "string"
             },
             "move": {
@@ -59999,6 +60027,7 @@
                       "type": "string"
                     },
                     "expected_performance": {
+                      "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                       "type": "string"
                     },
                     "learning_focus": {
@@ -60135,6 +60164,7 @@
                   "type": "string"
                 },
                 "expected_performance": {
+                  "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                   "type": "string"
                 },
                 "learning_focus": {
@@ -60203,7 +60233,7 @@
               "type": "object"
             },
             "teaching_implication": {
-              "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+              "description": "A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. Do not prescribe repeating source wording or a fixed teaching template.",
               "type": "string"
             }
           },
@@ -60420,7 +60450,7 @@
                   "request_hint",
                   "reveal"
                 ],
-                "explanation": "At different positive speeds, equal distances take different times.",
+                "explanation": "At positive speeds over the same distance, time equals distance divided by speed, so the faster trip takes less time.",
                 "hint": "Time equals distance divided by speed.",
                 "kind": "compare",
                 "move_id": "compare-times",
@@ -60444,14 +60474,15 @@
             {
               "move": {
                 "actions": [
-                  "submit"
+                  "submit",
+                  "reveal"
                 ],
                 "assessment": {
                   "feedback": "after_submit",
                   "rule": {
                     "items": [
                       {
-                        "criterion": "Uses the total time of the journey; equivalent wording is accepted.",
+                        "criterion": "Rejects A's claim: A's total journey time includes the stop, giving 15 minutes versus B's 12; for the same distance, B has the greater average speed. Equivalent wording or time units are accepted; numerical speed calculations may be omitted. Repeating the definition without applying it to these journeys is insufficient.",
                         "id": "total-time",
                         "source_lids": [
                           "1.1"
@@ -60465,13 +60496,14 @@
                   ],
                   "source_sufficient": true
                 },
+                "explanation": "For the whole trip, average speed uses total distance divided by all elapsed time. A takes 10 + 5 = 15 minutes and B takes 12; over the same 10 km, B has the greater whole-trip average speed. Excluding the stop gives A's moving-only average speed; that answers a different question and cannot support A's whole-trip claim.",
                 "kind": "question",
-                "move_id": "explain-denominator",
+                "move_id": "compare-journey-times",
                 "object_ids": [],
-                "prompt": "Explain which time belongs in the denominator of average speed.",
+                "prompt": "A and B each travel 10 km. A takes 10 minutes moving and stops for 5 minutes; B takes 12 minutes without stopping. A says, 'I moved faster, so my average speed for the whole trip was higher.' Is that claim correct? Explain using both journeys.",
                 "target": {
                   "capability": "explanation",
-                  "expected_performance": "Explain why total time is the denominator",
+                  "expected_performance": "Use total elapsed time, including a stop, to judge whether higher moving speed implies higher whole-trip average speed for equal-distance journeys.",
                   "learning_focus": "Average speed",
                   "object_refs": [],
                   "source_bindings": [
@@ -60530,7 +60562,7 @@
               "type": "array"
             },
             "interpretation": {
-              "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+              "description": "What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation.",
               "type": "string"
             },
             "move": {
@@ -60875,6 +60907,7 @@
                       "type": "string"
                     },
                     "expected_performance": {
+                      "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                       "type": "string"
                     },
                     "learning_focus": {
@@ -61011,6 +61044,7 @@
                   "type": "string"
                 },
                 "expected_performance": {
+                  "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                   "type": "string"
                 },
                 "learning_focus": {
@@ -61079,7 +61113,7 @@
               "type": "object"
             },
             "teaching_implication": {
-              "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+              "description": "A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. Do not prescribe repeating source wording or a fixed teaching template.",
               "type": "string"
             }
           },
@@ -61197,7 +61231,7 @@
               "type": "array"
             },
             "interpretation": {
-              "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+              "description": "What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation.",
               "type": "string"
             },
             "nature": {
@@ -61233,6 +61267,7 @@
                   "type": "string"
                 },
                 "expected_performance": {
+                  "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                   "type": "string"
                 },
                 "learning_focus": {
@@ -61301,7 +61336,7 @@
               "type": "object"
             },
             "teaching_implication": {
-              "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+              "description": "A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. Do not prescribe repeating source wording or a fixed teaching template.",
               "type": "string"
             }
           },
@@ -61416,7 +61451,7 @@
                   }
                 ]
               },
-              "teaching_implication": "Ask the learner to connect total time to the denominator."
+              "teaching_implication": "Build on the stated distance quantity and make the time relationship concrete; confirm it only if the learner's request leaves an activity for them."
             }
           ],
           "properties": {
@@ -61440,7 +61475,7 @@
               "type": "array"
             },
             "interpretation": {
-              "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+              "description": "What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation.",
               "type": "string"
             },
             "nature": {
@@ -61476,6 +61511,7 @@
                   "type": "string"
                 },
                 "expected_performance": {
+                  "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                   "type": "string"
                 },
                 "learning_focus": {
@@ -61544,7 +61580,7 @@
               "type": "object"
             },
             "teaching_implication": {
-              "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+              "description": "A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. Do not prescribe repeating source wording or a fixed teaching template.",
               "type": "string"
             }
           },
@@ -61822,7 +61858,7 @@
                   "request_hint",
                   "reveal"
                 ],
-                "explanation": "At different positive speeds, equal distances take different times.",
+                "explanation": "At positive speeds over the same distance, time equals distance divided by speed, so the faster trip takes less time.",
                 "hint": "Time equals distance divided by speed.",
                 "intent_origin": "neutral",
                 "interaction_intent": "neutral",
@@ -61848,14 +61884,15 @@
             {
               "move": {
                 "actions": [
-                  "submit"
+                  "submit",
+                  "reveal"
                 ],
                 "assessment": {
                   "feedback": "after_submit",
                   "rule": {
                     "items": [
                       {
-                        "criterion": "Uses the total time of the journey; equivalent wording is accepted.",
+                        "criterion": "Rejects A's claim: A's total journey time includes the stop, giving 15 minutes versus B's 12; for the same distance, B has the greater average speed. Equivalent wording or time units are accepted; numerical speed calculations may be omitted. Repeating the definition without applying it to these journeys is insufficient.",
                         "id": "total-time",
                         "source_lids": [
                           "1.1"
@@ -61869,15 +61906,16 @@
                   ],
                   "source_sufficient": true
                 },
+                "explanation": "For the whole trip, average speed uses total distance divided by all elapsed time. A takes 10 + 5 = 15 minutes and B takes 12; over the same 10 km, B has the greater whole-trip average speed. Excluding the stop gives A's moving-only average speed; that answers a different question and cannot support A's whole-trip claim.",
                 "intent_origin": "neutral",
                 "interaction_intent": "neutral",
                 "kind": "question",
-                "move_id": "explain-denominator",
+                "move_id": "compare-journey-times",
                 "object_ids": [],
-                "prompt": "Explain which time belongs in the denominator of average speed.",
+                "prompt": "A and B each travel 10 km. A takes 10 minutes moving and stops for 5 minutes; B takes 12 minutes without stopping. A says, 'I moved faster, so my average speed for the whole trip was higher.' Is that claim correct? Explain using both journeys.",
                 "target": {
                   "capability": "explanation",
-                  "expected_performance": "Explain why total time is the denominator",
+                  "expected_performance": "Use total elapsed time, including a stop, to judge whether higher moving speed implies higher whole-trip average speed for equal-distance journeys.",
                   "learning_focus": "Average speed",
                   "object_refs": [],
                   "source_bindings": [
@@ -61936,7 +61974,7 @@
               "type": "array"
             },
             "interpretation": {
-              "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+              "description": "What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation.",
               "type": "string"
             },
             "move": {
@@ -62314,6 +62352,7 @@
                       "type": "string"
                     },
                     "expected_performance": {
+                      "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                       "type": "string"
                     },
                     "learning_focus": {
@@ -62452,6 +62491,7 @@
                   "type": "string"
                 },
                 "expected_performance": {
+                  "description": "The specific source-grounded relationship judgment the learner can explain or use under the task's decisive conditions and intended support. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in the move's private explanation or assessment. Accept equivalent wording; this is a revisable teaching plan, not an answer phrase to reproduce.",
                   "type": "string"
                 },
                 "learning_focus": {
@@ -62520,7 +62560,7 @@
               "type": "object"
             },
             "teaching_implication": {
-              "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+              "description": "A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. Do not prescribe repeating source wording or a fixed teaching template.",
               "type": "string"
             }
           },

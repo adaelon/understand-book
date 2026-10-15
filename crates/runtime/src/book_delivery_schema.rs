@@ -60,8 +60,20 @@ fn error_schema() -> Value {
 }
 
 pub fn book_envelope_schema(tool: &str) -> Option<Value> {
-    let id = book_tool_contracts::from_resident_alias(tool)?;
-    let full = crate::book_output_schema::canonical(id)?;
+    let batch = tool == "book.text_batch";
+    let id = if batch { BookToolId::Text } else { book_tool_contracts::from_resident_alias(tool)? };
+    let text = crate::book_output_schema::canonical(id)?;
+    let full = if batch {
+        json!({"type":"object","additionalProperties":false,"required":["items"],"properties":{
+            "items":{"type":"array","maxItems":crate::book_text_batch::MAX_RANGES,"items":{
+                "type":"object","additionalProperties":false,"required":["arguments","result"],"properties":{
+                    "arguments":book_tool_contracts::input_schema(BookToolId::Text),
+                    "result":{"anyOf":[text,error_schema(),omitted_schema(),{"type":"object","required":["projection","message"],
+                        "properties":{"projection":{"const":"budget_exhausted"},"message":{"type":"string"}}},{"type":"null"}]}
+                }
+            }}
+        }})
+    } else { text };
     let mut partial = full.clone();
     if id != BookToolId::Text {
         add_delivery(&mut partial, &delivery_schema(id == BookToolId::SearchText));
@@ -103,5 +115,12 @@ pub fn book_envelope_schema(tool: &str) -> Option<Value> {
         }
     }
     base["properties"]["continuation"] = json!({"oneOf":calls});
+    if batch {
+        base["properties"]["continuation"] = json!({"type":"object","additionalProperties":false,
+            "required":["kind","tool","arguments","reason"],"properties":{
+                "kind":{"const":"next_call"},"tool":{"const":"book.text_batch"},
+                "arguments":crate::book_text_batch::spec().parameters,"reason":{"type":"string"}
+            }});
+    }
     Some(base)
 }

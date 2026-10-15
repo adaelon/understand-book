@@ -3067,6 +3067,7 @@ fn route_open_book(state: &mut AppState, body: &str, now: &str) -> Reply {
     if let Some(top) = saved_top {
         reader.restore_top_lid(&book, &top);
     }
+    if let Some(position) = load_session(&state.workspace.session_path).and_then(|s| s.visible_position_for_dir(dir).cloned()) { reader.restore_visible_position(&book, &position); }
     if let Err(error) = restore_saved_paper_minimap_overlay(&mut reader, &book, &state.workspace.session_path)
     {
         return err_reply(&error);
@@ -3320,6 +3321,7 @@ fn reader_state_response(book: &Book, reader: &Reader) -> serde_json::Value {
         "selection": state.selection,
         "layout": state.layout,
         "profile": book.profile_summary(),
+        "visible_position": reader.visible_position(),
     })
 }
 
@@ -7766,6 +7768,16 @@ fn route_mut(state: &mut AppState, path: &str, body: &str, now: &str) -> Reply {
                     Ok(outcome) => ok_json(&outcome),
                     Err(error) => err_reply(&error),
                 }
+            }
+        }
+        "/reader/position" => {
+            let position = match serde_json::from_value::<reader::VisibleReadingPosition>(v.clone()) {
+                Ok(position) => position,
+                Err(_) => return validation("INVALID_RANGE", "reader.position 需规范读位与可见范围"),
+            };
+            match state.workspace.reader.confirm_visible_position(&state.workspace.book, &mut state.user.store, position, now) {
+                Ok(effect) => { save_session(state, None); ok_json(&effect) }
+                Err(error) => err_reply(&error),
             }
         }
         "/reader/goto" => {
@@ -12755,6 +12767,8 @@ impl ModelAdapter for UnconfiguredAdapter {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SessionBookProgress {
     pub top_lid: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visible_position: Option<reader::VisibleReadingPosition>,
 }
 
 /// session.json 结构:记录最后打开的书,并为每本打开过的书分别保存阅读位置。
@@ -12772,6 +12786,9 @@ struct LegacySessionState {
 }
 
 impl SessionState {
+    pub fn visible_position_for_dir(&self, dir: &str) -> Option<&reader::VisibleReadingPosition> {
+        self.books.get(&session_dir_key(dir)).or_else(|| self.books.get(dir)).and_then(|p| p.visible_position.as_ref())
+    }
     pub fn top_lid_for_dir(&self, dir: &str) -> Option<&str> {
         let key = session_dir_key(dir);
         self.books
@@ -12791,6 +12808,7 @@ impl SessionState {
             dir.clone(),
             SessionBookProgress {
                 top_lid: legacy.top_lid,
+                visible_position: None,
             },
         );
         SessionState {
@@ -12859,7 +12877,7 @@ pub fn save_session(state: &AppState, dir: Option<&str>) {
         books: BTreeMap::new(),
     });
     session.current_book_dir = key.clone();
-    session.books.insert(key, SessionBookProgress { top_lid });
+    session.books.insert(key, SessionBookProgress { top_lid, visible_position: state.workspace.reader.visible_position().cloned() });
     if let Ok(json) = serde_json::to_string_pretty(&session) {
         let _ = std::fs::write(path, json);
     }
@@ -12878,6 +12896,7 @@ pub fn load_session(path: &Option<PathBuf>) -> Option<SessionState> {
 
 #[cfg(test)]
 mod tests {
+    mod fp5_tests;
     mod adm10_tests;
     mod adm2_tests;
     mod inv2_tests;
@@ -12911,6 +12930,7 @@ mod tests {
     mod tutor_continuation_tests;
     mod tutor_building_blocks_tests;
     mod tutor_adaptation_tests;
+    mod tutor_response_fit_tests;
     mod tutor_presentation_tests;
     mod tutor_understanding_view_tests;
     use super::*;
@@ -20270,12 +20290,14 @@ unchanged after training concludes";
             session_dir_key(&path_string(&requested)),
             SessionBookProgress {
                 top_lid: "1.3".into(),
+                visible_position: None,
             },
         );
         books.insert(
             current_key.clone(),
             SessionBookProgress {
                 top_lid: "1.9".into(),
+                visible_position: None,
             },
         );
         let session = SessionState {

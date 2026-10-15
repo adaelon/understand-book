@@ -1,6 +1,7 @@
 //! 模块 E 自建最小运行时。`book.query` 使用 referent-first typed mini-loop；
 //! `book.synthesize` 与其他工具保留各自明确的证据所有权。
 pub mod book_output_schema;
+mod book_text_batch;
 use base_schema::{GraphNodeType, LidNode, NodeKind};
 pub use book_tool_contracts::{BookQueryIntent, BookQueryRequest, QueryObligation};
 use memory::{BookReadingState, EngagementSignals};

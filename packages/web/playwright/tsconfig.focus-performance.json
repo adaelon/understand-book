@@ -1,0 +1,5 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "types": ["vite/client", "node"] },
+  "include": ["../src/env.d.ts", "fixtures/focus-reading.ts", "focus-reading-performance.spec.ts", "focus-reading-trace.ts"]
+}

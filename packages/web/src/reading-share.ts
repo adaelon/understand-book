@@ -13,8 +13,7 @@ export type ShareSource = {
 };
 export type ShareDraft = {
   source: ShareSource; selected: SharePart['id'][]; title: string; reflection: string;
-  orientation?: 'portrait' | 'landscape';
-  layout: 'excerpt' | 'understanding' | 'recap' | 'diagram'; palette: 'paper' | 'blue';
+  layout: 'excerpt' | 'understanding' | 'recap'; palette: 'paper' | 'blue';
 };
 // Only human-readable projections cross into the image. The record itself stays in memory.
 export function noteShareSource(record: MemoryRecord, sources: string[]): ShareSource {

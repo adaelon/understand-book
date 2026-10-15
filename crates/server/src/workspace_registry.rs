@@ -754,6 +754,8 @@ impl WorkspaceRegistry {
                 reader.goto_lid(book, &mut user.store, &binding.evidence_range.start_lid, now)?;
                 json!({"source_ref_id":binding.source_ref_id,"opened":true})
             }
+            "reader/position" => json!(reader.confirm_visible_position(book, &mut user.store,
+                serde_json::from_value(input.clone()).map_err(|_| invalid())?, now)?),
             "reader/goto" => json!(reader.goto_lid(
                 book,
                 &mut user.store,
@@ -1170,6 +1172,10 @@ impl crate::presentation_author::AuthorStorage for NetworkAuthorStorage<'_> {
     }
 }
 impl runtime::run_context::ResidentStatePort for NetworkRunPort {
+    fn presentation_unavailable_reason(&self) -> Option<&'static str> {
+        self.access.sandbox.unavailable_reason()
+    }
+
     fn author_presentation(&mut self, request: runtime::presentation_author::AuthorRequest,
         bindings: &[runtime::orchestrator::SourceBinding], messages: &[runtime::Message], cancellation: &runtime::run_context::CancellationToken,
     ) -> Result<runtime::presentation_author::AuthorResult, ToolError> {

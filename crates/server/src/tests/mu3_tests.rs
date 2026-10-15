@@ -25,6 +25,65 @@ fn material(path: &Path, id: &str, image: &[u8]) {
 }
 
 #[test]
+fn default_book_grants_cover_existing_and_future_accounts_without_exposing_other_books() {
+    let root = tempfile::tempdir().unwrap();
+    let input = tempfile::tempdir().unwrap();
+    material(&input.path().join("shared"), "shared", b"image");
+    material(&input.path().join("private"), "private", b"image");
+    let mut library = library(root.path(), 20);
+    let shared = library.publish(&input.path().join("shared")).unwrap().reference;
+    let private = library.publish(&input.path().join("private")).unwrap().reference;
+    library.grant_all(&shared).unwrap();
+    library.grant_all(&shared).unwrap();
+    for user in ["A", "B", "local"] {
+        assert!(library.load(user, &shared).is_ok());
+        assert!(library.load(user, &private).is_err());
+    }
+    drop(library);
+    let mut control = ControlStore::open(ServiceWriter::acquire(root.path()).unwrap()).unwrap();
+    // Registration uses write_password within its account-creation transaction.
+    let tx = control.connection.transaction().unwrap();
+    crate::auth::write_password(&tx, "cancelled", "fixture", true).unwrap();
+    assert_eq!(tx.query_row("SELECT count(*) FROM book_grants WHERE owner_user_id='cancelled'", [], |r| r.get::<_, i64>(0)).unwrap(), 1);
+    tx.rollback().unwrap();
+    assert_eq!(control.connection.query_row("SELECT count(*) FROM book_grants WHERE owner_user_id='cancelled'", [], |r| r.get::<_, i64>(0)).unwrap(), 0);
+    crate::auth::write_password(&control.connection, "registered", "fixture", true).unwrap();
+    control.create_user("provisioned").unwrap();
+    control.connection.execute("UPDATE users SET disabled=1 WHERE user_id='B'", []).unwrap();
+    let mut library = PublishedLibrary::new(control);
+    for user in ["registered", "provisioned"] {
+        assert!(library.load(user, &shared).is_ok());
+        assert!(library.load(user, &private).is_err());
+        assert_eq!(library.list(user).unwrap().len(), 1);
+    }
+    assert!(library.load("B", &shared).is_err());
+    library.revoke("A", &shared).unwrap();
+    assert!(library.load("A", &shared).is_err());
+}
+
+#[test]
+fn default_book_grants_upgrade_schema12_preserves_existing_grants() {
+    let root = tempfile::tempdir().unwrap();
+    let input = tempfile::tempdir().unwrap();
+    material(input.path(), "upgrade", b"image");
+    let mut library = library(root.path(), 20);
+    let reference = library.publish(input.path()).unwrap().reference;
+    library.grant("A", &reference).unwrap();
+    drop(library);
+    {
+        let control = ControlStore::open(ServiceWriter::acquire(root.path()).unwrap()).unwrap();
+        control.connection.execute_batch("DROP TRIGGER grant_default_books_to_new_user; DROP TABLE default_book_grants; PRAGMA user_version=12;").unwrap();
+    }
+    let control = ControlStore::open(ServiceWriter::acquire(root.path()).unwrap()).unwrap();
+    assert_eq!(control.connection.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0)).unwrap(), 13);
+    let mut library = PublishedLibrary::new(control);
+    assert!(library.load("A", &reference).is_ok());
+    assert!(library.load("B", &reference).is_err());
+    library.grant_all(&reference).unwrap();
+    assert!(library.load("B", &reference).is_ok());
+}
+
+#[test]
 fn book_cover_publication_copies_metadata_cover_and_enforces_grants_without_loading_book() {
     let root = tempfile::tempdir().unwrap();
     let input = tempfile::tempdir().unwrap();

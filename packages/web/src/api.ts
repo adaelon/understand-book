@@ -127,6 +127,7 @@ export interface ViewportEffect {
   viewport: Viewport;
 }
 export interface ReaderState {
+  visible_position?: VisibleReadingPosition | null;
   book_id: string;
   revision: number;
   viewport: Viewport;
@@ -134,6 +135,11 @@ export interface ReaderState {
   selection: string | null;
   layout: ReaderLayoutState;
   profile: ProfileSummary;
+}
+export interface VisibleReadingPosition {
+  lid: string;
+  text_position?: { start: number; end: number; text: string };
+  ranges: { lid: string; start: number; end: number }[];
 }
 export interface PaperMinimapStateResponse {
   base: PaperMinimapBase;
@@ -1256,9 +1262,9 @@ export class ApiError extends Error {
   }
 }
 
-async function http<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
-  if (network.value.enabled) return networkRequest<T>(method, path, body);
-  const init: RequestInit = { method };
+async function http<T>(method: "GET" | "POST", path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  if (network.value.enabled) return networkRequest<T>(method, path, body, signal);
+  const init: RequestInit = { method, signal };
   if (body !== undefined) {
     init.headers = { "Content-Type": "application/json" };
     init.body = JSON.stringify(body);
@@ -1345,8 +1351,8 @@ export const api = {
     kind: IntentBuildReaderUsageKind;
     artifact_id?: string;
   }) => http<IntentBuildUsageAppendResultV1>("POST", "/build_intent/usage.event", payload),
-  text: (lid: string, end?: string) =>
-    http<BookText>("GET", `/book/text${qs({ lid, end })}`),
+  text: (lid: string, end?: string, signal?: AbortSignal) =>
+    http<BookText>("GET", `/book/text${qs({ lid, end })}`, undefined, signal),
   structure: (at?: string) => http<StructureProjection>("GET", `/book/structure${qs({ at })}`),
   paperReadingGuide: (mode?: PaperReadingMode, stage?: PaperReadingStage) =>
     http<PaperReadingGuide>("GET", `/book/paper_reading_guide${qs({ mode, stage })}`),
@@ -1411,6 +1417,7 @@ export const api = {
 
   // ── reader.*(可变 POST,返 effect)──
   goto: (lid: string) => http<ViewportEffect>("POST", "/reader/goto", { lid }),
+  confirmReadingPosition: (position: VisibleReadingPosition) => http<ViewportEffect>("POST", "/reader/position", position),
   scroll: (delta: number) => http<ViewportEffect>("POST", "/reader/scroll", { delta }),
   // range?:段内自由高亮 {start,end}(UTF-16 偏移);缺省=整段高亮 `[ADR-0031]`。
   highlight: (lid: string, range?: TextRange, sourceSessionId?: string) =>

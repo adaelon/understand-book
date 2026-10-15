@@ -34,6 +34,21 @@ const baseProps = {
   gotoBack: () => "1.1",
 };
 
+it('requests formula details when the panel opens, selection changes or a read is retried', async () => {
+  const wrapper = mount(RightRail, { props: { ...baseProps, formulaSelected: true }, shallow: true });
+  await wrapper.get('#reader-tab-formula').trigger('click');
+  expect(wrapper.emitted('request-formula')).toHaveLength(1);
+  await wrapper.setProps({ formulaLoading: true });
+  expect(wrapper.get('#reader-panel-formula').text()).toContain('正在读取公式解释');
+  await wrapper.setProps({ formulaLoading: false, formulaError: '读取失败' });
+  await wrapper.get('#reader-panel-formula [role="alert"] button').trigger('click');
+  expect(wrapper.emitted('request-formula')).toHaveLength(2);
+  await wrapper.setProps({ selectedLid: '1.2', formulaError: null });
+  expect(wrapper.emitted('request-formula')).toHaveLength(3);
+  expect(wrapper.get('#reader-panel-formula').text()).toContain('暂时没有解释资料');
+  wrapper.unmount();
+});
+
 it('puts the first-question learning entry in the conversation', () => {
   const wrapper = mount(RightRail, { props: baseProps, shallow: true,
     global: { stubs: { Teleport: false } },

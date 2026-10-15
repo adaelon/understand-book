@@ -39,15 +39,17 @@ function () {
       if (!node.getContext('2d')) throw new Error('此 Canvas 使用 WebGL，当前无法静态输出。');
       target = document.createElement('img');
       try { target.src = node.toDataURL('image/png'); } catch { throw new Error('Canvas 资源无法读取，请重新加载图解。'); }
-    } else if (node.matches('input,textarea,select')) {
-      target = document.createElement('span');
-      target.textContent = node.type === 'checkbox' || node.type === 'radio' ? (node.checked ? '☑' : '☐')
-        : node instanceof HTMLSelectElement ? Array.from(node.selectedOptions, option => option.text).join('、') : node.value;
     } else {
       if (node instanceof HTMLImageElement && (!node.complete || !node.naturalWidth))
         throw new Error('图解图片资源尚未就绪或加载失败，请重试。');
       target = node.cloneNode(false);
-      for (const child of node.childNodes) target.append(clone(child));
+      if (node instanceof HTMLTextAreaElement) target.textContent = node.value;
+      else for (const child of node.childNodes) target.append(clone(child));
+      // Serialize live control state while retaining the actual control's appearance and size.
+      if (node instanceof HTMLInputElement) {
+        target.setAttribute('value', node.value);
+        target.toggleAttribute('checked', node.checked);
+      } else if (node instanceof HTMLOptionElement) target.toggleAttribute('selected', node.selected);
     }
     copyStyle(style, target);
     if (node instanceof HTMLCanvasElement) { target.style.width = style.width; target.style.height = style.height; }
@@ -63,14 +65,16 @@ function () {
   }
   const body = clone(root);
   body.style.margin = '0'; body.style.width = `${width}px`; body.style.height = `${height}px`;
-  // Retain only self-contained font faces. Other computed styles are already frozen.
-  for (const sheet of document.styleSheets) for (const rule of sheet.cssRules)
+  // Keep authored control/pseudo-element styling alongside the frozen computed styles.
+  const authoredRules = [];
+  for (const sheet of document.styleSheets) for (const rule of sheet.cssRules) {
     if (rule instanceof CSSFontFaceRule) {
       if ([...rule.style.getPropertyValue('src').matchAll(/url\(["']?([^"')]+)["']?\)/g)].some(match => !match[1].startsWith('data:')))
         throw new Error('图解字体资源无法嵌入，请使用版本内字体。');
-      rules.push(rule.cssText);
     }
-  const style = document.createElement('style'); style.textContent = rules.join('\n'); body.prepend(style);
+    authoredRules.push(rule.cssText);
+  }
+  const style = document.createElement('style'); style.textContent = [...authoredRules, ...rules].join('\n'); body.prepend(style);
   if (root.scrollWidth > width + 2) throw new Error('图解超出当前画布，请展开演示后重新导出。');
   return { width, height, resources: [...resources], svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%">${new XMLSerializer().serializeToString(body)}</foreignObject></svg>` };
 }

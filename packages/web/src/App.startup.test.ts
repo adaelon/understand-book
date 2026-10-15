@@ -14,7 +14,7 @@ const api = vi.hoisted(() => Object.fromEntries([
   "goto", "desktopStatus", "buildWorkbench", "manifest", "assetManifest", "sourceFingerprint",
   "sourceManifest", "state", "profileManifest", "text", "recall", "agentHistory",
   "profileMemory", "profileBackfill", "intentUsageEvent", "intentArtifacts", "bookLibrary", "paperMetadata",
-  "openBook", "agentNew", "disposeEffect", "agentRunCreate", "agentRun", "agentRunRetrySave",
+  "openBook", "agentNew", "disposeEffect", "agentRunCreate", "agentRun", "agentRunRetrySave", "formulaSemantics",
   "save", "replace", "delete", "agentHistorySelect", "agentSourceResolve", "tutorState", "tutorReadiness", "tutorMutate", "tutorStart",
 ].map(key => [key, vi.fn()])));
 vi.mock("./api", async original => ({ ...await original<typeof import("./api")>(), api }));
@@ -66,6 +66,37 @@ beforeEach(() => {
   api.intentUsageEvent.mockResolvedValue({});
   api.bookLibrary.mockResolvedValue({ root: "books", books: [] });
   api.openBook.mockImplementation(async () => { book = "second"; return { ok: true, book_id: book }; });
+});
+
+it('reads prose without formula explanations and keeps the dialog usable while explanations wait or fail', async () => {
+  api.manifest.mockResolvedValue({ tree: [{ lid: '1.1', kind: 'formula', children: [], span: { start: 0, end: 5 } }], stats_by_lid: {} });
+  api.text.mockResolvedValue({ lid: '1.1', text: '$x^2$' });
+  const pending = deferred<unknown>(); api.formulaSemantics.mockReturnValue(pending.promise);
+  const w = start(); await flushPromises();
+  const reader = w.getComponent({ name: 'ReaderPane' });
+  expect(reader.props('segments')[0].text).toBe('$x^2$');
+  expect(api.formulaSemantics).not.toHaveBeenCalled();
+  reader.vm.$emit('open-formula', reader.props('segments')[0]); await flushPromises();
+  expect(w.get('.formula-dialog').text()).toContain('正在读取公式解释');
+  pending.reject(new Error('解释暂不可用')); await flushPromises();
+  expect(w.get('.formula-dialog').text()).toContain('解释暂不可用');
+  api.formulaSemantics.mockResolvedValue(null);
+  await w.get('.formula-dialog [role="alert"] button').trigger('click'); await flushPromises();
+  expect(w.get('.formula-dialog').text()).toContain('暂时没有解释资料');
+  expect(reader.props('segments')[0].text).toBe('$x^2$');
+});
+
+it('loads the selected formula panel on demand after body hydration', async () => {
+  api.manifest.mockResolvedValue({ tree: [{ lid: '1.1', kind: 'formula', children: [], span: { start: 0, end: 5 } }], stats_by_lid: {} });
+  api.text.mockResolvedValue({ lid: '1.1', text: '$x^2$' });
+  const formula = { formula_lid: '1.1', composition: { meaning: '平方' }, parameters: [], context_links: [] };
+  api.formulaSemantics.mockResolvedValue(formula);
+  const w = start(); await flushPromises();
+  expect(api.formulaSemantics).not.toHaveBeenCalled();
+  const rail = w.getComponent({ name: 'RightRail' });
+  rail.vm.$emit('request-formula'); await flushPromises();
+  expect(api.formulaSemantics).toHaveBeenCalledWith('1.1');
+  expect(rail.props('selectedFormula')).toEqual(formula);
 });
 
 it('enables continuous teaching without inventing a goal or sending a synthetic question', async () => {

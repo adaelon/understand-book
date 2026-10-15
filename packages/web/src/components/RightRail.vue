@@ -112,6 +112,9 @@ const props = withDefaults(defineProps<{
   noteSourceFingerprint?: string | null;
   selectedLid: string | null;
   selectedFormula: FormulaSemantics | null;
+  formulaSelected?: boolean;
+  formulaLoading?: boolean;
+  formulaError?: string | null;
   contextNotes: MemoryRecord[];
   contextHighlights: MemoryRecord[];
   noteBookOrder?: string[];
@@ -151,6 +154,7 @@ const props = withDefaults(defineProps<{
   requestedTabRevision?: number;
 }>(), { companionVisible: true });
 const emit = defineEmits<{
+  (e: 'request-formula'): void;
   (e: 'prepare-artifacts'): void;
   (e: 'recap-publication', target: RecapTarget): void;
   (e: "open-note-answer", note: MemoryRecord): void;
@@ -323,6 +327,7 @@ const sceneBound = ref(true);
 const discussionOpen = ref(false);
 const split = ref(63);
 const workspaceTools = ref<HTMLElement>();
+const workspaceTeachingTarget = ref<HTMLElement | null>(null);
 const workspaceTop = ref(60);
 let toolbarObserver: ResizeObserver | undefined;
 watch(workspaceVisible, async visible => {
@@ -604,6 +609,7 @@ watch(
   },
 );
 const noteCount = computed(() => props.contextNotes.length + props.contextHighlights.length);
+watch(() => props.selectedLid, () => { if (activeTab.value === 'formula') emit('request-formula'); });
 const profileAttentionCount = computed(() => (
   (props.profileMemory?.pending_candidates.length ?? 0)
   + (props.profileMemory?.status.pending_sensitive_confirmation ? 1 : 0)
@@ -1116,6 +1122,7 @@ function selectTab(tab: ContextTab) {
   contextMenuOpen.value = false;
   chatMenuOpen.value = false;
   if (tab === "profile") emit("refresh-profile");
+  if (tab === 'formula') emit('request-formula');
   if (tab === "artifacts") emit("open-artifacts");
 }
 
@@ -1157,7 +1164,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 </script>
 
 <template>
-  <aside class="right-rail" :class="{ fullscreen: props.fullscreen, 'conversation-wide': wideConversation, 'conversation-mobile': mobileConversation, 'presentation-workspace': workspaceVisible, 'discussion-open': discussionOpen }" :style="{ '--presentation-split': `${split}%`, '--presentation-top': `${workspaceTop}px` }">
+  <aside class="right-rail" :class="{ fullscreen: props.fullscreen && !workspaceVisible, 'conversation-wide': wideConversation, 'conversation-mobile': mobileConversation, 'presentation-workspace': workspaceVisible, 'discussion-open': discussionOpen }" :style="{ '--presentation-split': `${split}%`, '--presentation-top': `${workspaceTop}px` }">
     <div v-if="workspaceVisible" ref="workspaceTools" class="workspace-tools">
       <div v-if="$slots['learning-details']" class="workspace-learning-details"><slot name="learning-details" /></div>
       <label class="workspace-split">演示宽度 <input v-model="split" type="range" min="40" max="72" aria-label="演示宽度" /></label>
@@ -1345,6 +1352,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
                 <button v-if="workspaceVisible" class="presentation-reference" @click="selectPresentation(turn.turnId, part)">打开演示 · 版本 {{ part.revision }}</button>
                 <AgentPresentation v-if="loadedPresentations.has(presentationKey(turn.turnId, part))"
                   :toolbar-target="workspaceVisible && workspaceKey === presentationKey(turn.turnId, part) ? workspaceTools : undefined"
+                  :teaching-target="workspaceVisible && workspaceKey === presentationKey(turn.turnId, part) ? workspaceTeachingTarget ?? undefined : undefined"
                   v-show="!workspaceVisible || workspaceKey === presentationKey(turn.turnId, part)"
                   :ref="instance => { if (instance) presentationInstances.set(presentationKey(turn.turnId!, part), instance as InstanceType<typeof AgentPresentation>); else presentationInstances.delete(presentationKey(turn.turnId!, part)); }"
                   :session-id="props.activeChatSessionId" :turn-id="turn.turnId" :reference="part" :teaching="!!turn.hasTeaching || !!turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step')"
@@ -1362,6 +1370,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
               </template>
             </div>
             <p v-else class="ans-text">暂无回答。</p>
+            <div v-if="workspaceVisible && workspace?.turnId === turn.turnId" :ref="element => { workspaceTeachingTarget = element as HTMLElement | null; }" class="workspace-teaching" />
             <TutorActivities v-if="turn.turnId && !turn.pending && (turn.hasTeaching || turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step'))"
               :ref="instance => { if (instance) activityInstances.set(turn.turnId!, instance as InstanceType<typeof TutorActivities>); else activityInstances.delete(turn.turnId!); }"
               :session-id="props.activeChatSessionId" :turn-id="turn.turnId" :answer-text="turn.outcome.answer ?? undefined" :answer-target="() => answerRoots.get(turn.turnId!)" :sources="turn.outcome.answer_view?.sources ?? []"
@@ -1587,7 +1596,9 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           </ul>
         </div>
       </div>
-      <p v-else class="empty panel-empty">在阅读区选择公式后查看预构建剖面。</p>
+      <p v-else-if="props.formulaLoading" role="status">正在读取公式解释…</p>
+      <p v-else-if="props.formulaError && props.formulaSelected" role="alert">{{ props.formulaError }} <button @click="emit('request-formula')">重试</button></p>
+      <p v-else class="empty panel-empty">{{ props.formulaSelected ? '这条公式暂时没有解释资料。' : '在阅读区选择公式后查看预构建剖面。' }}</p>
     </section>
 
     <section ref="notesPanel" id="reader-panel-notes" v-show="activeTab === 'notes'" class="tab-panel context-panel" role="tabpanel" aria-labelledby="reader-tab-notes">

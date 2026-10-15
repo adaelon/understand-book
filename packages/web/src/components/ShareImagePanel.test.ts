@@ -154,23 +154,18 @@ it('keeps a cancelled save retryable and invalidates an open save when leaving t
 });
 
 
-it('RS7 fixes scene context and changes orientation without recapturing the diagram', async () => {
+it('RS7 previews and downloads the captured HTML without share-card editing or text selection', async () => {
   wrapper.unmount();
-  const diagram = { ...source, diagram: { png: 'data:image/png;base64,AA==', width: 640, height: 360, title: '当前图解' } };
+  const diagram = { ...source, parts: [], diagram: { png: 'data:image/png;base64,AA==', width: 640, height: 360, title: '当前图解' } };
   wrapper = mount(ShareImagePanel, { props: { source: diagram } });
-  expect(wrapper.get('input[type=checkbox]').attributes('disabled')).toBeDefined();
-  expect(wrapper.find('option[value="excerpt"]').exists()).toBe(false);
+  expect(wrapper.get('h2').text()).toBe('导出演示长图');
+  expect(wrapper.find('input,textarea,select').exists()).toBe(false);
   vi.mocked(renderShare).mockResolvedValue([new Blob(['png'])]);
-  await button('预览图片').trigger('click'); await flushPromises();
-  expect(renderShare).toHaveBeenLastCalledWith(expect.objectContaining({ orientation: 'landscape', layout: 'diagram' }));
-  await wrapper.findAll('select').find(select => select.find('option[value="portrait"]').exists())!.setValue('portrait');
-  expect(wrapper.find('img').exists()).toBe(true);
-  expect(button('下载 PNG').attributes('disabled')).toBeDefined();
-  await button('预览图片').trigger('click'); await flushPromises();
-  expect(renderShare).toHaveBeenLastCalledWith(expect.objectContaining({ orientation: 'portrait', source: diagram }));
-  vi.mocked(renderShare).mockRejectedValueOnce(new Error('图解过长'));
-  await wrapper.get('textarea').setValue('更新说明');
-  await button('预览图片').trigger('click'); await flushPromises();
-  await button('返回图解').trigger('click');
+  await vi.advanceTimersByTimeAsync(0); await flushPromises();
+  expect(renderShare).toHaveBeenLastCalledWith(expect.objectContaining({ source: diagram, selected: [] }));
+  await button('下载长图 PNG').trigger('click'); await flushPromises();
+  expect(saveShare).toHaveBeenCalledWith(expect.any(Blob), 'blob:preview', expect.any(Function), undefined);
+  expect(wrapper.find('nav').exists()).toBe(false);
+  await wrapper.get('[aria-label="关闭分享"]').trigger('click');
   expect(wrapper.emitted('close')).toHaveLength(1);
 });

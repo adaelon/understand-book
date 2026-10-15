@@ -273,8 +273,8 @@ describe("PdfReaderPane", () => {
 
     const componentSource = readFileSync("src/components/PdfReaderPane.vue", "utf8");
     expect(componentSource).toContain("grid-auto-rows: max-content");
-    expect(componentSource).toContain(".pdf-text-layer :deep(.textLayer)");
-    expect(componentSource).toContain(".pdf-text-layer :deep(.textLayer .endOfContent)");
+    expect(componentSource).toContain(".pdf-text-layer .textLayer");
+    expect(componentSource).toContain(".pdf-text-layer .textLayer .endOfContent");
     expect(componentSource).toContain("scaleX(var(--scale-x))");
 
     wrapper.unmount();

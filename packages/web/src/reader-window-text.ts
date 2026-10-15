@@ -6,8 +6,14 @@ export async function readWindowText(
   tree: Manifest['tree'],
   read: (lid: string, end?: string) => Promise<BookText>,
 ): Promise<BookText[]> {
+  return createWindowTextReader(tree, read)(lids);
+}
+
+/** Index source metadata once for repeated, bounded focus windows. */
+export function createWindowTextReader(tree: Manifest['tree'], read: (lid: string, end?: string) => Promise<BookText>) {
   const nodes = new Map(tree.map(node => [node.lid, node]));
   const leafIndex = new Map(tree.filter(node => node.children.length === 0).map((node, index) => [node.lid, index]));
+  return async (lids: string[]): Promise<BookText[]> => {
   const groups: string[][] = [];
   for (const lid of lids) {
     const group = groups[groups.length - 1];
@@ -26,4 +32,5 @@ export async function readWindowText(
     });
   }));
   return chunks.flat();
+  };
 }

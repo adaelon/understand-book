@@ -543,6 +543,18 @@ impl PublishedLibrary {
         Ok(manifest)
     }
 
+    /// Grant this exact publication to all existing accounts and to future accounts.
+    pub fn grant_all(&mut self, reference: &PublishedBookRef) -> Result<(), ToolError> {
+        self.record(reference)?;
+        let tx = self.control.connection.transaction().map_err(|_| storage())?;
+        tx.execute("INSERT OR IGNORE INTO default_book_grants(book_id,publication_id) VALUES(?,?)",
+            params![reference.book_id, reference.publication_id]).map_err(|_| storage())?;
+        tx.execute("INSERT OR IGNORE INTO book_grants(owner_user_id,book_id,publication_id) SELECT user_id,?,? FROM users",
+            params![reference.book_id, reference.publication_id]).map_err(|_| storage())?;
+        tx.commit().map_err(|_| storage())?;
+        Ok(())
+    }
+
     pub fn set_default(&mut self, reference: &PublishedBookRef) -> Result<(), ToolError> {
         self.record(reference)?;
         self.control.connection.execute("INSERT INTO book_defaults(book_id,publication_id) VALUES(?,?) ON CONFLICT(book_id) DO UPDATE SET publication_id=excluded.publication_id", params![reference.book_id, reference.publication_id]).map_err(|_| storage())?;

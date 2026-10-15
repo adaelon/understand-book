@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MHA / GQA / MQA：一个旋钮，两笔账</title>
+<style>
+:root{
+  --canvas:#f5f1e8; --ink:#241f1a; --surface:#ffffff; --line:#ddd5c7; --accent:#0f6e64;
+  --kv:#c2703a; --quiet:#fdfbf7;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--ink);font-size:17px;line-height:1.75;
+  font-family:-apple-system,BlinkMacSystemFont,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif}
+.page{max-width:1000px;margin:0 auto;padding:22px 16px 64px}
+h1{font-size:clamp(21px,4.4vw,27px);line-height:1.35;margin:6px 0 8px}
+h2{font-size:clamp(17px,3.6vw,20px);line-height:1.45;margin:0 0 10px}
+h3{font-size:16px;margin:0 0 8px}
+p{margin:0 0 12px}
+b{font-weight:700}
+.sub{color:#5b544a;font-size:16px;margin-bottom:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px}
+.quiet{background:transparent;border-style:dashed}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:15px;color:#5b544a;margin-bottom:12px}
+.sw{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:6px}
+.sw.q{background:var(--accent);opacity:.35}
+.sw.kv{background:var(--kv)}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
+button{font:inherit;min-height:44px;min-width:64px;padding:8px 12px;border-radius:12px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink);cursor:pointer}
+button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.slider-wrap{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 14px}
+.slider-wrap label{font-size:15px;color:#5b544a}
+.slider-wrap output{font-weight:700;color:var(--ink)}
+input[type=range]{flex:1 1 200px;min-height:44px;accent-color:var(--accent);background:transparent}
+.grid{border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--quiet);margin-bottom:8px}
+.row{display:grid;gap:2px;cursor:pointer;border-radius:6px}
+.row.picked{outline:2px solid var(--accent);outline-offset:2px}
+.qcell{background:var(--accent);opacity:.35;border-radius:3px}
+.kvbar{background:var(--kv);border-radius:3px}
+.note{font-size:15px;color:#5b544a;margin:0 0 12px}
+.ledgers{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 4px}
+@media (max-width:720px){.ledgers{grid-template-columns:1fr}}
+.ledger{border:1px solid var(--line);border-radius:12px;padding:12px}
+.nrow{display:flex;flex-direction:column;gap:2px;padding:9px 0;border-top:1px dashed var(--line)}
+.nrow:first-of-type{border-top:0;padding-top:2px}
+.lab{font-size:15px;color:#5b544a}
+.val{font-size:21px;font-weight:700;line-height:1.3}
+.change .val{color:var(--kv)}
+.still .val{color:var(--accent)}
+.fm{font-size:13.5px;color:#6b6459;line-height:1.55}
+.reveal{margin-top:12px}
+#revealNote{margin-top:10px;border-left:3px solid var(--kv);padding:8px 12px;background:var(--quiet);border-radius:0 10px 10px 0}
+.rule{border-left:3px solid var(--accent);padding:2px 0 2px 12px;margin:0 0 12px}
+.checks{margin:0;padding-left:22px}
+.checks li{margin-bottom:8px}
+</style>
+</head>
+<body>
+<main class="page">
+
+  <h1>MHA / GQA / MQA：一个旋钮，两笔账</h1>
+  <p class="sub">同一个模型有 <b>32 个查询头</b>，却在上下文里只保存 <b>8 组 K、V</b>。这一页把「为什么能这样共用、共用之后谁变谁不变」按给你看：左边的组数、容量会随旋钮走，右边的 32 份查询工作一动不动。</p>
+
+  <section class="card">
+    <h2>① 先说机制：为什么 32 个查询头可以只带 8 组 K、V</h2>
+    <p>每个 token 的输入先被投影成三样东西：<b>查询</b>（q）、<b>键</b>（k）、<b>值</b>（v）。注意力只做两步：先用 q 与上下文里每个 token 的 k 打分，决定「该看谁」；再用这些分数把每个 token 的 v 加权汇总，决定「取回什么」。</p>
+    <p><b>32 个查询头 ＝ 32 套 q。</b>同一个 token 上，模型同时提出 32 个不同的问题，各自得到一组分数、各自汇总出一份输出。这一步的份数由「要问多少种问题」决定，省不掉。</p>
+    <p><b>K、V 不是配给某个头专用的，而是「被查的那份数据」。</b>一组 k 定义「什么算相关」，一组 v 是「可取回的内容池」。上面两步里没有任何一处要求每个 q 配一份专属的 k、v —— 所以<b>同一份 K、V 完全可以供多个 q 使用</b>，这就是共用的机制基础。</p>
+    <p><b>代价也要看清：</b>同组的几个头从此必须接受同一套「相关性标准」和同一个「内容池」，模型能表达的关系种类随之变少。省下来的是上下文里要保存、要读取的 K、V 份数，不是查询这一侧的工作。</p>
+  </section>
+
+  <section class="card">
+    <h2>② 按下去看：k ＝ 每个 KV 组由几个查询头共用</h2>
+    <p class="legend">
+      <span><i class="sw q"></i>紫色小格 ＝ 一个查询头：各自算分数、各自汇总输出</span>
+      <span><i class="sw kv"></i>暖色长条 ＝ 一组 K、V：这一行里的查询头共用它</span>
+    </p>
+
+    <div class="btns" role="group" aria-label="共享比例 k">
+      <button class="ratio" type="button" data-k="1" aria-pressed="false">k = 1（MHA）</button>
+      <button class="ratio" type="button" data-k="2" aria-pressed="false">k = 2</button>
+      <button class="ratio" type="button" data-k="4" aria-pressed="true">k = 4（GQA · Qwen3-8B）</button>
+      <button class="ratio" type="button" data-k="8" aria-pressed="false">k = 8</button>
+      <button class="ratio" type="button" data-k="32" aria-pressed="false">k = 32（MQA）</button>
+    </div>
+
+    <div class="slider-wrap">
+      <label for="tn">上下文里的 token 数 N：<output id="nOut">8192</output></label>
+      <input id="tn" type="range" min="128" max="8192" step="128" value="8192">
+      <button id="resetN" type="button">回到 8192（对账点）</button>
+    </div>
+
+    <div id="grid" class="grid" aria-label="每一行是一组 K、V 和共用它的查询头"></div>
+    <p class="note" id="gridNote"></p>
+    <p class="note" id="pickNote">点一行看看：那一行是同一组 K、V 的读者。</p>
+
+    <div class="ledgers">
+      <div class="ledger change">
+        <h3>会变的一栏（跟着 k 和 N 走）</h3>
+        <div class="nrow"><span class="lab">KV 组数（每层）</span><span class="val" id="kGroups">8 组</span><span class="fm" id="kGroupsFm"></span></div>
+        <div class="nrow"><span class="lab">每个 token 追加的 K、V</span><span class="val" id="kPerTok">144 KiB</span><span class="fm" id="kPerTokFm"></span></div>
+        <div class="nrow"><span class="lab">状态容量（N 个 token）</span><span class="val" id="kCap">1.125 GiB</span><span class="fm" id="kCapFm"></span></div>
+        <div class="nrow"><span class="lab">相对 k = 4 这一档</span><span class="val" id="kRatio">×1</span><span class="fm" id="kRatioFm">同一 N 下，与 Qwen3-8B 当前 GQA 配置的倍数关系</span></div>
+        <div class="nrow"><span class="lab">键值投影参数（全部 36 层）</span><span class="val" id="kProj">3.02 亿</span><span class="fm" id="kProjFm"></span></div>
+      </div>
+
+      <div class="ledger still">
+        <h3>不动的一栏（只看查询头）</h3>
+        <div class="nrow"><span class="lab">查询头数</span><span class="val">32</span><span class="fm">书上：32 个查询头和 8 个「供查询使用的」KV 头，每头 128 维</span></div>
+        <div class="nrow"><span class="lab">每个 token 打出的分数行</span><span class="val">32 条</span><span class="fm">条数不随组数变；四个查询头仍可给同一段上下文打出四组不同的分数</span></div>
+        <div class="nrow"><span class="lab">每个 token 的加权输出</span><span class="val">32 份</span><span class="fm">共享的是「被查的数据」，不是查询侧的份数</span></div>
+        <div class="nrow"><span class="lab">查询投影（每层）</span><span class="val">m×4096 → m×4096</span><span class="fm">书上的投影表里，这一行与 KV 组数无关</span></div>
+        <div class="nrow"><span class="lab">每层 QK<sup>T</sup> 与 AV 的运算量</span><span class="val">4 × 32 × 128 × N<sub>pair</sub></span><span class="fm">式子里只有 32 个查询头和每头 128 维，没有组数；书上这一行还标着「无新增投影权重」</span></div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <button id="revealBtn" type="button" aria-expanded="false">先自己判断：组数从 8 降到 1、容量降到 1/8，QK<sup>T</sup> 与 AV 也降到 1/8 吗？</button>
+      <div id="revealNote" hidden>
+        <p>不降。<b>右边那一行式子里没有组数</b>：每个查询头仍旧各自打分、各自汇总，累计运算量还是 <b>4 × 32 × 128 × N<sub>pair</sub></b>。</p>
+        <p>变的是「被查的那份数据」：一次读入的 K、V 可以供同组的多个查询头复用，所以省下的是上下文状态容量与读写量——以及键值投影的参数。把「省读写」当成「省这部分运算」，是这一节最容易踩的坑。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>③ 带得走的规则与一次对账</h2>
+    <p class="rule">把 KV 组数减半 → <b>键值投影参数与上下文状态容量都减半</b>；查询头数不变 → <b>查询与上下文交互的运算量仍按原来的头数累计</b>。</p>
+    <p class="rule">换个说法：层数或 KV 头数减半，每处理一个新 token 的增长速度也减半。所以在上面那块面板里，k 与 N 是同一个乘法的两端：N 决定「有多少个位置要存」，组数决定「每个位置存几份」。</p>
+    <p>一条可以自己核对的算术：GQA 档每 token 追加 144 KiB，8192 个 token 就是 <b>144 KiB × 8192 ＝ 1.125 GiB</b>，与书上的 1.125 GiB 对上（同一张表也把它写成 1,152 MiB）。</p>
+    <ul class="checks">
+      <li>把 k 从 4 调到 1：组数 ×4、每 token 字节 ×4、容量 ×4，而右边的 32 一直没动。</li>
+      <li>把 N 从 8192 拉回 128：容量按比例缩小，组数与两侧的份数都不变。</li>
+      <li>留给你的一问：既然组数越少越省，为什么不全用 MQA？提示就在「不动的一栏」里那两条 32。</li>
+    </ul>
+  </section>
+
+  <section class="card quiet">
+    <h2>口径与来源</h2>
+    <p><b>本轮读到的书上原数：</b>32 个查询头、8 个供查询使用的 KV 头、每头 128 维；Qwen3-8B 让每四个查询头共用一组 KV；四头单层例中 MHA／GQA／MQA 需保存的 KV 份数为四、二、一，GQA 在该例中把上下文存储量减半；若给每个查询头单独保存，容量是当前配置的四倍，全部共用则是八分之一；实际 GQA 配置保存 8192 个 token 需 1.125 GiB；每新增一个 token 追加 144 KiB，层数或 KV 头数减半增长速度也减半；投影表中 Q 投影为 m×4096 → m×4096，K、V 投影为 m×4096 → m×1024、共 2 个矩阵，QK<sup>T</sup> 与 AV 一行为 4×32×128×N<sub>pair</sub> 且无新增投影权重，以上均按 36 层；数值表里 Qwen3-8B（BF16 GQA）每 token 147,456 字节、8K 全局历史 1,152 MiB。</p>
+    <p><b>本页自己算出来的数（不是书上原数）：</b>每 token 的 K、V 字节 ＝ 36 层 × 组数 ×（K、V 各 128 个数）× 2 字节（BF16）；状态容量 ＝ 该值 × N；键值投影参数量 ＝ 36 层 × 2 个矩阵 × 4096 ×（组数 × 128）。于是在 N ＝ 8192 时：MHA 档 576 KiB／4.5 GiB，k = 2 档 288 KiB／2.25 GiB，k = 4 档 144 KiB／1.125 GiB，k = 8 档 72 KiB／576 MiB，MQA 档 18 KiB／144 MiB。</p>
+    <p>单位一律用二进制的 KiB／MiB／GiB（1 KiB ＝ 1024 字节）。本页也没有把共用说成免费的：它改变的是上下文状态的容量与读写量，代价是同组的查询头共用同一套相关性标准。</p>
+  </section>
+
+</main>
+<script>
+(function(){
+  var NQ = 32, LAYERS = 36, HEAD_DIM = 128, ELEM = 2, WIDTH = 4096, GQA_GROUPS = 8;
+  var KS = [1, 2, 4, 8, 32];
+  var state = {share: 4, tokens: 8192};
+
+  function $(id){ return document.getElementById(id); }
+  function num(v){ return String(Number(v.toFixed(3))); }
+  function commas(n){ return n.toLocaleString('en-US'); }
+  function cap(bytes){
+    if (bytes >= 1073741824) return num(bytes / 1073741824) + ' GiB';
+    if (bytes >= 1048576) return num(bytes / 1048576) + ' MiB';
+    if (bytes >= 1024) return num(bytes / 1024) + ' KiB';
+    return bytes + ' 字节';
+  }
+  function yi(p){ return (p / 1e8).toFixed(2) + ' 亿'; }
+  function ratioText(g){
+    var r = g / GQA_GROUPS;
+    if (r >= 1) return '×' + num(r);
+    return '1/' + num(1 / r);
+  }
+  function commit(){
+    if (window.presentation && typeof window.presentation.commitState === 'function') {
+      window.presentation.commitState();
+    }
+  }
+
+  function render(){
+    var k = state.share, g = NQ / k, N = state.tokens;
+    var per = LAYERS * g * 2 * HEAD_DIM * ELEM;
+    var total = per * N;
+    var proj = LAYERS * 2 * WIDTH * (g * HEAD_DIM);
+
+    var btns = document.querySelectorAll('button.ratio');
+    for (var i = 0; i < btns.length; i++){
+      var on = Number(btns[i].getAttribute('data-k')) === k;
+      btns[i].className = on ? 'ratio on' : 'ratio';
+      btns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+
+    $('nOut').textContent = commas(N);
+
+    var grid = $('grid');
+    grid.innerHTML = '';
+    var rowH = g > 16 ? 12 : 20;
+    var rowM = g > 16 ? 2 : 3;
+    for (var r = 0; r < g; r++){
+      var row = document.createElement('div');
+      row.className = 'row';
+      row.style.gridTemplateColumns = 'repeat(' + k + ', minmax(4px, 1fr)) minmax(38px, 1.6fr)';
+      row.style.height = rowH + 'px';
+      row.style.marginBottom = rowM + 'px';
+      row.setAttribute('title', '一组 K、V，以及共用它的 ' + k + ' 个查询头');
+      for (var c = 0; c < k; c++){
+        var cell = document.createElement('span');
+        cell.className = 'qcell';
+        row.appendChild(cell);
+      }
+      var bar = document.createElement('span');
+      bar.className = 'kvbar';
+      row.appendChild(bar);
+      grid.appendChild(row);
+    }
+    $('gridNote').textContent = '32 个查询头 ÷ 每 ' + k + ' 个共用一组 ＝ ' + g + ' 组 K、V，图上就是 ' + g + ' 行。'
+      + (k === 1 ? '这一档每个查询头各自一份（MHA）。' : (k === 32 ? '这一档全体共用一份（MQA）。' : ''));
+
+    $('kGroups').textContent = g + ' 组';
+    $('kGroupsFm').textContent = (k === 1
+      ? '每个查询头各存一份 K、V（MHA）'
+      : (k === 32 ? '32 个查询头共用同一份 K、V（MQA）' : '32 ÷ ' + k + ' ＝ ' + g + ' 组'))
+      + '；上下文 token 的数量不变';
+
+    $('kPerTok').textContent = cap(per);
+    $('kPerTokFm').textContent = '36 层 × ' + g + ' 组 ×（K、V 各 128 个数）× 2 字节（BF16）＝ ' + commas(per) + ' 字节';
+
+    $('kCap').textContent = cap(total);
+    $('kCapFm').textContent = cap(per) + '／token × ' + commas(N) + ' 个 token ＝ ' + commas(total) + ' 字节'
+      + ((N === 8192 && g === GQA_GROUPS) ? '　＝　书上表中 8K 全局历史 1,152 MiB' : '');
+
+    $('kRatio').textContent = ratioText(g);
+    $('kRatioFm').textContent = '同一 N 下，与 Qwen3-8B 当前 GQA 配置（k ＝ 4、8 组）的倍数关系；这一档就是 1 倍';
+
+    $('kProj').textContent = yi(proj);
+    $('kProjFm').textContent = '36 层 × 2 个矩阵 × 4096 × ' + (g * HEAD_DIM) + ' ＝ ' + commas(proj) + ' 个参数'
+      + (g === GQA_GROUPS ? '　（即书上表中 4096×1024，共 2 个）' : '');
+  }
+
+  var ratios = document.querySelectorAll('button.ratio');
+  for (var j = 0; j < ratios.length; j++){
+    ratios[j].addEventListener('click', function(){
+      var v = Number(this.getAttribute('data-k'));
+      if (KS.indexOf(v) >= 0){
+        state.share = v;
+        render();
+        commit();
+      }
+    });
+  }
+
+  var tn = $('tn');
+  tn.addEventListener('input', function(){
+    state.tokens = Number(this.value);
+    render();
+  });
+  tn.addEventListener('change', function(){
+    state.tokens = Number(this.value);
+    render();
+    commit();
+  });
+
+  $('resetN').addEventListener('click', function(){
+    state.tokens = 8192;
+    tn.value = '8192';
+    render();
+    commit();
+  });
+
+  $('grid').addEventListener('click', function(e){
+    var node = e.target;
+    while (node && node !== this && !(node.className && String(node.className).indexOf('row') === 0)){
+      node = node.parentNode;
+    }
+    if (!node || node === this) return;
+    var rows = this.querySelectorAll('.row');
+    for (var i = 0; i < rows.length; i++){ rows[i].classList.remove('picked'); }
+    node.classList.add('picked');
+    $('pickNote').textContent = '这一行的 ' + state.share + ' 个查询头：各自算自己的分数、各自汇总自己的输出，但读的是同一份 K、V（暖色长条）。';
+  });
+
+  $('revealBtn').addEventListener('click', function(){
+    var shown = !$('revealNote').hidden;
+    $('revealNote').hidden = shown;
+    this.setAttribute('aria-expanded', shown ? 'false' : 'true');
+  });
+
+  if (window.presentation && typeof window.presentation.registerStateReader === 'function'){
+    window.presentation.registerStateReader(function(){
+      return {values: {share: state.share, tokens: state.tokens}, visible_step: null};
+    });
+  }
+  if (window.presentation && typeof window.presentation.registerStateRestorer === 'function'){
+    window.presentation.registerStateRestorer(function(saved){
+      if (saved && saved.values){
+        var s = Number(saved.values.share);
+        var t = Number(saved.values.tokens);
+        if (KS.indexOf(s) >= 0) state.share = s;
+        if (isFinite(t)){
+          t = Math.round(t / 128) * 128;
+          if (t < 128) t = 128;
+          if (t > 8192) t = 8192;
+          state.tokens = t;
+        }
+      }
+      tn.value = String(state.tokens);
+      render();
+    });
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 //! LA8 evaluation-only access projection; the production registry is unchanged.
+use crate::tool_result::{ToolContinuation, ToolResultDraft, ToolResultStatus};
 use crate::{tool_registry::ToolRegistry, InstructionModule, ToolSpec};
 use read_tools::{Book, ExperimentalReadAccess};
 use serde_json::json;
@@ -8,7 +9,9 @@ pub fn registry(book: &Book, registry: ToolRegistry) -> ToolRegistry {
         return registry;
     };
     registry.experimental_subset(|s| match s.name.as_str() {
-        "book.text" | "book.search_text" | "tool.search" | "source.present" => true,
+        "book.text" | "book.text_batch" | "book.search_text" | "tool.search" | "source.present" => {
+            true
+        }
         "book.structure" | "book.context" => access != ExperimentalReadAccess::Text,
         "book.concept" => access == ExperimentalReadAccess::Graph,
         _ => false,
@@ -35,7 +38,93 @@ pub struct BodyBudget {
     ranges: Vec<(usize, usize)>,
 }
 impl BodyBudget {
+    pub(crate) fn admit_projection(
+        &mut self,
+        tool: &str,
+        projection: &mut ToolResultDraft,
+        book: &Book,
+    ) {
+        let previous_next: Vec<_> = projection.model_body["items"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|item| {
+                item["result"]["next_start_utf16"].as_u64().map(|start| {
+                    let mut next = item["arguments"].clone();
+                    next["start_utf16"] = json!(start);
+                    next
+                })
+            })
+            .collect();
+        let admitted = self.admit(
+            tool,
+            &projection.evidence_arguments,
+            projection.model_body_json(),
+            book,
+        );
+        projection.model_body =
+            serde_json::from_str(&admitted).expect("projected tool admission preserves JSON");
+        if projection.model_body.get("error_code").is_some() {
+            projection.status = ToolResultStatus::Error;
+            projection.truncated = true;
+            projection.continuation = None;
+            return;
+        }
+        if tool != "book.text_batch" {
+            return;
+        }
+
+        let mut rejected = false;
+        let mut rejected_next = Vec::new();
+        for (next, after) in previous_next.into_iter().zip(
+            projection.model_body["items"]
+                .as_array()
+                .into_iter()
+                .flatten(),
+        ) {
+            if after["result"]["error_code"] != "EXPERIMENT_BODY_BUDGET" {
+                continue;
+            }
+            rejected = true;
+            if let Some(next) = next {
+                rejected_next.push(next);
+            }
+        }
+        if rejected {
+            projection.status = ToolResultStatus::Partial;
+            projection.truncated = true;
+            if let Some(
+                ToolContinuation::NextCall { arguments, .. }
+                | ToolContinuation::ToolCursor { arguments, .. },
+            ) = projection.continuation.as_mut()
+            {
+                if let Some(ranges) = arguments["ranges"].as_array_mut() {
+                    ranges.retain(|range| !rejected_next.contains(range));
+                    if ranges.is_empty() {
+                        projection.continuation = None;
+                    }
+                }
+            }
+        }
+    }
+
     pub fn admit(&mut self, tool: &str, args: &str, result: String, book: &Book) -> String {
+        if tool == "book.text_batch" {
+            if let Ok(mut body) = serde_json::from_str::<serde_json::Value>(&result) {
+                for item in body["items"].as_array_mut().into_iter().flatten() {
+                    let admitted = self.admit(
+                        "book.text",
+                        &item["arguments"].to_string(),
+                        item["result"].to_string(),
+                        book,
+                    );
+                    item["result"] =
+                        serde_json::from_str(&admitted).expect("text admission returns JSON");
+                }
+                return body.to_string();
+            }
+            return result;
+        }
         // Locator tools expose coordinates/semantic metadata only in every arm;
         // all original prose enters through the shared, budgeted book.text path.
         if tool == "book.search_text" || tool == "book.concept" {
@@ -89,8 +178,15 @@ impl BodyBudget {
             return result;
         };
         let end = node("end_lid").unwrap_or(start);
+        let delivered = body
+            .get("source_range")
+            .and_then(|range| serde_json::from_value::<base_schema::Span>(range.clone()).ok())
+            .unwrap_or(base_schema::Span {
+                start: start.span.start,
+                end: end.span.end,
+            });
         let mut ranges = self.ranges.clone();
-        ranges.push((start.span.start, end.span.end));
+        ranges.push((delivered.start, delivered.end));
         ranges.sort_unstable();
         let mut merged: Vec<(usize, usize)> = Vec::new();
         for (start, end) in ranges {

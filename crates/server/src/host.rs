@@ -1243,6 +1243,7 @@ fn start_server_with_memory_path(
     if let Some(top) = saved_top {
         reader.restore_top_lid(&book, &top);
     }
+    if let Some(position) = session.as_ref().and_then(|s| s.visible_position_for_dir(&dir)) { reader.restore_visible_position(&book, position); }
     crate::restore_saved_paper_minimap_overlay(&mut reader, &book, &session_path)
         .map_err(|error| format!("failed to restore paper minimap overlay: {}", error.message))?;
     let provider_config = ProviderConfig::from_env().ok();

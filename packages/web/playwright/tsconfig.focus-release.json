@@ -1,0 +1,1 @@
+{"extends":"../tsconfig.json","compilerOptions":{"types":["vite/client","node"]},"include":["focus-release.spec.ts","focus-live.spec.ts","focus-production-entry.ts","focus-turn.spec.ts","focus-operations.spec.ts","focus-pdf.spec.ts","focus-app-backend.ts","../playwright.focus-release.config.ts"]}

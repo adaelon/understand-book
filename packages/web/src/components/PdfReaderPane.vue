@@ -3,7 +3,7 @@ import { inject } from 'vue';
 import { shareHighlightKey } from '../reading-share';
 const shareHighlight = inject(shareHighlightKey, null);
 import { Eye, EyeOff, MessageSquareText, Minus, Plus, Scan, ScanText, Trash2, X } from "@lucide/vue";
-import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from "vue";
+import { computed, h, render, nextTick, onBeforeUnmount, ref, shallowRef, watch } from "vue";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.mjs?url";
 import { TextLayerBuilder } from "pdfjs-dist/web/pdf_viewer.mjs";
@@ -30,12 +30,16 @@ import { resolvePdfNotePlacementTarget } from "../pdf-note-placement";
 import {
   pdfRenderIdentity,
   planPdfRenderResidency,
+  pdfFocusGeometry,
+  PDF_MAX_BACKING_PIXELS,
   type PdfRenderPlanPage,
 } from "../pdf-rendering";
 import type { PdfSelectionCapture } from "../pdf-selection-draft";
 import type { PdfReadingAnchor } from "../useReadingContinuity";
 import { pdfRangeSource } from "../pdf-range-source";
 import NoteCard from "./NoteCard.vue";
+import { PdfFocusReader } from '../pdf-focus';
+import { FocusPageTurn } from '../reader-focus-turn';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -50,11 +54,17 @@ const props = withDefaults(defineProps<{
   renderMarkdown?: (source: string) => string;
   notePlacementActive?: boolean;
   initialReadingAnchor?: PdfReadingAnchor | null;
+  focusReading?: boolean;
+  readerActive?: boolean;
+  focusReturnLabel?: string;
+  viewportAnchorLid?: string | null;
 }>(), {
   annotationProjection: () => EMPTY_PDF_ANNOTATION_PROJECTION,
   annotationError: null,
   renderMarkdown: (source: string) => source,
   notePlacementActive: false,
+  focusReading: false,
+  readerActive: true,
 });
 
 const emit = defineEmits<{
@@ -72,6 +82,7 @@ const emit = defineEmits<{
   (e: "delete-highlight", highlight: MemoryRecord): void;
   (e: "reselect-highlight", highlight: MemoryRecord): void;
   (e: "note-placement-target", target: { entry: PdfSourceMapEntry; region: PdfRegion }): void;
+  (e: 'focus-tool', tool: string): void;
 }>();
 
 type PdfDocument = Awaited<ReturnType<typeof pdfjsLib.getDocument>["promise"]>;
@@ -139,6 +150,126 @@ let renderDirection: 1 | -1 = 1;
 type PageRenderIdentity = { key: string };
 const renderIdentities = new Map<number, PageRenderIdentity>();
 
+const focusHost = ref<HTMLElement | null>(null);
+const focusShown = ref(false), focusTools = ref(false), focusSingle = ref(false);
+const focusState = shallowRef({ atStart: true, atEnd: true, waiting: false, error: null as string | null });
+let focusReader: PdfFocusReader | undefined, focusTurn: FocusPageTurn | undefined;
+let focusResize: ResizeObserver | undefined, focusResizePending = false;
+let focusSelecting = false, focusTransition = 0;
+let focusEntryAnchor: PdfReadingAnchor | null = null;
+let focusLastGeometry = '';
+function interactivePages() { return focusShown.value ? focusReader?.elements() ?? new Map<number, HTMLElement>() : pageEls; }
+function continuousResources() {
+  const canvases = [...canvasEls.values()].filter(c => c.width > 0 && c.height > 0);
+  return { pages: canvases.length, backingPixels: canvases.reduce((n, c) => n + c.width * c.height, 0) };
+}
+function decorateFocusPage(page: PdfSourceMap['pages'][number], layer: HTMLElement) {
+  render(h('div', [
+    ...highlightsForPage(page.pageIndex).map(item => h('span', { class: 'pdf-user-highlight',
+      'data-mem-id': item.highlight.mem_id, style: projectedRectStyle(page, item.rect.bbox) })),
+    ...noteMarkersForPage(page).map(marker => h('button', { class: ['pdf-note-marker', `side-${marker.side}`, `direction-${marker.direction}`],
+      style: markerStyle(marker), 'aria-label': `打开 ${marker.notes.length} 条 PDF 笔记`,
+      onClick: (event: MouseEvent) => { event.stopPropagation(); openNoteSurface(marker, event); } }, [h(MessageSquareText, { size: 14 }), marker.notes.length > 1 ? String(marker.notes.length) : ''])),
+  ]), layer);
+}
+function focusChanged() {
+  if (!focusReader) return;
+  const snapshot = focusReader.snapshot();
+  const next = { atStart: !snapshot.current || snapshot.current.start.index === 0, atEnd: !snapshot.current || snapshot.current.eof,
+    waiting: snapshot.waiting, error: snapshot.error };
+  if (Object.keys(next).some(k => next[k as keyof typeof next] !== focusState.value[k as keyof typeof next])) focusState.value = next;
+  if (props.focusReading && snapshot.current) {
+    focusShown.value = true;
+    for (const index of [...renderIdentities.keys()]) releaseRenderedPage(index);
+    observer?.disconnect();
+  }
+  if (!focusTurn?.busy()) scheduleViewportChange();
+}
+function focusSettled() {
+  focusChanged();
+  if (focusResizePending) { focusResizePending = false; resizeFocus(); }
+}
+function resizeFocus() {
+  const host = focusHost.value;
+  if (!props.focusReading || !props.readerActive || document.hidden || !host || !focusReader) return;
+  if (focusTurn?.busy() || focusSelecting || props.notePlacementActive || !window.getSelection()?.isCollapsed) { focusResizePending = true; return; }
+  const rect = host.getBoundingClientRect();
+  if (!rect.width || !rect.height) { focusReader.setVisible(false); return; }
+  focusReader.setVisible(true); focusTurn?.bounds(rect.left, rect.width);
+  const geometry = pdfFocusGeometry(rect.width, rect.height, zoom.value, focusSingle.value || innerWidth <= 600);
+  const key = JSON.stringify(geometry);
+  if (key === focusLastGeometry) return;
+  const anchor = focusReader.captureAnchor() ?? focusEntryAnchor;
+  if (!anchor) return;
+  focusLastGeometry = key;
+  focusReader.open(anchor, geometry);
+}
+function disposeFocus() {
+  focusTurn?.dispose(); focusTurn = undefined; focusReader?.dispose(); focusReader = undefined;
+  focusResize?.disconnect(); focusResize = undefined; focusShown.value = false; focusLastGeometry = '';
+  focusState.value = { atStart: true, atEnd: true, waiting: false, error: null };
+}
+async function enterFocus() {
+  if (!pdfDoc.value || !focusHost.value || !props.focusReading) return;
+  const anchor = captureReadingAnchor() ?? { surface: 'pdf' as const, sourceKey: renderSourceIdentity(), pageIndex: activePageIndex.value ?? 0,
+    pageRatio: 0, probeRatio: .28, horizontalRatio: null, anchorLid: null, zoom: zoom.value };
+  focusEntryAnchor = anchor;
+  renderPlanRequest++; observer?.disconnect();
+  // The old visible page stays readable until the complete spread is published.
+  const visible = measureViewport();
+  for (const index of [...renderIdentities.keys()]) if (!visible || index < visible.start_page || index > visible.end_page) releaseRenderedPage(index);
+  if (!focusReader) {
+    focusReader = new PdfFocusReader(focusHost.value, pdfDoc.value, props.sourceMap?.pages ?? [], renderSourceIdentity(), {
+      changed: focusChanged, decorate: decorateFocusPage, releaseDecoration: layer => render(null, layer), externalResources: continuousResources,
+    });
+    focusTurn = new FocusPageTurn(focusReader, focusHost.value, {
+      reducedMotion: () => matchMedia('(prefers-reduced-motion: reduce)').matches,
+      tools: () => { focusTools.value = !focusTools.value; }, settled: focusSettled,
+      ownsPointer: event => zoom.value > 1 || props.notePlacementActive || !!(event.target as Element)?.closest('.pdf-note-marker'),
+    });
+    focusResize = new ResizeObserver(resizeFocus); focusResize.observe(focusHost.value);
+  }
+  focusTurn?.setEnabled(props.readerActive && !props.notePlacementActive && !document.hidden);
+  focusLastGeometry = ''; resizeFocus();
+}
+async function leaveFocus() {
+  const request = ++focusTransition, anchor = captureReadingAnchor();
+  focusTurn?.setEnabled(false); focusReader?.retainCurrent();
+  if (!anchor) { focusShown.value = false; return; }
+  await nextTick();
+  // The frozen spread covers the continuous surface while that surface renders.
+  await restoreContinuousAnchor(anchor);
+  await reconcileRenderedPages(true);
+  if (request !== focusTransition || props.focusReading) return;
+  focusShown.value = false; await nextTick(); await restoreContinuousAnchor(anchor); observePages(); scheduleViewportChange();
+}
+function focusSelectionChanged() {
+  const selected = window.getSelection();
+  const owns = !!selected && !selected.isCollapsed && !!focusHost.value?.contains(selected.anchorNode);
+  focusReader?.setSelectionPaused(focusSelecting || owns || !!props.notePlacementActive);
+  if (!owns && !focusSelecting && focusResizePending) { focusResizePending = false; resizeFocus(); }
+}
+function focusPointerDown(event: PointerEvent) {
+  if (event.pointerType === 'mouse' && event.button === 0 && (event.target as Element)?.closest('.pdf-text-layer')) {
+    focusSelecting = true; focusSelectionChanged();
+  }
+  onViewportIntent();
+}
+function focusPointerUp() { focusSelecting = false; focusSelectionChanged(); }
+function focusClick(event: MouseEvent) {
+  const shell = (event.target as Element)?.closest<HTMLElement>('.pdf-page-shell');
+  if (!shell || shell.closest('[inert]') || (event.target as Element)?.closest('button')) return;
+  onPageClick(Number(shell.dataset.pageIndex), event);
+}
+function focusPlacement(event: PointerEvent) {
+  const shell = (event.target as Element)?.closest<HTMLElement>('.pdf-page-shell');
+  if (shell && !shell.closest('[inert]')) onPagePointerUp(Number(shell.dataset.pageIndex), event);
+}
+function focusVisibility() {
+  const active = props.focusReading && props.readerActive && !document.hidden;
+  focusTurn?.setEnabled(active && !props.notePlacementActive); focusReader?.setVisible(active); if (active) resizeFocus();
+}
+
 const activeNoteMarker = computed(() => {
   if (!noteMarkersVisible.value) return null;
   const surface = annotationSurface.value;
@@ -203,24 +334,33 @@ function pageRegions(pageIndex: number): Array<{ entry: PdfSourceMapEntry; regio
   return entriesByPage.value.get(pageIndex) ?? [];
 }
 
+const mappedPositions = computed(() => {
+  const pages = new Map((props.sourceMap?.pages ?? []).map(p => [p.pageIndex, p]));
+  const positions = (props.sourceMap?.entries ?? []).flatMap((entry, order) => entry.regions.flatMap(region => {
+    const page = pages.get(region.pageIndex); if (!page) return [];
+    const ratio = Math.max(0, Math.min(.999999, (page.height - (region.bbox[1] + region.bbox[3]) / 2) / page.height));
+    return [{ lid: entry.lid, position: region.pageIndex + ratio, order }];
+  })).sort((a, b) => a.position - b.position || a.order - b.order);
+  return positions.filter((p, index) => index === 0 || p.position !== positions[index - 1].position);
+});
 function nearestMappedLid(centerPage: number): string | null {
-  let nearest: { lid: string; distance: number; order: number } | null = null;
-  for (const [order, entry] of (props.sourceMap?.entries ?? []).entries()) {
-    for (const region of entry.regions) {
-      const page = props.sourceMap?.pages.find((item) => item.pageIndex === region.pageIndex);
-      if (!page) continue;
-      const verticalCenter = (region.bbox[1] + region.bbox[3]) / 2;
-      const visualRatio = Math.max(0, Math.min(0.999999, (page.height - verticalCenter) / page.height));
-      const distance = Math.abs(region.pageIndex + visualRatio - centerPage);
-      if (!nearest || distance < nearest.distance || (distance === nearest.distance && order < nearest.order)) {
-        nearest = { lid: entry.lid, distance, order };
-      }
-    }
-  }
-  return nearest?.lid ?? null;
+  const positions = mappedPositions.value;
+  let lo = 0, hi = positions.length;
+  while (lo < hi) { const mid = (lo + hi) >>> 1; if (positions[mid].position < centerPage) lo = mid + 1; else hi = mid; }
+  const before = positions[lo - 1], after = positions[lo];
+  if (!before) return after?.lid ?? null; if (!after) return before.lid;
+  const a = centerPage - before.position, b = after.position - centerPage;
+  return (a < b || a === b && before.order < after.order ? before : after).lid;
 }
 
 function measureViewport(): PaperViewportPosition | null {
+  if (focusShown.value) {
+    const screen = focusReader?.pagination.visible(), anchor = focusReader?.captureAnchor();
+    if (!screen || !anchor) return null;
+    const center = anchor.pageIndex + anchor.pageRatio;
+    return { start_page: screen.pages[0].info.pageIndex, end_page: screen.pages.at(-1)!.info.pageIndex,
+      center_page: center, progress_ratio: center / Math.max(1, pageCount.value), anchor_lid: nearestMappedLid(center), region_id: null };
+  }
   const root = pageList.value;
   const pages = props.sourceMap?.pages ?? [];
   if (!root || !pages.length) return null;
@@ -262,6 +402,7 @@ function measureViewport(): PaperViewportPosition | null {
 
 function emitViewportChange() {
   viewportFrame = null;
+  if (!props.readerActive || document.hidden || focusTurn?.busy()) return;
   const position = measureViewport();
   if (!position) return;
   const fingerprint = [
@@ -282,7 +423,7 @@ function scheduleViewportChange() {
 
 function onViewportScroll() {
   notePlacementCandidate.value = null;
-  scheduleRenderResidency();
+  if (!focusShown.value) scheduleRenderResidency();
   scheduleViewportChange();
   emit("viewport-interaction");
 }
@@ -293,6 +434,7 @@ function onViewportIntent() {
 }
 
 async function reconcileContainerGeometry() {
+  if (props.focusReading) { resizeFocus(); return; }
   const root = pageList.value;
   if (!root) return;
   const width = root.clientWidth;
@@ -407,7 +549,7 @@ function restoreZoomAnchor(anchor: PdfZoomAnchor | null) {
 
 function pointToPdf(pageIndex: number, event: MouseEvent): { x: number; y: number } | null {
   const page = props.sourceMap?.pages.find((p) => p.pageIndex === pageIndex);
-  const pageEl = pageEls.get(pageIndex);
+  const pageEl = interactivePages().get(pageIndex);
   if (!page || !pageEl) return null;
   const rect = pageEl.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return null;
@@ -438,7 +580,7 @@ function showNotePlacementFeedback(message: string) {
 }
 
 function resolveNotePlacementAt(pageIndex: number, event: PointerEvent) {
-  const pageEl = pageEls.get(pageIndex);
+  const pageEl = interactivePages().get(pageIndex);
   if (!props.notePlacementActive || !props.sourceMap || !pageEl) return null;
   return resolvePdfNotePlacementTarget(
     props.sourceMap,
@@ -670,6 +812,7 @@ function releaseRenderedPage(pageIndex: number) {
 }
 
 async function loadPdfDocument() {
+  disposeFocus();
   renderToken += 1;
   renderScrollTop = 0;
   renderDirection = 1;
@@ -709,7 +852,7 @@ async function loadPdfDocument() {
     if (initial) await restoreReadingAnchor(initial);
     if (request !== documentRequest) return;
     observePages();
-    await reconcileRenderedPages();
+    if (props.focusReading) await enterFocus(); else await reconcileRenderedPages();
     scheduleViewportChange();
   } catch (e) {
     if (request === documentRequest && !pdfError.value) pdfError.value = e instanceof Error ? e.message : String(e);
@@ -739,6 +882,10 @@ function currentRenderPlan() {
   const center = rootRect.top + rootRect.height / 2;
   if (root.scrollTop !== renderScrollTop) renderDirection = root.scrollTop > renderScrollTop ? 1 : -1;
   renderScrollTop = root.scrollTop;
+  const retained = focusReader?.resources();
+  const external = continuousResources();
+  const heldPages = (retained?.pages ?? 0) - (retained ? external.pages : 0);
+  const heldPixels = (retained?.backingPixels ?? 0) - (retained ? external.backingPixels : 0);
   return planPdfRenderResidency(pages.flatMap((page) => {
     const element = pageEls.get(page.pageIndex);
     if (!element || element.clientWidth <= 0 || element.clientHeight <= 0) return [];
@@ -753,7 +900,8 @@ function currentRenderPlan() {
       distance,
       visible: rect.height > 0 && rect.bottom > rootRect.top && rect.top < rootRect.bottom,
     }];
-  }), window.devicePixelRatio || 1, { direction: renderDirection });
+  }), window.devicePixelRatio || 1, { direction: renderDirection,
+    ...(heldPages ? { maxPages: (innerWidth <= 600 ? 3 : 6) - heldPages, maxBackingPixels: PDF_MAX_BACKING_PIXELS - heldPixels } : {}) });
 }
 
 async function renderPage(
@@ -827,6 +975,7 @@ async function renderPage(
 async function setZoom(next: number) {
   const clamped = Math.max(PDF_ZOOM_MIN, Math.min(PDF_ZOOM_MAX, Number(next.toFixed(2))));
   if (clamped === zoom.value || pdfLoading.value) return;
+  if (props.focusReading) { zoom.value = clamped; resizeFocus(); return; }
   const anchor = captureZoomAnchor();
   closeAnnotationSurface();
   notePlacementCandidate.value = null;
@@ -885,6 +1034,7 @@ async function renderTextLayer(
 
 function observePages() {
   observer?.disconnect();
+  if (props.focusReading) return;
   observer = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
@@ -896,7 +1046,8 @@ function observePages() {
   for (const el of pageEls.values()) observer.observe(el);
 }
 
-async function reconcileRenderedPages() {
+async function reconcileRenderedPages(exitingFocus = false) {
+  if (props.focusReading || focusShown.value && !exitingFocus) return;
   const root = pageList.value;
   if (!root || root.clientWidth <= 0 || root.clientHeight <= 0) return;
   const token = renderToken;
@@ -931,6 +1082,10 @@ async function reconcileRenderedPages() {
 }
 
 function captureReadingAnchor(): PdfReadingAnchor | null {
+  if (focusShown.value) {
+    const anchor = focusReader?.captureAnchor();
+    return anchor ? { ...anchor, anchorLid: nearestMappedLid(anchor.pageIndex + anchor.pageRatio) } : null;
+  }
   const root = pageList.value;
   const anchor = captureZoomAnchor();
   if (!root || !anchor || root.clientHeight <= 0) return null;
@@ -948,6 +1103,16 @@ function captureReadingAnchor(): PdfReadingAnchor | null {
 
 async function restoreReadingAnchor(anchor: PdfReadingAnchor): Promise<boolean> {
   if (anchor.sourceKey !== renderSourceIdentity()) return false;
+  if (props.focusReading && focusReader && focusHost.value) {
+    zoom.value = anchor.zoom ?? zoom.value;
+    const geometry = pdfFocusGeometry(focusHost.value.clientWidth, focusHost.value.clientHeight, zoom.value, focusSingle.value || innerWidth <= 600);
+    focusTurn?.cancel(); focusLastGeometry = JSON.stringify(geometry); focusReader.open(anchor, geometry); return true;
+  }
+  if (anchor.zoom !== undefined && anchor.zoom !== zoom.value) { zoom.value = anchor.zoom; renderToken++; await resetRenderedPages(); }
+  return restoreContinuousAnchor(anchor);
+}
+
+async function restoreContinuousAnchor(anchor: PdfReadingAnchor): Promise<boolean> {
   await nextTick();
   const root = pageList.value;
   const target = pageEls.get(anchor.pageIndex);
@@ -978,6 +1143,13 @@ async function scrollActiveIntoView() {
   await nextTick();
   const region = activeRegion.value;
   if (!region) return;
+  if (props.focusReading && focusReader) {
+    const page = props.sourceMap!.pages.find(p => p.pageIndex === region.pageIndex)!;
+    const overlay = pdfRectToOverlay(page, region.bbox);
+    await restoreReadingAnchor({ surface: 'pdf', sourceKey: renderSourceIdentity(), pageIndex: region.pageIndex,
+      pageRatio: (overlay.top + overlay.height / 2) / 100, probeRatio: .28, horizontalRatio: null, anchorLid: props.activeLid, zoom: zoom.value });
+    return;
+  }
   const pageIndex = region.pageIndex;
   const target = pageList.value?.querySelector<HTMLElement>(`[data-page-index="${pageIndex}"]`);
   target?.scrollIntoView({ block: "center" });
@@ -1001,7 +1173,7 @@ async function scrollActiveIntoView() {
 
 function rectToPdfRegion(rect: DOMRect, pageIndex: number): PdfRegion | null {
   const page = props.sourceMap?.pages.find((p) => p.pageIndex === pageIndex);
-  const pageEl = pageEls.get(pageIndex);
+  const pageEl = interactivePages().get(pageIndex);
   if (!page || !pageEl) return null;
   const pageRect = pageEl.getBoundingClientRect();
   const left = Math.max(rect.left, pageRect.left);
@@ -1048,10 +1220,13 @@ function capturePdfSelection() {
   const clientRects: DOMRect[] = [];
   const anchorNode = selection.anchorNode;
   const focusNode = selection.focusNode;
+  const visiblePages = interactivePages();
+  if (focusShown.value && (![...visiblePages.values()].some(el => el.contains(anchorNode))
+    || ![...visiblePages.values()].some(el => el.contains(focusNode)))) return;
   for (let i = 0; i < selection.rangeCount; i += 1) {
     for (const rect of selection.getRangeAt(i).getClientRects()) {
       clientRects.push(rect);
-      for (const [pageIndex, pageEl] of pageEls) {
+      for (const [pageIndex, pageEl] of visiblePages) {
         const selectionTouchesPage =
           (anchorNode ? pageEl.contains(anchorNode) : false)
           || (focusNode ? pageEl.contains(focusNode) : false)
@@ -1087,7 +1262,20 @@ function onSelectionKeydown(event: KeyboardEvent) {
   emit("selection-cancel");
 }
 
-defineExpose({ captureReadingAnchor, restoreReadingAnchor });
+defineExpose({ captureReadingAnchor, restoreReadingAnchor,
+  focusSnapshot: () => ({ ...focusReader?.snapshot(), turn: focusTurn?.snapshot() }), focusWork: () => ({ ...focusReader?.metrics }) });
+
+watch(() => props.focusReading, async active => {
+  focusTransition++; focusTools.value = false;
+  if (active) { await nextTick(); await enterFocus(); } else await leaveFocus();
+}, { flush: 'post' });
+watch(() => props.readerActive, focusVisibility);
+watch(focusSingle, resizeFocus);
+watch(noteMarkersVisible, () => focusReader?.refreshDecorations());
+document.addEventListener('selectionchange', focusSelectionChanged);
+document.addEventListener('pointerup', focusPointerUp);
+document.addEventListener('pointercancel', focusPointerUp);
+document.addEventListener('visibilitychange', focusVisibility);
 
 watch(
   () => [props.pdfUrl, props.sourceMap?.config_hash] as const,
@@ -1103,6 +1291,8 @@ watch(
 watch(
   () => [props.activeLid, props.selectedLid, props.sourceMap?.config_hash] as const,
   () => {
+    // Confirmed viewport feedback is a read position, not another navigation.
+    if (props.focusReading && !props.selectedLid && props.activeLid === props.viewportAnchorLid) return;
     initialReadingAnchor = null;
     void scrollActiveIntoView();
   },
@@ -1132,6 +1322,7 @@ watch(pageList, (root) => {
 watch(
   () => props.annotationProjection,
   () => {
+    focusReader?.refreshDecorations();
     if (annotationSurface.value?.kind === "notes" && !activeNoteMarker.value) closeAnnotationSurface();
     if (annotationSurface.value?.kind === "highlight" && !activeHighlight.value) closeAnnotationSurface();
   },
@@ -1140,6 +1331,7 @@ watch(
 watch(
   () => props.notePlacementActive,
   (active) => {
+    focusVisibility(); focusSelectionChanged();
     notePlacementCandidate.value = null;
     if (!active) clearNotePlacementFeedback();
   },
@@ -1149,6 +1341,11 @@ window.addEventListener("resize", onWindowResize);
 window.addEventListener("keydown", onSelectionKeydown);
 
 onBeforeUnmount(() => {
+  disposeFocus();
+  document.removeEventListener('selectionchange', focusSelectionChanged);
+  document.removeEventListener('pointerup', focusPointerUp);
+  document.removeEventListener('pointercancel', focusPointerUp);
+  document.removeEventListener('visibilitychange', focusVisibility);
   documentRequest += 1;
   pdfRequests?.abort();
   renderToken += 1;
@@ -1170,8 +1367,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="pdf-reader-pane">
-    <header class="pdf-reader-head">
+  <main class="pdf-reader-pane" :class="{ 'pdf-focus-mode': props.focusReading || focusShown }">
+    <header class="pdf-reader-head" :class="{ 'pdf-focus-head': props.focusReading || focusShown }" v-show="!props.focusReading || focusTools">
       <div>
         <strong>PDF 原版</strong>
         <span>{{ pageCount }} 页<span v-if="mapCapability !== 'available'"> · {{ mapCapabilityLabel }}</span></span>
@@ -1207,16 +1404,16 @@ onBeforeUnmount(() => {
           <button
             type="button"
             class="pdf-zoom-fit"
-            title="适合栏宽"
-            aria-label="适合栏宽"
+            :title="props.focusReading ? '适合整页' : '适合栏宽'"
+            :aria-label="props.focusReading ? '适合整页' : '适合栏宽'"
             :aria-pressed="zoom === 1"
             :disabled="pdfLoading"
             @click="setZoom(1)"
           >
             <Scan :size="15" aria-hidden="true" />
-            <span>适宽</span>
+            <span>{{ props.focusReading ? '适页' : '适宽' }}</span>
           </button>
-          <select class="pdf-zoom-select" aria-label="PDF 缩放倍率（相对适宽）" :value="zoom" :disabled="pdfLoading" @change="setZoom(Number(($event.target as HTMLSelectElement).value))">
+          <select class="pdf-zoom-select" :aria-label="props.focusReading ? 'PDF 缩放倍率（相对整页）' : 'PDF 缩放倍率（相对适宽）'" :value="zoom" :disabled="pdfLoading" @change="setZoom(Number(($event.target as HTMLSelectElement).value))">
             <option v-for="factor in [0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5]" :key="factor" :value="factor">{{ Math.round(factor * 100) }}%</option>
           </select>
           <button
@@ -1235,6 +1432,8 @@ onBeforeUnmount(() => {
     <div
       ref="pageList"
       class="pdf-page-list"
+      :inert="focusShown || props.focusReading"
+      :aria-hidden="focusShown || props.focusReading ? 'true' : undefined"
       :class="{ 'is-zoomed': zoom > 1 }"
       @scroll.passive="onViewportScroll"
       @wheel.passive="onViewportIntent"
@@ -1244,6 +1443,7 @@ onBeforeUnmount(() => {
       <section
         v-for="page in props.sourceMap?.pages ?? []"
         :key="page.pageIndex"
+        v-memo="[page, renderStates[page.pageIndex], props.annotationProjection, noteMarkersVisible, zoom, page.pageIndex === activePageIndex, props.notePlacementActive, notePlacementCandidate]"
         :ref="(el) => setPageRef(page.pageIndex, el)"
         class="pdf-page-shell"
         :class="{ active: page.pageIndex === activePageIndex, 'geometry-pending': !renderStates[page.pageIndex]?.rendered }"
@@ -1293,6 +1493,28 @@ onBeforeUnmount(() => {
       </section>
       <p v-if="!props.sourceMap?.pages.length" class="pdf-empty">暂无 PDF 映射。</p>
     </div>
+
+    <div ref="focusHost" v-show="props.focusReading || focusShown" class="pdf-focus-host" :class="{ 'is-loading': !focusShown }"
+      @pointerdown="focusPointerDown" @pointerup="focusPlacement" @mouseup="capturePdfSelection" @click="focusClick"
+      @scroll.capture.passive="onViewportScroll"></div>
+    <template v-if="props.focusReading">
+      <button class="focus-page-prev" aria-label="上一屏" :disabled="focusState.atStart" @click="focusTurn?.turn(-1)">‹</button>
+      <button class="focus-page-next" aria-label="下一屏" :disabled="focusState.atEnd" @click="focusTurn?.turn(1)">›</button>
+      <button class="focus-tools-toggle" aria-label="阅读工具" :aria-expanded="focusTools" @click="focusTools = !focusTools">···</button>
+      <button v-if="props.focusReturnLabel" class="focus-reading-return" @click="emit('focus-tool', 'return')">{{ props.focusReturnLabel }}</button>
+      <nav v-if="focusTools" class="focus-tools" aria-label="专注阅读工具">
+        <button @click="focusTools = false; emit('focus-tool', 'outline')">目录</button>
+        <button :aria-pressed="focusSingle" @click="focusSingle = !focusSingle">{{ focusSingle ? '自动双页' : '单页阅读' }}</button>
+        <button @click="focusTools = false; emit('focus-tool', 'surface')">重排正文</button>
+        <button @click="focusTools = false; emit('focus-tool', 'agent')">问答</button>
+        <button @click="focusTools = false; emit('focus-tool', 'notes')">笔记</button>
+        <button @click="focusTools = false; emit('focus-tool', 'exit')">退出专注</button>
+      </nav>
+      <div v-if="focusState?.waiting || focusState?.error || pdfError" class="focus-ready-status" role="status">
+        {{ focusState?.error || pdfError || '正在准备书页…' }}
+        <button v-if="focusState?.error" @click="focusLastGeometry = ''; resizeFocus()">重试</button>
+      </div>
+    </template>
 
     <p
       v-if="props.notePlacementActive && notePlacementFeedback"
@@ -1365,7 +1587,26 @@ onBeforeUnmount(() => {
   </main>
 </template>
 
-<style scoped>
+<style>
+.pdf-focus-mode { display: block !important; isolation: isolate; }
+.pdf-focus-mode > .pdf-page-list { position: absolute; inset: 0; }
+.pdf-reader-pane > .pdf-focus-host { position: absolute; inset: 0; z-index: 1; overflow: hidden; isolation: isolate; }
+.pdf-focus-host::before { content: ''; position: absolute; inset: 0; z-index: 0; background: var(--reader-canvas, #faf7f2); }
+.pdf-focus-host.is-loading::before { display: none; }
+.pdf-focus-interaction-shield { display: none; position: absolute; inset: 0; z-index: 4; }
+.pdf-focus-host:is([data-turn-phase="dragging"], [data-turn-phase="settling"]) > .pdf-focus-interaction-shield { display: block; }
+.pdf-focus-screen { position: absolute; inset: 0 auto auto 0; z-index: 1; overflow: auto; contain: layout paint;
+  background: var(--reader-canvas, #faf7f2); scrollbar-width: none; will-change: transform; }
+@media (max-width: 879px) {
+  .pdf-focus-screen { box-shadow: 4px 0 16px rgb(0 0 0 / 16%); }
+}
+.pdf-focus-screen[hidden] { display: block; z-index: -1 !important; pointer-events: none; }
+.pdf-focus-row { display: flex; gap: 32px; padding: 24px; width: max-content; min-width: 100%; min-height: 100%; box-sizing: border-box; justify-content: center; align-items: flex-start; }
+.pdf-focus-screen .pdf-page-shell { content-visibility: visible; contain-intrinsic-size: none; box-sizing: content-box; border: 0; }
+.pdf-focus-screen .pdf-text-layer { contain: strict; }
+.pdf-reader-pane .pdf-focus-head { position: absolute; inset: 0 0 auto; z-index: 6; }
+.pdf-reader-pane .focus-page-prev, .pdf-reader-pane .focus-page-next, .pdf-reader-pane .focus-tools-toggle,
+.pdf-reader-pane .focus-tools, .pdf-reader-pane .focus-ready-status, .pdf-reader-pane .focus-reading-return { z-index: 5; }
 .pdf-reader-pane {
   position: relative;
   min-width: 0;
@@ -1527,7 +1768,7 @@ onBeforeUnmount(() => {
   --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
   --min-font-size-inv: calc(1 / var(--min-font-size));
 }
-.pdf-text-layer :deep(.textLayer) {
+.pdf-text-layer .textLayer {
   position: absolute;
   inset: 0;
   z-index: 0;
@@ -1541,7 +1782,7 @@ onBeforeUnmount(() => {
   transform-origin: 0 0;
   caret-color: CanvasText;
 }
-.pdf-text-layer :deep(:is(span, br)) {
+.pdf-text-layer :is(span, br) {
   position: absolute;
   color: transparent;
   transform-origin: left top;
@@ -1549,8 +1790,8 @@ onBeforeUnmount(() => {
   cursor: text;
   user-select: text;
 }
-.pdf-text-layer :deep(.textLayer > :not(.markedContent)),
-.pdf-text-layer :deep(.textLayer .markedContent span:not(.markedContent)) {
+.pdf-text-layer .textLayer > :not(.markedContent),
+.pdf-text-layer .textLayer .markedContent span:not(.markedContent) {
   z-index: 1;
   --font-height: 0;
   --scale-x: 1;
@@ -1558,17 +1799,17 @@ onBeforeUnmount(() => {
   font-size: calc(var(--text-scale-factor) * var(--font-height));
   transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
 }
-.pdf-text-layer :deep(.markedContent) {
+.pdf-text-layer .markedContent {
   display: contents;
 }
-.pdf-text-layer :deep(span[role="img"]) {
+.pdf-text-layer span[role="img"] {
   cursor: default;
   user-select: none;
 }
-.pdf-text-layer :deep(br::selection) {
+.pdf-text-layer br::selection {
   background: transparent;
 }
-.pdf-text-layer :deep(.textLayer .endOfContent) {
+.pdf-text-layer .textLayer .endOfContent {
   position: absolute;
   inset: 100% 0 0;
   z-index: 0;
@@ -1576,7 +1817,7 @@ onBeforeUnmount(() => {
   cursor: default;
   user-select: none;
 }
-.pdf-text-layer :deep(.textLayer.selecting .endOfContent) {
+.pdf-text-layer .textLayer.selecting .endOfContent {
   top: 0;
 }
 .pdf-user-annotation-layer {
@@ -1738,7 +1979,7 @@ onBeforeUnmount(() => {
   padding-top: 0.75rem;
   border-top: 1px solid var(--hairline-soft);
 }
-.pdf-annotation-note-item :deep(.note-card) {
+.pdf-annotation-note-item .note-card {
   margin: 0;
 }
 .pdf-annotation-reselect,

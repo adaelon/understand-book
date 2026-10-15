@@ -19,7 +19,7 @@ import { acceptsPresentationMessage, resolvePresentationEditingMessage } from ".
 import { renderMarkdown } from "../md";
 import { sourceChipLabel } from "../source-chip.js";
 
-const props = defineProps<{ sessionId: string; turnId: string; reference: PresentationRef; busy?: boolean; teaching?: boolean; workspace?: boolean; sharedQuestion?: string; toolbarTarget?: HTMLElement; noteMemId?: string; noteReceipt?: PresentationFollowUp; continuationEnabled?: boolean; chatHead?: string | null; answerAvailable?: boolean }>();
+const props = defineProps<{ sessionId: string; turnId: string; reference: PresentationRef; busy?: boolean; teaching?: boolean; workspace?: boolean; sharedQuestion?: string; toolbarTarget?: HTMLElement; teachingTarget?: HTMLElement; noteMemId?: string; noteReceipt?: PresentationFollowUp; continuationEnabled?: boolean; chatHead?: string | null; answerAvailable?: boolean }>();
 const emit = defineEmits<{
   (e: "record-note", receipt: PresentationFollowUp, title: string, summary: string): void;
   (e: "source", id: string, anchor: HTMLElement): void;
@@ -334,7 +334,7 @@ onBeforeUnmount(() => {
           <button type="button" aria-label="放大演示" :disabled="zoomPercent >= 150" @click="setZoom(zoomPercent + 10)">＋</button>
         </span>
         <button v-if="view && !noteMemId && !network.linked" type="button" :disabled="!ready || saving" @click="recordNote">记一下</button>
-        <button v-if="view" type="button" :disabled="!ready || saving || exporting" @click="exportCurrent">{{ exporting ? "正在取图…" : "导出当前图解" }}</button>
+        <button v-if="view" type="button" :disabled="!ready || saving || exporting" @click="exportCurrent">{{ exporting ? "正在取图…" : "导出长图" }}</button>
         <button v-if="view" type="button" aria-label="文字说明与来源" :aria-expanded="readableOpen" @click="readableOpen = !readableOpen">说明与来源</button>
         <button v-if="view && network.linked" type="button" :aria-expanded="questionOpen" @click="questionOpen = !questionOpen">追问</button>
         <button v-if="view && network.enabled && !network.linked && !noteMemId" title="在附属窗口打开" @click="openAttached">新窗口</button>
@@ -355,12 +355,14 @@ onBeforeUnmount(() => {
         referrerpolicy="no-referrer"
         @load="onFrameLoad"
       />
-      <TutorActivities ref="teachingHost" v-if="view && ready && teaching" :session-id="sessionId" :turn-id="turnId" :reference="reference" :snapshot="teachingSnapshot" :ready="ready" :sources="view.sources" @source="(id, anchor) => emit('source', id, anchor)" />
-      <TutorContinuation v-if="view && ready && teaching && !noteMemId && chatHead !== undefined"
-        :session-id="sessionId" :turn-id="turnId" :reference="reference" :snapshot="teachingSnapshot" :head="chatHead ?? null" :enabled="!!continuationEnabled" :busy="busy || saving"
-        @available="emit('continuation-available', $event)"
-        @choose="(original, option, receipt) => emit('choose-continuation', original, option, receipt)" @locate="emit('locate-turn', $event)" @edit="emit('edit-question')" @read="emit('return-reading')" />
-      <button v-if="workspace && ready && answerAvailable" class="presentation-clarify" :disabled="busy || saving" @click="clarifyAnswer">这一步没跟上</button>
+      <Teleport :to="teachingTarget || 'body'" :disabled="!teachingTarget">
+        <TutorActivities ref="teachingHost" v-if="view && ready && teaching" :session-id="sessionId" :turn-id="turnId" :reference="reference" :snapshot="teachingSnapshot" :ready="ready" :sources="view.sources" @source="(id, anchor) => emit('source', id, anchor)" />
+        <TutorContinuation v-if="view && ready && teaching && !noteMemId && chatHead !== undefined"
+          :session-id="sessionId" :turn-id="turnId" :reference="reference" :snapshot="teachingSnapshot" :head="chatHead ?? null" :enabled="!!continuationEnabled" :busy="busy || saving"
+          @available="emit('continuation-available', $event)"
+          @choose="(original, option, receipt) => emit('choose-continuation', original, option, receipt)" @locate="emit('locate-turn', $event)" @edit="emit('edit-question')" @read="emit('return-reading')" />
+        <button v-if="workspace && ready && answerAvailable" class="presentation-clarify" :disabled="busy || saving" @click="clarifyAnswer">这一步没跟上</button>
+      </Teleport>
       <form v-if="view && !workspace && (!network.linked || questionOpen)" class="presentation-follow-up" @submit.prevent="followUp">
         <input v-model="question" aria-label="针对当前现场追问" placeholder="解释当前结果，或描述要修改的内容…" :disabled="saving || busy" />
         <button type="submit" :disabled="!ready || saving || busy">{{ saving ? '正在保存现场…' : question.trim() ? '发送追问' : '解释现在的结果' }}</button>

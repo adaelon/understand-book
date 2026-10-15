@@ -8,11 +8,11 @@ export const accountMcp = {
   revoke: (id: string) => networkFetch('POST', `/account/mcp/credentials/${encodeURIComponent(id)}/revoke`, {}),
 };
 
-export async function networkFetch<T>(method: string, path: string, body?: unknown): Promise<T> {
+export async function networkFetch<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const key = sceneKey();
   const identity = network.value.identity;
   const res = await fetch(`/api${path}`, {
-    method, credentials: 'same-origin', cache: 'no-store',
+    method, signal, credentials: 'same-origin', cache: 'no-store',
     headers: { 'Content-Type': 'application/json', ...(identity ? { 'X-CSRF-Token': identity.csrf_token } : {}) },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
@@ -199,7 +199,7 @@ async function history(): Promise<AgentHistoryResponse> {
   return (await workspaceRead<{ result: AgentHistoryResponse }>('chat/history')).result;
 }
 
-export async function networkRequest<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+export async function networkRequest<T>(method: 'GET' | 'POST', path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const input = (body ?? {}) as Record<string, unknown>;
   if (path === '/profile/memory/apply' && !network.value.workspace?.selected_chat) await workspaceAction('chat/new');
   let value: unknown;
@@ -221,7 +221,7 @@ export async function networkRequest<T>(method: 'GET' | 'POST', path: string, bo
   } else if (path === '/book/library') {
     const result = await networkFetch<{ books: { published_book_ref: import('./network-context').PublishedBookRef; title?: string | null; cover?: import('./api').BookCoverSource | null }[] }>('GET', '/library');
     value = { root: '', books: result.books.map(b => ({ name: b.published_book_ref.book_id, title: b.title, book_id: b.published_book_ref.book_id, dir: JSON.stringify(b.published_book_ref), route: 'reader', cover: b.cover })) };
-  } else if (path.startsWith('/book/')) value = await networkFetch(method, publishedUrl(path.slice(6)), body);
+  } else if (path.startsWith('/book/')) value = await networkFetch(method, publishedUrl(path.slice(6)), body, signal);
   else if (path === '/tutor/state' || path === '/tutor/mutate') value = await networkFetch(method, path, body);
   else if (path === '/tutor/readiness') value = await networkFetch('GET', publishedUrl('tutor_readiness'));
   else if (path.startsWith('/agent/presentation.read') || path.startsWith('/agent/presentation.observe')) {

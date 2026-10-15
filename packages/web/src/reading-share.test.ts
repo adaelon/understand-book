@@ -1,8 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { answerShareSource, deliveredAnswerText, shareSections, excerptShareSource, noteShareSource, type ShareDraft } from './reading-share';
+import { answerShareSource, deliveredAnswerText, renderShare, shareSections, excerptShareSource, noteShareSource, type ShareDraft } from './reading-share';
 import type { MemoryRecord } from './api';
-import { shareSize } from './reading-share-layout';
 
 const record: MemoryRecord = { mem_id: 'private-id', book_id: 'private-book', type: 'note', layer: 'long_term', anchor: {}, content: '先提出自己的解释，再用证据核对。' };
 const draft = (): ShareDraft => ({ source: noteShareSource(record, ['无已记录出处']), selected: ['body'], title: '阅读与理解', reflection: '', layout: 'understanding', palette: 'paper' });
@@ -69,27 +68,12 @@ describe('RS1 selected content and readable page', () => {
 });
 
 
-it('RS7 keeps the diagram and its state readable in both orientations', () => {
-  const source = { parts: [{ id: 'body' as const, label: '图解现场', text: '步骤 2：参数 3', format: 'plain' as const }], sources: ['原材料'], association: '图解与说明', diagram: { png: 'data:image/png;base64,AA==', width: 960, height: 360, title: '图解' } };
-  for (const orientation of ['landscape', 'portrait'] as const) {
-    const sections = shareSections({ source, selected: ['body'], title: '图解', reflection: '', layout: 'diagram', palette: 'blue', orientation });
-    expect(sections[0].querySelector('img')?.src).toBe(source.diagram.png);
-    expect(sections[1].textContent).toContain('步骤 2：参数 3');
-  }
-});
-
-it.each([[960, 3000], [2400, 900]])('exports a %i × %i diagram without reducing it below readable scale', (width, height) => {
-  const source = { parts: [{ id: 'body' as const, label: '图解现场', text: '完整保留参数与结果' }], sources: ['原材料'], association: '图解与说明',
-    diagram: { png: 'data:image/png;base64,AA==', width, height, title: '长图解' } };
-  for (const orientation of ['landscape', 'portrait'] as const) {
-    const input: ShareDraft = { source, selected: ['body'], title: '长图解', reflection: '', layout: 'diagram', palette: 'blue', orientation };
-    const sections = shareSections(input);
-    const image = sections[0].querySelector('img')!;
-    expect(image.width / width).toBeGreaterThanOrEqual(.75);
-    expect(image.height / height).toBeGreaterThanOrEqual(.75);
-    expect(image.width / image.height).toBeCloseTo(width / height, 2);
-    expect(image.width).toBeLessThanOrEqual(shareSize(input).width - 192);
-    expect(image.src).toBe(source.diagram.png);
-    expect(sections[1].textContent).toContain('完整保留参数与结果');
-  }
+it('exports the captured HTML PNG unchanged without text selection, card layout or font loading', async () => {
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX2kAAAAASUVORK5CYII=';
+  const input: ShareDraft = { ...draft(), selected: [], source: { parts: [], sources: [], association: '',
+    diagram: { png, width: 1, height: 1, title: '原页面' } } };
+  const output = await renderShare(input);
+  expect(output).toHaveLength(1);
+  expect(output[0].type).toBe('image/png');
+  expect(new Uint8Array(await output[0].arrayBuffer())).toEqual(new Uint8Array(Buffer.from(png.split(',')[1], 'base64')));
 });

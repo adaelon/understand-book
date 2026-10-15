@@ -216,6 +216,7 @@ mod tests {
 
 /// An operation must be deterministic: model calls run after this borrow ends.
 pub trait ResidentStatePort {
+    fn presentation_unavailable_reason(&self) -> Option<&'static str> { None }
     fn tutor_assessment_input(&mut self, _action: &str) -> Result<serde_json::Value, read_tools::ToolError> {
         Err(memory::teaching::invalid("Assessment unavailable"))
     }

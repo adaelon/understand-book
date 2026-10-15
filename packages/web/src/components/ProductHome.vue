@@ -6,6 +6,7 @@ import YeyeMascot from './YeyeMascot.vue';
 import brandLogo from '../assets/brand/understand-book-logo.svg';
 import readerScreenshot from '../assets/home/reading-workspace.png';
 import presentationScreenshot from '../assets/home/interactive-explanation.png';
+import betaGroupQr from '../assets/home/beta-group-20261015.png';
 
 const screenshots = [
   {
@@ -38,6 +39,48 @@ function openScreenshot(screenshot: typeof screenshots[number]) {
   imageDialog.value?.showModal();
 }
 
+const copyrightYear = new Date().getFullYear();
+const siteInfo = {
+  terms: {
+    title: '服务条款',
+    intro: '欢迎使用 Understand Book。这里说明当前邀请制内测的使用方式。',
+    sections: [
+      { title: '账号与内测资格', text: '使用内测码与邮箱完成注册后，阅读材料和使用额度由管理员开通。请妥善保管账号、验证码和接入凭证；遇到登录或额度问题，可以联系管理员处理。' },
+      { title: '阅读材料与使用范围', text: '请仅提交和使用你有权使用的内容，尊重书籍、论文及其他材料的作者与权利人。获得阅读权限不代表获得转载、分发或商业使用的授权。' },
+      { title: 'AI 回答与学习判断', text: 'AI 生成的解释、引用和对理解程度的判断可能存在错误或遗漏。请结合原文和实际结果核对；你可以提出异议、纠正判断或调整学习方向。' },
+      { title: '内测期间的服务', text: '功能、可用材料与额度安排会随内测调整，维护时可能暂时无法使用。有关当前安排、使用问题与反馈，请通过首页内测群联系管理员。' },
+    ],
+  },
+  privacy: {
+    title: '隐私说明',
+    intro: '以下说明当前网站处理哪些信息，以及这些信息如何参与阅读与学习。',
+    sections: [
+      { title: '账号与使用信息', text: '注册和登录会处理邮箱、账号验证信息与登录状态，用于身份验证、邮件验证和找回密码。服务还会记录材料权限、使用额度及调用记录，用于提供和管理内测服务。' },
+      { title: '阅读与学习记录', text: '阅读位置、笔记、提问、对话、学习目标及相关学习反馈会保存在服务端，用于恢复阅读现场、展示历史，并帮助后续讲解接着已有学习展开。' },
+      { title: 'AI 与第三方服务', text: '生成回答时，你的问题、相关原文及必要的对话和学习上下文会发送给网站配置的 AI 服务。网站还使用第三方云服务提供网络访问和邮件发送；相关服务会处理完成这些功能所需的信息。请避免在提问中提交密码、验证码或无关的个人敏感信息。' },
+      { title: '浏览器存储与运行记录', text: '网站使用 Cookie 保持登录，并在浏览器中保存字号、阅读方式等偏好和待处理操作。服务端会保存运行与调用记录，以支持用量统计和问题排查。' },
+      { title: '管理与联系', text: '你可以在账号设置中查看已绑定邮箱，并在阅读界面查看自己的历史记录。有关账号、个人信息的更正或删除请求，以及本说明的问题，请通过首页内测群联系管理员；管理员会与你确认具体处理范围。' },
+    ],
+  },
+  about: {
+    title: '关于我们',
+    intro: 'Understand Book 是一个伴随原文的 AI 阅读与持续学习空间。',
+    sections: [
+      { title: '让理解接着发生', text: '我们希望把原文、提问、尝试和学习反馈留在同一个阅读空间。今天没有想通的问题，下次可以继续；前一次的思考，成为下一次学习的起点。' },
+      { title: '从一本书、一个问题开始', text: '你可以自由阅读和提问，也可以围绕自己的目标持续学习。通过对照原文、解释自己的想法和动手验证，把听到的答案逐渐变成自己的理解。' },
+      { title: '一起把产品做好', text: '目前产品采用邀请制内测。欢迎加入内测群，领取内测码、交流使用感受，或直接联系我反馈问题。' },
+    ],
+  },
+} as const;
+const siteInfoDialog = ref<HTMLDialogElement | null>(null);
+const siteInfoContent = ref<HTMLElement | null>(null);
+const activeSiteInfo = ref<keyof typeof siteInfo>('terms');
+function openSiteInfo(section: keyof typeof siteInfo) {
+  activeSiteInfo.value = section;
+  siteInfoDialog.value?.showModal();
+  siteInfoContent.value?.scrollTo(0, 0);
+}
+
 const questions = [
   {
     title: '已经会用 AI 讲解，为什么还需要 Understand Book？',
@@ -61,7 +104,7 @@ const questions = [
   },
   {
     title: '现在怎样开始使用？',
-    answer: '目前采用邀请制内测。获得内测码后，使用邮箱注册并完成验证；可阅读的材料与使用额度由管理员开通。你可以从一份已开通的材料、一节内容和一个想弄明白的问题开始。',
+    answer: '目前采用邀请制内测。可以扫描下方二维码加入内测群，联系管理员领取内测码，再使用邮箱注册并完成验证。可阅读的材料与使用额度由管理员开通；你可以从一份已开通的材料、一节内容和一个想弄明白的问题开始。',
   },
 ];
 </script>
@@ -177,11 +220,56 @@ const questions = [
       </section>
 
       <section class="home-begin home-width" id="begin" aria-labelledby="begin-title">
-        <div class="home-begin-inner"><div><p class="home-section-index"><span class="home-status-dot"></span> 邀请制内测进行中</p><h2 id="begin-title">从一节内容，<br />一个想弄明白的问题开始。</h2><p>带着你的学习目标，连续读几次。<br />看看下一次的帮助，是否接住了前面的理解。</p></div><div class="home-begin-actions"><a class="home-button home-button-light" href="./?account=register">已有内测码，开始注册 <ArrowUpRight :size="18" /></a><a class="home-begin-login" href="./?account=login">已经有账号？继续阅读 <ArrowRight :size="16" /></a><p>内测码由管理员邀请发放。<br />注册后，阅读材料与使用额度由管理员开通。</p></div></div>
+        <div class="home-begin-inner">
+          <div>
+            <p class="home-section-index"><span class="home-status-dot"></span> 邀请制内测进行中</p>
+            <h2 id="begin-title">从一节内容，<br />一个想弄明白的问题开始。</h2>
+            <p>带着你的学习目标，连续读几次。<br />看看下一次的帮助，是否接住了前面的理解。</p>
+          </div>
+          <div class="home-begin-actions">
+            <figure class="home-beta-contact">
+              <figcaption><strong>扫码加入内测群</strong><span>联系我，领取内测码。</span></figcaption>
+              <a :href="betaGroupQr" target="_blank" rel="noopener" aria-label="查看内测群二维码原图">
+                <img :src="betaGroupQr" width="534" height="636" loading="lazy" alt="Understand Book 微信内测群二维码，10 月 22 日前有效" />
+              </a>
+              <p>点击查看原图，或长按保存后在微信识别。<br />本二维码 10 月 22 日前有效。</p>
+            </figure>
+            <a class="home-button home-button-light" href="./?account=register">已有内测码，开始注册 <ArrowUpRight :size="18" /></a>
+            <a class="home-begin-login" href="./?account=login">已经有账号？继续阅读 <ArrowRight :size="16" /></a>
+            <p>注册后，阅读材料与使用额度由管理员开通。</p>
+          </div>
+        </div>
       </section>
     </main>
 
-    <footer class="home-footer home-width"><a href="#top" class="home-brand"><img :src="brandLogo" class="brand-logo" width="30" height="30" alt="" /><span>Understand <i>Book</i></span></a><p>让每一次阅读，都接着上一次的理解。</p><a href="#top">回到开头 <ArrowUpRight :size="14" /></a></footer>
+    <footer class="home-footer home-width">
+      <p class="home-footer-tagline">让每一次阅读，都接着上一次的理解。</p>
+      <div class="home-footer-bottom">
+        <p class="home-copyright">© {{ copyrightYear }} Understand Book · 保留所有权利</p>
+        <nav class="home-footer-links" aria-label="网站信息">
+          <button type="button" aria-haspopup="dialog" @click="openSiteInfo('terms')">服务条款</button>
+          <button type="button" aria-haspopup="dialog" @click="openSiteInfo('privacy')">隐私说明</button>
+          <a href="#begin">联系我们</a>
+          <button type="button" aria-haspopup="dialog" @click="openSiteInfo('about')">关于我们</button>
+        </nav>
+      </div>
+    </footer>
+    <dialog ref="siteInfoDialog" class="home-info-dialog" aria-labelledby="home-info-title" @click="($event.target === $event.currentTarget) && siteInfoDialog?.close()">
+      <div class="home-info-panel">
+        <header class="home-info-header">
+          <div><p>Understand Book</p><h2 id="home-info-title">{{ siteInfo[activeSiteInfo].title }}</h2></div>
+          <button type="button" aria-label="关闭说明" autofocus @click="siteInfoDialog?.close()"><X :size="20" /></button>
+        </header>
+        <div ref="siteInfoContent" class="home-info-content" tabindex="0" aria-label="说明正文">
+          <p class="home-info-date">更新日期：2026 年 10 月 15 日</p>
+          <p class="home-info-intro">{{ siteInfo[activeSiteInfo].intro }}</p>
+          <section v-for="section in siteInfo[activeSiteInfo].sections" :key="section.title">
+            <h3>{{ section.title }}</h3><p>{{ section.text }}</p>
+          </section>
+          <a class="home-info-contact" href="#begin" @click="siteInfoDialog?.close()">加入内测群，联系我们 <ArrowUpRight :size="15" /></a>
+        </div>
+      </div>
+    </dialog>
     <dialog ref="imageDialog" class="home-image-dialog" aria-labelledby="home-image-title" @click="($event.target === $event.currentTarget) && imageDialog?.close()">
       <div class="home-image-dialog-content">
         <header class="home-image-toolbar">

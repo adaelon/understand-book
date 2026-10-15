@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-pub const CONTROL_SCHEMA_VERSION: i64 = 12;
+pub const CONTROL_SCHEMA_VERSION: i64 = 13;
 const APPLICATION_ID: i64 = 0x55424d55;
 
 pub struct ServiceWriter {
@@ -155,6 +155,8 @@ impl ControlStore {
                 .map_err(|_| storage())?;
             tx.execute_batch(include_str!("mcp_packs.sql"))
                 .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("default_book_grants.sql"))
+                .map_err(|_| storage())?;
             tx.pragma_update(None, "application_id", APPLICATION_ID)
                 .map_err(|_| storage())?;
             tx.pragma_update(None, "user_version", CONTROL_SCHEMA_VERSION)
@@ -229,6 +231,12 @@ impl ControlStore {
             let tx = connection.transaction().map_err(|_| storage())?;
             tx.execute_batch(include_str!("mcp_packs.sql")).map_err(|_| storage())?;
             tx.pragma_update(None, "user_version", 12).map_err(|_| storage())?;
+            tx.commit().map_err(|_| storage())?;
+        }
+        if (1..=12).contains(&version) {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch(include_str!("default_book_grants.sql")).map_err(|_| storage())?;
+            tx.pragma_update(None, "user_version", 13).map_err(|_| storage())?;
             tx.commit().map_err(|_| storage())?;
         }
         memory::ReaderPrivateStorageGate::secure_file(&writer.root.join("control.sqlite"))?;

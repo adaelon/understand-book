@@ -12,6 +12,7 @@ export interface ReaderSelectionSnapshot {
   rect: ReaderSelectionRect;
   text: string;
   signature: string;
+  canonical?: { ranges: { lid: string; start: number; end: number }[]; resolvedText: string };
 }
 
 function selectionNodeElement(node: Node | null): Element | null {
@@ -25,7 +26,7 @@ function isEditableSelection(node: Node): boolean {
 
 function boundarySignature(node: Node, offset: number): string {
   const element = selectionNodeElement(node)?.closest<HTMLElement>("[data-lid]");
-  return `${element?.dataset.lid ?? "reader"}:${offset}`;
+  return `${element?.dataset.lid ?? "reader"}:${element?.dataset.sourceStart ?? ''}:${offset}`;
 }
 
 export function readReaderSelection(
@@ -36,6 +37,11 @@ export function readReaderSelection(
   const liveRange = selection.getRangeAt(0);
   if (!root.contains(liveRange.startContainer) || !root.contains(liveRange.endContainer)) return null;
   if (isEditableSelection(liveRange.startContainer) || isEditableSelection(liveRange.endContainer)) return null;
+  const startScreen = selectionNodeElement(liveRange.startContainer)?.closest('.focus-screen');
+  const endScreen = selectionNodeElement(liveRange.endContainer)?.closest('.focus-screen');
+  if (startScreen || endScreen) {
+    if (startScreen !== endScreen || !startScreen || startScreen.matches('[hidden], [inert], [aria-hidden="true"]')) return null;
+  }
 
   const range = liveRange.cloneRange();
   const text = range.toString();

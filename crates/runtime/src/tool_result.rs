@@ -959,6 +959,53 @@ fn project_presentation_search(arguments: &str, raw: &Value, limit: usize) -> To
         truncated,continuation,evidence_arguments:arguments.into()}
 }
 
+fn project_text_batch(arguments: &str, raw: &Value, limit: usize, book: &Book) -> ToolResultDraft {
+    let mut body = json!({"items": []});
+    let mut pending = Vec::new();
+    let items = raw["items"].as_array().map(Vec::as_slice).unwrap_or_default();
+    let mut partial = false;
+    let mut truncated = false;
+    for (index, item) in items.iter().enumerate() {
+        let args = &item["arguments"];
+        // Share the remaining bytes so a long first passage cannot consume the
+        // entire batch. Wrapper bytes count against the same model-body budget.
+        let share = limit.saturating_sub(json_len(&body)) / (items.len() - index);
+        let wrapper = json_len(&json!({"arguments": args, "result": null}));
+        let item_limit = share.saturating_sub(wrapper + 1).saturating_add(4);
+        if share <= wrapper {
+            pending.push(args.clone());
+            truncated = true;
+            continue;
+        }
+        let projected = project_tool_result("book.text", &args.to_string(), &item["result"].to_string(),
+            ToolOutputPolicy { result_policy: ToolResultPolicy::EvidenceProjection, max_model_body_bytes: item_limit },
+            item_limit, book);
+        body["items"].as_array_mut().unwrap().push(json!({"arguments":args,"result":projected.model_body}));
+        if json_len(&body) > limit {
+            body["items"].as_array_mut().unwrap().pop();
+            pending.push(args.clone());
+            truncated = true;
+            continue;
+        }
+        partial |= projected.status != ToolResultStatus::Ok;
+        truncated |= projected.truncated;
+        if let Some(ToolContinuation::NextCall { arguments, .. } | ToolContinuation::ToolCursor { arguments, .. }) = projected.continuation {
+            pending.push(arguments);
+        }
+    }
+    if json_len(&body) > limit { body = Value::Null; }
+    ToolResultDraft {
+        status: if partial || !pending.is_empty() { ToolResultStatus::Partial } else { ToolResultStatus::Ok },
+        model_body: body,
+        truncated,
+        continuation: (!pending.is_empty()).then(|| ToolContinuation::NextCall {
+            tool: "book.text_batch".into(), arguments: json!({"ranges":pending}),
+            reason: "Continue only the undelivered source ranges; each item keeps its own UTF-16 position.".into(),
+        }),
+        evidence_arguments: arguments.into(),
+    }
+}
+
 pub(crate) fn project_tool_result(
     tool: &str,
     arguments: &str,
@@ -985,6 +1032,9 @@ pub(crate) fn project_tool_result(
     }
     if raw.get("error_code").and_then(Value::as_str).is_some() {
         return project_error(arguments, &raw, limit);
+    }
+    if tool == "book.text_batch" {
+        return project_text_batch(arguments, &raw, limit, book);
     }
     if tool == "presentation.author" && raw["status"] == "source_matches" {
         return project_presentation_search(arguments, &raw, limit);

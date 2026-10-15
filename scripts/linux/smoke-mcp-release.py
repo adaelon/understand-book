@@ -20,6 +20,12 @@ import urllib.request
 PROTOCOL = '2025-11-25'
 
 
+def require_presentation_ready(capability):
+    assert capability.get('reason') == 'ready' and all(
+        capability.get(operation) is True for operation in ('authoring', 'plot', 'animation', 'preview')
+    ), 'Presentation execution is unavailable: ' + str(capability.get('reason', 'missing_capability'))
+
+
 class Client:
     def __init__(self, config):
         self.origin = config['origin'].rstrip('/')
@@ -99,6 +105,10 @@ def verify(config):
         return value, elapsed, size
 
     try:
+        presentation = reader.json('/api/auth/me').get('capabilities', {}).get('presentation', {})
+        require_presentation_ready(presentation)
+        report['presentation'] = presentation
+        checks.append('Presentation execution is ready for authoring, plot, animation and preview')
         library = reader.json('/api/library')['books']
         allowance = reader.json('/api/account/allowance')
         admin.json('/api/admin/usage')

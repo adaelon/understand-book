@@ -437,7 +437,7 @@ LID 的字符串编码 = 各级序号点分串(如 `3.2.5.2`)。比较用**逐�
 读时 localhost 服务把**冻结命令面**(V3 §4)投影成 HTTP 的形式 `[ADR-0028]`:`book.*` 只读 → `GET`、`reader.*`/`memory.*` 可变 → `POST`,**端点名 = 命令名**,错误**原样透传** §4.4 分类信封。是命令面的网络面、非另立的第二套 API;前端 / agent / 人看同一张面([docs/adr/0007] 人机同命令面无特供)。状态:NEW(详见 [docs/adr/0028])。
 
 ## 连续正文渲染 / LID 隐形 (continuous prose rendering)
-前端把视口 `visible_lids`(叶序滑动窗口)渲染成**一整列连续流动的正文**:不画每段框/分隔/LID 标号,阅读单位是连续文章而非 LID 片段。**LID 是隐形接缝**,只在 citation、跳转或高亮锚等需要时显形。状态:BOUNDARY_CHANGE(基础见 [ADR-0028](docs/adr/0028-前端切片架构-vue-localhost-server-crate-tinyhttp同步-rest命令面1对1投影-不引epub框架-连续正文lid隐形-无页码寻址.md),实现基线恢复见 [ADR-0112](docs/adr/0112-pre-phr-reader-body-path-rollback.md))。
+普通阅读把视口 `visible_lids`(叶序滑动窗口)渲染成**一整列连续流动的正文**:不画每段框/分隔/LID 标号,阅读单位是连续文章而非 LID 片段。**LID 是隐形接缝**,只在 citation、跳转或高亮锚等需要时显形；专注分页延续同一原文读序与引用身份。状态:BOUNDARY_CHANGE(基础见 [ADR-0028](docs/adr/0028-前端切片架构-vue-localhost-server-crate-tinyhttp同步-rest命令面1对1投影-不引epub框架-连续正文lid隐形-无页码寻址.md),实现基线见 [ADR-0112](docs/adr/0112-pre-phr-reader-body-path-rollback.md)，专注分页见 [ADR-0166](docs/adr/0166-focus-reading-pagination-and-performance.md)，正文呈现与交互已于 FP4 落地)。
 
 ## 区间视口 (interval viewport)
 阅读器连续滚动模型中的后端视口:`top_lid` 是当前阅读区间起点,`bottom_lid` 是区间终点,`visible_lids` 是 `[top..top+width)` 叶序区间,`width` 是区间宽度。`anchor_lid` 表示区间中段叶,用于 agent/state 共享；`scroll(delta)` 移动 `top_lid`,`goto(lid)` 让目标叶成为 `top_lid`。状态:EXISTING(见 [ADR-0043](docs/adr/0043-reader连续滚动视口-后端区间窗口-前端虚拟流-note-overlay.md))。
@@ -446,7 +446,16 @@ LID 的字符串编码 = 各级序号点分串(如 `3.2.5.2`)。比较用**逐�
 ## note overlay
 note 卡片的展示层 `[ADR-0043]`:note 内容仍来自 memory,overlay 只负责按当前可见 LID 过滤、定位和展示,避免 note 卡嵌入正文段落循环后污染虚拟列表的段高估算。highlight 仍是段内 `<mark>`。状态:NEW(详见 [docs/adr/0043])。
 ## 读位感 (reading position sense)
-替代"页码"的位置参照:**章节定位**(从当前 anchor 上溯容器 LID)+ **进度%**(`anchor_idx` / 叶总数)。它只做导航与显示,**不做引用锚**。本项目无一等页码；印刷版 page-list 仅在源携带时作 LID 展示标签,citation 恒为 LID。状态:EXISTING(见 [ADR-0028](docs/adr/0028-前端切片架构-vue-localhost-server-crate-tinyhttp同步-rest命令面1对1投影-不引epub框架-连续正文lid隐形-无页码寻址.md))。
+替代固定页码的位置参照:**章节定位**(从当前 anchor 上溯容器 LID)+ **进度%**(`anchor_idx` / 叶总数)，只做导航与显示,**不做引用锚**。本项目无一等显示页码；印刷版 page-list 仅在源携带时作 LID 展示标签，专注模式的页序属于当前设备排版，citation 恒为 LID。状态:BOUNDARY_CHANGE(基础见 [ADR-0028](docs/adr/0028-前端切片架构-vue-localhost-server-crate-tinyhttp同步-rest命令面1对1投影-不引epub框架-连续正文lid隐形-无页码寻址.md)，专注页序见 [ADR-0166](docs/adr/0166-focus-reading-pagination-and-performance.md)，规范游标与就绪基础已落地，公开交互已于 FP4 落地，持久读位已于 FP5 落地)。
+
+## 专注分页阅读（focus paginated reading）
+以当前原文书页为主体、辅助工具按需呼出的阅读呈现，宽窗口采用双页展开，手机与窄窗口采用单页翻页。它沿用同一书籍、读位、引用和工作区现场，扩展原有收起侧栏的专注阅读行为。状态：BOUNDARY_CHANGE（[ADR-0166](docs/adr/0166-focus-reading-pagination-and-performance.md)，2026-10-14，FP2 分页及 FP3 就绪基础已落地，公开交互已于 FP4 落地）。
+
+## 显示书页（display page）
+在当前字体、版心和可用空间下容纳的一段连续原文，其边界随排版条件变化；原版 PDF 阅读使用来源本身的页面。显示书页及其页序是阅读呈现单位，引用和持久读位仍以原文位置为依据。状态：NEW（[ADR-0166](docs/adr/0166-focus-reading-pagination-and-performance.md)，2026-10-14，FP2 正文书页与 FP3 冻结就绪已落地，PDF 原版页及整屏就绪已于 FP6 落地）。
+
+## 双页展开（two-page spread）
+同一阅读屏同时呈现相邻两页，读序由左页接到右页，翻页进入前一屏或后一屏。状态：NEW（[ADR-0166](docs/adr/0166-focus-reading-pagination-and-performance.md)，2026-10-14，FP2 双页布局与 FP3 整屏准备已落地，公开交互已于 FP4 落地，FP6 PDF 双页含画布、文字与批注整体就绪）。
 
 ## MemoryDocument
 本地单用户、跨书的读者私人内容记录与稳定画像事实账本,统一容纳其审核和治理状态,与只读书基座物理隔离。它是 `LearningMemory` 内稳定用户上下文的权威来源,不拥有绑定 `LearningObjectRef` 的学习证据或对象级知识状态。旧的裸记录数组是其待迁移前身,不是并列真相源。状态:BOUNDARY_CHANGE(详见 [docs/adr/0075]、`grill.md` Q81)。

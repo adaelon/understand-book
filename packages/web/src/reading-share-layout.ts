@@ -4,14 +4,6 @@ import type { ShareDraft } from './reading-share';
 import slowerArtwork from './assets/share-slower.svg?raw';
 import './brand.css';
 
-const minimumDiagramScale = .75;
-const diagramHorizontalSpace = 192;
-
-export function shareSize(draft: ShareDraft) {
-  const size = draft.source.diagram && draft.orientation === 'landscape' ? { width: 1440, height: 1080 } : { width: 1080, height: 1440 };
-  if (draft.source.diagram) size.width = Math.max(size.width, Math.ceil(draft.source.diagram.width * minimumDiagramScale) + diagramHorizontalSpace);
-  return size;
-}
 const css = `
 .share-sheet { --accent:#a64735; --bright:#c56e54; --stage:#d9c5ac; --paper:#fff3df; --ink:#4f4639; box-sizing:border-box; width:1080px; height:1440px; background:#fff9ef; color:var(--ink); font:400 32px/1.8 "Noto Serif SC Variable"; position:relative; }
 .share-sheet.blue { --accent:#2e65ae; --bright:#4c95e8; --stage:#bbcda9; --paper:#f6f0d8; --ink:#344e3b; background:#fffdec; }
@@ -61,17 +53,6 @@ const css = `
 .share-sheet .katex { font-size:1.1em; }
 .share-sheet .katex-display { margin:16px 0; }
 .share-sheet a { color:inherit; text-decoration:underline; }
-.share-sheet.diagram { font-size:32px; }
-.share-sheet.diagram header { top:24px; }
-.share-sheet.diagram > .content { top:74px; left:64px; right:64px; }
-.share-sheet.diagram .hero { padding:16px; border-radius:24px; }
-.share-sheet.diagram .paper { padding:16px; transform:none; box-shadow:none; }
-.share-sheet.diagram .paper::before,.share-sheet.diagram .paper::after,.share-sheet.diagram .handwritten,.share-sheet.diagram .eyebrow { display:none; }
-.share-sheet.diagram .caption { padding-top:12px; text-align:left; }
-.share-sheet.diagram .content .caption h1 { font-size:40px; margin:0; }
-.share-sheet.diagram .identity { font-size:28px; margin-bottom:8px; }
-.share-sheet.diagram footer { left:64px; right:64px; bottom:32px; font-size:28px; line-height:1.5; }
-.share-sheet.diagram .diagram-image { display:block; max-width:100%; margin:auto; object-fit:contain; }
 `;
 function element(tag: string, text?: string, className?: string): HTMLElement {
   const el = document.createElement(tag);
@@ -86,14 +67,6 @@ export function shareSections(draft: ShareDraft): HTMLElement[] {
   if (!parts.length) throw new Error('请至少选择一部分内容。');
   const ordered = draft.layout === 'excerpt' ? [...parts].sort((a, b) => Number(b.id === 'excerpt') - Number(a.id === 'excerpt')) : parts;
   const sections: HTMLElement[] = [];
-  if (draft.source.diagram) {
-    const graph = draft.source.diagram, { width, height } = shareSize(draft);
-    const section = element('section'); section.append(element('div', '图解 · 助手呈现', 'identity'));
-    const image = document.createElement('img'); image.src = graph.png; image.className = 'diagram-image';
-    const scale = Math.max(minimumDiagramScale, Math.min((width - diagramHorizontalSpace) / graph.width, (height - 510) / graph.height));
-    image.width = Math.round(graph.width * scale); image.height = Math.round(graph.height * scale);
-    section.append(image); sections.push(section);
-  }
   for (const part of [...ordered, ...(draft.reflection.trim() ? [{ label: '我的感想', text: draft.reflection, format: 'plain' }] : [])]) {
     const section = element('section');
     section.append(element('div', part.label, 'identity'));
@@ -169,7 +142,7 @@ function splitBlock(block: HTMLElement): HTMLElement[] {
 
 /** The returned pages stay mounted until dispose, so measurement and output share one layout. */
 export async function paginateShare(draft: ShareDraft) {
-  const { width, height } = shareSize(draft);
+  const width = 1080, height = 1440;
   const sections = shareSections(draft);
   const host = element('div'); host.style.cssText = 'position:fixed;left:-20000px;top:0;pointer-events:none;';
   host.append(element('style', css)); document.body.append(host);
@@ -226,14 +199,6 @@ export async function paginateShare(draft: ShareDraft) {
       }
       sectionContent.append(block);
       if (fits()) return;
-      if (block.matches('img.diagram-image')) {
-        // Keep the complete frozen scene at readable scale; measure title and sources too.
-        const page = sectionContent.closest<HTMLElement>('.share-sheet')!;
-        const requiredHeight = content.getBoundingClientRect().bottom - page.getBoundingClientRect().top
-          + 28 + footer.getBoundingClientRect().height + 32;
-        page.style.height = `${Math.ceil(requiredHeight)}px`;
-        return;
-      }
       block.remove();
       if (hasPreviousContent()) continuePage(label);
       sectionContent.append(block);
@@ -316,6 +281,8 @@ async function embeddedFonts(text: string, includeMath: boolean): Promise<string
 }
 
 export async function renderShare(draft: ShareDraft): Promise<Blob[]> {
+  // The sandbox already froze the complete HTML page. Export those pixels directly.
+  if (draft.source.diagram) return [await (await fetch(draft.source.diagram.png)).blob()];
   const result = await paginateShare(draft);
   try {
     const fonts = await embeddedFonts(result.pages.map(page => page.textContent).join(''), result.pages.some(page => !!page.querySelector('.katex')));

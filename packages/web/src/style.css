@@ -500,6 +500,7 @@ html[data-workspace-keyboard="true"] :is(.workspace-mobile-top, .workspace-mobil
 }
 .outline-list {
   display: grid;
+  grid-auto-rows: max-content;
   gap: 0.18rem;
   min-height: 0;
   align-content: start;
@@ -1746,6 +1747,7 @@ input:focus {
 }
 
 /* Shared interaction timing; changing display never remounts workspace slots. */
+.workspace-shell[data-focus-reading="true"][data-foreground="reader"]:has(.reader-paginated, .pdf-focus-mode) > :is(.workspace-mobile-top, .workspace-mobile-nav, .workspace-reader-surface-switch) { display:none; }
 .source-preview-dialog, .agent-source-popup { animation: reader-preview-in var(--motion-preview) var(--motion-ease); }
 .workspace-shell.outline-open .left-rail { animation: reader-panel-in var(--motion-panel) var(--motion-ease); }
 .right-rail .tab-panel { animation: reader-panel-in var(--motion-tab) var(--motion-ease); }

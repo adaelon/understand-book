@@ -50,6 +50,8 @@ describe("ReaderPane Note rendering", () => {
     expect(wrapper.get('[data-lid="1.2"]').element.closest("p")).toBeNull();
     expect(wrapper.find('[data-lid="1.2"] .katex-display').exists()).toBe(true);
     expect(wrapper.findAll(".seg")).toHaveLength(3);
+    await wrapper.get('[data-lid="1.2"] button').trigger('click');
+    expect(wrapper.emitted('open-formula')?.at(-1)?.[0]).toMatchObject({ lid: '1.2', formula: null });
     await wrapper.get('[data-lid="1.2"]').trigger("click");
     expect(wrapper.emitted("select")?.at(-1)).toEqual(["1.2"]);
 

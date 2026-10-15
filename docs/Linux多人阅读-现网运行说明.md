@@ -1,5 +1,19 @@
 # Linux 多人阅读现网运行说明
 
+2026-10-15 18:24:16 HKT 已发布目录长标题重叠修复，沿用 `current-20261015`。目录行按内容高度展开；线上《深入理解ai agent》292项在1440×900、1100×440、390×844均无文字越界，搜索及滚动通过。仅更新前端，服务PID 101669保持。刷新页面加载新版；见 [验证与恢复记录](performance/outline-wrap-20261015/README.md)。
+
+2026-10-15 15:15:29 HKT 已发布当前工作区的产品改动，release 为 `current-20261015`，Tutor 指导 `tb4.v5`，服务 PID 101669、active。包含正文/PDF专注分页、精确读位与来源接续、相关阅读器修复及新出题规则。15:30:19 HKT 同版追加首页内测群二维码，支持查看原图与保存，保留10月22日前有效提示；15:53:32 HKT 加入版权页脚、服务条款、隐私说明、联系我们与关于我们入口。两次首页更新均未重启服务。数据根与 schema 13 沿用，账号、材料、聊天及笔记保留。FP7 剩余性能验收按用户明确指令暂停，不宣称完整通过。见 [发布与回退记录](performance/current-release-20261015/README.md)。下列旧日期段落保留历史。
+
+2026-10-14 17:55:48 HKT 已发布理解判断问题的区分力与按需追问规则。现网 release 为 `tutor-question-discrimination-20261014`，Tutor 指导 `tb4.v3`，服务 PID 53917、active。新回合中的理解判断问题须要求未被代答的关系运用；证据不足保持尚未确认，按下一步教学需要追问。数据根与 schema 13 沿用，公网首页、登录、11 本授权材料及四项制作能力验证通过。见 [发布与恢复记录](performance/tutor-question-discrimination-20261014/README.md)。下列旧日期段落保留历史。
+
+2026-10-13 22:41 HKT 已发布《这一刀怎么补》（`last-hit-positioning`）与演示长图导出。现网 release 为 `last-hit-default-grants-20261013`，schema 13，4 个现有账号均已授权，以后创建的账号自动获得该书。演示工具栏点击“导出长图”可预览并下载保留当前 HTML 布局及参数的完整 PNG。服务 PID 3526、active；数据根沿用。实现、验证及恢复点见 [发布记录](默认材料授权与补刀站位发布.md)。
+
+2026-10-13 21:46:44 HKT 已发布演示工作区布局修复：演示正文独占左侧高度，关联教学与作答移到右侧对应回合；从问答全屏打开演示时使用正确分栏，收起恢复原全屏状态。沿用 `tutor-response-fit-20261013` release，静态资源更新为 `reader-CfJ2PVJy.js` / `reader-BpRNSPKW.css`，服务 PID 8915 持续运行。正式首页、阅读入口与直接引用资源逐字节一致。见 [修复、验证与回退记录](performance/presentation-layout-fix-20261013/README.md)。
+
+2026-10-13 20:58 HKT 已发布 Tutor 表达判读与记忆适配修正，现网 release 为 `tutor-response-fit-20261013`，PID 8915。Tutor 指导采用 `tb4.v2`，历史教案可按原文与当前表达修订；指定错误理解已追加更正，原话、帮助条件和历史对话保留。数据根与 schema 12 沿用，公网首页、登录和四项制作能力 ready。原演示修复包含于此版本；详见 [实施与验证记录](performance/tutor-response-fit-20261013/README.md)。
+
+2026-10-13 19:51 HKT 已发布演示环境与失败终答修复，现网 release 为 `presentation-recovery-20261013`，数据根仍为 `multi-reader-to-tb-20261012`，schema 12；既有品牌与阅读前端保持。已修正生产执行器目录归属、隔离历史恢复演练实例，并让工具发现和终答反映真实环境状态。实际服务账户下的绘图、写页、三视口预览及交付通过，公网制作四项能力均 ready。见 [故障与部署记录](performance/presentation-recovery-20261013/README.md)。下列旧日期段落保留历史。
+
 2026-10-12 08:53 HKT 已整体发布 main 合并提交 `8497f29`（Tutor TC0–TC6、Reader 与 MCP0–MCP9），MCP10 正式 HTTPS 和恢复验收完成。现网 release 为 `mcp10-20261012`，数据根 `multi-reader-mcp10-20261012`，schema 12；服务 active。MCP 入口 [https://understandbook.top/mcp](https://understandbook.top/mcp)，本人从 [MCP 接入](https://understandbook.top/?account=mcp) 创建凭证。旧账号、材料、私人文件和模型费用保留，完整版本／恢复边界见 [MCP10 运行单](内测MCP-发布运行单.md)。下列旧日期段落保留历史。
 
 2026-10-09 20:00 HKT，INV0–INV9 与 T15–T18 已同版发布。schema 9，正式域名注册/找回/后台和原账号阅读复核通过，真实收信在隔离同版候选通过。现网此版因缺少 Tutor 必要接纳回执阻塞旧书；随后已按用户要求修改源码，直接使用已有 Pass1、discourse 与 BookStructure，修复已于 20:32:02 HKT 部署并通过公网与实际 Tutor 界面复核，书籍无需重建或重新导入。见 [Tutor 上线记录](performance/tutor-artifacts-deployment-20261009/README.md)。版本、数据根、备份和证据见 [INV9 发布运行单](邮箱账号-INV9发布运行单.md)。
@@ -27,9 +41,9 @@
 ## 入口与版本
 
 - 正式入口：`https://understandbook.top/`；后台 `https://understandbook.top/admin/`；旧 `https://115.190.121.150` 保留路径以 308 跳转到域名，历史 8080 入口经旧 IP 跳转。
-- release：`/opt/understand-book/releases/mcp10-20261012`，应用提交 `8497f29`，Rust `--release` 与同源码网络 Web／Admin；此前 release 保留，schema 12 恢复边界见 MCP10 运行单。
+- release：`/opt/understand-book/releases/current-20261015`，Tutor 指导 `tb4.v5`；包括专注阅读、首页内测群二维码与网站信息页脚。Rust `--release`，schema 13。此前 release 保留，恢复位置见[本次发布记录](performance/current-release-20261015/README.md)。
 - 服务：`understand-book-multi.service`；账户 `understand-book`；后端 `127.0.0.1:8788`。
-- 数据：`/opt/understand-book/data/multi-reader-mcp10-20261012`，schema 12；旧资料归属账号 `reader`。
+- 数据：`/opt/understand-book/data/multi-reader-to-tb-20261012`，schema 13；旧资料归属账号 `reader`。
 - 环境：`/opt/understand-book/multi-reader.env`，0600；沿用旧 Provider 路由和 Key。
 - 初始登录资料：远端 `/opt/understand-book/multi-reader-credentials.json`，0600；本地交付另存用户私人目录。凭证不进入仓库或运行证据。
 
@@ -103,3 +117,8 @@ MU13 在原 MU12 release 内追加 HTTP/2、所有 JSON API gzip、PDF 已知长
 ## 已知限制
 
 用户明确决定 MU10 预构建相关失败不阻挡此次部署；原始失败与单独复跑结果仍保留。当前机器没有完成冻结的 8 GiB / 40 GiB 空闲容量和完整渲染混合负载验收；实体 iPhone、Tauri 完整来源 / 富呈现、RE7 正式验收仍单列。网络制作在补齐运行时与宿主权限后已开启，四项 capability 均为 true / ready；模型问答沿用已配置 Provider。
+
+
+## 2026-10-13 23:44 演示长图高清与顶部品牌栏
+
+在现有 `last-hit-default-grants-20261013` release 更新前端：`reader-CI6pWOjO.js` 提供 4 倍像素长图及顶部 logo/understand-book 品牌栏。后端 PID 3526 保持运行。23:45 核对用户入口 `index.html?account=login` 返回新程序，线上文件与已验证多用户生产构建字节一致。旧入口和源文件备份位于 `/opt/understand-book/backups/presentation-export-quality-20261013T154355Z`，旧静态资源保留。详见 [发布与验证记录](performance/presentation-export-quality-20261013/README.md)。

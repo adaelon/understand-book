@@ -85,24 +85,53 @@ fn tutor_to3_assess_example_uses_original_open_response() {
     let spec = runtime::tutor::spec();
     let examples = spec.parameters["examples"].as_array().unwrap();
     let scored = examples.iter().find(|e| e["move"]["assessment"].is_object()).unwrap();
+    let explanation = scored["move"]["explanation"].as_str().unwrap();
     let run = prepare(&mut state);
     let mut invalid = scored.clone();
     invalid["move"]["actions"] = json!([]);
     assert!(teaching::step(&state.private_context(), &run.turn_ref, invalid, &[], &[range()]).unwrap_err().message.contains("评分活动必须允许提交"));
     teaching::step(&state.private_context(), &run.turn_ref, scored.clone(), &[], &[range()]).unwrap();
     finish(&mut state, &run.turn_ref, &outcome(None));
-    let id = format!("delivery:{}:explain-denominator", run.turn_ref.turn_id);
-    json_post(&mut state, "/tutor/display", json!({"delivery_ref":id}));
-    json_post(&mut state, "/tutor/action", json!({"operation_id":"to3-open","delivery_ref":id,"action":"submit","response":"Use total time, and total time must be positive."}));
+    let id = format!("delivery:{}:compare-journey-times", run.turn_ref.turn_id);
+    let public = json_post(&mut state, "/tutor/activities",
+        json!({"session_id":run.turn_ref.session_id,"turn_id":run.turn_ref.turn_id}));
+    assert_eq!(public["activities"].as_array().unwrap().len(), 1);
+    assert!(public["activities"][0]["move"].get("explanation").is_none());
+    assert!(!public.to_string().contains(explanation));
+    let displayed = json_post(&mut state, "/tutor/display", json!({"delivery_ref":id}));
+    assert!(!displayed.to_string().contains(explanation));
+    let response = "A's claim is wrong: the stop makes A's total time 15 minutes, versus B's 12. For the same distance, B takes less total time and has the greater average speed.";
+    json_post(&mut state, "/tutor/action", json!({"operation_id":"to3-open","delivery_ref":id,"action":"submit","response":response}));
     let example = examples.iter().find(|e| e["operation"] == "assess").unwrap();
     state.services.adapter = Box::new(ChatStubAdapter::scripted(vec![
         call("tutor.step", example.clone()),
-        answer(&json!({"items":[{"id":"total-time","verdict":"supported","response_quote":"Use total time",
-            "sources":[{"lid":"1.1","quote":"total time"}],"reason":"The response names total time."}]}).to_string()),
+        answer(&json!({"items":[{"id":"total-time","verdict":"supported","response_quote":response,
+            "sources":[{"lid":"1.1","quote":"total time"}],"reason":"The response includes the stop and uses the equal distances and total times to reject A's claim."}]}).to_string()),
         call("tutor.step", json!({"operation":"outside"})), answer("The response meets the frozen criterion."),
     ]));
     json_post(&mut state, "/agent/chat", json!({"message":"Evaluate my response","teaching_ref":"action:to3-open"}));
     assert_eq!(state.user.learning_store().unwrap().assessment("action:to3-open").unwrap().unwrap().status, memory::assessment::AssessmentStatus::Correct);
+    let reveal = json_post(&mut state, "/tutor/action",
+        json!({"operation_id":"to3-open-reveal","delivery_ref":id,"action":"reveal"}));
+    assert_eq!(reveal["help"]["text"], explanation);
+    let help_ref = reveal["help"]["event_id"].as_str().unwrap();
+    let offered = state.user.learning_store().unwrap().teaching_event(help_ref).unwrap();
+    assert_eq!(offered.kind, TeachingFact::HelpDelivered);
+    assert_eq!(offered.payload["text"], explanation);
+    assert!(!state.user.learning_store().unwrap().teaching_activity_events(&id).unwrap()
+        .iter().any(|e| e.kind == TeachingFact::HelpDisplayed));
+    let displayed = json_post(&mut state, "/tutor/help-displayed", json!({"help_ref":help_ref}));
+    let store = state.user.learning_store().unwrap();
+    let help = store.teaching_event(displayed["event_id"].as_str().unwrap()).unwrap();
+    assert_eq!(help.kind, TeachingFact::HelpDisplayed);
+    assert_eq!(help.payload["delivery_ref"], id);
+    assert_eq!(help.payload["action"], "reveal");
+    assert_eq!(help.payload["text"], explanation);
+    assert_eq!(help.causal_refs, vec![help_ref.to_string()]);
+    // Later explanation does not become help for the earlier, original response.
+    let original = store.teaching_event("action:to3-open").unwrap();
+    assert_eq!(original.payload["response"], response);
+    assert_eq!(original.payload["assistance_refs"], json!([]));
 }
 
 #[test]
@@ -147,7 +176,8 @@ fn tutor_to3_examples_keep_source_fact_help_and_pause_preconditions() {
     json_post(&mut state, "/tutor/display", json!({"delivery_ref":delivery}));
     for action in ["request_hint", "reveal"] {
         let result = json_post(&mut state, "/tutor/action", json!({"operation_id":format!("to3-{action}"),"delivery_ref":delivery,"action":action}));
-        assert!(result.to_string().contains(if action == "request_hint" { "Time equals distance" } else { "equal distances take different times" }));
+        let key = if action == "request_hint" { "hint" } else { "explanation" };
+        assert_eq!(result["help"]["text"], select["move"][key]);
     }
     let hypothesis = examples.iter().find(|e| e["nature"] == "hypothesis").unwrap();
     let mut false_fact = hypothesis.clone();

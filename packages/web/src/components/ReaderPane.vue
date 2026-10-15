@@ -3,6 +3,11 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import type { FormulaSemantics, ImageAssetManifestEntry, MemoryRecord } from "../api";
 import type { Manifest } from "../api";
 import AnnotationPreview from "./AnnotationPreview.vue";
+import FocusReaderPane from './FocusReaderPane.vue';
+import type { FocusSource } from '../reader-focus-source';
+import type { SourceCursor, PaginationOptions, PaginationSource } from '../reader-pagination';
+import { abortable } from '../reader-focus';
+import { isReaderFlowSegment, shouldJoinReaderFlow } from '../reader-flow';
 import { isDisplayFormulaSource } from "../md";
 import { defaultTypography, typographyFont, typographyHtml, typographyStyle, type ReaderTypographyPreferences } from '../reader-typography';
 import { captureTextPosition, textPositionTop, type ScrollAnchor } from '../reader-text-anchor';
@@ -21,10 +26,16 @@ export interface Segment {
 
 const props = defineProps<{
   typography?: ReaderTypographyPreferences;
+  focusSource?: FocusSource;
+  readerActive?: boolean;
   contextKey?: string;
   segments: Segment[];
   viewportAnchor: string | null;
   selectedLid: string | null;
+  sourceFocus?: { lid: string; quote: string | null; ranges?: Map<string, [number, number]> } | null;
+  annotationRevision?: unknown;
+  focusReturnLabel?: string;
+  focusSurfaceLabel?: string;
   notePlacementActive?: boolean;
   renderSeg: (seg: Segment) => string;
   renderMarkdown: (source: string) => string;
@@ -43,16 +54,21 @@ type ReaderItem =
   | { type: "flow"; segments: Segment[] }
   | { type: "single"; segment: Segment };
 
-function renderBody(seg: Segment) {
+const renderedBodies = computed(() => new Map(props.segments.map(seg => {
   const html = props.renderSeg(seg);
-  return seg.kind === 'paragraph' || seg.kind === 'chapter' || seg.kind === 'section' ? typographyHtml(html) : html;
-}
+  return [seg.lid, seg.kind === 'paragraph' || seg.kind === 'chapter' || seg.kind === 'section' ? typographyHtml(html) : html];
+})));
+function renderBody(seg: Segment) { return renderedBodies.value.get(seg.lid) ?? ''; }
 
 function imageRenderSrc(asset: ImageAssetManifestEntry | null | undefined): string | null {
   if (!asset) return null;
   return asset.url_path ?? (asset.status === "external" ? asset.original_src : null);
 }
 const emit = defineEmits<{
+  (e: 'focus-tool', tool: string): void;
+  (e: 'pagination-active', active: boolean): void;
+  (e: 'focus-visible', value: { position: ScrollAnchor; ranges: { lid: string; start: number; end: number }[]; sources: PaginationSource[] }): void;
+  (e: 'focus-confirmed'): void;
   (e: "open-note", record: MemoryRecord, restore?: boolean): void;
   (e: "select", lid: string): void;
   (e: "prose-selection-change", snapshot: ReaderSelectionSnapshot | null): void;
@@ -63,7 +79,7 @@ const emit = defineEmits<{
   (e: "show-notes", rec: MemoryRecord): void;
   (e: "place-note", rec: MemoryRecord): void;
   (e: "goto", lid: string): void;
-  (e: "focus-source-local", source: { lid: string; quote: string | null }): void;
+  (e: "focus-source-local", source: { lid: string; quote: string | null; ranges?: Map<string, [number, number]> }): void;
   (e: "open-formula", seg: Segment): void;
   (e: "scroll-edge", direction: "up" | "down"): void;
   (e: "current-lid", lid: string): void;
@@ -91,11 +107,7 @@ function isMarkdownHeading(seg: Segment): boolean {
   return props.markdownHeadingLevel(seg) !== null;
 }
 function isFlowSegment(seg: Segment): boolean {
-  if (seg.kind === "paragraph" && isMarkdownHeading(seg)) return false;
-  return seg.kind === "paragraph" || (seg.kind === "formula" && !isDisplayFormulaSource(seg.text));
-}
-function shouldJoinFlow(prev: Segment, next: Segment): boolean {
-  return prev.kind === "formula" || next.kind === "formula";
+  return isReaderFlowSegment(seg, isMarkdownHeading(seg));
 }
 const readerItems = computed<ReaderItem[]>(() => {
   const items: ReaderItem[] = [];
@@ -108,7 +120,7 @@ const readerItems = computed<ReaderItem[]>(() => {
   for (const seg of props.segments) {
     if (isFlowSegment(seg)) {
       const last = flow[flow.length - 1];
-      if (last && !shouldJoinFlow(last, seg)) {
+      if (last && !shouldJoinReaderFlow(last, seg)) {
         flush();
       }
       flow.push(seg);
@@ -134,11 +146,89 @@ function markdownHeadingClass(seg: Segment): Record<string, boolean> {
 }
 
 const pane = ref<HTMLElement | null>(null);
-useReaderSelection(pane, (snapshot) => emit("prose-selection-change", snapshot));
+const paginated = ref(false);
+const focusMounted = ref(false);
+const focusReady = ref(false);
+const focusPane = ref<InstanceType<typeof FocusReaderPane>>();
+const focusAnchor = ref<SourceCursor>({ index: 0, offset: 0 });
+async function prepareFocus(anchor?: SourceCursor) {
+  if (!props.focusSource) return;
+  const position = !anchor && !paginated.value ? captureScrollAnchor(props.segments.map(s => s.lid)) : null;
+  const already = focusMounted.value;
+  if (!already) {
+    focusReady.value = false;
+    const formulas = new Map(Array.from(pane.value?.querySelectorAll<HTMLElement>('.formula-open-source') ?? []).map(el => [el.closest<HTMLElement>('[data-lid]')!.dataset.lid, el]));
+    props.focusSource.seed(props.segments.map(source => {
+      const formula = formulas.get(source.lid);
+      if (!formula) return source;
+      const copy = formula.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll('mark').forEach(mark => mark.replaceWith(...mark.childNodes));
+      return { ...source, preparedFormulaHtml: copy.innerHTML };
+    }));
+  }
+  typographyRequest++; typographyAbort?.abort(); cancelTypographyRestore();
+  focusAnchor.value = anchor ?? { index: Math.max(0, props.focusSource.leaves.findIndex(n => n.lid === (position?.lid ?? props.viewportAnchor))), offset: position?.textPosition?.start ?? 0 };
+  paginated.value = true; focusMounted.value = true;
+  await nextTick();
+  // The continuous branch is now unmounted. Evaluate its lazy computed value
+  // once to release the previous accumulated segment array as well.
+  void readerItems.value; void renderedBodies.value;
+  if (already) focusPane.value?.open(focusAnchor.value);
+  pane.value?.focus({ preventScroll: true });
+}
+async function leaveFocus(anchor: ScrollAnchor | null) {
+  focusPane.value?.retainCurrent();
+  reflowPending = true; paginated.value = false; focusReady.value = false; appliedTypography.value = props.typography ?? defaultTypography;
+  emit('pagination-active', false); await nextTick();
+  await restoreScrollAnchor(anchor); reflowPending = false;
+  pane.value?.focus({ preventScroll: true });
+}
+useReaderSelection(pane, (snapshot) => {
+  if (snapshot && paginated.value) {
+    const canonical = focusPane.value?.selection(snapshot.range);
+    if (!canonical?.ranges.length) return;
+    emit('prose-selection-change', { ...snapshot, canonical });
+  } else emit('prose-selection-change', snapshot);
+});
+const focusLids = ref<string[]>([]);
+function focusCurrent(cursor: SourceCursor) {
+  const ranges = focusPane.value?.ranges() ?? [], position = focusPane.value?.readingPosition();
+  focusLids.value = [...new Set(ranges.map(r => r.lid))];
+  if (!focusReady.value) {
+    focusReady.value = true; emit('pagination-active', true);
+    void nextTick(() => { void readerItems.value; void renderedBodies.value; });
+  }
+  closeAnnotation();
+  if (position) {
+    lastVisibleAnchor = position;
+    emit('focus-visible', { position, ranges, sources: focusLids.value.flatMap(lid => { const s = focusPane.value?.source(lid); return s ? [s] : []; }) });
+  }
+  emit('current-lid', cursor.lid ?? props.focusSource!.leaves[cursor.index]?.lid ?? '');
+}
+const focusDecorationRevision = computed(() => [props.annotationRevision, props.visibleNotes, props.sourceFocus]);
+const focusDecorations: NonNullable<PaginationOptions['decorations']> = (lid, source) => {
+  const marks = props.highlightsOf(lid).map(record => ({ start: record.range?.start ?? 0, end: record.range?.end ?? source.text.length, className: 'hl-mark' }));
+  const focus = props.sourceFocus;
+  const requested = focus?.ranges?.get(lid);
+  if (requested) marks.push({ start: requested[0], end: requested[1], className: 'source-focus-mark' });
+  else if (focus?.lid === lid && !focus.ranges) {
+    const start = focus.quote ? source.text.indexOf(focus.quote) : 0;
+    if (start >= 0) marks.push({ start, end: focus.quote ? start + focus.quote.length : source.text.length, className: 'source-focus-mark' });
+  }
+  const records = [...notesOf(lid), ...props.highlightCardsOf(lid)];
+  return { marks, markers: records.flatMap(record => {
+    const ranges = record.selection_context?.ranges.filter(r => r.lid === lid).map(r => r.range) ?? (record.range ? [record.range] : []);
+    return ranges.length ? ranges.map(range => ({ id: record.mem_id, ...range })) : [{ id: record.mem_id }];
+  }) };
+};
+function focusFormula(lid: string) {
+  const source = focusPane.value?.source(lid);
+  if (source) emit('open-formula', { ...source, kind: source.kind as NodeKind, formula: null, imageAsset: props.imageAsset(lid) });
+}
 const placementCandidateLid = ref<string | null>(null);
 const wrappedAssetLids = ref<Set<string>>(new Set());
 const expandedAssetLid = ref<string | null>(null);
-const validPlacementLids = computed(() => new Set(props.segments.map((segment) => segment.lid)));
+const validPlacementLids = computed(() => new Set(paginated.value ? focusLids.value : props.segments.map((segment) => segment.lid)));
 const edgePx = 2;
 const preloadScreens = 2;
 let pendingCheck = false;
@@ -156,13 +246,17 @@ let selecting = false;
 let composing = false;
 let deferredTypography = false;
 let typographyRequest = 0;
+let typographyAbort: AbortController | undefined;
 function cancelTypographyRestore() { reflow.cancelRestore(); reflowPending = false; }
 function interact() { cancelTypographyRestore(); emit('viewport-interaction'); }
 
 async function applyTypography() {
+  if (paginated.value) return;
   if (selecting || composing) { deferredTypography = true; return; }
   deferredTypography = false;
   const request = ++typographyRequest;
+  typographyAbort?.abort();
+  const controller = new AbortController(); typographyAbort = controller;
   const anchor = captureScrollAnchor(props.segments.map(s => s.lid));
   const token = reflow.beginRestore(props.contextKey ?? 'local');
   const current = () => reflow.isCurrent(token) && token.contextKey === (props.contextKey ?? 'local');
@@ -172,10 +266,10 @@ async function applyTypography() {
   // Load the actual text's unicode subsets, including headings, from bundled resources.
   const text = props.segments.map(s => s.text).join('');
   if (document.fonts) {
-    try { await Promise.all([400, 600].map(weight => document.fonts.load(`${weight} ${p.fontSizePx}px "${typographyFont(p.font)}"`, text))); }
+    try { await abortable(Promise.all([400, 600].map(weight => document.fonts.load(`${weight} ${p.fontSizePx}px "${typographyFont(p.font)}"`, text))), controller.signal); }
     catch { /* The fallback remains readable when a local font request fails. */ }
   }
-  if (request !== typographyRequest || token.contextKey !== (props.contextKey ?? 'local')) return;
+  if (controller.signal.aborted || request !== typographyRequest || token.contextKey !== (props.contextKey ?? 'local')) return;
   if (selecting || composing) { deferredTypography = true; cancelTypographyRestore(); return; }
   // Keep the previous face until the requested local font is ready. A late face
   // must not reflow an active drag or composition, or restore a superseded position.
@@ -193,14 +287,14 @@ watch(() => props.typography, () => { void applyTypography(); });
 watch(() => props.contextKey, () => { typographyRequest++; cancelTypographyRestore(); deferredTypography = false; }, { flush: 'sync' });
 
 
-const annotationGroups = computed(() => props.segments.flatMap(seg => {
-  const records = [...notesOf(seg.lid), ...props.highlightCardsOf(seg.lid)];
-  return records.length ? [{ lid: seg.lid, records }] : [];
+const annotationGroups = computed(() => (paginated.value ? focusLids.value : props.segments.map(s => s.lid)).flatMap(lid => {
+  const records = [...notesOf(lid), ...props.highlightCardsOf(lid)];
+  return records.length ? [{ lid, records }] : [];
 }));
 const activeAnnotation = ref<{ lid: string; id: string } | null>(null);
 const activeRecords = computed(() => annotationGroups.value.find(g => g.lid === activeAnnotation.value?.lid)?.records ?? []);
 const activeRecord = computed(() => activeRecords.value.find(r => r.mem_id === activeAnnotation.value?.id));
-const annotationSourceText = computed(() => props.segments.find(s => s.lid === activeAnnotation.value?.lid)?.text.slice(0, 220) ?? '');
+const annotationSourceText = computed(() => (paginated.value ? focusPane.value?.source(activeAnnotation.value?.lid ?? '') : props.segments.find(s => s.lid === activeAnnotation.value?.lid))?.text.slice(0, 220) ?? '');
 const markerStyles = ref<Record<string, Record<string, string>>>({});
 const previewStyle = ref<Record<string, string>>({});
 let annotationTrigger: HTMLElement | null = null;
@@ -224,6 +318,12 @@ async function toggleAnnotation(lid: string, event: MouseEvent) {
     document.getElementById('reader-annotation-preview')?.focus({ preventScroll: true });
   }
 }
+async function focusAnnotation(lid: string, id: string, trigger: HTMLElement) {
+  if (activeAnnotation.value?.id === id && annotationTrigger === trigger) { closeAnnotation(true); return; }
+  closeAnnotation(); annotationTrigger = trigger; activeAnnotation.value = { lid, id };
+  updateAnnotationGeometry(); await nextTick();
+  document.getElementById('reader-annotation-preview')?.focus({ preventScroll: true });
+}
 function selectAnnotation(id: string) {
   if (activeAnnotation.value) activeAnnotation.value = { ...activeAnnotation.value, id };
   updateAnnotationGeometry();
@@ -238,11 +338,19 @@ function deleteAnnotation(record: MemoryRecord) {
   else emit('delete-note', record);
 }
 function placeAnnotation(record: MemoryRecord) { closeAnnotation(); emit('place-note', record); }
-function openAnnotationSource(source: { lid: string; quote: string | null }) { closeAnnotation(true); emit('focus-source-local', source); }
+function openAnnotationSource(source: { lid: string; quote: string | null; ranges?: Map<string, [number, number]> }) { closeAnnotation(true); emit('focus-source-local', source); }
 function showAnnotationInNotes(record: MemoryRecord) { closeAnnotation(); emit('show-notes', record); }
 function updateAnnotationGeometry() {
   const root = pane.value;
   if (!root) return;
+  if (paginated.value) {
+    if (!activeAnnotation.value || !annotationTrigger?.isConnected) return;
+    const box = annotationTrigger.getBoundingClientRect(), rect = root.getBoundingClientRect();
+    previewStyle.value = { left: `${Math.max(8, Math.min(box.left, window.innerWidth - 340))}px`,
+      top: `${Math.max(8, Math.min(box.bottom + 6, window.innerHeight - 360))}px`, bottom: 'auto',
+      width: `${Math.min(320, rect.width - 16)}px`, maxHeight: 'min(520px, calc(100dvh - 96px))' };
+    return;
+  }
   const rect = root.getBoundingClientRect();
   const styles: Record<string, Record<string, string>> = {};
   for (const group of annotationGroups.value) {
@@ -275,7 +383,7 @@ watch([annotationGroups, appliedTypography], async () => {
   if (activeAnnotation.value && !activeRecord.value) closeAnnotation();
   await nextTick(); updateAnnotationGeometry();
 }, { flush: 'post' });
-watch(() => props.contextKey, () => { lastVisibleAnchor = null; closeAnnotation(); }, { flush: 'sync' });
+watch(() => props.contextKey, () => { lastVisibleAnchor = null; focusMounted.value = false; closeAnnotation(); }, { flush: 'sync' });
 
 function atTopEdge(el: HTMLElement): boolean {
   return el.scrollTop <= edgePx;
@@ -302,6 +410,7 @@ function requestBuffer(direction: "up" | "down") {
 }
 
 function checkBufferNeed() {
+  if (paginated.value) return;
   const el = pane.value;
   if (!el || props.segments.length === 0) return;
   if (nearBottom(el)) requestBuffer("down");
@@ -337,6 +446,7 @@ function updateCurrentLid() {
 
 function checkScrollState() {
   pendingCheck = false;
+  if (paginated.value) return;
   if (reflowPending) return;
   updateCurrentLid();
   checkBufferNeed();
@@ -356,6 +466,7 @@ function onScroll() {
 }
 
 function onWheel(event: WheelEvent) {
+  if (paginated.value) return;
   const el = pane.value;
   if (!el) return;
   if (event.deltaY !== 0) interact();
@@ -382,6 +493,7 @@ function onKeydown(event: KeyboardEvent) {
   const el = pane.value;
   if (!el || isEditableTarget(event.target)) return;
   if (event.key === 'Escape') { closeAnnotation(true); return; }
+  if (paginated.value) return;
   if ((event.target as Element)?.closest('button, [role="dialog"]')) return;
   const line = 72;
   const page = Math.max(line, Math.floor(el.clientHeight * 0.82));
@@ -448,10 +560,11 @@ function toggleAssetExpanded(lid: string) {
 function lidElement(lid: string): HTMLElement | null {
   const el = pane.value;
   if (!el) return null;
-  return Array.from(el.querySelectorAll<HTMLElement>("[data-lid]")).find((node) => node.dataset.lid === lid) ?? null;
+  return Array.from(el.querySelectorAll<HTMLElement>(paginated.value ? '.focus-screen:not([hidden]) [data-lid]' : '[data-lid]')).find((node) => node.dataset.lid === lid) ?? null;
 }
 
 function captureScrollAnchor(candidateLids: string[]): ScrollAnchor | null {
+  if (paginated.value) return focusPane.value?.readingPosition() ?? lastVisibleAnchor;
   const el = pane.value;
   if (!el) return null;
   if (getComputedStyle(el).display === 'none') return lastVisibleAnchor;
@@ -482,6 +595,12 @@ async function restoreScrollAnchor(anchor: ScrollAnchor | null, current: () => b
   if (!anchor) return;
   await nextTick();
   if (!current()) return;
+  if (paginated.value && props.focusSource) {
+    const index = props.focusSource.leaves.findIndex(n => n.lid === anchor.lid);
+    const shown = focusPane.value?.anchor();
+    if (index >= 0 && (shown?.index !== index || shown.offset !== (anchor.textPosition?.start ?? 0))) focusPane.value?.open({ index, offset: anchor.textPosition?.start ?? 0 });
+    return;
+  }
   const el = pane.value;
   const node = lidElement(anchor.lid);
   if (!el || !node) return;
@@ -498,6 +617,11 @@ async function restoreScrollAnchor(anchor: ScrollAnchor | null, current: () => b
 async function scrollLidIntoView(lid: string): Promise<boolean> {
   cancelTypographyRestore();
   await nextTick();
+  if (paginated.value && props.focusSource) {
+    const index = props.focusSource.leaves.findIndex(n => n.lid === lid);
+    if (index < 0) return false;
+    focusPane.value?.open({ index, offset: 0 }); return true;
+  }
   const el = pane.value;
   const node = lidElement(lid);
   if (!el || !node) return false;
@@ -515,14 +639,22 @@ async function scrollLidIntoView(lid: string): Promise<boolean> {
   return true;
 }
 
-async function scrollSourceIntoView(lid: string): Promise<boolean> {
+async function scrollSourceIntoView(lid: string, range?: { start: number; end: number }): Promise<boolean> {
+  if (paginated.value && props.focusSource) {
+    const index = props.focusSource.leaves.findIndex(n => n.lid === lid);
+    if (index < 0) return false;
+    focusPane.value?.open({ index, lid, offset: range?.start ?? props.sourceFocus?.ranges?.get(lid)?.[0] ?? 0 }); return true;
+  }
   if (!await scrollLidIntoView(lid)) return false;
   const mark = lidElement(lid)?.querySelector<HTMLElement>('.source-focus-mark');
   if (mark && pane.value) pane.value.scrollTop += mark.getBoundingClientRect().top - pane.value.getBoundingClientRect().top;
   return true;
 }
 
-defineExpose({ captureScrollAnchor, restoreScrollAnchor, scrollLidIntoView, scrollSourceIntoView, cancelTypographyRestore });
+defineExpose({ captureScrollAnchor, restoreScrollAnchor, scrollLidIntoView, scrollSourceIntoView, cancelTypographyRestore,
+  prepareFocus, leaveFocus, suspendFocus: () => focusPane.value?.retainCurrent(), focusMove: (direction: number) => focusPane.value?.move(direction),
+  focusWork: () => focusPane.value?.work(),
+  focusSnapshot: () => focusPane.value?.snapshot(), focusPause: (value: boolean) => focusPane.value?.setPaused(value) });
 
 onMounted(() => {
   annotationResize = new ResizeObserver(updateAnnotationGeometry);
@@ -537,12 +669,14 @@ onMounted(() => {
   void scheduleScrollStateCheck();
 });
 onBeforeUnmount(() => {
+  if (focusReady.value) emit('pagination-active', false);
   if (arrivalTimer) clearTimeout(arrivalTimer);
   arrivalNode?.removeAttribute('data-reader-arrival');
   annotationResize?.disconnect();
   window.removeEventListener('resize', updateAnnotationGeometry);
   closeAnnotation();
   typographyRequest++;
+  typographyAbort?.abort();
   cancelTypographyRestore();
   document.removeEventListener('pointerup', endSelection);
   document.removeEventListener('pointercancel', endSelection);
@@ -569,6 +703,7 @@ watch(
   <main
     ref="pane"
     class="reader-pane"
+    :class="{ 'reader-paginated': paginated }"
     tabindex="0"
     @scroll.passive="onScroll"
     @wheel="onWheel"
@@ -578,13 +713,23 @@ watch(
     @pointerup="onPointerUp"
     @keydown="onKeydown"
   >
-    <article class="prose" :style="bodyStyle" :lang="appliedTypography.languageMode === 'latin' ? 'en' : 'zh-Hans'">
+    <Teleport to="body" :disabled="paginated">
+    <FocusReaderPane v-if="focusMounted && props.focusSource" v-show="paginated" ref="focusPane" :source="props.focusSource" :anchor="focusAnchor"
+      :class="{ 'focus-reader-pending': !focusReady }"
+      :typography="props.typography ?? defaultTypography" :active="paginated && props.readerActive !== false"
+      :decorations="focusDecorations" :decoration-revision="focusDecorationRevision" :placement-active="props.notePlacementActive"
+      :return-label="props.focusReturnLabel" :surface-label="props.focusSurfaceLabel"
+      @tool="emit('focus-tool', $event)"
+      @current="focusCurrent" @confirmed="emit('focus-confirmed')" @annotation="focusAnnotation"
+      @select="emit('select', $event)" @formula="focusFormula" />
+    </Teleport>
+    <article v-if="!focusReady" class="prose" :style="bodyStyle" :lang="appliedTypography.languageMode === 'latin' ? 'en' : 'zh-Hans'">
       <div v-for="item in readerItems" :key="itemKey(item)" class="seg">
         <template v-if="item.type === 'flow'">
           <p class="flow-paragraph">
             <template v-for="seg in item.segments" :key="seg.lid">
               <button
-                v-if="seg.kind === 'formula' && seg.formula"
+                v-if="seg.kind === 'formula'"
                 :data-lid="seg.lid"
                 class="formula-open"
                 :class="{
@@ -598,19 +743,6 @@ watch(
               >
                 <span class="formula-open-source" v-html="renderBody(seg)"></span>
               </button>
-              <span
-                v-else-if="seg.kind === 'formula'"
-                :data-lid="seg.lid"
-                class="formula-inline-source"
-                :class="{
-                  anchor: seg.lid === props.viewportAnchor,
-                  selected: seg.lid === props.selectedLid,
-                  hl: props.isHighlighted(seg.lid),
-                  'note-placement-candidate': seg.lid === placementCandidateLid,
-                }"
-                @click="emit('select', seg.lid)"
-                v-html="renderBody(seg)"
-              ></span>
               <span
                 v-else
                 :data-lid="seg.lid"
@@ -642,12 +774,10 @@ watch(
           @click="!item.segment.formula && emit('select', item.segment.lid)"
         >
           <button
-            v-if="item.segment.formula"
             class="formula-open formula-display-open"
             title="查看公式语义剖面"
             @click.stop="emit('open-formula', item.segment)"
           ><span class="formula-open-source" v-html="renderBody(item.segment)"></span></button>
-          <span v-else class="formula-display-source" v-html="renderBody(item.segment)"></span>
         </div>
 
         <template v-else-if="!props.isAsset(item.segment)">
@@ -722,7 +852,7 @@ watch(
       </div>
       <p v-if="props.segments.length === 0" class="empty">暂无正文。请确认服务端已加载书并正在监听。</p>
     </article>
-    <div class="annotation-markers" data-reader-selection-ignore data-note-placement-ignore>
+    <div v-if="!paginated" class="annotation-markers" data-reader-selection-ignore data-note-placement-ignore>
       <button v-for="group in annotationGroups" :key="group.lid" class="annotation-marker"
         :data-annotation-lid="group.lid" :style="markerStyles[group.lid]"
         :aria-label="`查看此处 ${group.records.length} 条批注`" :aria-expanded="activeAnnotation?.lid === group.lid"

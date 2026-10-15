@@ -19,6 +19,8 @@ use read_tools::{
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use ts_rs::TS;
+mod visible_position;
+pub use visible_position::{ReadingTextPosition, VisibleReadingPosition, VisibleSourceRange};
 
 /// 叶序滑动窗口半径(占位,实测回填 V3 §4.2「何时回头」):窗口 = anchor ± radius,最多 2*radius+1 叶。
 pub const DEFAULT_WIDTH: usize = 20;
@@ -726,6 +728,7 @@ pub fn project_paper_minimap_lens(
 /// 标注不归 reader 持有(归记忆层),reader 只持视口/选区会话态。
 #[derive(Clone)]
 pub struct Reader {
+    visible_position: Option<VisibleReadingPosition>,
     revision: u64,
     /// 全书叶 LID,按物化路径序(lid_nodes 已是排序数组 `[ADR-0008]`)。
     leaf_lids: Vec<String>,
@@ -750,6 +753,8 @@ pub struct Reader {
 /// Durable scene only; unaccepted proposals and execution state are not restored.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReaderCheckpoint {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visible_position: Option<VisibleReadingPosition>,
     pub top_lid: String,
     pub width: usize,
     pub selection: Option<String>,
@@ -1654,6 +1659,7 @@ fn apply_layout_action_to_state(
 impl Reader {
     pub fn checkpoint(&self) -> ReaderCheckpoint {
         ReaderCheckpoint {
+            visible_position: self.visible_position.clone(),
             top_lid: self.viewport().top_lid, width: self.width,
             selection: self.selection.clone(), layout: self.layout.clone(),
             paper_minimap: self.paper_minimap.clone(),
@@ -1663,6 +1669,7 @@ impl Reader {
     pub fn from_checkpoint(book: &Book, saved: &ReaderCheckpoint) -> Reader {
         let mut reader = Self::new(book, saved.width);
         reader.restore_top_lid(book, &saved.top_lid);
+        if let Some(position) = &saved.visible_position { reader.restore_visible_position(book, position); }
         reader.selection = saved.selection.clone();
         reader.layout = saved.layout.clone();
         reader.paper_minimap = saved.paper_minimap.clone();
@@ -1678,6 +1685,7 @@ impl Reader {
             .map(|n| n.lid.clone())
             .collect();
         Reader {
+            visible_position: None,
             revision: 0,
             leaf_lids,
             top_idx: 0,
@@ -1700,6 +1708,11 @@ impl Reader {
     }
 
     pub fn viewport(&self) -> Viewport {
+        if let Some(position) = &self.visible_position {
+            let mut lids: Vec<String> = position.ranges.iter().map(|r| r.lid.clone()).collect();
+            lids.dedup();
+            return Viewport { anchor_lid: position.lid.clone(), top_lid: position.lid.clone(), bottom_lid: lids.last().cloned().unwrap_or_default(), width: self.width, visible_lids: lids };
+        }
         if self.leaf_lids.is_empty() {
             return Viewport {
                 anchor_lid: String::new(),
@@ -1743,6 +1756,7 @@ impl Reader {
     /// 持久化恢复:把 top_idx 设到目标 lid(必须存在于 leaf_lids),不做已读记账。
     /// 供 server 启动时从 session.json 恢复阅读位置。lid 不存在则静默忽略(书可能变了)。
     pub fn restore_top_lid(&mut self, _book: &Book, lid: &str) {
+        self.visible_position = None;
         if let Some(i) = self.leaf_lids.iter().position(|l| l == lid) {
             self.top_idx = i.min(self.max_top_idx());
         }
@@ -1769,6 +1783,7 @@ impl Reader {
             .or_else(|| self.leaf_lids.iter().position(|l| l.starts_with(&prefix)));
         match idx {
             Some(i) => {
+                self.visible_position = None;
                 self.top_idx = i.min(self.max_top_idx());
                 self.revision += 1;
                 self.selection = Some(lid.to_string());
@@ -1797,6 +1812,7 @@ impl Reader {
         now: &str,
     ) -> Result<ViewportEffect, ToolError> {
         if !self.leaf_lids.is_empty() {
+            self.visible_position = None;
             let last = self.max_top_idx() as i64;
             let next = (self.top_idx as i64 + delta).clamp(0, last);
             self.top_idx = next as usize;
@@ -2541,6 +2557,33 @@ mod tests {
             },
             &source,
         )
+    }
+
+    #[test]
+    fn focus_visible_position_preserves_tail_offset_and_marks_only_confirmed_leaves() {
+        let book = book_n_leaves(30);
+        let mut reader = Reader::new(&book, 20);
+        let mut store = MemoryStore::open(&tmp("fp5-visible")).unwrap();
+        let position = VisibleReadingPosition { lid: "1.29".into(),
+            text_position: Some(ReadingTextPosition { start: 4, end: 5, text: "X".into() }),
+            ranges: vec![VisibleSourceRange { lid: "1.29".into(), start: 4, end: 10 }, VisibleSourceRange { lid: "1.30".into(), start: 0, end: 3 }] };
+        let layout = reader.layout_state();
+        let effect = reader.confirm_visible_position(&book, &mut store, position.clone(), "t1").unwrap();
+        assert_eq!(effect.viewport.top_lid, "1.29");
+        assert_eq!(effect.viewport.visible_lids, vec!["1.29", "1.30"]);
+        assert_eq!(store.pending_read_count(), 2);
+        assert_eq!(reader.layout_state(), layout);
+        let saved: ReaderCheckpoint = serde_json::from_str(&serde_json::to_string(&reader.checkpoint()).unwrap()).unwrap();
+        let restored = Reader::from_checkpoint(&book, &saved);
+        assert_eq!(restored.visible_position(), Some(&position));
+        assert_eq!(restored.viewport(), effect.viewport);
+        let revision = reader.revision();
+        let mut invalid = position.clone(); invalid.text_position.as_mut().unwrap().text = "other".into();
+        assert!(reader.confirm_visible_position(&book, &mut store, invalid, "t2").is_err());
+        assert_eq!(reader.revision(), revision);
+        assert_eq!(reader.visible_position(), Some(&position));
+        reader.goto_lid(&book, &mut store, "1.1", "t3").unwrap();
+        assert!(reader.visible_position().is_none());
     }
 
     fn tmp(name: &str) -> PathBuf {

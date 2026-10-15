@@ -15,13 +15,23 @@ const emit = defineEmits<{
   (event: 'select', id: string): void;
   (event: 'close'): void;
   (event: 'edit' | 'delete' | 'show-notes' | 'place', record: MemoryRecord): void;
-  (event: 'source', source: { lid: string; quote: string | null }): void;
+  (event: 'source', source: { lid: string; quote: string | null; ranges?: Map<string, [number, number]> }): void;
 }>();
 function quote() {
   if (props.active.type === 'highlight') return props.active.content;
   return props.active.selection_context?.resolved_quote
     || props.active.content.match(/^(?:>.*\n?)+/)?.[0].replace(/^>\s?/gm, '').trim()
     || null;
+}
+function source() {
+  const lid = props.active.anchor.lid!;
+  const ranges = new Map<string, [number, number]>();
+  const selected = props.active.selection_context?.ranges ?? (props.active.range ? [{ lid, range: props.active.range }] : []);
+  for (const item of selected) {
+    const previous = ranges.get(item.lid);
+    ranges.set(item.lid, previous ? [Math.min(previous[0], item.range.start), Math.max(previous[1], item.range.end)] : [item.range.start, item.range.end]);
+  }
+  emit('source', { lid, quote: quote(), ...(ranges.size ? { ranges } : {}) });
 }
 </script>
 
@@ -49,7 +59,7 @@ function quote() {
       <button @click="emit('delete', props.active)">删除</button>
       <button v-if="props.active.type === 'note' && props.active.note_placement?.kind === 'lid_block' && !props.active.selection_context"
         @click="emit('place', props.active)">移动</button>
-      <button v-if="props.active.anchor.lid" @click="emit('source', { lid: props.active.anchor.lid, quote: quote() })">查看来源</button>
+      <button v-if="props.active.anchor.lid" @click="source">查看来源</button>
       <button @click="emit('show-notes', props.active)">在笔记中查看</button>
     </footer>
   </section>

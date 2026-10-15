@@ -181,9 +181,19 @@ impl Sandbox {
         sandbox
     }
     pub fn capability(&self) -> serde_json::Value {
-        let ready = self.ready.load(Ordering::Acquire);
+        let reason = self.unavailable_reason();
+        let ready = reason.is_none();
         serde_json::json!({"authoring":ready,"plot":ready,"animation":ready,"preview":ready,
-            "reason":if ready { "ready" } else if self.reason == "ready" { "execution_cleanup_failed" } else { self.reason }})
+            "reason":reason.unwrap_or("ready")})
+    }
+    pub fn unavailable_reason(&self) -> Option<&'static str> {
+        if self.ready.load(Ordering::Acquire) {
+            None
+        } else if self.reason == "ready" {
+            Some("execution_cleanup_failed")
+        } else {
+            Some(self.reason)
+        }
     }
     pub fn require(&self) -> Result<(), ToolError> {
         if self.ready.load(Ordering::Acquire) {

@@ -54,20 +54,41 @@ fn tutor_tb2_final_request_keeps_mission_scoped_to_active_teaching() {
         let ids: Vec<_> = plan.instruction_assets.iter().map(|a| a.asset_id.as_str()).collect();
         assert_eq!(text.matches("Tutor mission:").count(), usize::from(status == "active"), "{status}");
         assert_eq!(ids.contains(&"resident-agent.tutor.select"), status == "active");
+        // Question design and explanation quality also apply to ordinary
+        // conversation; the shared guidance does not enable active teaching.
+        for rule in ["Before writing any question used to judge understanding",
+            "Condition change and prediction:",
+            "Error location and repair:",
+            "Counterexamples and boundaries:",
+            "When a solution explanation is requested or feedback is permitted",
+            "A designed distractor is not evidence that this learner holds that misconception"] {
+            assert_eq!(text.matches(rule).count(),
+                usize::from(matches!(status, "active" | "observing" | "reference")), "{status}: {rule}");
+        }
         for irrelevant in ["resident-agent.tutor.presentation", "resident-agent.tutor.assessment"] {
             assert!(!ids.contains(&irrelevant), "{status}: {irrelevant}");
         }
         assert_eq!(text.matches("Recent facts and interpretations are bounded views").count(),
             usize::from(matches!(status,"active"|"observing")),"{status}");
+        // Generation is active-only; interpreting an ordinary answer still needs
+        // the evidence boundary when active teaching is disabled.
+        assert_eq!(text.matches("Any question used to judge understanding").count(),
+            usize::from(status == "active"), "{status}");
+        assert_eq!(text.matches("a correct answer alone cannot distinguish recall from relationship understanding").count(),
+            usize::from(matches!(status,"active"|"observing")), "{status}");
+        assert_eq!(text.matches("Ask a discriminating follow-up only when the next teaching step depends").count(),
+            usize::from(matches!(status,"active"|"observing")), "{status}");
         if matches!(status,"active"|"observing") {
-            assert!(text.contains("An empty assistance list in ordinary conversation does not mean independent performance"));
-            assert!(text.contains("reopened valid session"));
+            assert!(text.contains("An empty assistance list does not mean independent performance"));
+            assert!(text.contains("check the interpretation against current evidence before adopting it"));
+            assert!(text.contains("Historical current_target, expected_performance and teaching_implication are revisable assistant-authored plans"));
+            assert!(text.contains("omission or different wording alone does not establish a misconception"));
         }
         if status == "active" {
-            assert_eq!(text.matches("After a learner response, choose the next support").count(),1);
-            assert!(text.contains("If the conclusion is right but its reason is missing"));
-            assert!(text.contains("If they say the support does not fit"));
-            assert!(text.contains("without supplying its solution"));
+            assert_eq!(text.matches("After a learner response, judge the relationships actually expressed").count(),1);
+            assert!(text.contains("an omitted detail remains unconfirmed, not automatically misunderstood"));
+            assert!(text.contains("change the entry point or representation using their feedback"));
+            assert!(text.contains("leave more of the next judgment to them"));
             // A direct request still reaches the model beside the guided default;
             // the teaching policy must preserve its priority and response boundary.
             assert!(text.contains("deliver the whole requested content"));

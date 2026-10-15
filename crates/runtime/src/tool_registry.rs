@@ -18,6 +18,7 @@ pub const TOOL_ROUTING_CARD_VERSION: &str = "tool_routing_card.v1";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ToolHandlerId {
     Book(BookToolId),
+    BookTextBatch,
     Artifact(ArtifactToolId),
     ToolSearch,
     GoalUpdate,
@@ -42,11 +43,12 @@ pub enum ToolHandlerId {
 }
 
 impl ToolHandlerId {
-    pub const ALL: [ToolHandlerId; 34] = [
+    pub const ALL: [ToolHandlerId; 35] = [
         ToolHandlerId::Book(BookToolId::Query),
         ToolHandlerId::Book(BookToolId::Synthesize),
         ToolHandlerId::Book(BookToolId::SearchText),
         ToolHandlerId::Book(BookToolId::Text),
+        ToolHandlerId::BookTextBatch,
         ToolHandlerId::ToolSearch,
         ToolHandlerId::GoalUpdate,
         ToolHandlerId::TutorStep,
@@ -86,6 +88,7 @@ impl ToolHandlerId {
                 .resident
                 .expect("registered Book handler must have a Resident alias"),
             ToolHandlerId::Artifact(id) => artifact_aliases(id).resident,
+            ToolHandlerId::BookTextBatch => "book.text_batch",
             ToolHandlerId::ToolSearch => "tool.search",
             ToolHandlerId::GoalUpdate => "goal.update",
             ToolHandlerId::TutorStep => "tutor.step",
@@ -512,6 +515,7 @@ impl ToolRegistration {
             "book.query" => "检索书内证据",
             "book.synthesize" => "综合原文",
             "book.text" => "读取原文",
+            "book.text_batch" => "读取多处原文",
             "book.search_text" => "搜索原文",
             "book.structure" => "查看书籍结构",
             "source.present" => "整理来源",
@@ -554,6 +558,10 @@ impl ToolRegistration {
             | ToolValidatorId::ProfileUsage
             | ToolValidatorId::JsonSchema => {
                 validate_schema(&self.spec.parameters, &value, "$")?;
+                if self.handler == ToolHandlerId::BookTextBatch {
+                    crate::book_text_batch::parse(arguments)
+                        .map_err(|message| ToolArgumentError { message })?;
+                }
                 if self.handler == ToolHandlerId::TutorStep {
                     if let Some(continuation) = value["move"].get("continuation").filter(|v| !v.is_null()) {
                         let continuation: crate::tutor_continuation::TeachingContinuation =
@@ -669,6 +677,19 @@ impl ToolRegistry {
                 if spec.parameters != expected {
                     return Err(ToolRegistryError::new(format!(
                         "artifact tool schema drift: {name}"
+                    )));
+                }
+            }
+            if handler == ToolHandlerId::BookTextBatch {
+                let expected = crate::book_text_batch::spec();
+                if spec.description != expected.description {
+                    return Err(ToolRegistryError::new(format!(
+                        "Book text batch description drift: {name}"
+                    )));
+                }
+                if spec.parameters != expected.parameters {
+                    return Err(ToolRegistryError::new(format!(
+                        "Book text batch schema drift: {name}"
                     )));
                 }
             }
@@ -795,6 +816,11 @@ fn registration_for(spec: ToolSpec, handler: ToolHandlerId) -> ToolRegistration 
             ToolValidatorId::ArtifactContract(id),
             ResultPolicy::ArtifactProjection,
             Parallelism::SequentialOnly,
+        ),
+        Handler::BookTextBatch => (
+            ToolValidatorId::JsonSchema,
+            ResultPolicy::EvidenceProjection,
+            Parallelism::ReadOnlyEligible,
         ),
         Handler::ToolSearch => (
             ToolValidatorId::JsonSchema,
@@ -939,6 +965,7 @@ fn capability_migration(handler: ToolHandlerId) -> CapabilityMigration {
         Handler::Artifact(_) => {
             migration(vec![Legacy::ArtifactRead], vec![Capability::ArtifactRead])
         }
+        Handler::BookTextBatch => migration(vec![Legacy::BookRead], vec![Capability::SourceRead]),
         Handler::ToolSearch => migration(vec![Legacy::Discovery], vec![Capability::Discovery]),
         Handler::TutorStep => migration(vec![Legacy::MemoryWrite], vec![Capability::MemoryWrite]),
         Handler::GoalUpdate => migration(vec![], vec![Capability::GoalManagement]),
@@ -1157,6 +1184,14 @@ fn routing_shape(handler: ToolHandlerId) -> RoutingShape {
                 Cost::Low,
             ),
         },
+        Handler::BookTextBatch => shape(
+            vec![Scope::Selection, Scope::Passage, Scope::Section],
+            vec![Operation::ReadSource],
+            Effect::ReadOnly,
+            vec![Precondition::BookAvailable, Precondition::LocatedLid],
+            all_profiles(),
+            Cost::Low,
+        ),
         Handler::ToolSearch => shape(
             vec![
                 Scope::Selection,
@@ -1430,6 +1465,10 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
     use ToolHandlerId as Handler;
 
     match handler {
+        Handler::BookTextBatch => (
+            "Read several already-located source ranges together for comparison or evidence gathering; the runtime enables this tool after multiple source locations are known.",
+            "Do not guess LIDs or use batch reads to locate unknown evidence; use book.text for one range.",
+        ),
         Handler::ToolSearch => (
             "Discover a deferred Resident capability that is absent from the current sampled tool surface.",
             "Do not use when visible tools can complete the task or to execute a matched tool in the same sampling.",
@@ -1870,6 +1909,67 @@ mod tests {
     }
 
     #[test]
+    fn batch_text_registration_reuses_its_contract_and_validates_bounded_ranges() {
+        let registry = resident_tool_registry();
+        let registration = registry.registration("book.text_batch").unwrap();
+        assert_eq!(registration.handler, ToolHandlerId::BookTextBatch);
+        assert_eq!(registration.validator, ToolValidatorId::JsonSchema);
+        assert_eq!(registration.spec.parameters, crate::book_text_batch::spec().parameters);
+        assert_eq!(registration.output_policy.result_policy, ToolResultPolicy::EvidenceProjection);
+        assert_eq!(registration.parallelism, ToolParallelism::ReadOnlyEligible);
+        assert_eq!(registration.routing_card.provides, vec![ToolCapability::SourceRead]);
+        assert!(registration.routing_card.preconditions.contains(&ToolPrecondition::LocatedLid));
+        assert_eq!(registration.routing_card.effects, ToolEffect::ReadOnly);
+        assert!(registration.validate_arguments(r#"{"ranges":[{"lid":"1.1"},{"lid":"2.1","end_lid":"2.2","start_utf16":12}]}"#).is_ok());
+
+        for invalid in [
+            json!({"ranges": []}),
+            json!({"ranges": vec![json!({"lid":"1.1"}); 9]}),
+            json!({"ranges": [{}]}),
+            json!({"ranges": [{"lid":"1.1","start_utf16":-1}]}),
+            json!({"ranges": [{"lid":"1.1","unknown":true}]}),
+        ] {
+            assert!(registration.validate_arguments(&invalid.to_string()).is_err(), "unexpectedly accepted {invalid}");
+        }
+
+        let mut drifted = crate::book_text_batch::spec();
+        drifted.parameters = json!({"type":"object","properties":{}});
+        assert!(ToolRegistry::try_new(vec![drifted]).unwrap_err().message.contains("schema drift"));
+        let mut drifted = crate::book_text_batch::spec();
+        drifted.description = "different description".into();
+        assert!(ToolRegistry::try_new(vec![drifted]).unwrap_err().message.contains("description drift"));
+    }
+
+    #[test]
+    fn book_text_batch_projected_errors_match_item_schema_at_small_budgets() {
+        let book = read_tools::Book::load(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../book-tool-contracts/fixtures/example-book"
+        )).unwrap();
+        let registry = resident_tool_registry();
+        let registration = registry.registration("book.text_batch").unwrap();
+        let schema = registration.output_schema().unwrap();
+        let item_schema = &schema["oneOf"][0]["properties"]["model_body"]["anyOf"][0]
+            ["properties"]["items"]["items"]["properties"]["result"];
+        let arguments = json!({"ranges":[{"lid":"1.3","end_lid":"1.1"}]}).to_string();
+        let raw = crate::book_text_batch::read(&arguments, &book);
+        assert_eq!(serde_json::from_str::<Value>(&raw).unwrap()["items"][0]["result"]["error_code"], "INVALID_SOURCE_RANGE");
+        let mut observed_compact_error = false;
+        for limit in [4, 160, 200, 700, 16 * 1024] {
+            let draft = crate::tool_result::project_tool_result(
+                "book.text_batch", &arguments, &raw, registration.output_policy, limit, &book,
+            );
+            for item in draft.model_body["items"].as_array().into_iter().flatten() {
+                let result = &item["result"];
+                validate_schema(item_schema, result, "$.items[].result").unwrap();
+                observed_compact_error |= result["projection"] == "semantic_budget_exceeded"
+                    && result.get("error_code").is_none();
+            }
+        }
+        assert!(observed_compact_error, "exercise the compact error without error_code");
+    }
+
+    #[test]
     fn routing_cards_cover_every_handler_and_reuse_book_contract_guidance() {
         let registry = resident_tool_registry();
         assert_eq!(TOOL_ROUTING_CARD_VERSION, "tool_routing_card.v1");
@@ -1933,6 +2033,7 @@ mod tests {
             ),
             ("book.search_text", &["book_search"], &["lexical_locate"]),
             ("book.text", &["book_read"], &["source_read"]),
+            ("book.text_batch", &["book_read"], &["source_read"]),
             ("tool.search", &["discovery"], &["discovery"]),
             ("artifact.list", &["artifact_read"], &["artifact_read"]),
             ("artifact.search", &["artifact_read"], &["artifact_read"]),
