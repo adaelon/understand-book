@@ -1,0 +1,877 @@
+{
+  "tools": [
+    {
+      "surface": "local_mcp",
+      "tool": "book_manifest",
+      "examples": 0,
+      "schema_before_bytes": 46,
+      "schema_after_bytes": 46,
+      "description_before_bytes": 154,
+      "description_after_bytes": 154
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_text",
+      "examples": 1,
+      "schema_before_bytes": 540,
+      "schema_after_bytes": 540,
+      "description_before_bytes": 176,
+      "description_after_bytes": 176
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_search_text",
+      "examples": 2,
+      "schema_before_bytes": 2992,
+      "schema_after_bytes": 2992,
+      "description_before_bytes": 317,
+      "description_after_bytes": 317
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_context",
+      "examples": 1,
+      "schema_before_bytes": 849,
+      "schema_after_bytes": 849,
+      "description_before_bytes": 326,
+      "description_after_bytes": 326
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_concept",
+      "examples": 1,
+      "schema_before_bytes": 940,
+      "schema_after_bytes": 940,
+      "description_before_bytes": 417,
+      "description_after_bytes": 417
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_structure",
+      "examples": 1,
+      "schema_before_bytes": 311,
+      "schema_after_bytes": 311,
+      "description_before_bytes": 325,
+      "description_after_bytes": 325
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_guide_path",
+      "examples": 0,
+      "schema_before_bytes": 285,
+      "schema_after_bytes": 285,
+      "description_before_bytes": 339,
+      "description_after_bytes": 339
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_paper_metadata",
+      "examples": 0,
+      "schema_before_bytes": 46,
+      "schema_after_bytes": 46,
+      "description_before_bytes": 301,
+      "description_after_bytes": 301
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_paper_lexicon",
+      "examples": 0,
+      "schema_before_bytes": 46,
+      "schema_after_bytes": 46,
+      "description_before_bytes": 306,
+      "description_after_bytes": 306
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_paper_reading_guide",
+      "examples": 0,
+      "schema_before_bytes": 391,
+      "schema_after_bytes": 391,
+      "description_before_bytes": 347,
+      "description_after_bytes": 347
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_query",
+      "examples": 1,
+      "schema_before_bytes": 2016,
+      "schema_after_bytes": 2016,
+      "description_before_bytes": 300,
+      "description_after_bytes": 300
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_synthesize",
+      "examples": 1,
+      "schema_before_bytes": 637,
+      "schema_after_bytes": 637,
+      "description_before_bytes": 251,
+      "description_after_bytes": 251
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_guide",
+      "examples": 0,
+      "schema_before_bytes": 1228,
+      "schema_after_bytes": 1228,
+      "description_before_bytes": 170,
+      "description_after_bytes": 170
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "artifact_list",
+      "examples": 0,
+      "schema_before_bytes": 178,
+      "schema_after_bytes": 178,
+      "description_before_bytes": 76,
+      "description_after_bytes": 76
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "artifact_search",
+      "examples": 0,
+      "schema_before_bytes": 442,
+      "schema_after_bytes": 442,
+      "description_before_bytes": 84,
+      "description_after_bytes": 84
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "artifact_read",
+      "examples": 0,
+      "schema_before_bytes": 1184,
+      "schema_after_bytes": 1184,
+      "description_before_bytes": 81,
+      "description_after_bytes": 81
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_list",
+      "examples": 0,
+      "schema_before_bytes": 621,
+      "schema_after_bytes": 621,
+      "description_before_bytes": 681,
+      "description_after_bytes": 681
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_text",
+      "examples": 1,
+      "schema_before_bytes": 1294,
+      "schema_after_bytes": 1294,
+      "description_before_bytes": 1200,
+      "description_after_bytes": 1200
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_search_text",
+      "examples": 2,
+      "schema_before_bytes": 4082,
+      "schema_after_bytes": 4082,
+      "description_before_bytes": 1677,
+      "description_after_bytes": 1677
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_context",
+      "examples": 1,
+      "schema_before_bytes": 1830,
+      "schema_after_bytes": 1830,
+      "description_before_bytes": 1502,
+      "description_after_bytes": 1502
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_concept",
+      "examples": 1,
+      "schema_before_bytes": 1921,
+      "schema_after_bytes": 1921,
+      "description_before_bytes": 1593,
+      "description_after_bytes": 1593
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_structure",
+      "examples": 1,
+      "schema_before_bytes": 1305,
+      "schema_after_bytes": 1305,
+      "description_before_bytes": 1501,
+      "description_after_bytes": 1501
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_guide_path",
+      "examples": 0,
+      "schema_before_bytes": 1170,
+      "schema_after_bytes": 1170,
+      "description_before_bytes": 1515,
+      "description_after_bytes": 1515
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_paper_metadata",
+      "examples": 0,
+      "schema_before_bytes": 946,
+      "schema_after_bytes": 946,
+      "description_before_bytes": 1477,
+      "description_after_bytes": 1477
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_paper_lexicon",
+      "examples": 0,
+      "schema_before_bytes": 946,
+      "schema_after_bytes": 946,
+      "description_before_bytes": 1482,
+      "description_after_bytes": 1482
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_paper_reading_guide",
+      "examples": 0,
+      "schema_before_bytes": 1276,
+      "schema_after_bytes": 1276,
+      "description_before_bytes": 1523,
+      "description_after_bytes": 1523
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "mcp_usage",
+      "examples": 0,
+      "schema_before_bytes": 62,
+      "schema_after_bytes": 62,
+      "description_before_bytes": 762,
+      "description_after_bytes": 762
+    },
+    {
+      "surface": "resident",
+      "tool": "presentation.author",
+      "examples": 0,
+      "schema_before_bytes": 10282,
+      "schema_after_bytes": 10282,
+      "description_before_bytes": 1232,
+      "description_after_bytes": 1232
+    },
+    {
+      "surface": "resident",
+      "tool": "tutor.step",
+      "examples": 10,
+      "schema_before_bytes": 11152,
+      "schema_after_bytes": 14723,
+      "description_before_bytes": 1086,
+      "description_after_bytes": 1297
+    },
+    {
+      "surface": "resident",
+      "tool": "book.query",
+      "examples": 1,
+      "schema_before_bytes": 2016,
+      "schema_after_bytes": 2016,
+      "description_before_bytes": 154,
+      "description_after_bytes": 154
+    },
+    {
+      "surface": "resident",
+      "tool": "book.synthesize",
+      "examples": 1,
+      "schema_before_bytes": 637,
+      "schema_after_bytes": 637,
+      "description_before_bytes": 142,
+      "description_after_bytes": 142
+    },
+    {
+      "surface": "resident",
+      "tool": "book.search_text",
+      "examples": 2,
+      "schema_before_bytes": 2992,
+      "schema_after_bytes": 2992,
+      "description_before_bytes": 156,
+      "description_after_bytes": 156
+    },
+    {
+      "surface": "resident",
+      "tool": "book.text",
+      "examples": 1,
+      "schema_before_bytes": 540,
+      "schema_after_bytes": 540,
+      "description_before_bytes": 64,
+      "description_after_bytes": 64
+    },
+    {
+      "surface": "resident",
+      "tool": "tool.search",
+      "examples": 0,
+      "schema_before_bytes": 1063,
+      "schema_after_bytes": 1063,
+      "description_before_bytes": 274,
+      "description_after_bytes": 274
+    },
+    {
+      "surface": "resident",
+      "tool": "goal.update",
+      "examples": 0,
+      "schema_before_bytes": 2419,
+      "schema_after_bytes": 2419,
+      "description_before_bytes": 617,
+      "description_after_bytes": 617
+    },
+    {
+      "surface": "resident",
+      "tool": "artifact.list",
+      "examples": 0,
+      "schema_before_bytes": 178,
+      "schema_after_bytes": 178,
+      "description_before_bytes": 145,
+      "description_after_bytes": 145
+    },
+    {
+      "surface": "resident",
+      "tool": "artifact.search",
+      "examples": 0,
+      "schema_before_bytes": 442,
+      "schema_after_bytes": 442,
+      "description_before_bytes": 205,
+      "description_after_bytes": 205
+    },
+    {
+      "surface": "resident",
+      "tool": "artifact.read",
+      "examples": 0,
+      "schema_before_bytes": 1184,
+      "schema_after_bytes": 1184,
+      "description_before_bytes": 178,
+      "description_after_bytes": 178
+    },
+    {
+      "surface": "resident",
+      "tool": "source.present",
+      "examples": 1,
+      "schema_before_bytes": 407,
+      "schema_after_bytes": 407,
+      "description_before_bytes": 1195,
+      "description_after_bytes": 1195
+    },
+    {
+      "surface": "resident",
+      "tool": "book.context",
+      "examples": 1,
+      "schema_before_bytes": 849,
+      "schema_after_bytes": 849,
+      "description_before_bytes": 212,
+      "description_after_bytes": 212
+    },
+    {
+      "surface": "resident",
+      "tool": "book.concept",
+      "examples": 1,
+      "schema_before_bytes": 940,
+      "schema_after_bytes": 940,
+      "description_before_bytes": 201,
+      "description_after_bytes": 201
+    },
+    {
+      "surface": "resident",
+      "tool": "book.structure",
+      "examples": 1,
+      "schema_before_bytes": 311,
+      "schema_after_bytes": 311,
+      "description_before_bytes": 206,
+      "description_after_bytes": 206
+    },
+    {
+      "surface": "resident",
+      "tool": "book.guide_path",
+      "examples": 0,
+      "schema_before_bytes": 285,
+      "schema_after_bytes": 285,
+      "description_before_bytes": 238,
+      "description_after_bytes": 238
+    },
+    {
+      "surface": "resident",
+      "tool": "book.paper_reading_guide",
+      "examples": 0,
+      "schema_before_bytes": 391,
+      "schema_after_bytes": 391,
+      "description_before_bytes": 248,
+      "description_after_bytes": 248
+    },
+    {
+      "surface": "resident",
+      "tool": "book.paper_metadata",
+      "examples": 0,
+      "schema_before_bytes": 46,
+      "schema_after_bytes": 46,
+      "description_before_bytes": 211,
+      "description_after_bytes": 211
+    },
+    {
+      "surface": "resident",
+      "tool": "book.paper_lexicon",
+      "examples": 0,
+      "schema_before_bytes": 46,
+      "schema_after_bytes": 46,
+      "description_before_bytes": 169,
+      "description_after_bytes": 169
+    },
+    {
+      "surface": "resident",
+      "tool": "profile.manifest",
+      "examples": 0,
+      "schema_before_bytes": 164,
+      "schema_after_bytes": 164,
+      "description_before_bytes": 140,
+      "description_after_bytes": 140
+    },
+    {
+      "surface": "resident",
+      "tool": "profile.mark_used",
+      "examples": 0,
+      "schema_before_bytes": 362,
+      "schema_after_bytes": 362,
+      "description_before_bytes": 209,
+      "description_after_bytes": 209
+    },
+    {
+      "surface": "resident",
+      "tool": "book.route_from",
+      "examples": 0,
+      "schema_before_bytes": 180,
+      "schema_after_bytes": 180,
+      "description_before_bytes": 274,
+      "description_after_bytes": 274
+    },
+    {
+      "surface": "resident",
+      "tool": "book.guided_route_from",
+      "examples": 0,
+      "schema_before_bytes": 180,
+      "schema_after_bytes": 180,
+      "description_before_bytes": 357,
+      "description_after_bytes": 357
+    },
+    {
+      "surface": "resident",
+      "tool": "book.unvisited_back",
+      "examples": 0,
+      "schema_before_bytes": 101,
+      "schema_after_bytes": 101,
+      "description_before_bytes": 450,
+      "description_after_bytes": 450
+    },
+    {
+      "surface": "resident",
+      "tool": "book.route_to",
+      "examples": 0,
+      "schema_before_bytes": 237,
+      "schema_after_bytes": 237,
+      "description_before_bytes": 210,
+      "description_after_bytes": 210
+    },
+    {
+      "surface": "resident",
+      "tool": "memory.save",
+      "examples": 0,
+      "schema_before_bytes": 394,
+      "schema_after_bytes": 394,
+      "description_before_bytes": 346,
+      "description_after_bytes": 346
+    },
+    {
+      "surface": "resident",
+      "tool": "memory.recall",
+      "examples": 0,
+      "schema_before_bytes": 132,
+      "schema_after_bytes": 132,
+      "description_before_bytes": 149,
+      "description_after_bytes": 149
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.gotoLid",
+      "examples": 0,
+      "schema_before_bytes": 102,
+      "schema_after_bytes": 102,
+      "description_before_bytes": 151,
+      "description_after_bytes": 151
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.scroll",
+      "examples": 0,
+      "schema_before_bytes": 155,
+      "schema_after_bytes": 155,
+      "description_before_bytes": 162,
+      "description_after_bytes": 162
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.highlight",
+      "examples": 0,
+      "schema_before_bytes": 180,
+      "schema_after_bytes": 180,
+      "description_before_bytes": 264,
+      "description_after_bytes": 264
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.note",
+      "examples": 0,
+      "schema_before_bytes": 136,
+      "schema_after_bytes": 136,
+      "description_before_bytes": 138,
+      "description_after_bytes": 138
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.layout.apply",
+      "examples": 0,
+      "schema_before_bytes": 1998,
+      "schema_after_bytes": 1998,
+      "description_before_bytes": 229,
+      "description_after_bytes": 229
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.paper_minimap.apply",
+      "examples": 0,
+      "schema_before_bytes": 3745,
+      "schema_after_bytes": 3745,
+      "description_before_bytes": 344,
+      "description_after_bytes": 344
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.state",
+      "examples": 0,
+      "schema_before_bytes": 33,
+      "schema_after_bytes": 33,
+      "description_before_bytes": 196,
+      "description_after_bytes": 196
+    }
+  ],
+  "states": [
+    {
+      "state": "active",
+      "examples": 8,
+      "schema_bytes": 14158,
+      "example_bytes": 2289
+    },
+    {
+      "state": "active_response",
+      "examples": 10,
+      "schema_bytes": 14718,
+      "example_bytes": 2849
+    },
+    {
+      "state": "choice_compare",
+      "examples": 6,
+      "schema_bytes": 11827,
+      "example_bytes": 1015
+    },
+    {
+      "state": "choice_explain",
+      "examples": 6,
+      "schema_bytes": 11648,
+      "example_bytes": 836
+    },
+    {
+      "state": "choice_observe",
+      "examples": 6,
+      "schema_bytes": 11656,
+      "example_bytes": 844
+    },
+    {
+      "state": "clarify_answer",
+      "examples": 6,
+      "schema_bytes": 11648,
+      "example_bytes": 836
+    },
+    {
+      "state": "confirmed_preference",
+      "examples": 8,
+      "schema_bytes": 14014,
+      "example_bytes": 2208
+    },
+    {
+      "state": "continue_answer",
+      "examples": 8,
+      "schema_bytes": 12895,
+      "example_bytes": 2037
+    },
+    {
+      "state": "explain_selection",
+      "examples": 6,
+      "schema_bytes": 11648,
+      "example_bytes": 836
+    },
+    {
+      "state": "guided_default",
+      "examples": 8,
+      "schema_bytes": 12895,
+      "example_bytes": 2037
+    },
+    {
+      "state": "observing",
+      "examples": 2,
+      "schema_bytes": 3429,
+      "example_bytes": 75
+    },
+    {
+      "state": "observing_expression",
+      "examples": 3,
+      "schema_bytes": 3932,
+      "example_bytes": 578
+    },
+    {
+      "state": "reference",
+      "examples": 1,
+      "schema_bytes": 502,
+      "example_bytes": 45
+    },
+    {
+      "state": "supplement",
+      "examples": 8,
+      "schema_bytes": 14014,
+      "example_bytes": 2208
+    }
+  ],
+  "final_schemas": 61,
+  "published_examples": 33,
+  "model_runs": [
+    {
+      "group": "baseline",
+      "run": "run-1",
+      "requests": 3,
+      "activity": [
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 17444,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 945788,
+          "safety_margin_tokens": 4000
+        },
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 21822,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 941410,
+          "safety_margin_tokens": 4000
+        },
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 27678,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 935554,
+          "safety_margin_tokens": 4000
+        }
+      ],
+      "first_tutor_schema_bytes": 10141,
+      "tokens_spent": 69154,
+      "provider_usage": 69154,
+      "http_status": 200,
+      "incomplete": false,
+      "selected": 1,
+      "deliveries": 1,
+      "errors": []
+    },
+    {
+      "group": "baseline",
+      "run": "run-2",
+      "requests": 3,
+      "activity": [
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 17444,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 945788,
+          "safety_margin_tokens": 4000
+        },
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 21831,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 941401,
+          "safety_margin_tokens": 4000
+        },
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 27849,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 935383,
+          "safety_margin_tokens": 4000
+        }
+      ],
+      "first_tutor_schema_bytes": 10141,
+      "tokens_spent": 69195,
+      "provider_usage": 69195,
+      "http_status": 200,
+      "incomplete": false,
+      "selected": 1,
+      "deliveries": 1,
+      "errors": []
+    },
+    {
+      "group": "baseline",
+      "run": "run-3",
+      "requests": 3,
+      "activity": [
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 17444,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 945788,
+          "safety_margin_tokens": 4000
+        },
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 24289,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 938943,
+          "safety_margin_tokens": 4000
+        },
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 28835,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 934397,
+          "safety_margin_tokens": 4000
+        }
+      ],
+      "first_tutor_schema_bytes": 10141,
+      "tokens_spent": 73168,
+      "provider_usage": 73168,
+      "http_status": 200,
+      "incomplete": false,
+      "selected": 1,
+      "deliveries": 1,
+      "errors": []
+    },
+    {
+      "group": "after-runs",
+      "run": "run-1",
+      "requests": 3,
+      "activity": [
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 18185,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 945047,
+          "safety_margin_tokens": 4000
+        },
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 21473,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 941759,
+          "safety_margin_tokens": 4000
+        },
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 24313,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 938919,
+          "safety_margin_tokens": 4000
+        }
+      ],
+      "first_tutor_schema_bytes": 12895,
+      "tokens_spent": 63992,
+      "provider_usage": 63992,
+      "http_status": 200,
+      "incomplete": false,
+      "selected": 1,
+      "deliveries": 1,
+      "errors": []
+    },
+    {
+      "group": "after-runs",
+      "run": "run-2",
+      "requests": 3,
+      "activity": [
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 18185,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 945047,
+          "safety_margin_tokens": 4000
+        },
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 20785,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 942447,
+          "safety_margin_tokens": 4000
+        },
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 27846,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 935386,
+          "safety_margin_tokens": 4000
+        }
+      ],
+      "first_tutor_schema_bytes": 12895,
+      "tokens_spent": 68518,
+      "provider_usage": 68518,
+      "http_status": 200,
+      "incomplete": false,
+      "selected": 1,
+      "deliveries": 1,
+      "errors": []
+    },
+    {
+      "group": "after-runs",
+      "run": "run-3",
+      "requests": 3,
+      "activity": [
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 18185,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 945047,
+          "safety_margin_tokens": 4000
+        },
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 20963,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 942269,
+          "safety_margin_tokens": 4000
+        },
+        {
+          "context_window_tokens": 1000000,
+          "estimated_input_tokens": 26730,
+          "fits": true,
+          "output_reserve_tokens": 32768,
+          "remaining_tokens": 936502,
+          "safety_margin_tokens": 4000
+        }
+      ],
+      "first_tutor_schema_bytes": 12895,
+      "tokens_spent": 66322,
+      "provider_usage": 66322,
+      "http_status": 200,
+      "incomplete": false,
+      "selected": 1,
+      "deliveries": 1,
+      "errors": []
+    }
+  ]
+}

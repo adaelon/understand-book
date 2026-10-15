@@ -1,0 +1,81 @@
+{
+  "model": "deepseek-v4-flash",
+  "source": "crates/server/src/tests/fixtures/tutor-continuation/source.md",
+  "attempt": "before-reading-action-guidance",
+  "result": "continuation_missing_teaching_delivery",
+  "quality_findings": [
+    "First answer incorrectly claimed arithmetic averaging is valid only when all segment speeds are equal; equal durations also suffice.",
+    "Continue advanced to the equal-duration contrast but did not explicitly retract the prior claim.",
+    "Model retried unsupported hypotheses from pure reading actions and produced no TeachingMove delivery."
+  ],
+  "first": {
+    "answer": "这段只有三句话，但它们不是三件事，而是“一个定义 + 两个条件”。先看原文：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 它在说什么\n\n**第一句：定义。** 平均速度 = 总路程 ÷ 总时间。关键在于它衡量的不是你某一刻开得多快，而是**把整段行程的总路程，摊到整段行程的总时间上**，得到一个“平均每单位时间走了多远”的比率。所以要算它，只需要两个总量：一共走了多少路、一共花了多少时间——中间每一小段怎么变速，不需要逐个知道。\n\n**第二句：一个容易误判的条件。** “等距离不必等时间”是在提醒你：路程相等，不等于耗时相等。它的作用是否掉一个很自然的错误做法——把各段的速度直接做算术平均。因为平均速度是按**时间**来分摊的：谁在路上花的时间多，谁对结果的影响就大。等距离的两段路，慢的那段占的时间更长，在总时间里“占的份额”更大，于是会把平均值往下拉得比算术平均更多。\n\n**第三句：一个前提。** “总时间必须为正”既是运算前提，也是物理前提：它出现在分母上，分母为零则式子无意义；而且若整段时间为零，就没有“过程”可谈，平均速度无从定义。\n\n## 一个我补充的算例\n\n（以下数字是我为了说明而举的例子，不是原文内容。）\n\n设一段行程：去程 60 km，用 2 小时（30 km/h）；回程 60 km，用 1 小时（60 km/h）。\n\n- 总路程 = 120 km，总时间 = 3 h\n- 平均速度 = 120 ÷ 3 = **40 km/h**\n\n而不是 (30 + 60) ÷ 2 = 45 km/h。差别就来自第二句：60 km/h 那段只占了总时间的 1/3，30 km/h 那段占了 2/3，时间份额大的那段把结果拉向了自己这一侧。这正是“等距离却不等时间”带来的后果。\n\n顺带一句（这是我的推论）：只有当各段速度全都相同时，“总路程÷总时间”才会和把速度做算术平均得到同一个数——那时算术平均才碰巧可用。\n\n一句话收束：**先攒总量（总路程、总时间），再相除；中间的细节不影响算法，只影响总时间的长短——而总时间必须大于零。**\n\n想不想我再用一个“去程和回程用时相同、但速度不同”的对照例子，看看同样是求平均速度，什么情况下算术平均反而会给出错误答案？",
+    "tokens_spent": 43510,
+    "turns": 3,
+    "incomplete": false,
+    "trace": [
+      {
+        "args": "{\"lid\": \"1.1\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"lid\":\"1.1\",\"text\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"lid\": \"1.1\", \"granularity\": \"near\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"anchor\":\"1.1\",\"items\":[{\"lid\":\"1\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"parent\"}},{\"lid\":\"1.2\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"next_sibling\"}}]}",
+        "tool": "book.context"
+      },
+      {
+        "args": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"source_ref_id\":\"source_ref_e85701c84b34a511\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time ",
+        "tool": "source.present"
+      },
+      {
+        "args": "{\"fact_refs\":[\"usage:observation:tc0-average-speed:user:turn_51f76701b97d3adf\"],\"interpretation\":\"本轮只有一次阅读动作（选中 1.1 并请求解释），学习者没有作答、也没有自述，因此其掌握程度属于未知，不作任何“已会/不会”的判断。可修正假设：学习者需要的是把这句话从“公式记忆”转成“比率含义”，并且可能尚未看清后两句在约束什么——即等距离路段耗时不同会改变权重、总时间必须非零才可求平均速度。\",\"nature\":\"hypothesis\",\"operation\":\"evidence\",\"operation_id\":\"hyp-tc0-average-speed-1.1-01\",\"target\":{\"capability\":\"concept_explanation\",\"expected_performance\":\"能用总路程÷总时间算出平均速度，并说明各段速度不能直接平均（因为各段用时不同、权重不同），以及总时间为正这一前提的作用。\",\"learning_focus\":\"把平均速度理解为“整段行程的总路程摊到总时间上”得到的单一比率，而不是各段速度的算术平均；并注意另外两句话所加的条件（等距离不必等时间、总时间必须为正）。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"source_id\":\"tc0-average-speed\",\"source_revision\":\"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e\",\"start_lid\":\"1.1\"}]},\"teaching_implication\":\"从“每单位时间平均走了多远”的比率含义切入，先给定义，再强调后两句是两个条件而非重复；用一个等距离、不同速度的数值例子（我补充的说明性例子，非书中内容）展示“总时间加权”的效果，并以此作为下一步的检验点，而不是假定其已掌握。\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"error_code\":\"TEACHING_INVALID\",\"category\":\"validation\",\"message\":\"理解依据不属于当前来源、会话或实际使用事实\"}",
+        "tool": "tutor.step"
+      }
+    ]
+  },
+  "continue": {
+    "answer": "上一轮我留了一个问题：如果两段**用时相同**而不是距离相同，算术平均还错不错？答案正好相反——这次它是对的。把这个对照补上，第二句话的作用就完整了。\n\n## 对照实验：同样两段速度，只换\"等什么\"\n\n（以下数字都是我为了说明举的例子，原文 1.1 只有定义和两个条件，没有具体数值。）\n\n**情形 A：等距离**（上一轮算过）\n- 去程 60 km 用 2 h（30 km/h），回程 60 km 用 1 h（60 km/h）\n- 平均速度 = 120 ÷ 3 = **40 km/h**，不等于 (30+60)÷2 = 45\n\n**情形 B：等时间**\n- 第一段 1 h 走 30 km（30 km/h），第二段 1 h 走 60 km（60 km/h）\n- 总路程 = 90 km，总时间 = 2 h\n- 平均速度 = 90 ÷ 2 = **45 km/h**，恰好等于 (30+60)÷2 = 45\n\n同两个速度，换个条件，算术平均一会儿错一会儿对。差别不在速度，在**权重**。\n\n## 背后的机制：平均速度是\"按时间加权\"的\n\n把定义式拆开看。设两段速度 v₁、v₂，用时 t₁、t₂，那么总路程 = v₁t₁ + v₂t₂，总时间 = t₁ + t₂，于是\n\n**平均速度 = (v₁t₁ + v₂t₂) ÷ (t₁ + t₂)**\n\n这就是一个加权平均：每段速度的\"话语权\"是它**所占的时间**。\n\n- 时间相等（t₁ = t₂）时，两个权重一样，式子退化成 (v₁+v₂)÷2 —— 算术平均。情形 B。\n- 距离相等（v₁t₁ = v₂t₂）时，慢的那段自动占更多时间，于是权重变成 1/v₁ : 1/v₂ —— 慢的速度权重更大，结果被拉低。情形 A。\n\n两条路我补充一句推论（不是原文内容）：等距离的平均速度正好是调和平均 2v₁v₂/(v₁+v₂)，代入 30、60 得 2×30×60÷90 = 40，与上面算的 40 km/h 对上。也就是说，\"等距离不必等时间\"这句，等价于说\"权重通常不相等，所以别直接平均\"。\n\n## 一句话的操作规则\n\n看到\"平均速度\"，不要先想\"几个速度取平均\"，而是：\n\n1. 逐个累加**总路程**（每段 v × t）\n2. 逐个累加**总时间**（必须 > 0）\n3. 相除\n\n只要走这三步，等距离、等时间、全程变速都自动处理对了；算术平均只是\"各段时间恰好相等\"时的特例。\n\n一个留给你自查的小问题：如果有人跟你说\"我前半程开 40 km/h，后半程开 60 km/h，所以平均 50\"，你手上缺的是哪个信息，才能判断这句话对不对？",
+    "tokens_spent": 117184,
+    "turns": 4,
+    "incomplete": true,
+    "trace": [
+      {
+        "args": "{\"lid\": \"1.1\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"lid\":\"1.1\",\"text\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"lid\": \"1.1\", \"granularity\": \"near\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"anchor\":\"1.1\",\"items\":[{\"lid\":\"1\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"parent\"}},{\"lid\":\"1.2\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"next_sibling\"}}]}",
+        "tool": "book.context"
+      },
+      {
+        "args": "{\"lid\": \"1.2\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"lid\":\"1.2\",\"text\":\"A blue bicycle travels along the river.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"fact_refs\":[\"usage:tutor-first-question:chat-01a128e0-cc76-7ea0-9422-e5f407da9892:user:turn_51f76801b97d3c92\"],\"interpretation\":\"学习者本轮只发出\\\"继续理解这段\\\"的操作请求，没有作答、没有自述，因此其掌握程度仍是未知；可修正假设是：定义式本身已经读过，但\\\"为什么不能把各段速度直接平均\\\"这一层尚未被真正内化，所以需要继续在同一句上加深，而不是换到新内容。\",\"nature\":\"hypothesis\",\"operation\":\"evidence\",\"operation_id\":\"hyp-turn_51f76801b97d3c92-1\",\"target\":{\"capability\":\"concept_explanation\",\"expected_performance\":\"能算出平均速度，并说明为什么等距离但速度不同时不能用算术平均、而两段用时相同时算术平均恰好可用\",\"learning_focus\":\"在 1.1 的定义之外，理解'等距离不必等时间'如何决定平均速度的加权方式\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"source_id\":\"tc0-average-speed\",\"source_revision\":\"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e\",\"start_lid\":\"1.1\"}]},\"teaching_implication\":\"下一步仍停留在 1.1，用\\\"等时间/等距离\\\"两个对照情形把'平均速度按时间加权'这一机制显式化，并给出一个可以自查的下一步问题；不引入相邻段落，也不假定已掌握或未掌握。\"}",
+        "model_tool_loop": 3,
+        "result_digest": "{\"error_code\":\"TEACHING_INVALID\",\"category\":\"validation\",\"message\":\"理解依据不属于当前来源、会话或实际使用事实\"}",
+        "tool": "tutor.step"
+      },
+      {
+        "args": "{\"fact_refs\":[\"usage:tutor-first-question:chat-01a128e0-cc76-7ea0-9422-e5f407da9892:assistant:turn_51f76701b97d3adf\"],\"interpretation\":\"上一轮已给出定义式与\\\"等距离不同速度\\\"的例子，本轮读者只请求\\\"继续理解这段\\\"，没有作答或自述，因此掌握程度未知；可修正假设是：定义式已读过，但\\\"平均速度按时间加权、所以不能直接平均各段速度\\\"这一层还需要继续加深，所以保持在同一句上继续。\",\"nature\":\"hypothesis\",\"operation\":\"evidence\",\"operation_id\":\"hyp-turn_51f76801b97d3c92-2\",\"supersedes\":\"hyp-turn_51f76801b97d3c92-1\",\"target\":{\"capability\":\"concept_explanation\",\"expected_performance\":\"能算出平均速度，并说明为什么等距离但速度不同时不能用算术平均、而两段用时相同时算术平均恰好可用\",\"learning_focus\":\"在 1.1 的定义之外，理解'等距离不必等时间'如何决定平均速度的加权方式\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"source_id\":\"tc0-average-speed\",\"source_revision\":\"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e\",\"start_lid\":\"1.1\"}]},\"teaching_implication\":\"下一步仍停留在 1.1：用\\\"等时间\\\"与\\\"等距离\\\"两个对照情形把'按时间加权'显式化，并给出一个可自查的小问题；不引入相邻段落，也不断言已掌握或未掌握。\"}",
+        "model_tool_loop": 4,
+        "result_digest": "{\"error_code\":\"TEACHING_INVALID\",\"category\":\"validation\",\"message\":\"学习证据不存在\"}",
+        "tool": "tutor.step"
+      }
+    ]
+  }
+}

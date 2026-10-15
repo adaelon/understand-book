@@ -1,0 +1,11 @@
+built_at_utc=2026-10-12T14:35:12Z
+source_root=/opt/understand-book/releases/to-tb-20261012
+profile=release
+web=packages/web/dist-multi
+admin=packages/web/dist-multi/admin
+rustc 1.98.1 (48a229cea 2026-09-01)
+cargo 1.98.1 (797e8a9bc 2026-08-05)
+v24.20.0
+10.34.2
+commit=55e767fbfc5dded3b07479a0fbe93b8f5a20a7cf
+source_state=committed-source-archive

@@ -1,0 +1,46 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+ ❯ src/components/UnderstandingSpace.test.ts (10 tests | 1 failed | 9 skipped) 63ms
+   ↓ opens one hypothesis with real words and corrects it without inventing a performance
+   ↓ keeps unknown objects unknown and returns keyboard focus without reading invented evidence
+   ↓ preserves independent, assisted, revised and historical evidence and pages history by the original object
+   ↓ records feedback only after details are expanded and visible; hidden feedback stays hidden
+   ↓ retries an evidence read instead of reloading the list
+   ↓ reuses a pending correction identity and only rereads after a confirmed write
+   ↓ keeps loaded object pages after correction and refreshes their original row
+   × keeps earlier interpretation pages and reloads them after a later correction 61ms
+     → expected [ DOMWrapper{ …(3) } ] to have a length of 2 but got 1
+   ↓ keeps correction retry available when a displayed-feedback receipt fails later
+   ↓ refreshes newly recorded understanding after a chat turn and stops listening on unmount
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/UnderstandingSpace.test.ts > keeps earlier interpretation pages and reloads them after a later correction
+AssertionError: expected [ DOMWrapper{ …(3) } ] to have a length of 2 but got 1
+
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ src/components/UnderstandingSpace.test.ts:206:35
+    204|   try {
+    205|     await flushPromises(); await button(w, '查看更多对象').trigger('click');…
+    206|     expect(w.findAll('.concept')).toHaveLength(2);
+       |                                   ^
+    207|     await w.findAll('.concept')[1].trigger('click'); await flushPromis…
+    208|     await w.get('textarea').setValue('这个判断用了前面的示范'); await w.get('form…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 skipped (10)
+   Start at  15:51:05
+   Duration  5.99s (transform 370ms, setup 0ms, collect 876ms, tests 63ms, environment 3.22s, prepare 914ms)
+
+undefined
+E:\allwork\download\agent\understand-book-reading-share\packages\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/components/UnderstandingSpace.test.ts -t keeps earlier interpretation pages

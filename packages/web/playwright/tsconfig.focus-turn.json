@@ -1,0 +1,1 @@
+{"extends":"../tsconfig.json","compilerOptions":{"types":["vite/client","node"]},"include":["focus-turn.spec.ts","focus-app-backend.ts","fixtures/focus-turn.ts","../vite.focus-turn.config.ts","../playwright.focus-turn.config.ts"]}

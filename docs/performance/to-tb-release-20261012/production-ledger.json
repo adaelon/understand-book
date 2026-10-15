@@ -1,0 +1,25 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-10-12T14:38:58.326829+00:00",
+  "preserved_business_tables": {
+    "users": 4,
+    "book_grants": 39,
+    "book_defaults": 9,
+    "allowance_periods": 4,
+    "allowance_adjustments": 5,
+    "manual_receipts": 0,
+    "receipt_corrections": 0,
+    "model_call_charges": 280,
+    "charge_reports": 280,
+    "charge_reconciliations": 0,
+    "mcp_free_gifts": 2,
+    "mcp_call_packs": 0,
+    "mcp_pack_adjustments": 0
+  },
+  "new_mcp_reads": 1,
+  "free_calls": 1,
+  "paid_calls": 0,
+  "model_charge_rows_added": 0,
+  "payment_receipts_added": 0,
+  "test_credential_revoked": true
+}

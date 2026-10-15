@@ -4,7 +4,7 @@ Status: Accepted, revised 2026-07-28.
 Extends: ADR-0015, ADR-0020, ADR-0030, ADR-0043 and ADR-0074.
 Change type: 模型扩展。
 
-2026-10-10 设计扩展：[ADR-0160 §7–§9](0160-reading-share-images-and-calm-surfaces.md#7-笔记内容与关联) 接受回答／演示关联笔记，正文放置成为这类笔记的可选操作，保存的演示现场随笔记保留。实施入口为 [RN1–RN4](../切片方案-阅读分享与安静呈现.md#5-实施顺序与接手方式)，当前仍待实现。本 ADR 的精确选区、显式放置、原子编辑与重锚规则继续约束对应操作；“新 Note 必须有选区或正文放置”的现行准入将在 RN1 扩展。
+2026-10-10 设计扩展：[ADR-0160 §7–§9](0160-reading-share-images-and-calm-surfaces.md#7-笔记内容与关联) 接受回答／演示关联笔记，正文放置成为这类笔记的可选操作，保存的演示现场随笔记保留。RN1 存储与接口已实现，实际字段见 [RN1 合同](../RN1-笔记存储合同.md)；演示留存与主窗口闭环已由 RN2 实现，其余统一交互继续由 [RN3–RN4](../切片方案-阅读分享与安静呈现.md#5-实施顺序与接手方式) 完成。本 ADR 的精确选区、显式放置、原子编辑与重锚规则继续约束对应操作；新入口可通过经服务端验证的回答／演示关联保存笔记。
 
 ### §1 Note 类型判定权威
 
@@ -14,7 +14,7 @@ Change type: 模型扩展。
 - 以正文是否用 `>` 开头判型:内容编辑会改变记录类别并允许绕过放置门禁。
 - 只凭 `anchor_lid` 新建 Note:无法证明位置来自引用选区或显式正文放置。
 
-**命门**:`selection_context` 与 `note_placement` 互斥;新 Note 二者皆无即拒绝,旧记录二者皆无只作未知 legacy 读取。
+**命门**:`selection_context` 与 `note_placement` 互斥;不带 RN1 笔记结构的新 Note 二者皆无即拒绝；RN1 允许确切回答／演示关联，旧记录二者皆无仍作未知 legacy 读取。
 **何时回头**:出现第三种可独立验证的 Note 来源时扩展结构字段,不恢复内容启发式。
 **展开**:[无引用 Note 显式正文放置切片方案](../切片方案-无引用Note显式正文放置.md)。
 
@@ -67,15 +67,17 @@ Change type: 模型扩展。
 **何时回头**:出现 Note 深链、版本历史或协作引用时引入稳定 `note_id + revision mem_id`。
 **展开**:[无引用 Note 显式正文放置切片方案](../切片方案-无引用Note显式正文放置.md)。
 
-### §6 MemoryDocument v3 与 legacy
+### §6 MemoryDocument 版本与 legacy
 
-**决策**:MemoryDocument 升级为 v3。
+**决策**:版本门禁显式保护新持久字段。
+
+原正文放置引入 v3；RN1 内容与关联升级为 v4，v2/v3 和裸数组沿原子升级入口衔接。
 
 **否决**:
 - 把字段偷偷加入 v2:旧程序会忽略未知字段并在后续写盘时抹掉 placement。
 - 根据旧 anchor 或 `>` 自动补 placement:旧锚可能正是历史默认逻辑写错的结果。
 
-**命门**:v2 原子迁移到 v3并保留 document/projection revisions,旧 Record placement 为 null;裸数组迁入 v3;未知版本 fail-closed。legacy 可读、可编辑,仅显式“放置到正文”后升级。
+**命门**:v2/v3 原子迁移到 v4 并保留 document/projection revisions,原无 placement 的 Record 保持缺省;裸数组迁入 v4;未知版本 fail-closed。legacy 可读、可编辑,仅显式“放置到正文”后升级。
 **何时回头**:只有存在用户确认或可验证的历史放置证据时允许批量迁移。
 **展开**:[无引用 Note 显式正文放置切片方案](../切片方案-无引用Note显式正文放置.md)。
 

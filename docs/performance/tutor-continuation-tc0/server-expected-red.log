@@ -1,0 +1,166 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.61s
+     Running unittests src\lib.rs (target\debug\deps\server-e6140f0c20c22aad.exe)
+
+running 8 tests
+test tests::tutor_continuation_tests::continuation_red_answer_excerpt_reaches_model_input ... FAILED
+test tests::tutor_continuation_tests::continuation_red_paused_choice_is_not_an_ordinary_request ... FAILED
+test tests::tutor_continuation_tests::continuation_red_choice_cannot_record_chat_response ... FAILED
+test tests::tutor_continuation_tests::continuation_red_clarification_cannot_record_chat_response ... FAILED
+test tests::tutor_continuation_tests::continuation_red_local_lost_result_does_not_execute_twice ... FAILED
+test tests::tutor_continuation_tests::continuation_red_source_question_help_is_assisted ... FAILED
+test tests::tutor_continuation_tests::continuation_red_object_question_help_is_assisted ... FAILED
+test tests::tutor_continuation_tests::continuation_red_different_choices_conflict_for_same_key ... FAILED
+
+failures:
+
+---- tests::tutor_continuation_tests::continuation_red_answer_excerpt_reaches_model_input stdout ----
+
+thread 'tests::tutor_continuation_tests::continuation_red_answer_excerpt_reaches_model_input' (2812) panicked at crates\server\src\tests\tutor_continuation_tests.rs:308:5:
+answer_ref was lost from the current request: This step is unclear
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- tests::tutor_continuation_tests::continuation_red_paused_choice_is_not_an_ordinary_request stdout ----
+
+thread 'tests::tutor_continuation_tests::continuation_red_paused_choice_is_not_an_ordinary_request' (35692) panicked at crates\server\src\tests\tutor_continuation_tests.rs:258:5:
+paused choice was accepted as an ordinary request
+
+---- tests::tutor_continuation_tests::continuation_red_choice_cannot_record_chat_response stdout ----
+
+thread 'tests::tutor_continuation_tests::continuation_red_choice_cannot_record_chat_response' (37736) panicked at crates\server\src\tests\tutor_continuation_tests.rs:222:9:
+assertion `left == right` failed: new action mixed with teaching_ref must fail before recording a response; clarify=false
+  left: 1
+ right: 0
+
+---- tests::tutor_continuation_tests::continuation_red_clarification_cannot_record_chat_response stdout ----
+
+thread 'tests::tutor_continuation_tests::continuation_red_clarification_cannot_record_chat_response' (20640) panicked at crates\server\src\tests\tutor_continuation_tests.rs:222:9:
+assertion `left == right` failed: new action mixed with teaching_ref must fail before recording a response; clarify=true
+  left: 1
+ right: 0
+
+---- tests::tutor_continuation_tests::continuation_red_local_lost_result_does_not_execute_twice stdout ----
+
+thread 'tests::tutor_continuation_tests::continuation_red_local_lost_result_does_not_execute_twice' (24100) panicked at crates\server\src\tests\tutor_continuation_tests.rs:245:5:
+assertion `left == right` failed: retry invoked the model twice
+  left: 2
+ right: 1
+
+---- tests::tutor_continuation_tests::continuation_red_source_question_help_is_assisted stdout ----
+
+thread 'tests::tutor_continuation_tests::continuation_red_source_question_help_is_assisted' (38360) panicked at crates\server\src\tests\tutor_continuation_tests.rs:286:5:
+source help bypassed original activity: object_only=false, new_turns=1, assistance_refs=[], independent_support=None
+
+---- tests::tutor_continuation_tests::continuation_red_object_question_help_is_assisted stdout ----
+
+thread 'tests::tutor_continuation_tests::continuation_red_object_question_help_is_assisted' (37364) panicked at crates\server\src\tests\tutor_continuation_tests.rs:286:5:
+source help bypassed original activity: object_only=true, new_turns=1, assistance_refs=[], independent_support=Some(1)
+
+---- tests::tutor_continuation_tests::continuation_red_different_choices_conflict_for_same_key stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+
+thread 'tests::tutor_continuation_tests::continuation_red_different_choices_conflict_for_same_key' (34728) panicked at crates\server\src\tests\tutor_continuation_tests.rs:209:5:
+assertion `left == right` failed: different option was silently reused: {"book_id":"tc0-average-speed","dispatch_state":"queued","persistence_state":"saved","published_book_ref":{"book_id":"tc0-average-speed","publication_id":"01a1289d-c2a5-70c2-85ed-09a88762c0e6"},"session_id":"chat-01a1289d-c3df-7ba3-a65d-d8451d1c61da","turn_id":"turn_01a1289d-c415-72a1-b863-91e0eede155a","workspace_generation":2,"workspace_id":"ws-01a1289d-c3d1-73a3-80f7-3e651a55afcf"}
+  left: 202
+ right: 409
+
+
+failures:
+    tests::tutor_continuation_tests::continuation_red_answer_excerpt_reaches_model_input
+    tests::tutor_continuation_tests::continuation_red_choice_cannot_record_chat_response
+    tests::tutor_continuation_tests::continuation_red_clarification_cannot_record_chat_response
+    tests::tutor_continuation_tests::continuation_red_different_choices_conflict_for_same_key
+    tests::tutor_continuation_tests::continuation_red_local_lost_result_does_not_execute_twice
+    tests::tutor_continuation_tests::continuation_red_object_question_help_is_assisted
+    tests::tutor_continuation_tests::continuation_red_paused_choice_is_not_an_ordinary_request
+    tests::tutor_continuation_tests::continuation_red_source_question_help_is_assisted
+
+test result: FAILED. 0 passed; 8 failed; 0 ignored; 0 measured; 696 filtered out; finished in 5.77s
+
+error: test failed, to rerun pass `-p server --lib`

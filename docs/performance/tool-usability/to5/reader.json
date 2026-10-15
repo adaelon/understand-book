@@ -1,0 +1,149 @@
+[
+  {
+    "effects": [
+      {
+        "kind": "Note",
+        "lid": "1.1",
+        "mem_id": "mem_c0d4c38532b60955",
+        "text": "先核对前提再下结论"
+      }
+    ],
+    "input": {
+      "lid": "1.1",
+      "text": "先核对前提再下结论"
+    },
+    "question": "把‘先核对前提再下结论’记为这一段的笔记",
+    "records": [
+      {
+        "anchor": {
+          "lid": "1.1"
+        },
+        "book_id": "bookL",
+        "citations": [
+          {
+            "book_id": "bookL",
+            "lid": "1.1"
+          }
+        ],
+        "content": "先核对前提再下结论",
+        "generated_at": "t0",
+        "layer": "session",
+        "mem_id": "mem_c0d4c38532b60955",
+        "note_placement": {
+          "kind": "lid_block",
+          "lid": "1.1",
+          "source_fingerprint": "d7a2dc19e770f9c4f3b234213a633c070d6bedbdbe5090c69d08dc0720875d60"
+        },
+        "type": "note",
+        "usage": {
+          "count": 1,
+          "last_used": "t0"
+        }
+      }
+    ],
+    "results": [
+      {
+        "note_id": "mem_c0d4c38532b60955",
+        "ok": true,
+        "status": "CREATED"
+      },
+      {
+        "note_id": "mem_c0d4c38532b60955",
+        "ok": true,
+        "status": "EXISTING"
+      }
+    ],
+    "tool": "reader.note"
+  },
+  {
+    "effects": [
+      {
+        "kind": "Highlight",
+        "lid": "1.1",
+        "mem_id": "mem_b3b4acbf61207fba"
+      }
+    ],
+    "input": {
+      "lid": "1.1",
+      "quote": "先核对前提"
+    },
+    "question": "请高亮这一段的‘先核对前提’",
+    "records": [
+      {
+        "anchor": {
+          "lid": "1.1"
+        },
+        "book_id": "bookL",
+        "citations": [
+          {
+            "book_id": "bookL",
+            "lid": "1.1"
+          }
+        ],
+        "content": "先核对前提",
+        "generated_at": "t0",
+        "layer": "session",
+        "mem_id": "mem_b3b4acbf61207fba",
+        "range": {
+          "end": 5,
+          "start": 0
+        },
+        "type": "highlight",
+        "usage": {
+          "count": 1,
+          "last_used": "t0"
+        }
+      }
+    ],
+    "results": [
+      {
+        "highlight_id": "mem_b3b4acbf61207fba",
+        "ok": true
+      }
+    ],
+    "tool": "reader.highlight"
+  },
+  {
+    "effects": [
+      {
+        "kind": "Highlight",
+        "lid": "1.1",
+        "mem_id": "mem_a22a6be39d530d2a"
+      }
+    ],
+    "input": {
+      "lid": "1.1"
+    },
+    "question": "请高亮这一整段",
+    "records": [
+      {
+        "anchor": {
+          "lid": "1.1"
+        },
+        "book_id": "bookL",
+        "citations": [
+          {
+            "book_id": "bookL",
+            "lid": "1.1"
+          }
+        ],
+        "content": "先核对前提，再下结论",
+        "generated_at": "t0",
+        "layer": "session",
+        "mem_id": "mem_a22a6be39d530d2a",
+        "type": "highlight",
+        "usage": {
+          "count": 1,
+          "last_used": "t0"
+        }
+      }
+    ],
+    "results": [
+      {
+        "highlight_id": "mem_a22a6be39d530d2a",
+        "ok": true
+      }
+    ],
+    "tool": "reader.highlight"
+  }
+]

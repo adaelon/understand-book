@@ -33,26 +33,37 @@ onBeforeUnmount(() => { request++; dialog.value?.close(); });
 <template>
   <dialog ref="dialog" class="account-allowance" aria-labelledby="allowance-title" @cancel.prevent="emit('close')">
     <header><h2 id="allowance-title">AI 使用额度（元）</h2><button type="button" aria-label="关闭使用额度" @click="emit('close')">关闭</button></header>
-    <p class="explanation">这是用于 AI 模型调用的使用额度，与实际付款金额分别记录，不是现金余额。</p>
-    <p v-if="operatorContact">额度开通与续用联系方式：{{ operatorContact }}</p>
-    <button type="button" :disabled="busy" @click="load()">刷新额度与明细</button>
+    <div class="allowance-toolbar"><span>阅读助手的模型调用额度</span><button type="button" :disabled="busy" @click="load()">刷新额度与明细</button></div>
     <p v-if="busy" role="status">正在读取使用额度…</p>
     <p v-if="error" role="alert">{{ error }}。请点击刷新重试。</p>
     <template v-if="loaded">
       <template v-if="allowance">
-        <dl class="allowance-balances">
-          <div class="available"><dt>本期可用</dt><dd>{{ allowanceAmount(allowance.balance.available_micro_cny) }}</dd></div>
-          <div><dt>本期授予（含调整）</dt><dd>{{ allowanceAmount(allowance.balance.granted_micro_cny) }}</dd></div>
-          <div><dt>本期已用</dt><dd>{{ allowanceAmount(allowance.balance.debited_micro_cny) }}</dd></div>
-          <div><dt>正在使用的预留</dt><dd>{{ allowanceAmount(allowance.balance.active_reserved_micro_cny) }}</dd></div>
-          <div><dt>待核算占用</dt><dd>{{ allowanceAmount(allowance.balance.pending_micro_cny) }}</dd></div>
-        </dl>
-        <p>有效期：{{ allowanceTime(allowance.starts_at) }} 至 {{ allowanceTime(allowance.expires_at) }}（香港时间）</p>
+        <section class="allowance-overview">
+          <dl class="allowance-balances">
+            <div class="available"><dt>本期可用</dt><dd>{{ allowanceAmount(allowance.balance.available_micro_cny) }}</dd></div>
+            <div><dt>本期已用</dt><dd>{{ allowanceAmount(allowance.balance.debited_micro_cny) }}</dd></div>
+          </dl>
+          <p class="allowance-expiry">{{ allowanceTime(allowance.expires_at) }} 到期 · 香港时间</p>
+        </section>
+        <p v-if="allowance.balance.active_reserved_micro_cny > 0 || allowance.balance.pending_micro_cny > 0" class="allowance-occupation">有调用正在进行或等待核算，相应金额已从可用额度中预留。完成核算后会更新。</p>
         <p v-if="allowance.balance.available_micro_cny <= 0" role="status">本期可用额度已用尽{{ allowance.balance.available_micro_cny < 0 ? '，负数为已发生费用超出的部分' : '' }}，请联系为你开通账号的运营者补充额度。</p>
       </template>
       <p v-else role="status">当前没有有效额度期，可能尚未开通或已到期。请联系为你开通账号的运营者。</p>
-      <p class="explanation">可用额度已扣除正在使用的预留和待核算占用。调用结果或用量尚未确认时，预留继续占用额度，待核算后更新；预留金额不是最终费用。</p>
-      <p class="explanation">额度不足或到期时，仍可在现有授权范围内阅读原文、历史和已有成果。补充额度后，返回对话点击“继续任务”或发送问题；不会自动继续。</p>
+      <details class="allowance-details"><summary>额度怎么算</summary>
+        <p class="explanation">这是用于 AI 模型调用的使用额度，与实际付款金额分别记录，不是现金余额。</p>
+        <dl v-if="allowance" class="allowance-calculation">
+          <div><dt>本期授予（含调整）</dt><dd>{{ allowanceAmount(allowance.balance.granted_micro_cny) }}</dd></div>
+          <div><dt>正在使用的预留</dt><dd>{{ allowanceAmount(allowance.balance.active_reserved_micro_cny) }}</dd></div>
+          <div><dt>待核算占用</dt><dd>{{ allowanceAmount(allowance.balance.pending_micro_cny) }}</dd></div>
+        </dl>
+        <p v-if="allowance">有效期：{{ allowanceTime(allowance.starts_at) }} 至 {{ allowanceTime(allowance.expires_at) }}（香港时间）</p>
+        <p class="explanation">可用额度已扣除正在使用的预留和待核算占用。调用结果或用量尚未确认时，预留继续占用额度，待核算后更新；预留金额不是最终费用。</p>
+      </details>
+      <details class="allowance-details"><summary>额度不足或到期后怎么办</summary>
+        <p class="explanation">额度不足或到期时，仍可在现有授权范围内阅读原文、历史和已有成果。补充额度后，返回对话点击“继续任务”或发送问题；不会自动继续。</p>
+        <p v-if="operatorContact">额度开通与续用联系方式：{{ operatorContact }}</p>
+        <p v-else>请联系为你开通账号的运营者补充额度。</p>
+      </details>
       <h3>调用明细 <small>全部额度期 · {{ usage?.total ?? 0 }} 条</small></h3>
       <ul v-if="usage?.items.length" class="usage-list">
         <li v-for="item in usage.items" :key="item.call_id">
@@ -80,10 +91,18 @@ header, .usage-heading, nav { display: flex; align-items: center; justify-conten
 h2 { margin: 0; font-size: 21px; } h3 { margin-top: 28px; } small { font-size: 12px; font-weight: normal; }
 p { line-height: 1.7; overflow-wrap: anywhere; } .explanation, dt, small { color: var(--muted); }
 button { font: inherit; cursor: pointer; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); } button:disabled { cursor: default; opacity: .5; }
-.allowance-balances { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 20px 0; }
-.allowance-balances > div { padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
-.allowance-balances .available { grid-column: 1 / -1; } dd { margin: 6px 0 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; } .available dd { font-size: 28px; }
+.allowance-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 18px 0; font-size: 12px; color: var(--muted); }
+.allowance-overview { padding: 24px; margin: 20px 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.allowance-balances { display: grid; grid-template-columns: 1.4fr 1fr; align-items: end; gap: 16px; margin: 0; }
+.allowance-balances > div { min-width: 0; }
+.allowance-balances dt { font-size: 13px; color: var(--steel); }
+dd { margin: 6px 0 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; } .available dd { font-size: 38px; line-height: 1.2; color: var(--accent); }
+.allowance-balances > div:not(.available) dd { font-size: 23px; }
+.allowance-expiry { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--steel); }
+.allowance-occupation { color: var(--muted); font-size: 13px; }
+.allowance-details { border-bottom: 1px solid var(--line); padding: 12px 0; font-size: 13px; }
+.allowance-calculation { display: grid; gap: 8px; }.allowance-calculation > div { display: flex; justify-content: space-between; gap: 16px; }.allowance-calculation dd { margin: 0; }
 .usage-list { padding: 0; list-style: none; } .usage-list > li { border-top: 1px solid var(--line); padding: 16px 0; }
 .usage-heading { flex-wrap: wrap; } .usage-amounts { display: flex; flex-wrap: wrap; gap: 24px; } details { font-size: 12px; color: var(--muted); } summary { cursor: pointer; } footer { margin-top: 24px; }
-@media (max-width: 540px) { .account-allowance { padding: 16px; } h2 { font-size: 18px; } .allowance-balances { gap: 8px; } .allowance-balances > div { padding: 10px; } nav { gap: 6px; font-size: 13px; } }
+@media (max-width: 540px) { .account-allowance { padding: 16px; } h2 { font-size: 18px; } .allowance-balances { gap: 8px; } .allowance-overview { padding: 18px; } nav { gap: 6px; font-size: 13px; } }
 </style>

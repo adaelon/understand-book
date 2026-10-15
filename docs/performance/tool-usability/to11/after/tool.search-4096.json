@@ -1,0 +1,319 @@
+{
+  "continuation": null,
+  "delivered": {
+    "activated": [
+      "profile.manifest",
+      "presentation.author",
+      "memory.recall"
+    ],
+    "blocked": [],
+    "deferred_remaining": 14,
+    "delivery": {
+      "collections": {
+        "/matches": {
+          "delivered": 5,
+          "total": 5
+        }
+      },
+      "omitted_match_fields": [
+        "description",
+        "matched_fields",
+        "matched_terms",
+        "score"
+      ],
+      "recovery": "No executable continuation is available for the omitted fields. Do not repeat the same call at the same budget; use a fresh turn with sufficient budget or choose a smaller supported request.",
+      "status": "partial"
+    },
+    "matches": [
+      {
+        "avoid_when": [
+          "Do not use for literal occurrence location."
+        ],
+        "effect_mode": "read_only",
+        "matched_capabilities": [
+          "semantic_evidence",
+          "synthesis"
+        ],
+        "name": "book.query",
+        "preconditions": [
+          "book_available"
+        ],
+        "use_when": [
+          "Answer definition, explanation, relation, or comparison obligations for explicit referents."
+        ],
+        "visibility": "current_sampling"
+      },
+      {
+        "avoid_when": [
+          "Do not read a profile manifest when the frozen profile snapshot is already sufficient."
+        ],
+        "effect_mode": "read_only",
+        "matched_capabilities": [
+          "profile_read"
+        ],
+        "name": "profile.manifest",
+        "preconditions": [
+          "profile_read_permission"
+        ],
+        "use_when": [
+          "Read profile slots, presets, projections, or tool policy needed for the current task."
+        ],
+        "visibility": "next_sampling"
+      },
+      {
+        "avoid_when": [
+          "Do not use for a short plain answer or persist an untested candidate."
+        ],
+        "effect_mode": "presentation_write",
+        "matched_capabilities": [
+          "presentation_authoring"
+        ],
+        "name": "presentation.author",
+        "preconditions": [
+          "book_available"
+        ],
+        "use_when": [
+          "Create and rehearse rich HTML answers, static Python/Matplotlib charts and interactive explanations."
+        ],
+        "visibility": "next_sampling"
+      },
+      {
+        "avoid_when": [
+          "Do not treat memory as canonical book evidence."
+        ],
+        "effect_mode": "read_only",
+        "matched_capabilities": [
+          "memory_read"
+        ],
+        "name": "memory.recall",
+        "preconditions": [
+          "memory_read_permission"
+        ],
+        "use_when": [
+          "Recall reader memory that is relevant to the current book task."
+        ],
+        "visibility": "next_sampling"
+      },
+      {
+        "avoid_when": [
+          "Do not treat previews as final evidence or silently select a candidate; read chosen occurrence LIDs with book.text."
+        ],
+        "effect_mode": "read_only",
+        "matched_capabilities": [
+          "semantic_evidence"
+        ],
+        "name": "book.concept",
+        "preconditions": [
+          "book_available"
+        ],
+        "use_when": [
+          "Discover concept or entity candidates when the user may not know the graph display label."
+        ],
+        "visibility": "current_sampling"
+      }
+    ],
+    "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+    "task": "Explain the requested material",
+    "unmet_capabilities": [],
+    "version": "tool_search_result.v2",
+    "visible_from": "next_sampling"
+  },
+  "delivered_bytes": 2525,
+  "input": {
+    "effect_mode": "read_only",
+    "max_results": 6,
+    "operation": "explain",
+    "required_capabilities": [
+      "semantic_evidence",
+      "synthesis",
+      "memory_read",
+      "profile_read",
+      "presentation_authoring"
+    ],
+    "scope": "passage",
+    "task": "Explain the requested material"
+  },
+  "limit": 4096,
+  "raw": {
+    "activated": [
+      "profile.manifest",
+      "presentation.author",
+      "memory.recall"
+    ],
+    "blocked": [],
+    "deferred_remaining": 14,
+    "matches": [
+      {
+        "avoid_when": [
+          "Do not use for literal occurrence location."
+        ],
+        "description": "Answer a self-contained semantic question about explicit referents by resolving targets first and then reading source evidence around the frozen bindings.",
+        "effect_mode": "read_only",
+        "matched_capabilities": [
+          "semantic_evidence",
+          "synthesis"
+        ],
+        "matched_fields": [
+          "authorized_effect_mode",
+          "content_profile",
+          "description",
+          "evidence_state",
+          "operation",
+          "permissions",
+          "required_capabilities",
+          "scope"
+        ],
+        "matched_terms": [
+          "the"
+        ],
+        "name": "book.query",
+        "preconditions": [
+          "book_available"
+        ],
+        "score": 2000004000250207,
+        "use_when": [
+          "Answer definition, explanation, relation, or comparison obligations for explicit referents."
+        ],
+        "visibility": "current_sampling"
+      },
+      {
+        "avoid_when": [
+          "Do not read a profile manifest when the frozen profile snapshot is already sufficient."
+        ],
+        "description": "Return the current book's ProfileManifest. Optionally set profile_id to technical_learning or paper to read that explicit registry manifest.",
+        "effect_mode": "read_only",
+        "matched_capabilities": [
+          "profile_read"
+        ],
+        "matched_fields": [
+          "authorized_effect_mode",
+          "content_profile",
+          "description",
+          "evidence_state",
+          "operation",
+          "permissions",
+          "required_capabilities",
+          "scope",
+          "use_when"
+        ],
+        "matched_terms": [
+          "the"
+        ],
+        "name": "profile.manifest",
+        "preconditions": [
+          "profile_read_permission"
+        ],
+        "score": 2000007500250107,
+        "use_when": [
+          "Read profile slots, presets, projections, or tool policy needed for the current task."
+        ],
+        "visibility": "next_sampling"
+      },
+      {
+        "avoid_when": [
+          "Do not use for a short plain answer or persist an untested candidate."
+        ],
+        "description": "Create or revise rich answers. prepare replaces the complete run-local phase/framework/focus/needs; phase and needs are required. Omitted framework/focus clear previous values. Call prepare alone; selected guidance applies at the next sampling. It does not create or deliver content. read/search/patch require exactly one delivered reference or current-run candidate_id. read returns a file or offset/length range; search returns literal matches and character offsets. patch applies ordered edits, each old_text matching exactly once, atomically producing a new immutable candidate while preserving other content/resources; optional metadata replaces only supplied fields. write saves a complete candidate and requires title, html and readable_content; based_on selects an exact delivered version, never a candidate. render_plot returns a static SVG asset; render_animation returns a fixed movie asset. Include returned asset_refs and selected libraries on every write. preview executes actions and returns candidate/environment-bound DOM, errors and screenshots; width and viewport are mutually exclusive. deliver saves only a candidate meeting the preview and subsequent-observation contract; changed candidates need new previews.",
+        "effect_mode": "presentation_write",
+        "matched_capabilities": [
+          "presentation_authoring"
+        ],
+        "matched_fields": [
+          "authorized_effect_mode",
+          "content_profile",
+          "description",
+          "evidence_state",
+          "operation",
+          "permissions",
+          "required_capabilities",
+          "scope"
+        ],
+        "matched_terms": [
+          "the"
+        ],
+        "name": "presentation.author",
+        "preconditions": [
+          "book_available"
+        ],
+        "score": 2000004000250107,
+        "use_when": [
+          "Create and rehearse rich HTML answers, static Python/Matplotlib charts and interactive explanations."
+        ],
+        "visibility": "next_sampling"
+      },
+      {
+        "avoid_when": [
+          "Do not treat memory as canonical book evidence."
+        ],
+        "description": "Recall memory relevant to this book, optionally filtered by LID, type, layer, or text substring. Each returned item carries verifiable LID citations.",
+        "effect_mode": "read_only",
+        "matched_capabilities": [
+          "memory_read"
+        ],
+        "matched_fields": [
+          "authorized_effect_mode",
+          "content_profile",
+          "evidence_state",
+          "operation",
+          "permissions",
+          "required_capabilities",
+          "scope",
+          "use_when"
+        ],
+        "matched_terms": [
+          "the"
+        ],
+        "name": "memory.recall",
+        "preconditions": [
+          "memory_read_permission"
+        ],
+        "score": 2000003500250107,
+        "use_when": [
+          "Recall reader memory that is relevant to the current book task."
+        ],
+        "visibility": "next_sampling"
+      },
+      {
+        "avoid_when": [
+          "Do not treat previews as final evidence or silently select a candidate; read chosen occurrence LIDs with book.text."
+        ],
+        "description": "Deterministically recall whole-book concept and entity candidates with match reasons, bounded previews, and complete occurrence LIDs. After choosing candidates, read their full evidence with book.text.",
+        "effect_mode": "read_only",
+        "matched_capabilities": [
+          "semantic_evidence"
+        ],
+        "matched_fields": [
+          "authorized_effect_mode",
+          "content_profile",
+          "evidence_state",
+          "operation",
+          "permissions",
+          "required_capabilities",
+          "scope",
+          "use_when"
+        ],
+        "matched_terms": [
+          "the"
+        ],
+        "name": "book.concept",
+        "preconditions": [
+          "book_available"
+        ],
+        "score": 2000003500250107,
+        "use_when": [
+          "Discover concept or entity candidates when the user may not know the graph display label."
+        ],
+        "visibility": "current_sampling"
+      }
+    ],
+    "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+    "task": "Explain the requested material",
+    "unmet_capabilities": [],
+    "version": "tool_search_result.v2",
+    "visible_from": "next_sampling"
+  },
+  "raw_bytes": 5122,
+  "status": "partial",
+  "tool": "tool.search",
+  "truncated": true
+}

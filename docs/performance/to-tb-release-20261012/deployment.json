@@ -1,0 +1,19 @@
+{
+  "status": "deployed-and-publicly-verified",
+  "started_at_utc": "2026-10-12T14:36:42.720621+00:00",
+  "deployed_at_utc": "2026-10-12T14:36:57.294664+00:00",
+  "commit": "55e767fbfc5dded3b07479a0fbe93b8f5a20a7cf",
+  "origin": "https://understandbook.top",
+  "release": "/opt/understand-book/releases/to-tb-20261012",
+  "data_root": "/opt/understand-book/data/multi-reader-to-tb-20261012",
+  "previous_release": "/opt/understand-book/releases/mcp10-20261012",
+  "previous_data_root": "/opt/understand-book/data/multi-reader-mcp10-20261012",
+  "backup": "/opt/understand-book/backups/to-tb-20261012",
+  "control_schema": 12,
+  "active_or_unsaved_before_stop": 0,
+  "service_pid": 642476,
+  "running_binary_matches": true,
+  "old_assets_retained": true,
+  "model_requests": 0,
+  "verified_at_utc": "2026-10-12T14:38:58.326829+00:00"
+}

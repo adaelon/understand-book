@@ -1,0 +1,185 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.48s
+     Running unittests src\lib.rs (target\debug\deps\server-e6140f0c20c22aad.exe)
+
+running 6 tests
+test tests::mu10_tests::mu10_capacity_five_minutes ... ignored, MU10 five-minute 10-user/20-workspace frozen load, isolated service and fake Provider
+test tests::mu10_tests::mu10_kill_host_child ... ignored, MU10 subprocess helper; launched only by mu10_real_host_kill_commit_windows
+test tests::mu10_tests::mu10_host_sqlite_busy_is_bounded_and_does_not_accept ... ok
+test tests::mu10_tests::mu10_slow_sse_does_not_block_commit_and_reconnect_resets_overflow ... ok
+test tests::mu10_tests::mu10_real_host_kill_commit_windows ... FAILED
+test tests::mu10_tests::mu10_recovery_100_unclaimed_turns_keeps_original_inputs has been running for over 60 seconds
+test tests::mu10_tests::mu10_recovery_100_unclaimed_turns_keeps_original_inputs ... FAILED
+
+failures:
+
+---- tests::mu10_tests::mu10_real_host_kill_commit_windows stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+MU10 kill point=preparing recovery_ms=101 state=null model_calls=0
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+MU10 kill point=pending recovery_ms=266 state="settled" model_calls=1
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+
+thread 'tests::mu10_tests::mu10_real_host_kill_commit_windows' (35520) panicked at crates\server\src\tests\mu10_tests.rs:345:77:
+called `Option::unwrap()` on a `None` value
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- tests::mu10_tests::mu10_recovery_100_unclaimed_turns_keeps_original_inputs stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+
+thread 'tests::mu10_tests::mu10_recovery_100_unclaimed_turns_keeps_original_inputs' (37756) panicked at crates\server\src\tests\mu10_tests.rs:918:5:
+assertion `left == right` failed
+  left: 0
+ right: 100
+
+
+failures:
+    tests::mu10_tests::mu10_real_host_kill_commit_windows
+    tests::mu10_tests::mu10_recovery_100_unclaimed_turns_keeps_original_inputs
+
+test result: FAILED. 2 passed; 2 failed; 2 ignored; 0 measured; 685 filtered out; finished in 109.46s
+
+error: test failed, to rerun pass `-p server --lib`

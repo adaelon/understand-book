@@ -127,3 +127,7 @@ Resident 已覆盖执行树、三轴状态、Provider 报告用量、首字、�
 用户明确要求网站 LangSmith 记录输入输出，不再只有元数据。Resident 增加 `UB_OBSERVABILITY_MODE=full`：根记录用户消息与最终结果，模型记录最终 HTTP 请求体、完整响应与归一化结果，工具记录实际参数及结果（含拒绝错误）。凭据和 HTTP 授权头不进入这些内容通路。原 metadata 模式仍只传允许列表元数据，off 保持关闭。
 
 正文通过显式选择的 RunEventSink 内容回调进入 LangSmith inputs/outputs，不加入公共活动摘要或 ub_observation.v1 元数据信封。完整模式沿用异步有界队列和 spool，单条上限 16 MiB、队列总量 64 MiB；超过边界记丢弃状态。后续元数据更新省略内容字段，避免覆盖已保存内容。本修订替代 §5 对已启用 full 模式的正文限制；执行权威、生命周期与非阻塞要求保持。
+
+## 2026-10-11 修订：未完成回合的根状态
+
+`incomplete=true` 的根记录将停止原因导出到 LangSmith `error` 和 `metadata.stop_reason`；未提供原因时使用 `AGENT_INCOMPLETE`。`metadata.last_tool_error_name/last_tool_error_code` 保留停止前最后一个具体工具错误，后续 `AGENT_NO_PROGRESS` 拒绝不覆盖它。元数据只记录已过滤的工具名称和错误码，完整错误内容沿用 full 模式的工具输出。三轴状态继续区分执行、交付与持久化：部分回答成功送达仍是 `delivery_state=delivered`，但不再以绿色根记录掩盖目标未完成。

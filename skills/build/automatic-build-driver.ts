@@ -1763,6 +1763,9 @@ function applyDecision(
     return issueBoundary(invocation, syntheticBoundary("plan_changed", "plan_changed", current));
   }
   if (!scopeChanged
+    // Sibling commits change remaining-work estimates, not the terminal retry authorization.
+    // Retry bindings are validated below; automaticBuildNext still enforces the current budget.
+    && !(decision.choice_id === "retry_current" && request.reason === "retry_exhausted")
     && !sameAutomaticBuildBudgetEvidence(
       request.state.preflight_evaluation,
       identity.preflight_evaluation,
@@ -2356,7 +2359,8 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
       && current.plan.public_stage_closure.includes(stage.stage));
     if (preparation?.policy_set) {
       const prepared = prepareAutomaticBuildSnapshot(current.plan_result.snapshot.target, preparation.policy_set.stage,
-        { quality_profile: invocation.input.quality_profile, execution_profile: invocationExecutionProfile(invocation.input), reuse: current.plan.reuse });
+        { quality_profile: invocation.input.quality_profile, execution_profile: invocationExecutionProfile(invocation.input),
+          public_stage_closure: current.plan.public_stage_closure, reuse: current.plan.reuse });
       if (prepared.status === "blocked") {
         return finish(issueBoundary(invocation, boundaryFromAction(automaticBuildRecoveryAction(prepared.recovery), stateIdentity(current))));
       }

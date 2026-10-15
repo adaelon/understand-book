@@ -1,0 +1,44 @@
+{
+  "header": {
+    "book_id": "tool-example-book",
+    "book_version": "v1",
+    "profile_id": "technical_learning",
+    "profile_version": "technical_learning_v0",
+    "core_schema_version": "v1",
+    "generated_at": "2026-10-12T04:00:00Z"
+  },
+  "spine": [
+    {
+      "lid": "1",
+      "role": "foundation",
+      "summary": {
+        "text": "Compare the two activation conditions.",
+        "evidence_lids": [
+          "1.1",
+          "1.2"
+        ]
+      },
+      "key_stop_ids": [],
+      "depends_on": []
+    }
+  ],
+  "throughlines": [
+    {
+      "id": "conditions",
+      "name": "Threshold conditions",
+      "summary": {
+        "text": "Compare the two activation conditions.",
+        "evidence_lids": [
+          "1.1",
+          "1.2"
+        ]
+      },
+      "lids": [
+        "1.1",
+        "1.2"
+      ],
+      "key_stop_ids": []
+    }
+  ],
+  "key_stops": []
+}

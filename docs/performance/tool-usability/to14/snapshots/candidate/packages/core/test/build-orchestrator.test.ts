@@ -1,0 +1,1096 @@
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import * as fs from "node:fs";
+import { describe, expect, it, vi } from "vitest";
+import {
+  nextAutomaticBuildAction,
+  buildAutomaticBuildSnapshot,
+  prepareAutomaticBuildSnapshot,
+  readAutomaticBuildTaskStage,
+  resolveAutomaticBuildTarget,
+  type AutomaticBuildTarget,
+  type AutomaticBuildSnapshot,
+} from "../src/build-orchestrator";
+import { buildSourceManifest, buildSourceManifestV2 } from "../src/source-manifest";
+import { emptyReconciliationSummary, sha256Text } from "../src/source-reconciliation";
+import { markdownToBlocks } from "../src/md-adapter";
+import { segment } from "../src/segment";
+import { splitWindows } from "../src/window";
+import { buildPass1Artifact } from "../src/build-resume";
+import { resolveContentProfile } from "../src/content-profile";
+import {
+  automaticBuildExtractionPolicy,
+  automaticBuildGenerationArtifactPath,
+  buildSemanticArtifactEnvelope,
+  semanticContractFromExtractionPolicy,
+} from "../src/semantic-artifact";
+import {
+  buildPaperLexiconCandidateArtifact,
+  routePaperLexiconWorkUnits,
+} from "../src/paper-lexicon-router";
+import { freezeAutomaticBuildStagePolicySet } from "../src/automatic-build-policy-generation";
+import {
+  collectAutomaticBuildStageQuality,
+  writeAutomaticBuildStageQualityReport,
+} from "../src/automatic-build-quality";
+import { freezePass1ShadowTask } from "../src/pass1-reduction";
+import {
+  freezeProfileSidecarSemanticFastPathTask,
+  writeProfileSidecarSemanticFastPathCandidate,
+} from "../src/profile-sidecar-reduction";
+import {
+  bookStructureGenerationTaskPath,
+  freezeBookStructureGenerationTask,
+  writeBookStructureGenerationCandidate,
+  renderBookStructureGenerationTaskInput,
+} from "../src/book-structure-generation";
+import { stageAutomaticBuildCandidate } from "../src/automatic-build-mailbox";
+import { AUTOMATIC_BUILD_PROTOCOL_V2 } from "../src/automatic-build-protocol";
+import {
+  automaticBuildNext,
+  automaticBuildPlan,
+  prepareExplicitLegacyBuildPlan,
+  runAutomaticBuildCloseStage,
+  runAutomaticBuildTaskInput,
+  submitAutomaticBuildTaskCandidate,
+} from "../../../skills/build/automatic-build";
+import { writePass1ProductionTaskArtifact } from "./helpers/model-input-routability-fixture";
+import { zipSync, strToU8 } from "fflate";
+import { claimAutomaticBuildTask, readAutomaticBuildLease } from "../src/automatic-build-lease";
+import { structureProductionResponse } from "./helpers/book-structure-production";
+import { confirmedStandardBuildPlan } from "./helpers/confirmed-build-plan";
+import { readAcceptedBookStructureClose } from "../src/automatic-build-close";
+
+it("reuses an accepted BookStructure publication for Tutor after its generation route changes", () => {
+  const root = tempDir();
+  const { workspace } = writeTechnicalLearningWorkspace(root, "published-tutor");
+  const target = resolveAutomaticBuildTarget(workspace, root);
+  closeV3Pass1(target);
+  closeV3ProfileSidecar(target);
+  for (let round = 0; round < 24; round++) {
+    const state = buildAutomaticBuildSnapshot(target).stages.find(s => s.stage === "book_structure")!;
+    if (!state.pending_tasks.length) break;
+    for (const id of state.pending_tasks) {
+      const generation = state.generation_tasks![id];
+      if (generation.kind !== "book_structure") throw new Error("expected structure task");
+      freezeBookStructureGenerationTask(target, generation.task);
+      writeBookStructureGenerationCandidate({ target, task: generation.task,
+        candidate: structureProductionResponse(generation.task),
+        provenance: { executor: "published-tutor-fixture", attempt: 1, generated_at: "2026-10-01T00:00:00Z" } });
+    }
+  }
+  expect(runAutomaticBuildCloseStage(workspace, root, "book_structure")).toMatchObject({ status: "closed" });
+  const file = path.join(workspace, "book_structure.json");
+  const published = readFileSync(file, "utf8");
+  // The installed workspace uses the original close-receipt layout.
+  const closeDirectory = path.join(workspace, ".build/automatic-build/v2/close/book_structure");
+  const transaction = fs.readdirSync(closeDirectory, { withFileTypes: true }).find(item => item.isDirectory())!.name;
+  const closeFile = path.join(closeDirectory, transaction, fs.readdirSync(path.join(closeDirectory, transaction))[0]);
+  fs.renameSync(closeFile, path.join(closeDirectory, transaction + ".json"));
+  const artifacts = path.join(workspace, ".build/automatic-build/v3/artifacts/book_structure");
+  fs.renameSync(artifacts, artifacts + "-previous");
+  const prepared = prepareExplicitLegacyBuildPlan(workspace, root, { pass2: "disabled" });
+  expect(prepared.plan.reuse.map(item => item.artifact)).toContain("public.book_structure");
+  expect(prepared.plan.create).toEqual(["public.formal_objects", "public.cognitive_materials", "public.teaching_publish"]);
+  const planned = automaticBuildPlan(workspace, root, { build_plan: prepared.plan });
+  expect(planned.next_action).toMatchObject({ kind: "extract", stage: "formal_objects" });
+  const formal = planned.snapshot.stages.find(s => s.stage === "formal_objects")!;
+  expect(readAutomaticBuildTaskStage(target, { stage: "formal_objects", work_unit_id: formal.pending_tasks[0] }, "full")?.pending_tasks)
+    .toEqual(formal.pending_tasks);
+  expect(readFileSync(file, "utf8")).toBe(published);
+  writeFileSync(file, published + "\n");
+  expect(automaticBuildPlan(workspace, root, { build_plan: prepared.plan }).next_action)
+    .toMatchObject({ kind: "needs_user", reason: "build_plan_freshness_drift" });
+  writeFileSync(file, published);
+  writeFileSync(target.source_path, readFileSync(target.source_path, "utf8") + "\nNew source paragraph.\n");
+  expect(readAcceptedBookStructureClose(resolveAutomaticBuildTarget(workspace, root))).toBeUndefined();
+  expect(automaticBuildPlan(workspace, root, { build_plan: prepared.plan }).next_action)
+    .toMatchObject({ kind: "needs_user" });
+}, 60000);
+
+const mutationCount = vi.hoisted(() => ({ active: false, count: 0 }));
+vi.mock("node:fs", async (original) => {
+  const actual = await original<typeof fs>();
+  return { ...actual, mkdirSync: (...args: Parameters<typeof fs.mkdirSync>) => {
+    if (mutationCount.active) mutationCount.count++;
+    return actual.mkdirSync(...args);
+  }, writeFileSync: (...args: Parameters<typeof fs.writeFileSync>) => {
+    if (mutationCount.active) mutationCount.count++;
+    return actual.writeFileSync(...args);
+  } };
+});
+
+it("P2 snapshots and plans inspect preparation without mutating an empty or prepared stage", () => {
+  const root = tempDir(); const source = path.join(root, "guide.md");
+  writeFileSync(source, "# Guide\n\nAn independent paragraph.\n");
+  const target = resolveAutomaticBuildTarget(source, root);
+  const inspect = () => {
+    mutationCount.count = 0; mutationCount.active = true;
+    try {
+      const first = buildAutomaticBuildSnapshot(target);
+      expect(buildAutomaticBuildSnapshot(target)).toEqual(first);
+      automaticBuildPlan(source, root);
+      expect(mutationCount.count).toBe(0);
+      return first;
+    } finally { mutationCount.active = false; }
+  };
+  expect(inspect().stages[0].preparation_required).toBe(true);
+  expect(prepareAutomaticBuildSnapshot(target, "pass1").status).toBe("ready");
+  expect(inspect().stages[0].preparation_required).toBe(false);
+});
+
+function tempDir(): string {
+  return mkdtempSync(path.join(tmpdir(), "understand-book-orchestrator-"));
+}
+
+function productionPolicyContracts(
+  stage: NonNullable<ReturnType<typeof buildAutomaticBuildSnapshot>["stages"][number]>,
+): string {
+  if (!stage.policy_set) throw new Error(`missing ${stage.stage} production policy set`);
+  return JSON.stringify(stage.policy_set.members.map((member) => ({
+    kind: member.kind,
+    policy_generation_id: member.policy_generation_id,
+    semantic_contract: member.semantic_contract,
+  })));
+}
+
+function writeJson(file: string, value: unknown): void {
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, JSON.stringify(value, null, 2), "utf8");
+}
+
+function pass1Envelope(target: AutomaticBuildTarget, taskId: number, payload: { content_hash: string; nodes: unknown[]; edges: unknown[] }) {
+  return buildSemanticArtifactEnvelope({
+    target: target.target_ref,
+    stage: "pass1",
+    work_unit_id: String(taskId),
+    input_hash: payload.content_hash,
+    policy_fingerprint: automaticBuildExtractionPolicy("pass1", resolveContentProfile(target.profile_id), "full"),
+    provenance: { executor: "test", model: "codex-test", attempt: 1, generated_at: "2026-07-19T00:00:00.000Z" },
+    payload,
+  });
+}
+
+function closeV3Pass1(target: AutomaticBuildTarget): void {
+  let stage: ReturnType<typeof buildAutomaticBuildSnapshot>["stages"][number] | undefined;
+  for (let round = 0; round < 8; round += 1) {
+    stage = buildAutomaticBuildSnapshot(target).stages.find((candidate) => candidate.stage === "pass1");
+    if (!stage?.policy_set) throw new Error("expected a production Pass1 policy set");
+    if (!stage.pending_work_units?.length) break;
+    freezeAutomaticBuildStagePolicySet(target, stage.policy_set);
+    for (const unit of stage.pending_work_units) {
+      const generation = stage.generation_tasks?.[unit.work_unit_id];
+      if (generation?.kind !== "pass1") {
+        throw new Error(`missing production Pass1 task: ${unit.work_unit_id}`);
+      }
+      freezePass1ShadowTask(target, generation.task);
+      writePass1ProductionTaskArtifact({
+        target,
+        policy_generation_id: generation.task.policy_generation_id,
+        work_unit_id: unit.work_unit_id,
+        marker: "Orchestrator v3 close fixture",
+        generated_at: `2026-08-04T02:0${round}:00.000Z`,
+      });
+    }
+  }
+  stage = buildAutomaticBuildSnapshot(target).stages.find((candidate) => candidate.stage === "pass1");
+  if (!stage?.policy_set || stage.pending_tasks.length) {
+    throw new Error("production Pass1 fixture did not reach its close boundary");
+  }
+  const report = collectAutomaticBuildStageQuality(target, stage, "full");
+  expect(report.gate_status).toBe("passed");
+  writeAutomaticBuildStageQualityReport(target, report);
+  const repoRoot = path.resolve(__dirname, "..", "..", "..");
+  const args = [
+    path.join(repoRoot, "node_modules", "tsx", "dist", "cli.mjs"),
+    path.join(repoRoot, "skills", "build", "pass1-batch.ts"),
+    target.source_path,
+    "--book-id", target.book_id,
+    "--content-profile", target.profile_id,
+    "--production-policy-contracts", productionPolicyContracts(stage),
+  ];
+  if (target.profile_id === "paper") {
+    args.push(
+      "--paper-subtype", "research_article",
+      "--preserve-foundation", target.workspace_dir,
+    );
+  }
+  const result = spawnSync(process.execPath, args, { cwd: target.root_dir, encoding: "utf8" });
+  expect(result.status, result.stderr).toBe(0);
+}
+
+function closeV3ProfileSidecar(target: AutomaticBuildTarget): void {
+  let stage: ReturnType<typeof buildAutomaticBuildSnapshot>["stages"][number] | undefined;
+  for (let round = 0; round < 8; round += 1) {
+    stage = buildAutomaticBuildSnapshot(target).stages.find((candidate) => candidate.stage === "profile_sidecar");
+    if (!stage?.policy_set) throw new Error("expected a production profile-sidecar policy set");
+    if (!stage.pending_work_units?.length) break;
+    freezeAutomaticBuildStagePolicySet(target, stage.policy_set);
+    for (const unit of stage.pending_work_units) {
+      const generation = stage.generation_tasks?.[unit.work_unit_id];
+      if (generation?.kind !== "profile_sidecar_fast_path") {
+        throw new Error(`expected a profile-sidecar fast-path task: ${unit.work_unit_id}`);
+      }
+      freezeProfileSidecarSemanticFastPathTask(target, generation.task);
+      const lid = generation.task.packet.visible_lids[0];
+      if (!lid) throw new Error("profile-sidecar fixture task has no evidence LID");
+      writeProfileSidecarSemanticFastPathCandidate({
+        target,
+        source: readFileSync(target.source_path, "utf8"),
+        task: generation.task,
+        candidate: {
+          discourse_items: [{ lid, mode: "informative", relations: [] }],
+        },
+        provenance: {
+          executor: "orchestrator-v3-profile-fixture",
+          attempt: 1,
+          generated_at: `2026-08-04T02:1${round}:00.000Z`,
+        },
+      });
+    }
+  }
+  stage = buildAutomaticBuildSnapshot(target).stages.find((candidate) => candidate.stage === "profile_sidecar");
+  if (!stage?.policy_set || stage.pending_tasks.length) {
+    throw new Error("production profile-sidecar fixture did not reach its close boundary");
+  }
+  const report = collectAutomaticBuildStageQuality(target, stage, "full");
+  expect(report.gate_status).toBe("passed");
+  writeAutomaticBuildStageQualityReport(target, report);
+  const repoRoot = path.resolve(__dirname, "..", "..", "..");
+  const result = spawnSync(process.execPath, [
+    path.join(repoRoot, "node_modules", "tsx", "dist", "cli.mjs"),
+    path.join(repoRoot, "skills", "build", "profile-sidecar-batch.ts"),
+    target.source_path,
+    "--book-id", target.book_id,
+    "--content-profile", target.profile_id,
+    "--production-policy-contracts", productionPolicyContracts(stage),
+  ], { cwd: target.root_dir, encoding: "utf8" });
+  expect(result.status, result.stderr).toBe(0);
+}
+
+function writeTrustedPaperWorkspace(root: string, bookId = "paper-a", sourceOverride?: string): string {
+  const dir = path.join(root, ".understand-book", bookId);
+  const source = sourceOverride
+    ?? "# Abstract\n\nThis paper studies Softmax Attention retrieval.\n\n# Discussion\n\nThe Softmax Attention comparison continues here.\n";
+  const draftSource = sourceOverride
+    ?? "# Abstract\n\nThis paper studies Softmax Attention retrieval with OCR noise.\n\n# Discussion\n\nThe Softmax Attention comparison continues here.\n";
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(dir, "source.txt"), source, "utf8");
+  writeFileSync(path.join(dir, "paper.md"), draftSource, "utf8");
+  writeFileSync(path.join(dir, "paper.pdf"), "pdf", "utf8");
+  writeJson(path.join(dir, "base.json"), { book_id: bookId, lid_nodes: [], graph_nodes: [], graph_edges: [] });
+  writeJson(path.join(dir, "source_manifest.json"), buildSourceManifestV2({
+    book_id: bookId,
+    source_sha256: sha256Text(source),
+    original_pdf_path: "paper.pdf",
+    original_pdf_sha256: "sha-pdf",
+    pdf_source_map_path: "pdf_source_map.json",
+    pdf_selection_map_manifest_path: "pdf_selection_map/manifest.json",
+    alignment_report_path: "alignment_report.json",
+    config_hash: "cfg-a",
+  }));
+  writeJson(path.join(dir, ".build", "source-reconciliation", "report.json"), {
+    version: "source_reconciliation_report.v1",
+    book_id: bookId,
+    input_fingerprint: { paper_md_sha256: sha256Text(draftSource), paper_pdf_sha256: "sha-pdf", config_hash: "cfg-a" },
+    summary: { ...emptyReconciliationSummary(), verified: 1 },
+    unresolved: [],
+  });
+  writeJson(path.join(dir, ".build", "input", "manifest.json"), {
+    version: "workbench_input_manifest.v1",
+    book_id: bookId,
+    profile_id: "paper",
+    fingerprint: { paper_md_sha256: sha256Text(draftSource), paper_pdf_sha256: "sha-pdf", config_hash: "cfg-a" },
+    inputs: { paper_md: { path: "paper.md", original_path: null, sha256: sha256Text(draftSource) }, paper_pdf: { path: "paper.pdf", original_path: null, sha256: "sha-pdf" } },
+  });
+  return dir;
+}
+
+function writeTechnicalLearningWorkspace(root: string, bookId = "guide"): {
+  workspace: string;
+  sourceFile: string;
+  source: string;
+} {
+  const workspace = path.join(root, ".understand-book", bookId);
+  const sourceFile = path.join(root, `${bookId}.md`);
+  const source = "# Guide\n\nA deterministic technical learning source.\n";
+  mkdirSync(workspace, { recursive: true });
+  writeFileSync(sourceFile, source, "utf8");
+  writeFileSync(path.join(workspace, "source.txt"), source, "utf8");
+  writeJson(path.join(workspace, "base.json"), { book_id: bookId, lid_nodes: [], graph_nodes: [], graph_edges: [] });
+  writeJson(path.join(workspace, "source_manifest.json"), buildSourceManifest({
+    book_id: bookId,
+    source_path: sourceFile,
+  }));
+  writeJson(path.join(workspace, "profile_metadata.json"), {
+    header: {
+      book_id: bookId,
+      book_version: "v1",
+      profile_id: "technical_learning",
+      profile_version: "technical_learning_v0",
+      core_schema_version: "core_v0",
+      generated_at: "1970-01-01T00:00:00.000Z",
+    },
+  });
+  return { workspace, sourceFile, source };
+}
+
+describe("automatic build orchestrator", () => {
+  it("U2 resumes partial completed work after relocation and rejects the old executor", async () => {
+    const root = tempDir();
+    const source = path.join(root, "portable.md");
+    writeFileSync(source, "# One\n\nFirst independent chapter.\n\n# Two\n\nSecond independent chapter.\n");
+    const imported = spawnSync(process.execPath, [path.resolve(__dirname, "../../../node_modules/tsx/dist/cli.mjs"),
+      path.resolve(__dirname, "../../../skills/build/pass1-batch.ts"), source, "--allow-partial"], { cwd: root, encoding: "utf8" });
+    expect(imported.status, imported.stderr).toBe(0);
+    const target = resolveAutomaticBuildTarget("portable", root);
+    const prepared = prepareAutomaticBuildSnapshot(target, "pass1");
+    expect(prepared.status).toBe("ready");
+    const stage = buildAutomaticBuildSnapshot(target).stages[0];
+    expect(stage.pending_work_units!.length).toBeGreaterThan(1);
+    const [done, pending] = stage.pending_work_units!;
+    for (const unit of [done, pending]) {
+      const task = stage.generation_tasks![unit.work_unit_id];
+      if (task.kind !== "pass1") throw new Error("expected pass1");
+      freezePass1ShadowTask(target, task.task);
+    }
+    const binding = stage.task_bindings![done.work_unit_id];
+    if (!("policy_generation_id" in binding)) throw new Error("expected v3");
+    writePass1ProductionTaskArtifact({ target, policy_generation_id: binding.policy_generation_id,
+      work_unit_id: done.work_unit_id, marker: "Portable completed work", generated_at: "2026-10-01T00:00:00.000Z" });
+    const artifactFile = automaticBuildGenerationArtifactPath(target, "pass1", binding.policy_generation_id, done.work_unit_id);
+    const originalArtifact = readFileSync(artifactFile, "utf8");
+    const lease = claimAutomaticBuildTask(target, "pass1", pending.work_unit_id, { owner: "before-move",
+      descriptor: pending, binding: stage.task_bindings![pending.work_unit_id] });
+    if (lease.status !== "leased") throw new Error("expected original lease");
+    const movedRoot = tempDir();
+    const moved = path.join(movedRoot, ".understand-book", target.book_id);
+    fs.cpSync(target.workspace_dir, moved, { recursive: true });
+    unlinkSync(source);
+    const resumed = resolveAutomaticBuildTarget(moved, movedRoot);
+    expect(buildAutomaticBuildSnapshot(resumed).stages[0].pending_tasks).not.toContain(done.work_unit_id);
+    const buildPlan = confirmedStandardBuildPlan(moved, movedRoot);
+    const plan = automaticBuildPlan(moved, movedRoot, { build_plan: buildPlan });
+    const next = automaticBuildNext(moved, movedRoot, 1, { build_plan: buildPlan,
+      protocol: AUTOMATIC_BUILD_PROTOCOL_V2, accepted_plan_digest: plan.preflight!.descriptor_plan_digest });
+    expect(next.action.kind).toBe("extract");
+    if (next.action.kind !== "extract" || !next.action.tasks) throw new Error("expected pending task dispatch");
+    const scheduled = next.action.tasks[0];
+    expect(scheduled.task_id).toBe(pending.work_unit_id);
+    expect(scheduled.lease.target_ref).toEqual(resumed.target_ref);
+    expect(scheduled.lease.attempt).toBeGreaterThan(lease.lease.attempt);
+    expect(runAutomaticBuildTaskInput(resumed, "pass1", pending.work_unit_id, scheduled.lease_ref,
+      scheduled.lease.token).stdout).toContain("Second independent chapter");
+    expect(JSON.stringify(next.action)).not.toContain(`"work_unit_id":"${done.work_unit_id}"`);
+    const copiedLease = path.join(moved, path.relative(target.workspace_dir, lease.lease_ref));
+    expect(() => readAutomaticBuildLease(resumed, copiedLease, lease.lease.token)).toThrow("target mismatch");
+    expect(() => submitAutomaticBuildTaskCandidate(resumed, "pass1", pending.work_unit_id,
+      copiedLease, lease.lease.token)).toThrow("target mismatch");
+    expect(existsSync(path.join(path.dirname(copiedLease), "result.json"))).toBe(false);
+    closeV3Pass1(resumed);
+    expect(buildAutomaticBuildSnapshot(resumed).stages[0].closed).toBe(true);
+    closeV3ProfileSidecar(resumed);
+    const movedAgainRoot = tempDir();
+    const movedAgain = path.join(movedAgainRoot, ".understand-book", target.book_id);
+    fs.cpSync(moved, movedAgain, { recursive: true });
+    const twice = resolveAutomaticBuildTarget(movedAgain, movedAgainRoot);
+    const twiceSnapshot = buildAutomaticBuildSnapshot(twice);
+    expect(twiceSnapshot.stages.find(s => s.stage === "pass1")?.closed).toBe(true);
+    expect(twiceSnapshot.stages.find(s => s.stage === "profile_sidecar")?.closed).toBe(true);
+    expect(readFileSync(artifactFile, "utf8")).toBe(originalArtifact);
+    expect(readFileSync(path.join(moved, path.relative(target.workspace_dir, artifactFile)), "utf8")).toBe(originalArtifact);
+  }, 30_000);
+  it.each(["md", "epub"])("U1 resumes an imported %s snapshot after relocation and external edits", (extension) => {
+    const root = tempDir();
+    const source = path.join(root, `imported.${extension}`);
+    const image = Buffer.from("imported image bytes");
+    writeFileSync(path.join(root, "figure.png"), image);
+    writeFileSync(source, extension === "md" ? "# Guide\n\nOriginal paragraph.\n\n![Figure](figure.png)\n" : zipSync({
+      "META-INF/container.xml": strToU8('<container><rootfiles><rootfile full-path="content.opf"/></rootfiles></container>'),
+      "content.opf": strToU8('<package><manifest><item id="c" href="chapter.xhtml"/></manifest><spine><itemref idref="c"/></spine></package>'),
+      "chapter.xhtml": strToU8('<html><body><h1>Guide</h1><p>Original paragraph.</p><h2>Details</h2><p>Another paragraph.</p><img src="figure.png" alt="Figure"/></body></html>'),
+      "figure.png": image,
+    }));
+    const initial = resolveAutomaticBuildTarget(source, root);
+    const before = buildAutomaticBuildSnapshot(initial).stages[0];
+    const imported = spawnSync(process.execPath, [path.resolve(__dirname, "../../../node_modules/tsx/dist/cli.mjs"),
+      path.resolve(__dirname, "../../../skills/build/pass1-batch.ts"), source, "--allow-partial"], { cwd: root, encoding: "utf8" });
+    expect(imported.status, imported.stderr).toBe(0);
+    const movedRoot = tempDir();
+    const moved = path.join(movedRoot, ".understand-book", initial.book_id);
+    fs.cpSync(initial.workspace_dir, moved, { recursive: true });
+    writeFileSync(source, "changed external source");
+    const resumed = resolveAutomaticBuildTarget(moved, movedRoot);
+    expect(resumed.source_path.startsWith(moved + path.sep)).toBe(true);
+    expect(resolveAutomaticBuildTarget(resumed.source_path, movedRoot)).toEqual(resumed);
+    expect(resumed.target_ref.input_fingerprint).toBe(initial.target_ref.input_fingerprint);
+    expect(buildAutomaticBuildSnapshot(resumed).stages[0].work_units).toEqual(before.work_units?.map(unit => ({
+      ...unit, target: resumed.target_ref,
+    })));
+    unlinkSync(source);
+    unlinkSync(path.join(root, "figure.png"));
+    expect(resolveAutomaticBuildTarget(moved, movedRoot)).toEqual(resumed);
+    const assetBefore = readFileSync(path.join(moved, "asset_manifest.json"), "utf8");
+    const reclosed = spawnSync(process.execPath, [path.resolve(__dirname, "../../../node_modules/tsx/dist/cli.mjs"),
+      path.resolve(__dirname, "../../../skills/build/pass1-batch.ts"), resumed.source_path,
+      "--book-id", resumed.book_id, "--allow-partial"], { cwd: movedRoot, encoding: "utf8" });
+    expect(reclosed.status, reclosed.stderr).toBe(0);
+    expect(readFileSync(path.join(moved, "asset_manifest.json"), "utf8")).toBe(assetBefore);
+    const asset = JSON.parse(assetBefore).images[0];
+    expect(asset.status).toBe("available");
+    expect(readFileSync(path.join(moved, asset.stored_path))).toEqual(image);
+    if (extension === "epub") {
+      expect(resumed.target_ref.input_fingerprint).not.toBe(sha256Text(readFileSync(path.join(moved, "source.txt"), "utf8")));
+      // Pre-U1 imports retained the canonical text and LID tree, but not the package bytes.
+      unlinkSync(path.join(moved, "source.epub"));
+      const manifestPath = path.join(moved, "source_manifest.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      delete manifest.canonical_source.snapshot_path;
+      writeJson(manifestPath, manifest);
+      const legacy = resolveAutomaticBuildTarget(moved, movedRoot);
+      expect(legacy.source_path).toBe(path.join(moved, "source.txt"));
+      expect(buildAutomaticBuildSnapshot(legacy).stages[0].work_units?.map(u => [u.work_unit_id, u.input_hash, u.evidence_lids]))
+        .toEqual(before.work_units?.map(u => [u.work_unit_id, u.input_hash, u.evidence_lids]));
+    }
+  });
+  it("uses an explicit book id before falling back to the source filename slug", () => {
+    const root = tempDir();
+    const source = path.join(root, "renamed-import.md");
+    writeFileSync(source, "# Renamed import\n\nA deterministic source.\n", "utf8");
+    mkdirSync(path.join(root, ".understand-book", "stable-guide", ".build"), { recursive: true });
+
+    expect(resolveAutomaticBuildTarget(source, root, { book_id: "stable-guide" })).toMatchObject({
+      book_id: "stable-guide",
+      workspace_dir: path.join(path.resolve(root), ".understand-book", "stable-guide"),
+      source_path: path.resolve(source),
+    });
+    expect(resolveAutomaticBuildTarget(source, root)).toMatchObject({
+      book_id: "renamed-import",
+      workspace_dir: path.join(path.resolve(root), ".understand-book", "renamed-import"),
+    });
+  });
+
+  it("resolves an existing technical-learning workspace and its source.txt without a Workbench manifest", () => {
+    const root = tempDir();
+    const { workspace, sourceFile, source } = writeTechnicalLearningWorkspace(root);
+
+    const expected = {
+      kind: "source_file",
+      book_id: "guide",
+      profile_id: "technical_learning",
+      root_dir: path.resolve(root),
+      workspace_dir: path.resolve(workspace),
+      source_path: path.join(workspace, "source.txt"),
+      target_ref: {
+        version: "build_target_ref.v2",
+        workspace_dir: path.resolve(workspace),
+        book_id: "guide",
+        profile_id: "technical_learning",
+        input_fingerprint: sha256Text(source),
+      },
+    };
+    expect(resolveAutomaticBuildTarget(workspace, root)).toEqual(expected);
+    expect(resolveAutomaticBuildTarget("guide", root)).toEqual(expected);
+    expect(resolveAutomaticBuildTarget(path.join(workspace, "source.txt"), root)).toEqual(expected);
+  });
+
+  it("falls back to the workspace truth file when the imported technical source is unavailable", () => {
+    const root = tempDir();
+    const { workspace, sourceFile, source } = writeTechnicalLearningWorkspace(root, "portable-guide");
+    unlinkSync(sourceFile);
+
+    expect(resolveAutomaticBuildTarget(workspace, root)).toMatchObject({
+      kind: "source_file",
+      book_id: "portable-guide",
+      profile_id: "technical_learning",
+      workspace_dir: path.resolve(workspace),
+      source_path: path.join(path.resolve(workspace), "source.txt"),
+      target_ref: { input_fingerprint: sha256Text(source) },
+    });
+  });
+
+  it("resolves an explicit trusted paper workspace and starts after the foundation", () => {
+    const root = tempDir();
+    const workspace = writeTrustedPaperWorkspace(root);
+
+    expect(resolveAutomaticBuildTarget(workspace, root)).toMatchObject({
+      kind: "paper_workspace",
+      book_id: "paper-a",
+      profile_id: "paper",
+      root_dir: path.resolve(root),
+      workspace_dir: path.resolve(workspace),
+      source_path: path.join(path.resolve(workspace), "source.txt"),
+      target_ref: {
+        version: "build_target_ref.v2",
+        workspace_dir: path.resolve(workspace),
+        book_id: "paper-a",
+        profile_id: "paper",
+        input_fingerprint: expect.any(String),
+      },
+    });
+  });
+
+  it("resolves a reconciled source.txt back to its trusted paper workspace", () => {
+    const root = tempDir();
+    const workspace = writeTrustedPaperWorkspace(root);
+
+    expect(resolveAutomaticBuildTarget(path.join(workspace, "source.txt"), root)).toMatchObject({
+      kind: "paper_workspace",
+      book_id: "paper-a",
+      profile_id: "paper",
+      workspace_dir: path.resolve(workspace),
+      source_path: path.join(path.resolve(workspace), "source.txt"),
+    });
+  });
+
+  it("fails closed for an untrusted source.txt inside a build workspace", () => {
+    const root = tempDir();
+    const source = path.join(root, ".understand-book", "orphan", "source.txt");
+    mkdirSync(path.dirname(source), { recursive: true });
+    writeFileSync(source, "# Orphan\n", "utf8");
+
+    expect(() => resolveAutomaticBuildTarget(source, root)).toThrow("缺少可验证的 content profile");
+  });
+
+  it("rejects a paper workspace whose trusted foundation is incomplete", () => {
+    const root = tempDir();
+    const workspace = path.join(root, ".understand-book", "paper-b");
+    mkdirSync(workspace, { recursive: true });
+    writeJson(path.join(workspace, ".build", "input", "manifest.json"), { profile_id: "paper", book_id: "paper-b" });
+
+    expect(() => resolveAutomaticBuildTarget(workspace, root)).toThrow("可信混合阅读基座");
+  });
+
+  it("finds a trusted paper workspace by a unique input sha256", () => {
+    const root = tempDir();
+    const workspace = writeTrustedPaperWorkspace(root);
+    const sourceCopy = path.join(root, "incoming-paper.md");
+    writeFileSync(sourceCopy, readFileSync(path.join(workspace, "paper.md")));
+
+    expect(resolveAutomaticBuildTarget(sourceCopy, root)).toMatchObject({
+      kind: "paper_workspace",
+      book_id: "paper-a",
+      workspace_dir: path.resolve(workspace),
+    });
+  });
+
+  it("selects only the first unfinished stage and batches pending semantic tasks", () => {
+    const snapshot: AutomaticBuildSnapshot = {
+      target: { kind: "paper_workspace", profile_id: "paper", book_id: "paper-a", root_dir: "C:/repo", workspace_dir: "C:/repo/.understand-book/paper-a", source_path: "C:/repo/.understand-book/paper-a/source.txt", target_ref: { version: "build_target_ref.v2", workspace_dir: "C:/repo/.understand-book/paper-a", book_id: "paper-a", profile_id: "paper", input_fingerprint: "paper-fingerprint" } },
+      stages: [
+        { stage: "pass1", pending_tasks: [], closed: true },
+        { stage: "paper_metadata", pending_tasks: ["2", "4", "8", "9", "10", "11"], closed: false },
+        { stage: "paper_lexicon", pending_tasks: ["1"], closed: false },
+      ],
+    };
+
+    expect(nextAutomaticBuildAction(snapshot, 5)).toEqual({
+      kind: "extract",
+      stage: "paper_metadata",
+      extractor: "paper-metadata-extractor",
+      task_ids: ["2", "4", "8", "9", "10"],
+      max_attempts: 3,
+    });
+  });
+
+  it("closes a stage only after every semantic task passes", () => {
+    const snapshot: AutomaticBuildSnapshot = {
+      target: { kind: "source_file", profile_id: "technical_learning", book_id: "guide", root_dir: "C:/repo", workspace_dir: "C:/repo/.understand-book/guide", source_path: "C:/repo/guide.md", target_ref: { version: "build_target_ref.v2", workspace_dir: "C:/repo/.understand-book/guide", book_id: "guide", profile_id: "technical_learning", input_fingerprint: "source-fingerprint" } },
+      stages: [{ stage: "pass1", pending_tasks: [], closed: false }],
+    };
+
+    expect(nextAutomaticBuildAction(snapshot)).toEqual({ kind: "close_stage", stage: "pass1" });
+  });
+
+  it("prepares the repaired BookStructure prompt alongside a frozen v2 policy", () => {
+    const root = tempDir();
+    const { workspace } = writeTechnicalLearningWorkspace(root, "structure-prompt-upgrade");
+    const target = resolveAutomaticBuildTarget(workspace, root);
+    writeJson(path.join(workspace, "long_range_candidates.json"), { candidates: [] });
+    closeV3Pass1(target);
+    closeV3ProfileSidecar(target);
+    const stage = buildAutomaticBuildSnapshot(target).stages.find(item => item.stage === "book_structure");
+    if (!stage?.policy_set) throw new Error("expected BookStructure production policies");
+    const previous = {
+      ...stage.policy_set,
+      members: stage.policy_set.members.map(member => member.policy_generation_id.endsWith(".v4") ? ({
+        ...member, policy_generation_id: member.policy_generation_id.replace(/\.v\d+$/u, ".v2"),
+        semantic_contract: { ...member.semantic_contract, prompt_sha256: "a".repeat(64) },
+      }) : member),
+    };
+    freezeAutomaticBuildStagePolicySet(target, previous);
+    const before = previous.members.map(member => readFileSync(path.join(workspace, ".build", "automatic-build",
+      "v4", "policies", "book_structure", member.policy_generation_id, "policy.json")));
+    expect(prepareAutomaticBuildSnapshot(target, "book_structure").status).toBe("ready");
+    const current = buildAutomaticBuildSnapshot(target).stages.find(item => item.stage === "book_structure");
+    expect(current?.policy_set).toEqual(stage.policy_set);
+    previous.members.forEach((member, index) => expect(readFileSync(path.join(workspace, ".build", "automatic-build",
+      "v4", "policies", "book_structure", member.policy_generation_id, "policy.json"))).toEqual(before[index]));
+  });
+
+  it("omits Pass2 projection for a confirmed plan that excludes it and retains explicit inspection", () => {
+    const root = tempDir();
+    const { workspace } = writeTechnicalLearningWorkspace(root, "plan-scoped-pass2");
+    const target = resolveAutomaticBuildTarget(workspace, root);
+    writeJson(path.join(workspace, "long_range_candidates.json"), { candidates: [] });
+    closeV3Pass1(target);
+    closeV3ProfileSidecar(target);
+    const plan = prepareExplicitLegacyBuildPlan(target.source_path, root, { book_id: target.book_id, pass2: "disabled" }).plan;
+    const planned = automaticBuildPlan(target.source_path, root, { book_id: target.book_id, build_plan: plan });
+    expect(planned.snapshot.stages.some(stage => stage.stage === "pass2")).toBe(false);
+    expect(planned.snapshot.stages.some(stage => stage.stage === "book_structure")).toBe(true);
+    const inspected = buildAutomaticBuildSnapshot(target, { public_stage_closure: [...plan.public_stage_closure, "pass2"] });
+    expect(inspected.stages.some(stage => stage.stage === "pass2")).toBe(true);
+    expect(inspected.stages.find(stage => stage.stage === "book_structure")?.pending_tasks)
+      .toEqual(planned.snapshot.stages.find(stage => stage.stage === "book_structure")?.pending_tasks);
+  }, 30000);
+  it("exposes BookStructure without Pass2 and invalidates it when a Pass2 audit arrives later", () => {
+    const root = tempDir();
+    const { workspace, sourceFile, source } = writeTechnicalLearningWorkspace(root, "optional-pass2");
+    const target = resolveAutomaticBuildTarget(workspace, root);
+    writeJson(path.join(workspace, "long_range_candidates.json"), { candidates: [] });
+    closeV3Pass1(target);
+    closeV3ProfileSidecar(target);
+    const header = { book_id: target.book_id, profile_id: target.profile_id };
+
+    const snapshot = buildAutomaticBuildSnapshot(target);
+    expect(existsSync(path.join(workspace, "pass2_audit.json"))).toBe(false);
+    expect(snapshot.stages.find((stage) => stage.stage === "pass2")).toMatchObject({ closed: false });
+    const bookStructure = snapshot.stages.find((stage) => stage.stage === "book_structure");
+    expect(bookStructure?.pending_work_units?.length).toBeGreaterThan(0);
+    expect(bookStructure?.pending_work_units?.every((unit) => unit.cost.candidate_count === 0)).toBe(true);
+    expect(bookStructure?.policy_set?.stage).toBe("book_structure");
+    expect(bookStructure?.policy_set?.members.map((member) => member.kind)).toEqual([
+      "structure_chapter",
+      "structure_fragment",
+      "structure_outline",
+      "structure_reduce",
+      "structure_relation_delta",
+      "structure_relation_select",
+      "structure_stitch",
+      "structure_stitch_fragment",
+      "structure_theme",
+      "structure_theme_plan",
+      "structure_theme_reconcile",
+      "structure_unit",
+    ]);
+    expect(bookStructure?.pending_work_units?.every((unit) => (
+      unit.version === "automatic_build_work_unit.v4"
+      && unit.kind === "structure_unit"
+      && "execution_budget_proof" in unit
+    ))).toBe(true);
+    expect(bookStructure?.pending_work_units?.every((unit) => (
+      bookStructure.generation_tasks?.[unit.work_unit_id]?.kind === "book_structure"
+    ))).toBe(true);
+    expect(bookStructure?.pending_work_units?.every((unit) => {
+      if (unit.version !== "automatic_build_work_unit.v4") return false;
+      const binding = bookStructure.task_bindings?.[unit.work_unit_id];
+      const generation = bookStructure.generation_tasks?.[unit.work_unit_id];
+      return Boolean(binding && "policy_generation_id" in binding
+        && generation?.kind === "book_structure"
+        && binding.policy_generation_id === generation.task.policy_generation_id
+        && JSON.stringify(binding.semantic_contract) === JSON.stringify(
+          semanticContractFromExtractionPolicy(generation.task.descriptor.policy_fingerprint),
+        ));
+    })).toBe(true);
+    expect(target.source_path).toBe(path.join(workspace, "source.txt"));
+
+    const unitWork = bookStructure?.pending_work_units ?? [];
+    for (const unit of unitWork) {
+      const task = bookStructure?.generation_tasks?.[unit.work_unit_id];
+      if (task?.kind !== "book_structure") throw new Error("missing unit projection");
+      const focused = readAutomaticBuildTaskStage(target, { stage: "book_structure", work_unit_id: unit.work_unit_id,
+        parent_lid: task.task.parent_unit_lid }, "full");
+      expect(focused?.work_units?.find(item => item.work_unit_id === unit.work_unit_id)).toEqual(unit);
+    }
+    if (!bookStructure?.policy_set) throw new Error("missing BookStructure production policy set");
+    const buildPlan = prepareExplicitLegacyBuildPlan(target.source_path, root, {
+      book_id: target.book_id,
+      pass2: "disabled",
+      now: "2026-07-31T00:00:00.000Z",
+    }).plan;
+    const unitPlan = automaticBuildPlan(target.source_path, root, {
+      book_id: target.book_id,
+      requested_workers: Math.max(1, unitWork.length),
+      available_agent_slots: Math.max(1, unitWork.length),
+      build_plan: buildPlan,
+    });
+    if (!unitPlan.preflight) throw new Error("expected BookStructure unit preflight");
+    const unitNext = automaticBuildNext(
+      target.source_path,
+      root,
+      Math.max(1, unitWork.length),
+      {
+        book_id: target.book_id,
+        protocol: AUTOMATIC_BUILD_PROTOCOL_V2,
+        owner: "book-structure-units",
+        now: "2026-07-31T00:00:00.000Z",
+        available_agent_slots: Math.max(1, unitWork.length),
+        accepted_plan_digest: unitPlan.preflight.descriptor_plan_digest,
+        build_plan: buildPlan,
+      },
+    );
+    if (unitNext.action.kind !== "extract" || unitNext.action.stage !== "book_structure") {
+      throw new Error("expected active BookStructure unit extraction action");
+    }
+    const scheduledUnits = new Map(unitNext.action.tasks.map((task) => [task.task_id, task]));
+    for (const [unitIndex, unit] of unitWork.entries()) {
+      const generation = bookStructure.generation_tasks?.[unit.work_unit_id];
+      if (generation?.kind !== "book_structure") {
+        throw new Error(`missing BookStructure production task: ${unit.work_unit_id}`);
+      }
+      const scheduled = scheduledUnits.get(unit.work_unit_id);
+      if (!scheduled) throw new Error(`BookStructure scheduler omitted ${unit.work_unit_id}`);
+      expect(scheduled.lease).toMatchObject({
+        policy_generation_id: generation.task.policy_generation_id,
+        semantic_contract: semanticContractFromExtractionPolicy(generation.task.descriptor.policy_fingerprint),
+      });
+      expect(existsSync(bookStructureGenerationTaskPath(
+        target,
+        generation.task.policy_generation_id,
+        unit.work_unit_id,
+      ))).toBe(true);
+      const rendered = runAutomaticBuildTaskInput(
+        target,
+        "book_structure",
+        unit.work_unit_id,
+        scheduled.lease_ref,
+        scheduled.lease.token,
+        { now: "2026-07-31T00:00:01.000Z", run_ttl_ms: 60_000 },
+      );
+      expect(rendered.stdout).toBe(renderBookStructureGenerationTaskInput(generation.task));
+      const unitLid = generation.task.parent_unit_lid;
+      const candidatePath = path.join(root, `book-structure-unit-${unitIndex}.json`);
+      const evidenceLid = JSON.parse(rendered.stdout).reference_scope.evidence_by_unit[unitLid][0];
+      writeJson(candidatePath, {
+        unit_card: {
+          unit_lid: unitLid,
+          role: "setup",
+          summary: { text: "Structure before Pass2.", evidence_lids: [evidenceLid] },
+          candidate_key_stops: [],
+          depends_on: [],
+          evidence_lids: [evidenceLid],
+        },
+      });
+      stageAutomaticBuildCandidate(
+        target,
+        scheduled.lease_ref,
+        scheduled.lease.token,
+        candidatePath,
+        { now: "2026-07-31T00:00:02.000Z" },
+      );
+      const receipt = submitAutomaticBuildTaskCandidate(
+        target,
+        "book_structure",
+        unit.work_unit_id,
+        scheduled.lease_ref,
+        scheduled.lease.token,
+        { now: "2026-07-31T00:00:03.000Z" },
+      );
+      expect(receipt.artifact_path).toBe(automaticBuildGenerationArtifactPath(
+        target,
+        "book_structure",
+        generation.task.policy_generation_id,
+        unit.work_unit_id,
+      ));
+    }
+
+    for (let round = 0; round < 8; round++) {
+      const state = buildAutomaticBuildSnapshot(target).stages.find(stage => stage.stage === "book_structure")!;
+      if (!state.pending_tasks.length) break;
+      for (const id of state.pending_tasks) {
+        const generation = state.generation_tasks![id];
+        if (generation.kind !== "book_structure") throw Error("expected BookStructure task");
+        freezeBookStructureGenerationTask(target, generation.task);
+        writeBookStructureGenerationCandidate({ target, task: generation.task,
+          candidate: structureProductionResponse(generation.task),
+          provenance: { executor: "bsr5-orchestrator", attempt: 1, generated_at: "2026-07-31T00:01:00.000Z" } });
+      }
+    }
+    const closeResult = runAutomaticBuildCloseStage(
+      target.source_path,
+      root,
+      "book_structure",
+      { quality_profile: "full", book_id: target.book_id },
+    );
+    expect(closeResult).toMatchObject({
+      version: "automatic_build_stage_close_result.v2",
+      status: "closed",
+      stage: "book_structure",
+      postcondition: { stage_closed: true },
+    });
+    expect(JSON.parse(readFileSync(path.join(workspace, "book_structure.json"), "utf8"))).toMatchObject({
+      header: { book_id: target.book_id, profile_id: target.profile_id },
+      spine: unitWork.map(unit => expect.objectContaining({ lid: (bookStructure.generation_tasks![unit.work_unit_id] as any).task.parent_unit_lid })),
+      throughlines: [],
+      key_stops: [],
+    });
+    expect(buildAutomaticBuildSnapshot(target).stages.find((stage) => stage.stage === "book_structure")).toMatchObject({
+      closed: true,
+      pending_tasks: [],
+    });
+
+    const firstUnitGeneration = bookStructure.generation_tasks?.[unitWork[0].work_unit_id];
+    if (firstUnitGeneration?.kind !== "book_structure") {
+      throw new Error("missing first BookStructure production task");
+    }
+    const evidenceLid = firstUnitGeneration.task.allowed_evidence_lids.find(
+      (lid) => lid !== firstUnitGeneration.task.parent_unit_lid,
+    );
+    if (!evidenceLid) throw new Error("BookStructure production task has no leaf evidence");
+    writeJson(path.join(workspace, "pass2_audit.json"), {
+      header,
+      accepted: [{
+        candidate_id: "late-pass2-edge",
+        source: "concept:source",
+        target: "concept:target",
+        type: "builds_on",
+        source_evidence_lids: [evidenceLid],
+        target_evidence_lids: [evidenceLid],
+        evidence_lids: [evidenceLid],
+        support_level: "explicit",
+        rationale: "A late accepted Pass2 edge changes the BookStructure input.",
+      }],
+      pending: [],
+      rejected: [],
+      gate_dropped: [],
+    });
+
+    const enrichedSnapshot = buildAutomaticBuildSnapshot(target);
+    expect(enrichedSnapshot.stages.find((stage) => stage.stage === "pass2")).toMatchObject({ closed: true });
+    const staleStructure = enrichedSnapshot.stages.find((stage) => stage.stage === "book_structure");
+    const focusedAfterPass2 = readAutomaticBuildTaskStage(target, { stage: "book_structure",
+      work_unit_id: firstUnitGeneration.task.descriptor.work_unit_id,
+      parent_lid: firstUnitGeneration.task.parent_unit_lid }, "full");
+    expect(focusedAfterPass2?.work_units?.find(unit => unit.work_unit_id === firstUnitGeneration.task.descriptor.work_unit_id))
+      .not.toEqual(firstUnitGeneration.task.descriptor);
+    expect(staleStructure?.closed).toBe(false);
+    expect(staleStructure?.pending_work_units?.some((unit) => (
+      unit.work_unit_id.startsWith("unit:") && unit.cost.candidate_count === 1
+    ))).toBe(true);
+  }, 30_000);
+
+  it("reopens Pass1 when fresh artifacts disagree with the closed base graph", () => {
+    const root = tempDir();
+    const workspace = writeTrustedPaperWorkspace(root);
+    const sourcePath = path.join(workspace, "source.txt");
+    const source = readFileSync(sourcePath, "utf8");
+    const lidNodes = segment(markdownToBlocks(source));
+    const byLid = new Map(lidNodes.map((node) => [node.lid, node]));
+    const windows = splitWindows(lidNodes, source);
+    const profile = resolveContentProfile("paper");
+    const target = resolveAutomaticBuildTarget(workspace, root);
+    const anchorLid = lidNodes.find((node) => node.children.length === 0)!.lid;
+    for (const window of windows) {
+      writeJson(
+        path.join(workspace, ".build", "pass1", `${window.id}.json`),
+        pass1Envelope(target, window.id, buildPass1Artifact(window, byLid, source, {
+          nodes: window.id === windows[0].id ? [{
+            id: "concept:retrieval",
+            type: "concept",
+            name: "retrieval",
+            occurrences: [anchorLid],
+            source_lid: null,
+          }] : [],
+          edges: [],
+        }, profile)),
+      );
+    }
+    writeJson(path.join(workspace, "base.json"), {
+      book_id: "paper-a",
+      lid_nodes: lidNodes,
+      graph_nodes: [],
+      graph_edges: [],
+    });
+    writeJson(path.join(workspace, "profile_metadata.json"), {
+      header: { book_id: "paper-a", profile_id: "paper" },
+    });
+    writeJson(path.join(workspace, "long_range_candidates.json"), { candidates: [] });
+
+    expect(prepareAutomaticBuildSnapshot(target, "pass1").status).toBe("ready");
+    const snapshot = buildAutomaticBuildSnapshot(target);
+
+    expect(snapshot.stages).toMatchObject([{
+      stage: "pass1",
+      pending_tasks: [],
+      pending_work_units: [],
+      closed: false,
+    }]);
+    expect(snapshot.stages[0].work_units?.[0]).toMatchObject({
+      version: "automatic_build_work_unit.v3",
+      work_unit_id: "0",
+      kind: "pass1_window",
+    });
+    expect(nextAutomaticBuildAction(snapshot)).toEqual({ kind: "close_stage", stage: "pass1" });
+  });
+
+  it("paper Pass1 close preserves the trusted foundation manifest and PDF maps", () => {
+    const root = tempDir();
+    const workspace = writeTrustedPaperWorkspace(root);
+    const sourcePath = path.join(workspace, "source.txt");
+    const target = resolveAutomaticBuildTarget(workspace, root);
+    writeFileSync(path.join(workspace, "pdf_source_map.json"), "map-sentinel", "utf8");
+    const manifestBefore = readFileSync(path.join(workspace, "source_manifest.json"), "utf8");
+    closeV3Pass1(target);
+    expect(readFileSync(path.join(workspace, "source_manifest.json"), "utf8")).toBe(manifestBefore);
+    expect(readFileSync(path.join(workspace, "pdf_source_map.json"), "utf8")).toBe("map-sentinel");
+    expect(JSON.parse(manifestBefore).canonical_source.kind).toBe("reconciled_markdown");
+    const metadataSnapshot = buildAutomaticBuildSnapshot(target);
+    const metadataStage = metadataSnapshot.stages.find((stage) => stage.stage === "paper_metadata")!;
+    expect(metadataStage.work_units).toHaveLength(2);
+    expect(metadataStage.work_units?.[1]).toMatchObject({
+      work_unit_id: "1",
+      deterministic_skip: { code: "no_metadata_signal" },
+      policy_fingerprint: { router_version: "paper_metadata_candidate.v2" },
+    });
+    expect(metadataStage.pending_work_units?.map((unit) => unit.work_unit_id)).toEqual(["0"]);
+    expect(nextAutomaticBuildAction(metadataSnapshot)).toMatchObject({
+      kind: "extract",
+      stage: "paper_metadata",
+      extractor: "paper-metadata-extractor",
+      task_ids: ["0"],
+      work_units: [{ work_unit_id: "0" }],
+    });
+
+    const metadataUnit = metadataStage.pending_work_units![0];
+    writeJson(path.join(workspace, ".build", "paper-metadata", `${metadataUnit.work_unit_id}.json`), buildSemanticArtifactEnvelope({
+      target: target.target_ref,
+      stage: "paper_metadata",
+      work_unit_id: metadataUnit.work_unit_id,
+      input_hash: metadataUnit.input_hash,
+      policy_fingerprint: metadataUnit.policy_fingerprint,
+      provenance: { executor: "test", model: "codex-test", attempt: 1, generated_at: "2026-07-19T00:00:00.000Z" },
+      payload: { content_hash: metadataUnit.input_hash, metadata: {} },
+    }));
+    writeJson(path.join(workspace, "paper_metadata.json"), { header: { book_id: target.book_id, profile_id: "paper" } });
+
+    const lexiconSnapshot = buildAutomaticBuildSnapshot(target);
+    const lexiconStage = lexiconSnapshot.stages.find((stage) => stage.stage === "paper_lexicon")!;
+    expect(lexiconStage.pending_work_units?.length).toBeGreaterThan(0);
+    expect(lexiconStage.pending_work_units?.every((unit) => unit.work_unit_id.startsWith("lexicon-batch-"))).toBe(true);
+    expect(lexiconStage.work_units?.filter((unit) => unit.deterministic_skip)
+      .every((unit) => !lexiconStage.pending_tasks.includes(unit.work_unit_id))).toBe(true);
+    expect(nextAutomaticBuildAction(lexiconSnapshot)).toMatchObject({
+      kind: "extract",
+      stage: "paper_lexicon",
+      task_ids: lexiconStage.pending_tasks,
+    });
+
+    for (const unit of lexiconStage.pending_work_units ?? []) {
+      writeJson(path.join(workspace, ".build", "paper-lexicon", `${unit.work_unit_id}.json`), buildSemanticArtifactEnvelope({
+        target: target.target_ref,
+        stage: "paper_lexicon",
+        work_unit_id: unit.work_unit_id,
+        input_hash: unit.input_hash,
+        policy_fingerprint: unit.policy_fingerprint,
+        provenance: { executor: "test", model: "codex-test", attempt: 1, generated_at: "2026-07-19T00:00:00.000Z" },
+        payload: { content_hash: unit.input_hash, entries: [] },
+      }));
+    }
+    writeJson(path.join(workspace, "paper_lexicon.json"), { header: { book_id: target.book_id, profile_id: "paper" }, entries: [] });
+
+    const sidecarSnapshot = buildAutomaticBuildSnapshot(target);
+    const sidecarStage = sidecarSnapshot.stages.find((stage) => stage.stage === "profile_sidecar")!;
+    expect(sidecarStage.pending_work_units?.length).toBeGreaterThan(0);
+    expect(sidecarStage.pending_work_units?.every((unit) => unit.kind === "profile_sidecar_discourse")).toBe(true);
+    expect(sidecarStage.work_units?.every((unit) => unit.version === "automatic_build_work_unit.v3"))
+      .toBe(true);
+    expect(sidecarStage.pending_work_units?.some((unit) => unit.kind === "profile_sidecar_formula"))
+      .toBe(false);
+    expect(nextAutomaticBuildAction(sidecarSnapshot)).toMatchObject({
+      kind: "extract",
+      stage: "profile_sidecar",
+      task_ids: sidecarStage.pending_tasks,
+    });
+  });
+
+  it("routes fresh paper lexicon fragments into an artifact-bound reducer without mutating build state", () => {
+    const root = tempDir();
+    const repeated = "bounded retrieval context ".repeat(300);
+    const source = [
+      "# Abstract",
+      "This paper defines a retrieval architecture.",
+      "# Evidence A",
+      `We define Adaptive Retrieval Architecture (ARA) as a retrieval model. ${repeated}`,
+      "# Evidence B",
+      `Adaptive Retrieval Architecture (ARA) preserves evidence. ${repeated}`,
+      "# Evidence C",
+      `Adaptive Retrieval Architecture (ARA) improves recall. ${repeated}`,
+      "# Evidence D",
+      `Adaptive Retrieval Architecture (ARA) improves precision. ${repeated}`,
+    ].join("\n\n");
+    const workspace = writeTrustedPaperWorkspace(root, "paper-lexicon-reduce", source);
+    const target = resolveAutomaticBuildTarget(workspace, root);
+    closeV3Pass1(target);
+
+    const metadataSnapshot = buildAutomaticBuildSnapshot(target);
+    const metadataStage = metadataSnapshot.stages.find((stage) => stage.stage === "paper_metadata")!;
+    for (const unit of metadataStage.pending_work_units ?? []) {
+      writeJson(path.join(workspace, ".build", "paper-metadata", `${unit.work_unit_id}.json`), buildSemanticArtifactEnvelope({
+        target: target.target_ref,
+        stage: "paper_metadata",
+        work_unit_id: unit.work_unit_id,
+        input_hash: unit.input_hash,
+        policy_fingerprint: unit.policy_fingerprint,
+        provenance: { executor: "test", model: "codex-test", attempt: 1, generated_at: "2026-08-18T00:00:00.000Z" },
+        payload: { content_hash: unit.input_hash, metadata: {} },
+      }));
+    }
+    writeJson(path.join(workspace, "paper_metadata.json"), {
+      header: { book_id: target.book_id, profile_id: "paper" },
+    });
+
+    const lidNodes = segment(markdownToBlocks(source));
+    const byLid = new Map(lidNodes.map((node) => [node.lid, node]));
+    const windows = splitWindows(lidNodes, source);
+    const policy = automaticBuildExtractionPolicy("paper_lexicon", resolveContentProfile("paper"), "full");
+    const initialPlan = routePaperLexiconWorkUnits({
+      target: target.target_ref,
+      windows,
+      byLid,
+      source,
+      policy_fingerprint: policy,
+    });
+    const fragments = Object.values(initialPlan.packets).filter((packet) =>
+      packet.route.role === "fragment"
+      && packet.route.cluster_keys[0] === "adaptive retrieval architecture");
+    expect(fragments.length).toBeGreaterThan(1);
+
+    const lexiconSnapshot = buildAutomaticBuildSnapshot(target);
+    const lexiconStage = lexiconSnapshot.stages.find((stage) => stage.stage === "paper_lexicon")!;
+    const fragmentArtifactHashes = new Map<string, string>();
+    for (const unit of lexiconStage.pending_work_units ?? []) {
+      const packet = initialPlan.packets[unit.work_unit_id];
+      if (!packet) throw new Error(`missing paper lexicon packet: ${unit.work_unit_id}`);
+      const artifact = buildPaperLexiconCandidateArtifact(packet, lidNodes, { entries: [] });
+      const envelope = buildSemanticArtifactEnvelope({
+        target: target.target_ref,
+        stage: "paper_lexicon",
+        work_unit_id: unit.work_unit_id,
+        input_hash: unit.input_hash,
+        policy_fingerprint: unit.policy_fingerprint,
+        provenance: { executor: "test", model: "codex-test", attempt: 1, generated_at: "2026-08-18T00:01:00.000Z" },
+        payload: artifact,
+      });
+      writeJson(path.join(workspace, ".build", "paper-lexicon", `${unit.work_unit_id}.json`), envelope);
+      if (packet.route.role === "fragment") {
+        fragmentArtifactHashes.set(unit.work_unit_id, envelope.artifact_hash);
+      }
+    }
+
+    const reducedSnapshot = buildAutomaticBuildSnapshot(target);
+    const reducedStage = reducedSnapshot.stages.find((stage) => stage.stage === "paper_lexicon")!;
+    const fragmentIds = new Set(fragments.map((fragment) => fragment.work_unit_id));
+    const reducer = reducedStage.pending_work_units?.find((unit) =>
+      unit.work_unit_id.startsWith("lexicon-reduce-")
+      && unit.dependencies.length === fragmentIds.size
+      && unit.dependencies.every((dependency) => fragmentIds.has(dependency.artifact)));
+    expect(reducer?.dependencies).toEqual(fragments.map((fragment) => ({
+      artifact: fragment.work_unit_id,
+      sha256: fragmentArtifactHashes.get(fragment.work_unit_id),
+    })).sort((left, right) => left.artifact.localeCompare(right.artifact)));
+    expect(existsSync(path.join(workspace, ".build", "paper-lexicon", `${reducer!.work_unit_id}.json`))).toBe(false);
+  }, 60_000);
+});

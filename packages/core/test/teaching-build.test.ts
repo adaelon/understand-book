@@ -15,7 +15,7 @@ import { renderAutomaticBuildTaskInput, runAutomaticBuildStageWriter, resolveAut
 import { TEACHING_STAGES, TEACHING_POLICIES, TEACHING_EXTRACTORS } from "../src/teaching-policy";
 import { automaticBuildFailureDiagnosticFromWriterError } from "../src/extractor-contract";
 import { acceptFormalObjects } from "../src/teaching-map";
-import { objectAlignmentInput, newObjectAlignment } from "../src/teaching-object-alignment";
+import { objectAlignmentInput, newObjectAlignment, advanceObjectAlignment } from "../src/teaching-object-alignment";
 import { canonicalBuildJson } from "../src/build-intent";
 import { prepareBuildRetrieval, readBuildRetrievalState, type BuildRetrievalRuntime } from "../src/automatic-build-retrieval";
 import { summarizeRetrievalUsage } from "../src/automatic-build-budget";
@@ -150,6 +150,58 @@ function replayFixture(semantic = true, linked = semantic, serial = true) {
   return { input, provider, prepare, changeProvider, fragmentFiles };
 }
 describe("whole-material teaching build", () => {
+  it("shares whole-book inputs and stores only the accepted alignment action", () => {
+    const f = replayFixture(false, false, false), routed = tasks(f.input);
+    const task = routed.tasks.find(t => routed.state.pending_tasks.includes(t.descriptor.work_unit_id))!;
+    freezeTeachingTask(f.input.target, task);
+    const file = teachingTaskPath(f.input.target, task.policy_generation_id, task.descriptor.work_unit_id);
+    expect(readTeachingTask(f.input.target, task.policy_generation_id, task.descriptor.work_unit_id)).toEqual(task);
+    expect(readFileSync(file, "utf8").length).toBeLessThan(JSON.stringify(task).length / 2);
+    expect(existsSync(`${file}.current.json`)).toBe(false);
+    const receipt = write(f.input, task, { kind: "inspect", key: task.alignment!.focus_key! });
+    const saved = JSON.parse(readFileSync(receipt.artifact_path, "utf8"));
+    expect(saved.payload.proposal).toBeUndefined();
+    const next = tasks(f.input).tasks.find(t => t.alignment?.focus_key === task.alignment!.focus_key
+      && t.descriptor.work_unit_id !== task.descriptor.work_unit_id)!;
+    expect(next.alignment!.proposal).toEqual(task.alignment!.proposal);
+    expect(next.alignment!.inspected).toEqual([task.alignment!.focus_key]);
+  });
+  it("resumes accepted parallel cursors without rereading receipts and rebuilds after cache loss", () => {
+    const f = replayFixture(false, false, false), routed = tasks(f.input);
+    const task = routed.tasks.find(t => routed.state.pending_tasks.includes(t.descriptor.work_unit_id))!;
+    const receipt = write(f.input, task, { kind: "inspect", key: task.alignment!.focus_key! });
+    const resumed = tasks(f.input);
+    const spy = vi.spyOn(fs, "readFileSync");
+    syncBuiltinESMExports();
+    try {
+      expect(tasks(f.input).state.pending_tasks).toEqual(resumed.state.pending_tasks);
+      expect(spy.mock.calls.some(([file]) => file === receipt.artifact_path)).toBe(false);
+    } finally { spy.mockRestore(); syncBuiltinESMExports(); }
+    unlinkSync(path.join(f.input.target.workspace_dir, ".build", "teaching", "alignment-0-0.cache"));
+    const rebuilt = tasks(f.input);
+    expect(rebuilt.state.pending_tasks).toEqual(resumed.state.pending_tasks);
+    expect(rebuilt.tasks.at(-1)!.rendered_input).toEqual(resumed.tasks.at(-1)!.rendered_input);
+  });
+  it("continues a historical six-item query unchanged and uses larger pages on a new query", () => {
+    const f = replayFixture(false, true, false), routed = tasks(f.input);
+    const task = routed.tasks.find(t => routed.state.pending_tasks.includes(t.descriptor.work_unit_id))!;
+    const action = { kind: "search", query: "", offset: 0 };
+    const receipt = write(f.input, task, action);
+    const saved = JSON.parse(readFileSync(receipt.artifact_path, "utf8"));
+    const legacy = advanceObjectAlignment({ work: task.alignment!, source: f.input.source, operation_id: task.descriptor.work_unit_id, action });
+    saved.payload = { ...legacy, accepted_action: action };
+    writeFileSync(receipt.artifact_path, JSON.stringify(buildSemanticArtifactEnvelopeV3(saved)));
+    const pending = () => { const result = tasks(f.input); return result.tasks.find(t => result.state.pending_tasks.includes(t.descriptor.work_unit_id)
+      && t.alignment?.focus_key === task.alignment!.focus_key)!; };
+    const next = pending();
+    expect(next.alignment!.search!.keys).toHaveLength(6);
+    const continued = write(f.input, next, { ...action, offset: 6 });
+    expect(JSON.parse(readFileSync(continued.artifact_path, "utf8")).payload.lookup).toBeUndefined();
+    const second = pending();
+    expect(second.alignment!.search!.keys).toEqual(legacy.proposal.objects.slice(6, 12).map(o => o.key));
+    write(f.input, second, action);
+    expect(pending().alignment!.search!.keys).toHaveLength(Math.min(24, legacy.proposal.objects.length));
+  });
   it("routes supplemental evidence reads after parallel retrieval exhaustion and preserves field diagnostics and receipts", async () => {
     const f = replayFixture(true, false, false);
     await f.prepare();
@@ -524,7 +576,7 @@ describe("whole-material teaching build", () => {
     const receipt = write(input, first, { kind: "search", query: "第", offset: 0 });
     const acceptedBytes = readFileSync(receipt.artifact_path, "utf8");
     expect(provider.calls).toHaveLength(calls);
-    expect(JSON.parse(acceptedBytes).payload.search).toMatchObject({ query: "第", preparation_required: true });
+    expect(JSON.parse(acceptedBytes).payload.accepted_action).toEqual({ kind: "search", query: "第", offset: 0 });
     expect(tasks(input).state.pending_tasks).toEqual([]);
     const query = provider.embed_query;
     provider.embed_query = async () => { throw new Error("network offline"); };
@@ -627,7 +679,8 @@ describe("whole-material teaching build", () => {
     expect(restored.alignment!.inspected).toEqual([key]);
     const saved = JSON.parse(readFileSync(receipt.artifact_path, "utf8"));
     expect(saved.payload.accepted_action).toEqual({ kind: "inspect", key });
-    expect(saved.payload.proposal).toEqual(restored.alignment!.proposal);
+    expect(saved.payload.proposal).toBeUndefined();
+    expect(restored.alignment!.proposal).toEqual(initial.alignment!.proposal);
     const changed = structuredClone(initial);
     changed.alignment!.proposal.objects.at(-1)!.meaning = "未展示候选被重新整理";
     expect(canonicalBuildJson(objectAlignmentInput(changed.alignment!, input.source, changed.previous))).toBe(initial.rendered_input);
@@ -640,7 +693,7 @@ describe("whole-material teaching build", () => {
     const reused = acceptTeachingCandidate(input.target, changed, { kind: "inspect", key }, provenance);
     expect(reused).toBe(receipt.artifact_path);
     // The historical receipt stays intact; current route state comes from the current fragments.
-    expect(JSON.parse(readFileSync(reused, "utf8")).payload.proposal).toEqual(initial.alignment!.proposal);
+    expect(JSON.parse(readFileSync(reused, "utf8"))).toEqual(saved);
     const fragmentFile = fragmentPaths.at(-1)!;
     const replacement = JSON.parse(readFileSync(fragmentFile, "utf8"));
     replacement.payload.proposal.objects.at(-1).meaning = "未展示候选被重新整理";
@@ -708,7 +761,7 @@ describe("whole-material teaching build", () => {
     for (const stage of TEACHING_STAGES) expect(resolveAutomaticBuildPromptAsset(`${TEACHING_EXTRACTORS[stage]}.md`).sha256).toBe(TEACHING_POLICIES[stage].prompt_sha256);
     const input = fixture();
     try { write(input, tasks(input).tasks[0], {}); throw new Error("expected invalid candidate"); }
-    catch (error) { expect(automaticBuildFailureDiagnosticFromWriterError(error, { writer_started: true })).toMatchObject({ category: "schema", code: "semantic_output_invalid" }); }
+    catch (error) { expect(automaticBuildFailureDiagnosticFromWriterError(error, { writer_started: true })).toMatchObject({ category: "schema", code: "schema_invalid" }); }
   });
   it("loads full source spans, including definitions beyond structure previews", () => {
     const input = fixture();

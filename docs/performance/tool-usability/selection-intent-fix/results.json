@@ -1,0 +1,33 @@
+[
+  {
+    "case": "explain-only",
+    "note_status": null,
+    "note_error": "TOOL_NOT_EXPOSED",
+    "records": 0,
+    "effects": 0,
+    "reader_unchanged": true,
+    "discovery_blocked": [
+      "explicit_effect_intent_required"
+    ]
+  },
+  {
+    "case": "save-note",
+    "note_status": "CREATED",
+    "note_error": null,
+    "records": 1,
+    "effects": 1,
+    "reader_unchanged": false,
+    "discovery_blocked": []
+  },
+  {
+    "case": "source-command",
+    "note_status": null,
+    "note_error": "TOOL_NOT_EXPOSED",
+    "records": 0,
+    "effects": 0,
+    "reader_unchanged": true,
+    "discovery_blocked": [
+      "explicit_effect_intent_required"
+    ]
+  }
+]

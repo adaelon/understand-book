@@ -1,0 +1,25 @@
+
+> @understand-book/web@0.0.0 test:e2e E:\allwork\download\agent\understand-book\packages\web
+> playwright test "--config" "../../docs/performance/yeye-brand-yy5-20261013/playwright.config.ts"
+
+[WebServer] (node:9460) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:3508) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 10 tests using 1 worker
+
+(node:31528) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 playwright\product-home.spec.ts:6:3 › YY5 reading companion shares the learning scene without obscuring it at 320px (2.7s)
+  ok  2 playwright\product-home.spec.ts:6:3 › YY5 reading companion shares the learning scene without obscuring it at 390px (2.7s)
+  ok  3 playwright\product-home.spec.ts:6:3 › YY5 reading companion shares the learning scene without obscuring it at 768px (2.3s)
+  ok  4 playwright\product-home.spec.ts:6:3 › YY5 reading companion shares the learning scene without obscuring it at 1000px (2.3s)
+  ok  5 playwright\product-home.spec.ts:6:3 › YY5 reading companion shares the learning scene without obscuring it at 1024px (2.4s)
+  ok  6 playwright\product-home.spec.ts:6:3 › YY5 reading companion shares the learning scene without obscuring it at 1440px (2.6s)
+  ok  7 playwright\product-home.spec.ts:70:3 › garden experiment keeps attempts and checks changed conditions at 1440px (4.5s)
+  ok  8 playwright\product-home.spec.ts:70:3 › garden experiment keeps attempts and checks changed conditions at 390px (5.6s)
+  ok  9 playwright\product-home.spec.ts:121:1 › skipped steps do not invent attempts, and a fresh page clears the illustration (1.1s)
+  ok 10 playwright\product-home.spec.ts:142:1 › homepage and experiment fit small and large screens; product images still open (3.9s)
+
+  10 passed (35.1s)

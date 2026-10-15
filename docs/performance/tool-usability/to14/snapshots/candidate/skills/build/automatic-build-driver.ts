@@ -1,0 +1,2804 @@
+import { readBuildExecutorModelRuntime, type BuildExecutorModelRuntimeV1 } from "../../packages/core/src/build-executor-model-runtime";
+import { automaticBuildRefill, AutomaticBuildRefillRequestError } from "./automatic-build-refill";
+import { projectAutomaticBuildProgress, type AutomaticBuildProgressV1 } from "../../packages/core/src/automatic-build-progress";
+import { readDshBuildConfirmation, type DshBuildConfirmationV1 } from "../../packages/core/src/build-harness-confirmation";
+import { configuredBuildRetrievalRuntime, buildRetrievalReview, configureBuildRetrieval, reviseBuildRetrieval, buildRetrievalScope } from "../../packages/core/src/build-retrieval-config";
+import { transitionBuildPlan } from "../../packages/core/src/build-intent";
+import type { BuildRetrievalRuntime } from "../../packages/core/src/automatic-build-retrieval";
+import { readDshExecutorObservation } from "../../packages/core/src/dsh-executor-observation";
+import { DSH_BUILD_CONTROL_CONTRACT_V1 } from "../../packages/core/src/dsh-build-executor-contract";
+import { inspectAutomaticBuildTaskClaim } from "../../packages/core/src/automatic-build-lease";
+import { createHash, randomBytes } from "node:crypto";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  writeFileSync,
+  unlinkSync,
+} from "node:fs";
+import path from "node:path";
+import { CODEX_BUILD_EXECUTION_PROFILE_V1, resolveBuildExecutionProfile, executionProfileSelection,
+  DSH_BUILD_EXECUTION_PROFILE_V1,
+  type BuildExecutionProfileSelectionV1 } from "../../packages/core/src/build-execution-profile";
+import {
+  automaticBuildPreflightEvaluationEvidence,
+  DEFAULT_AUTOMATIC_BUILD_BUDGET,
+  sameAutomaticBuildBudgetEvidence,
+  validateAutomaticBuildPlanBudgetEvaluation,
+  type AutomaticBuildBudgetLimitsV1,
+  type AutomaticBuildExecutorProvenanceV1,
+  type AutomaticBuildPlanBudgetEvaluationV2,
+  type AutomaticBuildPreflightEvaluationEvidenceV2,
+  type AutomaticBuildWallBudgetV1,
+} from "../../packages/core/src/automatic-build-budget";
+import {
+  validateBuildPlanV1,
+  type BuildPlanV1,
+} from "../../packages/core/src/build-intent";
+import {
+  adaptAutomaticBuildPrivateArtifactSelectionV3,
+  issueAutomaticBuildOpaqueHandoff,
+  recordAutomaticBuildExecutorBootstrapFailure,
+  recordAutomaticBuildExecutorOpenCallCorrection,
+  recoverAutomaticBuildExecutorTerminalSession,
+  validateAutomaticBuildOpenCallCorrection,
+  type AutomaticBuildOpenCallCorrectionV1,
+  resolveAutomaticBuildTargetLids,
+  resolveAutomaticBuildExecutorRegistryRoot,
+} from "../../packages/core/src/automatic-build-executor-session";
+import {
+  inspectAutomaticBuildDispatchRecoveryGeneration,
+  AutomaticBuildDispatchSettledError,
+  readAutomaticBuildDispatch,
+  type AutomaticBuildRecoveryGenerationIdentity,
+} from "../../packages/core/src/automatic-build-dispatch-runtime";
+import { validateBuildIntentAny } from "../../packages/core/src/build-intent-v2";
+import {
+  resolveAutomaticBuildTarget,
+  prepareAutomaticBuildSnapshot,
+  type AutomaticBuildStage,
+  type BuildTargetRefV2,
+  type AutomaticBuildAsyncPreparationResult,
+  type AutomaticBuildTarget,
+} from "../../packages/core/src/build-orchestrator";
+import { isAutomaticBuildTaskPolicyBindingV2 } from "../../packages/core/src/semantic-artifact";
+import { canonicalAutomaticBuildJson } from "../../packages/core/src/automatic-build-protocol";
+import {
+  createAutomaticBuildAttemptScope,
+  prepareAutomaticBuildRetryRecovery,
+  readAutomaticBuildRetryBoundary,
+  recordAutomaticBuildRetryRecovery,
+  readAutomaticBuildAttemptRecord,
+} from "../../packages/core/src/automatic-build-task-store";
+import {
+  validateAutomaticBuildRetryBoundary,
+  allowsAutomaticBuildSameScopeRetry,
+  type AutomaticBuildRetryBoundaryV1,
+} from "../../packages/core/src/automatic-build-attempt-recovery";
+import {
+  createAutomaticBuildFailureDiagnostic,
+  createAutomaticBuildFailureDiagnosticV3,
+  isAutomaticBuildCorrectableCandidateFailure,
+  isAutomaticBuildFailureDiagnosticV3,
+  legacyAutomaticBuildFailureDiagnostic,
+  requiredRecoveryForAutomaticBuildFailure,
+  validateAutomaticBuildFailureDiagnostic,
+  type AutomaticBuildFailureCategory,
+  type AutomaticBuildFailureDiagnosticV2,
+  type AutomaticBuildFailurePhase,
+  type AutomaticBuildRequiredRecovery,
+} from "../../packages/core/src/extractor-contract";
+import {
+  automaticBuildNext,
+  automaticBuildPlan,
+  automaticBuildRecoveryAction,
+  automaticBuildProtocolContract,
+  automaticBuildEngineContract,
+  prepareExplicitLegacyBuildPlan,
+  runAutomaticBuildCloseStage,
+} from "./automatic-build";
+import { prepareIntentArtifactMailboxes } from "./intent-artifact";
+
+// Refill stdin retains completed handoff refs across a whole-book invocation.
+const MAX_STDIN_BYTES = 1_048_576;
+const MAX_ROOT_RESPONSE_BYTES = 65_536;
+const MAX_RECORD_BYTES = 1_048_576;
+const MAX_TRANSITIONS = 8;
+const INVOCATION_REF = /^abinv1_[a-f0-9]{64}$/u;
+const REQUEST_ID = /^abreq1_[a-f0-9]{64}$/u;
+const HANDOFF_REF = /^abhandoff1_[a-f0-9]{64}$/u;
+const DISPATCH_SLOT_REF = /^abdispatchslot1_[a-f0-9]{64}$/u;
+const SHA256 = /^[a-f0-9]{64}$/u;
+const FORBIDDEN_ROOT_FIELDS = new Set([
+  "command",
+  "cwd",
+  "path",
+  "sha256",
+  "byte_length",
+  "semantic_prompt",
+  "extractor_prompt",
+  "envelope",
+  "candidate",
+  "task_input",
+  "receipt_body",
+  "receipt",
+  "receipts",
+  "failure_diagnostic",
+  "diagnostic_digest",
+  "json_pointer",
+  "expected",
+  "plan_digest",
+  "plan_id",
+  "policy_set_digest",
+  "proof_digest",
+  "private_root",
+  "task_path",
+  "task_id",
+  "artifact_id",
+  "artifact_type",
+  "intent_id",
+  "intent_digest",
+  "blueprint_digest",
+]);
+const STAGES = new Set<AutomaticBuildStage>([
+  "pass1",
+  "paper_metadata",
+  "paper_lexicon",
+  "profile_sidecar",
+  "pass2",
+  "book_structure",
+  "formal_objects", "cognitive_materials", "teaching_publish",
+  "paper_reading_guide",
+]);
+const USER_DECISION_REASONS = new Set<AutomaticBuildUserDecisionReasonV1>([
+  "plan_confirmation_required",
+  "plan_changed",
+  "pass2_choice_required",
+  "budget_exceeded",
+  "low_confidence_wall_budget",
+  "wall_budget_exceeded",
+  "executor_unavailable",
+  "foundation_required",
+  "legacy_migration_required",
+  "quality_gate_failed",
+  "structure_execution_budget_exceeded",
+  "structure_preparation_incomplete",
+  "retry_exhausted",
+  "recovery_not_satisfied",
+  "executor_instability",
+  "installation_incompatible",
+  "executor_bootstrap_failed",
+  "build_engine_failed",
+  "retrieval_unavailable",
+  "retrieval_cancelled",
+]);
+
+export type AutomaticBuildUserDecisionReasonV1 =
+  | "retrieval_unavailable"
+  | "retrieval_cancelled"
+  | "plan_confirmation_required"
+  | "plan_changed"
+  | "pass2_choice_required"
+  | "budget_exceeded"
+  | "low_confidence_wall_budget"
+  | "wall_budget_exceeded"
+  | "executor_unavailable"
+  | "foundation_required"
+  | "legacy_migration_required"
+  | "quality_gate_failed"
+  | "structure_execution_budget_exceeded"
+  | "structure_preparation_incomplete"
+  | "retry_exhausted"
+  | "recovery_not_satisfied"
+  | "executor_instability"
+  | "installation_incompatible"
+  | "executor_bootstrap_failed"
+  | "build_engine_failed";
+
+export interface AutomaticBuildUserDecisionProjectionV1 {
+  category: AutomaticBuildUserDecisionReasonV1 | AutomaticBuildFailureCategory;
+  code?: string;
+  phase?: AutomaticBuildFailurePhase;
+  stage?: AutomaticBuildStage;
+  work_unit_count?: number;
+  required_recovery?: AutomaticBuildRequiredRecovery;
+  violations?: Array<{ code: string; actual: number; limit: number }>;
+  confidence?: "high" | "medium" | "low";
+  gate_status?: string;
+}
+
+export interface AutomaticBuildCompletionSummaryV1 {
+  status: "complete";
+  completed_stages: number;
+}
+
+export type AutomaticBuildStepActionV1 =
+  | {
+      kind: "SPAWN_EXECUTORS";
+      executors: Array<{
+        opaque_handoff_ref: string;
+        dispatch_slot_ref?: string;
+      }>;
+    }
+  | {
+      kind: "WAIT";
+      reason: "active_executors" | "active_lease" | "backoff";
+      retry_after_ms: number;
+    }
+  | {
+      kind: "NEEDS_USER";
+      request_id: string;
+      reason: AutomaticBuildUserDecisionReasonV1;
+      message: string;
+      choices: Array<{ choice_id: string; label: string; consequence: string }>;
+      projection?: AutomaticBuildUserDecisionProjectionV1;
+    }
+  | {
+      kind: "DONE";
+      summary: AutomaticBuildCompletionSummaryV1;
+    };
+
+export interface AutomaticBuildStepResponseV1 {
+  version: "automatic_build_step.v1";
+  action: AutomaticBuildStepActionV1;
+  build_progress?: AutomaticBuildProgressV1;
+  book_structure_progress?: {
+    local: { done: number; total: number };
+    selection: { done: number; total: number };
+    relation: { done: number; total: number };
+    publication: "pending" | "ready" | "published";
+  };
+}
+
+export interface AutomaticBuildStepRequestV1 {
+  version: "automatic_build_step_request.v1";
+  invocation_ref: string;
+  available_agent_slots: 0 | 1 | 2 | 3;
+  decision?: { request_id: string; choice_id: string };
+  bootstrap_failure?: { opaque_handoff_ref: string };
+  open_call_correction?: AutomaticBuildOpenCallCorrectionV1;
+  executor_open_failure?: {
+    opaque_handoff_ref: string;
+    diagnostic_code: "connection_terminal" | "handoff_ref_mismatch";
+    phase: "open";
+  };
+}
+
+export interface AutomaticBuildRequestErrorV1 {
+  version: "automatic_build_request_error.v1";
+  code: "invalid_step_request" | "invalid_refill_request";
+  request_version: "automatic_build_step_request.v1" | "automatic_build_refill_request.v1";
+  message: string;
+}
+
+/** A rejected control request has not entered the build state machine. */
+class AutomaticBuildStepRequestError extends Error {
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : "automatic build step request is invalid", { cause });
+    this.name = "AutomaticBuildStepRequestError";
+  }
+}
+
+export interface AutomaticBuildInvocationCreateV1 {
+  version: "automatic_build_invocation_create.v1";
+  target_input: string;
+  root_dir: string;
+  build_plan_path: string;
+  quality_profile: "full";
+  max_parallel: 1 | 2 | 3;
+  created_at: string;
+  budget?: AutomaticBuildBudgetLimitsV1;
+  wall_budget?: AutomaticBuildWallBudgetV1;
+  executor_provenance?: AutomaticBuildExecutorProvenanceV1;
+}
+
+export interface AutomaticBuildInvocationCreateV2 extends Omit<AutomaticBuildInvocationCreateV1, "version"> {
+  version: "automatic_build_invocation_create.v2";
+  execution_profile: BuildExecutionProfileSelectionV1;
+  model_runtime?: Readonly<BuildExecutorModelRuntimeV1>;
+  confirmation?: DshBuildConfirmationV1;
+}
+
+type AutomaticBuildInvocationCreate = AutomaticBuildInvocationCreateV1 | AutomaticBuildInvocationCreateV2;
+
+function invocationExecutionProfile(input: AutomaticBuildInvocationCreate) {
+  const profile = input.version === "automatic_build_invocation_create.v2"
+    ? resolveBuildExecutionProfile(input.execution_profile)
+    : CODEX_BUILD_EXECUTION_PROFILE_V1;
+  return profile;
+}
+
+interface AutomaticBuildInvocationRecord {
+  version: "automatic_build_invocation_record.v1" | "automatic_build_invocation_record.v2";
+  invocation_ref: string;
+  input: AutomaticBuildInvocationCreate;
+  initial_target_ref: BuildTargetRefV2;
+  initial_build_plan_digest: string;
+}
+
+interface DriverStateIdentityV1 {
+  build_plan_digest: string;
+  descriptor_plan_digest?: string;
+  preflight_evaluation?: AutomaticBuildPreflightEvaluationEvidenceV2;
+}
+
+interface DecisionBoundaryV1 {
+  reason: AutomaticBuildUserDecisionReasonV1;
+  internal_reason: string;
+  state: DriverStateIdentityV1;
+  stage?: AutomaticBuildStage;
+  projection?: AutomaticBuildUserDecisionProjectionV1;
+  plan_budget_evidence?: AutomaticBuildPlanBudgetEvaluationV2;
+  attempt_scopes?: Array<{ work_unit_id: string; attempt_scope_digest: string }>;
+  retry_boundaries?: Array<AutomaticBuildRetryBoundaryV1 & { work_unit_id: string }>;
+}
+
+interface AutomaticBuildDecisionRequestRecordV1 extends DecisionBoundaryV1 {
+  version: "automatic_build_decision_request_record.v1";
+  invocation_ref: string;
+  request_id: string;
+  choices: Array<{ choice_id: string; label: string; consequence: string }>;
+}
+
+interface AutomaticBuildDecisionReceiptV1 {
+  version: "automatic_build_decision_receipt.v1";
+  invocation_ref: string;
+  request_id: string;
+  choice_id: string;
+  state: DriverStateIdentityV1;
+}
+
+interface AutomaticBuildDriverHandoffProjectionV1 {
+  version: "automatic_build_driver_handoff_projection.v1";
+  invocation_ref: string;
+  opaque_handoff_ref: string;
+  dispatch_identity: {
+    stage: AutomaticBuildStage;
+    dispatch_id: string;
+    dispatch_run_id: string;
+    handoff_digest: string;
+  };
+}
+
+interface AutomaticBuildDriverDispatchProjectionV1 {
+  version: "automatic_build_driver_dispatch_projection.v1";
+  invocation_ref: string;
+  dispatch_id: string;
+  dispatch_run_id: string;
+  opaque_handoff_ref: string;
+}
+
+interface AutomaticBuildDriverHandoffProjectionV2 {
+  version: "automatic_build_driver_handoff_projection.v2";
+  invocation_ref: string;
+  opaque_handoff_ref: string;
+  dispatch_slot_ref: string;
+  recovery_identity: AutomaticBuildRecoveryGenerationIdentity;
+  dispatch_identity: AutomaticBuildDriverHandoffProjectionV1["dispatch_identity"];
+}
+
+interface AutomaticBuildDriverDispatchProjectionV2 {
+  version: "automatic_build_driver_dispatch_projection.v2";
+  invocation_ref: string;
+  dispatch_id: string;
+  dispatch_run_id: string;
+  opaque_handoff_ref: string;
+  dispatch_slot_ref: string;
+  recovery_identity: AutomaticBuildRecoveryGenerationIdentity;
+}
+
+interface DriverState {
+  invocation: AutomaticBuildInvocationRecord;
+  plan: BuildPlanV1;
+  plan_result: ReturnType<typeof automaticBuildPlan>;
+}
+
+type AutomaticBuildPrivateArtifactWaveV1 =
+  | { state: "complete" }
+  | { state: "waiting" }
+  | { state: "retry_exhausted" }
+  | { state: "spawn"; executors: Array<{ opaque_handoff_ref: string }> };
+
+interface DecisionEffect {
+  bypass_budget?: true;
+  bypass_wall_budget?: true;
+  accepted_plan_budget_evidence?: AutomaticBuildPlanBudgetEvaluationV2;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function exactKeys(
+  value: Record<string, unknown>,
+  required: readonly string[],
+  optional: readonly string[] = [],
+): void {
+  const allowed = new Set([...required, ...optional]);
+  if (required.some((key) => !(key in value)) || Object.keys(value).some((key) => !allowed.has(key))) {
+    throw new Error("automatic build driver object has invalid fields");
+  }
+}
+
+function boundedString(value: unknown, field: string, maxBytes = 16_384): string {
+  if (typeof value !== "string" || !value || value.includes("\0")
+    || Buffer.byteLength(value, "utf8") > maxBytes) {
+    throw new Error(`${field} is invalid`);
+  }
+  return value;
+}
+
+function nonNegativeSafeInteger(value: unknown, field: string): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 0) throw new Error(`${field} is invalid`);
+  return value as number;
+}
+
+function validateBudget(value: unknown): AutomaticBuildBudgetLimitsV1 | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) throw new Error("budget is invalid");
+  exactKeys(value, [
+    "version",
+    "max_tasks",
+    "max_total_score",
+    "max_estimated_total_tokens",
+    "max_batch_score",
+    "max_parallel_cost",
+  ]);
+  if (value.version !== "automatic_build_budget_limits.v1") {
+    throw new Error("budget version is invalid");
+  }
+  return {
+    version: value.version,
+    max_tasks: nonNegativeSafeInteger(value.max_tasks, "budget.max_tasks"),
+    max_total_score: nonNegativeSafeInteger(value.max_total_score, "budget.max_total_score"),
+    max_estimated_total_tokens: nonNegativeSafeInteger(
+      value.max_estimated_total_tokens,
+      "budget.max_estimated_total_tokens",
+    ),
+    max_batch_score: nonNegativeSafeInteger(value.max_batch_score, "budget.max_batch_score"),
+    max_parallel_cost: nonNegativeSafeInteger(value.max_parallel_cost, "budget.max_parallel_cost"),
+  };
+}
+
+function validateWallBudget(value: unknown): AutomaticBuildWallBudgetV1 | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) throw new Error("wall_budget is invalid");
+  exactKeys(
+    value,
+    ["version", "on_exceed"],
+    ["max_wall_clock_minutes", "max_agent_starts", "max_duplicate_lease_ratio"],
+  );
+  if (value.version !== "automatic_build_wall_budget.v1"
+    || (value.on_exceed !== "needs_user" && value.on_exceed !== "stop")) {
+    throw new Error("wall_budget version or policy is invalid");
+  }
+  const maxWallClockMinutes = value.max_wall_clock_minutes;
+  if (maxWallClockMinutes !== undefined
+    && (typeof maxWallClockMinutes !== "number" || !Number.isFinite(maxWallClockMinutes)
+      || maxWallClockMinutes < 0)) {
+    throw new Error("wall_budget.max_wall_clock_minutes is invalid");
+  }
+  const maxAgentStarts = value.max_agent_starts === undefined
+    ? undefined
+    : nonNegativeSafeInteger(value.max_agent_starts, "wall_budget.max_agent_starts");
+  const maxDuplicateLeaseRatio = value.max_duplicate_lease_ratio;
+  if (maxDuplicateLeaseRatio !== undefined
+    && (typeof maxDuplicateLeaseRatio !== "number" || !Number.isFinite(maxDuplicateLeaseRatio)
+      || maxDuplicateLeaseRatio < 0 || maxDuplicateLeaseRatio > 1)) {
+    throw new Error("wall_budget.max_duplicate_lease_ratio is invalid");
+  }
+  return {
+    version: value.version,
+    ...(maxWallClockMinutes === undefined ? {} : { max_wall_clock_minutes: maxWallClockMinutes }),
+    ...(maxAgentStarts === undefined ? {} : { max_agent_starts: maxAgentStarts }),
+    ...(maxDuplicateLeaseRatio === undefined ? {} : {
+      max_duplicate_lease_ratio: maxDuplicateLeaseRatio,
+    }),
+    on_exceed: value.on_exceed,
+  };
+}
+
+function validateExecutorProvenance(value: unknown): AutomaticBuildExecutorProvenanceV1 | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) throw new Error("executor_provenance is invalid");
+  exactKeys(value, ["model", "reasoning_effort", "harness_release"]);
+  return {
+    model: boundedString(value.model, "executor_provenance.model", 512),
+    reasoning_effort: boundedString(value.reasoning_effort, "executor_provenance.reasoning_effort", 128),
+    harness_release: boundedString(value.harness_release, "executor_provenance.harness_release", 512),
+  };
+}
+
+function validateCreateInput(value: unknown): AutomaticBuildInvocationCreate {
+  if (!isRecord(value)) throw new Error("automatic build invocation create request is invalid");
+  exactKeys(
+    value,
+    [
+      "version",
+      "target_input",
+      "root_dir",
+      "build_plan_path",
+      "quality_profile",
+      "max_parallel",
+      "created_at",
+    ],
+    ["budget", "wall_budget", "executor_provenance", ...(value.version === "automatic_build_invocation_create.v2" ? ["execution_profile", "model_runtime", "confirmation"] : [])],
+  );
+  if ((value.version !== "automatic_build_invocation_create.v1" && value.version !== "automatic_build_invocation_create.v2") || value.quality_profile !== "full") {
+    throw new Error("automatic build invocation create version or quality profile is invalid");
+  }
+  const maxParallel = nonNegativeSafeInteger(value.max_parallel, "max_parallel");
+  if (maxParallel < 1 || maxParallel > 3) throw new Error("max_parallel must be 1, 2, or 3");
+  const createdAt = boundedString(value.created_at, "created_at", 128);
+  if (!Number.isFinite(new Date(createdAt).getTime())) throw new Error("created_at is invalid");
+  const common = {
+    target_input: boundedString(value.target_input, "target_input"),
+    root_dir: boundedString(value.root_dir, "root_dir"),
+    build_plan_path: boundedString(value.build_plan_path, "build_plan_path"),
+    quality_profile: "full" as const,
+    max_parallel: maxParallel as 1 | 2 | 3,
+    created_at: createdAt,
+    ...(value.budget === undefined ? {} : { budget: validateBudget(value.budget)! }),
+    ...(value.wall_budget === undefined ? {} : { wall_budget: validateWallBudget(value.wall_budget)! }),
+    ...(value.executor_provenance === undefined ? {} : {
+      executor_provenance: validateExecutorProvenance(value.executor_provenance)!,
+    }),
+  };
+  if (value.version === "automatic_build_invocation_create.v1") return { version: value.version, ...common };
+  const profile = resolveBuildExecutionProfile(value.execution_profile);
+  if (profile.harness_kind === "codex") {
+    if (value.model_runtime !== undefined || value.confirmation !== undefined) throw new Error("Codex invocation contains unsupported fields");
+    return { version: value.version, ...common, execution_profile: executionProfileSelection(profile) };
+  }
+  return { version: value.version, ...common, execution_profile: executionProfileSelection(profile),
+    model_runtime: readBuildExecutorModelRuntime(value.model_runtime), confirmation: readDshBuildConfirmation(value.confirmation) };
+
+}
+
+function validateStepRequest(value: unknown): AutomaticBuildStepRequestV1 {
+  if (!isRecord(value)) throw new Error("automatic build step request is invalid");
+  exactKeys(value, ["version", "invocation_ref", "available_agent_slots"], ["decision", "bootstrap_failure", "executor_open_failure", "open_call_correction"]);
+  const correction = value.open_call_correction === undefined ? undefined
+    : validateAutomaticBuildOpenCallCorrection(value.open_call_correction);
+  if (correction && (value.bootstrap_failure !== undefined || value.executor_open_failure !== undefined)) {
+    throw new Error("executor failure observations are mutually exclusive");
+  }
+  if (value.version !== "automatic_build_step_request.v1"
+    || typeof value.invocation_ref !== "string" || !INVOCATION_REF.test(value.invocation_ref)) {
+    throw new Error("automatic build step request version or invocation ref is invalid");
+  }
+  const availableAgentSlots = nonNegativeSafeInteger(value.available_agent_slots, "available_agent_slots");
+  if (availableAgentSlots > 3) throw new Error("available_agent_slots must be between 0 and 3");
+  let decision: AutomaticBuildStepRequestV1["decision"];
+  let bootstrapFailure: AutomaticBuildStepRequestV1["bootstrap_failure"];
+  let openFailure: AutomaticBuildStepRequestV1["executor_open_failure"];
+  if (value.executor_open_failure !== undefined) {
+    if (value.bootstrap_failure !== undefined) throw new Error("executor failure observations are mutually exclusive");
+    const failure = value.executor_open_failure;
+    if (!isRecord(failure)) throw new Error("executor open failure is invalid");
+    exactKeys(failure, ["opaque_handoff_ref", "diagnostic_code", "phase"]);
+    if (typeof failure.opaque_handoff_ref !== "string" || !HANDOFF_REF.test(failure.opaque_handoff_ref)
+      || failure.phase !== "open"
+      || (failure.diagnostic_code !== "connection_terminal" && failure.diagnostic_code !== "handoff_ref_mismatch")) {
+      throw new Error("executor open failure is invalid");
+    }
+    openFailure = { opaque_handoff_ref: failure.opaque_handoff_ref,
+      diagnostic_code: failure.diagnostic_code, phase: failure.phase };
+  }
+  if (value.bootstrap_failure !== undefined) {
+    if (!isRecord(value.bootstrap_failure)) throw new Error("bootstrap failure is invalid");
+    exactKeys(value.bootstrap_failure, ["opaque_handoff_ref"]);
+    const ref = value.bootstrap_failure.opaque_handoff_ref;
+    if (typeof ref !== "string" || !HANDOFF_REF.test(ref)) throw new Error("bootstrap handoff ref is invalid");
+    bootstrapFailure = { opaque_handoff_ref: ref };
+  }
+  if (value.decision !== undefined) {
+    if (!isRecord(value.decision)) throw new Error("automatic build decision is invalid");
+    exactKeys(value.decision, ["request_id", "choice_id"]);
+    if (typeof value.decision.request_id !== "string" || !REQUEST_ID.test(value.decision.request_id)) {
+      throw new Error("automatic build decision request_id is invalid");
+    }
+    decision = {
+      request_id: value.decision.request_id,
+      choice_id: boundedString(value.decision.choice_id, "decision.choice_id", 128),
+    };
+  }
+  return {
+    version: value.version,
+    invocation_ref: value.invocation_ref,
+    available_agent_slots: availableAgentSlots as 0 | 1 | 2 | 3,
+    ...(decision ? { decision } : {}),
+    ...(bootstrapFailure ? { bootstrap_failure: bootstrapFailure } : {}),
+    ...(openFailure ? { executor_open_failure: openFailure } : {}),
+    ...(correction ? { open_call_correction: correction } : {}),
+  };
+}
+
+function sha256(value: unknown): string {
+  return createHash("sha256")
+    .update(typeof value === "string" ? value : canonicalAutomaticBuildJson(value), "utf8")
+    .digest("hex");
+}
+
+function registryRoot(): string {
+  return resolveAutomaticBuildExecutorRegistryRoot();
+}
+
+function staysWithin(root: string, file: string): boolean {
+  const relative = path.relative(root, file);
+  return relative !== "" && !relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative);
+}
+
+function recordFile(directory: string, id: string): string {
+  if (!/^[a-z0-9_-]{1,160}$/u.test(id)) throw new Error("automatic build record id is invalid");
+  return path.join(registryRoot(), directory, `${id}.json`);
+}
+
+function writeCreateOnly(file: string, value: unknown): void {
+  const root = registryRoot();
+  const resolved = path.resolve(file);
+  if (!staysWithin(root, resolved)) throw new Error("automatic build record escapes registry root");
+  mkdirSync(path.dirname(resolved), { recursive: true, mode: 0o700 });
+  const realParent = realpathSync(path.dirname(resolved));
+  if (realParent !== root && !staysWithin(root, realParent)) {
+    throw new Error("automatic build record directory escapes registry root");
+  }
+  const target = path.join(realParent, path.basename(resolved));
+  const bytes = Buffer.from(`${canonicalAutomaticBuildJson(value)}\n`, "utf8");
+  if (bytes.byteLength > MAX_RECORD_BYTES) throw new Error("automatic build record exceeds its byte limit");
+  try {
+    writeFileSync(target, bytes, { flag: "wx", mode: 0o600 });
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+    if (code !== "EEXIST") throw error;
+    const existing = readFileSync(target);
+    if (!existing.equals(bytes)) throw new Error("automatic build create-only record conflicts");
+  }
+}
+
+function readJsonRecord(file: string): unknown {
+  const root = registryRoot();
+  const resolved = path.resolve(file);
+  if (!staysWithin(root, resolved)) throw new Error("automatic build record escapes registry root");
+  const stat = lstatSync(resolved);
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size < 2 || stat.size > MAX_RECORD_BYTES) {
+    throw new Error("automatic build record is invalid");
+  }
+  const real = realpathSync(resolved);
+  if (!staysWithin(root, real)) throw new Error("automatic build record realpath escapes registry root");
+  const bytes = readFileSync(real);
+  if (bytes.includes(0)) throw new Error("automatic build record contains NUL");
+  const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  return JSON.parse(text) as unknown;
+}
+
+function readBuildPlan(fileInput: string): BuildPlanV1 {
+  const file = path.resolve(fileInput);
+  const stat = lstatSync(file);
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size < 2 || stat.size > MAX_RECORD_BYTES) {
+    throw new Error("automatic build BuildPlan file is invalid");
+  }
+  const bytes = readFileSync(realpathSync(file));
+  if (bytes.includes(0)) throw new Error("automatic build BuildPlan contains NUL");
+  return validateBuildPlanV1(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as unknown);
+}
+
+function normalizedCreateInput(
+  input: AutomaticBuildInvocationCreate,
+  target: ReturnType<typeof resolveAutomaticBuildTarget>,
+): AutomaticBuildInvocationCreate {
+  return {
+    ...input,
+    target_input: target.kind === "paper_workspace" ? target.workspace_dir : target.source_path,
+    root_dir: target.root_dir,
+    build_plan_path: path.resolve(input.build_plan_path),
+  };
+}
+
+function invocationRefFor(input: AutomaticBuildInvocationCreate, targetRef: BuildTargetRefV2): string {
+  return `abinv1_${sha256({
+    version: "automatic_build_invocation_identity.v1",
+    input,
+    target_ref: targetRef,
+  })}`;
+}
+
+function invocationRecordPath(invocationRef: string): string {
+  if (!INVOCATION_REF.test(invocationRef)) throw new Error("automatic build invocation ref is invalid");
+  return recordFile("invocations", invocationRef);
+}
+
+function validateTargetRef(value: unknown): BuildTargetRefV2 {
+  if (!isRecord(value)) throw new Error("automatic build target ref is invalid");
+  exactKeys(value, ["version", "workspace_dir", "book_id", "profile_id", "input_fingerprint"]);
+  if (value.version !== "build_target_ref.v2"
+    || (value.profile_id !== "technical_learning" && value.profile_id !== "paper")
+    || typeof value.input_fingerprint !== "string" || !SHA256.test(value.input_fingerprint)) {
+    throw new Error("automatic build target ref identity is invalid");
+  }
+  return {
+    version: value.version,
+    workspace_dir: boundedString(value.workspace_dir, "target_ref.workspace_dir"),
+    book_id: boundedString(value.book_id, "target_ref.book_id", 512),
+    profile_id: value.profile_id,
+    input_fingerprint: value.input_fingerprint,
+  };
+}
+
+function validatePreflightEvaluationEvidence(
+  value: unknown,
+): AutomaticBuildPreflightEvaluationEvidenceV2 {
+  if (!isRecord(value)) throw new Error("automatic build preflight evaluation evidence is invalid");
+  exactKeys(
+    value,
+    ["version", "descriptor_plan_digest", "dispatch_plan_digest", "cost_scope", "wall_clock"],
+    ["build_plan"],
+  );
+  if (value.version !== "automatic_build_preflight_evaluation_evidence.v2"
+    || typeof value.descriptor_plan_digest !== "string" || !SHA256.test(value.descriptor_plan_digest)
+    || typeof value.dispatch_plan_digest !== "string" || !SHA256.test(value.dispatch_plan_digest)
+    || !isRecord(value.cost_scope) || !isRecord(value.wall_clock)) {
+    throw new Error("automatic build preflight evaluation evidence fields are invalid");
+  }
+  if (value.build_plan !== undefined) {
+    if (!isRecord(value.build_plan)) throw new Error("automatic build preflight BuildPlan evidence is invalid");
+    exactKeys(value.build_plan, ["plan_id", "plan_revision"]);
+    if (typeof value.build_plan.plan_id !== "string" || !value.build_plan.plan_id
+      || !Number.isSafeInteger(value.build_plan.plan_revision)
+      || (value.build_plan.plan_revision as number) < 1) {
+      throw new Error("automatic build preflight BuildPlan evidence fields are invalid");
+    }
+  }
+  return value as unknown as AutomaticBuildPreflightEvaluationEvidenceV2;
+}
+
+class AutomaticBuildInvocationMissingError extends Error {
+  constructor() {
+    super("The automatic build invocation record is missing.");
+    this.name = "AutomaticBuildInvocationMissingError";
+  }
+}
+
+function readInvocation(invocationRef: string): AutomaticBuildInvocationRecord {
+  let value: unknown;
+  try {
+    value = readJsonRecord(invocationRecordPath(invocationRef));
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      throw new AutomaticBuildInvocationMissingError();
+    }
+    throw error;
+  }
+  if (!isRecord(value)) throw new Error("automatic build invocation record is invalid");
+  exactKeys(value, [
+    "version",
+    "invocation_ref",
+    "input",
+    "initial_target_ref",
+    "initial_build_plan_digest",
+  ]);
+  if ((value.version !== "automatic_build_invocation_record.v1" && value.version !== "automatic_build_invocation_record.v2")
+    || value.invocation_ref !== invocationRef
+    || typeof value.initial_build_plan_digest !== "string"
+    || !SHA256.test(value.initial_build_plan_digest)) {
+    throw new Error("automatic build invocation record identity is invalid");
+  }
+  const input = validateCreateInput(value.input);
+  if ((value.version === "automatic_build_invocation_record.v1") !== (input.version === "automatic_build_invocation_create.v1")) {
+    throw new Error("automatic build invocation record/input versions do not match");
+  }
+  const initialTargetRef = validateTargetRef(value.initial_target_ref);
+  if (invocationRefFor(input, initialTargetRef) !== invocationRef) {
+    throw new Error("automatic build invocation record digest is invalid");
+  }
+  return {
+    version: value.version,
+    invocation_ref: invocationRef,
+    input,
+    initial_target_ref: initialTargetRef,
+    initial_build_plan_digest: value.initial_build_plan_digest,
+  };
+}
+
+export function createAutomaticBuildInvocation(inputValue: AutomaticBuildInvocationCreate): {
+  version: "automatic_build_invocation_ref.v1";
+  invocation_ref: string;
+} {
+  const requested = validateCreateInput(inputValue);
+  const buildPlan = readBuildPlan(requested.build_plan_path);
+  if (requested.version === "automatic_build_invocation_create.v2" && requested.execution_profile.profile_id === "dsh_native_v4") {
+    const confirmation = requested.confirmation!;
+    if (buildPlan.private_artifacts.length || buildPlan.intent_id) throw new Error("DSH private plans are unsupported");
+    if (confirmation.plan_id !== buildPlan.plan_id || confirmation.plan_revision !== buildPlan.revision
+      || confirmation.plan_digest !== buildPlan.plan_digest) throw new Error("confirmed build plan changed");
+  }
+  const target = resolveAutomaticBuildTarget(
+    requested.target_input,
+    path.resolve(requested.root_dir),
+    { book_id: buildPlan.book_id },
+  );
+  if (requested.version === "automatic_build_invocation_create.v2" && requested.execution_profile.profile_id === "dsh_native_v4"
+    && buildPlan.source_fingerprint !== target.target_ref.input_fingerprint) throw new Error("confirmed build source changed");
+  const input = normalizedCreateInput(requested, target);
+  const invocationRef = invocationRefFor(input, target.target_ref);
+  const record: AutomaticBuildInvocationRecord = {
+    version: input.version === "automatic_build_invocation_create.v1"
+      ? "automatic_build_invocation_record.v1" : "automatic_build_invocation_record.v2",
+    invocation_ref: invocationRef,
+    input,
+    initial_target_ref: target.target_ref,
+    initial_build_plan_digest: buildPlan.plan_digest,
+  };
+  writeCreateOnly(invocationRecordPath(invocationRef), record);
+  return { version: "automatic_build_invocation_ref.v1", invocation_ref: invocationRef };
+}
+
+function resolveInvocationTarget(invocation: AutomaticBuildInvocationRecord) {
+  return resolveAutomaticBuildTarget(
+    invocation.input.target_input,
+    invocation.input.root_dir,
+    { book_id: invocation.initial_target_ref.book_id },
+  );
+}
+
+function stateIdentity(state: DriverState): DriverStateIdentityV1 {
+  const preflight = state.plan_result.preflight;
+  return {
+    build_plan_digest: state.plan.plan_digest,
+    ...(preflight ? { descriptor_plan_digest: preflight.descriptor_plan_digest } : {}),
+    ...(preflight ? {
+      preflight_evaluation: automaticBuildPreflightEvaluationEvidence(preflight),
+    } : {}),
+  };
+}
+
+function transitionStateKey(
+  state: DriverState,
+  availableAgentSlots: number,
+  effect: DecisionEffect,
+): string {
+  // A failed single-unit dispatch leaves the pending list unchanged. Its next
+  // attempt must not reuse the completed run's clock. Keep untouched legacy keys.
+  const failedAttempts = state.plan_result.snapshot.stages.flatMap(stage => stage.pending_tasks.flatMap(workUnitId => {
+    const attempt = readAutomaticBuildAttemptRecord(state.plan_result.snapshot.target, stage.stage, workUnitId);
+    return attempt?.failures ? [{ stage: stage.stage, work_unit_id: workUnitId, failures: attempt.failures }] : [];
+  }));
+  return sha256({
+    version: "automatic_build_driver_transition_state.v1",
+    invocation_ref: state.invocation.invocation_ref,
+    available_agent_slots: availableAgentSlots,
+    identity: stateIdentity(state),
+    effect,
+    ...(failedAttempts.length ? { failed_attempts: failedAttempts } : {}),
+    stages: state.plan_result.snapshot.stages.map((stage) => ({
+      stage: stage.stage,
+      closed: stage.closed,
+      pending_tasks: stage.pending_tasks,
+    })),
+  });
+}
+
+function readTransitionClock(file: string, invocationRef: string, stateKey: string): string {
+  const value = readJsonRecord(file);
+  if (!isRecord(value)) throw new Error("automatic build transition clock is invalid");
+  exactKeys(value, ["version", "invocation_ref", "state_key", "now"]);
+  if (value.version !== "automatic_build_transition_clock.v1"
+    || value.invocation_ref !== invocationRef
+    || value.state_key !== stateKey
+    || typeof value.now !== "string"
+    || !Number.isFinite(Date.parse(value.now))) {
+    throw new Error("automatic build transition clock identity is invalid");
+  }
+  return value.now;
+}
+
+function transitionNow(
+  state: DriverState,
+  availableAgentSlots: number,
+  effect: DecisionEffect,
+): string {
+  const stateKey = transitionStateKey(state, availableAgentSlots, effect);
+  const file = recordFile(path.join("transition-clocks", state.invocation.invocation_ref), stateKey);
+  if (existsSync(file)) return readTransitionClock(file, state.invocation.invocation_ref, stateKey);
+  const record = {
+    version: "automatic_build_transition_clock.v1",
+    invocation_ref: state.invocation.invocation_ref,
+    state_key: stateKey,
+    now: new Date().toISOString(),
+  };
+  try {
+    writeCreateOnly(file, record);
+    return record.now;
+  } catch (error) {
+    if (!existsSync(file)) throw error;
+    return readTransitionClock(file, state.invocation.invocation_ref, stateKey);
+  }
+}
+
+function loadDriverState(
+  invocation: AutomaticBuildInvocationRecord,
+  availableAgentSlots: number,
+  effect: DecisionEffect = {},
+): DriverState {
+  const input = invocation.input;
+  const target = resolveInvocationTarget(invocation);
+  if (target.book_id !== invocation.initial_target_ref.book_id
+    || target.profile_id !== invocation.initial_target_ref.profile_id
+    || path.resolve(target.workspace_dir) !== path.resolve(invocation.initial_target_ref.workspace_dir)) {
+    throw new Error("automatic build invocation target boundary changed");
+  }
+  const plan = readBuildPlan(input.build_plan_path);
+  if (invocationExecutionProfile(input).harness_kind === "deepseek_harness" && (plan.private_artifacts.length || plan.intent_id)) throw new Error("DSH private plans are unsupported");
+  const planResult = automaticBuildPlan(input.target_input, input.root_dir, {
+    execution_profile: invocationExecutionProfile(input),
+    book_id: invocation.initial_target_ref.book_id,
+    requested_workers: input.max_parallel,
+    available_agent_slots: availableAgentSlots,
+    quality_profile: input.quality_profile,
+    budget: effect.bypass_budget ? DEFAULT_AUTOMATIC_BUILD_BUDGET : input.budget,
+    wall_budget: effect.bypass_wall_budget ? undefined : input.wall_budget,
+    executor_provenance: input.executor_provenance,
+    build_plan: plan,
+  });
+  return { invocation, plan, plan_result: planResult };
+}
+
+function planAuthorizationPath(invocationRef: string, planDigest: string): string {
+  if (!SHA256.test(planDigest)) throw new Error("automatic build plan authorization digest is invalid");
+  return recordFile(path.join("authorizations", invocationRef), planDigest);
+}
+
+function isPlanAuthorized(invocation: AutomaticBuildInvocationRecord, planDigest: string): boolean {
+  if (planDigest === invocation.initial_build_plan_digest) return true;
+  const file = planAuthorizationPath(invocation.invocation_ref, planDigest);
+  if (!existsSync(file)) return false;
+  const value = readJsonRecord(file);
+  if (!isRecord(value)) throw new Error("automatic build plan authorization is invalid");
+  exactKeys(value, [
+    "version",
+    "invocation_ref",
+    "request_id",
+    "choice_id",
+    "build_plan_digest",
+  ]);
+  if (value.version !== "automatic_build_plan_authorization.v1"
+    || value.invocation_ref !== invocation.invocation_ref
+    || typeof value.request_id !== "string" || !REQUEST_ID.test(value.request_id)
+    || value.choice_id !== "confirm_current"
+    || value.build_plan_digest !== planDigest) {
+    throw new Error("automatic build plan authorization identity is invalid");
+  }
+  return true;
+}
+
+function authorizePlan(
+  invocation: AutomaticBuildInvocationRecord,
+  requestId: string,
+  choiceId: string,
+  planDigest: string,
+): void {
+  writeCreateOnly(planAuthorizationPath(invocation.invocation_ref, planDigest), {
+    version: "automatic_build_plan_authorization.v1",
+    invocation_ref: invocation.invocation_ref,
+    request_id: requestId,
+    choice_id: choiceId,
+    build_plan_digest: planDigest,
+  });
+}
+
+function externalReason(internalReason: string): AutomaticBuildUserDecisionReasonV1 {
+  switch (internalReason) {
+    case "retrieval_provider_failed": return "retrieval_unavailable";
+    case "retrieval_cancelled": return "retrieval_cancelled";
+    case "build_plan_required":
+    case "build_plan_unconfirmed":
+    case "preflight_required":
+    case "evaluation_required":
+      return "plan_confirmation_required";
+    case "build_plan_invalid":
+    case "build_plan_digest_drift":
+    case "build_plan_book_drift":
+    case "build_plan_source_drift":
+    case "build_plan_profile_drift":
+    case "build_plan_policy_drift":
+    case "build_plan_closure_drift":
+    case "build_plan_freshness_drift":
+    case "build_plan_retrieval_drift":
+    case "plan_changed":
+    case "evaluation_changed":
+    case "invocation_build_plan_drift":
+      return "plan_changed";
+    case "budget_exceeded":
+    case "build_plan_budget_changed":
+      return "budget_exceeded";
+    case "low_confidence_wall_budget": return "low_confidence_wall_budget";
+    case "wall_budget_exceeded": return "wall_budget_exceeded";
+    case "executor_unavailable": return "executor_unavailable";
+    case "legacy_migration_required":
+    case "legacy_resume_selected":
+    case "legacy_partial_dispatch_run":
+      return "legacy_migration_required";
+    case "structure_execution_budget_exceeded": return "structure_execution_budget_exceeded";
+    case "structure_preparation_incomplete": return "structure_preparation_incomplete";
+    case "quality_gate_failed": return "quality_gate_failed";
+    case "retry_exhausted": return "retry_exhausted";
+    case "recovery_not_satisfied": return "recovery_not_satisfied";
+    case "executor_instability": return "executor_instability";
+    case "executor_prompt_unavailable":
+    case "protocol_incompatible":
+      return "installation_incompatible";
+    default: return "foundation_required";
+  }
+}
+
+function userMessage(reason: AutomaticBuildUserDecisionReasonV1): string {
+  switch (reason) {
+    case "retrieval_unavailable": return "The configured embedding provider is unavailable. Restore its local configuration, then resume; accepted model actions are retained.";
+    case "retrieval_cancelled": return "Retrieval preparation was cancelled. Resume to prepare the missing page; accepted model actions are retained.";
+    case "plan_confirmation_required": return "Confirm the current build plan before model work starts.";
+    case "plan_changed": return "The authoritative build plan changed and requires a fresh confirmation.";
+    case "pass2_choice_required": return "Choose whether the confirmed plan should include Pass2 enrichment.";
+    case "budget_exceeded": return "The current build forecast exceeds the confirmed budget.";
+    case "low_confidence_wall_budget": return "The wall-clock forecast exceeds its limit with low confidence.";
+    case "wall_budget_exceeded": return "The current wall-clock forecast exceeds the confirmed limit.";
+    case "executor_unavailable": return "No dedicated executor slot is currently available.";
+    case "executor_bootstrap_failed": return "The executor failed to start three times. Repair its tool availability, then retry the current build.";
+    case "foundation_required": return "The deterministic build foundation requires attention before continuing.";
+    case "legacy_migration_required": return "Legacy build state requires an explicit migration choice.";
+    case "quality_gate_failed": return "The stage quality gate failed and publication remains closed.";
+    case "structure_execution_budget_exceeded": return "BookStructure input exceeds its single-task execution budget. Reduce the input size before retrying; accepted work is retained.";
+    case "structure_preparation_incomplete": return "BookStructure preparation is incomplete. Resolve the outstanding structure work before retrying; accepted work is retained.";
+    case "retry_exhausted": return "Semantic retries are exhausted and require explicit recovery.";
+    case "recovery_not_satisfied": return "The bound terminal state does not satisfy same-scope retry recovery.";
+    case "executor_instability": return "Executor lease recovery is exhausted and requires explicit recovery.";
+    case "build_engine_failed": return "The build engine failed; inspect the bounded local diagnostic before continuing.";
+    case "installation_incompatible": return "The installed build runtime is incompatible with this protocol.";
+  }
+}
+
+function choicesFor(reason: AutomaticBuildUserDecisionReasonV1) {
+  switch (reason) {
+    case "executor_bootstrap_failed":
+      return [{ choice_id: "retry_bootstrap", label: "Retry after repairing executor startup",
+        consequence: "Authorize one new bootstrap generation without rerunning accepted artifacts." }];
+    case "plan_confirmation_required":
+    case "plan_changed":
+      return [{
+        choice_id: "confirm_current",
+        label: "Confirm current plan",
+        consequence: "Bind authorization to the current authoritative plan state.",
+      }];
+    case "budget_exceeded":
+    case "low_confidence_wall_budget":
+    case "wall_budget_exceeded":
+      return [{
+        choice_id: "continue_current",
+        label: "Continue current build",
+        consequence: "Authorize this current forecast without changing the plan identity.",
+      }];
+    case "legacy_migration_required":
+      return [
+        {
+          choice_id: "v2_rebuild",
+          label: "Rebuild current state",
+          consequence: "Use the current protocol and leave legacy artifacts unchanged.",
+        },
+        {
+          choice_id: "legacy_resume",
+          label: "Resume legacy state",
+          consequence: "Keep using the frozen legacy recovery path.",
+        },
+      ];
+    case "quality_gate_failed":
+    case "structure_execution_budget_exceeded":
+    case "structure_preparation_incomplete":
+    case "retry_exhausted":
+    case "recovery_not_satisfied":
+    case "executor_instability":
+      return [{
+        choice_id: "retry_current",
+        label: "Validate recovery and retry",
+        consequence: "Re-read durable state after the required recovery action is complete.",
+      }];
+    default:
+      return [];
+  }
+}
+
+function safeStage(value: unknown): AutomaticBuildStage | undefined {
+  return typeof value === "string" && STAGES.has(value as AutomaticBuildStage)
+    ? value as AutomaticBuildStage
+    : undefined;
+}
+
+function failureProjectionFor(
+  reason: AutomaticBuildUserDecisionReasonV1,
+  action: Record<string, unknown>,
+): {
+  diagnostic: AutomaticBuildFailureDiagnosticV2;
+  work_unit_count: number;
+  required_recovery: AutomaticBuildRequiredRecovery;
+} | undefined {
+  if (reason !== "retry_exhausted" && reason !== "executor_instability") return undefined;
+  const tasks = Array.isArray(action.tasks) ? action.tasks : [];
+  const workUnitCount = tasks.length;
+  let diagnostic: AutomaticBuildFailureDiagnosticV2;
+  let allCandidateCorrections = false;
+  if (reason === "executor_instability") {
+    diagnostic = createAutomaticBuildFailureDiagnosticV3({
+      category: "executor",
+      code: "executor_instability",
+      phase: "generation",
+    });
+  } else {
+    const diagnostics = tasks.flatMap((task) => {
+      if (!isRecord(task) || task.status !== "retry_exhausted" || task.failure_diagnostic === undefined) return [];
+      try {
+        return [validateAutomaticBuildFailureDiagnostic(task.failure_diagnostic)];
+      } catch {
+        return [];
+      }
+    });
+    allCandidateCorrections = diagnostics.length > 0
+      && diagnostics.length === tasks.length
+      && diagnostics.every(isAutomaticBuildCorrectableCandidateFailure);
+    if (!diagnostics.length) {
+      diagnostic = legacyAutomaticBuildFailureDiagnostic();
+    } else if (diagnostics.every((item) => (
+      item.version === diagnostics[0].version
+      && item.category === diagnostics[0].category
+      && item.code === diagnostics[0].code
+      && requiredRecoveryForAutomaticBuildFailure(item) === requiredRecoveryForAutomaticBuildFailure(diagnostics[0])
+      && (!isAutomaticBuildFailureDiagnosticV3(item)
+        || (isAutomaticBuildFailureDiagnosticV3(diagnostics[0])
+          && item.phase === diagnostics[0].phase))
+    ))) {
+      diagnostic = diagnostics[0];
+    } else {
+      const phases = diagnostics.flatMap((item) => (
+        isAutomaticBuildFailureDiagnosticV3(item) ? [item.phase] : []
+      ));
+      diagnostic = phases.length === diagnostics.length
+        && phases.every((phase) => phase === phases[0])
+        ? createAutomaticBuildFailureDiagnosticV3({
+            category: "internal",
+            code: "multiple_failure_causes",
+            phase: phases[0],
+          })
+        : createAutomaticBuildFailureDiagnostic({
+            category: "internal",
+            code: "multiple_failure_causes",
+          });
+    }
+  }
+  return {
+    diagnostic,
+    work_unit_count: workUnitCount,
+    required_recovery: allCandidateCorrections
+      ? "confirm_candidate_retry"
+      : requiredRecoveryForAutomaticBuildFailure(diagnostic),
+  };
+}
+
+function projectionFor(
+  reason: AutomaticBuildUserDecisionReasonV1,
+  action: Record<string, unknown>,
+): AutomaticBuildUserDecisionProjectionV1 {
+  const stage = safeStage(action.stage);
+  const failure = failureProjectionFor(reason, action);
+  const violations = Array.isArray(action.violations)
+    ? action.violations.flatMap((item) => {
+        if (!isRecord(item) || typeof item.code !== "string" || Buffer.byteLength(item.code, "utf8") > 128
+          || typeof item.actual !== "number" || !Number.isFinite(item.actual)
+          || typeof item.limit !== "number" || !Number.isFinite(item.limit)) return [];
+        return [{ code: item.code, actual: item.actual, limit: item.limit }];
+      }).slice(0, 16)
+    : undefined;
+  const confidence = action.confidence === "high" || action.confidence === "medium" || action.confidence === "low"
+    ? action.confidence
+    : undefined;
+  const gateStatus = typeof action.gate_status === "string" && Buffer.byteLength(action.gate_status, "utf8") <= 128
+    ? action.gate_status
+    : undefined;
+  return {
+    category: failure?.diagnostic.category ?? reason,
+    ...(failure ? { code: failure.diagnostic.code } : {}),
+    ...(failure && isAutomaticBuildFailureDiagnosticV3(failure.diagnostic)
+      ? { phase: failure.diagnostic.phase }
+      : {}),
+    ...(stage ? { stage } : {}),
+    ...(failure ? {
+      work_unit_count: failure.work_unit_count,
+      required_recovery: failure.required_recovery,
+    } : {}),
+    ...(violations?.length ? { violations } : {}),
+    ...(confidence ? { confidence } : {}),
+    ...(gateStatus ? { gate_status: gateStatus } : {}),
+  };
+}
+
+function attemptScopesForAction(
+  action: Record<string, unknown>,
+): Array<{ work_unit_id: string; attempt_scope_digest: string }> | undefined {
+  if (!Array.isArray(action.tasks)) return undefined;
+  const scopes = action.tasks.flatMap((task) => {
+    if (!isRecord(task)
+      || typeof task.task_id !== "string"
+      || !task.task_id
+      || Buffer.byteLength(task.task_id, "utf8") > 512
+      || typeof task.attempt_scope_digest !== "string"
+      || !SHA256.test(task.attempt_scope_digest)) return [];
+    return [{ work_unit_id: task.task_id, attempt_scope_digest: task.attempt_scope_digest }];
+  }).sort((left, right) => left.work_unit_id.localeCompare(right.work_unit_id));
+  if (!scopes.length) return undefined;
+  for (let index = 1; index < scopes.length; index += 1) {
+    if (scopes[index - 1].work_unit_id === scopes[index].work_unit_id) {
+      throw new Error("automatic build decision contains duplicate attempt scopes");
+    }
+  }
+  return scopes;
+}
+
+function retryBoundariesForAction(
+  action: Record<string, unknown>,
+): Array<AutomaticBuildRetryBoundaryV1 & { work_unit_id: string }> | undefined {
+  if (!Array.isArray(action.tasks)) return undefined;
+  const boundaries = action.tasks.flatMap((task) => {
+    if (!isRecord(task)
+      || typeof task.task_id !== "string"
+      || !task.task_id
+      || Buffer.byteLength(task.task_id, "utf8") > 512
+      || task.retry_boundary === undefined) return [];
+    try {
+      return [{
+        work_unit_id: task.task_id,
+        ...validateAutomaticBuildRetryBoundary(task.retry_boundary),
+      }];
+    } catch {
+      throw new Error("automatic build decision contains an invalid retry boundary");
+    }
+  }).sort((left, right) => left.work_unit_id.localeCompare(right.work_unit_id));
+  if (!boundaries.length) return undefined;
+  for (let index = 1; index < boundaries.length; index += 1) {
+    if (boundaries[index - 1].work_unit_id === boundaries[index].work_unit_id) {
+      throw new Error("automatic build decision contains duplicate retry boundaries");
+    }
+  }
+  return boundaries;
+}
+
+function boundaryFromAction(
+  action: Record<string, unknown>,
+  state: DriverStateIdentityV1,
+): DecisionBoundaryV1 {
+  const internalReason = typeof action.reason === "string" ? action.reason : "automatic_build_routing_blocked";
+  const reason = externalReason(internalReason);
+  const stage = safeStage(action.stage);
+  const planBudgetEvidence = action.plan_budget_evidence === undefined
+    ? undefined
+    : validateAutomaticBuildPlanBudgetEvaluation(
+        action.plan_budget_evidence as AutomaticBuildPlanBudgetEvaluationV2,
+      );
+  const attemptScopes = attemptScopesForAction(action);
+  const retryBoundaries = retryBoundariesForAction(action);
+  return {
+    reason,
+    internal_reason: internalReason,
+    state,
+    ...(stage ? { stage } : {}),
+    projection: projectionFor(reason, action),
+    ...(planBudgetEvidence ? { plan_budget_evidence: planBudgetEvidence } : {}),
+    ...(attemptScopes ? { attempt_scopes: attemptScopes } : {}),
+    ...(retryBoundaries ? { retry_boundaries: retryBoundaries } : {}),
+  };
+}
+
+function syntheticBoundary(
+  reason: AutomaticBuildUserDecisionReasonV1,
+  internalReason: string,
+  state: DriverState,
+): DecisionBoundaryV1 {
+  const stage = state.plan_result.preflight?.stage;
+  return {
+    reason,
+    internal_reason: internalReason,
+    state: stateIdentity(state),
+    ...(stage ? { stage } : {}),
+    projection: {
+      category: reason,
+      ...(stage ? { stage } : {}),
+    },
+  };
+}
+
+function requestRecordPath(requestId: string): string {
+  if (!REQUEST_ID.test(requestId)) throw new Error("automatic build decision request id is invalid");
+  return recordFile("requests", requestId);
+}
+
+function requestIdFor(
+  invocation: AutomaticBuildInvocationRecord,
+  boundary: DecisionBoundaryV1,
+  choices: ReturnType<typeof choicesFor>,
+): string {
+  return `abreq1_${sha256({
+    version: "automatic_build_decision_request_identity.v1",
+    invocation_ref: invocation.invocation_ref,
+    reason: boundary.reason,
+    internal_reason: boundary.internal_reason,
+    state: boundary.state,
+    stage: boundary.stage ?? null,
+    projection: boundary.projection ?? null,
+    plan_budget_evidence: boundary.plan_budget_evidence ?? null,
+    attempt_scopes: boundary.attempt_scopes ?? null,
+    retry_boundaries: boundary.retry_boundaries ?? null,
+    choices,
+  })}`;
+}
+
+function issueBoundary(
+  invocation: AutomaticBuildInvocationRecord,
+  boundary: DecisionBoundaryV1,
+): AutomaticBuildStepResponseV1 {
+  const choices = choicesFor(boundary.reason);
+  const requestId = requestIdFor(invocation, boundary, choices);
+  const record: AutomaticBuildDecisionRequestRecordV1 = {
+    version: "automatic_build_decision_request_record.v1",
+    invocation_ref: invocation.invocation_ref,
+    request_id: requestId,
+    reason: boundary.reason,
+    internal_reason: boundary.internal_reason,
+    state: boundary.state,
+    ...(boundary.stage ? { stage: boundary.stage } : {}),
+    ...(boundary.projection ? { projection: boundary.projection } : {}),
+    ...(boundary.plan_budget_evidence ? {
+      plan_budget_evidence: boundary.plan_budget_evidence,
+    } : {}),
+    ...(boundary.attempt_scopes ? { attempt_scopes: boundary.attempt_scopes } : {}),
+    ...(boundary.retry_boundaries ? { retry_boundaries: boundary.retry_boundaries } : {}),
+    choices,
+  };
+  writeCreateOnly(requestRecordPath(requestId), record);
+  return finalizeResponse({
+    version: "automatic_build_step.v1",
+    action: {
+      kind: "NEEDS_USER",
+      request_id: requestId,
+      reason: boundary.reason,
+      message: userMessage(boundary.reason),
+      choices,
+      ...(boundary.projection ? { projection: boundary.projection } : {}),
+    },
+  });
+}
+
+function readDecisionRequest(requestId: string): AutomaticBuildDecisionRequestRecordV1 {
+  const value = readJsonRecord(requestRecordPath(requestId));
+  if (!isRecord(value)) throw new Error("automatic build decision request record is invalid");
+  exactKeys(
+    value,
+    [
+      "version",
+      "invocation_ref",
+      "request_id",
+      "reason",
+      "internal_reason",
+      "state",
+      "choices",
+    ],
+    ["stage", "projection", "plan_budget_evidence", "attempt_scopes", "retry_boundaries"],
+  );
+  if (value.version !== "automatic_build_decision_request_record.v1"
+    || value.request_id !== requestId
+    || typeof value.invocation_ref !== "string"
+    || !INVOCATION_REF.test(value.invocation_ref)
+    || typeof value.reason !== "string"
+    || !USER_DECISION_REASONS.has(value.reason as AutomaticBuildUserDecisionReasonV1)
+    || typeof value.internal_reason !== "string"
+    || !isRecord(value.state)
+    || !Array.isArray(value.choices)) {
+    throw new Error("automatic build decision request record identity is invalid");
+  }
+  exactKeys(
+    value.state,
+    ["build_plan_digest"],
+    ["descriptor_plan_digest", "preflight_evaluation"],
+  );
+  if (typeof value.state.build_plan_digest !== "string" || !SHA256.test(value.state.build_plan_digest)
+    || (value.state.descriptor_plan_digest !== undefined
+      && (typeof value.state.descriptor_plan_digest !== "string"
+        || !SHA256.test(value.state.descriptor_plan_digest)))) {
+    throw new Error("automatic build decision request state identity is invalid");
+  }
+  const state: DriverStateIdentityV1 = {
+    build_plan_digest: value.state.build_plan_digest,
+    ...(typeof value.state.descriptor_plan_digest === "string"
+      ? { descriptor_plan_digest: value.state.descriptor_plan_digest }
+      : {}),
+    ...(value.state.preflight_evaluation !== undefined
+      ? { preflight_evaluation: validatePreflightEvaluationEvidence(value.state.preflight_evaluation) }
+      : {}),
+  };
+  const choices = value.choices.map((choice) => {
+    if (!isRecord(choice)) throw new Error("automatic build decision request choice is invalid");
+    exactKeys(choice, ["choice_id", "label", "consequence"]);
+    return {
+      choice_id: boundedString(choice.choice_id, "decision choice_id", 128),
+      label: boundedString(choice.label, "decision label", 512),
+      consequence: boundedString(choice.consequence, "decision consequence", 1_024),
+    };
+  });
+  const stage = value.stage === undefined ? undefined : safeStage(value.stage);
+  if (value.stage !== undefined && !stage) throw new Error("automatic build decision request stage is invalid");
+  const planBudgetEvidence = value.plan_budget_evidence === undefined
+    ? undefined
+    : validateAutomaticBuildPlanBudgetEvaluation(
+        value.plan_budget_evidence as AutomaticBuildPlanBudgetEvaluationV2,
+      );
+  const attemptScopes = value.attempt_scopes === undefined
+    ? undefined
+    : (() => {
+        if (!Array.isArray(value.attempt_scopes)) {
+          throw new Error("automatic build decision request attempt scopes are invalid");
+        }
+        const scopes = value.attempt_scopes.map((scope) => {
+          if (!isRecord(scope)) throw new Error("automatic build decision request attempt scope is invalid");
+          exactKeys(scope, ["work_unit_id", "attempt_scope_digest"]);
+          const workUnitId = boundedString(scope.work_unit_id, "attempt scope work_unit_id", 512);
+          if (typeof scope.attempt_scope_digest !== "string" || !SHA256.test(scope.attempt_scope_digest)) {
+            throw new Error("automatic build decision request attempt scope digest is invalid");
+          }
+          return { work_unit_id: workUnitId, attempt_scope_digest: scope.attempt_scope_digest };
+        });
+        if (scopes.some((scope, index) => index > 0
+          && scopes[index - 1].work_unit_id >= scope.work_unit_id)) {
+          throw new Error("automatic build decision request attempt scopes are not canonical");
+        }
+        return scopes;
+      })();
+  const retryBoundaries = value.retry_boundaries === undefined
+    ? undefined
+    : (() => {
+        if (!Array.isArray(value.retry_boundaries)) {
+          throw new Error("automatic build decision request retry boundaries are invalid");
+        }
+        const boundaries = value.retry_boundaries.map((entry) => {
+          if (!isRecord(entry)) throw new Error("automatic build decision request retry boundary is invalid");
+          exactKeys(entry, [
+            "work_unit_id",
+            "version",
+            "attempt_scope_digest",
+            "exhausted_semantic_attempt",
+            "terminal_receipt_sha256",
+            "diagnostic_digest",
+            "required_recovery",
+          ]);
+          const workUnitId = boundedString(entry.work_unit_id, "retry boundary work_unit_id", 512);
+          const boundary = validateAutomaticBuildRetryBoundary({
+            version: entry.version,
+            attempt_scope_digest: entry.attempt_scope_digest,
+            exhausted_semantic_attempt: entry.exhausted_semantic_attempt,
+            terminal_receipt_sha256: entry.terminal_receipt_sha256,
+            diagnostic_digest: entry.diagnostic_digest,
+            required_recovery: entry.required_recovery,
+          });
+          return { work_unit_id: workUnitId, ...boundary };
+        });
+        if (boundaries.some((boundary, index) => index > 0
+          && boundaries[index - 1].work_unit_id >= boundary.work_unit_id)) {
+          throw new Error("automatic build decision request retry boundaries are not canonical");
+        }
+        return boundaries;
+      })();
+  if (value.projection !== undefined && !isRecord(value.projection)) {
+    throw new Error("automatic build decision request projection is invalid");
+  }
+  const record: AutomaticBuildDecisionRequestRecordV1 = {
+    version: value.version,
+    invocation_ref: value.invocation_ref,
+    request_id: requestId,
+    reason: value.reason as AutomaticBuildUserDecisionReasonV1,
+    internal_reason: value.internal_reason,
+    state,
+    ...(stage ? { stage } : {}),
+    ...(value.projection ? {
+      projection: value.projection as unknown as AutomaticBuildUserDecisionProjectionV1,
+    } : {}),
+    ...(planBudgetEvidence ? {
+      plan_budget_evidence: planBudgetEvidence,
+    } : {}),
+    ...(attemptScopes ? { attempt_scopes: attemptScopes } : {}),
+    ...(retryBoundaries ? { retry_boundaries: retryBoundaries } : {}),
+    choices,
+  };
+  const expected = `abreq1_${sha256({
+    version: "automatic_build_decision_request_identity.v1",
+    invocation_ref: record.invocation_ref,
+    reason: record.reason,
+    internal_reason: record.internal_reason,
+    state: record.state,
+    stage: record.stage ?? null,
+    projection: record.projection ?? null,
+    plan_budget_evidence: record.plan_budget_evidence ?? null,
+    attempt_scopes: record.attempt_scopes ?? null,
+    retry_boundaries: record.retry_boundaries ?? null,
+    choices: record.choices,
+  })}`;
+  if (expected !== requestId) throw new Error("automatic build decision request digest is invalid");
+  return record;
+}
+
+function persistDecisionReceipt(
+  invocation: AutomaticBuildInvocationRecord,
+  request: AutomaticBuildDecisionRequestRecordV1,
+  choiceId: string,
+  appliedState: DriverStateIdentityV1 = request.state,
+): void {
+  const receipt: AutomaticBuildDecisionReceiptV1 = {
+    version: "automatic_build_decision_receipt.v1",
+    invocation_ref: invocation.invocation_ref,
+    request_id: request.request_id,
+    choice_id: choiceId,
+    state: appliedState,
+  };
+  writeCreateOnly(decisionReceiptPath(invocation.invocation_ref, request.request_id), receipt);
+}
+
+function decisionReceiptPath(invocationRef: string, requestId: string): string {
+  if (!INVOCATION_REF.test(invocationRef) || !REQUEST_ID.test(requestId)) {
+    throw new Error("automatic build decision receipt identity is invalid");
+  }
+  return recordFile(path.join("decisions", invocationRef), requestId);
+}
+
+function readDecisionReceipt(
+  invocation: AutomaticBuildInvocationRecord,
+  requestId: string,
+): AutomaticBuildDecisionReceiptV1 | undefined {
+  const file = decisionReceiptPath(invocation.invocation_ref, requestId);
+  if (!existsSync(file)) return undefined;
+  const value = readJsonRecord(file);
+  if (!isRecord(value)) throw new Error("automatic build decision receipt is invalid");
+  exactKeys(value, ["version", "invocation_ref", "request_id", "choice_id", "state"]);
+  if (value.version !== "automatic_build_decision_receipt.v1"
+    || value.invocation_ref !== invocation.invocation_ref
+    || value.request_id !== requestId
+    || typeof value.choice_id !== "string"
+    || !isRecord(value.state)) {
+    throw new Error("automatic build decision receipt identity is invalid");
+  }
+  exactKeys(
+    value.state,
+    ["build_plan_digest"],
+    ["descriptor_plan_digest", "preflight_evaluation"],
+  );
+  if (typeof value.state.build_plan_digest !== "string" || !SHA256.test(value.state.build_plan_digest)
+    || (value.state.descriptor_plan_digest !== undefined
+      && (typeof value.state.descriptor_plan_digest !== "string"
+        || !SHA256.test(value.state.descriptor_plan_digest)))) {
+    throw new Error("automatic build decision receipt state identity is invalid");
+  }
+  return {
+    version: value.version,
+    invocation_ref: value.invocation_ref,
+    request_id: value.request_id,
+    choice_id: value.choice_id,
+    state: {
+      build_plan_digest: value.state.build_plan_digest,
+      ...(typeof value.state.descriptor_plan_digest === "string"
+        ? { descriptor_plan_digest: value.state.descriptor_plan_digest }
+        : {}),
+      ...(value.state.preflight_evaluation !== undefined
+        ? { preflight_evaluation: validatePreflightEvaluationEvidence(value.state.preflight_evaluation) }
+        : {}),
+    },
+  };
+}
+
+function effectForAcceptedBoundary(
+  invocation: AutomaticBuildInvocationRecord,
+  boundary: DecisionBoundaryV1,
+): DecisionEffect | undefined {
+  if (boundary.reason !== "budget_exceeded"
+    && boundary.reason !== "low_confidence_wall_budget"
+    && boundary.reason !== "wall_budget_exceeded") {
+    return undefined;
+  }
+  const choices = choicesFor(boundary.reason);
+  const requestId = requestIdFor(invocation, boundary, choices);
+  const receipt = readDecisionReceipt(invocation, requestId);
+  if (!receipt || !choices.some((choice) => choice.choice_id === receipt.choice_id)
+    || canonicalAutomaticBuildJson(receipt.state) !== canonicalAutomaticBuildJson(boundary.state)) {
+    return undefined;
+  }
+  return {
+    ...(boundary.reason === "budget_exceeded" ? { bypass_budget: true as const } : {}),
+    ...(boundary.plan_budget_evidence ? {
+      accepted_plan_budget_evidence: boundary.plan_budget_evidence,
+    } : {}),
+    ...(boundary.reason === "low_confidence_wall_budget" || boundary.reason === "wall_budget_exceeded"
+      ? { bypass_wall_budget: true as const }
+      : {}),
+  };
+}
+
+function currentAttemptScopeDigest(
+  current: DriverState,
+  stage: AutomaticBuildStage,
+  workUnitId: string,
+): string | undefined {
+  const stageState = current.plan_result.snapshot.stages.find((candidate) => candidate.stage === stage);
+  const descriptor = stageState?.work_units?.find((unit) => unit.work_unit_id === workUnitId);
+  const binding = stageState?.task_bindings?.[workUnitId];
+  if (!descriptor
+    || (descriptor.version !== "automatic_build_work_unit.v3"
+      && descriptor.version !== "automatic_build_work_unit.v4")
+    || !binding
+    || !isAutomaticBuildTaskPolicyBindingV2(binding)) return undefined;
+  return createAutomaticBuildAttemptScope({
+    target_ref: descriptor.target,
+    stage: descriptor.stage,
+    work_unit_id: descriptor.work_unit_id,
+    task_binding: binding,
+  }).attempt_scope_digest;
+}
+
+function retryAttemptScopeChanged(
+  request: AutomaticBuildDecisionRequestRecordV1,
+  current: DriverState,
+): boolean {
+  if ((request.reason !== "retry_exhausted" && request.reason !== "executor_instability")
+    || !request.attempt_scopes?.length
+    || !request.stage) return false;
+  let changed = false;
+  for (const previous of request.attempt_scopes) {
+    const currentScopeDigest = currentAttemptScopeDigest(current, request.stage, previous.work_unit_id);
+    if (!currentScopeDigest) return false;
+    changed ||= currentScopeDigest !== previous.attempt_scope_digest;
+  }
+  return changed;
+}
+
+function retryBoundaryMatches(
+  left: AutomaticBuildRetryBoundaryV1,
+  right: AutomaticBuildRetryBoundaryV1,
+): boolean {
+  return left.version === right.version
+    && left.attempt_scope_digest === right.attempt_scope_digest
+    && left.exhausted_semantic_attempt === right.exhausted_semantic_attempt
+    && left.terminal_receipt_sha256 === right.terminal_receipt_sha256
+    // Recovery advice can change with an engine fix; the bound failure cannot.
+    && left.diagnostic_digest === right.diagnostic_digest;
+}
+
+function unresolvedRetryResponse(
+  request: AutomaticBuildDecisionRequestRecordV1,
+  reason: "plan_changed" | "recovery_not_satisfied",
+): AutomaticBuildStepResponseV1 {
+  return finalizeResponse({
+    version: "automatic_build_step.v1",
+    action: {
+      kind: "NEEDS_USER",
+      request_id: request.request_id,
+      reason,
+      message: userMessage(reason),
+      choices: reason === "recovery_not_satisfied" ? request.choices : [],
+      ...(request.projection ? { projection: request.projection } : {}),
+    },
+  });
+}
+
+type PreparedRetryRecovery = {
+  target: ReturnType<typeof resolveAutomaticBuildTarget>;
+  input: Parameters<typeof prepareAutomaticBuildRetryRecovery>[1];
+};
+
+function prepareRetryRecoveries(
+  invocation: AutomaticBuildInvocationRecord,
+  request: AutomaticBuildDecisionRequestRecordV1,
+  current: DriverState,
+): { status: "ready"; recoveries: PreparedRetryRecovery[] }
+  | { status: "stale" | "not_satisfied" } {
+  if (request.reason !== "retry_exhausted" || !request.stage || !request.retry_boundaries?.length) {
+    return { status: "not_satisfied" };
+  }
+  const target = resolveInvocationTarget(invocation);
+  const recoveries: PreparedRetryRecovery[] = [];
+  for (const previous of request.retry_boundaries) {
+    const currentScopeDigest = currentAttemptScopeDigest(current, request.stage, previous.work_unit_id);
+    if (!currentScopeDigest || currentScopeDigest !== previous.attempt_scope_digest) {
+      return { status: "stale" };
+    }
+    const currentBoundary = readAutomaticBuildRetryBoundary(
+      target,
+      request.stage,
+      previous.work_unit_id,
+      currentScopeDigest,
+    );
+    if (!currentBoundary || !retryBoundaryMatches(previous, currentBoundary)) {
+      return { status: "stale" };
+    }
+    if (!allowsAutomaticBuildSameScopeRetry(currentBoundary)) {
+      return { status: "not_satisfied" };
+    }
+    const input: Parameters<typeof prepareAutomaticBuildRetryRecovery>[1] = {
+      ...currentBoundary,
+      stage: request.stage,
+      work_unit_id: previous.work_unit_id,
+      decision_request_id: request.request_id,
+      created_at: invocation.input.created_at,
+    };
+    prepareAutomaticBuildRetryRecovery(target, input);
+    recoveries.push({ target, input });
+  }
+  return { status: "ready", recoveries };
+}
+
+function applyDecision(
+  invocation: AutomaticBuildInvocationRecord,
+  decision: NonNullable<AutomaticBuildStepRequestV1["decision"]>,
+  current: DriverState,
+): DecisionEffect | AutomaticBuildStepResponseV1 {
+  const request = readDecisionRequest(decision.request_id);
+  if (request.invocation_ref !== invocation.invocation_ref) {
+    throw new Error("automatic build decision belongs to a different invocation");
+  }
+  if (request.reason === "retry_exhausted" && decision.choice_id === "retry_current") {
+    const accepted = readDecisionReceipt(invocation, request.request_id);
+    if (accepted?.choice_id === decision.choice_id) return {};
+  }
+  const identity = stateIdentity(current);
+  if (!request.choices.some((choice) => choice.choice_id === decision.choice_id)) {
+    throw new Error("automatic build decision choice is not allowed");
+  }
+  const scopeChanged = decision.choice_id === "retry_current"
+    && retryAttemptScopeChanged(request, current);
+  if (!scopeChanged
+    && (request.state.build_plan_digest !== identity.build_plan_digest
+      || request.state.descriptor_plan_digest !== identity.descriptor_plan_digest)) {
+    if (decision.choice_id === "retry_current") return unresolvedRetryResponse(request, "plan_changed");
+    return issueBoundary(invocation, syntheticBoundary("plan_changed", "plan_changed", current));
+  }
+  if (!scopeChanged
+    // Sibling commits change remaining-work estimates, not the terminal retry authorization.
+    // Retry bindings are validated below; automaticBuildNext still enforces the current budget.
+    && !(decision.choice_id === "retry_current" && request.reason === "retry_exhausted")
+    && !sameAutomaticBuildBudgetEvidence(
+      request.state.preflight_evaluation,
+      identity.preflight_evaluation,
+    )) {
+    const wallStatus = current.plan_result.preflight?.wall_clock.budget.status;
+    const reason = wallStatus === "low_confidence" ? "low_confidence_wall_budget" : "wall_budget_exceeded";
+    if (decision.choice_id === "retry_current") return unresolvedRetryResponse(request, "plan_changed");
+    return issueBoundary(invocation, syntheticBoundary(reason, reason, current));
+  }
+  let retryRecoveries: PreparedRetryRecovery[] = [];
+  if (decision.choice_id === "retry_current" && request.reason === "retry_exhausted" && !scopeChanged) {
+    const prepared = prepareRetryRecoveries(invocation, request, current);
+    if (prepared.status !== "ready") {
+      return unresolvedRetryResponse(
+        request,
+        prepared.status === "stale" ? "plan_changed" : "recovery_not_satisfied",
+      );
+    }
+    retryRecoveries = prepared.recoveries;
+  }
+  for (const recovery of retryRecoveries) {
+    recordAutomaticBuildRetryRecovery(recovery.target, recovery.input);
+  }
+  persistDecisionReceipt(invocation, request, decision.choice_id, identity);
+  if (request.reason === "plan_changed" || request.reason === "plan_confirmation_required") {
+    authorizePlan(invocation, request.request_id, decision.choice_id, identity.build_plan_digest);
+  }
+  return {
+    ...(request.reason === "budget_exceeded" ? { bypass_budget: true as const } : {}),
+    ...(request.plan_budget_evidence ? {
+      accepted_plan_budget_evidence: request.plan_budget_evidence,
+    } : {}),
+    ...(request.reason === "low_confidence_wall_budget" || request.reason === "wall_budget_exceeded"
+      ? { bypass_wall_budget: true as const }
+      : {}),
+  };
+}
+
+function dispatchHandoffRefs(
+  invocation: AutomaticBuildInvocationRecord,
+  dispatches: unknown,
+): Array<{ opaque_handoff_ref: string; dispatch_slot_ref: string }> {
+  if (!Array.isArray(dispatches) || !dispatches.length) {
+    throw new Error("automatic build dispatch action has no dispatches");
+  }
+  return dispatches.map((value) => {
+    if (!isRecord(value) || !isRecord(value.manifest) || !isRecord(value.executor_handoff)) {
+      throw new Error("automatic build dispatch action is invalid");
+    }
+    const stage = safeStage(value.manifest.stage);
+    const dispatchId = boundedString(value.manifest.dispatch_id, "dispatch_id", 512);
+    const dispatchRunId = boundedString(value.dispatch_run_id, "dispatch_run_id", 512);
+    const handoffDigest = value.executor_handoff.sha256;
+    const opaqueHandoffRef = value.opaque_handoff_ref;
+    const dispatchSlotRef = value.dispatch_slot_ref;
+    const recoveryIdentity = value.recovery_identity;
+    if (!stage || typeof handoffDigest !== "string" || !SHA256.test(handoffDigest)) {
+      throw new Error("automatic build dispatch identity is invalid");
+    }
+    if (typeof opaqueHandoffRef !== "string" || !HANDOFF_REF.test(opaqueHandoffRef)) {
+      throw new Error("automatic build handoff ref is invalid");
+    }
+    if (typeof dispatchSlotRef !== "string" || !DISPATCH_SLOT_REF.test(dispatchSlotRef)
+      || !isRecord(recoveryIdentity)
+      || (recoveryIdentity.version !== "automatic_build_recovery_generation_identity.v1"
+        && recoveryIdentity.version !== "automatic_build_recovery_generation_identity.v2")
+      || recoveryIdentity.dispatch_id !== dispatchId
+      || recoveryIdentity.dispatch_run_id !== dispatchRunId) {
+      throw new Error("automatic build recovery launch identity is invalid");
+    }
+    const projection: AutomaticBuildDriverHandoffProjectionV2 = {
+      version: "automatic_build_driver_handoff_projection.v2",
+      invocation_ref: invocation.invocation_ref,
+      opaque_handoff_ref: opaqueHandoffRef,
+      dispatch_slot_ref: dispatchSlotRef,
+      recovery_identity: recoveryIdentity as unknown as AutomaticBuildRecoveryGenerationIdentity,
+      dispatch_identity: {
+        stage,
+        dispatch_id: dispatchId,
+        dispatch_run_id: dispatchRunId,
+        handoff_digest: handoffDigest,
+      },
+    };
+    writeCreateOnly(recordFile(
+      path.join("handoff-projections", invocation.invocation_ref),
+      opaqueHandoffRef,
+    ), projection);
+    const dispatchProjection: AutomaticBuildDriverDispatchProjectionV2 = {
+      version: "automatic_build_driver_dispatch_projection.v2",
+      invocation_ref: invocation.invocation_ref,
+      dispatch_id: dispatchId,
+      dispatch_run_id: dispatchRunId,
+      opaque_handoff_ref: opaqueHandoffRef,
+      dispatch_slot_ref: dispatchSlotRef,
+      recovery_identity: recoveryIdentity as unknown as AutomaticBuildRecoveryGenerationIdentity,
+    };
+    writeCreateOnly(
+      recordFile(
+        path.join("dispatch-projections", invocation.invocation_ref),
+        sha256({
+          version: "automatic_build_driver_dispatch_projection_locator.v2",
+          recovery_identity: recoveryIdentity,
+        }),
+      ),
+      dispatchProjection,
+    );
+    return { opaque_handoff_ref: opaqueHandoffRef, dispatch_slot_ref: dispatchSlotRef };
+  });
+}
+
+function invocationDispatchProjection(
+  invocation: AutomaticBuildInvocationRecord,
+  ref: string,
+): AutomaticBuildDriverHandoffProjectionV2 | undefined {
+  const file = recordFile(path.join("handoff-projections", invocation.invocation_ref), ref);
+  if (!existsSync(file)) return undefined;
+  const value = readJsonRecord(file);
+  if (!isRecord(value) || value.version !== "automatic_build_driver_handoff_projection.v2"
+    || value.invocation_ref !== invocation.invocation_ref || value.opaque_handoff_ref !== ref) return undefined;
+  return value as unknown as AutomaticBuildDriverHandoffProjectionV2;
+}
+
+function bootstrapBoundaryForLaunches(
+  invocation: AutomaticBuildInvocationRecord,
+  current: DriverState,
+  executors: Array<{ opaque_handoff_ref: string }>,
+): AutomaticBuildStepResponseV1 | undefined {
+  for (const launch of executors) {
+    const identity = invocationDispatchProjection(invocation, launch.opaque_handoff_ref)?.recovery_identity;
+    if (!identity || identity.version !== "automatic_build_recovery_generation_identity.v2"
+      || identity.bootstrap_epoch < 3) continue;
+    const boundary = syntheticBoundary("executor_bootstrap_failed",
+      `bootstrap_unavailable:${launch.opaque_handoff_ref}`, current);
+    boundary.projection = { category: "executor_bootstrap_failed", code: "bootstrap_unavailable" };
+    const receipt = readDecisionReceipt(invocation,
+      requestIdFor(invocation, boundary, choicesFor(boundary.reason)));
+    if (receipt?.choice_id !== "retry_bootstrap") return issueBoundary(invocation, boundary);
+  }
+  return undefined;
+}
+
+function replayDispatchHandoffRefs(
+  invocation: AutomaticBuildInvocationRecord,
+  stageValue: unknown,
+  activeDispatchIdsValue: unknown,
+  dispatchRunIdValue: unknown,
+  now: string,
+): Array<{ opaque_handoff_ref: string; dispatch_slot_ref: string }> | undefined {
+  if (!Array.isArray(activeDispatchIdsValue) || !activeDispatchIdsValue.length) return undefined;
+  const stage = safeStage(stageValue);
+  if (!stage) throw new Error("automatic build active dispatch projection stage is invalid");
+  const dispatchRunId = boundedString(dispatchRunIdValue, "dispatch_run_id", 512);
+  const activeDispatchIds = activeDispatchIdsValue.map((value) => boundedString(
+    value,
+    "active_dispatch_id",
+    512,
+  ));
+  const directory = path.join(registryRoot(), "dispatch-projections", invocation.invocation_ref);
+  if (!existsSync(directory)) return undefined;
+  const stat = lstatSync(directory);
+  if (!stat.isDirectory() || stat.isSymbolicLink()) {
+    throw new Error("automatic build dispatch projection directory is invalid");
+  }
+  const realDirectory = realpathSync(directory);
+  const root = registryRoot();
+  if (!staysWithin(root, realDirectory)) {
+    throw new Error("automatic build dispatch projection directory escapes registry root");
+  }
+  const entries = readdirSync(realDirectory, { withFileTypes: true });
+  if (entries.some((entry) => !entry.isFile() || entry.isSymbolicLink())) {
+    throw new Error("automatic build dispatch projection directory is invalid");
+  }
+  const active = new Set(activeDispatchIds);
+  const target = resolveInvocationTarget(invocation);
+  const currentByDispatch = new Map(activeDispatchIds.map((dispatchId) => [
+    dispatchId,
+    inspectAutomaticBuildDispatchRecoveryGeneration(target, stage, dispatchId, {
+      now,
+      dispatch_run_id: dispatchRunId,
+    }),
+  ]));
+  const latest = new Map<string, AutomaticBuildDriverDispatchProjectionV2>();
+  for (const entry of entries) {
+    if (!/^[a-f0-9]{64}\.json$/u.test(entry.name)) {
+      throw new Error("automatic build dispatch projection filename is invalid");
+    }
+    const value = readJsonRecord(path.join(realDirectory, entry.name));
+    if (!isRecord(value)) throw new Error("automatic build dispatch projection is invalid");
+    if (value.version === "automatic_build_driver_dispatch_projection.v1") {
+      exactKeys(value, [
+        "version",
+        "invocation_ref",
+        "dispatch_id",
+        "dispatch_run_id",
+        "opaque_handoff_ref",
+      ]);
+      if (value.invocation_ref !== invocation.invocation_ref
+        || typeof value.dispatch_id !== "string"
+        || typeof value.dispatch_run_id !== "string"
+        || typeof value.opaque_handoff_ref !== "string"
+        || !HANDOFF_REF.test(value.opaque_handoff_ref)
+        || entry.name !== `${sha256({
+          dispatch_id: value.dispatch_id,
+          dispatch_run_id: value.dispatch_run_id,
+        })}.json`) {
+        throw new Error("automatic build V1 dispatch projection identity is invalid");
+      }
+      continue;
+    }
+    exactKeys(value, [
+      "version",
+      "invocation_ref",
+      "dispatch_id",
+      "dispatch_run_id",
+      "opaque_handoff_ref",
+      "dispatch_slot_ref",
+      "recovery_identity",
+    ]);
+    if (value.version !== "automatic_build_driver_dispatch_projection.v2"
+      || value.invocation_ref !== invocation.invocation_ref
+      || typeof value.dispatch_id !== "string"
+      || typeof value.dispatch_run_id !== "string"
+      || typeof value.opaque_handoff_ref !== "string"
+      || !HANDOFF_REF.test(value.opaque_handoff_ref)
+      || typeof value.dispatch_slot_ref !== "string"
+      || !DISPATCH_SLOT_REF.test(value.dispatch_slot_ref)
+      || !isRecord(value.recovery_identity)) {
+      throw new Error("automatic build dispatch projection identity is invalid");
+    }
+    if (entry.name !== `${sha256({
+      version: "automatic_build_driver_dispatch_projection_locator.v2",
+      recovery_identity: value.recovery_identity,
+    })}.json`) {
+      throw new Error("automatic build dispatch projection digest is invalid");
+    }
+    if (!active.has(value.dispatch_id)) continue;
+    const current = currentByDispatch.get(value.dispatch_id);
+    if (!current
+      || value.dispatch_run_id !== dispatchRunId
+      || canonicalAutomaticBuildJson(value.recovery_identity)
+        !== canonicalAutomaticBuildJson(current.recovery_identity)) continue;
+    if (value.dispatch_slot_ref !== current.dispatch_slot_ref) {
+      throw new Error("automatic build dispatch projection slot identity changed");
+    }
+    latest.set(value.dispatch_id, value as unknown as AutomaticBuildDriverDispatchProjectionV2);
+  }
+  if (activeDispatchIds.some((dispatchId) => !latest.has(dispatchId))) return undefined;
+  return activeDispatchIds.map((dispatchId) => ({
+    opaque_handoff_ref: latest.get(dispatchId)!.opaque_handoff_ref,
+    dispatch_slot_ref: latest.get(dispatchId)!.dispatch_slot_ref,
+  }));
+}
+
+function reissueActiveDispatchHandoffRefs(
+  invocation: AutomaticBuildInvocationRecord,
+  stageValue: unknown,
+  activeDispatchIdsValue: unknown,
+  dispatchRunIdValue: unknown,
+  issuedAt: string,
+): Array<{ opaque_handoff_ref: string; dispatch_slot_ref: string }> {
+  const stage = safeStage(stageValue);
+  if (!stage || !Array.isArray(activeDispatchIdsValue) || !activeDispatchIdsValue.length) {
+    throw new Error("automatic build active dispatch reissue input is invalid");
+  }
+  const dispatchRunId = boundedString(dispatchRunIdValue, "dispatch_run_id", 512);
+  const activeDispatchIds = activeDispatchIdsValue.map((value) => boundedString(
+    value,
+    "active_dispatch_id",
+    512,
+  ));
+  const target = resolveInvocationTarget(invocation);
+  const dispatches = activeDispatchIds.map((dispatchId) => {
+    const persisted = readAutomaticBuildDispatch(target, stage, dispatchId, dispatchRunId);
+    if (persisted.manifest.stage !== stage
+      || persisted.manifest.dispatch_id !== dispatchId
+      || persisted.dispatch_run_id !== dispatchRunId) {
+      throw new Error("automatic build durable dispatch identity changed during reissue");
+    }
+    const recoveryGeneration = inspectAutomaticBuildDispatchRecoveryGeneration(
+      target,
+      stage,
+      dispatchId,
+      { now: issuedAt, dispatch_run_id: dispatchRunId },
+    );
+    const issued = issueAutomaticBuildOpaqueHandoff({
+      execution_profile: invocationExecutionProfile(invocation.input),
+      target,
+      kind: "public_dispatch",
+      owner_identity: {
+        version: "automatic_build_dispatch_owner_identity.v1",
+        stage,
+        dispatch_id: dispatchId,
+        dispatch_run_id: dispatchRunId,
+      },
+      recovery_identity: recoveryGeneration.recovery_identity,
+      executor_handoff: persisted.executor_handoff,
+      issued_at: issuedAt,
+    });
+    return {
+      manifest: persisted.manifest,
+      dispatch_run_id: persisted.dispatch_run_id,
+      executor_handoff: persisted.executor_handoff,
+      opaque_handoff_ref: issued.opaque_handoff_ref,
+      dispatch_slot_ref: recoveryGeneration.dispatch_slot_ref,
+      recovery_identity: recoveryGeneration.recovery_identity,
+    };
+  });
+  return dispatchHandoffRefs(invocation, dispatches);
+}
+
+function readBoundedJsonWithin(rootInput: string, fileInput: string, label: string): unknown {
+  const root = path.resolve(rootInput);
+  const rootStat = lstatSync(root);
+  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) {
+    throw new Error(`${label} root is invalid`);
+  }
+  const realRoot = realpathSync.native(root);
+  const file = path.resolve(fileInput);
+  if (!staysWithin(root, file)) throw new Error(`${label} escapes its root`);
+  const stat = lstatSync(file);
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size < 2 || stat.size > MAX_RECORD_BYTES) {
+    throw new Error(`${label} is invalid`);
+  }
+  const real = realpathSync.native(file);
+  if (!staysWithin(realRoot, real)) throw new Error(`${label} realpath escapes its root`);
+  const bytes = readFileSync(real);
+  if (bytes.includes(0) || (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf)) {
+    throw new Error(`${label} encoding is invalid`);
+  }
+  try {
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as unknown;
+  } catch {
+    throw new Error(`${label} JSON is invalid`);
+  }
+}
+
+function privateArtifactRootFromPlan(
+  invocation: AutomaticBuildInvocationRecord,
+  plan: BuildPlanV1,
+): string {
+  if (!plan.intent_id) throw new Error("private artifact BuildPlan has no intent identity");
+  const planPath = path.resolve(invocation.input.build_plan_path);
+  const plansDirectory = path.dirname(planPath);
+  const bookDirectory = path.dirname(plansDirectory);
+  const privateRoot = path.dirname(bookDirectory);
+  if (path.basename(planPath) !== `${plan.plan_id}.json`
+    || path.basename(plansDirectory) !== "plans"
+    || path.basename(bookDirectory) !== plan.book_id) {
+    throw new Error("private artifact BuildPlan path does not match its identity");
+  }
+  return privateRoot;
+}
+
+function privateArtifactWave(
+  invocation: AutomaticBuildInvocationRecord,
+  current: DriverState,
+  availableAgentSlots: number,
+  issuedAt: string,
+): AutomaticBuildPrivateArtifactWaveV1 | undefined {
+  const plan = current.plan;
+  if (!plan.private_artifacts.length) return undefined;
+  if (plan.recipe_id !== "goal_directed" || !plan.intent_id || !plan.intent_digest) {
+    throw new Error("private artifact BuildPlan identity is invalid");
+  }
+  const target = resolveInvocationTarget(invocation);
+  const privateRoot = privateArtifactRootFromPlan(invocation, plan);
+  const storedPlan = validateBuildPlanV1(readBoundedJsonWithin(
+    privateRoot,
+    invocation.input.build_plan_path,
+    "private BuildPlan",
+  ));
+  if (canonicalAutomaticBuildJson(storedPlan) !== canonicalAutomaticBuildJson(plan)) {
+    throw new Error("private BuildPlan changed while preparing artifact tasks");
+  }
+  const intentPath = path.join(privateRoot, plan.book_id, "intents", plan.intent_id, "intent.json");
+  const intent = validateBuildIntentAny(readBoundedJsonWithin(
+    privateRoot,
+    intentPath,
+    "private BuildIntent",
+  ));
+  if (intent.intent_id !== plan.intent_id
+    || intent.book_id !== plan.book_id
+    || intent.source_fingerprint !== plan.source_fingerprint
+    || intent.content_profile.id !== target.profile_id
+    || intent.status !== "confirmed") {
+    throw new Error("private BuildIntent does not match the current BuildPlan and target");
+  }
+  const explicitSelection = adaptAutomaticBuildPrivateArtifactSelectionV3(intent, storedPlan);
+  const availableLids = resolveAutomaticBuildTargetLids(target);
+  const resolvedScopeLids = explicitSelection.intent.source_scope.whole_book
+    ? [...availableLids]
+    : [...explicitSelection.intent.source_scope.lids];
+  let prepared: ReturnType<typeof prepareIntentArtifactMailboxes>;
+  try {
+    prepared = prepareIntentArtifactMailboxes({
+      private_root: privateRoot,
+      intent: explicitSelection.intent,
+      plan: explicitSelection.plan,
+      available_lids: availableLids,
+      resolved_scope_lids: resolvedScopeLids,
+      created_at: issuedAt,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/retry limit reached/iu.test(message)) return { state: "retry_exhausted" };
+    throw error;
+  }
+  if (!prepared.tasks.length) return { state: "complete" };
+  const capacity = availableAgentSlots;
+  if (capacity < 1) return { state: "waiting" };
+  return {
+    state: "spawn",
+    executors: prepared.tasks.slice(0, capacity).map((task) => {
+      const issued = issueAutomaticBuildOpaqueHandoff({
+        target,
+        kind: "private_artifact",
+        private_root: privateRoot,
+        task_path: task.task_path,
+        issued_at: issuedAt,
+      });
+      return { opaque_handoff_ref: issued.opaque_handoff_ref };
+    }),
+  };
+}
+
+function collectForbiddenFields(value: unknown, found: string[] = []): string[] {
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectForbiddenFields(item, found));
+    return found;
+  }
+  if (!isRecord(value)) return found;
+  for (const [key, child] of Object.entries(value)) {
+    if (FORBIDDEN_ROOT_FIELDS.has(key)) found.push(key);
+    collectForbiddenFields(child, found);
+  }
+  return found;
+}
+
+function finalizeResponse(response: AutomaticBuildStepResponseV1): AutomaticBuildStepResponseV1 {
+  if (response.version !== "automatic_build_step.v1"
+    || collectForbiddenFields(response).length
+    || Buffer.byteLength(canonicalAutomaticBuildJson(response), "utf8") > MAX_ROOT_RESPONSE_BYTES) {
+    throw new Error("automatic build root response violates its boundary contract");
+  }
+  return response;
+}
+
+interface DriverRetrievalPreparation {
+  stage: import("../../packages/core/src/semantic-artifact").SemanticBuildStage;
+  target: AutomaticBuildTarget; plan: BuildPlanV1;
+  quality_profile: AutomaticBuildInvocationCreate["quality_profile"];
+  execution_profile: ReturnType<typeof invocationExecutionProfile>;
+}
+
+/** The same control flow serves synchronous readers and asynchronous production hosts. */
+function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1, liveHandoffRefs: string[] = [], completedHandoffRefs: string[] = []): Generator<DriverRetrievalPreparation, AutomaticBuildStepResponseV1, AutomaticBuildAsyncPreparationResult> {
+  let input: AutomaticBuildStepRequestV1;
+  try {
+    input = validateStepRequest(inputValue);
+  } catch (error) {
+    throw new AutomaticBuildStepRequestError(error);
+  }
+  const invocation = readInvocation(input.invocation_ref);
+  let current = loadDriverState(invocation, input.available_agent_slots);
+  const completedRefs = new Set(completedHandoffRefs);
+  const liveRefs = new Set(liveHandoffRefs);
+  const recoverTerminalLaunches = (executors: Array<{ opaque_handoff_ref: string }>): boolean => {
+    let recovered = false;
+    for (const launch of executors) {
+      const ref = launch.opaque_handoff_ref;
+      if (!completedRefs.has(ref) || liveRefs.has(ref)) continue;
+      if (!invocationDispatchProjection(invocation, ref)) throw new Error("terminal handoff was not issued by this invocation");
+      recovered = recoverAutomaticBuildExecutorTerminalSession(ref, invocation.initial_target_ref,
+        new Date().toISOString()) || recovered;
+    }
+    return recovered;
+  };
+  const heldWorkUnitIds = liveHandoffRefs.flatMap(ref => {
+    const projection = invocationDispatchProjection(invocation, ref);
+    if (!projection) throw new Error("live handoff was not issued by this invocation");
+    const identity = projection.dispatch_identity;
+    return readAutomaticBuildDispatch(current.plan_result.snapshot.target, identity.stage,
+      identity.dispatch_id, identity.dispatch_run_id).manifest.ordered_work_unit_ids;
+  });
+  const finish = (response: AutomaticBuildStepResponseV1) => {
+    const progress = current.plan_result.snapshot.stages.find(stage => stage.stage === "book_structure")?.book_structure_progress;
+    const buildProgress = projectAutomaticBuildProgress({
+      plan: current.plan, stages: current.plan_result.snapshot.stages,
+      preflight: current.plan_result.preflight,
+      status: response.action.kind === "DONE" ? "complete"
+        : response.action.kind === "NEEDS_USER" ? "needs_user" : "running",
+    });
+    return finalizeResponse({ ...response, build_progress: buildProgress,
+      ...(progress ? { book_structure_progress: progress } : {}) });
+  };
+  if (invocationExecutionProfile(invocation.input).harness_kind === "deepseek_harness") {
+    // An active dispatch may be replayable, but a new invocation has not thereby
+    // inherited its owner. Compare the actual leases to this invocation's issued work.
+    const owned = new Set<string>();
+    const directory = path.join(registryRoot(), "handoff-projections", invocation.invocation_ref);
+    if (existsSync(directory)) for (const file of readdirSync(directory)) {
+      if (!file.endsWith(".json")) continue;
+      const projection = invocationDispatchProjection(invocation, file.slice(0, -5));
+      if (!projection) continue;
+      const identity = projection.dispatch_identity;
+      const dispatch = readAutomaticBuildDispatch(current.plan_result.snapshot.target, identity.stage, identity.dispatch_id, identity.dispatch_run_id);
+      owned.add(dispatch.owner);
+    }
+    const now = new Date().toISOString();
+    for (const stage of current.plan_result.snapshot.stages) for (const id of stage.pending_tasks) {
+      const claim = inspectAutomaticBuildTaskClaim(current.plan_result.snapshot.target, stage.stage, id, { now });
+      if ("lease" in claim && !owned.has(claim.lease.owner)) {
+        return finish({ version: "automatic_build_step.v1",
+          action: { kind: "WAIT", reason: "active_lease", retry_after_ms: 1000 } });
+      }
+    }
+  }
+  let effect: DecisionEffect = {};
+  if (input.decision) {
+    const applied = applyDecision(invocation, input.decision, current);
+    if ("version" in applied) return finish(applied);
+    effect = applied;
+    current = loadDriverState(invocation, input.available_agent_slots, effect);
+  }
+
+  if (!isPlanAuthorized(invocation, current.plan.plan_digest)) {
+    return finish(issueBoundary(invocation, syntheticBoundary(
+      "plan_changed",
+      "invocation_build_plan_drift",
+      current,
+    )));
+  }
+
+  const doctor = (invocationExecutionProfile(invocation.input).harness_kind === "codex"
+    ? automaticBuildProtocolContract : automaticBuildEngineContract)(
+    invocation.input.target_input,
+    invocation.input.root_dir,
+    {
+      book_id: invocation.initial_target_ref.book_id,
+      requested_workers: invocation.input.max_parallel,
+      available_agent_slots: input.available_agent_slots,
+      quality_profile: invocation.input.quality_profile,
+      budget: effect.bypass_budget ? DEFAULT_AUTOMATIC_BUILD_BUDGET : invocation.input.budget,
+      wall_budget: effect.bypass_wall_budget ? undefined : invocation.input.wall_budget,
+      executor_provenance: invocation.input.executor_provenance,
+      execution_profile: invocationExecutionProfile(invocation.input),
+      build_plan: current.plan,
+    },
+  );
+  if (doctor.status !== "compatible") {
+    return finish(issueBoundary(invocation, syntheticBoundary(
+      "installation_incompatible",
+      "protocol_incompatible",
+      current,
+    )));
+  }
+
+  const unopenedFailure = input.bootstrap_failure ?? input.executor_open_failure
+    ?? (input.open_call_correction ? { opaque_handoff_ref: input.open_call_correction.issued_handoff_ref } : undefined);
+  if (unopenedFailure) {
+    const ref = unopenedFailure.opaque_handoff_ref;
+    if (!invocationDispatchProjection(invocation, ref)) {
+      throw new Error("bootstrap handoff was not issued by this invocation");
+    }
+    const now = transitionNow(current, input.available_agent_slots, effect);
+    if (input.open_call_correction) {
+      recordAutomaticBuildExecutorOpenCallCorrection(input.open_call_correction, invocation.initial_target_ref, now);
+    } else {
+      recordAutomaticBuildExecutorBootstrapFailure(ref, invocation.initial_target_ref, now);
+    }
+  }
+
+  for (let transition = 0; transition < MAX_TRANSITIONS; transition += 1) {
+    // A new transition follows a state change; the initial pure decision shares its read.
+    if (transition > 0 || unopenedFailure) current = loadDriverState(invocation, input.available_agent_slots, effect);
+    const planAction = current.plan_result.next_action;
+    if (planAction.kind === "needs_user" && planAction.reason === "preparation_required" && current.plan.retrieval) {
+      const prepared = yield { target: current.plan_result.snapshot.target, plan: current.plan, stage: planAction.stage as DriverRetrievalPreparation["stage"],
+        quality_profile: invocation.input.quality_profile, execution_profile: invocationExecutionProfile(invocation.input) };
+      if (prepared.status !== "ready") return finish(issueBoundary(invocation, boundaryFromAction(
+        (prepared.status === "needs_user" ? prepared.action : automaticBuildRecoveryAction(prepared.recovery)) as unknown as Record<string, unknown>, stateIdentity(current))));
+      continue;
+    }
+    if (planAction.kind === "needs_user") {
+      return finish(issueBoundary(
+        invocation,
+        boundaryFromAction(planAction as unknown as Record<string, unknown>, stateIdentity(current)),
+      ));
+    }
+    const preparation = current.plan_result.snapshot.stages.find(stage => stage.preparation_required
+      && current.plan.public_stage_closure.includes(stage.stage));
+    if (preparation?.policy_set) {
+      const prepared = prepareAutomaticBuildSnapshot(current.plan_result.snapshot.target, preparation.policy_set.stage,
+        { quality_profile: invocation.input.quality_profile, execution_profile: invocationExecutionProfile(invocation.input),
+          public_stage_closure: current.plan.public_stage_closure, reuse: current.plan.reuse });
+      if (prepared.status === "blocked") {
+        return finish(issueBoundary(invocation, boundaryFromAction(automaticBuildRecoveryAction(prepared.recovery), stateIdentity(current))));
+      }
+      // Preparation can adopt accepted work or expose a reducer. Recompute pending and budget evidence.
+      continue;
+    }
+    const preflight = current.plan_result.preflight;
+    const next = automaticBuildNext(
+      invocation.input.target_input,
+      invocation.input.root_dir,
+      invocation.input.max_parallel,
+      {
+        book_id: invocation.initial_target_ref.book_id,
+        execution_profile: invocationExecutionProfile(invocation.input),
+        owner: `automatic-build-driver:${invocation.invocation_ref}`,
+        now: transitionNow(current, input.available_agent_slots, effect),
+        quality_profile: invocation.input.quality_profile,
+        budget: effect.bypass_budget ? DEFAULT_AUTOMATIC_BUILD_BUDGET : invocation.input.budget,
+        wall_budget: effect.bypass_wall_budget ? undefined : invocation.input.wall_budget,
+        executor_provenance: invocation.input.executor_provenance,
+        available_agent_slots: input.available_agent_slots,
+        accepted_plan_digest: preflight?.descriptor_plan_digest,
+        accepted_evaluation_evidence: preflight
+          ? automaticBuildPreflightEvaluationEvidence(preflight)
+          : undefined,
+        accepted_plan_budget_evidence: effect.accepted_plan_budget_evidence,
+        executor_dispatches: true,
+        held_work_unit_ids: heldWorkUnitIds,
+        build_plan: current.plan,
+      },
+      current.plan_result.snapshot,
+    );
+    const action = next.action as unknown as Record<string, unknown>;
+    if (action.kind === "needs_user") {
+      const boundary = boundaryFromAction(action, stateIdentity(current));
+      const accepted = effectForAcceptedBoundary(invocation, boundary);
+      if (accepted) {
+        effect = { ...effect, ...accepted };
+        continue;
+      }
+      return finish(issueBoundary(invocation, boundary));
+    }
+    if (action.kind === "dispatch") {
+      const executors = dispatchHandoffRefs(invocation, action.dispatches);
+      const selectedIds = new Set((action.dispatches as Array<{ manifest: { dispatch_id: string } }>)
+        .map(dispatch => dispatch.manifest.dispatch_id));
+      const replayIds = Array.isArray(action.replay_dispatch_ids)
+        ? action.replay_dispatch_ids.filter(id => !selectedIds.has(id)) : [];
+      if (replayIds.length) {
+        // Lease expiry is a live observation, independent of the stable publication clock.
+        const issuedAt = new Date().toISOString();
+        executors.push(...(replayDispatchHandoffRefs(invocation, action.stage, replayIds,
+          action.dispatch_run_id, issuedAt) ?? reissueActiveDispatchHandoffRefs(invocation,
+          action.stage, replayIds, action.dispatch_run_id, issuedAt)));
+      }
+      if (recoverTerminalLaunches(executors)) continue;
+      const bootstrapBoundary = bootstrapBoundaryForLaunches(invocation, current, executors);
+      if (bootstrapBoundary) return finish(bootstrapBoundary);
+      return finish({
+        version: "automatic_build_step.v1",
+        action: {
+          kind: "SPAWN_EXECUTORS",
+          executors,
+        },
+      });
+    }
+    if (action.kind === "waiting") {
+      if (action.reason === "active_dispatches") {
+        const issuedAt = new Date().toISOString();
+        const replayed = replayDispatchHandoffRefs(
+          invocation,
+          action.stage,
+          action.active_dispatch_ids,
+          action.dispatch_run_id,
+          issuedAt,
+        );
+        const executors = replayed ?? reissueActiveDispatchHandoffRefs(
+          invocation,
+          action.stage,
+          action.active_dispatch_ids,
+          action.dispatch_run_id,
+          issuedAt,
+        );
+        if (recoverTerminalLaunches(executors)) continue;
+        const bootstrapBoundary = bootstrapBoundaryForLaunches(invocation, current, executors);
+        if (bootstrapBoundary) return finish(bootstrapBoundary);
+        return finish({
+          version: "automatic_build_step.v1",
+          action: { kind: "SPAWN_EXECUTORS", executors },
+        });
+      }
+      const waitReason = action.reason === "active_leases" ? "active_lease" : "active_executors";
+      const retryAfter = typeof action.retry_after_ms === "number" && Number.isSafeInteger(action.retry_after_ms)
+        ? Math.max(1, Math.min(action.retry_after_ms, 300_000))
+        : 1_000;
+      return finish({
+        version: "automatic_build_step.v1",
+        action: { kind: "WAIT", reason: waitReason, retry_after_ms: retryAfter },
+      });
+    }
+    if (action.kind === "close_stage") {
+      const stage = safeStage(action.stage);
+      if (!stage) throw new Error("automatic build close action stage is invalid");
+      const outcome = runAutomaticBuildCloseStage(
+        invocation.input.target_input,
+        invocation.input.root_dir,
+        stage,
+        {
+          book_id: invocation.initial_target_ref.book_id,
+          quality_profile: invocation.input.quality_profile,
+          build_plan: current.plan,
+        },
+      ) as unknown as Record<string, unknown>;
+      if (outcome.next === "replan") continue;
+      const internalReason = typeof outcome.code === "string" ? outcome.code : "stage_close_postcondition_failed";
+      return finish(issueBoundary(invocation, {
+        reason: externalReason(internalReason),
+        internal_reason: internalReason,
+        state: stateIdentity(current),
+        stage,
+        projection: { category: externalReason(internalReason), stage },
+      }));
+    }
+    if (action.kind === "done") {
+      const privateWave = privateArtifactWave(
+        invocation,
+        current,
+        input.available_agent_slots,
+        transitionNow(current, input.available_agent_slots, effect),
+      );
+      if (privateWave?.state === "spawn") {
+        return finish({
+          version: "automatic_build_step.v1",
+          action: { kind: "SPAWN_EXECUTORS", executors: privateWave.executors },
+        });
+      }
+      if (privateWave?.state === "waiting") {
+        return finish({
+          version: "automatic_build_step.v1",
+          action: { kind: "WAIT", reason: "backoff", retry_after_ms: 1_000 },
+        });
+      }
+      if (privateWave?.state === "retry_exhausted") {
+        return finish(issueBoundary(invocation, syntheticBoundary(
+          "retry_exhausted",
+          "private_artifact_retry_exhausted",
+          current,
+        )));
+      }
+      return finish({
+        version: "automatic_build_step.v1",
+        action: {
+          kind: "DONE",
+          summary: {
+            status: "complete",
+            completed_stages: current.plan.public_stage_closure.length,
+          },
+        },
+      });
+    }
+    throw new Error("automatic build reducer received an unsupported internal action");
+  }
+  return finish({
+    version: "automatic_build_step.v1",
+    action: { kind: "WAIT", reason: "backoff", retry_after_ms: 50 },
+  });
+}
+
+export function readDshBuildInvocation(invocationRef: string, rootSessionId: string) {
+  const record = readInvocation(invocationRef);
+  const input = record.input;
+  if (input.version !== "automatic_build_invocation_create.v2" || input.execution_profile.profile_id !== "dsh_native_v4"
+    || input.confirmation?.root_session_id !== rootSessionId) throw new Error("DSH invocation owner mismatch");
+  return { version: "dsh_build_invocation.v1" as const, invocation_ref: invocationRef,
+    execution_profile: input.execution_profile, model_runtime: input.model_runtime!, max_parallel: input.max_parallel };
+}
+
+/** Engine-owned foreground ownership. Unknown process liveness remains blocked. */
+function dshControllerCommand(value: Record<string, unknown>, step: DriverStep = automaticBuildStep): unknown {
+  const action = value.action;
+  exactKeys(value, ["version", "invocation_ref", "root_session_id", "controller_id", "owner_pid", "action"],
+    action === "step" ? ["available_agent_slots", "decision"] : action === "observe" ? ["observation"] : []);
+  if (!["acquire", "release", "step", "observe"].includes(String(action))) throw new Error("DSH controller action invalid");
+  const ref = boundedString(value.invocation_ref, "invocation_ref");
+  readDshBuildInvocation(ref, boundedString(value.root_session_id, "root_session_id"));
+  const id = boundedString(value.controller_id, "controller_id", 80);
+  if (!/^[a-zA-Z0-9_-]+$/u.test(id) || !Number.isSafeInteger(value.owner_pid) || (value.owner_pid as number) < 1) throw new Error("DSH controller owner invalid");
+  const file = recordFile("dsh-controllers", ref);
+  const owner = { version: "dsh_build_controller_owner.v1", controller_id: id, owner_pid: value.owner_pid };
+  let existing = existsSync(file) ? readJsonRecord(file) as typeof owner : undefined;
+  if (existing && (existing.version !== owner.version || !Number.isSafeInteger(existing.owner_pid))) throw new Error("DSH controller owner record invalid");
+  if (action === "acquire") {
+    if (existing && (existing.controller_id !== id || existing.owner_pid !== value.owner_pid)) {
+      try { process.kill(existing.owner_pid as number, 0); return { acquired: false }; }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ESRCH") return { acquired: false };
+      }
+      unlinkSync(file); existing = undefined;
+    }
+    if (!existing) {
+      mkdirSync(path.dirname(file), { recursive: true });
+      try { writeFileSync(file, JSON.stringify(owner), { flag: "wx" }); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code === "EEXIST") return { acquired: false }; throw error; }
+    }
+    return { acquired: true };
+  }
+  if (!existing || existing.controller_id !== id || existing.owner_pid !== value.owner_pid) throw new Error("DSH controller owner mismatch");
+  if (action === "release") { unlinkSync(file); return { released: true }; }
+  if (action === "observe") {
+    const observation = readDshExecutorObservation(value.observation);
+    const invocation = readInvocation(ref);
+    const projection = invocationDispatchProjection(invocation, observation.opaque_handoff_ref);
+    if (!projection || projection.dispatch_slot_ref !== observation.dispatch_slot_ref) throw new Error("DSH observation handoff owner mismatch");
+    writeCreateOnly(recordFile(path.join("dsh-observations", ref), observation.launch_id), observation);
+    // A failed connection preparation has an instrumented zero-call proof. Unknown host
+    // failures do not acquire this authorization; durable opens still win in the Engine.
+    if ((observation.outcome === "bootstrap" && observation.calls === 0)
+      || (observation.outcome === "open" && observation.last_operation === "executor.open"
+      && (observation.code === "connection_terminal" || observation.code === "handoff_ref_mismatch"))) {
+      recordAutomaticBuildExecutorBootstrapFailure(observation.opaque_handoff_ref, invocation.initial_target_ref, new Date().toISOString());
+    }
+    return { recorded: true };
+  }
+  return step({ version: "automatic_build_step_request.v1", invocation_ref: ref,
+    available_agent_slots: value.available_agent_slots as 0 | 1 | 2 | 3,
+    ...(value.decision === undefined ? {} : { decision: value.decision as AutomaticBuildStepRequestV1["decision"] }) });
+}
+
+type DriverStep = (request: AutomaticBuildStepRequestV1, liveHandoffRefs?: string[], completedHandoffRefs?: string[]) => AutomaticBuildStepResponseV1 | Promise<AutomaticBuildStepResponseV1>;
+export function automaticBuildStep(input: AutomaticBuildStepRequestV1, liveHandoffRefs: string[] = [], completedHandoffRefs: string[] = []): AutomaticBuildStepResponseV1 {
+  const steps = automaticBuildStepTransitions(input, liveHandoffRefs, completedHandoffRefs);
+  const next = steps.next();
+  if (next.done) return next.value;
+  return steps.next({ status: "needs_user", action: { kind: "needs_user", reason: "preparation_required", stage: next.value.stage,
+    message: "alignment retrieval requires authorized asynchronous preparation" } }).value as AutomaticBuildStepResponseV1;
+}
+
+export async function automaticBuildStepWithPreparation(input: AutomaticBuildStepRequestV1, liveHandoffRefs: string[] = [],
+  options: { runtime?: BuildRetrievalRuntime; signal?: AbortSignal } = {}, completedHandoffRefs: string[] = []): Promise<AutomaticBuildStepResponseV1> {
+  const steps = automaticBuildStepTransitions(input, liveHandoffRefs, completedHandoffRefs);
+  let next = steps.next();
+  while (!next.done) {
+    const { target, plan, quality_profile, execution_profile, stage } = next.value;
+    const prepared = await prepareAutomaticBuildSnapshot(target, stage, { quality_profile, execution_profile,
+      authorization: { plan, runtime: options.runtime ?? configuredBuildRetrievalRuntime(plan), signal: options.signal } });
+    next = steps.next(prepared);
+  }
+  return next.value;
+}
+
+export function runAutomaticBuildDriverCommandWithPreparation(value: unknown, signal?: AbortSignal): Promise<unknown> {
+  return Promise.resolve(runAutomaticBuildDriverCommand(value, (request, refs, completedRefs) => automaticBuildStepWithPreparation(request, refs, { signal }, completedRefs)));
+}
+
+export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep = automaticBuildStep): unknown {
+  if (!isRecord(value) || typeof value.version !== "string") {
+    throw new Error("build.step requires a versioned JSON request");
+  }
+  if (value.version === "automatic_build_refill_request.v1") {
+    return automaticBuildRefill(value, {
+      validateStep: validateStepRequest,
+      maxParallel: ref => readInvocation(ref).input.max_parallel,
+      step: (request, liveHandoffRefs, completedHandoffRefs) => {
+        try {
+          const result = step(request, liveHandoffRefs, completedHandoffRefs);
+          return result instanceof Promise ? result.catch(error => {
+            const response = automaticBuildDriverFailureResponse(error);
+            if (response.version !== "automatic_build_step.v1") throw error;
+            return response;
+          }) : result;
+        }
+        catch (error) {
+          const response = automaticBuildDriverFailureResponse(error);
+          if (response.version !== "automatic_build_step.v1") throw error;
+          return response;
+        }
+      },
+    });
+  }
+  if (value.version === "dsh_build_capabilities.v1") {
+    exactKeys(value, ["version"]);
+    return DSH_BUILD_CONTROL_CONTRACT_V1;
+  }
+  if (value.version === "dsh_build_controller.v1") return dshControllerCommand(value, step);
+  if (value.version === "build_retrieval_configure.v1") {
+    exactKeys(value, ["version", "build_plan_path", "retrieval_mode", "budget"], ["config_file"]);
+    if (value.retrieval_mode !== "lexical_only" && value.retrieval_mode !== "semantic_required") throw new Error("invalid retrieval mode");
+    const source = boundedString(value.build_plan_path, "build_plan_path");
+    const originalPlan = validateBuildPlanV1(JSON.parse(readFileSync(source, "utf8")));
+    const retrieval = configureBuildRetrieval(value.retrieval_mode, value.budget as NonNullable<BuildPlanV1["retrieval"]>["budget"],
+      value.config_file === undefined ? undefined : boundedString(value.config_file, "config_file"), buildRetrievalScope(originalPlan));
+    const plan = reviseBuildRetrieval(originalPlan, retrieval);
+    const file = path.join(path.dirname(source), `${plan.plan_id}-retrieval-r${plan.revision}.json`);
+    if (existsSync(file)) {
+      if (canonicalAutomaticBuildJson(JSON.parse(readFileSync(file, "utf8"))) !== canonicalAutomaticBuildJson(plan)) throw new Error("retrieval draft already exists with different content");
+    } else writeFileSync(file, canonicalAutomaticBuildJson(plan), { flag: "wx" });
+    return { build_plan_path: file, plan, review_markdown: buildRetrievalReview(plan) };
+  }
+  if (value.version === "build_retrieval_confirm.v1") {
+    exactKeys(value, ["version", "build_plan_path", "plan_digest", "confirmation_source"]);
+    if (value.confirmation_source !== "codex_conversation" && value.confirmation_source !== "reader_ui"
+      && value.confirmation_source !== "explicit_legacy_command") throw new Error("invalid confirmation source");
+    const file = boundedString(value.build_plan_path, "build_plan_path");
+    const plan = validateBuildPlanV1(JSON.parse(readFileSync(file, "utf8")));
+    if (!plan.retrieval || plan.plan_digest !== value.plan_digest) throw new Error("retrieval confirmation plan changed");
+    const confirmed = transitionBuildPlan(plan, "confirmed", { at: new Date().toISOString(), confirmation_source: value.confirmation_source });
+    writeFileSync(file, canonicalAutomaticBuildJson(confirmed));
+    return { build_plan_path: file, plan: confirmed, review_markdown: buildRetrievalReview(confirmed) };
+  }
+  if (value.version === "dsh_build_prepare.v1" || value.version === "dsh_build_prepare.v2") {
+    exactKeys(value, ["version", "target_input", "root_dir", "pass2", ...(value.version === "dsh_build_prepare.v2" ? ["max_parallel"] : [])], ["budget", "retrieval"]);
+    const workers = value.version === "dsh_build_prepare.v2" ? nonNegativeSafeInteger(value.max_parallel, "max_parallel") : 1;
+    if (workers < 1 || workers > 3) throw new Error("DSH max_parallel must be 1..3");
+    if (value.pass2 !== "enabled" && value.pass2 !== "disabled") throw new Error("DSH Pass2 choice is required");
+    let prepared = prepareExplicitLegacyBuildPlan(boundedString(value.target_input, "target_input"),
+      boundedString(value.root_dir, "root_dir"), { pass2: value.pass2,
+        budget: value.budget as BuildPlanV1["budget"], execution_profile: DSH_BUILD_EXECUTION_PROFILE_V1 });
+    if (value.retrieval !== undefined) {
+      if (!isRecord(value.retrieval)) throw new Error("invalid retrieval configuration");
+      exactKeys(value.retrieval, ["retrieval_mode", "budget"]);
+      const configured = runAutomaticBuildDriverCommand({ ...value.retrieval, version: "build_retrieval_configure.v1",
+        build_plan_path: prepared.build_plan_path }) as { plan: BuildPlanV1; build_plan_path: string };
+      prepared = { ...prepared, plan: configured.plan, build_plan_path: configured.build_plan_path };
+    }
+    const estimate = automaticBuildPlan(boundedString(value.target_input, "target_input"), boundedString(value.root_dir, "root_dir"), {
+      build_plan: prepared.plan, execution_profile: DSH_BUILD_EXECUTION_PROFILE_V1, requested_workers: workers, available_agent_slots: workers,
+    });
+    const plan = prepared.plan;
+    const stageNames: Record<string, string> = { pass1: "基础语义抽取", profile_sidecar: "阅读线索与公式", pass2: "跨段关系复核",
+      book_structure: "全书结构", paper_metadata: "论文元信息", paper_lexicon: "论文术语", paper_reading_guide: "论文阅读指南",
+      formal_objects: "正式学习对象与关系", cognitive_materials: "重点认知素材", teaching_publish: "来源审阅与教学发布" };
+    const stageLabel = (stage: string) => stageNames[stage.replace(/^public\./u, "")] ?? stage;
+    const review = ["# 本次构建计划", `Pass2：${value.pass2 === "enabled" ? "启用" : "关闭"}`,
+      `构建目标：${path.resolve(value.target_input as string)}`,
+      `工作根目录：${path.resolve(value.root_dir as string)}`,
+      `材料类型：${plan.content_profile.id === "paper" ? "论文" : "技术书籍"}`,
+      `完整阶段：${plan.public_stage_closure.map(stageLabel).join(" → ")}`,
+      `本次生成：${plan.create.map(stageLabel).join("、") || "无"}`,
+      `复用已有成果：${plan.reuse.map(item => stageLabel(item.artifact)).join("、") || "无"}`,
+      `排除项：${plan.excluded.map(item => `${stageLabel(item.artifact)}（${item.reason}）`).join("、") || "无"}`,
+      `计划总 token 上限：${plan.budget.max_total_tokens ?? "未另设上限"}`,
+      `计划时长上限（分钟）：${plan.budget.max_wall_clock_minutes ?? "未另设上限"}`,
+      `超出预算时：停止并请你决定。并发执行器：${workers}。`,
+      ...(estimate.preflight ? [`当前阶段：${stageLabel(estimate.preflight.stage)}；预计 token：${estimate.preflight.token_estimate.total_lower}–${estimate.preflight.token_estimate.total_upper}。此数字仅覆盖当前阶段。`] : []),
+      buildRetrievalReview(plan), "后续阶段按完整计划逐段评估，质量门通过后发布。"].join("\n\n");
+    // The snapshot contains generation inputs. Only this control projection may enter a root question.
+    return { version: value.version === "dsh_build_prepare.v2" ? "dsh_build_prepared.v2" : "dsh_build_prepared.v1", build_plan_path: prepared.build_plan_path, plan, review_markdown: review };
+  }
+  if (value.version === "automatic_build_invocation_create.v1" || value.version === "automatic_build_invocation_create.v2") {
+    return createAutomaticBuildInvocation(value as unknown as AutomaticBuildInvocationCreate);
+  }
+  if (value.version === "dsh_build_invocation_read.v1" || value.version === "dsh_build_invocation_read.v2") {
+    exactKeys(value, ["version", "invocation_ref", "root_session_id"]);
+    const { max_parallel, ...saved } = readDshBuildInvocation(boundedString(value.invocation_ref, "invocation_ref"), boundedString(value.root_session_id, "root_session_id"));
+    return value.version === "dsh_build_invocation_read.v2" ? { ...saved, version: "dsh_build_invocation.v2", max_parallel } : saved;
+  }
+  if (value.version === "automatic_build_step_request.v1") {
+    return step(value as unknown as AutomaticBuildStepRequestV1);
+  }
+  throw new Error("build.step request version is unsupported");
+}
+
+/** Keep raw errors in the local driver registry, outside the root's semantic boundary. */
+export function automaticBuildDriverFailureResponse(error: unknown): AutomaticBuildStepResponseV1 | AutomaticBuildRequestErrorV1 {
+  if (error instanceof AutomaticBuildRefillRequestError) {
+    return {
+      version: "automatic_build_request_error.v1", code: "invalid_refill_request",
+      request_version: "automatic_build_refill_request.v1",
+      message: "The refill request was rejected before build state was read or changed. Correct its fields and types, then resubmit with the same invocation_ref. No user decision is required.",
+    };
+  }
+  if (error instanceof AutomaticBuildStepRequestError) {
+    return {
+      version: "automatic_build_request_error.v1",
+      code: "invalid_step_request",
+      request_version: "automatic_build_step_request.v1",
+      message: "The step request was rejected before build state was read or changed. Correct its fields and types, then resubmit with the same invocation_ref. No user decision is required.",
+    };
+  }
+  if (error instanceof AutomaticBuildDispatchSettledError) {
+    // Another executor may finish during publication/replay. The next step reconciles receipts.
+    return finalizeResponse({ version: "automatic_build_step.v1",
+      action: { kind: "WAIT", reason: "backoff", retry_after_ms: 50 } });
+  }
+  const requestId = `abreq1_${randomBytes(32).toString("hex")}`;
+  const diagnostic = {
+    version: "automatic_build_driver_failure.v1",
+    request_id: requestId,
+    created_at: new Date().toISOString(),
+    error: error instanceof Error ? {
+      name: error.name.slice(0, 128), message: error.message.slice(0, 2048), stack: error.stack?.slice(0, 8192),
+    } : { name: "NonErrorThrown", message: String(error).slice(0, 2048) },
+  };
+  let saved = false;
+  try { writeCreateOnly(recordFile("diagnostics", requestId), diagnostic); saved = true; } catch { /* Report the unavailable diagnostic explicitly. */ }
+  if (error instanceof AutomaticBuildInvocationMissingError) {
+    return finalizeResponse({
+      version: "automatic_build_step.v1",
+      action: {
+        kind: "NEEDS_USER", request_id: requestId, reason: "build_engine_failed", choices: [],
+        message: "The build invocation record is missing. Recreate the invocation from the saved creation request or the same confirmed plan, then resume the existing workspace. Committed workspace artifacts remain reusable.",
+        projection: { category: "internal", code: "invocation_record_missing" },
+      },
+    });
+  }
+  return finalizeResponse({
+    version: "automatic_build_step.v1",
+    action: {
+      kind: "NEEDS_USER", request_id: requestId, reason: "build_engine_failed", choices: [],
+      message: saved
+        ? "The build engine failed. A bounded local diagnostic is stored under this request ID; maintenance is required before continuing."
+        : "The build engine failed and its local diagnostic could not be saved. Maintenance is required before continuing.",
+      projection: { category: "internal", code: saved ? "build_step_failed" : "build_step_failed_diagnostic_unavailable" },
+    },
+  });
+}
+
+function readStdinRequest(): unknown {
+  const bytes = readFileSync(0);
+  if (!bytes.byteLength || bytes.byteLength > MAX_STDIN_BYTES || bytes.includes(0)) {
+    throw new Error("build.step stdin is empty or exceeds its byte limit");
+  }
+  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as unknown;
+}
+
+function isCommandEntrypoint(): boolean {
+  return path.basename(process.argv[1] ?? "") === "automatic-build-driver.ts";
+}
+
+if (isCommandEntrypoint()) {
+  const cancellation = new AbortController();
+  const cancel = () => cancellation.abort(new Error("build control interrupted"));
+  process.once("SIGINT", cancel); process.once("SIGTERM", cancel);
+  try {
+    process.stdout.write(`${canonicalAutomaticBuildJson(await runAutomaticBuildDriverCommandWithPreparation(readStdinRequest(), cancellation.signal))}\n`);
+  } catch (error) {
+    process.stdout.write(`${canonicalAutomaticBuildJson(automaticBuildDriverFailureResponse(error))}\n`);
+  } finally {
+    process.removeListener("SIGINT", cancel); process.removeListener("SIGTERM", cancel);
+  }
+}

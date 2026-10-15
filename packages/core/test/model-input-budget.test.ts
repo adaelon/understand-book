@@ -25,6 +25,8 @@ import {
   buildWorkUnitCost,
   buildWorkUnitCostFromBudgetProof,
   createWorkUnitDescriptorV4,
+  createWorkUnitDescriptorV3,
+  validateWorkUnitDescriptorV3,
   validateWorkUnitDescriptorV4,
 } from "../src/stage-work-unit";
 
@@ -394,6 +396,20 @@ describe("model execution budget evidence v3", () => {
       ...descriptor,
       input_hash: "e".repeat(64),
     }, CODEX_EXECUTOR_TRANSPORT_PROFILE_V2)).toThrow(/input_hash/i);
+    const lids = Array.from({ length: 10000 }, (_, i) => `1.${i + 1}`);
+    const large = { ...descriptor, evidence_lids: lids,
+      input_basis: { ...descriptor.input_basis, parent_lids: lids } };
+    expect(validateWorkUnitDescriptorV4(large, CODEX_EXECUTOR_TRANSPORT_PROFILE_V2)).toBe(large);
+    expect(() => validateWorkUnitDescriptorV4({ ...large, evidence_lids: lids.slice(0, -1) }, CODEX_EXECUTOR_TRANSPORT_PROFILE_V2))
+      .toThrow("outside evidence_lids");
+    const input = evaluateModelInputBudget(request());
+    if (input.status !== "within_limit") throw new Error("expected input budget proof");
+    const { execution_budget_proof, version, ...common } = large;
+    const v3 = createWorkUnitDescriptorV3({ ...common, input_budget_proof: input.proof, input_hash: input.proof.rendered_input_sha256,
+      policy_fingerprint: { ...common.policy_fingerprint, router_version: input.proof.router_version, prompt_sha256: input.proof.prompt_sha256 },
+      cost: buildWorkUnitCost({ estimated_input_tokens: input.proof.estimated_rendered_tokens, visible_lids: lids.length, expected_output_items: 1 }) });
+    expect(validateWorkUnitDescriptorV3(v3)).toBe(v3);
+    expect(() => validateWorkUnitDescriptorV3({ ...v3, evidence_lids: lids.slice(0, -1) })).toThrow("outside evidence_lids");
   });
 });
 

@@ -1,0 +1,227 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/core
+
+ ✓ test/automatic-build-executor-session.test.ts (46 tests) 157949ms
+   ✓ automatic build executor.open > documents that the V1 GENERATE envelope would inline and overflow a 317,247-byte input  3663ms
+   ✓ automatic build executor.open > opens one create-only session and makes every replay resume the same first GENERATE lease  5469ms
+   ✓ automatic build executor.open > R1 rejects a 73-character V3 open without durable open or semantic attempt  2570ms
+   ✓ automatic build executor.open > rejects missing handoff and missing publish marker before task claim  325ms
+   ✓ automatic build executor.open > rejects handoff bytes and manifest identity drift before task claim  361ms
+   ✓ automatic build executor.open > revalidates strict JSON and prompt hash even when every outer digest is rewritten  392ms
+   ✓ automatic build public executor session S3 > runs an ordered public dispatch through the code-owned candidate sink to a canonical terminal receipt  3159ms
+   ✓ automatic build public executor session S3 > replays an identical submit without another attempt and rejects a conflicting candidate  3450ms
+   ✓ automatic build public executor session S3 > records semantic failure as a retryable task outcome  3182ms
+   ✓ automatic build public executor session S3 > maps unknown V1 executor reports to generation/executor_failed without inventing writer facts  8932ms
+   ✓ automatic build public executor session S3 > resumes the same executor session after a heartbeat  5158ms
+   ✓ automatic build public executor session S3 > persists executor interruption across reopen  2815ms
+   ✓ automatic build bounded executor session V3 > A2 returns contiguous bounded batches and confirms the final ordinal only at generation.start  3251ms
+   ✓ automatic build bounded executor session V3 > issues a current public recovery handoff directly as V4 without supersession state  2646ms
+   ✓ automatic build bounded executor session V3 > keeps historical V3 record bytes unchanged while issuing the current V4 handoff  2708ms
+   ✓ automatic build bounded executor session V3 > delivers prompt and input through bounded ordinals, then creates attempt 1 only at generation.start  8332ms
+   ✓ automatic build bounded executor session V3 > R1 starts from the public frozen input without invoking the stage renderer again  2533ms
+   ✓ automatic build bounded executor session V3 > RG4 projects a finished dispatch without creating an attempt or candidate action  2484ms
+   ✓ automatic build bounded executor session V3 > H0 uses ordinal/range/body/schema checks without transport, chunk, output-contract, or ledger digests  2677ms
+   ✓ automatic build bounded executor session V3 > rehydrates completed input for a replacement child after generation.start without another attempt  5181ms
+   ✓ automatic build bounded executor session V3 > RG4 replaces an expired recovery generation with epoch 2 without consuming a semantic attempt  5620ms
+   ✓ automatic build bounded executor session V3 > RG4 projects a candidate-free terminal action instead of replaying a committed start  2897ms
+   ✓ automatic build bounded executor session V3 > replays the same next request byte-identically and rejects unknown ordinals or cross-session refs  2736ms
+   ✓ automatic build bounded executor session V3 > reopens at the first unconfirmed batch and keeps an interrupted delivery at attempt zero  9018ms
+   ✓ automatic build bounded executor session V3 > rejects generation.start before complete delivery and leaves terminal dispatches body-free  2541ms
+   ✓ automatic build bounded executor session V3 > P4 rejects a reducer when its accepted child disappears between open and input  3248ms
+   ✓ automatic build bounded executor session V3 > P4 rejects current policy drift before batch  2356ms
+   ✓ automatic build bounded executor session V3 > P4 rejects current policy drift before start  2409ms
+   ✓ automatic build bounded executor session V3 > P4 rejects current policy drift before submit  2587ms
+   ✓ automatic build bounded executor session V3 > submits one structured JsonValue through the bound sink with canonical replay and no path  3029ms
+   ✓ automatic build bounded executor session V3 > keeps a temporarily unavailable candidate sink on the same attempt and replays the same value  2861ms
+   ✓ automatic build bounded executor session V3 > delivers the previous writer field error to the next generation and commits its correction  5656ms
+   ✓ automatic build bounded executor session V3 > delivers an oversized candidate correction to the next bounded generation and commits a smaller candidate  5543ms
+   ✓ automatic build bounded executor session V3 > keeps an untyped downstream candidate rejection as a redacted internal writer failure  3628ms
+   ✓ automatic build bounded executor session V3 > returns committed after an intermediate current V4 generation submit  2945ms
+   ✓ automatic build bounded executor session V3 > RG7 reuses committed A/B bytes and recovers only C through a new V4 epoch  15721ms
+   ✓ automatic build bounded executor session V3 > accepts realistic null source_lid candidates through the real MCP wrapper  3116ms
+   ✓ automatic build bounded executor session V3 > RG6 records an owned token-oversized request before writer start and leaves forged sessions untouched  8244ms
+   ✓ automatic build bounded executor session V3 > rejects V2 path submit and malformed, host, non-finite, deep, or unbound values before mailbox mutation  2976ms
+ ❯ test/build-orchestrator.test.ts (21 tests | 4 failed) 56642ms
+   ✓ reuses an accepted BookStructure publication for Tutor after its generation route changes  9031ms
+   ✓ P2 snapshots and plans inspect preparation without mutating an empty or prepared stage 85ms
+   ✓ automatic build orchestrator > U2 resumes partial completed work after relocation and rejects the old executor  13487ms
+   × automatic build orchestrator > U1 resumes an imported md snapshot after relocation and external edits 6174ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   × automatic build orchestrator > U1 resumes an imported epub snapshot after relocation and external edits 5573ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ automatic build orchestrator > uses an explicit book id before falling back to the source filename slug 16ms
+   ✓ automatic build orchestrator > resolves an existing technical-learning workspace and its source.txt without a Workbench manifest 32ms
+   ✓ automatic build orchestrator > falls back to the workspace truth file when the imported technical source is unavailable 17ms
+   ✓ automatic build orchestrator > resolves an explicit trusted paper workspace and starts after the foundation 25ms
+   ✓ automatic build orchestrator > resolves a reconciled source.txt back to its trusted paper workspace 22ms
+   ✓ automatic build orchestrator > fails closed for an untrusted source.txt inside a build workspace 6ms
+   ✓ automatic build orchestrator > rejects a paper workspace whose trusted foundation is incomplete 7ms
+   ✓ automatic build orchestrator > finds a trusted paper workspace by a unique input sha256 24ms
+   ✓ automatic build orchestrator > selects only the first unfinished stage and batches pending semantic tasks 0ms
+   ✓ automatic build orchestrator > closes a stage only after every semantic task passes 0ms
+   × automatic build orchestrator > prepares the repaired BookStructure prompt alongside a frozen v2 policy 5506ms
+     → expected 'blocked' to be 'ready' // Object.is equality
+   ✓ automatic build orchestrator > omits Pass2 projection for a confirmed plan that excludes it and retains explicit inspection  5658ms
+   × automatic build orchestrator > exposes BookStructure without Pass2 and invalidates it when a Pass2 audit arrives later 5467ms
+     → expected [ 'structure_chapter', …(12) ] to deeply equal [ 'structure_chapter', …(11) ]
+   ✓ automatic build orchestrator > reopens Pass1 when fresh artifacts disagree with the closed base graph 87ms
+   ✓ automatic build orchestrator > paper Pass1 close preserves the trusted foundation manifest and PDF maps  2341ms
+   ✓ automatic build orchestrator > routes fresh paper lexicon fragments into an artifact-bound reducer without mutating build state  3080ms
+ ✓ test/book-structure-reuse.test.ts (4 tests) 2005ms
+   ✓ admits 29 v4 local results after adding only post-stitch policies and reconstructs the same selection plan  677ms
+   ✓ rejects the changed local input or semantic contract while retaining every unaffected contribution  697ms
+   ✓ keeps the last valid public structure readable when append publication is interrupted  339ms
+ ✓ test/automatic-build-driver.test.ts (65 tests) 254588ms
+   ✓ S0 deterministic automatic-build driver protocol > persists explicit V2 Codex selection and rejects mixed record versions and incomplete DSH configuration  370ms
+   ✓ S0 deterministic automatic-build driver protocol > uses the confirmed BuildPlan book id for a non-ASCII source throughout the driver  367ms
+   ✓ S0 deterministic automatic-build driver protocol > returns only the four root actions and never exposes internal or semantic fields  647ms
+   ✓ S0 deterministic automatic-build driver protocol > replays an active dispatch after more than 512 valid projection records accumulate  6785ms
+   ✓ S0 deterministic automatic-build driver protocol > P3 observes a child commit between plan and dispatch without reclaiming it  3332ms
+   ✓ S0 deterministic automatic-build driver protocol > R2 terminal recovers an open refusal and commits B once on a new connection  9012ms
+   ✓ S0 deterministic automatic-build driver protocol > R2 correction recovers an open refusal and commits B once on a new connection  8584ms
+   ✓ S0 deterministic automatic-build driver protocol > R2 refuses a different ref that already opened another child and accepts an unopened typo  6464ms
+   ✓ S0 deterministic automatic-build driver protocol > recovers terminal children interrupted before_open before generation while preserving a live sibling  12446ms
+   ✓ S0 deterministic automatic-build driver protocol > recovers terminal children interrupted after_open before generation while preserving a live sibling  16724ms
+   ✓ S0 deterministic automatic-build driver protocol > L1 refills the released slot while sibling children have not opened yet  7786ms
+   ✓ S0 deterministic automatic-build driver protocol > L1 commits six units through fresh connections while refilling one of three live slots  19742ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 bootstrap: recovers a zero-call bootstrap failure once without consuming a semantic attempt  7020ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 connection_terminal: recovers a zero-call bootstrap failure once without consuming a semantic attempt  7035ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 handoff_ref_mismatch: recovers a zero-call bootstrap failure once without consuming a semantic attempt  7025ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 correction: recovers a zero-call bootstrap failure once without consuming a semantic attempt  6897ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 bootstrap: rejects bootstrap reports from another invocation without changing its tasks  302ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 handoff_ref_mismatch: rejects bootstrap reports from another invocation without changing its tasks  351ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 correction: rejects bootstrap reports from another invocation without changing its tasks  310ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 bootstrap: keeps accepted work when bootstrap recovery resumes a dispatch between units  6357ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 connection_terminal: keeps accepted work when bootstrap recovery resumes a dispatch between units  6161ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 handoff_ref_mismatch: keeps accepted work when bootstrap recovery resumes a dispatch between units  6197ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 correction: keeps accepted work when bootstrap recovery resumes a dispatch between units  6528ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 bootstrap: bounds repeated bootstrap failures and resumes only after an explicit recovery decision  1831ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 connection_terminal: bounds repeated bootstrap failures and resumes only after an explicit recovery decision  1696ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 handoff_ref_mismatch: bounds repeated bootstrap failures and resumes only after an explicit recovery decision  1760ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 correction: bounds repeated bootstrap failures and resumes only after an explicit recovery decision  1801ms
+   ✓ S0 deterministic automatic-build driver protocol > gives an expired recovery generation a new handoff in the same invocation while keeping its dispatch slot  5509ms
+   ✓ S0 deterministic automatic-build driver protocol > gives an expired recovery generation a new handoff in the fresh invocation while keeping its dispatch slot  5617ms
+   ✓ S0 deterministic automatic-build driver protocol > reissues a durable active dispatch after volatile registry loss without another semantic attempt  7724ms
+   ✓ S0 deterministic automatic-build driver protocol > resumes an expired running dispatch without republishing its manifest  748ms
+   ✓ S0 deterministic automatic-build driver protocol > rejects expired dispatch re-entry when the persisted owner identity conflicts  445ms
+   ✓ S0 deterministic automatic-build driver protocol > rejects a stale decision after BuildPlan drift without caller-supplied digests  598ms
+   ✓ S0 deterministic automatic-build driver protocol > binds a fresh budget decision to the current deterministic receipt  948ms
+   ✓ S0 deterministic automatic-build driver protocol > keeps deterministic retry_current side-effect free while the policy scope is unchanged  1001ms
+   ✓ S0 deterministic automatic-build driver protocol > projects mixed candidate failures without hiding a real operator fix: {"hasOperatorFailure":false,"sameCode":false}  2421ms
+   ✓ S0 deterministic automatic-build driver protocol > projects mixed candidate failures without hiding a real operator fix: {"hasOperatorFailure":true,"sameCode":false}  2328ms
+   ✓ S0 deterministic automatic-build driver protocol > projects mixed candidate failures without hiding a real operator fix: {"hasOperatorFailure":true,"sameCode":true}  2520ms
+   ✓ S0 deterministic automatic-build driver protocol > authorizes field candidate correction from an old recovery request without rewriting failures  2785ms
+   ✓ S0 deterministic automatic-build driver protocol > authorizes teaching candidate correction from an old recovery request without rewriting failures  3040ms
+   ✓ S0 deterministic automatic-build driver protocol > authorizes transport candidate correction from an old recovery request without rewriting failures  2255ms
+   ✓ S0 deterministic automatic-build driver protocol > retries after sibling progress while enforcing the current wall budget (limited=false)  3280ms
+   ✓ S0 deterministic automatic-build driver protocol > retries after sibling progress while enforcing the current wall budget (limited=true)  2454ms
+   ✓ S0 deterministic automatic-build driver protocol > writes one terminal-bound recovery receipt for an allowlisted transient retry_current  1378ms
+   ✓ S0 deterministic automatic-build driver protocol > rejects terminal receipt drift without persisting a decision or recovery effect  683ms
+   ✓ S0 deterministic automatic-build driver protocol > replans retry_current when the complete policy scope changes  2249ms
+   ✓ S0 deterministic automatic-build driver protocol > reissues a bounded user projection when wall-clock evaluation drifts  331ms
+   ✓ S0 deterministic automatic-build driver protocol > closes and replans internally instead of returning a close command  3134ms
+   ✓ S0 deterministic automatic-build driver protocol > advances from a terminal dispatch receipt on disk without a receipt body from root  3385ms
+   ✓ S0 deterministic automatic-build driver protocol > terminalizes a fully committed V4 dispatch before build.step refills it  12735ms
+   ✓ S0 deterministic automatic-build driver protocol > terminalizes a V4 committed-failed-committed dispatch as task_failure and retries the failure  11542ms
+   ✓ S0 deterministic automatic-build driver protocol > runs driver commands and accepts a PowerShell-style UTF-8 BOM on executor stdin  15623ms
+   ✓ S4 private artifact driver and executor session > R2 resolves private frozen delivery material once at generation.start  414ms
+   ✓ S4 private artifact driver and executor session > R2 rejects private task, Blueprint, and output-contract drift before creating generation state  565ms
+   ✓ S4 private artifact driver and executor session > RG6 gives private artifacts the four-budget contract and records oversize before staging  565ms
+   ✓ S4 private artifact driver and executor session > drives public completion through private preparation and accepts every artifact without root leakage  1197ms
+   ✓ S4 private artifact driver and executor session > lets an untouched sibling commit before retrying one failed artifact and resumes the retry in place  1901ms
+ ✓ test/automatic-build-executor-prompt.test.ts (7 tests) 97ms
+ ✓ test/model-input-budget.test.ts (12 tests) 68ms
+ ✓ test/teaching-object-alignment.test.ts (21 tests) 60ms
+ ✓ test/teaching-build.test.ts (31 tests) 54622ms
+   ✓ whole-material teaching build > shares whole-book inputs and stores only the accepted alignment action  1156ms
+   ✓ whole-material teaching build > resumes accepted parallel cursors without rereading receipts and rebuilds after cache loss  1141ms
+   ✓ whole-material teaching build > continues a historical six-item query unchanged and uses larger pages on a new query  1215ms
+   ✓ whole-material teaching build > routes supplemental evidence reads after parallel retrieval exhaustion and preserves field diagnostics and receipts  5374ms
+   ✓ whole-material teaching build > rebuilds a truncated unaccepted frozen task but leaves accepted task records untouched  1025ms
+   ✓ whole-material teaching build > removes an interrupted first freeze and keeps the last complete writer context on ENOSPC  1129ms
+   ✓ whole-material teaching build > dispatches three independent alignment focuses and keeps sibling inputs frozen while one advances  1077ms
+   ✓ whole-material teaching build > reduces parallel rounds to complete formal coverage and reuses the published identities  7533ms
+   ✓ whole-material teaching build > finishes an issued serial action before entering parallel rounds without losing its reads  1089ms
+   ✓ whole-material teaching build > prepares retrieval for each parallel focus and refreshes only the branch's explicit query  1530ms
+   ✓ whole-material teaching build > SR4b refreshes an explicit query after provider change while reusing its unchanged automatic-focus search action  1613ms
+   ✓ whole-material teaching build > SR4b reuses actions across provider/config changes with identical input and keeps the frozen task unchanged  1691ms
+   ✓ whole-material teaching build > SR4b propagates a resolved meaning to relation/component projections through actual writer and preparation  1472ms
+   ✓ whole-material teaching build > SR4b restores finish identities after cache deletion and rematerializes changed Core dependencies only at stage close  8188ms
+   ✓ whole-material teaching build > SR4b rejects a reused action that fails the current gate and gives its replacement an independent receipt  1579ms
+   ✓ whole-material teaching build > SR4a persists prepared pages, keeps search through provider failure/cancellation and resumes without a model attempt  2124ms
+   ✓ whole-material teaching build > SR4b replays actions on the current ledger and preserves immutable input and cumulative reads  10937ms
+   ✓ whole-material teaching build > routes large paragraphs, keeps oversized atomic input incomplete and resumes accepted reads  1788ms
+   ✓ whole-material teaching build > publishes source-bound assets through confirmed plan with Pass2 enabled and resumes accepted work  438ms
+   ✓ whole-material teaching build > publishes source-bound assets through confirmed plan with Pass2 disabled and resumes accepted work  436ms
+   ✓ whole-material teaching build > blocks failed source review, then repairs with old identities retained  775ms
+   ✓ whole-material teaching build > repairs only the rejected material and reuses unrelated extraction and source reviews  692ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/build-orchestrator.test.ts > automatic build orchestrator > U1 resumes an imported md snapshot after relocation and external edits
+ FAIL  test/build-orchestrator.test.ts > automatic build orchestrator > U1 resumes an imported epub snapshot after relocation and external edits
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/build-orchestrator.test.ts:405:25
+    403|     expect(readFileSync(path.join(moved, path.relative(target.workspac…
+    404|   }, 30_000);
+    405|   it.each(["md", "epub"])("U1 resumes an imported %s snapshot after re…
+       |                         ^
+    406|     const root = tempDir();
+    407|     const source = path.join(root, `imported.${extension}`);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/build-orchestrator.test.ts > automatic build orchestrator > prepares the repaired BookStructure prompt alongside a frozen v2 policy
+AssertionError: expected 'blocked' to be 'ready' // Object.is equality
+
+Expected: "ready"
+Received: "blocked"
+
+ ❯ test/build-orchestrator.test.ts:626:76
+    624|     const before = previous.members.map(member => readFileSync(path.jo…
+    625|       "v4", "policies", "book_structure", member.policy_generation_id,…
+    626|     expect(prepareAutomaticBuildSnapshot(target, "book_structure").sta…
+       |                                                                            ^
+    627|     const current = buildAutomaticBuildSnapshot(target).stages.find(it…
+    628|     expect(current?.policy_set?.members.every(member => member.policy_…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/build-orchestrator.test.ts > automatic build orchestrator > exposes BookStructure without Pass2 and invalidates it when a Pass2 audit arrives later
+AssertionError: expected [ 'structure_chapter', …(12) ] to deeply equal [ 'structure_chapter', …(11) ]
+
+- Expected
++ Received
+
+@@ -1,7 +1,8 @@
+  [
+    "structure_chapter",
++   "structure_chapter_selection",
+    "structure_fragment",
+    "structure_outline",
+    "structure_reduce",
+    "structure_relation_delta",
+    "structure_relation_select",
+
+ ❯ test/build-orchestrator.test.ts:667:77
+    665|     expect(bookStructure?.pending_work_units?.every((unit) => unit.cos…
+    666|     expect(bookStructure?.policy_set?.stage).toBe("book_structure");
+    667|     expect(bookStructure?.policy_set?.members.map((member) => member.k…
+       |                                                                             ^
+    668|       "structure_chapter",
+    669|       "structure_fragment",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+
+ Test Files  1 failed | 7 passed (8)
+      Tests  4 failed | 203 passed (207)
+   Start at  08:07:38
+   Duration  286.00s (transform 4.01s, setup 0ms, collect 21.21s, tests 526.03s, environment 1ms, prepare 3.29s)
+
+undefined
+E:\allwork\download\agent\understand-book\packages\core:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/automatic-build-driver.test.ts test/automatic-build-executor-prompt.test.ts test/automatic-build-executor-session.test.ts test/book-structure-reuse.test.ts test/build-orchestrator.test.ts test/model-input-budget.test.ts test/teaching-build.test.ts test/teaching-object-alignment.test.ts --maxWorkers=2

@@ -1,0 +1,15 @@
+[WebServer] (node:29564) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:4112) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 4 tests using 1 worker
+
+(node:39976) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 playwright\pdf-selection-actions.spec.ts:934:34 › RS2 rich content paginates completely and saves the exact preview at 390px (17.9s)
+  ok 2 playwright\pdf-selection-actions.spec.ts:934:34 › RS2 rich content paginates completely and saves the exact preview at 1440px (10.3s)
+  ok 3 playwright\pdf-selection-actions.spec.ts:1037:1 › RS3 visual cards group the original excerpt, reflection and source in both layouts and palettes (6.3s)
+  ok 4 playwright\pdf-selection-actions.spec.ts:1139:1 › RS2 overwide tables and formulas fail before PNG export; long ordered lists and code preserve every item (1.2s)
+
+  4 passed (43.5s)

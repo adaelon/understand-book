@@ -1,0 +1,114 @@
+{
+  "base": {
+    "book_id": "tc0-average-speed",
+    "graph_edges": [],
+    "graph_nodes": [],
+    "lid_nodes": [
+      {
+        "children": [
+          "1.1",
+          "1.2"
+        ],
+        "kind": "chapter",
+        "lid": "1",
+        "path": [
+          1
+        ],
+        "span": {
+          "end": 189,
+          "start": 0
+        }
+      },
+      {
+        "children": [],
+        "kind": "paragraph",
+        "lid": "1.1",
+        "path": [
+          1,
+          1
+        ],
+        "span": {
+          "end": 147,
+          "start": 0
+        }
+      },
+      {
+        "children": [],
+        "kind": "paragraph",
+        "lid": "1.2",
+        "path": [
+          1,
+          2
+        ],
+        "span": {
+          "end": 188,
+          "start": 149
+        }
+      }
+    ]
+  },
+  "case": "save-note",
+  "input": {
+    "message": "把‘平均速度＝总路程／总时间’记为这一段的笔记。",
+    "question_quote": {
+      "lid": "1.1",
+      "quote": "Average speed is total distance divided by total time.",
+      "ranges": [
+        {
+          "lid": "1.1",
+          "range": {
+            "end": 71,
+            "start": 17
+          }
+        }
+      ],
+      "raw_quote": "Average speed is total distance divided by total time.",
+      "resolution_basis": "exact",
+      "resolved_quote": "Average speed is total distance divided by total time.",
+      "status": "resolved"
+    }
+  },
+  "reader_before": {
+    "layout": {
+      "active_preset": "technical_read",
+      "focused_slot": "technical.agent",
+      "open_slots": [
+        "technical.structure_map",
+        "technical.agent"
+      ],
+      "panel_sizes": {
+        "technical.agent": {
+          "kind": "percent",
+          "value": 30.0
+        },
+        "technical.structure_map": {
+          "kind": "percent",
+          "value": 24.0
+        }
+      },
+      "pinned_evidence": [],
+      "rev": 0,
+      "slot_order": {
+        "left": [
+          "technical.structure_map"
+        ],
+        "right": [
+          "technical.agent"
+        ]
+      }
+    },
+    "open_panels": [],
+    "selection": null,
+    "viewport": {
+      "anchor_lid": "1.1",
+      "bottom_lid": "1.2",
+      "top_lid": "1.1",
+      "visible_lids": [
+        "1.1",
+        "1.2"
+      ],
+      "width": 20
+    }
+  },
+  "source": "# Average speed\n\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\n\nA blue bicycle travels along the river.\n"
+}

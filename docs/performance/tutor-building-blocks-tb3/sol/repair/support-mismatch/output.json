@@ -1,0 +1,54 @@
+{
+  "answer": "好，按你说的，换成逐行代码和类型对照。你已经明确纠正了“两份 Foo”的说法，我们从这里继续。\n\n先读这两行：\n\n```rust\nlet foo = Foo(0);\nlet bar = &foo;\n```\n\n第一行：右侧创建 `Foo(0)`，绑定给 `foo`。\n第二行：先看右侧 `&foo`，它产生对原值的不可变引用；再看左侧，把这个引用绑定给 `bar`。正文明确说 `bar` 的类型是 `&Foo`。[[source:source_ref_e2f1f69dfb7b32e3]] [[source:source_ref_9af277d1d3d785d4]]\n\n| 变量 | 类型 | 绑定的内容 |\n|---|---|---|\n| `foo` | `Foo` | 原来的 `Foo(0)` 值 |\n| `bar` | `&Foo` | 对原值的不可变引用 |\n\n读这张对照时，注意 `&Foo` 中的 `&`：它标明引用类型。借用没有取得原值的所有权；不可变引用允许读取，但不能通过它修改原值。[[source:source_ref_b7cdf804a5f27a0d]] [[source:source_ref_9af277d1d3d785d4]]\n\n再补充一条用于读打印语句的规则：这里的 `println!(\"… {:?}\", ...)` 为了格式化而借用参数来读取，不会把参数的所有权拿走。共享借用期间可以继续做这样的只读访问。\n\n现在由你解释原例的这两行：\n\n```rust\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n请按代码顺序说：**第一行用的变量是什么类型、第二行又是什么类型；结合上面的借用和打印规则，为什么两行都能使用？** 你可以直接用变量名和类型来说明。",
+  "evidence": {
+    "nature": "hypothesis",
+    "operation_id": "tb3-support-mismatch-update",
+    "teaching_implication": "撤下箭头图，改用两行代码的逐行拆解和 Foo / &Foo 对照，补充打印只读且不取得所有权的使用条件，将两个 println 的具体解释留给学习者。",
+    "supersedes": "interpretation:tb3-prior-copy",
+    "target": {
+      "object_refs": [],
+      "capability": "explanation",
+      "expected_performance": "在逐行代码和变量类型对照的支持下，自己解释原例两个 println 的使用依据",
+      "source_bindings": [
+        {
+          "start_lid": "1.1",
+          "end_lid": "1.1"
+        }
+      ],
+      "learning_focus": "不可变借用保留原值所有权，引用类型与值类型的区别"
+    },
+    "fact_refs": [
+      "usage:tutor-begin-1:user:turn_720d5814930e318a"
+    ],
+    "interpretation": "学习者在已收到引用与复制的解释及箭头图后明确说“我已经不认为有两份 Foo 了”“我看不懂箭头图，不是还在坚持复制”，因此不再沿用仍需纠正复制推断的判断。他自报能逐行读代码、看变量和类型对照，并要求换用这种支撑。尚未给出两个打印的解释，故不能据此确认已能解释借用或独立掌握；这里是当前支持方式的修正，不是永久偏好。",
+    "operation": "evidence"
+  },
+  "select": {
+    "move": {
+      "target": {
+        "object_refs": [],
+        "capability": "explanation",
+        "expected_performance": "在逐行代码和变量类型对照的支持下，自己解释原例两个 println 的使用依据",
+        "source_bindings": [
+          {
+            "start_lid": "1.1",
+            "end_lid": "1.1"
+          }
+        ],
+        "learning_focus": "不可变借用保留原值所有权，引用类型与值类型的区别"
+      },
+      "kind": "explain",
+      "capability": "explanation",
+      "intent_origin": "current_request",
+      "move_id": "tb3-line-type-support",
+      "intent_quote": "请换成这种方式，让我自己解释两个打印。",
+      "object_ids": [],
+      "interaction_intent": "guided_inquiry",
+      "interpretation_refs": [
+        "interpretation:tb3-support-mismatch-update"
+      ],
+      "prompt": "回应学习者对箭头图的纠正，按 let foo 与 let bar 两行逐行拆解，提供变量与类型对照及不可变借用、打印只读访问的规则；让学习者自己说明两个 println 各通过什么变量访问什么、为何第二行借用后仍可使用 foo，不代写目标解释。"
+    },
+    "operation": "select"
+  }
+}

@@ -4,6 +4,8 @@
 > 冻结决策:[ADR-0088](adr/0088-deterministic-text-occurrence-search-and-canonical-book-tool-contracts.md)。
 > 状态:FT0-FT8 已完成（2026-07-21）。`search_text.v1` 已覆盖三表面、location-first 路由、窄 occurrence 证据、历史压缩、真书回放、性能门禁与全发布门禁。
 
+后续优化：[工具契约与 Agent 可用性优化](切片方案-工具契约与Agent可用性优化.md)，继续统一参数语义与示例，补齐结果契约，并改善跨表面的可执行调用交接。
+
 ## 0. 对齐确认单
 
 | 项 | 冻结结论 |

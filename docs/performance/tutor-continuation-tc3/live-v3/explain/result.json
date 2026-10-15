@@ -1,0 +1,771 @@
+{
+  "events": [
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_e2bdaa9de54a6be4",
+        "tutor_session_id": "tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c"
+      },
+      "causal_refs": [],
+      "event_id": "assets:turn_e2bdaa9de54a6be4",
+      "kind": "turn_bound",
+      "occurred_at": "t0",
+      "payload": {}
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_e2bdaa9de54a6be4",
+        "tutor_session_id": "tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c"
+      },
+      "causal_refs": [],
+      "event_id": "usage:tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c:user:turn_e2bdaa9de54a6be4",
+      "kind": "usage_observed",
+      "occurred_at": "t0",
+      "payload": {
+        "interaction": null,
+        "original_ref": {
+          "book_id": "tc0-average-speed",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c",
+          "turn_id": "turn_e2bdaa9de54a6be4"
+        },
+        "presentation_follow_up": null,
+        "question_anchor_lid": null,
+        "response": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+        "teaching_ref": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_e2bdaa9de54a6be4",
+        "tutor_session_id": "tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c"
+      },
+      "causal_refs": [],
+      "event_id": "binding:turn_e2bdaa9de54a6be4",
+      "kind": "turn_bound",
+      "occurred_at": "t0",
+      "payload": {
+        "binding": {
+          "chat_session_id": "chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_e2bdaa9de54a6be4",
+          "tutor_session_id": "tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c"
+        },
+        "confirmed_preferences": [],
+        "constraints": [],
+        "current_request": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+        "default_teaching_intent": null,
+        "learner_context": {
+          "confirmed_background": [],
+          "confirmed_preferences": [],
+          "constraints": [],
+          "current_request": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+          "current_target": null,
+          "details": "tutor.step understanding with object_id and after",
+          "entries": [],
+          "evidence_watermark": 0,
+          "interpretations": [],
+          "path_progress": [],
+          "pending_activity": null,
+          "pending_assessment_refs": [],
+          "projection_watermark": 0,
+          "recent_facts": [
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_e2bdaa9de54a6be4",
+                "tutor_session_id": "tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c"
+              },
+              "causal_refs": [],
+              "event_id": "usage:tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c:user:turn_e2bdaa9de54a6be4",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "t0",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c",
+                "turn_id": "turn_e2bdaa9de54a6be4"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "user_message"
+              }
+            }
+          ],
+          "session_focus": {
+            "capability_targets": [],
+            "interpretation": "",
+            "target_object_refs": []
+          },
+          "stale": false,
+          "uninterpreted_fact_refs": [
+            "usage:tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c:user:turn_e2bdaa9de54a6be4"
+          ],
+          "unknown_when_absent": true,
+          "user_intent": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。"
+        },
+        "limitations": [],
+        "object_count": 0,
+        "objects": [],
+        "recent_facts": [
+          {
+            "action": null,
+            "answer_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "assistance_count": 0,
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_e2bdaa9de54a6be4",
+              "tutor_session_id": "tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c"
+            },
+            "causal_refs": [],
+            "event_id": "usage:tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c:user:turn_e2bdaa9de54a6be4",
+            "help_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "kind": "usage_observed",
+            "move_id": null,
+            "occurred_at": "t0",
+            "original_ref": {
+              "book_id": "tc0-average-speed",
+              "kind": "chat_turn",
+              "session_id": "chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c",
+              "turn_id": "turn_e2bdaa9de54a6be4"
+            },
+            "prompt_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "response_preview": {
+              "text": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+              "truncated": false
+            },
+            "target": null,
+            "usage": {
+              "kind": "user_message"
+            }
+          }
+        ],
+        "status": "active",
+        "teaching_assets": {
+          "cognitive_materials": {
+            "status": "missing"
+          },
+          "formal_objects": {
+            "status": "missing"
+          },
+          "limitations": [],
+          "reason": "正式教学素材尚未发布",
+          "source_id": "tc0-average-speed",
+          "status": "preparing",
+          "teaching_map_revision": null
+        },
+        "user_intent": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。"
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_e2bdaa9de54a6be4",
+        "tutor_session_id": "tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c"
+      },
+      "causal_refs": [
+        "binding:turn_e2bdaa9de54a6be4"
+      ],
+      "event_id": "move:turn_e2bdaa9de54a6be4:move-explain-avg-speed-time-denominator",
+      "kind": "move_selected",
+      "occurred_at": "2026-10-11T12:32:09.6270719Z",
+      "payload": {
+        "help_policy": "preserve_exposure",
+        "move": {
+          "actions": [],
+          "assessment": null,
+          "capability": "conceptual explanation",
+          "continuation": {
+            "options": [
+              {
+                "label": "把两段等长路程的速度直接算术平均,和用总路程÷总时间算出的值对比一下",
+                "move_kind": "compare",
+                "option_id": "compare_naive_mean",
+                "purpose": "算出两种算法的具体数值差异,看到分母按时间累积而不是按段数分摊"
+              },
+              {
+                "label": "在行程中加一段长时间停顿,看平均速度怎么变",
+                "move_kind": "observe",
+                "option_id": "observe_added_stop",
+                "purpose": "看到总路程不变而总时间增大时平均速度下降,并解释这个下降在物理上意味着什么"
+              }
+            ],
+            "recommended_option_id": "compare_naive_mean"
+          },
+          "explanation": null,
+          "hint": null,
+          "intent_origin": "current_request",
+          "intent_quote": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+          "interaction_intent": "direct_explanation",
+          "interpretation_refs": [
+            "interpretation:hyp-avg-speed-denominator-gap-e2bdaa9d"
+          ],
+          "kind": "explain",
+          "move_id": "move-explain-avg-speed-time-denominator",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "按你说的顺序来:先把这段定义讲清楚,再重点回答\"总时间为什么在分母\"。\n\n**一、这一定义在说什么**\n\n平均速度 = 总路程 ÷ 总时间。[[source:source_ref_43d7e3797e6f3aea]]\n\n它说的不是行程中某一刻的速度,而是把整段行程\"摊平\"成一个假想的匀速运动:假如全程都用一个不变的速度走完,并且恰好也用了这么多时间,那这个速度就是平均速度。它是一个被倒推出来的等效速度,不是某次读数。\n\n**二、为什么总时间在分母**\n\n关键在于平均速度是一个\"率\",它回答的问题是:每单位时间对应多少路程。\n\n分子记的是路程累积了多少,分母则必须记这些路程是在多长的时间里累积出来的;两者相除,才得到\"单位时间对应多少路程\"这一含义。所以时间在分母不是位置放错,而是因为时间在这里扮演\"运动的舞台\":这段行程里发生的一切——快骑、慢骑、停下来——都消耗了真实时间,因而都进入分母。\n\n可以用**回代检验**来确认分母必须是全程时长:平均速度 × 总时间 应当还原出总路程。只有分母取整段行程的全部时长,这个乘积才等于实际走过的总路程;一旦分母不代表全程时长,得到的商就不再描述这段行程了。\n\n**三、为什么分母不是\"段数\"**\n\n紧接定义的这一句正是针对最容易犯的错误:Equal distances need not take equal times. [[source:source_ref_fed6574ffe215173]] 相等距离不必用相等的时间——同样的路程,一段可能很快走完,另一段可能很慢。既然距离相同而时间不同,就不能把各段的速度直接算术平均,也不能按\"走了几段\"来分摊。定义选择的是按时间累积:这段时间里走过的全部路程进分子,这段行程消耗的全部时间进分母。\n\n**四、第三句:总时间必须为正**\n\n同一句还有:The total time must be positive. [[source:source_ref_fed6574ffe215173]] 一方面,分母不能为 0,否则除法没有定义,\"平均速度\"这件事根本不存在;另一方面,只有时间严格为正,\"用一段时间去摊平一段路程\"这个说法才有意义。\n\n**五、一个假设例子(数字是我为演示设的,不是书里的原文)**\n\n假设自行车 2 小时骑了 120 公里:平均速度 = 120 ÷ 2 = 60 公里/小时。回代检验:60 × 2 = 120,正好还原总路程。如果把分母换成别的东西(比如只按段数、或按某个不足全程的时长),这个回代就会失败。",
+          "target": {
+            "capability": "conceptual explanation",
+            "expected_performance": "能说明分母取总时间是因为它代表路程累积所耗的全程时长,并用“平均速度×总时间=总路程”检验这一点",
+            "learning_focus": "平均速度定义中“总时间作为分母”的量的含义",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "retry_policy": "append_attempt",
+        "scorer_version": "assessment.v1",
+        "scoring_sources": {}
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_e2bdaa9de54a6be4",
+        "tutor_session_id": "tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c"
+      },
+      "causal_refs": [
+        "usage:tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c:user:turn_e2bdaa9de54a6be4"
+      ],
+      "event_id": "usage:tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c:assistant:turn_e2bdaa9de54a6be4",
+      "kind": "usage_observed",
+      "occurred_at": "t0",
+      "payload": {
+        "answer": "按你说的顺序来：先把这段定义讲清楚，再重点回答“总时间为什么在分母”。\n\n**一、这一定义在说什么**\n\n平均速度 = 总路程 ÷ 总时间。\n\n它说的不是行程中某一刻的速度，而是把整段行程“摊平”成一个假想的匀速运动：假如全程都用一个不变的速度走完，并且恰好也用了这么多时间，那这个速度就是平均速度。它是一个被倒推出来的等效速度，不是某次读数。\n\n**二、为什么总时间在分母**\n\n关键在于平均速度是一个“率”，它回答的问题是：每单位时间对应多少路程。\n\n分子记的是路程累积了多少，分母则必须记这些路程是在多长的时间里累积出来的；两者相除，才得到“单位时间对应多少路程”这一含义。所以时间在分母不是位置放错，而是因为时间在这里扮演“运动的舞台”：这段行程里发生的一切——快骑、慢骑、停下来——都消耗了真实时间，因而都进入分母。\n\n可以用**回代检验**来确认分母必须是全程时长：平均速度 × 总时间 应当还原出总路程。只有分母取整段行程的全部时长，这个乘积才等于实际走过的总路程；一旦分母不代表全程时长，得到的商就不再描述这段行程了。\n\n**三、为什么分母不是“段数”**\n\n紧接定义的这一句正是针对最容易犯的错误：Equal distances need not take equal times.  相等距离不必用相等的时间——同样的路程，一段可能很快走完，另一段可能很慢。既然距离相同而时间不同，就不能把各段的速度直接算术平均，也不能按“走了几段”来分摊。定义选择的是按时间累积：这段时间里走过的全部路程进分子，这段行程消耗的全部时间进分母。\n\n**四、第三句：总时间必须为正**\n\n同一句还有：The total time must be positive.  一方面，分母不能为 0，否则除法没有定义，“平均速度”这件事根本不存在；另一方面，只有时间严格为正，“用一段时间去摊平一段路程”这个说法才有意义。\n\n**五、一个假设例子（数字是我为演示设的，不是书里的原文）**\n\n假设自行车 2 小时骑了 120 公里：平均速度 = 120 ÷ 2 = 60 公里/小时。回代检验：60 × 2 = 120，正好还原总路程。如果把分母换成别的东西（比如只按段数、或按某个不足全程的时长），这个回代就会失败。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "按你说的顺序来：先把这段定义讲清楚，再重点回答“总时间为什么在分母”。\n\n**一、这一定义在说什么**\n\n平均速度 = 总路程 ÷ 总时间。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_43d7e3797e6f3aea"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n它说的不是行程中某一刻的速度，而是把整段行程“摊平”成一个假想的匀速运动：假如全程都用一个不变的速度走完，并且恰好也用了这么多时间，那这个速度就是平均速度。它是一个被倒推出来的等效速度，不是某次读数。\n\n**二、为什么总时间在分母**\n\n关键在于平均速度是一个“率”，它回答的问题是：每单位时间对应多少路程。\n\n分子记的是路程累积了多少，分母则必须记这些路程是在多长的时间里累积出来的；两者相除，才得到“单位时间对应多少路程”这一含义。所以时间在分母不是位置放错，而是因为时间在这里扮演“运动的舞台”：这段行程里发生的一切——快骑、慢骑、停下来——都消耗了真实时间，因而都进入分母。\n\n可以用**回代检验**来确认分母必须是全程时长：平均速度 × 总时间 应当还原出总路程。只有分母取整段行程的全部时长，这个乘积才等于实际走过的总路程；一旦分母不代表全程时长，得到的商就不再描述这段行程了。\n\n**三、为什么分母不是“段数”**\n\n紧接定义的这一句正是针对最容易犯的错误：Equal distances need not take equal times. "
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_fed6574ffe215173"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": " 相等距离不必用相等的时间——同样的路程，一段可能很快走完，另一段可能很慢。既然距离相同而时间不同，就不能把各段的速度直接算术平均，也不能按“走了几段”来分摊。定义选择的是按时间累积：这段时间里走过的全部路程进分子，这段行程消耗的全部时间进分母。\n\n**四、第三句：总时间必须为正**\n\n同一句还有：The total time must be positive. "
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_fed6574ffe215173"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": " 一方面，分母不能为 0，否则除法没有定义，“平均速度”这件事根本不存在；另一方面，只有时间严格为正，“用一段时间去摊平一段路程”这个说法才有意义。\n\n**五、一个假设例子（数字是我为演示设的，不是书里的原文）**\n\n假设自行车 2 小时骑了 120 公里：平均速度 = 120 ÷ 2 = 60 公里/小时。回代检验：60 × 2 = 120，正好还原总路程。如果把分母换成别的东西（比如只按段数、或按某个不足全程的时长），这个回代就会失败。"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文 · Average speed",
+              "source_ref_id": "source_ref_43d7e3797e6f3aea"
+            },
+            {
+              "label": "正文 · Average speed",
+              "source_ref_id": "source_ref_fed6574ffe215173"
+            }
+          ]
+        },
+        "original_ref": {
+          "book_id": "tc0-average-speed",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c",
+          "turn_id": "turn_e2bdaa9de54a6be4"
+        },
+        "source_bindings": [
+          {
+            "book_id": "tc0-average-speed",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 71,
+                    "start": 17
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-b4c560a717856fe2",
+            "label_snapshot": "正文 · Average speed",
+            "preview_snapshot": "Average speed is total distance divided by total time.",
+            "source_ref_id": "source_ref_43d7e3797e6f3aea"
+          },
+          {
+            "book_id": "tc0-average-speed",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 147,
+                    "start": 72
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-62e74f1230f378ce",
+            "label_snapshot": "正文 · Average speed",
+            "preview_snapshot": "Equal distances need not take equal times. The total time must be positive.",
+            "source_ref_id": "source_ref_fed6574ffe215173"
+          }
+        ],
+        "usage": {
+          "kind": "assistant_delivery"
+        }
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_e2bdaa9de54a6be4",
+        "tutor_session_id": "tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c"
+      },
+      "causal_refs": [
+        "move:turn_e2bdaa9de54a6be4:move-explain-avg-speed-time-denominator"
+      ],
+      "event_id": "delivery:turn_e2bdaa9de54a6be4:move-explain-avg-speed-time-denominator",
+      "kind": "message_delivered",
+      "occurred_at": "t0",
+      "payload": {
+        "answer": "按你说的顺序来：先把这段定义讲清楚，再重点回答“总时间为什么在分母”。\n\n**一、这一定义在说什么**\n\n平均速度 = 总路程 ÷ 总时间。\n\n它说的不是行程中某一刻的速度，而是把整段行程“摊平”成一个假想的匀速运动：假如全程都用一个不变的速度走完，并且恰好也用了这么多时间，那这个速度就是平均速度。它是一个被倒推出来的等效速度，不是某次读数。\n\n**二、为什么总时间在分母**\n\n关键在于平均速度是一个“率”，它回答的问题是：每单位时间对应多少路程。\n\n分子记的是路程累积了多少，分母则必须记这些路程是在多长的时间里累积出来的；两者相除，才得到“单位时间对应多少路程”这一含义。所以时间在分母不是位置放错，而是因为时间在这里扮演“运动的舞台”：这段行程里发生的一切——快骑、慢骑、停下来——都消耗了真实时间，因而都进入分母。\n\n可以用**回代检验**来确认分母必须是全程时长：平均速度 × 总时间 应当还原出总路程。只有分母取整段行程的全部时长，这个乘积才等于实际走过的总路程；一旦分母不代表全程时长，得到的商就不再描述这段行程了。\n\n**三、为什么分母不是“段数”**\n\n紧接定义的这一句正是针对最容易犯的错误：Equal distances need not take equal times.  相等距离不必用相等的时间——同样的路程，一段可能很快走完，另一段可能很慢。既然距离相同而时间不同，就不能把各段的速度直接算术平均，也不能按“走了几段”来分摊。定义选择的是按时间累积：这段时间里走过的全部路程进分子，这段行程消耗的全部时间进分母。\n\n**四、第三句：总时间必须为正**\n\n同一句还有：The total time must be positive.  一方面，分母不能为 0，否则除法没有定义，“平均速度”这件事根本不存在；另一方面，只有时间严格为正，“用一段时间去摊平一段路程”这个说法才有意义。\n\n**五、一个假设例子（数字是我为演示设的，不是书里的原文）**\n\n假设自行车 2 小时骑了 120 公里：平均速度 = 120 ÷ 2 = 60 公里/小时。回代检验：60 × 2 = 120，正好还原总路程。如果把分母换成别的东西（比如只按段数、或按某个不足全程的时长），这个回代就会失败。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "按你说的顺序来：先把这段定义讲清楚，再重点回答“总时间为什么在分母”。\n\n**一、这一定义在说什么**\n\n平均速度 = 总路程 ÷ 总时间。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_43d7e3797e6f3aea"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n它说的不是行程中某一刻的速度，而是把整段行程“摊平”成一个假想的匀速运动：假如全程都用一个不变的速度走完，并且恰好也用了这么多时间，那这个速度就是平均速度。它是一个被倒推出来的等效速度，不是某次读数。\n\n**二、为什么总时间在分母**\n\n关键在于平均速度是一个“率”，它回答的问题是：每单位时间对应多少路程。\n\n分子记的是路程累积了多少，分母则必须记这些路程是在多长的时间里累积出来的；两者相除，才得到“单位时间对应多少路程”这一含义。所以时间在分母不是位置放错，而是因为时间在这里扮演“运动的舞台”：这段行程里发生的一切——快骑、慢骑、停下来——都消耗了真实时间，因而都进入分母。\n\n可以用**回代检验**来确认分母必须是全程时长：平均速度 × 总时间 应当还原出总路程。只有分母取整段行程的全部时长，这个乘积才等于实际走过的总路程；一旦分母不代表全程时长，得到的商就不再描述这段行程了。\n\n**三、为什么分母不是“段数”**\n\n紧接定义的这一句正是针对最容易犯的错误：Equal distances need not take equal times. "
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_fed6574ffe215173"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": " 相等距离不必用相等的时间——同样的路程，一段可能很快走完，另一段可能很慢。既然距离相同而时间不同，就不能把各段的速度直接算术平均，也不能按“走了几段”来分摊。定义选择的是按时间累积：这段时间里走过的全部路程进分子，这段行程消耗的全部时间进分母。\n\n**四、第三句：总时间必须为正**\n\n同一句还有：The total time must be positive. "
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_fed6574ffe215173"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": " 一方面，分母不能为 0，否则除法没有定义，“平均速度”这件事根本不存在；另一方面，只有时间严格为正，“用一段时间去摊平一段路程”这个说法才有意义。\n\n**五、一个假设例子（数字是我为演示设的，不是书里的原文）**\n\n假设自行车 2 小时骑了 120 公里：平均速度 = 120 ÷ 2 = 60 公里/小时。回代检验：60 × 2 = 120，正好还原总路程。如果把分母换成别的东西（比如只按段数、或按某个不足全程的时长），这个回代就会失败。"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文 · Average speed",
+              "source_ref_id": "source_ref_43d7e3797e6f3aea"
+            },
+            {
+              "label": "正文 · Average speed",
+              "source_ref_id": "source_ref_fed6574ffe215173"
+            }
+          ]
+        },
+        "assessment_contract_ref": null,
+        "move": {
+          "actions": [],
+          "capability": "conceptual explanation",
+          "continuation": {
+            "options": [
+              {
+                "label": "把两段等长路程的速度直接算术平均,和用总路程÷总时间算出的值对比一下",
+                "move_kind": "compare",
+                "option_id": "compare_naive_mean",
+                "purpose": "算出两种算法的具体数值差异,看到分母按时间累积而不是按段数分摊"
+              },
+              {
+                "label": "在行程中加一段长时间停顿,看平均速度怎么变",
+                "move_kind": "observe",
+                "option_id": "observe_added_stop",
+                "purpose": "看到总路程不变而总时间增大时平均速度下降,并解释这个下降在物理上意味着什么"
+              }
+            ],
+            "recommended_option_id": "compare_naive_mean"
+          },
+          "intent_origin": "current_request",
+          "intent_quote": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+          "interaction_intent": "direct_explanation",
+          "interpretation_refs": [
+            "interpretation:hyp-avg-speed-denominator-gap-e2bdaa9d"
+          ],
+          "kind": "explain",
+          "move_id": "move-explain-avg-speed-time-denominator",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "按你说的顺序来:先把这段定义讲清楚,再重点回答\"总时间为什么在分母\"。\n\n**一、这一定义在说什么**\n\n平均速度 = 总路程 ÷ 总时间。[[source:source_ref_43d7e3797e6f3aea]]\n\n它说的不是行程中某一刻的速度,而是把整段行程\"摊平\"成一个假想的匀速运动:假如全程都用一个不变的速度走完,并且恰好也用了这么多时间,那这个速度就是平均速度。它是一个被倒推出来的等效速度,不是某次读数。\n\n**二、为什么总时间在分母**\n\n关键在于平均速度是一个\"率\",它回答的问题是:每单位时间对应多少路程。\n\n分子记的是路程累积了多少,分母则必须记这些路程是在多长的时间里累积出来的;两者相除,才得到\"单位时间对应多少路程\"这一含义。所以时间在分母不是位置放错,而是因为时间在这里扮演\"运动的舞台\":这段行程里发生的一切——快骑、慢骑、停下来——都消耗了真实时间,因而都进入分母。\n\n可以用**回代检验**来确认分母必须是全程时长:平均速度 × 总时间 应当还原出总路程。只有分母取整段行程的全部时长,这个乘积才等于实际走过的总路程;一旦分母不代表全程时长,得到的商就不再描述这段行程了。\n\n**三、为什么分母不是\"段数\"**\n\n紧接定义的这一句正是针对最容易犯的错误:Equal distances need not take equal times. [[source:source_ref_fed6574ffe215173]] 相等距离不必用相等的时间——同样的路程,一段可能很快走完,另一段可能很慢。既然距离相同而时间不同,就不能把各段的速度直接算术平均,也不能按\"走了几段\"来分摊。定义选择的是按时间累积:这段时间里走过的全部路程进分子,这段行程消耗的全部时间进分母。\n\n**四、第三句:总时间必须为正**\n\n同一句还有:The total time must be positive. [[source:source_ref_fed6574ffe215173]] 一方面,分母不能为 0,否则除法没有定义,\"平均速度\"这件事根本不存在;另一方面,只有时间严格为正,\"用一段时间去摊平一段路程\"这个说法才有意义。\n\n**五、一个假设例子(数字是我为演示设的,不是书里的原文)**\n\n假设自行车 2 小时骑了 120 公里:平均速度 = 120 ÷ 2 = 60 公里/小时。回代检验:60 × 2 = 120,正好还原总路程。如果把分母换成别的东西(比如只按段数、或按某个不足全程的时长),这个回代就会失败。",
+          "target": {
+            "capability": "conceptual explanation",
+            "expected_performance": "能说明分母取总时间是因为它代表路程累积所耗的全程时长,并用“平均速度×总时间=总路程”检验这一点",
+            "learning_focus": "平均速度定义中“总时间作为分母”的量的含义",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "presentation": null,
+        "source_bindings": [
+          {
+            "book_id": "tc0-average-speed",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 71,
+                    "start": 17
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-b4c560a717856fe2",
+            "label_snapshot": "正文 · Average speed",
+            "preview_snapshot": "Average speed is total distance divided by total time.",
+            "source_ref_id": "source_ref_43d7e3797e6f3aea"
+          },
+          {
+            "book_id": "tc0-average-speed",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 147,
+                    "start": 72
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-62e74f1230f378ce",
+            "label_snapshot": "正文 · Average speed",
+            "preview_snapshot": "Equal distances need not take equal times. The total time must be positive.",
+            "source_ref_id": "source_ref_fed6574ffe215173"
+          }
+        ]
+      }
+    }
+  ],
+  "http_status": 200,
+  "provider_calls": 6,
+  "public_projection": {
+    "activities": [
+      {
+        "assessment": null,
+        "attempted": false,
+        "continuation": {
+          "availability": {
+            "status": "offered"
+          },
+          "continuation": {
+            "options": [
+              {
+                "label": "把两段等长路程的速度直接算术平均,和用总路程÷总时间算出的值对比一下",
+                "move_kind": "compare",
+                "option_id": "compare_naive_mean",
+                "purpose": "算出两种算法的具体数值差异,看到分母按时间累积而不是按段数分摊"
+              },
+              {
+                "label": "在行程中加一段长时间停顿,看平均速度怎么变",
+                "move_kind": "observe",
+                "option_id": "observe_added_stop",
+                "purpose": "看到总路程不变而总时间增大时平均速度下降,并解释这个下降在物理上意味着什么"
+              }
+            ],
+            "recommended_option_id": "compare_naive_mean"
+          },
+          "delivery_ref": "delivery:turn_e2bdaa9de54a6be4:move-explain-avg-speed-time-denominator",
+          "expected_chat_head": "turn_e2bdaa9de54a6be4",
+          "origin_turn_id": "turn_e2bdaa9de54a6be4",
+          "target_summary": "平均速度定义中“总时间作为分母”的量的含义"
+        },
+        "delivery_ref": "delivery:turn_e2bdaa9de54a6be4:move-explain-avg-speed-time-denominator",
+        "help_seen": [],
+        "move": {
+          "actions": [],
+          "capability": "conceptual explanation",
+          "continuation": {
+            "options": [
+              {
+                "label": "把两段等长路程的速度直接算术平均,和用总路程÷总时间算出的值对比一下",
+                "move_kind": "compare",
+                "option_id": "compare_naive_mean",
+                "purpose": "算出两种算法的具体数值差异,看到分母按时间累积而不是按段数分摊"
+              },
+              {
+                "label": "在行程中加一段长时间停顿,看平均速度怎么变",
+                "move_kind": "observe",
+                "option_id": "observe_added_stop",
+                "purpose": "看到总路程不变而总时间增大时平均速度下降,并解释这个下降在物理上意味着什么"
+              }
+            ],
+            "recommended_option_id": "compare_naive_mean"
+          },
+          "intent_origin": "current_request",
+          "intent_quote": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+          "interaction_intent": "direct_explanation",
+          "interpretation_refs": [
+            "interpretation:hyp-avg-speed-denominator-gap-e2bdaa9d"
+          ],
+          "kind": "explain",
+          "move_id": "move-explain-avg-speed-time-denominator",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "按你说的顺序来:先把这段定义讲清楚,再重点回答\"总时间为什么在分母\"。\n\n**一、这一定义在说什么**\n\n平均速度 = 总路程 ÷ 总时间。[[source:source_ref_43d7e3797e6f3aea]]\n\n它说的不是行程中某一刻的速度,而是把整段行程\"摊平\"成一个假想的匀速运动:假如全程都用一个不变的速度走完,并且恰好也用了这么多时间,那这个速度就是平均速度。它是一个被倒推出来的等效速度,不是某次读数。\n\n**二、为什么总时间在分母**\n\n关键在于平均速度是一个\"率\",它回答的问题是:每单位时间对应多少路程。\n\n分子记的是路程累积了多少,分母则必须记这些路程是在多长的时间里累积出来的;两者相除,才得到\"单位时间对应多少路程\"这一含义。所以时间在分母不是位置放错,而是因为时间在这里扮演\"运动的舞台\":这段行程里发生的一切——快骑、慢骑、停下来——都消耗了真实时间,因而都进入分母。\n\n可以用**回代检验**来确认分母必须是全程时长:平均速度 × 总时间 应当还原出总路程。只有分母取整段行程的全部时长,这个乘积才等于实际走过的总路程;一旦分母不代表全程时长,得到的商就不再描述这段行程了。\n\n**三、为什么分母不是\"段数\"**\n\n紧接定义的这一句正是针对最容易犯的错误:Equal distances need not take equal times. [[source:source_ref_fed6574ffe215173]] 相等距离不必用相等的时间——同样的路程,一段可能很快走完,另一段可能很慢。既然距离相同而时间不同,就不能把各段的速度直接算术平均,也不能按\"走了几段\"来分摊。定义选择的是按时间累积:这段时间里走过的全部路程进分子,这段行程消耗的全部时间进分母。\n\n**四、第三句:总时间必须为正**\n\n同一句还有:The total time must be positive. [[source:source_ref_fed6574ffe215173]] 一方面,分母不能为 0,否则除法没有定义,\"平均速度\"这件事根本不存在;另一方面,只有时间严格为正,\"用一段时间去摊平一段路程\"这个说法才有意义。\n\n**五、一个假设例子(数字是我为演示设的,不是书里的原文)**\n\n假设自行车 2 小时骑了 120 公里:平均速度 = 120 ÷ 2 = 60 公里/小时。回代检验:60 × 2 = 120,正好还原总路程。如果把分母换成别的东西(比如只按段数、或按某个不足全程的时长),这个回代就会失败。",
+          "target": {
+            "capability": "conceptual explanation",
+            "expected_performance": "能说明分母取总时间是因为它代表路程累积所耗的全程时长,并用“平均速度×总时间=总路程”检验这一点",
+            "learning_focus": "平均速度定义中“总时间作为分母”的量的含义",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "status": "active"
+      }
+    ]
+  },
+  "read_provider_calls": 0,
+  "reply": {
+    "answer": "按你说的顺序来：先把这段定义讲清楚，再重点回答“总时间为什么在分母”。\n\n**一、这一定义在说什么**\n\n平均速度 = 总路程 ÷ 总时间。\n\n它说的不是行程中某一刻的速度，而是把整段行程“摊平”成一个假想的匀速运动：假如全程都用一个不变的速度走完，并且恰好也用了这么多时间，那这个速度就是平均速度。它是一个被倒推出来的等效速度，不是某次读数。\n\n**二、为什么总时间在分母**\n\n关键在于平均速度是一个“率”，它回答的问题是：每单位时间对应多少路程。\n\n分子记的是路程累积了多少，分母则必须记这些路程是在多长的时间里累积出来的；两者相除，才得到“单位时间对应多少路程”这一含义。所以时间在分母不是位置放错，而是因为时间在这里扮演“运动的舞台”：这段行程里发生的一切——快骑、慢骑、停下来——都消耗了真实时间，因而都进入分母。\n\n可以用**回代检验**来确认分母必须是全程时长：平均速度 × 总时间 应当还原出总路程。只有分母取整段行程的全部时长，这个乘积才等于实际走过的总路程；一旦分母不代表全程时长，得到的商就不再描述这段行程了。\n\n**三、为什么分母不是“段数”**\n\n紧接定义的这一句正是针对最容易犯的错误：Equal distances need not take equal times.  相等距离不必用相等的时间——同样的路程，一段可能很快走完，另一段可能很慢。既然距离相同而时间不同，就不能把各段的速度直接算术平均，也不能按“走了几段”来分摊。定义选择的是按时间累积：这段时间里走过的全部路程进分子，这段行程消耗的全部时间进分母。\n\n**四、第三句：总时间必须为正**\n\n同一句还有：The total time must be positive.  一方面，分母不能为 0，否则除法没有定义，“平均速度”这件事根本不存在；另一方面，只有时间严格为正，“用一段时间去摊平一段路程”这个说法才有意义。\n\n**五、一个假设例子（数字是我为演示设的，不是书里的原文）**\n\n假设自行车 2 小时骑了 120 公里：平均速度 = 120 ÷ 2 = 60 公里/小时。回代检验：60 × 2 = 120，正好还原总路程。如果把分母换成别的东西（比如只按段数、或按某个不足全程的时长），这个回代就会失败。",
+    "answer_view": {
+      "parts": [
+        {
+          "kind": "markdown",
+          "text": "按你说的顺序来：先把这段定义讲清楚，再重点回答“总时间为什么在分母”。\n\n**一、这一定义在说什么**\n\n平均速度 = 总路程 ÷ 总时间。"
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_43d7e3797e6f3aea"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": "\n\n它说的不是行程中某一刻的速度，而是把整段行程“摊平”成一个假想的匀速运动：假如全程都用一个不变的速度走完，并且恰好也用了这么多时间，那这个速度就是平均速度。它是一个被倒推出来的等效速度，不是某次读数。\n\n**二、为什么总时间在分母**\n\n关键在于平均速度是一个“率”，它回答的问题是：每单位时间对应多少路程。\n\n分子记的是路程累积了多少，分母则必须记这些路程是在多长的时间里累积出来的；两者相除，才得到“单位时间对应多少路程”这一含义。所以时间在分母不是位置放错，而是因为时间在这里扮演“运动的舞台”：这段行程里发生的一切——快骑、慢骑、停下来——都消耗了真实时间，因而都进入分母。\n\n可以用**回代检验**来确认分母必须是全程时长：平均速度 × 总时间 应当还原出总路程。只有分母取整段行程的全部时长，这个乘积才等于实际走过的总路程；一旦分母不代表全程时长，得到的商就不再描述这段行程了。\n\n**三、为什么分母不是“段数”**\n\n紧接定义的这一句正是针对最容易犯的错误：Equal distances need not take equal times. "
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_fed6574ffe215173"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": " 相等距离不必用相等的时间——同样的路程，一段可能很快走完，另一段可能很慢。既然距离相同而时间不同，就不能把各段的速度直接算术平均，也不能按“走了几段”来分摊。定义选择的是按时间累积：这段时间里走过的全部路程进分子，这段行程消耗的全部时间进分母。\n\n**四、第三句：总时间必须为正**\n\n同一句还有：The total time must be positive. "
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_fed6574ffe215173"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": " 一方面，分母不能为 0，否则除法没有定义，“平均速度”这件事根本不存在；另一方面，只有时间严格为正，“用一段时间去摊平一段路程”这个说法才有意义。\n\n**五、一个假设例子（数字是我为演示设的，不是书里的原文）**\n\n假设自行车 2 小时骑了 120 公里：平均速度 = 120 ÷ 2 = 60 公里/小时。回代检验：60 × 2 = 120，正好还原总路程。如果把分母换成别的东西（比如只按段数、或按某个不足全程的时长），这个回代就会失败。"
+        }
+      ],
+      "sources": [
+        {
+          "label": "正文 · Average speed",
+          "source_ref_id": "source_ref_43d7e3797e6f3aea"
+        },
+        {
+          "label": "正文 · Average speed",
+          "source_ref_id": "source_ref_fed6574ffe215173"
+        }
+      ]
+    },
+    "effects": [],
+    "incomplete": false,
+    "memory_updates": [],
+    "profile_usage": {
+      "claimed_used_fact_ids": [],
+      "influences": [],
+      "injected_fact_ids": [],
+      "snapshot_revision": 0
+    },
+    "tokens_spent": 120996,
+    "trace": [
+      {
+        "args": "{\"lid\": \"1.1\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"lid\":\"1.1\",\"text\":\"# Average speed\\n\\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"lid\": \"1.1\", \"granularity\": \"near\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"anchor\":\"1.1\",\"items\":[{\"lid\":\"1\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"parent\"}},{\"lid\":\"1.2\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"next_sibling\"}}]}",
+        "tool": "book.context"
+      },
+      {
+        "args": "{\"lid\": \"1.2\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"lid\":\"1.2\",\"text\":\"A blue bicycle travels along the river.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"quote\": \"Average speed is total distance divided by total time.\"}",
+        "model_tool_loop": 3,
+        "result_digest": "{\"source_ref_id\":\"source_ref_43d7e3797e6f3aea\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time.\"}",
+        "tool": "source.present"
+      },
+      {
+        "args": "{\"quote\": \"Equal distances need not take equal times. The total time must be positive.\"}",
+        "model_tool_loop": 3,
+        "result_digest": "{\"source_ref_id\":\"source_ref_fed6574ffe215173\",\"label\":\"正文 · Average speed\",\"preview\":\"Equal distances need not take equal times. The total time must be positive.\"}",
+        "tool": "source.present"
+      },
+      {
+        "args": "{\"fact_refs\":[\"usage:tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c:user:turn_e2bdaa9de54a6be4\"],\"interpretation\":\"学习者请求\\\"讲清楚这段平均速度定义\\\",并明确要求\\\"先帮助我理解总时间为什么在分母\\\":这说明他能接触/识别公式形式,但尚未建立\\\"平均速度是一个率,分子是路程增量、分母是累积这些路程所耗时长\\\"的机理理解。请求只涉及分母角色的为什么,未涉及分段速度、加权或含停顿行程的处理,因此不对这些能力作任何判断。\",\"nature\":\"hypothesis\",\"operation\":\"evidence\",\"operation_id\":\"hyp-avg-speed-denominator-gap-e2bdaa9d\",\"target\":\"平均速度定义中\\\"总时间作为分母\\\"的量的含义（不是公式形式本身）\",\"teaching_implication\":\"起点不要停在复述公式,而要先把定义读成\\\"把整段行程摊平为一个等效匀速运动\\\",再用\\\"平均速度×总时间=总路程\\\"的回代检验说明分母为什么必须是全程时长;并顺带解释书中第二、三句(等距离不必等时间、总时间必须为正)在定义里承担的作用。演示用数字须由我自设并标明是假设。\"}",
+        "model_tool_loop": 3,
+        "result_digest": "{\"error_code\":\"TOOL_ARGUMENTS_INVALID\",\"category\":\"validation\",\"message\":\"$.target must be a JSON \\\"object\\\"\"}",
+        "tool": "tutor.step"
+      },
+      {
+        "args": "{\"fact_refs\":[\"usage:tutor-first-question:chat-01a12af2-2fc9-7592-ad17-1fe97e1ecb9c:user:turn_e2bdaa9de54a6be4\"],\"interpretation\":\"学习者请求\\\"讲清楚这段平均速度定义\\\",并明确要求\\\"先帮助我理解总时间为什么在分母\\\":说明他能接触/识别公式形式,但尚未建立\\\"平均速度是一个率,分子是路程增量、分母是累积这些路程所耗时长\\\"的机理理解。请求只涉及分母角色的为什么,未涉及分段速度、加权或含停顿行程的处理,因此不对这些能力作任何判断。\",\"nature\":\"hypothesis\",\"operation\":\"evidence\",\"operation_id\":\"hyp-avg-speed-denominator-gap-e2bdaa9d\",\"target\":{\"capability\":\"conceptual explanation\",\"expected_performance\":\"能用自己的话说出总时间出现在分母是因为它是路程累积所耗的全程时长,而不是段数或其他量\",\"learning_focus\":\"平均速度定义中“总时间作为分母”的量的含义\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},\"teaching_implication\":\"起点不要停在复述公式,而要先把定义读成\\\"把整段行程摊平为一个等效匀速运动\\\",再用\\\"平均速度×总时间=总路程\\\"的回代检验说明分母为什么必须是全程时长;并顺带解释书中第二、三句(等距离不必等时间、总时间必须为正)在定义里承担的作用。演示用数字须由我自设并标明是假设。\"}",
+        "model_tool_loop": 4,
+        "result_digest": "{\"evidence_ref\":\"interpretation:hyp-avg-speed-denominator-gap-e2bdaa9d\",\"instruction\":\"Use this current interpretation when relevant to the move; record its reference in move.interpretation_refs. The ",
+        "tool": "tutor.step"
+      },
+      {
+        "args": "{\"move\":{\"capability\":\"conceptual explanation\",\"intent_origin\":\"current_request\",\"intent_quote\":\"请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。\",\"interaction_intent\":\"direct_explanation\",\"interpretation_refs\":[\"interpretation:hyp-avg-speed-denominator-gap-e2bdaa9d\"],\"kind\":\"explain\",\"move_id\":\"move-explain-avg-speed-time-denominator\",\"object_ids\":[],\"prompt\":\"按你说的顺序来:先把这段定义讲清楚,再重点回答\\\"总时间为什么在分母\\\"。\\n\\n**一、这一定义在说什么**\\n\\n平均速度 = 总路程 ÷ 总时间。[[source:source_ref_43d7e3797e6f3aea]]\\n\\n它说的不是行程中某一刻的速度,而是把整段行程\\\"摊平\\\"成一个假想的匀速运动:假如全程都用一个不变的速度走完,并且恰好也用了这么多时间,那这个速度就是平均速度。它是一个被倒推出来的等效速度,不是某次读数。\\n\\n**二、为什么总时间在分母**\\n\\n关键在于平均速度是一个\\\"率\\\",它回答的问题是:每单位时间对应多少路程。\\n\\n分子记的是路程累积了多少,分母则必须记这些路程是在多长的时间里累积出来的;两者相除,才得到\\\"单位时间对应多少路程\\\"这一含义。所以时间在分母不是位置放错,而是因为时间在这里扮演\\\"运动的舞台\\\":这段行程里发生的一切——快骑、慢骑、停下来——都消耗了真实时间,因而都进入分母。\\n\\n可以用**回代检验**来确认分母必须是全程时长:平均速度 × 总时间 应当还原出总路程。只有分母取整段行程的全部时长,这个乘积才等于实际走过的总路程;一旦分母不代表全程时长,得到的商就不再描述这段行程了。\\n\\n**三、为什么分母不是\\\"段数\\\"**\\n\\n紧接定义的这一句正是针对最容易犯的错误:Equal distances need not take equal times. [[source:source_ref_fed6574ffe215173]] 相等距离不必用相等的时间——同样的路程,一段可能很快走完,另一段可能很慢。既然距离相同而时间不同,就不能把各段的速度直接算术平均,也不能按\\\"走了几段\\\"来分摊。定义选择的是按时间累积:这段时间里走过的全部路程进分子,这段行程消耗的全部时间进分母。\\n\\n**四、第三句:总时间必须为正**\\n\\n同一句还有:The total time must be positive. [[source:source_ref_fed6574ffe215173]] 一方面,分母不能为 0,否则除法没有定义,\\\"平均速度\\\"这件事根本不存在;另一方面,只有时间严格为正,\\\"用一段时间去摊平一段路程\\\"这个说法才有意义。\\n\\n**五、一个假设例子(数字是我为演示设的,不是书里的原文)**\\n\\n假设自行车 2 小时骑了 120 公里:平均速度 = 120 ÷ 2 = 60 公里/小时。回代检验:60 × 2 = 120,正好还原总路程。如果把分母换成别的东西(比如只按段数、或按某个不足全程的时长),这个回代就会失败。\",\"target\":{\"capability\":\"conceptual explanation\",\"expected_performance\":\"能说明分母取总时间是因为它代表路程累积所耗的全程时长,并用“平均速度×总时间=总路程”检验这一点\",\"learning_focus\":\"平均速度定义中“总时间作为分母”的量的含义\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+        "model_tool_loop": 5,
+        "result_digest": "{\"instruction\":\"Deliver the selected explanation fully. Leave the optional continuation work for the reader's choice; do not execute those options or duplicate their menu in the final answer. Saved ca",
+        "tool": "tutor.step"
+      }
+    ],
+    "turns": 6
+  }
+}

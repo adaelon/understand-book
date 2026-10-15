@@ -1,0 +1,51 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "redacted_reasoning_chars": 7719,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"quote\": \"借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。\"}",
+              "name": "source_present"
+            },
+            "id": "call_00_x3BuQCviYlW6xnHGk7aP6944",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"quote\": \"这一次，程序可以编译，因为 main 中的第二行变成了：\"}",
+              "name": "source_present"
+            },
+            "id": "call_01_OKBgkSWFz37JYe9qQNNG9722",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"quote\": \"注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。\"}",
+              "name": "source_present"
+            },
+            "id": "call_02_GibA0BAoQkEwJV0ZPs2p7922",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 2399,
+    "completion_tokens_details": {
+      "reasoning_tokens": 2195
+    },
+    "prompt_cache_hit_tokens": 21120,
+    "prompt_cache_miss_tokens": 991,
+    "prompt_tokens": 22111,
+    "prompt_tokens_details": {
+      "cached_tokens": 21120
+    },
+    "total_tokens": 24510
+  }
+}

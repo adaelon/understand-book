@@ -1,0 +1,75 @@
+{
+  "artifact": "artifact.json",
+  "rust": "1.95.0",
+  "cases": [
+    {
+      "copy": true,
+      "mutable": false,
+      "source": "#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let mut a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"b = {:?}\", b);\n    println!(\"a = {:?}\", a);\n}",
+      "compile_exit": 1,
+      "diagnostic_codes": [
+        "unused_mut",
+        "E0594"
+      ],
+      "stdout": null,
+      "page_result": "当前：Foo 实现 Copy，b = &a。\n编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。"
+    },
+    {
+      "copy": true,
+      "mutable": true,
+      "source": "#[derive(Debug, Clone, Copy)]\nstruct Foo(u32);\n\nfn main() {\n    let mut a = Foo(7);\n    let b = &mut a;\n    b.0 = 8;\n    println!(\"b = {:?}\", b);\n    println!(\"a = {:?}\", a);\n}",
+      "compile_exit": 0,
+      "diagnostic_codes": [],
+      "stdout": "b = Foo(8)\na = Foo(8)\n",
+      "page_result": "当前：Foo 实现 Copy，b = &mut a。\n编译通过。运行输出：\nb = Foo(8)\na = Foo(8)"
+    },
+    {
+      "copy": false,
+      "mutable": false,
+      "source": "#[derive(Debug)]\nstruct Foo(u32);\n\nfn main() {\n    let mut a = Foo(7);\n    let b = &a;\n    b.0 = 8;\n    println!(\"b = {:?}\", b);\n    println!(\"a = {:?}\", a);\n}",
+      "compile_exit": 1,
+      "diagnostic_codes": [
+        "unused_mut",
+        "E0594"
+      ],
+      "stdout": null,
+      "page_result": "当前：Foo 未实现 Copy，b = &a。\n编译失败：b.0 = 8 不能通过 & 引用赋值（E0594）。没有运行输出。"
+    },
+    {
+      "copy": false,
+      "mutable": true,
+      "source": "#[derive(Debug)]\nstruct Foo(u32);\n\nfn main() {\n    let mut a = Foo(7);\n    let b = &mut a;\n    b.0 = 8;\n    println!(\"b = {:?}\", b);\n    println!(\"a = {:?}\", a);\n}",
+      "compile_exit": 0,
+      "diagnostic_codes": [],
+      "stdout": "b = Foo(8)\na = Foo(8)\n",
+      "page_result": "当前：Foo 未实现 Copy，b = &mut a。\n编译通过。运行输出：\nb = Foo(8)\na = Foo(8)"
+    }
+  ],
+  "state_restore": {
+    "passed": true,
+    "expected": {
+      "values": {
+        "page": {
+          "leftCopy": false,
+          "leftMutable": true,
+          "leftRevealed": true,
+          "rightCopy": false,
+          "rightMutable": true,
+          "rightRevealed": true
+        }
+      },
+      "visible_step": "observed-right"
+    },
+    "actual": {
+      "values": {
+        "leftCopy": false,
+        "leftMutable": true,
+        "leftRevealed": true,
+        "rightCopy": false,
+        "rightMutable": true,
+        "rightRevealed": true
+      },
+      "visible_step": "observed-right"
+    }
+  }
+}

@@ -28,6 +28,11 @@ test("reopen restores saved controls and custom step without replaying actions, 
   }).toBe("explain");
   const before = await page.request.get("http://127.0.0.1:4175/requests").then(r => r.json());
   await page.request.post("http://127.0.0.1:4175/reopen");
+  // Reopening the test server reloads private history, but creates a fresh Reader workspace.
+  // Select the original conversation as the Reader does before continuing its presentation.
+  const fixture = await page.request.get("http://127.0.0.1:4175/fixture").then(r => r.json());
+  const selected = await page.request.post("http://127.0.0.1:4175/agent/history/select", { data: { session_id: fixture.session_id } });
+  expect(selected.ok()).toBe(true);
   await page.reload();
   await expect(frame.locator("#result")).toBeVisible();
   await expect(frame.locator("#result")).toHaveText("1/3");

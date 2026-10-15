@@ -1,0 +1,138 @@
+[
+  {
+    "width": 1907,
+    "height": 879,
+    "transcript": {
+      "x": 248,
+      "y": 52,
+      "width": 1395,
+      "height": 758
+    },
+    "goal": {
+      "x": 16,
+      "y": 76,
+      "width": 215,
+      "height": 123.359375
+    },
+    "responseDock": {
+      "x": 1660,
+      "y": 76,
+      "width": 231,
+      "height": 204.375
+    },
+    "reading": {
+      "x": 280,
+      "y": 80,
+      "width": 1331,
+      "height": 1484.5625
+    },
+    "composer": {
+      "x": 272,
+      "y": 810,
+      "width": 1347,
+      "height": 69
+    }
+  },
+  {
+    "width": 1526,
+    "height": 703,
+    "transcript": {
+      "x": 213.625,
+      "y": 52,
+      "width": 1068.21875,
+      "height": 582
+    },
+    "goal": {
+      "x": 16,
+      "y": 76,
+      "width": 180.625,
+      "height": 150.71875
+    },
+    "responseDock": {
+      "x": 1298.84375,
+      "y": 76,
+      "width": 211.15625,
+      "height": 204.375
+    },
+    "reading": {
+      "x": 245.625,
+      "y": 80,
+      "width": 1004.21875,
+      "height": 1600.46875
+    },
+    "composer": {
+      "x": 237.625,
+      "y": 634,
+      "width": 1020.21875,
+      "height": 69
+    }
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "transcript": {
+      "x": 201.59375,
+      "y": 52,
+      "width": 1008.015625,
+      "height": 779
+    },
+    "goal": {
+      "x": 16,
+      "y": 76,
+      "width": 168.59375,
+      "height": 150.71875
+    },
+    "responseDock": {
+      "x": 1226.609375,
+      "y": 76,
+      "width": 197.390625,
+      "height": 204.375
+    },
+    "reading": {
+      "x": 233.59375,
+      "y": 80,
+      "width": 944.015625,
+      "height": 1547.4375
+    },
+    "composer": {
+      "x": 225.59375,
+      "y": 831,
+      "width": 960.015625,
+      "height": 69
+    }
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "transcript": {
+      "x": 0,
+      "y": 93,
+      "width": 390,
+      "height": 585
+    },
+    "goal": {
+      "x": 0,
+      "y": 48,
+      "width": 390,
+      "height": 45
+    },
+    "responseDock": {
+      "x": 12,
+      "y": 679,
+      "width": 366,
+      "height": 65
+    },
+    "reading": {
+      "x": 16,
+      "y": 113,
+      "width": 358,
+      "height": 2127.125
+    },
+    "composer": {
+      "x": 0,
+      "y": 678,
+      "width": 390,
+      "height": 166
+    }
+  }
+]

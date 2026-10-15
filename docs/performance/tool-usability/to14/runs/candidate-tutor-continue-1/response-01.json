@@ -1,0 +1,10 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "name": "tutor.step",
+      "arguments": "{\"operation\":\"select\",\"move\":{\"move_id\":\"continue-speed-equal-times\",\"object_ids\":[],\"kind\":\"explain\",\"prompt\":\"接着上一条回答，说明两段用时相等时，可以直接取两段平均速度的算术平均；这是由原文的总路程÷总时间推导出的条件。用一个自拟例子：以60 km/h行驶1小时，再以30 km/h行驶1小时，总路程90 km、总时间2小时，所以平均速度45 km/h。通过(60×1+30×1)/(1+1)说明相等的时间让两段速度获得相同权重，并与上一答中等路程、不同用时的情况作简短对照。明确两段速度不同的时候，等路程不能保证直接平均，等用时才可以。直接讲解，不要求读者先答题，不推断其理解程度。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"能说明两段用时相等时为什么可以直接平均两段平均速度，并区分等用时与等路程。\",\"learning_focus\":\"由总路程÷总时间理解两段速度可以直接取算术平均的条件\",\"source_bindings\":[{\"start_lid\":\"1.1\",\"end_lid\":\"1.1\"}],\"object_refs\":[]}}}"
+    }
+  ],
+  "usage_total_tokens": 36874
+}

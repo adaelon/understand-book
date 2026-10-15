@@ -5,19 +5,28 @@ import VideoReaderPane from './components/VideoReaderPane.vue';
 import { videoCatalog, type PreparingVideo } from './video-api';
 const videos = ref<PreparingVideo[]>([]), selectedVideo = ref<PreparingVideo | null>(null);
 import BookCover from './components/BookCover.vue';
+import YeyeMascot from './components/YeyeMascot.vue';
+import brandLogo from './assets/brand/understand-book-logo.svg';
+import { bookTitle } from './book-title';
 import LoadingAnimation from './components/LoadingAnimation.vue';
 import AccountAllowance from './components/AccountAllowance.vue';
 import AccountSettings from './components/AccountSettings.vue';
+import AccountMcp from './components/AccountMcp.vue';
+import { readMcpSource, sourceParams, type McpSource } from './mcp-source';
 import AccountAccess from './components/AccountAccess.vue';
 import { takeAccountLink, type AccountView } from './account-forms';
 import AgentPresentation from './components/AgentPresentation.vue';
 import SourceExcerpt from './components/SourceExcerpt.vue';
-import { api } from './api';
+import { api, ApiError } from './api';
 import { invalidateLinkedWindows, isLinkedReaderChange } from './network-presentation';
 import { network, installIdentity, installWorkspace, forgetNetwork, sceneKey, readerKey, type ChatDraft, type NetworkIdentity, type NetworkWorkspace, type PublishedBookRef } from './network-context';
-import { networkFetch, recoverWorkspaceBinding, recoverSubmissions, pendingSubmissions, retrySubmission, type PendingSubmission } from './network-client';
+import { networkFetch, recoverWorkspaceBinding, recoverSubmissions, pendingSubmissions, retrySubmission, readReadingResumption, type ReadingResumption, type PendingSubmission } from './network-client';
 import { targetPublication, type RecapTarget } from './session-recap';
 const username = ref(''), password = ref(''), error = ref(''), busy = ref(false), checking = ref(true);
+const sourceTarget = ref<McpSource | null>(null), sourceError = ref('');
+let pendingSource: McpSource | null = null;
+try { pendingSource = readMcpSource(location.search); } catch (failure) { sourceError.value = (failure as Error).message; }
+let mcpRequested = new URLSearchParams(location.search).get('account') === 'mcp';
 const accountLink = takeAccountLink();
 const accountView = ref<AccountView | null>(accountLink.view), resetToken = ref(accountLink.token);
 accountLink.token = '';
@@ -36,18 +45,92 @@ function passwordChanged() {
   accountLogin(undefined, '密码已更新，请使用新密码重新登录。');
   channel?.postMessage('changed');
 }
-type CatalogBook = { published_book_ref: PublishedBookRef; is_default?: boolean; cover?: import('./api').BookCoverSource | null };
+type CatalogBook = { published_book_ref: PublishedBookRef; title?: string | null; is_default?: boolean; cover?: import('./api').BookCoverSource | null };
 const books = ref<CatalogBook[]>([]);
-function bookLabel(book: CatalogBook) {
-  const versions = books.value.filter(item => item.published_book_ref.book_id === book.published_book_ref.book_id);
-  if (versions.length === 1) return book.published_book_ref.book_id;
-  return `${book.published_book_ref.book_id} · 版本 ${versions.indexOf(book) + 1}${book.is_default ? '（默认）' : ''}`;
+const libraryOpen = ref(!network.value.workspace);
+const resumption = ref<ReadingResumption | null>(null), resumptionError = ref(''), resumptionLoading = ref(false);
+const resumptionBook = computed(() => books.value.find(book =>
+  book.published_book_ref.book_id === resumption.value?.published_book_ref.book_id
+  && book.published_book_ref.publication_id === resumption.value?.published_book_ref.publication_id));
+watch(() => network.value.epoch, () => {
+  resumption.value = null; resumptionError.value = ''; resumptionLoading.value = false; libraryOpen.value = true;
+}, { flush: 'sync' });
+async function loadResumption() {
+  resumptionError.value = ''; resumptionLoading.value = true;
+  const scope = sceneKey();
+  try { const value = await readReadingResumption(); if (scope === sceneKey()) resumption.value = value; }
+  catch (failure) {
+    if (scope === sceneKey()) {
+      const unavailable = failure instanceof ApiError && failure.status === 404;
+      if (unavailable) resumption.value = null;
+      resumptionError.value = unavailable ? '原阅读材料或现场已不可用，请选择其他材料。' : '接续记录暂时无法读取，请重试。';
+    }
+  } finally { if (scope === sceneKey()) resumptionLoading.value = false; }
 }
+async function showLibrary() {
+  if (readerApp.value && !await readerApp.value.beforeNoteLeave('返回书架')) return;
+  libraryOpen.value = true; error.value = '';
+  try { await catalog(); await loadResumption(); }
+  catch (failure) { error.value = failure instanceof Error ? failure.message : String(failure); }
+}
+async function continueReading() {
+  if (!resumption.value || busy.value) return;
+  busy.value = true; error.value = '';
+  try { await recoverWorkspaceBinding(resumption.value); await recover(); libraryOpen.value = false; suspended.value = false; }
+  catch (failure) {
+    error.value = failure instanceof Error ? failure.message : String(failure);
+    await loadResumption();
+  } finally { busy.value = false; }
+}
+function bookLabel(book: CatalogBook) {
+  const title = bookTitle({ title: book.title, book_id: book.published_book_ref.book_id });
+  const versions = books.value.filter(item => item.published_book_ref.book_id === book.published_book_ref.book_id);
+  if (versions.length === 1) return title;
+  return `${title} · 版本 ${versions.indexOf(book) + 1}${book.is_default ? '（默认）' : ''}`;
+}
+const readerApp = ref<InstanceType<typeof App> | null>(null);
 const key = computed(sceneKey);
 const appKey = computed(readerKey);
 const chatDraft = ref<ChatDraft | null>(null);
-const allowanceOpen = ref(false), settingsOpen = ref(false);
-watch([() => network.value.epoch, () => network.value.identity?.user_id, () => network.value.identity?.csrf_token], () => { allowanceOpen.value = false; settingsOpen.value = false; }, { flush: 'sync' });
+const allowanceOpen = ref(false), settingsOpen = ref(false), mcpOpen = ref(false);
+function showMcp() {
+  mcpOpen.value = true;
+  const url = new URL(location.href); url.searchParams.set('account', 'mcp'); history.replaceState(history.state, '', url);
+}
+function closeMcp() {
+  mcpOpen.value = false; mcpRequested = false;
+  const url = new URL(location.href); if (url.searchParams.get('account') === 'mcp') url.searchParams.delete('account');
+  history.replaceState(history.state, '', url);
+}
+function sourceConsumed() {
+  pendingSource = null; sourceTarget.value = null; sourceError.value = '';
+  const url = new URL(location.href); sourceParams.forEach(key => url.searchParams.delete(key));
+  history.replaceState(history.state, '', url);
+}
+function sourceFailed(message: string) { sourceTarget.value = null; sourceError.value = message; }
+async function openPendingSource() {
+  if (!pendingSource || sourceTarget.value || linkedRequested) return;
+  const source = pendingSource;
+  if (readerApp.value && !await readerApp.value.beforeNoteLeave('打开来源')) return;
+  busy.value = true; sourceError.value = '';
+  try {
+    if (network.value.workspace) await api.openBook(JSON.stringify(source.published_book_ref));
+    else installWorkspace(await networkFetch<NetworkWorkspace>('POST', '/workspaces', {
+      attachment_id: network.value.attachment, published_book_ref: source.published_book_ref,
+    }));
+    sourceTarget.value = source; libraryOpen.value = false; suspended.value = false;
+  } catch (failure) {
+    if (failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE') return;
+    sourceError.value = failure instanceof ApiError && [403, 404].includes(failure.status)
+      ? '该来源材料未获授权或该版本已不可用，请联系管理员开通，或选择其他材料。'
+      : '来源暂时无法打开，请重试。';
+  } finally { busy.value = false; }
+}
+async function openAccountDestination() {
+  if (mcpRequested) { showMcp(); mcpRequested = false; }
+  if (pendingSource && !sourceError.value) await openPendingSource();
+}
+watch([() => network.value.epoch, () => network.value.identity?.user_id, () => network.value.identity?.csrf_token], () => { allowanceOpen.value = false; settingsOpen.value = false; mcpOpen.value = false; sourceTarget.value = null; }, { flush: 'sync' });
 // A transport generation changes on reattachment; the user's unsent question does not.
 watch(() => {
   const n = network.value, w = n.workspace;
@@ -57,6 +140,7 @@ const recapTarget = ref<RecapTarget | null>(null), openingRecap = ref(false);
 async function openRecapPublication(target: RecapTarget) {
   const publication = targetPublication(target);
   if (!publication) return;
+  if (readerApp.value && !await readerApp.value.beforeNoteLeave('切换发布')) return;
   openingRecap.value = true; error.value = '';
   try {
     await api.openBook(JSON.stringify(publication));
@@ -144,18 +228,26 @@ async function checkIdentity() {
     try {
       error.value = '';
       const identity = await networkFetch<NetworkIdentity>('GET', '/auth/me');
+      const sameIdentity = identity.user_id === network.value.identity?.user_id && identity.csrf_token === network.value.identity?.csrf_token;
       if (!network.value.identity) { installIdentity(identity); await catalog(); if (linkedRequested) window.opener?.postMessage({ kind: 'reader-linked-ready' }, location.origin); }
       else if (identity.user_id !== network.value.identity.user_id || identity.csrf_token !== network.value.identity.csrf_token) {
         forgetNetwork(); books.value = []; installIdentity(identity); await catalog();
       }
       else { network.value = { ...network.value, identity }; }
-      if (!linkedRequested) await restore();
+      if (!linkedRequested) {
+        if (libraryOpen.value || !network.value.workspace) {
+          if (sameIdentity) await catalog();
+          checking.value = false;
+          await loadResumption(); await recover();
+        } else await restore();
+      }
       suspended.value = false;
       if (network.value.workspace && network.value.linked) {
         const current = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${network.value.workspace.workspace_id}`);
         installWorkspace(current); await recover();
       }
       window.dispatchEvent(new Event('workspace-recovered'));
+      await openAccountDestination();
     } catch (failure) {
       if (network.value.identity) error.value = failure instanceof Error ? failure.message : String(failure);
     } finally { checking.value = false; identityCheck = null; }
@@ -170,10 +262,14 @@ async function login() {
     password.value = '';
     installIdentity(await networkFetch<NetworkIdentity>('GET', '/auth/me'));
     channel?.postMessage('changed'); await catalog();
+    busy.value = false;
+    await loadResumption();
+    await openAccountDestination();
   } catch { error.value = '登录失败，请核对账号、密码或稍后重试。'; }
   finally { password.value = ''; busy.value = false; checking.value = false; }
 }
 async function logout() {
+  if (readerApp.value && !await readerApp.value.beforeNoteLeave('退出登录')) return;
   const n = network.value, w = n.workspace;
   const detach = w ? networkFetch('POST', `/workspaces/${w.workspace_id}/detach`, { attachment_id: n.attachment, generation: w.generation, expected_revision: w.revision }).catch(() => {}) : Promise.resolve();
   forgetNetwork(); books.value = []; pending.value = 0; error.value = '';
@@ -190,9 +286,12 @@ async function logout() {
   channel?.postMessage('changed');
 }
 async function openBook(reference: PublishedBookRef) {
+  if (readerApp.value && !await readerApp.value.beforeNoteLeave('切换材料')) return;
   busy.value = true; error.value = '';
   try {
-    installWorkspace(await networkFetch<NetworkWorkspace>('POST', '/workspaces', { attachment_id: network.value.attachment, published_book_ref: reference }));
+    if (network.value.workspace) await api.openBook(JSON.stringify(reference));
+    else installWorkspace(await networkFetch<NetworkWorkspace>('POST', '/workspaces', { attachment_id: network.value.attachment, published_book_ref: reference }));
+    libraryOpen.value = false; suspended.value = false;
   } catch (failure) { error.value = failure instanceof Error ? failure.message : String(failure); }
   finally { busy.value = false; }
 }
@@ -226,6 +325,7 @@ onBeforeUnmount(() => {
   <AccountAccess v-if="accountView" :key="accountView" :view="accountView" :token="resetToken" @login="accountLogin" @reset="passwordChanged" @forgot="showAccount('forgot-password')" />
   <main v-else-if="checking && !network.workspace" class="network-loading"><LoadingAnimation /></main>
   <main v-else-if="!network.identity" class="network-login">
+    <a class="brand-signature" href="/home.html"><img :src="brandLogo" class="brand-logo" width="36" height="36" alt="" /><span>Understand Book</span></a>
     <h1>回到你的阅读</h1>
     <form @submit.prevent="login">
       <label>邮箱或账号<input v-model="username" autocomplete="username" required></label>
@@ -240,12 +340,13 @@ onBeforeUnmount(() => {
       <summary>账号</summary>
       <div class="network-account-menu">
         <span>{{ network.identity.email || network.identity.user_id }}</span>
-        <button @click="settingsOpen = true">个人设置</button> <button @click="allowanceOpen = true">使用额度</button>
+        <button @click="settingsOpen = true">个人设置</button> <button @click="showMcp">MCP 接入</button> <button @click="allowanceOpen = true">使用额度</button>
         <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a>
         <button @click="logout">退出登录</button>
       </div>
     </details>
-    <div v-if="pending || error" class="network-notices">
+    <div v-if="pending || error || sourceError" class="network-notices">
+      <span v-if="sourceError" role="alert">{{ sourceError }} <button v-if="pendingSource" :disabled="busy" @click="openPendingSource">重试打开来源</button></span>
       <span v-if="pending" role="status">{{ pending }} 个问题提交待核对 <button @click="recover">核对原问题</button></span>
       <span v-for="item in pendingItems" :key="item.key">{{ item.body.display_user || item.body.message }} <button @click="retryOriginal(item.key)">重试原提交</button></span>
       <span v-if="error" role="alert">{{ error }}</span>
@@ -253,13 +354,13 @@ onBeforeUnmount(() => {
     <AgentPresentation v-if="!suspended && network.linked && linkedPresentation && network.workspace" :key="key" :session-id="linkedPresentation.session_id" :turn-id="linkedPresentation.turn_id" :reference="linkedPresentation.reference" @follow-up="followUp" @source="showLinkedSource" />
     <VideoReaderPane v-else-if="!suspended && selectedVideo" :key="`${selectedVideo.video.media_id}/${selectedVideo.video.media_revision}`" :initial="selectedVideo" :owner="network.identity.user_id" @close="selectedVideo = null" @ready="reference => { selectedVideo = null; openBook(reference); }" />
     <main v-else-if="openingRecap" class="network-loading"><LoadingAnimation /></main>
-    <App v-else-if="!suspended && network.workspace" :key="appKey" v-model:chat-draft="chatDraft" :recap-target="recapTarget" @show-allowance="allowanceOpen = true" @recap-consumed="recapTarget = null" @recap-publication="openRecapPublication">
+    <App ref="readerApp" v-else-if="!suspended && network.workspace" v-show="!libraryOpen" :reader-visible="!libraryOpen" :key="appKey" v-model:chat-draft="chatDraft" :recap-target="recapTarget" :mcp-source="sourceTarget" @mcp-source-consumed="sourceConsumed" @mcp-source-error="sourceFailed" @show-library="showLibrary" @show-allowance="allowanceOpen = true" @recap-consumed="recapTarget = null" @recap-publication="openRecapPublication">
       <template #account>
         <details class="network-account">
           <summary>账号</summary>
           <div class="network-account-menu">
             <span>{{ network.identity.email || network.identity.user_id }}</span>
-            <button @click="settingsOpen = true">个人设置</button> <button @click="allowanceOpen = true">使用额度</button>
+            <button @click="settingsOpen = true">个人设置</button> <button @click="showMcp">MCP 接入</button> <button @click="allowanceOpen = true">使用额度</button>
             <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a>
             <span v-if="network.identity.capabilities?.presentation.authoring === false">演示制作暂不可用</span>
             <button @click="logout">退出登录</button>
@@ -268,20 +369,35 @@ onBeforeUnmount(() => {
       </template>
     </App>
     <p v-else-if="linkedRequested" role="status">请保持原阅读窗口打开；附属连接失效后请从原窗口重新打开。</p>
-    <main v-else class="network-library">
+    <main v-if="!linkedRequested && (libraryOpen || !network.workspace)" class="network-library">
       <header class="network-library-head">
-        <div><p class="network-library-kicker">你的书架</p><h1>选择阅读材料</h1></div>
-        <p><span class="account-email">{{ network.identity.email || network.identity.user_id }}</span> <button @click="settingsOpen = true">个人设置</button> <button @click="allowanceOpen = true">使用额度</button> <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a> <button @click="logout">退出登录</button></p>
+        <div><p class="network-library-kicker brand-signature"><img :src="brandLogo" class="brand-logo" width="28" height="28" alt="" />你的书架</p><h1>选择阅读材料</h1></div>
+        <p><span class="account-email">{{ network.identity.email || network.identity.user_id }}</span> <button @click="settingsOpen = true">个人设置</button> <button @click="showMcp">MCP 接入</button> <button @click="allowanceOpen = true">使用额度</button> <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a> <button @click="logout">退出登录</button></p>
       </header>
+      <section v-if="resumption && resumptionBook" class="reading-resumption" aria-label="阅读接续" :aria-busy="resumptionLoading">
+        <div class="resumption-cover"><BookCover :title="bookTitle({ title: resumptionBook.title, book_id: resumption.published_book_ref.book_id })" :cover="resumptionBook.cover" /></div>
+        <div class="resumption-content">
+          <p class="network-library-kicker">接着上次读</p>
+          <h2>{{ bookLabel(resumptionBook) }}</h2>
+          <p class="resumption-position">已保存位置 · {{ resumption.position_label || '原阅读位置' }}</p>
+          <p v-if="resumption.position_excerpt" class="resumption-excerpt">{{ resumption.position_excerpt }}</p>
+          <div v-if="resumption.last_question" class="resumption-question"><span>上次的问题</span><p>{{ resumption.last_question }}</p></div>
+          <button class="resumption-continue" :disabled="busy || resumptionLoading" @click="continueReading">{{ resumptionLoading ? '正在更新…' : '继续阅读' }}</button>
+        </div>
+        <YeyeMascot class="resumption-mascot" :size="144" :motion="busy || resumptionLoading || resumptionError ? 'static' : 'idle'" />
+      </section>
+      <p v-if="resumptionLoading && !resumptionBook" class="resumption-status" role="status">正在读取接续记录…</p>
+      <p v-else-if="resumptionError" class="resumption-status" role="status">{{ resumptionError }} <button :disabled="busy" @click="showLibrary">重试</button></p>
       <div class="network-library-grid">
         <button v-for="video in videos" :key="video.video.media_id" class="network-book-card" @click="video.publication ? openBook(video.publication) : selectedVideo = video"><strong>{{ video.title }}</strong><span>{{ video.english_ready ? "视频 · 英文已发布" : "视频 · 转写准备中" }}</span></button>
         <button v-for="book in books" :key="book.published_book_ref.publication_id" class="network-book-card" :disabled="busy" @click="openBook(book.published_book_ref)">
-          <BookCover :title="book.published_book_ref.book_id" :cover="book.cover" />
+          <BookCover :title="bookTitle({ title: book.title, book_id: book.published_book_ref.book_id })" :cover="book.cover" />
           <strong>{{ bookLabel(book) }}</strong>
         </button>
       </div>
       <p v-if="!books.length && !videos.length">账号已创建，等待管理员开通材料。</p>
     </main>
+    <AccountMcp v-if="mcpOpen" @close="closeMcp" />
     <AccountSettings v-if="settingsOpen" @close="settingsOpen = false" @bound="channel?.postMessage('profile-changed')" @password-changed="passwordChanged" />
     <AccountAllowance v-if="allowanceOpen" :key="key" @close="allowanceOpen = false" />
     <aside v-if="linkedSource" class="network-source" aria-label="演示来源">
@@ -294,14 +410,28 @@ onBeforeUnmount(() => {
   </div>
 </template>
 <style scoped>
-.network-loading { flex: 1; min-height: 0; display: grid; place-items: center; background: var(--reader-canvas); }
+.network-loading { height: 100%; flex: 1; min-height: 0; display: grid; place-items: center; background: var(--reader-canvas); }
 .network-login { max-width: 32rem; margin: 12vh auto; padding: 1.5rem; }
+.network-login h1, .network-library-head h1 { font-family: var(--font-display); font-weight: 400; font-synthesis: none; line-height: 1.45; }
 .network-library { flex: 1; min-height: 0; overflow: auto; width: 100%; padding: clamp(20px, 5vw, 64px); box-sizing: border-box; }
 .network-library-head { max-width: 1100px; margin: 0 auto 32px; display: flex; justify-content: space-between; align-items: center; gap: 20px; }
 .network-library-head h1 { margin: 6px 0 0; font-size: clamp(24px, 3vw, 32px); }
 .network-library-head > p { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 13px; min-width: 0; max-width: 100%; }
 .account-email { overflow-wrap: anywhere; min-width: 0; max-width: 100%; }
 .network-library-kicker { margin: 0; color: var(--muted); font-size: 13px; }
+.reading-resumption { max-width: 1100px; box-sizing: border-box; margin: 0 auto 40px; padding: clamp(20px, 4vw, 40px); display: flex; gap: clamp(20px, 4vw, 44px); align-items: center; border-radius: 28px; background: var(--surface, #f4f0e8); border: 1px solid var(--line); }
+.resumption-cover { width: clamp(90px, 16vw, 155px); flex-shrink: 0; }
+.resumption-content { flex: 1; min-width: 0; }
+.resumption-content h2 { margin: 8px 0 16px; font-family: var(--serif, Georgia, serif); font-size: clamp(21px, 3vw, 30px); overflow-wrap: anywhere; }
+.resumption-position { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+.resumption-excerpt, .resumption-question p { margin: 0; line-height: 1.7; overflow-wrap: anywhere; white-space: pre-line; }
+.resumption-excerpt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.resumption-question { margin-top: 20px; }
+.resumption-question span { display: block; margin-bottom: 5px; color: var(--muted); font-size: 12px; }
+.resumption-continue { margin-top: 24px; padding: 10px 22px; border: 0; border-radius: 24px; background: var(--brand-accent); color: var(--brand-on-accent); cursor: pointer; }
+.resumption-continue:hover:not(:disabled) { background: var(--brand-accent-deep); }
+.resumption-continue:disabled { opacity: .6; cursor: wait; }
+.resumption-status { max-width: 1100px; margin: 0 auto 24px; }
 .network-library-grid { max-width: 1100px; margin: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 28px 24px; }
 .network-book-card { display: flex; flex-direction: column; align-items: stretch; border: 0; border-radius: 8px; padding: 8px !important; min-width: 0; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
 .network-book-card:hover { background: #00000005; }
@@ -310,7 +440,17 @@ onBeforeUnmount(() => {
 .network-book-card strong { display: block; margin-top: 14px; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
 .network-book-card:nth-child(3n + 2) { --cover-color: #ece2d4; }
 .network-book-card:nth-child(3n) { --cover-color: #dfe6ee; }
+@media (max-width: 900px) {
+  .reading-resumption .resumption-mascot { display: none; }
+}
 @media (max-width: 540px) {
+  .reading-resumption { display: block; margin-bottom: 28px; border-radius: 24px; }
+  .resumption-cover { float: right; width: 72px; margin: 0 0 12px 16px; }
+  .resumption-cover :deep(.book-cover-fallback) { padding: 10px 7px; gap: 6px; }
+  .resumption-cover :deep(.book-cover-name) { font-size: 10px; -webkit-line-clamp: 4; }
+  .resumption-cover :deep(.book-cover-mark) { font-size: 4px; }
+  .resumption-content { display: contents; }
+  .resumption-question { clear: both; }
   .network-library-head { align-items: start; flex-direction: column; gap: 8px; margin-bottom: 20px; }
   .network-library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 12px; }
 }

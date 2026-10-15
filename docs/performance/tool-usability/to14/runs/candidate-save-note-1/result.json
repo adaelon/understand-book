@@ -1,0 +1,374 @@
+{
+  "case": "save-note",
+  "deliveries": [],
+  "elapsed_ms": 87420,
+  "events": [],
+  "http_status": 200,
+  "reader_after": {
+    "layout": {
+      "active_preset": "technical_read",
+      "focused_slot": "technical.agent",
+      "open_slots": [
+        "technical.structure_map",
+        "technical.agent"
+      ],
+      "panel_sizes": {
+        "technical.agent": {
+          "kind": "percent",
+          "value": 30.0
+        },
+        "technical.structure_map": {
+          "kind": "percent",
+          "value": 24.0
+        }
+      },
+      "pinned_evidence": [],
+      "rev": 0,
+      "slot_order": {
+        "left": [
+          "technical.structure_map"
+        ],
+        "right": [
+          "technical.agent"
+        ]
+      }
+    },
+    "open_panels": [],
+    "selection": null,
+    "viewport": {
+      "anchor_lid": "1.1",
+      "bottom_lid": "1.2",
+      "top_lid": "1.1",
+      "visible_lids": [
+        "1.1",
+        "1.2"
+      ],
+      "width": 20
+    }
+  },
+  "reopened_records": [],
+  "reply": {
+    "answer": "当前可用工具无法保存段落笔记，这条笔记尚未保存。\n\n笔记内容：平均速度＝总路程／总时间。",
+    "answer_view": {
+      "parts": [
+        {
+          "kind": "markdown",
+          "text": "当前可用工具无法保存段落笔记，这条笔记尚未保存。\n\n笔记内容：平均速度＝总路程／总时间。"
+        }
+      ],
+      "sources": []
+    },
+    "effects": [],
+    "incomplete": false,
+    "memory_updates": [],
+    "profile_usage": {
+      "claimed_used_fact_ids": [],
+      "influences": [],
+      "injected_fact_ids": [],
+      "snapshot_revision": 0
+    },
+    "tokens_spent": 113316,
+    "trace": [
+      {
+        "args": "{\"effect_mode\":\"reader_mutation_explicitly_requested\",\"max_results\":1,\"operation\":\"mutate_reader\",\"required_capabilities\":[\"memory_write\"],\"scope\":\"passage\"}",
+        "model_tool_loop": 1,
+        "result_digest": "tool-result-fnv1a64-447f65adf97518a3-bytes-875",
+        "tool": "tool.search"
+      },
+      {
+        "args": "{\"effect_mode\":\"reader_mutation_explicitly_requested\",\"max_results\":1,\"operation\":\"mutate_reader\",\"required_capabilities\":[\"reader_write\"],\"scope\":\"passage\"}",
+        "model_tool_loop": 2,
+        "result_digest": "tool-result-fnv1a64-acbfc1c68762296a-bytes-912",
+        "tool": "tool.search"
+      },
+      {
+        "args": "{\"effect_mode\":\"read_only\",\"max_results\":1,\"operation\":\"explain\",\"required_capabilities\":[\"memory_write\"],\"scope\":\"document\"}",
+        "model_tool_loop": 3,
+        "result_digest": "tool-result-fnv1a64-e6f8746bc14ebb26-bytes-1856",
+        "tool": "tool.search"
+      }
+    ],
+    "turns": 4
+  },
+  "turn": {
+    "domain": {
+      "effects": [],
+      "scene": {
+        "anchor_lid": "1.1",
+        "generation": 1,
+        "selection": null,
+        "workspace_id": "local"
+      },
+      "teaching": [
+        {
+          "receipt_ids": [
+            "assets:turn_fd7b4c0e7dba8831",
+            "usage:observation:tc0-average-speed:user:turn_fd7b4c0e7dba8831",
+            "binding:turn_fd7b4c0e7dba8831"
+          ],
+          "revision": 0,
+          "session_id": "observation:tc0-average-speed"
+        },
+        {
+          "receipt_ids": [
+            "usage:observation:tc0-average-speed:assistant:turn_fd7b4c0e7dba8831"
+          ],
+          "revision": 0,
+          "session_id": "observation:tc0-average-speed"
+        }
+      ]
+    },
+    "goal_ref": {
+      "id": "goal_turn_fd7b4c0e7dba8831",
+      "revision": 2
+    },
+    "outcome": {
+      "answer": "当前可用工具无法保存段落笔记，这条笔记尚未保存。\n\n笔记内容：平均速度＝总路程／总时间。",
+      "answer_view": {
+        "parts": [
+          {
+            "kind": "markdown",
+            "text": "当前可用工具无法保存段落笔记，这条笔记尚未保存。\n\n笔记内容：平均速度＝总路程／总时间。"
+          }
+        ],
+        "sources": []
+      },
+      "effects": [],
+      "incomplete": false,
+      "memory_updates": [],
+      "profile_usage": {
+        "claimed_used_fact_ids": [],
+        "influences": [],
+        "injected_fact_ids": [],
+        "snapshot_revision": 0
+      },
+      "tokens_spent": 113316,
+      "trace": [
+        {
+          "args": "{\"effect_mode\":\"reader_mutation_explicitly_requested\",\"max_results\":1,\"operation\":\"mutate_reader\",\"required_capabilities\":[\"memory_write\"],\"scope\":\"passage\"}",
+          "model_tool_loop": 1,
+          "result_digest": "tool-result-fnv1a64-447f65adf97518a3-bytes-875",
+          "tool": "tool.search"
+        },
+        {
+          "args": "{\"effect_mode\":\"reader_mutation_explicitly_requested\",\"max_results\":1,\"operation\":\"mutate_reader\",\"required_capabilities\":[\"reader_write\"],\"scope\":\"passage\"}",
+          "model_tool_loop": 2,
+          "result_digest": "tool-result-fnv1a64-acbfc1c68762296a-bytes-912",
+          "tool": "tool.search"
+        },
+        {
+          "args": "{\"effect_mode\":\"read_only\",\"max_results\":1,\"operation\":\"explain\",\"required_capabilities\":[\"memory_write\"],\"scope\":\"document\"}",
+          "model_tool_loop": 3,
+          "result_digest": "tool-result-fnv1a64-e6f8746bc14ebb26-bytes-1856",
+          "tool": "tool.search"
+        }
+      ],
+      "turns": 4
+    },
+    "question_anchor_lid": null,
+    "question_quote": {
+      "lid": "1.1",
+      "quote": "Average speed is total distance divided by total time.",
+      "ranges": [
+        {
+          "lid": "1.1",
+          "range": {
+            "end": 71,
+            "start": 17
+          }
+        }
+      ],
+      "raw_quote": "Average speed is total distance divided by total time.",
+      "resolution_basis": "exact",
+      "resolved_quote": "Average speed is total distance divided by total time.",
+      "status": "resolved"
+    },
+    "run_summary": {
+      "activities": [
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 21700.273500000003,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "gpt-6.1-sol",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 75.46029999999999,
+          "status": "succeeded",
+          "step_id": 1,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": null,
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": 26980
+          },
+          "usage_total_tokens": 26980
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 13.86989999999787,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "查找可用工具",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "tool.search",
+          "parent_step_id": null,
+          "result_count": 0,
+          "started_ms": 21806.8041,
+          "status": "no_result",
+          "step_id": 2,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 16976.2064,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "gpt-6.1-sol",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 21878.5252,
+          "status": "succeeded",
+          "step_id": 3,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": null,
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": 27836
+          },
+          "usage_total_tokens": 27836
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 17.118500000004133,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "查找可用工具",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "tool.search",
+          "parent_step_id": null,
+          "result_count": 0,
+          "started_ms": 38875.176699999996,
+          "status": "no_result",
+          "step_id": 4,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 27417.23249999999,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "gpt-6.1-sol",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 38940.8981,
+          "status": "succeeded",
+          "step_id": 5,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": null,
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": 28800
+          },
+          "usage_total_tokens": 28800
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 7.999199999991106,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "查找可用工具",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "tool.search",
+          "parent_step_id": null,
+          "result_count": 1,
+          "started_ms": 66370.9761,
+          "status": "succeeded",
+          "step_id": 6,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 20701.6728,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "gpt-6.1-sol",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 66410.4149,
+          "status": "succeeded",
+          "step_id": 7,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": null,
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": 29700
+          },
+          "usage_total_tokens": 29700
+        }
+      ],
+      "effects": [],
+      "last_seq": null,
+      "trace": [
+        {
+          "args": "{\"effect_mode\":\"reader_mutation_explicitly_requested\",\"max_results\":1,\"operation\":\"mutate_reader\",\"required_capabilities\":[\"memory_write\"],\"scope\":\"passage\"}",
+          "model_tool_loop": 1,
+          "result_digest": "tool-result-fnv1a64-447f65adf97518a3-bytes-875",
+          "tool": "tool.search"
+        },
+        {
+          "args": "{\"effect_mode\":\"reader_mutation_explicitly_requested\",\"max_results\":1,\"operation\":\"mutate_reader\",\"required_capabilities\":[\"reader_write\"],\"scope\":\"passage\"}",
+          "model_tool_loop": 2,
+          "result_digest": "tool-result-fnv1a64-acbfc1c68762296a-bytes-912",
+          "tool": "tool.search"
+        },
+        {
+          "args": "{\"effect_mode\":\"read_only\",\"max_results\":1,\"operation\":\"explain\",\"required_capabilities\":[\"memory_write\"],\"scope\":\"document\"}",
+          "model_tool_loop": 3,
+          "result_digest": "tool-result-fnv1a64-e6f8746bc14ebb26-bytes-1856",
+          "tool": "tool.search"
+        }
+      ]
+    },
+    "status": "completed",
+    "turn_id": "turn_fd7b4c0e7dba8831",
+    "user": "把‘平均速度＝总路程／总时间’记为这一段的笔记。",
+    "user_turn_ordinal": 1
+  }
+}

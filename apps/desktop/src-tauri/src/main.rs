@@ -1,5 +1,7 @@
 mod library_settings;
 mod plugin_manager;
+mod reading_share;
+use reading_share::save_reading_share_image;
 
 use library_settings::{LibrarySettingsStore, PersistedProviderSettings};
 use plugin_manager::{PluginConfig, PluginManager, PluginState};
@@ -681,7 +683,8 @@ fn main() {
             install_codex_plugin,
             set_desktop_library_directory,
             desktop_provider_status,
-            save_desktop_provider_settings
+            save_desktop_provider_settings,
+            save_reading_share_image
         ])
         .setup(|app| {
             let documents = app

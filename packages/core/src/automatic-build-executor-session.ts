@@ -7,11 +7,14 @@ import { BuildExecutorInvalidArgumentsError } from "./build-executor-tool-contra
 import { CODEX_BUILD_EXECUTION_PROFILE_V1, resolveBuildExecutionProfile, executionProfileSelection,
   type BuildExecutionProfileSelectionV1, type BuildExecutionProfileV1 } from "./build-execution-profile";
 import {
+  closeSync,
   existsSync,
   lstatSync,
   mkdirSync,
+  openSync,
   readFileSync,
   realpathSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
@@ -1099,14 +1102,27 @@ function writeCreateOnly(file: string, value: unknown): boolean {
   }
   const bytes = Buffer.from(`${canonicalAutomaticBuildJson(value)}\n`, "utf8");
   if (bytes.byteLength > MAX_RECORD_BYTES) throw new Error("automatic build executor record is too large");
+  const target = path.join(realParent, path.basename(resolved));
+  let descriptor: number;
   try {
-    writeFileSync(path.join(realParent, path.basename(resolved)), bytes, { flag: "wx", mode: 0o600 });
-    return true;
+    descriptor = openSync(target, "wx", 0o600);
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
     if (code !== "EEXIST") throw error;
     return false;
   }
+  try {
+    try {
+      writeFileSync(descriptor, bytes);
+    } finally {
+      closeSync(descriptor);
+    }
+  } catch (error) {
+    // A failed write must not leave a partial create-only record blocking recovery.
+    unlinkSync(target);
+    throw error;
+  }
+  return true;
 }
 
 function validateTargetRef(value: unknown): BuildTargetRefV2 {

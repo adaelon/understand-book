@@ -1,0 +1,37 @@
+
+Running 1 test using 1 worker
+
+(node:21652) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  1 playwright\tutor-building-blocks-tb4.spec.ts:8:1 › TB4 actual code comparison restores its state and continues the original Tutor chat (7.9s)
+
+
+  1) playwright\tutor-building-blocks-tb4.spec.ts:8:1 › TB4 actual code comparison restores its state and continues the original Tutor chat 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator:  getByTestId('reader-status')
+    Expected: "已在正文中打开来源"
+    Received: "保持当前阅读位置"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveText" with timeout 5000ms
+      - waiting for getByTestId('reader-status')
+        14 × locator resolved to <p data-testid="reader-status">保持当前阅读位置</p>
+           - unexpected value "保持当前阅读位置"
+
+
+      72 |   await sources.first().scrollIntoViewIfNeeded();
+      73 |   await sources.first().click();
+    > 74 |   await expect(page.getByTestId('reader-status')).toHaveText('已在正文中打开来源');
+         |                                                   ^
+      75 |   await page.screenshot({ path: resolve(evidence, 'followup-desktop.png') });
+      76 |   expect(errors).toEqual([]);
+      77 |   writeFileSync(resolve(evidence, 'checks.json'), JSON.stringify({
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\tutor-building-blocks-tb4.spec.ts:74:51
+
+    Error Context: test-results\tutor-building-blocks-tb4--5be3a-ues-the-original-Tutor-chat\error-context.md
+
+  1 failed
+    playwright\tutor-building-blocks-tb4.spec.ts:8:1 › TB4 actual code comparison restores its state and continues the original Tutor chat 

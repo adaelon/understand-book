@@ -1,0 +1,12 @@
+{
+  "candidate_id": "candidate-1791796901012266000-1",
+  "same_images_as": "replay-before-scene-rebinding",
+  "compared_image_bytes": [
+    "preview-08-4.png",
+    "preview-09-4.png",
+    "preview-10-0.png",
+    "preview-12-3.png"
+  ],
+  "inherited_visual_review": "replay-source-navigation-assertion/accepted-preview.json",
+  "result": "Current preview images exactly equal already inspected images; all five current receipts error-free. Only follow-up runtime receipt rebinding changed."
+}

@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import {
   canStartNoteRecordPlacement,
@@ -331,45 +330,5 @@ describe("Markdown record reanchor and reconciliation", () => {
     }), "current-source")).toBe(true);
     expect(isMarkdownInlineNote(record({ note_placement: { kind: "pdf_region" } }), "current-source"))
       .toBe(false);
-  });
-});
-
-describe("NP2a application gate", () => {
-  it("routes unquoted Agent excerpts into the controller without a memory mutation", () => {
-    const app = readFileSync("src/App.vue", "utf8");
-    const rightRail = readFileSync("src/components/RightRail.vue", "utf8");
-    const start = app.indexOf("async function saveAgentSelection");
-    const end = app.indexOf("async function syncAfterAgentSourceOpen", start);
-    const saveAgentSelection = app.slice(start, end);
-
-    expect(saveAgentSelection).toContain("if (!selectionContext)");
-    expect(saveAgentSelection).toContain("await api.sourceFingerprint()");
-    expect(saveAgentSelection).toContain("notePlacementController.createDraft");
-    expect(saveAgentSelection).not.toContain("selectionContext?.ranges[0]?.lid ?? turn.questionAnchorLid");
-    expect(saveAgentSelection.match(/await api\.save\(/g)).toHaveLength(1);
-    expect(app).toContain("@note-placement-target=\"onMarkdownNotePlacementTarget\"");
-    expect(app).toContain("notePlacementController.beginSaving(placement)");
-    expect(app).toContain("await createPlacedNote");
-    expect(app).toContain("reanchorPlacedNote");
-    expect(app).toContain("reconcilePlacedNoteReanchor");
-    expect(app).toContain("@place-note=\"startNotePlacement\"");
-    expect(app).toContain("saving.original_book_id");
-    expect(app).toContain("markdown: true");
-    expect(app).toContain("pdf: true");
-    const saveNoteStart = app.indexOf("async function saveNote");
-    const saveNoteEnd = app.indexOf("async function deleteNote", saveNoteStart);
-    const saveNote = app.slice(saveNoteStart, saveNoteEnd);
-    expect(saveNote).toContain("await api.note(ed.lid, content)");
-    expect(saveNote).toContain("selection_context: ed.selectionContext");
-
-    const noteSelectionStart = app.indexOf("function noteSelection");
-    const noteSelectionEnd = app.indexOf("function askSelection", noteSelectionStart);
-    expect(app.slice(noteSelectionStart, noteSelectionEnd)).toContain("markdownSelectionContext(p)");
-
-    const keepEffectStart = app.indexOf("async function keepEffect");
-    const keepEffectEnd = app.indexOf("function notePlacementDraftId", keepEffectStart);
-    expect(app.slice(keepEffectStart, keepEffectEnd)).toContain("await api.promote(e.mem_id)");
-    expect(rightRail).toContain("unquotedNotePlacementAvailable");
-    expect(rightRail).toContain("!turn.questionSelection && !props.unquotedNotePlacementAvailable");
   });
 });

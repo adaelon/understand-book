@@ -1,0 +1,132 @@
+{
+  "runtime_tests": 80,
+  "new_to11_tests": 10,
+  "real_model_sampling": false,
+  "discovery": {
+    "raw_bytes": 5122,
+    "before_bytes": 4068,
+    "after_bytes": 2525,
+    "matches": 5
+  },
+  "concept": {
+    "raw_bytes": 17266,
+    "before_bytes": 10939,
+    "before_locations": 189,
+    "after_bytes": 16344,
+    "locations": {
+      "delivered": 300,
+      "total": 300
+    },
+    "read_calls": {
+      "delivered": 276,
+      "total": 300
+    },
+    "recovery": {
+      "arguments": {
+        "lid": "1.277"
+      },
+      "kind": "next_call",
+      "reason": "read a returned occurrence; other returned LIDs can be read with book.text, and this is not candidate pagination",
+      "tool": "book.text"
+    },
+    "read_accepted_evidence": 1
+  },
+  "samples": [
+    {
+      "tool": "book.context",
+      "limit": 1024,
+      "raw_bytes": 5423,
+      "delivered_bytes": 959,
+      "status": "partial",
+      "truncated": true
+    },
+    {
+      "tool": "book.paper_reading_guide",
+      "limit": 3500,
+      "raw_bytes": 67005,
+      "delivered_bytes": 1358,
+      "status": "partial",
+      "truncated": true
+    },
+    {
+      "tool": "book.query",
+      "limit": 1024,
+      "raw_bytes": 8247,
+      "delivered_bytes": 557,
+      "status": "partial",
+      "truncated": true
+    },
+    {
+      "tool": "book.structure",
+      "limit": 100,
+      "raw_bytes": 9532,
+      "delivered_bytes": 73,
+      "status": "partial",
+      "truncated": true
+    },
+    {
+      "tool": "book.structure",
+      "limit": 1500,
+      "raw_bytes": 9151,
+      "delivered_bytes": 1473,
+      "status": "partial",
+      "truncated": true
+    },
+    {
+      "tool": "book.structure",
+      "limit": 300,
+      "raw_bytes": 9532,
+      "delivered_bytes": 269,
+      "status": "partial",
+      "truncated": true
+    },
+    {
+      "tool": "book.structure",
+      "limit": 4,
+      "raw_bytes": 9532,
+      "delivered_bytes": 4,
+      "status": "partial",
+      "truncated": true
+    },
+    {
+      "tool": "book.structure",
+      "limit": 512,
+      "raw_bytes": 1925,
+      "delivered_bytes": 269,
+      "status": "partial",
+      "truncated": true
+    },
+    {
+      "tool": "book.text",
+      "limit": 512,
+      "raw_bytes": 6162,
+      "delivered_bytes": 198,
+      "status": "error",
+      "truncated": true
+    },
+    {
+      "tool": "profile.manifest",
+      "limit": 2200,
+      "raw_bytes": 2299,
+      "delivered_bytes": 2005,
+      "status": "partial",
+      "truncated": true
+    },
+    {
+      "tool": "source.present",
+      "limit": 512,
+      "raw_bytes": 19092,
+      "delivered_bytes": 249,
+      "status": "partial",
+      "truncated": true
+    },
+    {
+      "tool": "tool.search",
+      "limit": 4096,
+      "raw_bytes": 5122,
+      "delivered_bytes": 2525,
+      "status": "partial",
+      "truncated": true
+    }
+  ]
+}

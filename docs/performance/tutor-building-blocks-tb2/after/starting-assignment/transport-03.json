@@ -1,0 +1,30 @@
+{
+  "cumulative_tokens_or_reserved": 44400,
+  "identity": {
+    "attempt": 1,
+    "call_id": "01a12eac-c268-7d30-8f65-b5a2f445e025",
+    "logical_call_id": "01a12eac-c268-7d30-8f65-b59f3a881e9b",
+    "model": "deepseek-v4-flash",
+    "provider": "https://api.deepseek.com",
+    "purpose": "chat",
+    "scope": {
+      "kind": "operator_task",
+      "task_ref": "tb1-starting-assignment"
+    }
+  },
+  "outcome": {
+    "evidence": "response",
+    "succeeded": true,
+    "usage": {
+      "cache_creation_input_tokens": null,
+      "cached_input_tokens": 15232,
+      "input_tokens": 16124,
+      "output_tokens": 344,
+      "reasoning_output_tokens": 270,
+      "total_tokens": 16468
+    }
+  },
+  "reserved_tokens": 1032768,
+  "stopped": false,
+  "total_http_calls": 3
+}

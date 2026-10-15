@@ -1,0 +1,26 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"quote\": \"借用让代码在不取得所有权的情况下临时访问值。它不是绕过或放宽所有权规则，而是所有权模型本身的一部分。借用表达式会创建引用：在表达式中的 place 前写 & 可创建共享借用，写 &mut 可创建可变借用。这里的 & 是 Rust 的借用运算符，不能简单等同于 C 中不带有效性约束的取地址操作。在 Rust 中有两种借用值的方式。\"}",
+      "id": "call_00_bJCz3fGgrxTYYyw4cttj2345",
+      "name": "source.present"
+    },
+    {
+      "arguments": "{\"quote\": \"不可变借用：在表达式中的值前写 &，会创建对该值的不可变借用。相应的引用类型写作 &T。前面所有权一节中的例子可以改写为使用借用：\"}",
+      "id": "call_01_fLT5ntfwpkd7HyTkjezo9345",
+      "name": "source.present"
+    },
+    {
+      "arguments": "{\"quote\": \"// borrowing_basics.rs\\n#[derive(Debug)]\\nstruct Foo(u32);\\nfn main() {\\n    let foo = Foo(0);\\n    let bar = &foo;\\n    println!(\\\"Foo is {:?}\\\", foo);\\n    println!(\\\"Bar is {:?}\\\", bar);\\n}\"}",
+      "id": "call_02_AJlWWA9tK8nVx9mvcGYl4815",
+      "name": "source.present"
+    },
+    {
+      "arguments": "{\"quote\": \"这一次，程序可以编译，因为 main 中的第二行变成了：\\n\\n<code>    let bar = &foo;\\n</code>\\n\\n注意变量 foo 前面的 &。我们借用了 foo，并把借用赋给 bar。bar 的类型是 &Foo，也就是引用类型。由于这是不可变引用，我们不能通过 bar 修改 Foo 中的值。\"}",
+      "id": "call_03_9XcC2GRpvjXZvj4wOJN69138",
+      "name": "source.present"
+    }
+  ],
+  "usage_total_tokens": 31633
+}

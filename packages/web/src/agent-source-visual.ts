@@ -83,6 +83,7 @@ const VisualHarness = defineComponent({
       h(RightRail, {
         chat: [{
           turnId: "turn-source-visual",
+          teachingRef: new URLSearchParams(window.location.search).has('tutor-format') ? 'format-fixture' : undefined,
           user: "这些结论在原文中的依据是什么？",
           outcome,
           pending: false,
@@ -100,8 +101,6 @@ const VisualHarness = defineComponent({
         fullscreen: fullscreen.value,
         agentInput: agentInput.value,
         sending: false,
-        showTrace: {},
-        latestTrace: [],
         selectedLid: null,
         selectedFormula: null,
         contextNotes: [],

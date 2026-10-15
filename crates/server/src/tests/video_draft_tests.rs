@@ -25,6 +25,8 @@ fn draft(w: &reader_workspace::ReaderWorkspace, id: &str, time: f64) -> Value {
 fn video_draft_local_failure_restore_handoff_and_history() {
     let root = tempfile::tempdir().unwrap(); let book = fixture(root.path());
     let mut state = state_named("vi6-local");
+    // Memory and the adjacent learning.db must belong to this fixture.
+    state.user.store = MemoryStore::open(root.path().join("memory.json")).unwrap();
     state.workspace.book = Arc::new(book); state.workspace.book_dir = root.path().into();
     state.workspace.reader = Reader::new(&state.workspace.book, DEFAULT_RADIUS);
     state.workspace.session_path = Some(root.path().join("session.json"));
@@ -124,6 +126,8 @@ fn video_draft_network_queue_reconnect_cancel_and_two_windows() {
 fn video_draft_range_edits_restore_and_handoff_independent_region() {
     let root = tempfile::tempdir().unwrap(); let book = fixture(root.path());
     let mut state = state_named("vi8b-local");
+    // Memory and the adjacent learning.db must belong to this fixture.
+    state.user.store = MemoryStore::open(root.path().join("memory.json")).unwrap();
     state.workspace.book = Arc::new(book); state.workspace.book_dir = root.path().into();
     state.workspace.reader = Reader::new(&state.workspace.book, DEFAULT_RADIUS);
     state.workspace.session_path = Some(root.path().join("session.json"));
@@ -161,6 +165,8 @@ fn video_draft_range_edits_restore_and_handoff_independent_region() {
 fn video_draft_region_edit_preserves_binding_and_handoff() {
     let root = tempfile::tempdir().unwrap(); let book = fixture(root.path());
     let mut state = state_named("vi8a-local");
+    // Memory and the adjacent learning.db must belong to this fixture.
+    state.user.store = MemoryStore::open(root.path().join("memory.json")).unwrap();
     state.workspace.book = Arc::new(book); state.workspace.book_dir = root.path().into();
     state.workspace.reader = Reader::new(&state.workspace.book, DEFAULT_RADIUS);
     state.workspace.session_path = Some(root.path().join("session.json"));

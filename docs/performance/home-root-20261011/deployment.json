@@ -1,0 +1,9 @@
+{
+  "published_at_utc": "2026-10-11T00:22:31.494904+00:00",
+  "backup": "/opt/understand-book/backups/home-root-20261011T002230Z",
+  "release": "/opt/understand-book/releases/main-12b765b-20261010",
+  "nginx_test": "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n",
+  "service_before": "MainPID=456214\nWorkingDirectory=/opt/understand-book/releases/main-12b765b-20261010\nActiveState=active\n",
+  "service_after": "MainPID=456214\nWorkingDirectory=/opt/understand-book/releases/main-12b765b-20261010\nActiveState=active\n",
+  "backend_restarted": false
+}

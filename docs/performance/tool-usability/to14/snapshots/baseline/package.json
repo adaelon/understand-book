@@ -1,0 +1,26 @@
+{
+  "name": "understand-book",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local Claude Code plugin: turn a book into a read-only knowledge-graph base + read-time book agent.",
+  "scripts": {
+    "test": "pnpm -r --workspace-concurrency=1 test",
+    "build": "pnpm --filter @understand-book/web build",
+    "gen-schema": "cargo test -p base-schema export_bindings",
+    "demo:prepare": "node --import tsx examples/quickstart/create.ts",
+    "eval:semantic:test": "node --test evals/semantic/core.test.mjs evals/semantic/report.test.mjs evals/semantic/provider-recorder.test.mjs evals/semantic/agent-core.test.mjs evals/semantic/agent-report.test.mjs evals/semantic/ablation-report.test.mjs evals/semantic/eval-timing.test.mjs evals/semantic/diagnostic-core.test.mjs",
+    "eval:semantic": "node evals/semantic/run.mjs",
+    "eval:agent": "node evals/semantic/agent-run.mjs",
+    "eval:quality": "node evals/semantic/quality-run.mjs",
+    "eval:quality:test": "node --test evals/semantic/quality.test.mjs evals/semantic/task-quality.test.mjs evals/semantic/task-quality-basis.test.mjs",
+    "verify:observability-release": "node scripts/verify-observability-release.mjs"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "1.0.2",
+    "typescript": "^5.7.0",
+    "vitest": "^3.1.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0"
+  }
+}

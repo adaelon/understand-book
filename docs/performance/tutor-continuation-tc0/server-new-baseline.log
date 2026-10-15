@@ -1,0 +1,96 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling server v0.0.0 (E:\allwork\download\agent\understand-book\crates\server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 47.19s
+     Running unittests src\lib.rs (target\debug\deps\server-e6140f0c20c22aad.exe)
+
+running 13 tests
+test tests::tutor_continuation_tests::continuation_red_answer_excerpt_reaches_model_input ... ignored, TC1/TC5 red: answer reference and excerpt must enter actual model input (E20)
+test tests::tutor_continuation_tests::continuation_red_choice_cannot_record_chat_response ... ignored, TC1 red: choice cannot reuse teaching_ref (E07)
+test tests::tutor_continuation_tests::continuation_red_clarification_cannot_record_chat_response ... ignored, TC1/TC5 red: answer clarification cannot reuse teaching_ref (E20)
+test tests::tutor_continuation_tests::continuation_red_different_choices_conflict_for_same_key ... ignored, TC1 red: normalization must retain different choices (E07)
+test tests::tutor_continuation_tests::continuation_red_local_lost_result_does_not_execute_twice ... ignored, TC4 red: local typed retry must reuse its accepted turn (E07/E08)
+test tests::tutor_continuation_tests::continuation_red_object_question_help_is_assisted ... ignored, TC2/TC6 red: historical object question must not count helped answer as independent (E21)
+test tests::tutor_continuation_tests::continuation_red_paused_choice_is_not_an_ordinary_request ... ignored, TC4 red: paused Tutor must reject stale choice before accepting a turn (E03/E09)
+test tests::tutor_continuation_tests::continuation_red_source_question_help_is_assisted ... ignored, TC2/TC6 red: source-target question must retain source-help attribution (E21)
+test tests::tutor_continuation_tests::continuation_baseline_local_blank_chat_is_rejected ... ok
+test tests::tutor_continuation_tests::continuation_baseline_local_jsonl_replays_delivered_answer_and_quote ... ok
+test tests::tutor_continuation_tests::continuation_baseline_foundation_and_selection_are_shared_across_ready_states ... ok
+test tests::tutor_continuation_tests::continuation_baseline_original_help_preserves_assisted_conditions ... ok
+test tests::tutor_continuation_tests::continuation_baseline_network_lost_acceptance_recovers_one_execution ... ok
+
+test result: ok. 5 passed; 0 failed; 8 ignored; 0 measured; 691 filtered out; finished in 5.56s
+

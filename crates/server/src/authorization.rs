@@ -36,6 +36,9 @@ pub(crate) enum Capability {
     AccountUsage,
     EmailBinding,
     Password,
+    McpList,
+    McpCreate,
+    McpRevoke(String),
     Library,
     Videos,
     Video(base_schema::VideoSourceRef, String),
@@ -74,6 +77,8 @@ pub(crate) fn capability(path: &str) -> Result<Capability, ToolError> {
         "/auth/me" => Capability::Me,
         "/auth/logout" => Capability::Logout,
         "/account/password" => Capability::Password,
+        "/account/mcp" => Capability::McpList,
+        "/account/mcp/credentials" => Capability::McpCreate,
         "/account/allowance" => Capability::Allowance,
         "/account/usage" => Capability::AccountUsage,
         "/account/email/start" | "/account/email/resend" | "/account/email/complete" => Capability::EmailBinding,
@@ -97,6 +102,7 @@ pub(crate) fn capability(path: &str) -> Result<Capability, ToolError> {
             }
             let parts: Vec<_> = path.trim_start_matches('/').split('/').collect();
             match parts.as_slice() {
+                ["account", "mcp", "credentials", id, "revoke"] => Capability::McpRevoke((*id).into()),
                 ["books", book, "publications", publication, rest @ ..] if !rest.is_empty() => {
                     Capability::Book(
                         PublishedBookRef {
@@ -157,6 +163,8 @@ pub struct AuthorizedContext {
     pub(crate) user: UserHandle,
 }
 pub struct Authorization {
+    pub(crate) mcp_usage: crate::mcp_usage::McpUsage,
+    pub(crate) mcp_access: crate::mcp_access::McpAccess,
     pub(crate) email_binding: crate::account_email::EmailBinding,
     pub(crate) password: crate::account_password::AccountPassword,
     pub(crate) registration: crate::account_registration::Registration,
@@ -262,6 +270,8 @@ impl Authorization {
         users.presentation_limits = (limits.presentation_bytes, limits.presentation_files);
         let sandbox = crate::presentation_sandbox::Sandbox::load(writer.root());
         Ok(Self {
+            mcp_access: crate::mcp_access::McpAccess::new(ControlStore::open(writer.clone())?),
+            mcp_usage: crate::mcp_usage::McpUsage::new(ControlStore::open(writer.clone())?),
             registration: crate::account_registration::Registration::new(ControlStore::open(writer.clone())?),
             email_binding: crate::account_email::EmailBinding::new(ControlStore::open(writer.clone())?),
             password: crate::account_password::AccountPassword::new(ControlStore::open(writer.clone())?),

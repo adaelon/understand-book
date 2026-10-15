@@ -1,0 +1,2472 @@
+[
+  {
+    "continuation": {
+      "arguments": {
+        "at": "1.5"
+      },
+      "kind": "next_call",
+      "reason": "inspect the omitted route segment's structure without repeating the whole guide",
+      "tool": "book.structure"
+    },
+    "delivered": {
+      "at": null,
+      "available": true,
+      "current_segment_index": null,
+      "delivery": {
+        "collections": {
+          "/segments": {
+            "delivered": 4,
+            "total": 60
+          }
+        },
+        "read_lids": [
+          "1.5",
+          "1.6",
+          "1.7",
+          "1.8",
+          "1.9",
+          "1.10",
+          "1.11",
+          "1.12",
+          "1.13",
+          "1.14",
+          "1.15",
+          "1.16",
+          "1.17",
+          "1.18",
+          "1.19",
+          "1.20",
+          "1.21",
+          "1.22",
+          "1.23",
+          "1.24",
+          "1.25",
+          "1.26",
+          "1.27",
+          "1.28",
+          "1.29",
+          "1.30",
+          "1.31",
+          "1.32",
+          "1.33",
+          "1.34",
+          "1.35",
+          "1.36",
+          "1.37",
+          "1.38",
+          "1.39",
+          "1.40",
+          "1.41",
+          "1.42",
+          "1.43",
+          "1.44",
+          "1.45",
+          "1.46",
+          "1.47",
+          "1.48",
+          "1.49",
+          "1.50",
+          "1.51",
+          "1.52",
+          "1.53",
+          "1.54",
+          "1.55",
+          "1.56",
+          "1.57",
+          "1.58",
+          "1.59",
+          "1.60"
+        ],
+        "status": "partial"
+      },
+      "segments": [
+        {
+          "key_stops": [],
+          "spine_index": 0,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.1",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.1"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 1,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.2",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.2"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 2,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.3",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.3"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 3,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.4",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.4"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        }
+      ],
+      "warning": null
+    },
+    "input": {},
+    "raw": {
+      "at": null,
+      "available": true,
+      "current_segment_index": null,
+      "segments": [
+        {
+          "key_stops": [],
+          "spine_index": 0,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.1",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.1"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 1,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.2",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.2"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 2,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.3",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.3"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 3,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.4",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.4"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 4,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.5",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.5"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 5,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.6",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.6"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 6,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.7",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.7"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 7,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.8",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.8"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 8,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.9",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.9"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 9,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.10",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.10"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 10,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.11",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.11"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 11,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.12",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.12"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 12,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.13",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.13"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 13,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.14",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.14"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 14,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.15",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.15"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 15,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.16",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.16"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 16,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.17",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.17"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 17,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.18",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.18"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 18,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.19",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.19"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 19,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.20",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.20"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 20,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.21",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.21"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 21,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.22",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.22"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 22,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.23",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.23"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 23,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.24",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.24"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 24,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.25",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.25"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 25,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.26",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.26"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 26,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.27",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.27"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 27,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.28",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.28"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 28,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.29",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.29"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 29,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.30",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.30"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 30,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.31",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.31"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 31,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.32",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.32"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 32,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.33",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.33"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 33,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.34",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.34"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 34,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.35",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.35"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 35,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.36",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.36"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 36,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.37",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.37"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 37,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.38",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.38"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 38,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.39",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.39"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 39,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.40",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.40"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 40,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.41",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.41"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 41,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.42",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.42"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 42,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.43",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.43"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 43,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.44",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.44"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 44,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.45",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.45"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 45,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.46",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.46"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 46,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.47",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.47"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 47,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.48",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.48"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 48,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.49",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.49"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 49,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.50",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.50"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 50,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.51",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.51"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 51,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.52",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.52"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 52,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.53",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.53"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 53,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.54",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.54"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 54,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.55",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.55"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 55,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.56",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.56"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 56,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.57",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.57"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 57,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.58",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.58"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 58,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.59",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.59"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        },
+        {
+          "key_stops": [],
+          "spine_index": 59,
+          "spine_unit": {
+            "depends_on": [],
+            "key_stop_ids": [],
+            "lid": "1.60",
+            "role": "foundation",
+            "summary": {
+              "evidence_lids": [
+                "1.60"
+              ],
+              "text": "Compare the two activation conditions."
+            }
+          }
+        }
+      ],
+      "warning": null
+    },
+    "result": {
+      "at": "1.5",
+      "available": true,
+      "key_stops": [],
+      "spine_index": 4,
+      "spine_unit": {
+        "depends_on": [],
+        "key_stop_ids": [],
+        "lid": "1.5",
+        "role": "foundation",
+        "summary": {
+          "evidence_lids": [
+            "1.5"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      "throughlines": [],
+      "warning": null
+    },
+    "tool": "book.guide_path"
+  },
+  {
+    "continuation": {
+      "arguments": {
+        "granularity": "near",
+        "k": 10,
+        "lid": "1"
+      },
+      "guidance": "Request fewer context pointers; this narrows selection and does not retrieve the omitted tail.",
+      "kind": "refine_call",
+      "tool": "book.context"
+    },
+    "delivered": {
+      "anchor": "1",
+      "delivery": {
+        "collections": {
+          "/items": {
+            "delivered": 10,
+            "total": 60
+          }
+        },
+        "status": "partial"
+      },
+      "items": [
+        {
+          "layer": "near",
+          "lid": "1.1",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.1"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.2",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.2"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.3",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.3"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.4",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.4"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.5",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.5"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.6",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.6"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.7",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.7"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.8",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.8"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.9",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.9"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.10",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.10"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        }
+      ],
+      "returned_count": 60,
+      "total_candidates": 60,
+      "truncated": false
+    },
+    "input": {
+      "granularity": "near",
+      "k": 60,
+      "lid": "1"
+    },
+    "raw": {
+      "anchor": "1",
+      "items": [
+        {
+          "layer": "near",
+          "lid": "1.1",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.1"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.2",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.2"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.3",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.3"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.4",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.4"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.5",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.5"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.6",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.6"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.7",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.7"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.8",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.8"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.9",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.9"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.10",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.10"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.11",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.11"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.12",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.12"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.13",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.13"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.14",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.14"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.15",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.15"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.16",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.16"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.17",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.17"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.18",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.18"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.19",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.19"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.20",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.20"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.21",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.21"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.22",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.22"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.23",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.23"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.24",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.24"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.25",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.25"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.26",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.26"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.27",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.27"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.28",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.28"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.29",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.29"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.30",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.30"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.31",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.31"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.32",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.32"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.33",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.33"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.34",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.34"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.35",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.35"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.36",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.36"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.37",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.37"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.38",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.38"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.39",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.39"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.40",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.40"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.41",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.41"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.42",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.42"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.43",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.43"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.44",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.44"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.45",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.45"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.46",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.46"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.47",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.47"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.48",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.48"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.49",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.49"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.50",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.50"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.51",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.51"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.52",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.52"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.53",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.53"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.54",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.54"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.55",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.55"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.56",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.56"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.57",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.57"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.58",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.58"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.59",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.59"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.60",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.60"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        }
+      ],
+      "returned_count": 60,
+      "total_candidates": 60,
+      "truncated": false
+    },
+    "result": {
+      "anchor": "1",
+      "items": [
+        {
+          "layer": "near",
+          "lid": "1.1",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.1"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.2",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.2"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.3",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.3"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.4",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.4"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.5",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.5"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.6",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.6"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.7",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.7"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.8",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.8"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.9",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.9"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.10",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.10"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        }
+      ],
+      "returned_count": 10,
+      "total_candidates": 60,
+      "truncated": true
+    },
+    "tool": "book.context"
+  }
+]

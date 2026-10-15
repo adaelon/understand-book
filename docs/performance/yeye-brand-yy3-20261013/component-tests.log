@@ -1,0 +1,20 @@
+
+> @understand-book/web@0.0.0 test E:\allwork\download\agent\understand-book\packages\web
+> vitest run "src/NetworkApp.resumption.test.ts"
+
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/web
+
+stderr | src/NetworkApp.resumption.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.resumption.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/NetworkApp.resumption.test.ts (11 tests) 167ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  13:47:07
+   Duration  6.60s (transform 1.21s, setup 0ms, collect 2.37s, tests 167ms, environment 2.74s, prepare 584ms)
+

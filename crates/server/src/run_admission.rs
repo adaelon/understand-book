@@ -42,6 +42,7 @@ pub(crate) struct ProviderBinding {
 struct RunProvider {
     binding: ProviderBinding,
     make: Arc<dyn Fn() -> Box<dyn ModelAdapter + Send> + Send + Sync>,
+    make_task: Arc<dyn Fn() -> Box<dyn ModelAdapter + Send> + Send + Sync>,
 }
 
 /// Only the necessary request/scene/provider metadata; credentials and temporary candidates are absent.
@@ -233,11 +234,21 @@ impl RunAdmissions {
             model: config.model.clone(),
             profile,
         };
+        let task_config = config.clone();
         *self.provider.lock().unwrap() = Some(RunProvider {
             binding,
             make: Arc::new(move || ProviderRegistry::adapter_from_config(config.clone())),
+            make_task: Arc::new(move || ProviderRegistry::adapter_from_config_with_timeout(
+                task_config.clone(), crate::SELECTION_TRANSLATION_TIMEOUT,
+            )),
         });
         Ok(())
+    }
+    pub(crate) fn task_adapter(&self) -> Result<Box<dyn ModelAdapter + Send>, ToolError> {
+        let make = self.provider.lock().unwrap().as_ref()
+            .map(|provider| provider.make_task.clone())
+            .ok_or_else(|| fault("TRANSLATION_PROVIDER_UNCONFIGURED", "provider"))?;
+        Ok(make())
     }
     #[cfg(test)]
     pub(crate) fn configure_fake(
@@ -245,6 +256,7 @@ impl RunAdmissions {
         make: impl Fn() -> Box<dyn ModelAdapter + Send> + Send + Sync + 'static,
     ) {
         let profile = make().model_runtime_profile();
+        let make = Arc::new(make);
         *self.provider.lock().unwrap() = Some(RunProvider {
             binding: ProviderBinding {
                 mode: "fixture".into(),
@@ -252,7 +264,8 @@ impl RunAdmissions {
                 model: "fixture".into(),
                 profile,
             },
-            make: Arc::new(make),
+            make: make.clone(),
+            make_task: make,
         });
     }
     fn point(&self, _point: &'static str) -> Result<(), ToolError> {
@@ -333,14 +346,12 @@ impl RunAdmissions {
             .unwrap()
             .authorize(&row.owner, &row.publication)
             .map_err(|_| missing())?;
-        if row.state == "preparing" {
-            return Err(preparing());
-        }
         let user = context.user.lock().unwrap();
-        let saved = frozen_input(&user, row)?.ok_or_else(closed)?;
+        let saved = frozen_input(&user, row)?.ok_or_else(|| if row.state == "preparing" { preparing() } else { closed() })?;
         if &saved.normalized != normalized {
             return Err(fault("REQUEST_KEY_CONFLICT", "conflict"));
         }
+        if row.state == "preparing" { return Err(preparing()); }
         Ok(descriptor(row))
     }
     pub(crate) fn admit(
@@ -418,8 +429,14 @@ impl RunAdmissions {
         // A failed preparation may keep a closed admission without appending a History turn.
         // Allocate here so a new request at that same chat ordinal cannot collide with its tombstone.
         let turn = format!("turn_{}", uuid::Uuid::now_v7());
-        let validated = validate_agent_input(&mut user, &scene.workspace, &input.to_string())
-            .map_err(reply_error)?;
+        let validated = match validate_agent_input(&mut user, &scene.workspace, &input.to_string()) {
+            Ok(value) => value,
+            Err(reply) if reply.status == 200 => return serde_json::from_str(&reply.body).map_err(|_|invalid()),
+            Err(reply) => return Err(reply_error(reply)),
+        };
+        if validated.interaction.is_some() && input.get("expected_chat_head").is_none() {
+            return Err(fault("CHAT_HEAD_CHANGED", "conflict"));
+        }
         let row = Admission {
             owner: context.user_id().into(),
             key: key.into(),
@@ -473,6 +490,7 @@ impl RunAdmissions {
         let result: Result<(), ToolError> = (|| {
             let ValidatedAgentInput {
                 video_question,
+                interaction,
                 request,
                 message,
                 display_user,
@@ -484,6 +502,7 @@ impl RunAdmissions {
             } = validated;
             let mut session = user.agent_history.sessions.iter().find(|s| s.id == chat)
                 .ok_or_else(missing)?.clone();
+            let related_goal = interaction_input::related_goal(&user, Some(chat), interaction.as_ref());
             let turn_ref = append_pending_agent_turn(
                 &mut session,
                 display_user,
@@ -491,12 +510,14 @@ impl RunAdmissions {
                 question_quote.clone(),
                 presentation_follow_up.clone(),
                 request["teaching_ref"].as_str().map(str::to_owned),
-                request["goal_id"].as_str(),
+                related_goal.as_deref().or_else(|| request["goal_id"].as_str()),
                 request["goal_action"].as_str(),
                 Some(row.publication.clone()),
                 Some(&row.turn),
                 now,
             )?;
+            session.turns.last_mut().unwrap().domain.choice_event = interaction_input::choice_event(&user, interaction.as_ref(), &turn_ref, now)?;
+            session.turns.last_mut().unwrap().domain.interaction = interaction;
             let private = PrivateBookContext {
                 user: &user,
                 book: &scene.workspace.book,
@@ -504,7 +525,10 @@ impl RunAdmissions {
                 messages: &session.messages,
                 selected_chat: Some(chat),
             };
-            let teaching = teaching::freeze_prepare(&private, &turn_ref, &request, now)?;
+            let teaching = if session.turns.last().unwrap().domain.interaction.is_some() {
+                // Save acceptance before first-question preparation can create a session.
+                teaching::FrozenTeachingPreparation { context:None, events:vec![] }
+            } else { teaching::freeze_prepare(&private, &turn_ref, &request, None, now)? };
             if let Some(text) = presentation_context {
                 agent_message.push_str(&text);
             }
@@ -564,7 +588,7 @@ impl RunAdmissions {
                 }
             }
             self.point("pending")?;
-            self.complete_preparation(&mut user, &row)?;
+            self.complete_preparation(&mut user, &row, access)?;
             Ok(())
         })();
         drop(scene);
@@ -599,11 +623,35 @@ impl RunAdmissions {
         &self,
         user: &mut user_runtime::UserRuntime,
         row: &Admission,
+        access: &Authorization,
     ) -> Result<(), ToolError> {
-        let frozen = frozen_input(user, row)?
+        let mut frozen = frozen_input(user, row)?
             .ok_or_else(|| fault("RUN_INPUT_MISSING", "conflict"))?;
         if frozen.version != 1 {
             return Err(fault("RUN_INPUT_INCOMPATIBLE", "conflict"));
+        }
+        if let Some(event) = find_turn(user, row).and_then(|t| t.domain.choice_event.as_ref()) {
+            user.learning_store()?.append_teaching(event)?;
+            self.point("chosen_receipt")?;
+        }
+        if frozen.teaching.context.is_none() && find_turn(user,row).is_some_and(|t|t.domain.interaction.is_some()) {
+            let publication = access.library.lock().unwrap().load(&row.owner,&row.publication)?;
+            let private = PrivateBookContext { user, book:&publication.book, book_dir:publication.directory(),
+                messages:&frozen.messages, selected_chat:Some(&row.chat) };
+            frozen.teaching = teaching::freeze_prepare(&private,&frozen.turn_ref(),&frozen.normalized,
+                find_turn(user,row).and_then(|t|t.domain.interaction.as_ref()),&frozen.now)?;
+            // Save the prepared snapshot before writing its first learning fact.
+            // Recovery replays this snapshot, even if only some facts were saved.
+            if let Some(store) = &mut user.session_store {
+                store.append(&mut user.agent_history,&row.chat,&frozen.now,Some(&row.turn),
+                    session_event::EventBody::TurnPrepared { teaching:frozen.teaching.clone() })?;
+            } else {
+                let mut candidate = user.agent_history.clone();
+                find_turn_mut(&mut candidate,row).unwrap().admission_input.as_mut().unwrap().set_prepared(frozen.teaching.clone());
+                save_agent_history_path(&user.history_path,&candidate)?;
+                user.agent_history = candidate;
+            }
+            frozen.preparation_complete = true;
         }
         // Each original event is checked/reused individually before the private completion flag.
         let mut learning = user.learning_store()?;
@@ -617,12 +665,7 @@ impl RunAdmissions {
                     session_event::EventBody::TurnPrepared { teaching: frozen.teaching.clone() })?;
             } else {
             let mut candidate = user.agent_history.clone();
-            find_turn_mut(&mut candidate, row)
-                .unwrap()
-                .admission_input
-                .as_mut()
-                .unwrap()
-                .preparation_complete = true;
+            find_turn_mut(&mut candidate, row).unwrap().admission_input.as_mut().unwrap().set_prepared(frozen.teaching.clone());
             save_agent_history_path(&user.history_path, &candidate)?;
             user.agent_history = candidate;
             }
@@ -771,10 +814,10 @@ fn reply_error(reply: Reply) -> ToolError {
         "validation",
     )
 }
-fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolError> {
+pub(crate) fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolError> {
+    crate::interaction_input::InteractionInput::parse(input)?;
     let message = input["message"]
         .as_str()
-        .filter(|s| !s.trim().is_empty())
         .ok_or_else(invalid)?;
     let mut v = json!({"workspace_id":workspace,"message":message,"display_user":input["display_user"].as_str().unwrap_or(message)});
     for key in [
@@ -787,6 +830,7 @@ fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolError> {
         "question_anchor_lid",
         "question_quote",
         "presentation_follow_up",
+        "note_mem_id",
         "teaching_ref",
         "goal_id",
         "goal_action",
@@ -795,6 +839,13 @@ fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolError> {
         "video_draft_id",
     ] {
         v[key] = input[key].clone();
+    }
+    // Keep ordinary requests byte-for-byte equivalent to the pre-TC1 normalized
+    // value, so retrying a previously accepted key does not become a conflict.
+    for key in ["entry_action", "answer_ref", "teaching_choice", "source_id", "source_revision"] {
+        if let Some(value) = input.get(key).filter(|v| !v.is_null()) {
+            v[key] = value.clone();
+        }
     }
     Ok(v)
 }
@@ -852,7 +903,7 @@ impl RunAdmissions {
                     self.end_pending(&mut user, &row, "RUN_PERMISSION_REVOKED", false)?;
                     return self.update(&row, "settled", false);
                 }
-                self.complete_preparation(&mut user, &row)
+                self.complete_preparation(&mut user, &row, access)
             })();
             if let Err(e) = result {
                 self.mark_unsaved(&row);
@@ -1459,6 +1510,9 @@ impl RunAdmissions {
             save_agent_history_path(&user.history_path, &candidate)?;
             user.agent_history = candidate;
         }
+        // Presentation versions embed their resources and remain in private storage.
+        // Memory note associations and committed follow-ups retain their exact receipts;
+        // removing this chat never removes another live object's presentation relation.
         self.point("chat_deleted")?;
         self.state.lock().unwrap().control.connection.execute("UPDATE run_admissions SET key_closed=1 WHERE owner_user_id=? AND chat_session_id=?",params![context.user_id(),chat]).map_err(|_|storage())?;
         access

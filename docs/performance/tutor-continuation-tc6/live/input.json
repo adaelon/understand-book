@@ -1,0 +1,11 @@
+{
+  "answer_ref": {
+    "excerpt": "分母代表的时段，是不是正好覆盖了分子那段路程",
+    "turn_id": "turn_0b5fa79168f9f3e5"
+  },
+  "client_request_id": "tc6-correction",
+  "entry_action": "clarify_answer",
+  "expected_chat_head": "turn_0b5fa79168f9f3e5",
+  "message": "不是不懂计算；乘除互逆我已经明白了。我卡的是：停下来时没走路，为什么停顿还要算进分母？请只拆开这一点，不要再重复等式变形。",
+  "session_id": "chat-01a12b6a-e5a2-7f82-aa1c-31a9af3f113d"
+}

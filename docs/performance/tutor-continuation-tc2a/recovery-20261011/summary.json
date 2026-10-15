@@ -1,0 +1,366 @@
+{
+  "same_model_and_fixed_input_configuration": true,
+  "configuration_changes": {},
+  "first_request_changed_tool_definitions": [
+    "tutor.step"
+  ],
+  "comparison_scope": "Post-fix replay, not a one-variable instruction-assembly comparison: current repair also changes the teaching source-binding input contract.",
+  "runs": [
+    {
+      "run": 1,
+      "http_status": 200,
+      "turn_status": "completed",
+      "incomplete": false,
+      "warning": null,
+      "persisted_moves": 1,
+      "deliveries": 1,
+      "model_samples": 5,
+      "estimated_input_tokens_per_sample": [
+        14262,
+        18257,
+        20613,
+        21487,
+        22486
+      ],
+      "cumulative_tokens_spent": 95531,
+      "tool_free_samples": [],
+      "tool_errors": [
+        {
+          "sample": 2,
+          "tool": "tutor.step",
+          "result": {
+            "error_code": "TOOL_ARGUMENTS_INVALID",
+            "category": "validation",
+            "message": "$.move must be a JSON \"object\""
+          }
+        },
+        {
+          "sample": 3,
+          "tool": "tutor.step",
+          "result": {
+            "error_code": "TEACHING_INVALID",
+            "category": "validation",
+            "message": "评分活动必须允许提交"
+          }
+        }
+      ],
+      "trace": [
+        {
+          "sample": 1,
+          "tool": "book.text",
+          "result": {
+            "lid": "1.1",
+            "text": "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive."
+          }
+        },
+        {
+          "sample": 1,
+          "tool": "book.context",
+          "result": {
+            "anchor": "1.1",
+            "items": [
+              {
+                "lid": "1",
+                "layer": "near",
+                "via": {
+                  "kind": "tree",
+                  "rel": "parent"
+                }
+              },
+              {
+                "lid": "1.2",
+                "layer": "near",
+                "via": {
+                  "kind": "tree",
+                  "rel": "next_sibling"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "sample": 2,
+          "tool": "source.present",
+          "result": {
+            "text": "{\"source_ref_id\":\"source_ref_e85701c84b34a511\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time "
+          }
+        },
+        {
+          "sample": 2,
+          "tool": "tutor.step",
+          "result": {
+            "error_code": "TOOL_ARGUMENTS_INVALID",
+            "category": "validation",
+            "message": "$.move must be a JSON \"object\""
+          }
+        },
+        {
+          "sample": 3,
+          "tool": "tutor.step",
+          "result": {
+            "error_code": "TEACHING_INVALID",
+            "category": "validation",
+            "message": "评分活动必须允许提交"
+          }
+        },
+        {
+          "sample": 4,
+          "tool": "tutor.step",
+          "result": {
+            "instruction": "Deliver this move in the final answer. Saved candidate is not displayed.",
+            "selected": "move:turn_e543d62bbf899499:m_avg_speed_equal_time_contrast"
+          }
+        }
+      ],
+      "initial_instruction_assets": [
+        {
+          "asset_id": "resident-agent.base.v2",
+          "revision": "v1"
+        },
+        {
+          "asset_id": "resident-agent.policy.goal",
+          "revision": "v4"
+        },
+        {
+          "asset_id": "resident-agent.policy.evidence-routing",
+          "revision": "v4"
+        },
+        {
+          "asset_id": "resident-agent.policy.tool-discovery",
+          "revision": "v7"
+        },
+        {
+          "asset_id": "resident-agent.policy.navigation-discovery",
+          "revision": "tc2a.v1"
+        },
+        {
+          "asset_id": "resident-agent.policy.finish",
+          "revision": "v7"
+        },
+        {
+          "asset_id": "resident-agent.tutor.common",
+          "revision": "tc2a.v1"
+        },
+        {
+          "asset_id": "resident-agent.tutor.discovery",
+          "revision": "tc2a.v1"
+        },
+        {
+          "asset_id": "resident-agent.tutor.select",
+          "revision": "tc2a.v1"
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "http_status": 200,
+      "turn_status": "completed",
+      "incomplete": false,
+      "warning": null,
+      "persisted_moves": 1,
+      "deliveries": 1,
+      "model_samples": 3,
+      "estimated_input_tokens_per_sample": [
+        14262,
+        18310,
+        20503
+      ],
+      "cumulative_tokens_spent": 53608,
+      "tool_free_samples": [],
+      "tool_errors": [],
+      "trace": [
+        {
+          "sample": 1,
+          "tool": "book.text",
+          "result": {
+            "lid": "1.1",
+            "text": "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive."
+          }
+        },
+        {
+          "sample": 2,
+          "tool": "source.present",
+          "result": {
+            "text": "{\"source_ref_id\":\"source_ref_e85701c84b34a511\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time "
+          }
+        },
+        {
+          "sample": 2,
+          "tool": "tutor.step",
+          "result": {
+            "instruction": "Deliver this move in the final answer. Saved candidate is not displayed.",
+            "selected": "move:turn_f490c6b4ee698ae2:time-weighting-mirror-case"
+          }
+        }
+      ],
+      "initial_instruction_assets": [
+        {
+          "asset_id": "resident-agent.base.v2",
+          "revision": "v1"
+        },
+        {
+          "asset_id": "resident-agent.policy.goal",
+          "revision": "v4"
+        },
+        {
+          "asset_id": "resident-agent.policy.evidence-routing",
+          "revision": "v4"
+        },
+        {
+          "asset_id": "resident-agent.policy.tool-discovery",
+          "revision": "v7"
+        },
+        {
+          "asset_id": "resident-agent.policy.navigation-discovery",
+          "revision": "tc2a.v1"
+        },
+        {
+          "asset_id": "resident-agent.policy.finish",
+          "revision": "v7"
+        },
+        {
+          "asset_id": "resident-agent.tutor.common",
+          "revision": "tc2a.v1"
+        },
+        {
+          "asset_id": "resident-agent.tutor.discovery",
+          "revision": "tc2a.v1"
+        },
+        {
+          "asset_id": "resident-agent.tutor.select",
+          "revision": "tc2a.v1"
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "http_status": 200,
+      "turn_status": "completed",
+      "incomplete": false,
+      "warning": null,
+      "persisted_moves": 1,
+      "deliveries": 1,
+      "model_samples": 4,
+      "estimated_input_tokens_per_sample": [
+        14262,
+        16772,
+        19683,
+        20607
+      ],
+      "cumulative_tokens_spent": 69049,
+      "tool_free_samples": [],
+      "tool_errors": [
+        {
+          "sample": 2,
+          "tool": "tutor.step",
+          "result": {
+            "error_code": "TOOL_ARGUMENTS_INVALID",
+            "category": "validation",
+            "message": "$.move must be a JSON \"object\""
+          }
+        }
+      ],
+      "trace": [
+        {
+          "sample": 1,
+          "tool": "book.text",
+          "result": {
+            "lid": "1.1",
+            "text": "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive."
+          }
+        },
+        {
+          "sample": 1,
+          "tool": "book.context",
+          "result": {
+            "anchor": "1.1",
+            "items": [
+              {
+                "lid": "1",
+                "layer": "near",
+                "via": {
+                  "kind": "tree",
+                  "rel": "parent"
+                }
+              },
+              {
+                "lid": "1.2",
+                "layer": "near",
+                "via": {
+                  "kind": "tree",
+                  "rel": "next_sibling"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "sample": 2,
+          "tool": "tutor.step",
+          "result": {
+            "error_code": "TOOL_ARGUMENTS_INVALID",
+            "category": "validation",
+            "message": "$.move must be a JSON \"object\""
+          }
+        },
+        {
+          "sample": 2,
+          "tool": "source.present",
+          "result": {
+            "text": "{\"source_ref_id\":\"source_ref_e85701c84b34a511\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time "
+          }
+        },
+        {
+          "sample": 3,
+          "tool": "tutor.step",
+          "result": {
+            "instruction": "Deliver this move in the final answer. Saved candidate is not displayed.",
+            "selected": "move:turn_67ccfba2dc8361f8:mv-continue-avg-speed-weighting"
+          }
+        }
+      ],
+      "initial_instruction_assets": [
+        {
+          "asset_id": "resident-agent.base.v2",
+          "revision": "v1"
+        },
+        {
+          "asset_id": "resident-agent.policy.goal",
+          "revision": "v4"
+        },
+        {
+          "asset_id": "resident-agent.policy.evidence-routing",
+          "revision": "v4"
+        },
+        {
+          "asset_id": "resident-agent.policy.tool-discovery",
+          "revision": "v7"
+        },
+        {
+          "asset_id": "resident-agent.policy.navigation-discovery",
+          "revision": "tc2a.v1"
+        },
+        {
+          "asset_id": "resident-agent.policy.finish",
+          "revision": "v7"
+        },
+        {
+          "asset_id": "resident-agent.tutor.common",
+          "revision": "tc2a.v1"
+        },
+        {
+          "asset_id": "resident-agent.tutor.discovery",
+          "revision": "tc2a.v1"
+        },
+        {
+          "asset_id": "resident-agent.tutor.select",
+          "revision": "tc2a.v1"
+        }
+      ]
+    }
+  ],
+  "completed_teaching_runs": 3,
+  "total_runs": 3,
+  "cumulative_tokens_spent": 218188,
+  "content_review": "See content-findings.json and README.md; successful delivery is not a content-quality verdict."
+}

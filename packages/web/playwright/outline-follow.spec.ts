@@ -40,6 +40,40 @@ test('first and last chapters stop at the natural outline boundaries', async ({ 
 });
 
 for (const viewport of [{ width: 1280, height: 900 }, { width: 1100, height: 440 }, { width: 390, height: 844 }]) {
+  test(`wrapped outline titles stay inside their rows at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/playwright/fixtures/outline-follow.html');
+    if (viewport.width < 1024) await page.evaluate(() => (window as any).outlineFixture.open());
+    await page.evaluate(async () => {
+      await (window as any).outlineFixture.items(Array.from({ length: 60 }, (_, i) => ({
+        lid: String(i + 1), depth: 4, kind: 'section',
+        title: i % 2 === 0 ? '模型即 Agent：当模型本身成为产品' : 'Agent 的学习机制：后训练、上下文学习与外部化学习',
+      })));
+    });
+    const geometry = await page.locator('.outline-list').evaluate(list => {
+      const rows = [...list.querySelectorAll('.outline-item')];
+      return {
+        scrollable: list.scrollHeight > list.clientHeight,
+        multiline: rows.some(row => {
+          const title = row.querySelector('.outline-title')!;
+          return title.getBoundingClientRect().height > parseFloat(getComputedStyle(title).lineHeight) * 1.5;
+        }),
+        overflowing: rows.filter(row => {
+          const box = row.getBoundingClientRect();
+          const title = row.querySelector('.outline-title')!.getBoundingClientRect();
+          return title.top < box.top - 1 || title.bottom > box.bottom + 1;
+        }).length,
+      };
+    });
+    expect(geometry.scrollable).toBe(true);
+    expect(geometry.multiline).toBe(true);
+    expect(geometry.overflowing).toBe(0);
+    await setAnchor(page, '30.1');
+    await expect.poll(() => centerError(page)).toBeLessThanOrEqual(1);
+    await page.getByPlaceholder('搜索目录').fill('学习机制');
+    await expect(page.locator('.outline-item')).toHaveCount(30);
+  });
+
   test(`progress stays at the bottom for long, short and empty outlines at ${viewport.width}x${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.goto('/playwright/fixtures/outline-follow.html');

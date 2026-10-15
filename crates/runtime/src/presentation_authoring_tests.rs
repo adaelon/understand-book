@@ -3,6 +3,23 @@ use crate::presentation_author::{AuthorRequest, AuthorResult, PreviewImage};
 use serde_json::{json, Value};
 
 #[test]
+fn presentation_to4_prepare_example_applies_at_next_sampling() {
+    let b = book();
+    let mut port = AuthoringPort::new(&b, "to4-prepare");
+    let input = crate::presentation_author::spec().parameters["examples"].as_array().unwrap()
+        .iter().find(|e| e["operation"] == "prepare").unwrap().clone();
+    let adapter = RequestPlanRecordingAdapter::new(vec![discover(), author("prepare", input.clone()), turn_final("Design prepared")], vec![]);
+    let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+    execute(&mut port, &b, &adapter, &mut context).unwrap();
+    let plans = adapter.seen_plans.borrow();
+    let mut expected = input.clone();
+    expected.as_object_mut().unwrap().remove("operation");
+    assert_eq!(design(&plans[2]).unwrap(), expected);
+    assert_eq!(selection_state(&plans[2]).unwrap()["needs"], input["needs"]);
+    assert_eq!((port.writes, port.deliveries), (0, 0));
+}
+
+#[test]
 fn ex13_guidance_changes_append_after_results_and_keep_provider_prefix() {
     let b = book();
     let mut port = AuthoringPort::new(&b, "ex13-prefix");
@@ -174,6 +191,8 @@ struct AuthoringPort {
     writes: usize,
     deliveries: usize,
     recorded_preview: Option<AuthorResult>,
+    unavailable_reason: Option<&'static str>,
+    fail_next_write: bool,
 }
 
 #[test]
@@ -204,10 +223,15 @@ impl AuthoringPort {
             writes: 0,
             deliveries: 0,
             recorded_preview: None,
+            unavailable_reason: None,
+            fail_next_write: false,
         }
     }
 }
 impl ResidentStatePort for AuthoringPort {
+    fn presentation_unavailable_reason(&self) -> Option<&'static str> {
+        self.unavailable_reason
+    }
     fn submit_private<R>(&mut self, f: impl FnOnce(&mut MemoryStore) -> R) -> Result<R, ToolError> {
         Ok(f(&mut self.store))
     }
@@ -234,6 +258,11 @@ impl ResidentStatePort for AuthoringPort {
         _: &[Message],
         _: &crate::run_context::CancellationToken,
     ) -> Result<AuthorResult, ToolError> {
+        if self.fail_next_write && matches!(request, AuthorRequest::Write { .. }) {
+            self.unavailable_reason = Some("execution_cleanup_failed");
+            return Err(ToolError { error_code: "PRESENTATION_SANDBOX_UNAVAILABLE".into(),
+                category: "unavailable".into(), message: "Presentation execution is unavailable".into() });
+        }
         let mut result = AuthorResult {
             body: Value::Null,
             images: vec![],
@@ -321,6 +350,59 @@ fn execute(
         "Explain the relationship",
         "t0",
     )
+}
+
+#[test]
+fn presentation_unavailable_discovery_reports_host_reason_and_preserves_answer() {
+    let b = book();
+    let mut port = AuthoringPort::new(&b, "presentation-unavailable-discovery");
+    port.unavailable_reason = Some("probe_failed");
+    let explanation = "演示环境当前不可用，页面尚未交付；这里是已经读到的章节骨架。";
+    let adapter = RequestPlanRecordingAdapter::new(vec![discover(), turn_final(explanation)], vec![]);
+    let mut context = RunContext::new(new_session(), OuterConfig { max_turns: Some(1), ..Default::default() }, adapter.model_runtime_profile());
+    context.goal = Some(crate::goal::ResidentGoal::new("g".into(), "t1".into(), "制作演示页".into()));
+    let out = execute(&mut port, &b, &adapter, &mut context).unwrap();
+    let feedback: Value = serde_json::from_str(&tool_result(&context.messages, "discover")).unwrap();
+    assert_eq!(feedback["activated"], json!([]));
+    assert_eq!(feedback["blocked"][0]["reason"], "presentation_unavailable");
+    assert!(feedback["blocked"][0]["message"].as_str().unwrap().contains("probe_failed"));
+    assert_eq!(out.answer.as_deref(), Some(explanation));
+    assert_eq!(out.warning.as_deref(), Some("PRESENTATION_SANDBOX_UNAVAILABLE"));
+    assert!(out.incomplete && context.goal.as_ref().unwrap().objective_gap(0, 0).is_some());
+    assert_eq!((port.writes, port.deliveries), (0, 0));
+}
+
+#[test]
+fn presentation_unavailable_after_write_preserves_finalization_explanation() {
+    let b = book();
+    let mut port = AuthoringPort::new(&b, "presentation-unavailable-write");
+    port.fail_next_write = true;
+    let explanation = "演示执行环境不可用，页面没有交付。已有原文支持的解释仍可阅读。";
+    let adapter = RequestPlanRecordingAdapter::new(vec![discover(), write("failed-write"), turn_final(explanation)], vec![]);
+    let mut context = RunContext::new(new_session(), OuterConfig { max_turns: Some(2), ..Default::default() }, adapter.model_runtime_profile());
+    context.goal = Some(crate::goal::ResidentGoal::new("g".into(), "t1".into(), "制作演示页".into()));
+    let out = execute(&mut port, &b, &adapter, &mut context).unwrap();
+    assert!(tool_result(&context.messages, "failed-write").contains("PRESENTATION_SANDBOX_UNAVAILABLE"));
+    assert_eq!(out.answer.as_deref(), Some(explanation));
+    assert_eq!(out.warning.as_deref(), Some("PRESENTATION_SANDBOX_UNAVAILABLE"));
+    assert!(out.incomplete && context.delivered_presentations.is_empty());
+    assert!(adapter.seen_plans.borrow().last().unwrap().tools.is_empty());
+}
+
+#[test]
+fn presentation_unavailable_plain_final_does_not_reask_for_delivery() {
+    let b = book();
+    let mut port = AuthoringPort::new(&b, "presentation-unavailable-final");
+    port.unavailable_reason = Some("not_configured");
+    let explanation = "演示环境尚未配置，演示页未交付。";
+    let adapter = RequestPlanRecordingAdapter::new(vec![turn_final(explanation), turn_final(explanation)], vec![]);
+    let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+    context.goal = Some(crate::goal::ResidentGoal::new("g".into(), "t1".into(), "制作演示页".into()));
+    let out = execute(&mut port, &b, &adapter, &mut context).unwrap();
+    assert_eq!(adapter.seen_plans.borrow().len(), 1);
+    assert_eq!(out.answer.as_deref(), Some(explanation));
+    assert_eq!(out.warning.as_deref(), Some("PRESENTATION_SANDBOX_UNAVAILABLE"));
+    assert!(out.incomplete && context.goal.as_ref().unwrap().result_refs.is_empty());
 }
 fn design(plan: &AgentRequestPlan) -> Option<Value> {
     let messages = plan.ordered_messages();

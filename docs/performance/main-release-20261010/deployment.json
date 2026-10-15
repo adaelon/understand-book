@@ -1,0 +1,20 @@
+{
+  "status": "deployed-and-verified-with-recorded-limitations",
+  "deployed_at_utc": "2026-10-10T11:49:41.894926+00:00",
+  "commit": "12b765bb33fe42fcd30fcda743187241ed56d1f3",
+  "origin": "https://understandbook.top",
+  "release": "/opt/understand-book/releases/main-12b765b-20261010",
+  "data_root": "/opt/understand-book/data/multi-reader-main-12b765b-20261010",
+  "previous_release": "/opt/understand-book/releases/inv9-20261009",
+  "previous_data_root": "/opt/understand-book/data/multi-reader-inv9-20261009",
+  "backup": "/opt/understand-book/backups/main-12b765b-20261010",
+  "active_or_unsaved_before_stop": 0,
+  "service_pid": 456214,
+  "running_binary_matches": true,
+  "control_schema": 9,
+  "memory_schema": 4,
+  "model_requests": 0,
+  "verified_at_utc": "2026-10-10T11:57:04.110880+00:00",
+  "public_smoke": "live-after.json",
+  "temporary_swap_removed": true
+}

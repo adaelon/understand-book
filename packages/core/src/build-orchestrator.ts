@@ -299,6 +299,8 @@ export interface AutomaticBuildSnapshot {
   stages: AutomaticBuildStageState[];
 }
 export interface AutomaticBuildSnapshotOptions {
+  /** The confirmed plan's stages; omitted for an unrestricted inspection. */
+  public_stage_closure?: BuildPlanV1["public_stage_closure"];
   /** Accepted public dependencies selected by the plan, independent of producer upgrades. */
   reuse?: BuildPlanV1["reuse"];
   /** Observe one extraction stage from its public dependencies, without routing the whole build. */
@@ -2931,7 +2933,7 @@ function buildAutomaticBuildSnapshotInternal(
   const formulaValue = readJson<{ items?: FormulaSemantics[] } | FormulaSemantics[]>(path.join(target.workspace_dir, "formula_semantics.json"));
   const formulaSemantics = Array.isArray(formulaValue) ? formulaValue : formulaValue.items ?? [];
   const pass2Closed = profileArtifactMatches(path.join(target.workspace_dir, "pass2_audit.json"), target);
-  if (!focus || focus.stage === "pass2") {
+  if (focus?.stage === "pass2" || (!focus && (!options.public_stage_closure || options.public_stage_closure.includes("pass2")))) {
     const candidateIndex = buildPass2Candidates({
       graphNodes: base.graph_nodes,
       windows: loaded.windows,
@@ -3097,7 +3099,8 @@ export function prepareAutomaticBuildSnapshot(target: AutomaticBuildTarget, stag
 async function prepareAuthorizedSnapshot(target: AutomaticBuildTarget, stage: SemanticBuildStage,
   options: AutomaticBuildSnapshotOptions & { authorization: AutomaticBuildRetrievalAuthorization }): Promise<AutomaticBuildAsyncPreparationResult> {
   const { authorization, ...snapshotOptions } = options;
-  const routeOptions = { ...snapshotOptions, reuse: authorization.plan.reuse, retrieval: authorization.runtime.selection };
+  const routeOptions = { ...snapshotOptions, public_stage_closure: authorization.plan.public_stage_closure,
+    reuse: authorization.plan.reuse, retrieval: authorization.runtime.selection };
   let routed = routeAutomaticBuildSnapshot(target, routeOptions);
   if (routed.status === "blocked") return routed;
   const gate = nextPlannedAutomaticBuildAction(routed.value, authorization.plan, 1, options);

@@ -2,6 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { ZodError } from "zod";
 import { isDeepStrictEqual } from "node:util";
 import { relocateGenerationTask } from "./semantic-artifact";
+import { storeTeachingTask, restoreTeachingTask } from "./teaching-task-storage";
+import { receiptStamp, readTeachingRouteCache, writeTeachingRouteCache } from "./teaching-route-cache";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import type { AutomaticBuildTarget, AutomaticBuildStageState } from "./build-orchestrator";
@@ -50,9 +52,10 @@ class TeachingPreparationBlocked extends Error {
   constructor(readonly stage: TeachingBuildStage, message: string,
     readonly violations?: AutomaticBuildStageState["teaching_preparation_violations"]) { super(message); }
 }
-type Payload = FormalObjects | CognitiveWork | TeachingReview | FormalObjectFragmentResult | ObjectAlignmentWork | TeachingReviewWork;
-interface AlignmentAcceptance extends ObjectAlignmentWork {
+type Payload = FormalObjects | CognitiveWork | TeachingReview | FormalObjectFragmentResult | ObjectAlignmentWork | TeachingReviewWork | AlignmentAcceptance;
+interface AlignmentAcceptance extends Pick<ObjectAlignmentWork, "version" | "steps_since_progress" | "read_ranges" | "result"> {
   accepted_action: unknown;
+  lookup?: { page_size: number; order: "meaning_first" };
   finish_dependencies?: Omit<AlignmentMaterialization, "result">;
 }
 interface AlignmentMaterialization {
@@ -88,7 +91,7 @@ export function freezeTeachingTask(target: AutomaticBuildTarget, task: TeachingG
   }
   const file = teachingTaskPath(target, task.policy_generation_id, task.descriptor.work_unit_id);
   let old: TeachingGenerationTask | undefined;
-  try { old = read<TeachingGenerationTask>(file); }
+  try { const saved = read<TeachingGenerationTask>(file); old = saved && restoreTeachingTask(target.workspace_dir, saved); }
   catch (error) {
     // A full disk can interrupt the first freeze before an executor is launched.
     // Only an unaccepted derived task may be reconstructed from today's routed input.
@@ -99,9 +102,10 @@ export function freezeTeachingTask(target: AutomaticBuildTarget, task: TeachingG
   if (old && !(task.alignment?.version === "formal_object_alignment.v3" && old.alignment?.version === "formal_object_alignment.v3"
     ? sameModelTask(relocateGenerationTask(old, target.target_ref), task)
     : canonicalBuildJson(relocateGenerationTask(old, target.target_ref)) === canonicalBuildJson(task))) throw new Error("teaching frozen task changed");
+  const bytes = json(storeTeachingTask(target.workspace_dir, task));
   if (!old) {
     mkdirSync(path.dirname(file), { recursive: true });
-    try { writeFileSync(file, json(task), { flag: "wx" }); }
+    try { writeFileSync(file, bytes, { flag: "wx" }); }
     catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOSPC" && existsSync(file)) unlinkSync(file);
       throw error;
@@ -109,8 +113,8 @@ export function freezeTeachingTask(target: AutomaticBuildTarget, task: TeachingG
   }
   // The immutable task records what the model saw; this separate writer context owns the current ledger.
   if (task.alignment?.version === "formal_object_alignment.v3") {
-    const current = `${file}.current.json`, bytes = json(task);
-    if (!existsSync(current) || readFileSync(current, "utf8") !== bytes) {
+    const current = `${file}.current.json`;
+    if (existsSync(current) ? readFileSync(current, "utf8") !== bytes : readFileSync(file, "utf8") !== bytes) {
       const temporary = `${current}.tmp`;
       try { writeFileSync(temporary, bytes); renameSync(temporary, current); }
       finally { if (existsSync(temporary)) unlinkSync(temporary); }
@@ -121,9 +125,22 @@ export function readTeachingTask(target: AutomaticBuildTarget, generation: strin
   const file = teachingTaskPath(target, generation, id);
   const task = (current ? read<TeachingGenerationTask>(`${file}.current.json`) : undefined) ?? read<TeachingGenerationTask>(file);
   if (!task) throw new Error("teaching frozen task is unavailable or stale");
-  return relocateGenerationTask(task, target.target_ref);
+  return relocateGenerationTask(restoreTeachingTask(target.workspace_dir, task), target.target_ref);
 }
+const acceptedMemo = new WeakMap<TeachingGenerationTask, { stamp: string; artifact: SemanticArtifactEnvelopeV3<Payload> }>();
 function accepted(target: AutomaticBuildTarget, task: TeachingGenerationTask): SemanticArtifactEnvelopeV3<Payload> | undefined {
+  const file = automaticBuildGenerationArtifactPath(target, task.descriptor.stage, task.policy_generation_id, task.descriptor.work_unit_id);
+  const stamp = receiptStamp(file);
+  if (!stamp) return;
+  // Closing can materialize a finish receipt without rewriting that receipt.
+  if (task.alignment && alignmentFocus(task.alignment, task.previous).kind === "finish") return readAccepted(target, task);
+  const cached = acceptedMemo.get(task);
+  if (cached?.stamp === stamp) return cached.artifact;
+  const artifact = readAccepted(target, task);
+  if (artifact) acceptedMemo.set(task, { stamp, artifact });
+  return artifact;
+}
+function readAccepted(target: AutomaticBuildTarget, task: TeachingGenerationTask): SemanticArtifactEnvelopeV3<Payload> | undefined {
   const d = task.descriptor;
   const artifact = read<SemanticArtifactEnvelopeV3<Payload>>(automaticBuildGenerationArtifactPath(target, d.stage, task.policy_generation_id, d.work_unit_id));
   if (!artifact) return;
@@ -136,7 +153,8 @@ function accepted(target: AutomaticBuildTarget, task: TeachingGenerationTask): S
   try {
     const action = AlignmentActionZ.parse(saved.accepted_action);
     if (action.kind !== "finish") return { ...artifact, payload: advanceObjectAlignment({ work: task.alignment,
-      action: saved.accepted_action, source: task.source, previous: task.previous, retrieval: task.retrieval, operation_id: d.work_unit_id }) };
+      action: saved.accepted_action, source: task.source, previous: task.previous, retrieval: task.retrieval,
+      lookup: saved.lookup, operation_id: d.work_unit_id }) };
     if (alignmentFocus(task.alignment, task.previous).kind !== "finish") return;
     const dependencies = finishDependencies(task);
     const result = isDeepStrictEqual(saved.finish_dependencies, dependencies) ? saved.result
@@ -199,40 +217,63 @@ function alignmentProgress(work: ObjectAlignmentWork) {
   return { total_objects: total, resolved_objects: total - remaining, remaining_objects: remaining };
 }
 
-/** Each round freezes three ledgers. Only the reducer applies decisions to the shared proposal. */
+interface ParallelAlignmentCursor {
+  batch: number;
+  alignment: ObjectAlignmentWork;
+  lanes?: Array<{ branch: ObjectAlignmentWork; step: number; decision?: { task: TeachingGenerationTask; action: unknown } }>;
+  history: Array<{ task: TeachingGenerationTask; artifact: SemanticArtifactEnvelopeV3<Payload>; stamp: string }>;
+}
+/** Resume accepted cursors; unchanged receipts do not re-render or replay the historical prefix. */
 function routeParallelAlignment(input: TeachingBuildInput, initial: ObjectAlignmentWork, previous: FormalObjects | undefined,
   tasks: TeachingGenerationTask[], selection: BuildRetrievalSelection | undefined,
   retrievalState: ReturnType<typeof readBuildRetrievalState>, revision: number, start: number):
   { alignment: ObjectAlignmentWork; preparation?: AutomaticBuildStageState; pending?: true } {
-  let alignment = initial;
-  for (let batch = 0; ; batch++) {
-    const focuses = alignment.proposal.objects.filter(o => !alignment.resolved.includes(o.key)).slice(0, 3);
-    if (!focuses.length) return { alignment };
-    const decisions: Array<{ task: TeachingGenerationTask; action: unknown }> = [];
+  const cacheFile = path.join(input.target.workspace_dir, ".build", "teaching", `alignment-${revision}-${start}.cache`);
+  // One basis digest replaces hundreds of descriptor renders and full ledger replays.
+  const basis = digest(canonicalBuildJson({ source: input.source, structure: input.structure, target: input.target.target_ref,
+    initial, previous: previous ?? null, selection: selection ?? null, retrievalState,
+    policy: automaticBuildExtractionPolicy("formal_objects", resolveContentProfile(input.target.profile_id), "full") }));
+  const loaded = readTeachingRouteCache<ParallelAlignmentCursor>(cacheFile, basis);
+  const cursor: ParallelAlignmentCursor = loaded ?? { batch: 0, alignment: initial, history: [] };
+  for (const entry of cursor.history) {
+    tasks.push(entry.task);
+    acceptedMemo.set(entry.task, { stamp: entry.stamp, artifact: entry.artifact });
+  }
+  let changed = !loaded;
+  const save = () => {
+    if (!changed) return;
+    writeTeachingRouteCache(cacheFile, basis, cursor, cursor.history.map(({ task }) =>
+      automaticBuildGenerationArtifactPath(input.target, "formal_objects", task.policy_generation_id, task.descriptor.work_unit_id)));
+    changed = false;
+  };
+  for (;;) {
+    if (!cursor.lanes) {
+      const focuses = cursor.alignment.proposal.objects.filter(o => !cursor.alignment.resolved.includes(o.key)).slice(0, 3);
+      if (!focuses.length) { save(); return { alignment: cursor.alignment }; }
+      cursor.lanes = focuses.map((focus, lane) => ({ step: 0, branch: { ...cursor.alignment, focus_key: focus.key,
+        ...(lane > 0 ? { inspected: [], read_ranges: [], steps_since_progress: 0, search: undefined, reading: undefined } : {}) } }));
+    }
     let pending = false;
-    for (const [lane, focus] of focuses.entries()) {
-      let branch = structuredClone(alignment);
-      branch.focus_key = focus.key;
-      if (lane > 0) {
-        branch.inspected = []; branch.read_ranges = []; branch.steps_since_progress = 0;
-        delete branch.search; delete branch.reading;
-      }
-      for (let step = 0; ; step++) {
-        const id = `align-v3-${revision}-parallel-${start}-${batch}-${lane}-${step}`;
+    for (const [lane, state] of cursor.lanes.entries()) {
+      if (state.decision) continue;
+      for (;;) {
+        const branch = state.branch;
+        const id = `align-v3-${revision}-parallel-${start}-${cursor.batch}-${lane}-${state.step}`;
         let retrieval: PreparedRetrieval | undefined;
         if (selection && branch.steps_since_progress < ALIGNMENT_RETRIEVAL_STEP_LIMIT) {
           const dependencies = retrievalDependencies(projectRetrievalCatalog(retrievalCatalog(branch.proposal, previous)),
             alignmentRetrievalRequest(branch, previous), selection.retrieval_mode, selection.provider?.identity ?? null);
           retrieval = Object.values(retrievalState.prepared).find(p => retrievalPreparationMatches(p, dependencies));
           if (!retrieval) {
-            const state = stageState(input, "formal_objects", tasks, false);
-            state.object_alignment = alignmentProgress(alignment);
-            state.preparation_required = true;
+            save();
+            const preparation = stageState(input, "formal_objects", tasks, false);
+            preparation.object_alignment = alignmentProgress(cursor.alignment);
+            preparation.preparation_required = true;
             const slot = `${TEACHING_GENERATIONS.formal_objects}/${input.source.source_revision}/${id}`;
-            state.retrieval_preparation = { slot, dependencies };
-            state.retrieval_remaining = retrievalRemainingWork(input.target.workspace_dir, state.retrieval_preparation,
+            preparation.retrieval_preparation = { slot, dependencies };
+            preparation.retrieval_remaining = retrievalRemainingWork(input.target.workspace_dir, preparation.retrieval_preparation,
               retrievalState.prepared[slot] ?? Object.values(retrievalState.prepared).at(-1));
-            return { alignment, preparation: state };
+            return { alignment: cursor.alignment, preparation };
           }
         }
         const task = makeTask(input, "formal_objects", id,
@@ -240,25 +281,32 @@ function routeParallelAlignment(input: TeachingBuildInput, initial: ObjectAlignm
         while (existsSync(automaticBuildGenerationArtifactPath(input.target, "formal_objects", task.policy_generation_id, task.descriptor.work_unit_id))
           && !accepted(input.target, task)) task.descriptor.work_unit_id += "-replay";
         tasks.push(task);
-        const result = accepted(input.target, task)?.payload as ObjectAlignmentWork | undefined;
-        if (!result) { pending = true; break; }
+        const artifact = accepted(input.target, task);
+        if (!artifact) { pending = true; break; }
+        const result = artifact.payload as ObjectAlignmentWork;
+        cursor.history.push({ task, artifact, stamp: acceptedMemo.get(task)!.stamp });
+        changed = true;
         if (!result.focus_key) {
           const saved = read<SemanticArtifactEnvelopeV3<AlignmentAcceptance>>(automaticBuildGenerationArtifactPath(input.target,
             "formal_objects", task.policy_generation_id, task.descriptor.work_unit_id))!;
-          decisions.push({ task, action: saved.payload.accepted_action });
+          state.decision = { task, action: saved.payload.accepted_action };
           break;
         }
-        branch = result;
+        state.branch = result;
+        state.step++;
       }
     }
-    if (pending) return { alignment, pending: true };
-    for (const decision of decisions) {
-      const merged = mergeObjectAlignmentBranch({ current: alignment, branch: decision.task.alignment!, action: decision.action,
+    if (pending) { save(); return { alignment: cursor.alignment, pending: true }; }
+    for (const state of cursor.lanes) {
+      const decision = state.decision!;
+      const merged = mergeObjectAlignmentBranch({ current: cursor.alignment, branch: decision.task.alignment!, action: decision.action,
         source: input.source, previous, operation_id: decision.task.descriptor.work_unit_id });
-      if (merged) alignment = merged;
-      // A preceding lane changed a selected or inspected object. Preserve its receipt;
-      // an unresolved focus will receive a new task in the next round.
+      if (merged) cursor.alignment = merged;
+      // Conflicting decisions retain their immutable receipt and get a fresh focus.
     }
+    cursor.lanes = undefined;
+    cursor.batch++;
+    changed = true;
   }
 }
 
@@ -288,27 +336,47 @@ function routeTeachingStages(input: TeachingBuildInput, states: AutomaticBuildSt
   const previous = round?.previous ?? (baseline ? baseline.previous : oldObjects);
   let formalResult: FormalObjects | undefined;
   let formalAlignment: ObjectAlignmentWork | undefined;
-  let formalTasks: TeachingGenerationTask[];
-  try {
+  let formalTasks: TeachingGenerationTask[] = [];
+  const fragmentCacheFile = path.join(input.target.workspace_dir, ".build", "teaching", "accepted-fragments.cache");
+  const fragmentBasis = digest(canonicalBuildJson({ target: input.target.target_ref, source: input.source, units: input.units,
+    structure: input.structure, previous: previous ?? null, round: round ?? null, policy: formalPolicy }));
+  const fragmentCache = readTeachingRouteCache<{ initial: ObjectAlignmentWork;
+    entries: Array<{ task: TeachingGenerationTask; artifact: SemanticArtifactEnvelopeV3<Payload>; stamp: string }> }>(fragmentCacheFile, fragmentBasis);
+  if (!fragmentCache) try {
     const formal = makeTask(input, "formal_objects", `objects-${round?.formal_revision ?? 0}`,
       { ...formalObjectInput(input.source, input.units, input.structure, previous), feedback: round?.formal_feedback ?? [] }, { previous });
     formalTasks = [formal];
     formalResult = accepted(input.target, formal)?.payload as FormalObjects | undefined;
   } catch (error) {
     if (!(error instanceof TeachingPreparationBlocked)) throw error;
-    const policy = automaticBuildExtractionPolicy("formal_objects", resolveContentProfile(input.target.profile_id), "full");
-    let fragments: FormalObjectFragment[];
-    try {
-      fragments = routeFormalObjectFragments({ ...input, feedback_by_unit: round?.unit_feedback, feedback_revision_by_unit: round?.unit_revisions, budget: { ...AUTOMATIC_BUILD_MODEL_INPUT_BUDGET_V1,
-        router_version: policy.router_version, prompt_sha256: policy.prompt_sha256, output_reserve_tokens: 4096, executor_context_floor_tokens: 16384 } });
-    } catch (cause) {
-      throw new TeachingPreparationBlocked("formal_objects", cause instanceof Error ? cause.message : String(cause));
+  }
+  if (!formalTasks.length) {
+    const policy = formalPolicy;
+    let tasks: TeachingGenerationTask[];
+    let alignment: ObjectAlignmentWork;
+    if (fragmentCache) {
+      tasks = fragmentCache.entries.map(entry => {
+        acceptedMemo.set(entry.task, { artifact: entry.artifact, stamp: entry.stamp });
+        return entry.task;
+      });
+      alignment = fragmentCache.initial;
+    } else {
+      let fragments: FormalObjectFragment[];
+      try {
+        fragments = routeFormalObjectFragments({ ...input, feedback_by_unit: round?.unit_feedback, feedback_revision_by_unit: round?.unit_revisions, budget: { ...AUTOMATIC_BUILD_MODEL_INPUT_BUDGET_V1,
+          router_version: policy.router_version, prompt_sha256: policy.prompt_sha256, output_reserve_tokens: 4096, executor_context_floor_tokens: 16384 } });
+      } catch (cause) {
+        throw new TeachingPreparationBlocked("formal_objects", cause instanceof Error ? cause.message : String(cause));
+      }
+      tasks = fragments.map(fragment => makeTask({ ...input, source: fragment.input.source }, "formal_objects",
+        `objects-${fragment.id}`, fragment.input, { fragment }));
+      const state = stageState(input, "formal_objects", tasks, false);
+      if (state.pending_tasks.length) { states.push(state); return states; }
+      alignment = newObjectAlignment(tasks.map(t => accepted(input.target, t)!.payload as FormalObjectFragmentResult));
+      writeTeachingRouteCache(fragmentCacheFile, fragmentBasis, { initial: alignment,
+        entries: tasks.map(task => ({ task, ...acceptedMemo.get(task)! })) }, tasks.map(task =>
+        automaticBuildGenerationArtifactPath(input.target, "formal_objects", task.policy_generation_id, task.descriptor.work_unit_id)));
     }
-    const tasks = fragments.map(fragment => makeTask({ ...input, source: fragment.input.source }, "formal_objects",
-      `objects-${fragment.id}`, fragment.input, { fragment }));
-    const state = stageState(input, "formal_objects", tasks, false);
-    if (state.pending_tasks.length) { states.push(state); return states; }
-    let alignment = newObjectAlignment(tasks.map(t => accepted(input.target, t)!.payload as FormalObjectFragmentResult));
     for (let step = 0; ; step++) {
       let retrieval: PreparedRetrieval | undefined;
       if (selection && alignment.steps_since_progress < ALIGNMENT_RETRIEVAL_STEP_LIMIT) {
@@ -451,9 +519,18 @@ export function acceptTeachingCandidate(target: AutomaticBuildTarget, task: Teac
   try {
   if (task.fragment) payload = acceptFormalObjectFragment(task.fragment, candidate);
   else if (task.alignment) {
+    const action = AlignmentActionZ.parse(candidate);
+    // An in-flight query must keep its original ordering/page boundaries across upgrades.
+    const lookup = task.retrieval || action.kind !== "search" ? undefined : action.offset > 0
+      ? task.alignment.search?.lookup : { page_size: 24, order: "meaning_first" as const };
     const next = advanceObjectAlignment({ work: task.alignment, action: candidate, retrieval: task.retrieval,
-      source: task.source, previous: task.previous, operation_id: task.descriptor.work_unit_id });
-    payload = { ...next, accepted_action: structuredClone(candidate),
+      source: task.source, previous: task.previous, operation_id: task.descriptor.work_unit_id, lookup });
+    // Routing already replays accepted_action against the current ledger. Persisting that
+    // entire ledger again adds no evidence and grows by the whole book on every page turn.
+    payload = { version: next.version, steps_since_progress: next.steps_since_progress, read_ranges: next.read_ranges,
+      accepted_action: structuredClone(candidate),
+      ...(lookup && AlignmentActionZ.parse(candidate).kind === "search" ? { lookup } : {}),
+      ...(next.result ? { result: next.result } : {}),
       ...(next.result ? { finish_dependencies: finishDependencies(task) } : {}) } as AlignmentAcceptance;
   }
   else if (task.descriptor.stage === "formal_objects") payload = acceptFormalObjects({ source: task.source, proposal: candidate,

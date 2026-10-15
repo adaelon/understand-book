@@ -615,23 +615,37 @@ describe("automatic build orchestrator", () => {
     if (!stage?.policy_set) throw new Error("expected BookStructure production policies");
     const previous = {
       ...stage.policy_set,
-      members: stage.policy_set.members.map(member => ({
+      members: stage.policy_set.members.map(member => member.policy_generation_id.endsWith(".v4") ? ({
         ...member, policy_generation_id: member.policy_generation_id.replace(/\.v\d+$/u, ".v2"),
         semantic_contract: { ...member.semantic_contract, prompt_sha256: "a".repeat(64) },
-      })),
+      }) : member),
     };
     freezeAutomaticBuildStagePolicySet(target, previous);
     const before = previous.members.map(member => readFileSync(path.join(workspace, ".build", "automatic-build",
       "v4", "policies", "book_structure", member.policy_generation_id, "policy.json")));
     expect(prepareAutomaticBuildSnapshot(target, "book_structure").status).toBe("ready");
     const current = buildAutomaticBuildSnapshot(target).stages.find(item => item.stage === "book_structure");
-    expect(current?.policy_set?.members.every(member => member.policy_generation_id.endsWith(
-      ["structure_unit", "structure_fragment", "structure_reduce", "structure_stitch", "structure_stitch_fragment"].includes(member.kind) ? ".v4" : ".v1",
-    ))).toBe(true);
+    expect(current?.policy_set).toEqual(stage.policy_set);
     previous.members.forEach((member, index) => expect(readFileSync(path.join(workspace, ".build", "automatic-build",
       "v4", "policies", "book_structure", member.policy_generation_id, "policy.json"))).toEqual(before[index]));
   });
 
+  it("omits Pass2 projection for a confirmed plan that excludes it and retains explicit inspection", () => {
+    const root = tempDir();
+    const { workspace } = writeTechnicalLearningWorkspace(root, "plan-scoped-pass2");
+    const target = resolveAutomaticBuildTarget(workspace, root);
+    writeJson(path.join(workspace, "long_range_candidates.json"), { candidates: [] });
+    closeV3Pass1(target);
+    closeV3ProfileSidecar(target);
+    const plan = prepareExplicitLegacyBuildPlan(target.source_path, root, { book_id: target.book_id, pass2: "disabled" }).plan;
+    const planned = automaticBuildPlan(target.source_path, root, { book_id: target.book_id, build_plan: plan });
+    expect(planned.snapshot.stages.some(stage => stage.stage === "pass2")).toBe(false);
+    expect(planned.snapshot.stages.some(stage => stage.stage === "book_structure")).toBe(true);
+    const inspected = buildAutomaticBuildSnapshot(target, { public_stage_closure: [...plan.public_stage_closure, "pass2"] });
+    expect(inspected.stages.some(stage => stage.stage === "pass2")).toBe(true);
+    expect(inspected.stages.find(stage => stage.stage === "book_structure")?.pending_tasks)
+      .toEqual(planned.snapshot.stages.find(stage => stage.stage === "book_structure")?.pending_tasks);
+  }, 30000);
   it("exposes BookStructure without Pass2 and invalidates it when a Pass2 audit arrives later", () => {
     const root = tempDir();
     const { workspace, sourceFile, source } = writeTechnicalLearningWorkspace(root, "optional-pass2");

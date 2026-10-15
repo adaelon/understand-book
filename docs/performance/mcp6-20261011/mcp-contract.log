@@ -1,0 +1,10 @@
+
+running 5 tests
+test mcp::tests::book_concept_v2_mcp_contract_and_dispatch ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_discover_locate_read_and_cite_exact_pages ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_errors_give_actionable_recovery_without_evidence_or_charge ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_paid_expiry_and_exhausted_discovery_are_stable ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_initialize_and_all_tool_schemas_explain_the_reading_path ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 713 filtered out; finished in 5.89s
+

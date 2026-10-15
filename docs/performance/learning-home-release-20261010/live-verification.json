@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-10-10T13:35:35.391Z",
+  "checks": [
+    "Public HTML matches the published multi-reader build",
+    "Homepage works at desktop, 390px and 320px; slider and both learning branches work",
+    "Homepage registration and login links reach existing account forms",
+    "Authenticated reader has no Debug button; continuous teaching, direct understanding, details and draft/focus preservation work",
+    "Mobile reader keeps composer visible and removes Debug from the page menu"
+  ],
+  "errors": [],
+  "failedAssets": [],
+  "apiFailures": [],
+  "model_requests": 0
+}

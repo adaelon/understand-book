@@ -1,0 +1,17 @@
+{
+  "completed": true,
+  "recovered_errors": [
+    "Reconnecting... 2/5 (unexpected status 503 Service Unavailable: An error occurred while processing your request. You can retry your request, or contact us through our help center at help.openai.com if the error persists.)"
+  ],
+  "usage": {
+    "input_tokens": 34779,
+    "cached_input_tokens": 0,
+    "output_tokens": 88
+  },
+  "total_tokens": 34867,
+  "actual_cost": null,
+  "final": "{\"text\":null,\"tool_calls\":[{\"name\":\"book.text\",\"arguments\":\"{\\\"lid\\\":\\\"1.1\\\",\\\"end_lid\\\":\\\"1.1\\\"}\"}]}",
+  "exit_code": 0,
+  "timed_out": false,
+  "elapsed_ms": 25050.414200000003
+}

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { RefreshCw } from "@lucide/vue";
+import ArtifactRecordContent from './ArtifactRecordContent.vue';
 import type {
   IntentArgumentMapPayloadV1,
   IntentArgumentRole,
@@ -21,9 +22,11 @@ const props = defineProps<{
   overlay?: IntentArtifactOverlayV1 | null;
   loading?: boolean;
   error?: string | null;
+  preparationAvailable?: boolean;
 }>();
 
 const emit = defineEmits<{
+  (e: "prepare"): void;
   (e: "refresh"): void;
   (e: "goto", lid: string): void;
   (e: "cite", artifactId: string): void;
@@ -271,7 +274,9 @@ function pointerValue(input: unknown, pointer: string): { found: boolean; value?
 
 function fieldLabel(path: string): string {
   const encoded = path.split("/").at(-1) ?? path;
-  return encoded.replace(/~1/gu, "/").replace(/~0/gu, "~").replace(/[_-]+/gu, " ") || "内容";
+  const key = encoded.replace(/~1/gu, "/").replace(/~0/gu, "~");
+  const labels: Record<string, string> = { label: '名称', title: '标题', heading: '标题', body: '正文', detail: '说明', description: '说明', summary: '摘要', step: '步骤', term: '概念', definition: '含义', subject: '对象', relation: '关系', task: '任务', owner: '负责人', status: '状态', claim: '观点', role: '作用', mechanism: '机制', tradeoff: '取舍', evidence: '依据', order_hint: '阶段', name: '名称', content: '内容', explanation: '解释' };
+  return labels[key] ?? (key.replace(/[_-]+/gu, " ") || "内容");
 }
 
 function orderedFieldPaths(
@@ -318,7 +323,9 @@ function genericRecordLabel(artifact: IntentArtifactProjectionV1, recordId: stri
   const records = genericRecords(artifact);
   const index = records.findIndex((record) => record.record_id === recordId);
   if (index < 0) return "未知记录";
-  return fieldsFor(artifact, records[index].data)[0]?.value || `记录 ${String(index + 1).padStart(2, "0")}`;
+  const fields = fieldsFor(artifact, records[index].data);
+  return fields.find(field => /^\/(heading|title|label|name|term|step|claim|subject)$/.test(field.path))?.value
+    || fields[0]?.value || `记录 ${String(index + 1).padStart(2, "0")}`;
 }
 
 function relationFields(
@@ -339,10 +346,10 @@ function openEvidence(artifactId: string, lid: string) {
     <header class="artifact-panel-head">
       <div>
         <p class="artifact-kicker">目标成果</p>
-        <h3 v-if="props.overlay">
+        <h3 v-if="props.overlay?.artifacts.length">
           {{ acceptedCount }} / {{ props.overlay.artifacts.length }} 已就绪
         </h3>
-        <h3 v-else>尚未生成</h3>
+        <h3 v-else>把阅读整理成成果</h3>
       </div>
       <button
         type="button"
@@ -358,7 +365,12 @@ function openEvidence(artifactId: string, lid: string) {
 
     <p v-if="props.error" class="artifact-state artifact-error">{{ props.error }}</p>
     <p v-else-if="props.loading && !props.overlay" class="artifact-state">正在刷新...</p>
-    <p v-else-if="!props.overlay || props.overlay.artifacts.length === 0" class="artifact-state">暂无目标成果。</p>
+    <div v-else-if="!props.overlay || props.overlay.artifacts.length === 0" class="artifact-state artifact-empty">
+      <strong>阅读有了目标，成果就有了方向</strong>
+      <p>概念关系、对照表或阅读摘要，会在资料准备完成后出现在这里。每一项都能回到正文查看依据。</p>
+      <button v-if="preparationAvailable" type="button" @click="emit('prepare')">准备目标成果</button>
+      <p v-else>这份材料还没有目标成果，可以先阅读正文，并在对话中整理你的问题。</p>
+    </div>
 
     <div v-else class="artifact-list" :aria-busy="props.loading">
       <article
@@ -522,13 +534,7 @@ function openEvidence(artifactId: string, lid: string) {
                 class="generic-card"
               >
                 <span class="generic-record-index">{{ String(recordIndex + 1).padStart(2, "0") }}</span>
-                <dl v-if="fieldsFor(artifact, record.data).length" class="generic-fields">
-                  <template v-for="field in fieldsFor(artifact, record.data)" :key="field.path">
-                    <dt class="artifact-wrap">{{ field.label }}</dt>
-                    <dd class="generic-field-value artifact-wrap">{{ field.value }}</dd>
-                  </template>
-                </dl>
-                <p v-else class="generic-empty">暂无可展示字段</p>
+                <ArtifactRecordContent :fields="fieldsFor(artifact, record.data)" />
                 <div class="evidence-links" aria-label="正文依据">
                   <button
                     v-for="lid in record.evidence_lids"
@@ -579,13 +585,7 @@ function openEvidence(artifactId: string, lid: string) {
             <div v-else-if="artifactShape(artifact) === 'graph'" class="artifact-graph generic-graph">
               <div class="graph-node-list">
                 <article v-for="record in genericRecords(artifact)" :key="record.record_id" class="graph-node generic-card">
-                  <dl v-if="fieldsFor(artifact, record.data).length" class="generic-fields">
-                    <template v-for="field in fieldsFor(artifact, record.data)" :key="field.path">
-                      <dt class="artifact-wrap">{{ field.label }}</dt>
-                      <dd class="generic-field-value artifact-wrap">{{ field.value }}</dd>
-                    </template>
-                  </dl>
-                  <p v-else class="generic-empty">暂无可展示字段</p>
+                  <ArtifactRecordContent :fields="fieldsFor(artifact, record.data)" />
                   <div class="evidence-links" aria-label="正文依据">
                     <button
                       v-for="lid in record.evidence_lids"
@@ -628,13 +628,7 @@ function openEvidence(artifactId: string, lid: string) {
               <li v-for="record in genericRecords(artifact)" :key="record.record_id" class="timeline-item">
                 <span class="timeline-marker" aria-hidden="true"></span>
                 <div class="artifact-record">
-                  <dl v-if="fieldsFor(artifact, record.data).length" class="generic-fields">
-                    <template v-for="field in fieldsFor(artifact, record.data)" :key="field.path">
-                      <dt class="artifact-wrap">{{ field.label }}</dt>
-                      <dd class="generic-field-value artifact-wrap">{{ field.value }}</dd>
-                    </template>
-                  </dl>
-                  <p v-else class="generic-empty">暂无可展示字段</p>
+                  <ArtifactRecordContent :fields="fieldsFor(artifact, record.data)" />
                   <div class="evidence-links" aria-label="正文依据">
                     <button
                       v-for="lid in record.evidence_lids"
@@ -657,14 +651,8 @@ function openEvidence(artifactId: string, lid: string) {
                 :key="record.record_id"
                 class="generic-document-section"
               >
-                <h5>章节 {{ String(recordIndex + 1).padStart(2, "0") }}</h5>
-                <dl v-if="fieldsFor(artifact, record.data).length" class="generic-fields">
-                  <template v-for="field in fieldsFor(artifact, record.data)" :key="field.path">
-                    <dt class="artifact-wrap">{{ field.label }}</dt>
-                    <dd class="generic-field-value artifact-wrap">{{ field.value }}</dd>
-                  </template>
-                </dl>
-                <p v-else class="generic-empty">暂无可展示字段</p>
+                <span class="generic-record-index">{{ String(recordIndex + 1).padStart(2, "0") }}</span>
+                <ArtifactRecordContent :fields="fieldsFor(artifact, record.data)" />
                 <div class="evidence-links" aria-label="正文依据">
                   <button
                     v-for="lid in record.evidence_lids"
@@ -744,6 +732,9 @@ function openEvidence(artifactId: string, lid: string) {
 .artifact-error {
   color: var(--danger, #9d2c23);
 }
+.artifact-empty { padding: 1.5rem 0; line-height: 1.8; }
+.artifact-empty strong { color: var(--ink); font-size: .94rem; }
+.artifact-empty button { margin-top: .5rem; border: 0; border-radius: 7px; padding: .65rem 1rem; background: var(--ink); color: var(--canvas); font: inherit; cursor: pointer; }
 .artifact-list {
   min-width: 0;
   border-top: 1px solid var(--hairline-soft);
@@ -879,6 +870,14 @@ function openEvidence(artifactId: string, lid: string) {
 .relation-row strong {
   color: #8b4b38;
   font-size: 0.7rem;
+  text-align: center;
+}
+.relation-row strong::after {
+  content: '⟶';
+  display: block;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--accent);
 }
 .relation-row .evidence-links {
   grid-column: 1 / -1;
@@ -941,8 +940,7 @@ function openEvidence(artifactId: string, lid: string) {
 .generic-collection,
 .generic-card,
 .generic-document,
-.generic-document-section,
-.generic-fields {
+.generic-document-section {
   min-width: 0;
 }
 .artifact-purpose,
@@ -977,23 +975,6 @@ function openEvidence(artifactId: string, lid: string) {
   font-family: var(--mono);
   font-size: 0.68rem;
 }
-.generic-fields {
-  display: grid;
-  grid-template-columns: minmax(4.5rem, auto) minmax(0, 1fr);
-  gap: 0.35rem 0.6rem;
-  margin: 0;
-}
-.generic-fields dt {
-  color: var(--steel);
-  font-size: 0.7rem;
-  font-weight: 650;
-}
-.generic-fields dd {
-  margin: 0;
-  color: var(--ink);
-  font-size: 0.78rem;
-  line-height: 1.45;
-}
 .generic-field-value {
   max-width: 100%;
   white-space: pre-wrap;
@@ -1012,18 +993,9 @@ function openEvidence(artifactId: string, lid: string) {
 .generic-relation strong {
   max-width: 8rem;
 }
-.generic-sequence .generic-fields {
-  margin-top: 0.05rem;
-}
 .generic-document {
   display: grid;
   gap: 0.7rem;
-}
-.generic-document-section h5 {
-  margin: 0 0 0.55rem;
-  color: var(--steel);
-  font-size: 0.72rem;
-  letter-spacing: 0;
 }
 @keyframes artifact-spin {
   to { transform: rotate(360deg); }
@@ -1038,12 +1010,10 @@ function openEvidence(artifactId: string, lid: string) {
   .relation-row {
     grid-template-columns: minmax(0, 1fr);
   }
+  .relation-row strong { display: flex; align-items: center; gap: .5rem; text-align: left; }
+  .relation-row strong::after { content: '↓'; order: -1; }
   .relation-row .evidence-links {
     grid-column: 1;
-  }
-  .generic-fields {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.15rem;
   }
 }
 </style>

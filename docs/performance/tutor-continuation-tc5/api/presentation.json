@@ -1,0 +1,2629 @@
+{
+  "events": [
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_cccd4e4d9834b02b",
+        "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+      },
+      "causal_refs": [
+        "delivery:turn_cccd4f4d9834b1de:explain"
+      ],
+      "event_id": "chosen:turn_cccd4e4d9834b02b",
+      "kind": "continuation_chosen",
+      "occurred_at": "1001",
+      "payload": {
+        "accepted_turn_id": "turn_cccd4e4d9834b02b",
+        "delivery_ref": "delivery:turn_cccd4f4d9834b1de:explain",
+        "option_id": "compare"
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_cccd4e4d9834b02b",
+        "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+      },
+      "causal_refs": [],
+      "event_id": "assets:turn_cccd4e4d9834b02b",
+      "kind": "turn_bound",
+      "occurred_at": "1001",
+      "payload": {}
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_cccd4e4d9834b02b",
+        "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+      },
+      "causal_refs": [],
+      "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4e4d9834b02b",
+      "kind": "usage_observed",
+      "occurred_at": "1001",
+      "payload": {
+        "interaction": {
+          "accepted_request": "Compare two equal-distance journeys",
+          "action": {
+            "move_kind": "compare",
+            "origin": "ui_choice",
+            "teaching_choice": {
+              "delivery_ref": "delivery:turn_cccd4f4d9834b1de:explain",
+              "option_id": "compare"
+            }
+          },
+          "answer_ref": {
+            "turn_id": "turn_cccd4f4d9834b1de"
+          },
+          "answer_text": "Compare total distance and total time.",
+          "expected_chat_head": "turn_cccd4f4d9834b1de",
+          "presentation_follow_up": {
+            "reference": {
+              "presentation_id": "presentation-1791727433519441100-4",
+              "revision": 1
+            },
+            "saved_state_ref": "state-1791727436616955700-7",
+            "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+            "state_revision": 2,
+            "turn_id": "turn_cccd4f4d9834b1de"
+          },
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "start_lid": "1.1"
+            }
+          ],
+          "source_excerpt": null,
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "Explain the denominator",
+            "learning_focus": "average speed",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          "user_supplement": ""
+        },
+        "original_ref": {
+          "book_id": "tc0-average-speed",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+          "turn_id": "turn_cccd4e4d9834b02b"
+        },
+        "presentation_follow_up": {
+          "reference": {
+            "presentation_id": "presentation-1791727433519441100-4",
+            "revision": 1
+          },
+          "saved_state_ref": "state-1791727436616955700-7",
+          "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+          "state_revision": 2,
+          "turn_id": "turn_cccd4f4d9834b1de"
+        },
+        "question_anchor_lid": null,
+        "response": "",
+        "teaching_ref": null,
+        "usage": {
+          "kind": "reading_action"
+        }
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_cccd4e4d9834b02b",
+        "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+      },
+      "causal_refs": [],
+      "event_id": "binding:turn_cccd4e4d9834b02b",
+      "kind": "turn_bound",
+      "occurred_at": "1001",
+      "payload": {
+        "binding": {
+          "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_cccd4e4d9834b02b",
+          "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+        },
+        "confirmed_preferences": [],
+        "constraints": [],
+        "current_action": {
+          "accepted_request": "Compare two equal-distance journeys",
+          "action": {
+            "move_kind": "compare",
+            "origin": "ui_choice",
+            "teaching_choice": {
+              "delivery_ref": "delivery:turn_cccd4f4d9834b1de:explain",
+              "option_id": "compare"
+            }
+          },
+          "answer_ref": {
+            "turn_id": "turn_cccd4f4d9834b1de"
+          },
+          "answer_text": "Compare total distance and total time.",
+          "expected_chat_head": "turn_cccd4f4d9834b1de",
+          "presentation_follow_up": {
+            "reference": {
+              "presentation_id": "presentation-1791727433519441100-4",
+              "revision": 1
+            },
+            "saved_state_ref": "state-1791727436616955700-7",
+            "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+            "state_revision": 2,
+            "turn_id": "turn_cccd4f4d9834b1de"
+          },
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "start_lid": "1.1"
+            }
+          ],
+          "source_excerpt": null,
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "Explain the denominator",
+            "learning_focus": "average speed",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          "user_supplement": ""
+        },
+        "current_request": "",
+        "default_teaching_intent": null,
+        "learner_context": {
+          "confirmed_background": [],
+          "confirmed_preferences": [],
+          "constraints": [],
+          "current_action": {
+            "accepted_request": "Compare two equal-distance journeys",
+            "action": {
+              "move_kind": "compare",
+              "origin": "ui_choice",
+              "teaching_choice": {
+                "delivery_ref": "delivery:turn_cccd4f4d9834b1de:explain",
+                "option_id": "compare"
+              }
+            },
+            "answer_ref": {
+              "turn_id": "turn_cccd4f4d9834b1de"
+            },
+            "answer_text": "Compare total distance and total time.",
+            "expected_chat_head": "turn_cccd4f4d9834b1de",
+            "presentation_follow_up": {
+              "reference": {
+                "presentation_id": "presentation-1791727433519441100-4",
+                "revision": 1
+              },
+              "saved_state_ref": "state-1791727436616955700-7",
+              "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+              "state_revision": 2,
+              "turn_id": "turn_cccd4f4d9834b1de"
+            },
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ],
+            "source_excerpt": null,
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Explain the denominator",
+              "learning_focus": "average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            "user_supplement": ""
+          },
+          "current_request": "",
+          "current_target": {
+            "capability": "explanation",
+            "expected_performance": "Explain the denominator",
+            "learning_focus": "average speed",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          "details": "tutor.step understanding with object_id and after",
+          "entries": [],
+          "evidence_watermark": 0,
+          "interpretations": [],
+          "path_progress": [],
+          "pending_activity": null,
+          "pending_assessment_refs": [],
+          "projection_watermark": 0,
+          "recent_facts": [
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_cccd4e4d9834b02b",
+                "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+              },
+              "causal_refs": [],
+              "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4e4d9834b02b",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "1001",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                "turn_id": "turn_cccd4e4d9834b02b"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "reading_action"
+              }
+            },
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "Compare total distance and total time.",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_cccd4f4d9834b1de",
+                "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+              },
+              "causal_refs": [
+                "move:turn_cccd4f4d9834b1de:explain"
+              ],
+              "event_id": "delivery:turn_cccd4f4d9834b1de:explain",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "kind": "message_delivered",
+              "move_id": "explain",
+              "occurred_at": "now",
+              "original_ref": null,
+              "prompt_preview": {
+                "text": "Use total distance divided by total time.",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Explain the denominator",
+                "learning_focus": "average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "start_lid": "1.1"
+                  }
+                ]
+              },
+              "usage": null
+            },
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "Compare total distance and total time.",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_cccd4f4d9834b1de",
+                "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+              },
+              "causal_refs": [
+                "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de"
+              ],
+              "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:assistant:turn_cccd4f4d9834b1de",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "now",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                "turn_id": "turn_cccd4f4d9834b1de"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "assistant_delivery"
+              }
+            },
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_cccd4f4d9834b1de",
+                "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+              },
+              "causal_refs": [],
+              "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "1000",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                "turn_id": "turn_cccd4f4d9834b1de"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "Explain average speed",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "user_message"
+              }
+            }
+          ],
+          "session_focus": {
+            "capability_targets": [],
+            "interpretation": "",
+            "target_object_refs": []
+          },
+          "stale": false,
+          "uninterpreted_fact_refs": [
+            "delivery:turn_cccd4f4d9834b1de:explain",
+            "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:assistant:turn_cccd4f4d9834b1de",
+            "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de"
+          ],
+          "unknown_when_absent": true,
+          "user_intent": "Explain average speed"
+        },
+        "limitations": [],
+        "object_count": 0,
+        "objects": [],
+        "recent_facts": [
+          {
+            "action": null,
+            "answer_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "assistance_count": 0,
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_cccd4e4d9834b02b",
+              "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+            },
+            "causal_refs": [],
+            "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4e4d9834b02b",
+            "help_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "kind": "usage_observed",
+            "move_id": null,
+            "occurred_at": "1001",
+            "original_ref": {
+              "book_id": "tc0-average-speed",
+              "kind": "chat_turn",
+              "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+              "turn_id": "turn_cccd4e4d9834b02b"
+            },
+            "prompt_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "response_preview": {
+              "text": "",
+              "truncated": false
+            },
+            "target": null,
+            "usage": {
+              "kind": "reading_action"
+            }
+          },
+          {
+            "action": null,
+            "answer_preview": {
+              "text": "Compare total distance and total time.",
+              "truncated": false
+            },
+            "assistance_count": 0,
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_cccd4f4d9834b1de",
+              "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+            },
+            "causal_refs": [
+              "move:turn_cccd4f4d9834b1de:explain"
+            ],
+            "event_id": "delivery:turn_cccd4f4d9834b1de:explain",
+            "help_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "kind": "message_delivered",
+            "move_id": "explain",
+            "occurred_at": "now",
+            "original_ref": null,
+            "prompt_preview": {
+              "text": "Use total distance divided by total time.",
+              "truncated": false
+            },
+            "response_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Explain the denominator",
+              "learning_focus": "average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            "usage": null
+          },
+          {
+            "action": null,
+            "answer_preview": {
+              "text": "Compare total distance and total time.",
+              "truncated": false
+            },
+            "assistance_count": 0,
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_cccd4f4d9834b1de",
+              "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+            },
+            "causal_refs": [
+              "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de"
+            ],
+            "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:assistant:turn_cccd4f4d9834b1de",
+            "help_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "kind": "usage_observed",
+            "move_id": null,
+            "occurred_at": "now",
+            "original_ref": {
+              "book_id": "tc0-average-speed",
+              "kind": "chat_turn",
+              "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+              "turn_id": "turn_cccd4f4d9834b1de"
+            },
+            "prompt_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "response_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "target": null,
+            "usage": {
+              "kind": "assistant_delivery"
+            }
+          },
+          {
+            "action": null,
+            "answer_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "assistance_count": 0,
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_cccd4f4d9834b1de",
+              "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+            },
+            "causal_refs": [],
+            "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de",
+            "help_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "kind": "usage_observed",
+            "move_id": null,
+            "occurred_at": "1000",
+            "original_ref": {
+              "book_id": "tc0-average-speed",
+              "kind": "chat_turn",
+              "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+              "turn_id": "turn_cccd4f4d9834b1de"
+            },
+            "prompt_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "response_preview": {
+              "text": "Explain average speed",
+              "truncated": false
+            },
+            "target": null,
+            "usage": {
+              "kind": "user_message"
+            }
+          }
+        ],
+        "status": "active",
+        "teaching_assets": {
+          "cognitive_materials": {
+            "status": "missing"
+          },
+          "formal_objects": {
+            "status": "missing"
+          },
+          "limitations": [],
+          "reason": "正式教学素材尚未发布",
+          "source_id": "tc0-average-speed",
+          "status": "preparing",
+          "teaching_map_revision": null
+        },
+        "user_intent": "Explain average speed"
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_cccd4e4d9834b02b",
+        "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+      },
+      "causal_refs": [
+        "binding:turn_cccd4e4d9834b02b"
+      ],
+      "event_id": "move:turn_cccd4e4d9834b02b:chosen-comparison",
+      "kind": "move_selected",
+      "occurred_at": "2026-10-11T14:03:57.5563273Z",
+      "payload": {
+        "help_policy": "preserve_exposure",
+        "move": {
+          "actions": [],
+          "assessment": null,
+          "capability": "explanation",
+          "explanation": null,
+          "hint": null,
+          "intent_origin": "current_action",
+          "intent_quote": null,
+          "interaction_intent": "neutral",
+          "interpretation_refs": [],
+          "kind": "compare",
+          "move_id": "chosen-comparison",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "Compare equal-distance journeys using total distance and total time.",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "Explain the denominator",
+            "learning_focus": "average speed",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "retry_policy": "append_attempt",
+        "scorer_version": "assessment.v1",
+        "scoring_sources": {}
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_cccd4e4d9834b02b",
+        "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+      },
+      "causal_refs": [
+        "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4e4d9834b02b"
+      ],
+      "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:assistant:turn_cccd4e4d9834b02b",
+      "kind": "usage_observed",
+      "occurred_at": "1001",
+      "payload": {
+        "answer": "Equal distances need not take equal times. Compare the journeys using total distance divided by total time.",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "Equal distances need not take equal times. Compare the journeys using total distance divided by total time."
+            }
+          ],
+          "sources": []
+        },
+        "original_ref": {
+          "book_id": "tc0-average-speed",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+          "turn_id": "turn_cccd4e4d9834b02b"
+        },
+        "source_bindings": [],
+        "usage": {
+          "kind": "assistant_delivery"
+        }
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_cccd4e4d9834b02b",
+        "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+      },
+      "causal_refs": [
+        "move:turn_cccd4e4d9834b02b:chosen-comparison"
+      ],
+      "event_id": "delivery:turn_cccd4e4d9834b02b:chosen-comparison",
+      "kind": "message_delivered",
+      "occurred_at": "1001",
+      "payload": {
+        "answer": "Equal distances need not take equal times. Compare the journeys using total distance divided by total time.",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "Equal distances need not take equal times. Compare the journeys using total distance divided by total time."
+            }
+          ],
+          "sources": []
+        },
+        "assessment_contract_ref": null,
+        "move": {
+          "actions": [],
+          "capability": "explanation",
+          "intent_origin": "current_action",
+          "intent_quote": null,
+          "interaction_intent": "neutral",
+          "interpretation_refs": [],
+          "kind": "compare",
+          "move_id": "chosen-comparison",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "Compare equal-distance journeys using total distance and total time.",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "Explain the denominator",
+            "learning_focus": "average speed",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "presentation": null,
+        "source_bindings": []
+      }
+    }
+  ],
+  "history": {
+    "active_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+    "current": {
+      "book_id": "tc0-average-speed",
+      "created_at": "1000",
+      "goals": [
+        {
+          "id": "goal_turn_cccd4f4d9834b1de",
+          "interpretation": "Explain average speed",
+          "last_stop_reason": null,
+          "origin_turn_id": "turn_cccd4f4d9834b1de",
+          "related_goal_id": null,
+          "requirements": [
+            {
+              "basis_turn_id": "turn_cccd4f4d9834b1de",
+              "description": "Explain average speed",
+              "id": "turn_cccd4f4d9834b1de:content",
+              "verification": "content"
+            }
+          ],
+          "result_refs": [
+            "answer:turn_cccd4f4d9834b1de"
+          ],
+          "revision": 2,
+          "status": "completed",
+          "user_message_refs": [
+            "turn_cccd4f4d9834b1de"
+          ],
+          "working": {
+            "focus": "",
+            "items": [],
+            "next_move": "",
+            "open_questions": []
+          }
+        },
+        {
+          "id": "goal_turn_cccd4e4d9834b02b",
+          "interpretation": "选择：Compare two equal-distance journeys",
+          "last_stop_reason": null,
+          "origin_turn_id": "turn_cccd4e4d9834b02b",
+          "related_goal_id": "goal_turn_cccd4f4d9834b1de",
+          "requirements": [
+            {
+              "basis_turn_id": "turn_cccd4e4d9834b02b",
+              "description": "选择：Compare two equal-distance journeys",
+              "id": "turn_cccd4e4d9834b02b:content",
+              "verification": "content"
+            }
+          ],
+          "result_refs": [
+            "answer:turn_cccd4e4d9834b02b"
+          ],
+          "revision": 2,
+          "status": "completed",
+          "user_message_refs": [
+            "turn_cccd4e4d9834b02b"
+          ],
+          "working": {
+            "focus": "",
+            "items": [],
+            "next_move": "",
+            "open_questions": []
+          }
+        }
+      ],
+      "id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+      "title": "Explain average speed",
+      "turns": [
+        {
+          "domain": {
+            "effects": [
+              {
+                "disposition": null,
+                "effect": {
+                  "kind": "presentation",
+                  "reference": {
+                    "presentation_id": "presentation-1791727433519441100-4",
+                    "revision": 1
+                  }
+                },
+                "effect_id": "presentation:presentation-1791727433519441100-4:1"
+              }
+            ],
+            "scene": {
+              "anchor_lid": "1.1",
+              "generation": 1,
+              "selection": null,
+              "workspace_id": "local"
+            },
+            "teaching": [
+              {
+                "receipt_ids": [
+                  "assets:turn_cccd4f4d9834b1de",
+                  "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de",
+                  "binding:turn_cccd4f4d9834b1de"
+                ],
+                "revision": 1,
+                "session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+              },
+              {
+                "receipt_ids": [
+                  "move:turn_cccd4f4d9834b1de:explain"
+                ],
+                "revision": 1,
+                "session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+              }
+            ]
+          },
+          "effect_labels": [],
+          "goal_ref": {
+            "id": "goal_turn_cccd4f4d9834b1de",
+            "revision": 2
+          },
+          "outcome": {
+            "answer": "Compare total distance and total time.",
+            "answer_view": {
+              "parts": [
+                {
+                  "kind": "markdown",
+                  "text": "Compare total distance and total time."
+                },
+                {
+                  "kind": "presentation",
+                  "presentation_id": "presentation-1791727433519441100-4",
+                  "revision": 1
+                }
+              ],
+              "sources": []
+            },
+            "effects": [],
+            "incomplete": false,
+            "memory_updates": [],
+            "profile_usage": {
+              "claimed_used_fact_ids": [],
+              "influences": [],
+              "injected_fact_ids": [],
+              "snapshot_revision": 0
+            },
+            "tokens_spent": 0,
+            "trace": [
+              {
+                "args": "{}",
+                "result_digest": "selected",
+                "tool": "tutor.step"
+              }
+            ],
+            "turns": 1
+          },
+          "presentation_follow_up": null,
+          "published_book_ref": null,
+          "question_quote": {
+            "label": "正文 · Average speed",
+            "quote": "Average speed is total distance divided by total time.",
+            "status": "resolved"
+          },
+          "question_source_label": "正文 · Average speed",
+          "status": "completed",
+          "teaching_ref": null,
+          "turn_id": "turn_cccd4f4d9834b1de",
+          "user": "Explain average speed",
+          "user_turn_ordinal": 1
+        },
+        {
+          "domain": {
+            "choice_event": {
+              "binding": {
+                "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_cccd4e4d9834b02b",
+                "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+              },
+              "causal_refs": [
+                "delivery:turn_cccd4f4d9834b1de:explain"
+              ],
+              "event_id": "chosen:turn_cccd4e4d9834b02b",
+              "kind": "continuation_chosen",
+              "occurred_at": "1001",
+              "payload": {
+                "accepted_turn_id": "turn_cccd4e4d9834b02b",
+                "delivery_ref": "delivery:turn_cccd4f4d9834b1de:explain",
+                "option_id": "compare"
+              }
+            },
+            "effects": [],
+            "interaction": {
+              "accepted_request": "Compare two equal-distance journeys",
+              "action": {
+                "move_kind": "compare",
+                "origin": "ui_choice",
+                "teaching_choice": {
+                  "delivery_ref": "delivery:turn_cccd4f4d9834b1de:explain",
+                  "option_id": "compare"
+                }
+              },
+              "answer_ref": {
+                "turn_id": "turn_cccd4f4d9834b1de"
+              },
+              "answer_text": "Compare total distance and total time.",
+              "expected_chat_head": "turn_cccd4f4d9834b1de",
+              "presentation_follow_up": {
+                "reference": {
+                  "presentation_id": "presentation-1791727433519441100-4",
+                  "revision": 1
+                },
+                "saved_state_ref": "state-1791727436616955700-7",
+                "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                "state_revision": 2,
+                "turn_id": "turn_cccd4f4d9834b1de"
+              },
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "start_lid": "1.1"
+                }
+              ],
+              "source_excerpt": null,
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Explain the denominator",
+                "learning_focus": "average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "start_lid": "1.1"
+                  }
+                ]
+              },
+              "user_supplement": ""
+            },
+            "local_action": {
+              "client_request_id": "db01c6f6-b395-4c40-bd68-a767a7d4c474",
+              "normalized": {
+                "attachment_id": null,
+                "display_user": "选择：Compare two equal-distance journeys",
+                "expected_chat_head": "turn_cccd4f4d9834b1de",
+                "expected_revision": null,
+                "generation": null,
+                "goal_action": null,
+                "goal_id": null,
+                "message": "",
+                "note_mem_id": null,
+                "presentation_follow_up": {
+                  "reference": {
+                    "presentation_id": "presentation-1791727433519441100-4",
+                    "revision": 1
+                  },
+                  "saved_state_ref": "state-1791727436616955700-7",
+                  "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                  "state_revision": 2,
+                  "turn_id": "turn_cccd4f4d9834b1de"
+                },
+                "published_book_ref": null,
+                "question_anchor_lid": null,
+                "question_quote": null,
+                "retry_of": null,
+                "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                "teaching_choice": {
+                  "delivery_ref": "delivery:turn_cccd4f4d9834b1de:explain",
+                  "option_id": "compare"
+                },
+                "teaching_ref": null,
+                "workspace_id": "local"
+              }
+            },
+            "local_preparation": {
+              "context": {
+                "binding": {
+                  "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                  "control_revision": 2,
+                  "session_revision": 1,
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "turn_id": "turn_cccd4e4d9834b02b",
+                  "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                },
+                "confirmed_preferences": [],
+                "constraints": [],
+                "current_action": {
+                  "accepted_request": "Compare two equal-distance journeys",
+                  "action": {
+                    "move_kind": "compare",
+                    "origin": "ui_choice",
+                    "teaching_choice": {
+                      "delivery_ref": "delivery:turn_cccd4f4d9834b1de:explain",
+                      "option_id": "compare"
+                    }
+                  },
+                  "answer_ref": {
+                    "turn_id": "turn_cccd4f4d9834b1de"
+                  },
+                  "answer_text": "Compare total distance and total time.",
+                  "expected_chat_head": "turn_cccd4f4d9834b1de",
+                  "presentation_follow_up": {
+                    "reference": {
+                      "presentation_id": "presentation-1791727433519441100-4",
+                      "revision": 1
+                    },
+                    "saved_state_ref": "state-1791727436616955700-7",
+                    "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                    "state_revision": 2,
+                    "turn_id": "turn_cccd4f4d9834b1de"
+                  },
+                  "source_bindings": [
+                    {
+                      "end_lid": "1.1",
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "start_lid": "1.1"
+                    }
+                  ],
+                  "source_excerpt": null,
+                  "target": {
+                    "capability": "explanation",
+                    "expected_performance": "Explain the denominator",
+                    "learning_focus": "average speed",
+                    "object_refs": [],
+                    "source_bindings": [
+                      {
+                        "end_lid": "1.1",
+                        "source_id": "tc0-average-speed",
+                        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                        "start_lid": "1.1"
+                      }
+                    ]
+                  },
+                  "user_supplement": ""
+                },
+                "current_request": "",
+                "default_teaching_intent": null,
+                "learner_context": {
+                  "confirmed_background": [],
+                  "confirmed_preferences": [],
+                  "constraints": [],
+                  "current_action": {
+                    "accepted_request": "Compare two equal-distance journeys",
+                    "action": {
+                      "move_kind": "compare",
+                      "origin": "ui_choice",
+                      "teaching_choice": {
+                        "delivery_ref": "delivery:turn_cccd4f4d9834b1de:explain",
+                        "option_id": "compare"
+                      }
+                    },
+                    "answer_ref": {
+                      "turn_id": "turn_cccd4f4d9834b1de"
+                    },
+                    "answer_text": "Compare total distance and total time.",
+                    "expected_chat_head": "turn_cccd4f4d9834b1de",
+                    "presentation_follow_up": {
+                      "reference": {
+                        "presentation_id": "presentation-1791727433519441100-4",
+                        "revision": 1
+                      },
+                      "saved_state_ref": "state-1791727436616955700-7",
+                      "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                      "state_revision": 2,
+                      "turn_id": "turn_cccd4f4d9834b1de"
+                    },
+                    "source_bindings": [
+                      {
+                        "end_lid": "1.1",
+                        "source_id": "tc0-average-speed",
+                        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                        "start_lid": "1.1"
+                      }
+                    ],
+                    "source_excerpt": null,
+                    "target": {
+                      "capability": "explanation",
+                      "expected_performance": "Explain the denominator",
+                      "learning_focus": "average speed",
+                      "object_refs": [],
+                      "source_bindings": [
+                        {
+                          "end_lid": "1.1",
+                          "source_id": "tc0-average-speed",
+                          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                          "start_lid": "1.1"
+                        }
+                      ]
+                    },
+                    "user_supplement": ""
+                  },
+                  "current_request": "",
+                  "current_target": {
+                    "capability": "explanation",
+                    "expected_performance": "Explain the denominator",
+                    "learning_focus": "average speed",
+                    "object_refs": [],
+                    "source_bindings": [
+                      {
+                        "end_lid": "1.1",
+                        "source_id": "tc0-average-speed",
+                        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                        "start_lid": "1.1"
+                      }
+                    ]
+                  },
+                  "details": "tutor.step understanding with object_id and after",
+                  "entries": [],
+                  "evidence_watermark": 0,
+                  "interpretations": [],
+                  "path_progress": [],
+                  "pending_activity": null,
+                  "pending_assessment_refs": [],
+                  "projection_watermark": 0,
+                  "recent_facts": [
+                    {
+                      "action": null,
+                      "answer_preview": {
+                        "text": "null",
+                        "truncated": false
+                      },
+                      "assistance_count": 0,
+                      "attempt": null,
+                      "binding": {
+                        "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                        "control_revision": 2,
+                        "session_revision": 1,
+                        "source_id": "tc0-average-speed",
+                        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                        "turn_id": "turn_cccd4e4d9834b02b",
+                        "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                      },
+                      "causal_refs": [],
+                      "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4e4d9834b02b",
+                      "help_preview": {
+                        "text": "null",
+                        "truncated": false
+                      },
+                      "kind": "usage_observed",
+                      "move_id": null,
+                      "occurred_at": "1001",
+                      "original_ref": {
+                        "book_id": "tc0-average-speed",
+                        "kind": "chat_turn",
+                        "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                        "turn_id": "turn_cccd4e4d9834b02b"
+                      },
+                      "prompt_preview": {
+                        "text": "null",
+                        "truncated": false
+                      },
+                      "response_preview": {
+                        "text": "",
+                        "truncated": false
+                      },
+                      "target": null,
+                      "usage": {
+                        "kind": "reading_action"
+                      }
+                    },
+                    {
+                      "action": null,
+                      "answer_preview": {
+                        "text": "Compare total distance and total time.",
+                        "truncated": false
+                      },
+                      "assistance_count": 0,
+                      "attempt": null,
+                      "binding": {
+                        "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                        "control_revision": 2,
+                        "session_revision": 1,
+                        "source_id": "tc0-average-speed",
+                        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                        "turn_id": "turn_cccd4f4d9834b1de",
+                        "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                      },
+                      "causal_refs": [
+                        "move:turn_cccd4f4d9834b1de:explain"
+                      ],
+                      "event_id": "delivery:turn_cccd4f4d9834b1de:explain",
+                      "help_preview": {
+                        "text": "null",
+                        "truncated": false
+                      },
+                      "kind": "message_delivered",
+                      "move_id": "explain",
+                      "occurred_at": "now",
+                      "original_ref": null,
+                      "prompt_preview": {
+                        "text": "Use total distance divided by total time.",
+                        "truncated": false
+                      },
+                      "response_preview": {
+                        "text": "null",
+                        "truncated": false
+                      },
+                      "target": {
+                        "capability": "explanation",
+                        "expected_performance": "Explain the denominator",
+                        "learning_focus": "average speed",
+                        "object_refs": [],
+                        "source_bindings": [
+                          {
+                            "end_lid": "1.1",
+                            "source_id": "tc0-average-speed",
+                            "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                            "start_lid": "1.1"
+                          }
+                        ]
+                      },
+                      "usage": null
+                    },
+                    {
+                      "action": null,
+                      "answer_preview": {
+                        "text": "Compare total distance and total time.",
+                        "truncated": false
+                      },
+                      "assistance_count": 0,
+                      "attempt": null,
+                      "binding": {
+                        "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                        "control_revision": 2,
+                        "session_revision": 1,
+                        "source_id": "tc0-average-speed",
+                        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                        "turn_id": "turn_cccd4f4d9834b1de",
+                        "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                      },
+                      "causal_refs": [
+                        "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de"
+                      ],
+                      "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:assistant:turn_cccd4f4d9834b1de",
+                      "help_preview": {
+                        "text": "null",
+                        "truncated": false
+                      },
+                      "kind": "usage_observed",
+                      "move_id": null,
+                      "occurred_at": "now",
+                      "original_ref": {
+                        "book_id": "tc0-average-speed",
+                        "kind": "chat_turn",
+                        "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                        "turn_id": "turn_cccd4f4d9834b1de"
+                      },
+                      "prompt_preview": {
+                        "text": "null",
+                        "truncated": false
+                      },
+                      "response_preview": {
+                        "text": "null",
+                        "truncated": false
+                      },
+                      "target": null,
+                      "usage": {
+                        "kind": "assistant_delivery"
+                      }
+                    },
+                    {
+                      "action": null,
+                      "answer_preview": {
+                        "text": "null",
+                        "truncated": false
+                      },
+                      "assistance_count": 0,
+                      "attempt": null,
+                      "binding": {
+                        "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                        "control_revision": 2,
+                        "session_revision": 1,
+                        "source_id": "tc0-average-speed",
+                        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                        "turn_id": "turn_cccd4f4d9834b1de",
+                        "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                      },
+                      "causal_refs": [],
+                      "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de",
+                      "help_preview": {
+                        "text": "null",
+                        "truncated": false
+                      },
+                      "kind": "usage_observed",
+                      "move_id": null,
+                      "occurred_at": "1000",
+                      "original_ref": {
+                        "book_id": "tc0-average-speed",
+                        "kind": "chat_turn",
+                        "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                        "turn_id": "turn_cccd4f4d9834b1de"
+                      },
+                      "prompt_preview": {
+                        "text": "null",
+                        "truncated": false
+                      },
+                      "response_preview": {
+                        "text": "Explain average speed",
+                        "truncated": false
+                      },
+                      "target": null,
+                      "usage": {
+                        "kind": "user_message"
+                      }
+                    }
+                  ],
+                  "session_focus": {
+                    "capability_targets": [],
+                    "interpretation": "",
+                    "target_object_refs": []
+                  },
+                  "stale": false,
+                  "uninterpreted_fact_refs": [
+                    "delivery:turn_cccd4f4d9834b1de:explain",
+                    "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:assistant:turn_cccd4f4d9834b1de",
+                    "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de"
+                  ],
+                  "unknown_when_absent": true,
+                  "user_intent": "Explain average speed"
+                },
+                "limitations": [],
+                "object_count": 0,
+                "objects": [],
+                "recent_facts": [
+                  {
+                    "action": null,
+                    "answer_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "assistance_count": 0,
+                    "attempt": null,
+                    "binding": {
+                      "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                      "control_revision": 2,
+                      "session_revision": 1,
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "turn_id": "turn_cccd4e4d9834b02b",
+                      "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                    },
+                    "causal_refs": [],
+                    "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4e4d9834b02b",
+                    "help_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "kind": "usage_observed",
+                    "move_id": null,
+                    "occurred_at": "1001",
+                    "original_ref": {
+                      "book_id": "tc0-average-speed",
+                      "kind": "chat_turn",
+                      "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                      "turn_id": "turn_cccd4e4d9834b02b"
+                    },
+                    "prompt_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "response_preview": {
+                      "text": "",
+                      "truncated": false
+                    },
+                    "target": null,
+                    "usage": {
+                      "kind": "reading_action"
+                    }
+                  },
+                  {
+                    "action": null,
+                    "answer_preview": {
+                      "text": "Compare total distance and total time.",
+                      "truncated": false
+                    },
+                    "assistance_count": 0,
+                    "attempt": null,
+                    "binding": {
+                      "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                      "control_revision": 2,
+                      "session_revision": 1,
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "turn_id": "turn_cccd4f4d9834b1de",
+                      "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                    },
+                    "causal_refs": [
+                      "move:turn_cccd4f4d9834b1de:explain"
+                    ],
+                    "event_id": "delivery:turn_cccd4f4d9834b1de:explain",
+                    "help_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "kind": "message_delivered",
+                    "move_id": "explain",
+                    "occurred_at": "now",
+                    "original_ref": null,
+                    "prompt_preview": {
+                      "text": "Use total distance divided by total time.",
+                      "truncated": false
+                    },
+                    "response_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "target": {
+                      "capability": "explanation",
+                      "expected_performance": "Explain the denominator",
+                      "learning_focus": "average speed",
+                      "object_refs": [],
+                      "source_bindings": [
+                        {
+                          "end_lid": "1.1",
+                          "source_id": "tc0-average-speed",
+                          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                          "start_lid": "1.1"
+                        }
+                      ]
+                    },
+                    "usage": null
+                  },
+                  {
+                    "action": null,
+                    "answer_preview": {
+                      "text": "Compare total distance and total time.",
+                      "truncated": false
+                    },
+                    "assistance_count": 0,
+                    "attempt": null,
+                    "binding": {
+                      "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                      "control_revision": 2,
+                      "session_revision": 1,
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "turn_id": "turn_cccd4f4d9834b1de",
+                      "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                    },
+                    "causal_refs": [
+                      "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de"
+                    ],
+                    "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:assistant:turn_cccd4f4d9834b1de",
+                    "help_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "kind": "usage_observed",
+                    "move_id": null,
+                    "occurred_at": "now",
+                    "original_ref": {
+                      "book_id": "tc0-average-speed",
+                      "kind": "chat_turn",
+                      "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                      "turn_id": "turn_cccd4f4d9834b1de"
+                    },
+                    "prompt_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "response_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "target": null,
+                    "usage": {
+                      "kind": "assistant_delivery"
+                    }
+                  },
+                  {
+                    "action": null,
+                    "answer_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "assistance_count": 0,
+                    "attempt": null,
+                    "binding": {
+                      "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                      "control_revision": 2,
+                      "session_revision": 1,
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "turn_id": "turn_cccd4f4d9834b1de",
+                      "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                    },
+                    "causal_refs": [],
+                    "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de",
+                    "help_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "kind": "usage_observed",
+                    "move_id": null,
+                    "occurred_at": "1000",
+                    "original_ref": {
+                      "book_id": "tc0-average-speed",
+                      "kind": "chat_turn",
+                      "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                      "turn_id": "turn_cccd4f4d9834b1de"
+                    },
+                    "prompt_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "response_preview": {
+                      "text": "Explain average speed",
+                      "truncated": false
+                    },
+                    "target": null,
+                    "usage": {
+                      "kind": "user_message"
+                    }
+                  }
+                ],
+                "status": "active",
+                "teaching_assets": {
+                  "cognitive_materials": {
+                    "status": "missing"
+                  },
+                  "formal_objects": {
+                    "status": "missing"
+                  },
+                  "limitations": [],
+                  "reason": "正式教学素材尚未发布",
+                  "source_id": "tc0-average-speed",
+                  "status": "preparing",
+                  "teaching_map_revision": null
+                },
+                "user_intent": "Explain average speed"
+              },
+              "events": [
+                {
+                  "binding": {
+                    "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                    "control_revision": 2,
+                    "session_revision": 1,
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "turn_id": "turn_cccd4e4d9834b02b",
+                    "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                  },
+                  "causal_refs": [],
+                  "event_id": "assets:turn_cccd4e4d9834b02b",
+                  "kind": "turn_bound",
+                  "occurred_at": "1001",
+                  "payload": {}
+                },
+                {
+                  "binding": {
+                    "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                    "control_revision": 2,
+                    "session_revision": 1,
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "turn_id": "turn_cccd4e4d9834b02b",
+                    "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                  },
+                  "causal_refs": [],
+                  "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4e4d9834b02b",
+                  "kind": "usage_observed",
+                  "occurred_at": "1001",
+                  "payload": {
+                    "interaction": {
+                      "accepted_request": "Compare two equal-distance journeys",
+                      "action": {
+                        "move_kind": "compare",
+                        "origin": "ui_choice",
+                        "teaching_choice": {
+                          "delivery_ref": "delivery:turn_cccd4f4d9834b1de:explain",
+                          "option_id": "compare"
+                        }
+                      },
+                      "answer_ref": {
+                        "turn_id": "turn_cccd4f4d9834b1de"
+                      },
+                      "answer_text": "Compare total distance and total time.",
+                      "expected_chat_head": "turn_cccd4f4d9834b1de",
+                      "presentation_follow_up": {
+                        "reference": {
+                          "presentation_id": "presentation-1791727433519441100-4",
+                          "revision": 1
+                        },
+                        "saved_state_ref": "state-1791727436616955700-7",
+                        "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                        "state_revision": 2,
+                        "turn_id": "turn_cccd4f4d9834b1de"
+                      },
+                      "source_bindings": [
+                        {
+                          "end_lid": "1.1",
+                          "source_id": "tc0-average-speed",
+                          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                          "start_lid": "1.1"
+                        }
+                      ],
+                      "source_excerpt": null,
+                      "target": {
+                        "capability": "explanation",
+                        "expected_performance": "Explain the denominator",
+                        "learning_focus": "average speed",
+                        "object_refs": [],
+                        "source_bindings": [
+                          {
+                            "end_lid": "1.1",
+                            "source_id": "tc0-average-speed",
+                            "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                            "start_lid": "1.1"
+                          }
+                        ]
+                      },
+                      "user_supplement": ""
+                    },
+                    "original_ref": {
+                      "book_id": "tc0-average-speed",
+                      "kind": "chat_turn",
+                      "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                      "turn_id": "turn_cccd4e4d9834b02b"
+                    },
+                    "presentation_follow_up": {
+                      "reference": {
+                        "presentation_id": "presentation-1791727433519441100-4",
+                        "revision": 1
+                      },
+                      "saved_state_ref": "state-1791727436616955700-7",
+                      "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                      "state_revision": 2,
+                      "turn_id": "turn_cccd4f4d9834b1de"
+                    },
+                    "question_anchor_lid": null,
+                    "response": "",
+                    "teaching_ref": null,
+                    "usage": {
+                      "kind": "reading_action"
+                    }
+                  }
+                },
+                {
+                  "binding": {
+                    "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                    "control_revision": 2,
+                    "session_revision": 1,
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "turn_id": "turn_cccd4e4d9834b02b",
+                    "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                  },
+                  "causal_refs": [],
+                  "event_id": "binding:turn_cccd4e4d9834b02b",
+                  "kind": "turn_bound",
+                  "occurred_at": "1001",
+                  "payload": {
+                    "binding": {
+                      "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                      "control_revision": 2,
+                      "session_revision": 1,
+                      "source_id": "tc0-average-speed",
+                      "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                      "turn_id": "turn_cccd4e4d9834b02b",
+                      "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                    },
+                    "confirmed_preferences": [],
+                    "constraints": [],
+                    "current_action": {
+                      "accepted_request": "Compare two equal-distance journeys",
+                      "action": {
+                        "move_kind": "compare",
+                        "origin": "ui_choice",
+                        "teaching_choice": {
+                          "delivery_ref": "delivery:turn_cccd4f4d9834b1de:explain",
+                          "option_id": "compare"
+                        }
+                      },
+                      "answer_ref": {
+                        "turn_id": "turn_cccd4f4d9834b1de"
+                      },
+                      "answer_text": "Compare total distance and total time.",
+                      "expected_chat_head": "turn_cccd4f4d9834b1de",
+                      "presentation_follow_up": {
+                        "reference": {
+                          "presentation_id": "presentation-1791727433519441100-4",
+                          "revision": 1
+                        },
+                        "saved_state_ref": "state-1791727436616955700-7",
+                        "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                        "state_revision": 2,
+                        "turn_id": "turn_cccd4f4d9834b1de"
+                      },
+                      "source_bindings": [
+                        {
+                          "end_lid": "1.1",
+                          "source_id": "tc0-average-speed",
+                          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                          "start_lid": "1.1"
+                        }
+                      ],
+                      "source_excerpt": null,
+                      "target": {
+                        "capability": "explanation",
+                        "expected_performance": "Explain the denominator",
+                        "learning_focus": "average speed",
+                        "object_refs": [],
+                        "source_bindings": [
+                          {
+                            "end_lid": "1.1",
+                            "source_id": "tc0-average-speed",
+                            "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                            "start_lid": "1.1"
+                          }
+                        ]
+                      },
+                      "user_supplement": ""
+                    },
+                    "current_request": "",
+                    "default_teaching_intent": null,
+                    "learner_context": {
+                      "confirmed_background": [],
+                      "confirmed_preferences": [],
+                      "constraints": [],
+                      "current_action": {
+                        "accepted_request": "Compare two equal-distance journeys",
+                        "action": {
+                          "move_kind": "compare",
+                          "origin": "ui_choice",
+                          "teaching_choice": {
+                            "delivery_ref": "delivery:turn_cccd4f4d9834b1de:explain",
+                            "option_id": "compare"
+                          }
+                        },
+                        "answer_ref": {
+                          "turn_id": "turn_cccd4f4d9834b1de"
+                        },
+                        "answer_text": "Compare total distance and total time.",
+                        "expected_chat_head": "turn_cccd4f4d9834b1de",
+                        "presentation_follow_up": {
+                          "reference": {
+                            "presentation_id": "presentation-1791727433519441100-4",
+                            "revision": 1
+                          },
+                          "saved_state_ref": "state-1791727436616955700-7",
+                          "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                          "state_revision": 2,
+                          "turn_id": "turn_cccd4f4d9834b1de"
+                        },
+                        "source_bindings": [
+                          {
+                            "end_lid": "1.1",
+                            "source_id": "tc0-average-speed",
+                            "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                            "start_lid": "1.1"
+                          }
+                        ],
+                        "source_excerpt": null,
+                        "target": {
+                          "capability": "explanation",
+                          "expected_performance": "Explain the denominator",
+                          "learning_focus": "average speed",
+                          "object_refs": [],
+                          "source_bindings": [
+                            {
+                              "end_lid": "1.1",
+                              "source_id": "tc0-average-speed",
+                              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                              "start_lid": "1.1"
+                            }
+                          ]
+                        },
+                        "user_supplement": ""
+                      },
+                      "current_request": "",
+                      "current_target": {
+                        "capability": "explanation",
+                        "expected_performance": "Explain the denominator",
+                        "learning_focus": "average speed",
+                        "object_refs": [],
+                        "source_bindings": [
+                          {
+                            "end_lid": "1.1",
+                            "source_id": "tc0-average-speed",
+                            "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                            "start_lid": "1.1"
+                          }
+                        ]
+                      },
+                      "details": "tutor.step understanding with object_id and after",
+                      "entries": [],
+                      "evidence_watermark": 0,
+                      "interpretations": [],
+                      "path_progress": [],
+                      "pending_activity": null,
+                      "pending_assessment_refs": [],
+                      "projection_watermark": 0,
+                      "recent_facts": [
+                        {
+                          "action": null,
+                          "answer_preview": {
+                            "text": "null",
+                            "truncated": false
+                          },
+                          "assistance_count": 0,
+                          "attempt": null,
+                          "binding": {
+                            "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                            "control_revision": 2,
+                            "session_revision": 1,
+                            "source_id": "tc0-average-speed",
+                            "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                            "turn_id": "turn_cccd4e4d9834b02b",
+                            "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                          },
+                          "causal_refs": [],
+                          "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4e4d9834b02b",
+                          "help_preview": {
+                            "text": "null",
+                            "truncated": false
+                          },
+                          "kind": "usage_observed",
+                          "move_id": null,
+                          "occurred_at": "1001",
+                          "original_ref": {
+                            "book_id": "tc0-average-speed",
+                            "kind": "chat_turn",
+                            "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                            "turn_id": "turn_cccd4e4d9834b02b"
+                          },
+                          "prompt_preview": {
+                            "text": "null",
+                            "truncated": false
+                          },
+                          "response_preview": {
+                            "text": "",
+                            "truncated": false
+                          },
+                          "target": null,
+                          "usage": {
+                            "kind": "reading_action"
+                          }
+                        },
+                        {
+                          "action": null,
+                          "answer_preview": {
+                            "text": "Compare total distance and total time.",
+                            "truncated": false
+                          },
+                          "assistance_count": 0,
+                          "attempt": null,
+                          "binding": {
+                            "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                            "control_revision": 2,
+                            "session_revision": 1,
+                            "source_id": "tc0-average-speed",
+                            "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                            "turn_id": "turn_cccd4f4d9834b1de",
+                            "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                          },
+                          "causal_refs": [
+                            "move:turn_cccd4f4d9834b1de:explain"
+                          ],
+                          "event_id": "delivery:turn_cccd4f4d9834b1de:explain",
+                          "help_preview": {
+                            "text": "null",
+                            "truncated": false
+                          },
+                          "kind": "message_delivered",
+                          "move_id": "explain",
+                          "occurred_at": "now",
+                          "original_ref": null,
+                          "prompt_preview": {
+                            "text": "Use total distance divided by total time.",
+                            "truncated": false
+                          },
+                          "response_preview": {
+                            "text": "null",
+                            "truncated": false
+                          },
+                          "target": {
+                            "capability": "explanation",
+                            "expected_performance": "Explain the denominator",
+                            "learning_focus": "average speed",
+                            "object_refs": [],
+                            "source_bindings": [
+                              {
+                                "end_lid": "1.1",
+                                "source_id": "tc0-average-speed",
+                                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                                "start_lid": "1.1"
+                              }
+                            ]
+                          },
+                          "usage": null
+                        },
+                        {
+                          "action": null,
+                          "answer_preview": {
+                            "text": "Compare total distance and total time.",
+                            "truncated": false
+                          },
+                          "assistance_count": 0,
+                          "attempt": null,
+                          "binding": {
+                            "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                            "control_revision": 2,
+                            "session_revision": 1,
+                            "source_id": "tc0-average-speed",
+                            "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                            "turn_id": "turn_cccd4f4d9834b1de",
+                            "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                          },
+                          "causal_refs": [
+                            "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de"
+                          ],
+                          "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:assistant:turn_cccd4f4d9834b1de",
+                          "help_preview": {
+                            "text": "null",
+                            "truncated": false
+                          },
+                          "kind": "usage_observed",
+                          "move_id": null,
+                          "occurred_at": "now",
+                          "original_ref": {
+                            "book_id": "tc0-average-speed",
+                            "kind": "chat_turn",
+                            "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                            "turn_id": "turn_cccd4f4d9834b1de"
+                          },
+                          "prompt_preview": {
+                            "text": "null",
+                            "truncated": false
+                          },
+                          "response_preview": {
+                            "text": "null",
+                            "truncated": false
+                          },
+                          "target": null,
+                          "usage": {
+                            "kind": "assistant_delivery"
+                          }
+                        },
+                        {
+                          "action": null,
+                          "answer_preview": {
+                            "text": "null",
+                            "truncated": false
+                          },
+                          "assistance_count": 0,
+                          "attempt": null,
+                          "binding": {
+                            "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                            "control_revision": 2,
+                            "session_revision": 1,
+                            "source_id": "tc0-average-speed",
+                            "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                            "turn_id": "turn_cccd4f4d9834b1de",
+                            "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                          },
+                          "causal_refs": [],
+                          "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de",
+                          "help_preview": {
+                            "text": "null",
+                            "truncated": false
+                          },
+                          "kind": "usage_observed",
+                          "move_id": null,
+                          "occurred_at": "1000",
+                          "original_ref": {
+                            "book_id": "tc0-average-speed",
+                            "kind": "chat_turn",
+                            "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                            "turn_id": "turn_cccd4f4d9834b1de"
+                          },
+                          "prompt_preview": {
+                            "text": "null",
+                            "truncated": false
+                          },
+                          "response_preview": {
+                            "text": "Explain average speed",
+                            "truncated": false
+                          },
+                          "target": null,
+                          "usage": {
+                            "kind": "user_message"
+                          }
+                        }
+                      ],
+                      "session_focus": {
+                        "capability_targets": [],
+                        "interpretation": "",
+                        "target_object_refs": []
+                      },
+                      "stale": false,
+                      "uninterpreted_fact_refs": [
+                        "delivery:turn_cccd4f4d9834b1de:explain",
+                        "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:assistant:turn_cccd4f4d9834b1de",
+                        "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de"
+                      ],
+                      "unknown_when_absent": true,
+                      "user_intent": "Explain average speed"
+                    },
+                    "limitations": [],
+                    "object_count": 0,
+                    "objects": [],
+                    "recent_facts": [
+                      {
+                        "action": null,
+                        "answer_preview": {
+                          "text": "null",
+                          "truncated": false
+                        },
+                        "assistance_count": 0,
+                        "attempt": null,
+                        "binding": {
+                          "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                          "control_revision": 2,
+                          "session_revision": 1,
+                          "source_id": "tc0-average-speed",
+                          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                          "turn_id": "turn_cccd4e4d9834b02b",
+                          "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                        },
+                        "causal_refs": [],
+                        "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4e4d9834b02b",
+                        "help_preview": {
+                          "text": "null",
+                          "truncated": false
+                        },
+                        "kind": "usage_observed",
+                        "move_id": null,
+                        "occurred_at": "1001",
+                        "original_ref": {
+                          "book_id": "tc0-average-speed",
+                          "kind": "chat_turn",
+                          "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                          "turn_id": "turn_cccd4e4d9834b02b"
+                        },
+                        "prompt_preview": {
+                          "text": "null",
+                          "truncated": false
+                        },
+                        "response_preview": {
+                          "text": "",
+                          "truncated": false
+                        },
+                        "target": null,
+                        "usage": {
+                          "kind": "reading_action"
+                        }
+                      },
+                      {
+                        "action": null,
+                        "answer_preview": {
+                          "text": "Compare total distance and total time.",
+                          "truncated": false
+                        },
+                        "assistance_count": 0,
+                        "attempt": null,
+                        "binding": {
+                          "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                          "control_revision": 2,
+                          "session_revision": 1,
+                          "source_id": "tc0-average-speed",
+                          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                          "turn_id": "turn_cccd4f4d9834b1de",
+                          "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                        },
+                        "causal_refs": [
+                          "move:turn_cccd4f4d9834b1de:explain"
+                        ],
+                        "event_id": "delivery:turn_cccd4f4d9834b1de:explain",
+                        "help_preview": {
+                          "text": "null",
+                          "truncated": false
+                        },
+                        "kind": "message_delivered",
+                        "move_id": "explain",
+                        "occurred_at": "now",
+                        "original_ref": null,
+                        "prompt_preview": {
+                          "text": "Use total distance divided by total time.",
+                          "truncated": false
+                        },
+                        "response_preview": {
+                          "text": "null",
+                          "truncated": false
+                        },
+                        "target": {
+                          "capability": "explanation",
+                          "expected_performance": "Explain the denominator",
+                          "learning_focus": "average speed",
+                          "object_refs": [],
+                          "source_bindings": [
+                            {
+                              "end_lid": "1.1",
+                              "source_id": "tc0-average-speed",
+                              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                              "start_lid": "1.1"
+                            }
+                          ]
+                        },
+                        "usage": null
+                      },
+                      {
+                        "action": null,
+                        "answer_preview": {
+                          "text": "Compare total distance and total time.",
+                          "truncated": false
+                        },
+                        "assistance_count": 0,
+                        "attempt": null,
+                        "binding": {
+                          "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                          "control_revision": 2,
+                          "session_revision": 1,
+                          "source_id": "tc0-average-speed",
+                          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                          "turn_id": "turn_cccd4f4d9834b1de",
+                          "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                        },
+                        "causal_refs": [
+                          "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de"
+                        ],
+                        "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:assistant:turn_cccd4f4d9834b1de",
+                        "help_preview": {
+                          "text": "null",
+                          "truncated": false
+                        },
+                        "kind": "usage_observed",
+                        "move_id": null,
+                        "occurred_at": "now",
+                        "original_ref": {
+                          "book_id": "tc0-average-speed",
+                          "kind": "chat_turn",
+                          "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                          "turn_id": "turn_cccd4f4d9834b1de"
+                        },
+                        "prompt_preview": {
+                          "text": "null",
+                          "truncated": false
+                        },
+                        "response_preview": {
+                          "text": "null",
+                          "truncated": false
+                        },
+                        "target": null,
+                        "usage": {
+                          "kind": "assistant_delivery"
+                        }
+                      },
+                      {
+                        "action": null,
+                        "answer_preview": {
+                          "text": "null",
+                          "truncated": false
+                        },
+                        "assistance_count": 0,
+                        "attempt": null,
+                        "binding": {
+                          "chat_session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                          "control_revision": 2,
+                          "session_revision": 1,
+                          "source_id": "tc0-average-speed",
+                          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                          "turn_id": "turn_cccd4f4d9834b1de",
+                          "tutor_session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+                        },
+                        "causal_refs": [],
+                        "event_id": "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4f4d9834b1de",
+                        "help_preview": {
+                          "text": "null",
+                          "truncated": false
+                        },
+                        "kind": "usage_observed",
+                        "move_id": null,
+                        "occurred_at": "1000",
+                        "original_ref": {
+                          "book_id": "tc0-average-speed",
+                          "kind": "chat_turn",
+                          "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+                          "turn_id": "turn_cccd4f4d9834b1de"
+                        },
+                        "prompt_preview": {
+                          "text": "null",
+                          "truncated": false
+                        },
+                        "response_preview": {
+                          "text": "Explain average speed",
+                          "truncated": false
+                        },
+                        "target": null,
+                        "usage": {
+                          "kind": "user_message"
+                        }
+                      }
+                    ],
+                    "status": "active",
+                    "teaching_assets": {
+                      "cognitive_materials": {
+                        "status": "missing"
+                      },
+                      "formal_objects": {
+                        "status": "missing"
+                      },
+                      "limitations": [],
+                      "reason": "正式教学素材尚未发布",
+                      "source_id": "tc0-average-speed",
+                      "status": "preparing",
+                      "teaching_map_revision": null
+                    },
+                    "user_intent": "Explain average speed"
+                  }
+                }
+              ]
+            },
+            "scene": {
+              "anchor_lid": "1.1",
+              "generation": 1,
+              "selection": null,
+              "workspace_id": "local"
+            },
+            "teaching": [
+              {
+                "receipt_ids": [
+                  "chosen:turn_cccd4e4d9834b02b",
+                  "assets:turn_cccd4e4d9834b02b",
+                  "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:user:turn_cccd4e4d9834b02b",
+                  "binding:turn_cccd4e4d9834b02b"
+                ],
+                "revision": 1,
+                "session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+              },
+              {
+                "receipt_ids": [
+                  "move:turn_cccd4e4d9834b02b:chosen-comparison"
+                ],
+                "revision": 1,
+                "session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+              },
+              {
+                "receipt_ids": [
+                  "usage:tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4:assistant:turn_cccd4e4d9834b02b",
+                  "delivery:turn_cccd4e4d9834b02b:chosen-comparison"
+                ],
+                "revision": 1,
+                "session_id": "tutor-first-question:chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4"
+              }
+            ]
+          },
+          "effect_labels": [],
+          "goal_ref": {
+            "id": "goal_turn_cccd4e4d9834b02b",
+            "revision": 2
+          },
+          "outcome": {
+            "answer": "Equal distances need not take equal times. Compare the journeys using total distance divided by total time.",
+            "answer_view": {
+              "parts": [
+                {
+                  "kind": "markdown",
+                  "text": "Equal distances need not take equal times. Compare the journeys using total distance divided by total time."
+                }
+              ],
+              "sources": []
+            },
+            "effects": [],
+            "incomplete": false,
+            "memory_updates": [],
+            "profile_usage": {
+              "claimed_used_fact_ids": [],
+              "influences": [],
+              "injected_fact_ids": [],
+              "snapshot_revision": 0
+            },
+            "tokens_spent": 3,
+            "trace": [
+              {
+                "args": "{\"end_lid\":\"1.1\",\"lid\":\"1.1\"}",
+                "model_tool_loop": 1,
+                "result_digest": "{\"lid\":\"1.1\",\"text\":\"# Average speed\\n\\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+                "tool": "book.text"
+              },
+              {
+                "args": "{\"move\":{\"kind\":\"compare\",\"move_id\":\"chosen-comparison\",\"object_ids\":[],\"prompt\":\"Compare equal-distance journeys using total distance and total time.\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"Explain the denominator\",\"learning_focus\":\"average speed\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"source_id\":\"tc0-average-speed\",\"source_revision\":\"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+                "model_tool_loop": 2,
+                "result_digest": "{\"instruction\":\"Deliver this move in the final answer. Saved candidate is not displayed.\",\"selected\":\"move:turn_cccd4e4d9834b02b:chosen-comparison\"}",
+                "tool": "tutor.step"
+              }
+            ],
+            "turns": 3
+          },
+          "presentation_follow_up": {
+            "reference": {
+              "presentation_id": "presentation-1791727433519441100-4",
+              "revision": 1
+            },
+            "saved_state_ref": "state-1791727436616955700-7",
+            "session_id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+            "state_revision": 2,
+            "turn_id": "turn_cccd4f4d9834b1de"
+          },
+          "published_book_ref": null,
+          "question_quote": null,
+          "question_source_label": null,
+          "run_summary": {
+            "activities": [
+              {
+                "accepted_evidence_count": null,
+                "duration_ms": 2.574600000000032,
+                "error_code": null,
+                "evidence_refs": [],
+                "kind": "model",
+                "label": "生成回答",
+                "model_first_text_ms": null,
+                "model_name": "unknown-model",
+                "model_name_source": "configured",
+                "name": "outer",
+                "parent_step_id": null,
+                "result_count": null,
+                "started_ms": 248.08849999999998,
+                "status": "succeeded",
+                "step_id": 1,
+                "usage": {
+                  "cache_creation_input_tokens": null,
+                  "cached_input_tokens": null,
+                  "input_tokens": null,
+                  "output_tokens": null,
+                  "total_tokens": 1
+                },
+                "usage_total_tokens": 1
+              },
+              {
+                "accepted_evidence_count": null,
+                "duration_ms": 12.203299999999956,
+                "error_code": null,
+                "evidence_refs": [],
+                "kind": "tool",
+                "label": "读取原文",
+                "model_first_text_ms": null,
+                "model_name": null,
+                "model_name_source": null,
+                "name": "book.text",
+                "parent_step_id": null,
+                "result_count": null,
+                "started_ms": 281.6014,
+                "status": "succeeded",
+                "step_id": 2,
+                "usage": null,
+                "usage_total_tokens": null
+              },
+              {
+                "accepted_evidence_count": null,
+                "duration_ms": 2.2298999999999864,
+                "error_code": null,
+                "evidence_refs": [],
+                "kind": "model",
+                "label": "生成回答",
+                "model_first_text_ms": null,
+                "model_name": "unknown-model",
+                "model_name_source": "configured",
+                "name": "outer",
+                "parent_step_id": null,
+                "result_count": null,
+                "started_ms": 384.8657,
+                "status": "succeeded",
+                "step_id": 3,
+                "usage": {
+                  "cache_creation_input_tokens": null,
+                  "cached_input_tokens": null,
+                  "input_tokens": null,
+                  "output_tokens": null,
+                  "total_tokens": 1
+                },
+                "usage_total_tokens": 1
+              },
+              {
+                "accepted_evidence_count": null,
+                "duration_ms": 71.2054,
+                "error_code": null,
+                "evidence_refs": [],
+                "kind": "tool",
+                "label": "选择教学动作",
+                "model_first_text_ms": null,
+                "model_name": null,
+                "model_name_source": null,
+                "name": "tutor.step",
+                "parent_step_id": null,
+                "result_count": null,
+                "started_ms": 414.1886,
+                "status": "succeeded",
+                "step_id": 4,
+                "usage": null,
+                "usage_total_tokens": null
+              },
+              {
+                "accepted_evidence_count": null,
+                "duration_ms": 2.960499999999911,
+                "error_code": null,
+                "evidence_refs": [],
+                "kind": "model",
+                "label": "生成回答",
+                "model_first_text_ms": null,
+                "model_name": "unknown-model",
+                "model_name_source": "configured",
+                "name": "outer",
+                "parent_step_id": null,
+                "result_count": null,
+                "started_ms": 628.1322,
+                "status": "succeeded",
+                "step_id": 5,
+                "usage": {
+                  "cache_creation_input_tokens": null,
+                  "cached_input_tokens": null,
+                  "input_tokens": null,
+                  "output_tokens": null,
+                  "total_tokens": 1
+                },
+                "usage_total_tokens": 1
+              }
+            ],
+            "effects": [],
+            "last_seq": 16,
+            "trace": [
+              {
+                "args": "{\"end_lid\":\"1.1\",\"lid\":\"1.1\"}",
+                "model_tool_loop": 1,
+                "result_digest": "{\"lid\":\"1.1\",\"text\":\"# Average speed\\n\\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+                "tool": "book.text"
+              },
+              {
+                "args": "{\"move\":{\"kind\":\"compare\",\"move_id\":\"chosen-comparison\",\"object_ids\":[],\"prompt\":\"Compare equal-distance journeys using total distance and total time.\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"Explain the denominator\",\"learning_focus\":\"average speed\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"source_id\":\"tc0-average-speed\",\"source_revision\":\"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+                "model_tool_loop": 2,
+                "result_digest": "{\"instruction\":\"Deliver this move in the final answer. Saved candidate is not displayed.\",\"selected\":\"move:turn_cccd4e4d9834b02b:chosen-comparison\"}",
+                "tool": "tutor.step"
+              }
+            ]
+          },
+          "status": "completed",
+          "teaching_ref": null,
+          "turn_id": "turn_cccd4e4d9834b02b",
+          "user": "选择：Compare two equal-distance journeys",
+          "user_turn_ordinal": 2
+        }
+      ],
+      "updated_at": "1001"
+    },
+    "sessions": [
+      {
+        "created_at": "1000",
+        "id": "chat-01a12b46-f5d9-7e30-ab96-48750ec9fad4",
+        "title": "Explain average speed",
+        "turn_count": 2,
+        "turns": [
+          {
+            "question_quote": {
+              "label": "正文 · Average speed",
+              "quote": "Average speed is total distance divided by total time.",
+              "status": "resolved"
+            },
+            "question_source_label": "正文 · Average speed",
+            "user": "Explain average speed"
+          },
+          {
+            "question_quote": null,
+            "question_source_label": null,
+            "user": "选择：Compare two equal-distance journeys"
+          }
+        ],
+        "updated_at": "1001"
+      }
+    ]
+  },
+  "provider_calls": 3
+}

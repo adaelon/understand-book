@@ -1,0 +1,30 @@
+{
+  "version": "tb3.borrowing.v1",
+  "reader_origin": "Authored follow-up fixtures to actual TB2 model deliveries; no human reader observations.",
+  "cases": [
+    {
+      "id": "cannot-start",
+      "prior": "prerequisite-repair/starting-assignment",
+      "response": "我还是不知道从哪里开始判断。我能认出赋值左右两边，但把谁拥有值和后面能不能打印连不起来。先示范一个更小的步骤，再留一步让我做。",
+      "reopen_request": "接着上次的借用问题往下走，还是给我留一步自己判断。"
+    },
+    {
+      "id": "missing-reason",
+      "prior": "after/starting-ownership",
+      "response": "我选第一条 println 不能编译，但我是看你刚才的问题猜的。我说不出 bar 的类型，也解释不了所有权到底在哪。请帮我接上理由，再让我自己说。",
+      "reopen_request": "继续上次那一步，让我试着把理由说完整。"
+    },
+    {
+      "id": "support-mismatch",
+      "prior": "after/misconception-copy",
+      "response": "我已经不认为有两份 Foo 了。我看不懂箭头图，不是还在坚持复制；我能按代码逐行读，也会看变量和类型的对照。请换成这种方式，让我自己解释两个打印。",
+      "reopen_request": "接着上次，用我能跟上的方式让我解释这个例子。"
+    },
+    {
+      "id": "independent-step",
+      "prior": "after/direct-explanation",
+      "response": "我自己把名字改成了 a 和 b：let a = Foo(7); let b = &a;。a 的类型是 Foo，拥有那个值，b 是 &Foo，只提供共享访问，没有复制 Foo。若改成 let b = a，原例 Foo 没有 Copy，会移动到 b，随后打印 a 会报错，打印 b 可以。我又想了一步：如果给 Foo 实现 Copy，直接赋值后两者仍可打印。所以关键条件是 Copy，不是名字。我想自己选方法判断一个改变的条件，请少给提示。",
+      "reopen_request": "继续上次的借用学习，让我自己选方法判断一个改变的条件，先别给提示或答案。"
+    }
+  ]
+}

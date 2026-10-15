@@ -1,0 +1,54 @@
+{
+  "evidence": {
+    "operation": "evidence",
+    "nature": "hypothesis",
+    "operation_id": "cannot-start-smaller-link",
+    "target": {
+      "capability": "explanation",
+      "expected_performance": "借助一个已示范的非 Copy 赋值与打印例子，判断原文去掉 & 后第一条打印能否读取 foo，并用拥有关系说明理由。",
+      "learning_focus": "把非 Copy 值的拥有关系变化连接到后续读取是否允许",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "start_lid": "1.1",
+          "end_lid": "1.1"
+        }
+      ]
+    },
+    "fact_refs": [
+      "usage:tutor-begin-1:user:turn_ec4483ec1c26a847",
+      "delivery:turn_ec4484ec1c26a9fa:borrowing-prerequisite-repair"
+    ],
+    "interpretation": "在已收到所有权、共享引用、非 Copy 赋值规则和 Parcel 例子后，学习者说“我能认出赋值左右两边，但把谁拥有值和后面能不能打印连不起来”，并表示仍无法开始。这是对当前困难与起点的自述，尚未提供具体赋值或打印判断，不能视为已掌握赋值识别或所有权规则，也不能推断更广泛能力。",
+    "teaching_implication": "不重复整段借用讲解；用另一个明确非 Copy 的值示范拥有关系变化如何决定一次打印是否能读取，随后只留下原文去掉 & 后第一条打印的同一连接，由学习者补一句理由。"
+  },
+  "select": {
+    "operation": "select",
+    "move": {
+      "move_id": "smaller-ownership-to-read",
+      "kind": "explain",
+      "capability": "explanation",
+      "interaction_intent": "guided_inquiry",
+      "intent_origin": "current_request",
+      "intent_quote": "我还是不知道从哪里开始判断。我能认出赋值左右两边，但把谁拥有值和后面能不能打印连不起来。先示范一个更小的步骤，再留一步让我做。",
+      "interpretation_refs": [
+        "interpretation:cannot-start-smaller-link"
+      ],
+      "object_ids": [],
+      "target": {
+        "capability": "explanation",
+        "expected_performance": "借助一个已示范的非 Copy 赋值与打印例子，判断原文去掉 & 后第一条打印能否读取 foo，并用拥有关系说明理由。",
+        "learning_focus": "把非 Copy 值的拥有关系变化连接到后续读取是否允许",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "start_lid": "1.1",
+            "end_lid": "1.1"
+          }
+        ]
+      },
+      "prompt": "从学习者认得赋值左右两边的自述起步，短接原文共享借用，再示范非 Copy 的 Parcel 直接赋值如何使原变量无法用于打印；明确 println 借用仍需合法读取这一补充规则。只让学习者补完原文去掉 & 后第一条打印的拥有关系与读取许可句子，暂不要求整个程序判断。"
+    }
+  },
+  "answer": "我们把判断缩成一条连接：**打印需要读取那个变量；先看赋值以后，这个变量还能不能读取值。**\n\n原文的 `&foo` 创建共享引用，`foo` 仍拥有值，`bar` 借来读取；所以原文里的 `foo` 没有因为这次赋值失去读取资格。[[source:source_ref_b7cdf804a5f27a0d]] [[source:source_ref_9af277d1d3d785d4]]\n\n先示范一个小例子。假设 `Parcel` 是能用 `{:?}` 显示、但没有 `Copy` 能力的类型：\n\n```rust\nlet a = Parcel(0);\nlet b = a;\nprintln!(\"{:?}\", a);\n```\n\n这里补充两条 Rust 规则：没有 `Copy` 能力的值直接赋给另一个变量，会转移所有权，原变量不能再读取那个值；`println!` 的这种显示虽然只是借用，也必须先能合法读取变量。\n\n我这样连起来：`let b = a` 把值交给 `b` → `a` 不能再读取值 → 打印要求读取 `a` → 这一条打印不能通过编译。换成打印 `b`，则可以读取，因为 `b` 接到了值。\n\n现在只留同样大小的一步。原文的 `Foo` 只派生了 `Debug`，没有 `Copy` 能力。[[source:source_ref_4c3de5a75d5bc2f7]] 把原文第二行的 `&` 去掉：\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo); // 只判断这一行\n```\n\n请补完一句：**“赋值后值由 ___ 拥有，所以第一条打印中的 `foo` ___（能／不能）读取这个值。”** 先不用判断第二条打印或整个程序。"
+}

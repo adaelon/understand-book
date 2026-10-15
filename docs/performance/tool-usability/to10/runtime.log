@@ -1,0 +1,184 @@
+   Compiling read-tools v0.0.0 (E:\allwork\download\agent\understand-book\crates\read-tools)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling memory v0.0.0 (E:\allwork\download\agent\understand-book\crates\memory)
+   Compiling reader v0.0.0 (E:\allwork\download\agent\understand-book\crates\reader)
+   Compiling runtime v0.0.0 (E:\allwork\download\agent\understand-book\crates\runtime)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized] target(s) in 1m 10s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\runtime-aa2ba5f3b5fb7381.exe)
+
+running 63 tests
+test orchestrator::tests::book_continuation::to10_capture_baseline ... ok
+test orchestrator::tests::book_continuation::to10_native_text_pages_and_exhausted_budget_have_distinct_signals ... ok
+test orchestrator::tests::book_continuation::to10_resident_next_sampling_executes_continuations_and_receipts_only_cover_delivered_text ... ok
+test orchestrator::tests::book_continuation::to10_search_continuations_preserve_request_and_reassemble_ordered_hits ... ok
+test orchestrator::tests::book_continuation::to10_text_reassembles_single_leaf_and_parent_without_skipping_headings_or_gaps ... ok
+test orchestrator::tests::book_handoff::to8_budgeted_concept_calls_keep_their_locator_provenance ... ok
+test orchestrator::tests::book_handoff::to8_capture_candidate_results ... ok
+test orchestrator::tests::book_handoff::to8_resident_copies_delivered_calls_in_the_next_sampling ... ok
+test orchestrator::tests::book_handoff::to8_returned_calls_read_canonical_ranges_without_promoting_candidates ... ok
+test orchestrator::tests::book_handoff::to9_context_selection_coverage_survives_resident_delivery ... ok
+test orchestrator::tests::locator_ledger_batch_results_are_visible_only_to_the_next_sampling ... ok
+test orchestrator::tests::locator_ledger_concept_results_authorize_only_returned_locations ... ok
+test orchestrator::tests::locator_ledger_does_not_promote_locator_only_to_turn_evidence ... ok
+test orchestrator::tests::locator_ledger_records_eight_origins_and_ignores_uncontracted_fields ... ok
+test orchestrator::tests::source_presentation_accepts_search_as_a_literal_occurrence_claim ... ok
+test orchestrator::tests::source_presentation_bound_suffix_formats_compile_without_repair ... ok
+test orchestrator::tests::source_presentation_compiler_accepts_plain_answer_without_sources ... ok
+test orchestrator::tests::source_presentation_compiler_emits_typed_parts_merges_adjacent_refs_and_prunes_unused ... ok
+test orchestrator::tests::source_presentation_compiler_rejects_unknown_bad_and_raw_lid_output ... ok
+test orchestrator::tests::source_presentation_formula_boundary_whitespace_preserves_canonical_ranges ... ok
+test orchestrator::tests::source_presentation_formula_matching_prefers_exact_and_preserves_ambiguity ... ok
+test orchestrator::tests::source_presentation_formula_recovers_cq5_block_quote ... ok
+test orchestrator::tests::source_presentation_invalid_answer_repairs_once_without_persisting_invalid_text ... ok
+test orchestrator::tests::source_presentation_is_optional_and_has_zero_binding_overhead ... ok
+test orchestrator::tests::source_presentation_native_and_react_share_the_same_binding_gate ... ok
+test orchestrator::tests::source_presentation_observes_filtered_query_and_synthesize_citations ... ok
+test orchestrator::tests::source_presentation_quote_ambiguity_recovers_by_extending_text ... ok
+test orchestrator::tests::source_presentation_quote_copy_can_recover_without_rereading ... ok
+test orchestrator::tests::source_presentation_quote_is_not_shrunk_by_earlier_search_hit ... ok
+test orchestrator::tests::source_presentation_quote_preserves_utf16_formula_and_inter_leaf_newlines ... ok
+test orchestrator::tests::source_presentation_quote_requires_full_observation ... ok
+test orchestrator::tests::source_presentation_real_book_quote_locates_the_discussed_multi_lid_passage ... ok
+test orchestrator::tests::source_presentation_rejects_combining_non_contiguous_observations ... ok
+test orchestrator::tests::source_presentation_rejects_context_route_state_error_and_unobserved_lid ... ok
+test orchestrator::tests::source_presentation_rejects_empty_quote_and_lid_arguments ... ok
+test orchestrator::tests::source_presentation_repeated_quote_requires_disambiguation_even_in_one_read ... ok
+test orchestrator::tests::source_presentation_second_invalid_answer_fails_closed_after_one_repair ... ok
+test orchestrator::tests::source_presentation_text_observation_creates_internal_binding ... ok
+test orchestrator::tests::source_presentation_tool_spec_exposes_only_required_quote ... ok
+test orchestrator::tests::source_presentation_verified_selection_seed_is_presentable ... ok
+test orchestrator::tests::tool_result_projection_keeps_raw_trace_but_does_not_admit_omitted_text_as_evidence ... ok
+test tool_exposure::tests::tool_exposure_source_presentation_is_direct_only_with_turn_evidence ... ok
+test tool_registry::contract_tests::advertised_example_validation_detects_projection_and_parser_drift ... ok
+test tool_registry::contract_tests::advertised_examples_survive_provider_projection_and_real_validation ... ok
+test tool_registry::contract_tests::artifact_read_exposes_pointer_and_cursor_rules ... ok
+test tool_registry::contract_tests::author_operations_require_complete_inputs ... ok
+test tool_registry::contract_tests::book_common_semantics_and_routing_guidance_reach_the_resident_surface ... ok
+test tool_registry::contract_tests::book_comparison_schema_requires_separate_targets ... ok
+test tool_registry::contract_tests::goal_operations_never_silently_discard_plan_fields ... ok
+test tool_registry::contract_tests::mcp_guide_schema_has_conditional_requirements ... ok
+test tool_registry::contract_tests::note_is_only_exposed_through_reader_note ... ok
+test tool_registry::contract_tests::optional_nulls_match_serde_without_weakening_required_fields ... ok
+test tool_registry::contract_tests::reader_commands_expose_nested_required_fields ... ok
+test tool_registry::contract_tests::search_schemas_expose_existing_length_limits ... ok
+test tool_registry::contract_tests::tutor_examples_follow_final_state_schema_and_provider_requests ... ok
+test tool_registry::contract_tests::tutor_operations_require_their_payloads ... ok
+test tool_registry::contract_tests::tutor_tc2a_misuse_and_help_have_valid_example_counterparts ... ok
+test tool_result::tests::tool_result_projection_active_fresh_bodies_share_one_turn_budget ... ok
+test tool_result::tests::tool_result_projection_fresh_body_is_retained_until_budget_pressure_then_receipt_only ... ok
+test tool_result::tests::tool_result_projection_native_search_cursor_is_not_context_truncation ... ok
+test tool_result::tests::tool_result_projection_query_paper_profile_and_error_are_explicitly_bounded ... ok
+test tool_result::tests::tool_result_projection_search_keeps_valid_json_and_marks_context_truncation ... ok
+test tool_result::tests::tool_result_projection_text_is_bounded_at_lid_boundaries_and_continuable ... ok
+
+test result: ok. 63 passed; 0 failed; 0 ignored; 0 measured; 474 filtered out; finished in 4.03s
+

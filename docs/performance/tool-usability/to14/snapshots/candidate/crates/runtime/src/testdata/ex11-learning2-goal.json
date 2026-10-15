@@ -1,0 +1,29 @@
+{
+  "id": "goal_turn_fd2b35ff3d8e884e",
+  "revision": 1,
+  "origin_turn_id": "turn_fd2b35ff3d8e884e",
+  "related_goal_id": null,
+  "user_message_refs": [
+    "turn_fd2b35ff3d8e884e"
+  ],
+  "interpretation": "学习率大一点，为什么会来回跳，甚至越来越远？我想自己拖动学习率，马上看见每一步会走到哪里，也能播放、暂停和回到前一步。这里的简化材料是 L(w)=(w-2)^2，更新规则 w_{t+1}=w_t-2η(w_t-2)，初值 w_0=0；只在这个一维模型内解释。请制作并交付可以操作的解释，把同侧接近、交替接近、发散放在可直接比较的关系里。",
+  "requirements": [
+    {
+      "id": "turn_fd2b35ff3d8e884e:content",
+      "description": "学习率大一点，为什么会来回跳，甚至越来越远？我想自己拖动学习率，马上看见每一步会走到哪里，也能播放、暂停和回到前一步。这里的简化材料是 L(w)=(w-2)^2，更新规则 w_{t+1}=w_t-2η(w_t-2)，初值 w_0=0；只在这个一维模型内解释。请制作并交付可以操作的解释，把同侧接近、交替接近、发散放在可直接比较的关系里。",
+      "basis_turn_id": "turn_fd2b35ff3d8e884e",
+      "verification": "content"
+    }
+  ],
+  "working": {
+    "focus": "",
+    "open_questions": [],
+    "next_move": ""
+  },
+  "result_refs": [
+    "{\"presentation_id\":\"presentation-1790613051687961300-2\",\"revision\":1}",
+    "answer:turn_fd2b35ff3d8e884e"
+  ],
+  "status": "open",
+  "last_stop_reason": "TURN_LIMIT_EXCEEDED"
+}

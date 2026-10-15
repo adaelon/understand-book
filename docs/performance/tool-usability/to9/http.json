@@ -1,0 +1,387 @@
+{
+  "charged_calls": 3,
+  "samples": [
+    {
+      "input": {
+        "granularity": "far",
+        "k": 0,
+        "lid": "1.1",
+        "published_book_ref": {
+          "book_id": "tool-example-book",
+          "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+        }
+      },
+      "result": {
+        "complete": true,
+        "data": {
+          "anchor": "1.1",
+          "items": [],
+          "returned_count": 0,
+          "total_candidates": 2,
+          "truncated": true
+        },
+        "data_path": "",
+        "next_calls": [],
+        "published_book_ref": {
+          "book_id": "tool-example-book",
+          "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+        },
+        "sources": [
+          {
+            "end_lid": "1.1",
+            "published_book_ref": {
+              "book_id": "tool-example-book",
+              "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+            },
+            "source_range": {
+              "end": 70,
+              "start": 0
+            },
+            "source_url": "https://reader.example/?book_id=tool-example-book&publication_id=01a12e56-390d-7003-b0dd-733f0fd292a3&start_lid=1.1&end_lid=1.1&start_utf16=0&end_utf16=70",
+            "start_lid": "1.1"
+          }
+        ],
+        "total_items": null,
+        "usage": {
+          "call_packs": [],
+          "charged_from": {
+            "kind": "free_month",
+            "month_hk": "2026-10"
+          },
+          "charged_units": 1,
+          "free_granted": 1000,
+          "free_remaining": 999,
+          "free_resets_at": "2026-11-01T00:00:00+08:00",
+          "free_used": 1,
+          "month_hk": "2026-10",
+          "paid_next_expires_at": null,
+          "paid_remaining": 0,
+          "top_up_instruction": "Ask the user to contact the beta administrator: CNY 10 buys 1,000 calls valid for 12 calendar months after activation. Free credits are used first; purchased credits carry across months until expiry. Buying calls does not grant material access.",
+          "top_up_url": "https://reader.example/?account=mcp"
+        }
+      }
+    },
+    {
+      "input": {
+        "granularity": "far",
+        "k": 1,
+        "lid": "1.1",
+        "published_book_ref": {
+          "book_id": "tool-example-book",
+          "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+        }
+      },
+      "result": {
+        "complete": true,
+        "data": {
+          "anchor": "1.1",
+          "items": [
+            {
+              "layer": "near",
+              "lid": "1",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1",
+                    "published_book_ref": {
+                      "book_id": "tool-example-book",
+                      "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "parent"
+              }
+            }
+          ],
+          "returned_count": 1,
+          "total_candidates": 2,
+          "truncated": true
+        },
+        "data_path": "",
+        "next_calls": [],
+        "published_book_ref": {
+          "book_id": "tool-example-book",
+          "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+        },
+        "sources": [
+          {
+            "end_lid": "1",
+            "published_book_ref": {
+              "book_id": "tool-example-book",
+              "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+            },
+            "source_range": {
+              "end": 184,
+              "start": 0
+            },
+            "source_url": "https://reader.example/?book_id=tool-example-book&publication_id=01a12e56-390d-7003-b0dd-733f0fd292a3&start_lid=1&end_lid=1&start_utf16=0&end_utf16=184",
+            "start_lid": "1"
+          },
+          {
+            "end_lid": "1.1",
+            "published_book_ref": {
+              "book_id": "tool-example-book",
+              "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+            },
+            "source_range": {
+              "end": 70,
+              "start": 0
+            },
+            "source_url": "https://reader.example/?book_id=tool-example-book&publication_id=01a12e56-390d-7003-b0dd-733f0fd292a3&start_lid=1.1&end_lid=1.1&start_utf16=0&end_utf16=70",
+            "start_lid": "1.1"
+          }
+        ],
+        "total_items": null,
+        "usage": {
+          "call_packs": [],
+          "charged_from": {
+            "kind": "free_month",
+            "month_hk": "2026-10"
+          },
+          "charged_units": 1,
+          "free_granted": 1000,
+          "free_remaining": 998,
+          "free_resets_at": "2026-11-01T00:00:00+08:00",
+          "free_used": 2,
+          "month_hk": "2026-10",
+          "paid_next_expires_at": null,
+          "paid_remaining": 0,
+          "top_up_instruction": "Ask the user to contact the beta administrator: CNY 10 buys 1,000 calls valid for 12 calendar months after activation. Free credits are used first; purchased credits carry across months until expiry. Buying calls does not grant material access.",
+          "top_up_url": "https://reader.example/?account=mcp"
+        }
+      }
+    },
+    {
+      "input": {
+        "granularity": "far",
+        "k": 2,
+        "lid": "1.1",
+        "published_book_ref": {
+          "book_id": "tool-example-book",
+          "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+        }
+      },
+      "result": {
+        "complete": true,
+        "data": {
+          "anchor": "1.1",
+          "items": [
+            {
+              "layer": "near",
+              "lid": "1",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1",
+                    "published_book_ref": {
+                      "book_id": "tool-example-book",
+                      "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "parent"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.2",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.2",
+                    "published_book_ref": {
+                      "book_id": "tool-example-book",
+                      "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "next_sibling"
+              }
+            }
+          ],
+          "returned_count": 2,
+          "total_candidates": 2,
+          "truncated": false
+        },
+        "data_path": "",
+        "next_calls": [],
+        "published_book_ref": {
+          "book_id": "tool-example-book",
+          "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+        },
+        "sources": [
+          {
+            "end_lid": "1",
+            "published_book_ref": {
+              "book_id": "tool-example-book",
+              "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+            },
+            "source_range": {
+              "end": 184,
+              "start": 0
+            },
+            "source_url": "https://reader.example/?book_id=tool-example-book&publication_id=01a12e56-390d-7003-b0dd-733f0fd292a3&start_lid=1&end_lid=1&start_utf16=0&end_utf16=184",
+            "start_lid": "1"
+          },
+          {
+            "end_lid": "1.1",
+            "published_book_ref": {
+              "book_id": "tool-example-book",
+              "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+            },
+            "source_range": {
+              "end": 70,
+              "start": 0
+            },
+            "source_url": "https://reader.example/?book_id=tool-example-book&publication_id=01a12e56-390d-7003-b0dd-733f0fd292a3&start_lid=1.1&end_lid=1.1&start_utf16=0&end_utf16=70",
+            "start_lid": "1.1"
+          },
+          {
+            "end_lid": "1.2",
+            "published_book_ref": {
+              "book_id": "tool-example-book",
+              "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+            },
+            "source_range": {
+              "end": 130,
+              "start": 70
+            },
+            "source_url": "https://reader.example/?book_id=tool-example-book&publication_id=01a12e56-390d-7003-b0dd-733f0fd292a3&start_lid=1.2&end_lid=1.2&start_utf16=70&end_utf16=130",
+            "start_lid": "1.2"
+          }
+        ],
+        "total_items": null,
+        "usage": {
+          "call_packs": [],
+          "charged_from": {
+            "kind": "free_month",
+            "month_hk": "2026-10"
+          },
+          "charged_units": 1,
+          "free_granted": 1000,
+          "free_remaining": 997,
+          "free_resets_at": "2026-11-01T00:00:00+08:00",
+          "free_used": 3,
+          "month_hk": "2026-10",
+          "paid_next_expires_at": null,
+          "paid_remaining": 0,
+          "top_up_instruction": "Ask the user to contact the beta administrator: CNY 10 buys 1,000 calls valid for 12 calendar months after activation. Free credits are used first; purchased credits carry across months until expiry. Buying calls does not grant material access.",
+          "top_up_url": "https://reader.example/?account=mcp"
+        }
+      }
+    }
+  ],
+  "tool": {
+    "description": "Return context pointers for a LID: near adds tree adjacency and local edges, mid adds other concept or entity occurrences, and far adds long-range edges. Counts cover only known rule-recalled pointers, not all semantic relations; built structure availability is reported by book_structure. Pointers contain no source text; use book_text to read it. Use when: Expand around a verified LID through deterministic context links. Do not treat pointers as source text.  Returns a built projection in data, not a generated answer. Collections are paged: data_path identifies a continuation's collection in the original projection and total_items its size. next_calls may include multiple collection branches and search batches. Concept matched_count/truncated still describe bounded candidate recall. Read chosen evidence LIDs with book_text. Missing built capability returns material_unavailable. Copy published_book_ref from book_list and check its available_tools. Costs 1 call on success, including empty results, each continuation page and repeated successful requests; failures cost 0. complete=false means more pages exist; copy needed next_calls name and arguments unchanged. sources gives published_book_ref, start_lid/end_lid, source_range and source_url: cite only evidence actually read, retaining its version and exact range. An empty sources array provides no source citation. usage is the server's post-call balance with charged_units and charged_from; do not infer balance locally. On quota_exhausted stop content retries and report usage.free_resets_at plus top_up_url or top_up_instruction; book_list and mcp_usage remain free.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "examples": [
+        {
+          "granularity": "near",
+          "k": 3,
+          "lid": "1.2",
+          "published_book_ref": {
+            "book_id": "tool-example-book",
+            "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+          }
+        }
+      ],
+      "properties": {
+        "granularity": {
+          "anyOf": [
+            {
+              "enum": [
+                "near",
+                "mid",
+                "far"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "near",
+          "description": "Context reach: near includes tree adjacency and local relations; mid adds other concept/entity occurrences; far also adds long-range relations. Omit or null for near."
+        },
+        "k": {
+          "default": 10,
+          "description": "Maximum number of context pointers returned across all layers. Omit or null for 10; zero returns no items. total_candidates counts deduplicated pointers before k; returned_count and truncated describe selection by k before pagination or output budgeting. Counts pointers, not distinct LIDs, characters or source passages.",
+          "format": "uint",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "lid": {
+          "description": "Known LID in this book to expand around. Returned items are context pointers; read their LIDs through the source-text tool for evidence.",
+          "type": "string"
+        },
+        "page": {
+          "additionalProperties": false,
+          "description": "Copy a continuation from next_calls to read an omitted collection. data_path identifies its position in the full projection.",
+          "properties": {
+            "limit": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "default": 0,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "published_book_ref": {
+          "additionalProperties": false,
+          "description": "Copy the exact immutable publication reference from book_list; keep both identifiers on every content call and continuation.",
+          "properties": {
+            "book_id": {
+              "description": "Material identifier returned by book_list.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "publication_id": {
+              "description": "Exact publication version returned by book_list.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "book_id",
+            "publication_id"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "lid",
+        "published_book_ref"
+      ],
+      "type": "object"
+    },
+    "name": "book_context"
+  }
+}

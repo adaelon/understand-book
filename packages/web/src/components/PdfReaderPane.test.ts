@@ -25,7 +25,7 @@ const pdfMocks = vi.hoisted(() => {
       items: [{ str: "Visible only through selection", transform: [1, 0, 0, 12, 20, 760], width: 150 }],
     })),
   };
-  const pdfDocument = { getPage: vi.fn(async () => page), destroy: vi.fn(async () => undefined) };
+  const pdfDocument = { getPage: vi.fn(async (_number?: number) => page), destroy: vi.fn(async () => undefined) };
   const task = () => ({ promise: Promise.resolve(pdfDocument), destroy: vi.fn(async () => undefined) });
   const textLayerRender = vi.fn();
   const textLayerCancel = vi.fn();
@@ -130,6 +130,67 @@ function annotation(memId: string, type: "highlight" | "note", lid = "1.1"): Mem
 }
 
 describe("PdfReaderPane", () => {
+  it('loads only the visible page and its next neighbour, then cancels background painting on a jump', async () => {
+    const original = await pdfMocks.pdfDocument.getPage();
+    let scrollTop = 0;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const index = this.classList.contains('pdf-page-shell') ? Number(this.dataset.pageIndex) : null;
+      const top = index === null ? 0 : index * 820 - scrollTop;
+      return {x:0,y:top,left:0,right:600,top,bottom:top+800,width:600,height:800,toJSON:()=>({})};
+    });
+    const pages = Array.from({length:7}, (_, pageIndex) => ({...sourceMap.pages[0],pageIndex}));
+    pdfMocks.pdfDocument.getPage.mockClear();
+    const wrapper = mount(PdfReaderPane, {props:{sourceManifest:null,sourceMap:{...sourceMap,pages},pdfUrl:'/priorities.pdf',activeLid:null,selectedLid:null}});
+    try {
+      await flushPromises(); await flushPromises();
+      expect(pdfMocks.pdfDocument.getPage.mock.calls.map(call => call[0])).toEqual([1, 2]);
+    } finally { wrapper.unmount(); }
+
+    let fail!: (error: Error) => void;
+    const promise = new Promise<void>((_resolve,reject) => {fail=reject;});
+    const cancel = vi.fn(() => fail(Object.assign(new Error('Cancelled'), {name:'RenderingCancelledException'})));
+    pdfMocks.pdfDocument.getPage.mockImplementation(async (number?: number) => number === 2 ? {...original,render:vi.fn(()=>({promise,cancel}))} : original);
+    const moving = mount(PdfReaderPane, {props:{sourceManifest:null,sourceMap:{...sourceMap,pages},pdfUrl:'/priorities.pdf',activeLid:null,selectedLid:null}});
+    try {
+      await flushPromises(); await flushPromises();
+      scrollTop = 1640;
+      const root = moving.get('.pdf-page-list');
+      root.element.scrollTop = scrollTop;
+      await root.trigger('scroll');
+      await new Promise(resolve => setTimeout(resolve, 30));
+      await flushPromises();
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(moving.findAll('.pdf-page-shell')[2].attributes('aria-busy')).toBe('false');
+    } finally {
+      moving.unmount();
+      fail(Object.assign(new Error('Test finished'), {name:'RenderingCancelledException'}));
+      await flushPromises();
+      pdfMocks.pdfDocument.getPage.mockImplementation(async () => original);
+    }
+  });
+  it.each(['pending', 'failed'])('keeps a completed page selectable while its neighbour is %s', async (neighbour) => {
+    const original = await pdfMocks.pdfDocument.getPage();
+    let reject!: (error: Error) => void;
+    const pending = new Promise<void>((_resolve, fail) => { reject = fail; });
+    pdfMocks.pdfDocument.getPage.mockImplementation(async (number?: number) => number === 2
+      ? { ...original, render: vi.fn(() => ({ promise: pending })) }
+      : original);
+    const wrapper = mount(PdfReaderPane, { props: { sourceManifest: null, sourceMap, pdfUrl: '/slow.pdf', activeLid: null, selectedLid: null } });
+    await flushPromises(); await flushPromises();
+    if (neighbour === 'failed') {
+      reject(new Error('Neighbour rendering failed'));
+      await flushPromises();
+    }
+    const pages = wrapper.findAll('.pdf-page-shell');
+    expect(pages[0].find('.textLayer span').exists()).toBe(true);
+    expect(pages[0].attributes('aria-busy')).toBe('false');
+    expect(pages[0].classes()).not.toContain('geometry-pending');
+    expect(pages[1].classes()).toContain('geometry-pending');
+    expect(wrapper.get('.pdf-page-list').classes()).not.toContain('geometry-pending');
+    if (neighbour === 'pending') { reject(new Error('Test finished')); await flushPromises(); }
+    wrapper.unmount();
+    pdfMocks.pdfDocument.getPage.mockImplementation(async () => original);
+  });
   it('restores the surface scale only for the same PDF source', async () => {
     const anchor = { surface: 'pdf' as const, sourceKey: 'paper-a:cfg:/api/book/pdf/original', pageIndex: 0, pageRatio: 0.5, probeRatio: 0.28, horizontalRatio: null, anchorLid: null, zoom: 2 };
     for (const sameSource of [true, false]) {
@@ -212,8 +273,8 @@ describe("PdfReaderPane", () => {
 
     const componentSource = readFileSync("src/components/PdfReaderPane.vue", "utf8");
     expect(componentSource).toContain("grid-auto-rows: max-content");
-    expect(componentSource).toContain(".pdf-text-layer :deep(.textLayer)");
-    expect(componentSource).toContain(".pdf-text-layer :deep(.textLayer .endOfContent)");
+    expect(componentSource).toContain(".pdf-text-layer .textLayer");
+    expect(componentSource).toContain(".pdf-text-layer .textLayer .endOfContent");
     expect(componentSource).toContain("scaleX(var(--scale-x))");
 
     wrapper.unmount();
@@ -446,7 +507,7 @@ describe("PdfReaderPane", () => {
     wrapper.unmount();
   });
 
-  it("invalidates the old geometry on container width changes and waits through zero size", async () => {
+  it("retains completed pages through hiding and invalidates only changed geometry", async () => {
     const wrapper = mount(PdfReaderPane, {
       props: {
         sourceManifest: null,
@@ -471,7 +532,18 @@ describe("PdfReaderPane", () => {
     pageWidth = 0;
     TestResizeObserver.instances[0].trigger(root);
     await flushPromises();
-    expect(firstCanvas.width).toBe(0);
+    expect(firstCanvas.width).toBeGreaterThan(0);
+    expect(pdfMocks.textLayerBuilder).toHaveBeenCalledTimes(initialRenderCount);
+
+    await wrapper.get('.pdf-page-list').trigger('scroll');
+    await new Promise(resolve => setTimeout(resolve, 30));
+    expect(firstCanvas.dataset.renderGeneration).toBe(initialGeneration);
+
+    pageWidth = 600;
+    TestResizeObserver.instances[0].trigger(root);
+    await new Promise(resolve => setTimeout(resolve, 30));
+    await flushPromises();
+    expect(firstCanvas.dataset.renderGeneration).toBe(initialGeneration);
     expect(pdfMocks.textLayerBuilder).toHaveBeenCalledTimes(initialRenderCount);
 
     pageWidth = 500;
@@ -485,6 +557,73 @@ describe("PdfReaderPane", () => {
     widthSpies.forEach((spy) => spy.mockRestore());
     rootWidth.mockRestore();
     wrapper.unmount();
+  });
+
+  it('cancels unfinished hidden pages while retaining completed pages for return', async () => {
+    const original = await pdfMocks.pdfDocument.getPage();
+    let reject!: (error: Error) => void;
+    const promise = new Promise<void>((_resolve, fail) => { reject = fail; });
+    const cancel = vi.fn(() => reject(Object.assign(new Error('Cancelled'), { name: 'RenderingCancelledException' })));
+    pdfMocks.pdfDocument.getPage.mockImplementation(async (page?: number) => page === 2
+      ? { ...original, render: vi.fn(() => ({ promise, cancel })) } : original);
+    const wrapper = mount(PdfReaderPane, { props: { sourceManifest: null, sourceMap, pdfUrl: '/hidden.pdf', activeLid: null, selectedLid: null } });
+    try {
+      await flushPromises(); await flushPromises();
+      const root = wrapper.get('.pdf-page-list').element;
+      const canvas = wrapper.get('canvas').element as HTMLCanvasElement;
+      const generation = canvas.dataset.renderGeneration;
+      let width = 600;
+      vi.spyOn(root, 'clientWidth', 'get').mockImplementation(() => width);
+      width = 0;
+      TestResizeObserver.instances[0].trigger(root);
+      await flushPromises();
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(canvas.dataset.renderGeneration).toBe(generation);
+      expect(wrapper.findAll('.pdf-page-shell')[0].attributes('aria-busy')).toBe('false');
+      pdfMocks.pdfDocument.getPage.mockImplementation(async () => original);
+      width = 600;
+      TestResizeObserver.instances[0].trigger(root);
+      await new Promise(resolve => setTimeout(resolve, 30));
+      await flushPromises(); await flushPromises();
+      expect(canvas.dataset.renderGeneration).toBe(generation);
+      expect(wrapper.findAll('.pdf-page-shell')[1].attributes('aria-busy')).toBe('false');
+    } finally {
+      wrapper.unmount();
+      pdfMocks.pdfDocument.getPage.mockImplementation(async () => original);
+    }
+  });
+
+  it('ignores a hidden page request that resolves after its replacement has rendered', async () => {
+    const original = await pdfMocks.pdfDocument.getPage();
+    const staleRender = vi.fn(original.render);
+    let resolvePage!: (page: typeof original) => void;
+    const pendingPage = new Promise<typeof original>((resolve) => { resolvePage = resolve; });
+    pdfMocks.pdfDocument.getPage.mockImplementation(async (page?: number) => page === 2 ? pendingPage : original);
+    const wrapper = mount(PdfReaderPane, { props: { sourceManifest: null, sourceMap, pdfUrl: '/hidden-request.pdf', activeLid: null, selectedLid: null } });
+    try {
+      await flushPromises(); await flushPromises();
+      const root = wrapper.get('.pdf-page-list').element;
+      let width = 600;
+      vi.spyOn(root, 'clientWidth', 'get').mockImplementation(() => width);
+      width = 0;
+      TestResizeObserver.instances[0].trigger(root);
+      await flushPromises();
+      pdfMocks.pdfDocument.getPage.mockImplementation(async () => original);
+      width = 600;
+      TestResizeObserver.instances[0].trigger(root);
+      await new Promise(resolve => setTimeout(resolve, 30));
+      await flushPromises(); await flushPromises();
+      expect(wrapper.findAll('.pdf-page-shell')[1].attributes('aria-busy')).toBe('false');
+      const textLayer = wrapper.findAll('.pdf-page-shell')[1].get('.textLayer').element;
+      resolvePage({ ...original, render: staleRender });
+      await flushPromises(); await flushPromises();
+      expect(staleRender).not.toHaveBeenCalled();
+      expect(wrapper.findAll('.pdf-page-shell')[1].get('.textLayer').element).toBe(textLayer);
+    } finally {
+      wrapper.unmount();
+      resolvePage(original);
+      pdfMocks.pdfDocument.getPage.mockImplementation(async () => original);
+    }
   });
 
   it("captures and restores a source-bound PDF page anchor", async () => {

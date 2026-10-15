@@ -1,0 +1,28 @@
+{
+  "source_commit": "18aae9e93bb4003661b111345d748da6039eb1b6",
+  "source_base": "3ee9e351e2e3d211ab02245fc20b8c72def332af",
+  "release": "/opt/understand-book/releases/to-tb-20261012",
+  "web_root": "/opt/understand-book/releases/to-tb-20261012/packages/web/dist-multi",
+  "service_before": "MainPID=642476\nWorkingDirectory=/opt/understand-book/releases/to-tb-20261012\nActiveState=active\n",
+  "base_files_compared": 461,
+  "published_at_utc": "2026-10-13T01:38:32.806971+00:00",
+  "backup": "/opt/understand-book/backups/conversation-learning-design-20261013T013827Z",
+  "assets_uploaded": [
+    "assets/reader-CNKIi8WI.css",
+    "assets/reader-DJnGri3V.js"
+  ],
+  "assets_reused": 267,
+  "source_files_updated": [
+    "packages/web/playwright/conversation-learning-design.spec.ts",
+    "packages/web/src/components/ConversationLearningGoal.vue",
+    "packages/web/src/components/RightRail.test.ts",
+    "packages/web/src/components/RightRail.vue",
+    "packages/web/src/components/TutorActivities.test.ts",
+    "packages/web/src/components/TutorActivities.vue",
+    "packages/web/src/components/TutorContinuation.vue",
+    "packages/web/src/components/TutorControl.vue"
+  ],
+  "backend_restarted": false,
+  "old_assets_retained": true,
+  "service_after": "MainPID=642476\nWorkingDirectory=/opt/understand-book/releases/to-tb-20261012\nActiveState=active\n"
+}

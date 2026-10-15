@@ -1,0 +1,3979 @@
+{
+  "list": {
+    "complete": true,
+    "items": [
+      {
+        "available_tools": [
+          "book_text",
+          "book_search_text",
+          "book_context",
+          "book_concept"
+        ],
+        "is_default": true,
+        "name": "beta",
+        "published_book_ref": {
+          "book_id": "beta",
+          "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+        }
+      }
+    ],
+    "next_calls": []
+  },
+  "missing_structure": {
+    "category": "not_found",
+    "error_code": "MCP_CAPABILITY_UNAVAILABLE",
+    "message": "This publication does not contain the requested built capability; check book_list"
+  },
+  "samples": [
+    {
+      "first": {
+        "complete": true,
+        "data": {
+          "anchor": "1",
+          "items": [],
+          "returned_count": 0,
+          "total_candidates": 60,
+          "truncated": true
+        },
+        "data_path": "",
+        "next_calls": [],
+        "published_book_ref": {
+          "book_id": "beta",
+          "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+        },
+        "sources": [
+          {
+            "end_lid": "1",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 17431,
+              "start": 0
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1&end_lid=1&start_utf16=0&end_utf16=17431",
+            "start_lid": "1"
+          }
+        ],
+        "total_items": null
+      },
+      "input": {
+        "granularity": "far",
+        "k": 0,
+        "lid": "1",
+        "published_book_ref": {
+          "book_id": "beta",
+          "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+        }
+      },
+      "pages": [],
+      "reconstructed_count": 0
+    },
+    {
+      "first": {
+        "complete": true,
+        "data": {
+          "anchor": "1",
+          "items": [
+            {
+              "layer": "near",
+              "lid": "1.1",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.1",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.2",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.2",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.3",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.3",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.4",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.4",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.5",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.5",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.6",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.6",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.7",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.7",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.8",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.8",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.9",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.9",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.10",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.10",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            }
+          ],
+          "returned_count": 10,
+          "total_candidates": 60,
+          "truncated": true
+        },
+        "data_path": "",
+        "next_calls": [],
+        "published_book_ref": {
+          "book_id": "beta",
+          "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+        },
+        "sources": [
+          {
+            "end_lid": "1",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 17431,
+              "start": 0
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1&end_lid=1&start_utf16=0&end_utf16=17431",
+            "start_lid": "1"
+          },
+          {
+            "end_lid": "1.1",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16023,
+              "start": 2
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.1&end_lid=1.1&start_utf16=2&end_utf16=16023",
+            "start_lid": "1.1"
+          },
+          {
+            "end_lid": "1.2",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16046,
+              "start": 16023
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.2&end_lid=1.2&start_utf16=16023&end_utf16=16046",
+            "start_lid": "1.2"
+          },
+          {
+            "end_lid": "1.3",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16069,
+              "start": 16046
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.3&end_lid=1.3&start_utf16=16046&end_utf16=16069",
+            "start_lid": "1.3"
+          },
+          {
+            "end_lid": "1.4",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16092,
+              "start": 16069
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.4&end_lid=1.4&start_utf16=16069&end_utf16=16092",
+            "start_lid": "1.4"
+          },
+          {
+            "end_lid": "1.5",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16115,
+              "start": 16092
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.5&end_lid=1.5&start_utf16=16092&end_utf16=16115",
+            "start_lid": "1.5"
+          },
+          {
+            "end_lid": "1.6",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16138,
+              "start": 16115
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.6&end_lid=1.6&start_utf16=16115&end_utf16=16138",
+            "start_lid": "1.6"
+          },
+          {
+            "end_lid": "1.7",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16161,
+              "start": 16138
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.7&end_lid=1.7&start_utf16=16138&end_utf16=16161",
+            "start_lid": "1.7"
+          },
+          {
+            "end_lid": "1.8",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16184,
+              "start": 16161
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.8&end_lid=1.8&start_utf16=16161&end_utf16=16184",
+            "start_lid": "1.8"
+          },
+          {
+            "end_lid": "1.9",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16207,
+              "start": 16184
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.9&end_lid=1.9&start_utf16=16184&end_utf16=16207",
+            "start_lid": "1.9"
+          },
+          {
+            "end_lid": "1.10",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16231,
+              "start": 16207
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.10&end_lid=1.10&start_utf16=16207&end_utf16=16231",
+            "start_lid": "1.10"
+          }
+        ],
+        "total_items": null
+      },
+      "input": {
+        "granularity": "far",
+        "k": 10,
+        "lid": "1",
+        "published_book_ref": {
+          "book_id": "beta",
+          "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+        }
+      },
+      "pages": [],
+      "reconstructed_count": 10
+    },
+    {
+      "first": {
+        "complete": false,
+        "data": {
+          "anchor": "1",
+          "items": [
+            {
+              "layer": "near",
+              "lid": "1.1",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.1",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.2",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.2",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.3",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.3",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.4",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.4",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.5",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.5",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.6",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.6",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.7",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.7",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.8",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.8",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.9",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.9",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.10",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.10",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.11",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.11",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.12",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.12",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.13",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.13",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.14",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.14",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.15",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.15",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.16",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.16",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.17",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.17",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.18",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.18",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.19",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.19",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.20",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.20",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            }
+          ],
+          "returned_count": 40,
+          "total_candidates": 60,
+          "truncated": true
+        },
+        "data_path": "",
+        "next_calls": [
+          {
+            "arguments": {
+              "granularity": "far",
+              "k": 40,
+              "lid": "1",
+              "page": {
+                "limit": 20,
+                "offset": 20,
+                "path": "/items"
+              },
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              }
+            },
+            "name": "book_context"
+          }
+        ],
+        "published_book_ref": {
+          "book_id": "beta",
+          "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+        },
+        "sources": [
+          {
+            "end_lid": "1",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 17431,
+              "start": 0
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1&end_lid=1&start_utf16=0&end_utf16=17431",
+            "start_lid": "1"
+          },
+          {
+            "end_lid": "1.1",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16023,
+              "start": 2
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.1&end_lid=1.1&start_utf16=2&end_utf16=16023",
+            "start_lid": "1.1"
+          },
+          {
+            "end_lid": "1.2",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16046,
+              "start": 16023
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.2&end_lid=1.2&start_utf16=16023&end_utf16=16046",
+            "start_lid": "1.2"
+          },
+          {
+            "end_lid": "1.3",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16069,
+              "start": 16046
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.3&end_lid=1.3&start_utf16=16046&end_utf16=16069",
+            "start_lid": "1.3"
+          },
+          {
+            "end_lid": "1.4",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16092,
+              "start": 16069
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.4&end_lid=1.4&start_utf16=16069&end_utf16=16092",
+            "start_lid": "1.4"
+          },
+          {
+            "end_lid": "1.5",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16115,
+              "start": 16092
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.5&end_lid=1.5&start_utf16=16092&end_utf16=16115",
+            "start_lid": "1.5"
+          },
+          {
+            "end_lid": "1.6",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16138,
+              "start": 16115
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.6&end_lid=1.6&start_utf16=16115&end_utf16=16138",
+            "start_lid": "1.6"
+          },
+          {
+            "end_lid": "1.7",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16161,
+              "start": 16138
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.7&end_lid=1.7&start_utf16=16138&end_utf16=16161",
+            "start_lid": "1.7"
+          },
+          {
+            "end_lid": "1.8",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16184,
+              "start": 16161
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.8&end_lid=1.8&start_utf16=16161&end_utf16=16184",
+            "start_lid": "1.8"
+          },
+          {
+            "end_lid": "1.9",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16207,
+              "start": 16184
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.9&end_lid=1.9&start_utf16=16184&end_utf16=16207",
+            "start_lid": "1.9"
+          },
+          {
+            "end_lid": "1.10",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16231,
+              "start": 16207
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.10&end_lid=1.10&start_utf16=16207&end_utf16=16231",
+            "start_lid": "1.10"
+          },
+          {
+            "end_lid": "1.11",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16255,
+              "start": 16231
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.11&end_lid=1.11&start_utf16=16231&end_utf16=16255",
+            "start_lid": "1.11"
+          },
+          {
+            "end_lid": "1.12",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16279,
+              "start": 16255
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.12&end_lid=1.12&start_utf16=16255&end_utf16=16279",
+            "start_lid": "1.12"
+          },
+          {
+            "end_lid": "1.13",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16303,
+              "start": 16279
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.13&end_lid=1.13&start_utf16=16279&end_utf16=16303",
+            "start_lid": "1.13"
+          },
+          {
+            "end_lid": "1.14",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16327,
+              "start": 16303
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.14&end_lid=1.14&start_utf16=16303&end_utf16=16327",
+            "start_lid": "1.14"
+          },
+          {
+            "end_lid": "1.15",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16351,
+              "start": 16327
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.15&end_lid=1.15&start_utf16=16327&end_utf16=16351",
+            "start_lid": "1.15"
+          },
+          {
+            "end_lid": "1.16",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16375,
+              "start": 16351
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.16&end_lid=1.16&start_utf16=16351&end_utf16=16375",
+            "start_lid": "1.16"
+          },
+          {
+            "end_lid": "1.17",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16399,
+              "start": 16375
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.17&end_lid=1.17&start_utf16=16375&end_utf16=16399",
+            "start_lid": "1.17"
+          },
+          {
+            "end_lid": "1.18",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16423,
+              "start": 16399
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.18&end_lid=1.18&start_utf16=16399&end_utf16=16423",
+            "start_lid": "1.18"
+          },
+          {
+            "end_lid": "1.19",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16447,
+              "start": 16423
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.19&end_lid=1.19&start_utf16=16423&end_utf16=16447",
+            "start_lid": "1.19"
+          },
+          {
+            "end_lid": "1.20",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16471,
+              "start": 16447
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.20&end_lid=1.20&start_utf16=16447&end_utf16=16471",
+            "start_lid": "1.20"
+          }
+        ],
+        "total_items": null
+      },
+      "input": {
+        "granularity": "far",
+        "k": 40,
+        "lid": "1",
+        "published_book_ref": {
+          "book_id": "beta",
+          "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+        }
+      },
+      "pages": [
+        {
+          "complete": true,
+          "data": [
+            {
+              "layer": "near",
+              "lid": "1.21",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.21",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.22",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.22",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.23",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.23",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.24",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.24",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.25",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.25",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.26",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.26",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.27",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.27",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.28",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.28",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.29",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.29",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.30",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.30",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.31",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.31",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.32",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.32",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.33",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.33",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.34",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.34",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.35",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.35",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.36",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.36",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.37",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.37",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.38",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.38",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.39",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.39",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.40",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.40",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            }
+          ],
+          "data_path": "/items",
+          "next_calls": [],
+          "published_book_ref": {
+            "book_id": "beta",
+            "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+          },
+          "sources": [
+            {
+              "end_lid": "1",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17431,
+                "start": 0
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1&end_lid=1&start_utf16=0&end_utf16=17431",
+              "start_lid": "1"
+            },
+            {
+              "end_lid": "1.21",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16495,
+                "start": 16471
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.21&end_lid=1.21&start_utf16=16471&end_utf16=16495",
+              "start_lid": "1.21"
+            },
+            {
+              "end_lid": "1.22",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16519,
+                "start": 16495
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.22&end_lid=1.22&start_utf16=16495&end_utf16=16519",
+              "start_lid": "1.22"
+            },
+            {
+              "end_lid": "1.23",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16543,
+                "start": 16519
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.23&end_lid=1.23&start_utf16=16519&end_utf16=16543",
+              "start_lid": "1.23"
+            },
+            {
+              "end_lid": "1.24",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16567,
+                "start": 16543
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.24&end_lid=1.24&start_utf16=16543&end_utf16=16567",
+              "start_lid": "1.24"
+            },
+            {
+              "end_lid": "1.25",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16591,
+                "start": 16567
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.25&end_lid=1.25&start_utf16=16567&end_utf16=16591",
+              "start_lid": "1.25"
+            },
+            {
+              "end_lid": "1.26",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16615,
+                "start": 16591
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.26&end_lid=1.26&start_utf16=16591&end_utf16=16615",
+              "start_lid": "1.26"
+            },
+            {
+              "end_lid": "1.27",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16639,
+                "start": 16615
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.27&end_lid=1.27&start_utf16=16615&end_utf16=16639",
+              "start_lid": "1.27"
+            },
+            {
+              "end_lid": "1.28",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16663,
+                "start": 16639
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.28&end_lid=1.28&start_utf16=16639&end_utf16=16663",
+              "start_lid": "1.28"
+            },
+            {
+              "end_lid": "1.29",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16687,
+                "start": 16663
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.29&end_lid=1.29&start_utf16=16663&end_utf16=16687",
+              "start_lid": "1.29"
+            },
+            {
+              "end_lid": "1.30",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16711,
+                "start": 16687
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.30&end_lid=1.30&start_utf16=16687&end_utf16=16711",
+              "start_lid": "1.30"
+            },
+            {
+              "end_lid": "1.31",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16735,
+                "start": 16711
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.31&end_lid=1.31&start_utf16=16711&end_utf16=16735",
+              "start_lid": "1.31"
+            },
+            {
+              "end_lid": "1.32",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16759,
+                "start": 16735
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.32&end_lid=1.32&start_utf16=16735&end_utf16=16759",
+              "start_lid": "1.32"
+            },
+            {
+              "end_lid": "1.33",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16783,
+                "start": 16759
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.33&end_lid=1.33&start_utf16=16759&end_utf16=16783",
+              "start_lid": "1.33"
+            },
+            {
+              "end_lid": "1.34",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16807,
+                "start": 16783
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.34&end_lid=1.34&start_utf16=16783&end_utf16=16807",
+              "start_lid": "1.34"
+            },
+            {
+              "end_lid": "1.35",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16831,
+                "start": 16807
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.35&end_lid=1.35&start_utf16=16807&end_utf16=16831",
+              "start_lid": "1.35"
+            },
+            {
+              "end_lid": "1.36",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16855,
+                "start": 16831
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.36&end_lid=1.36&start_utf16=16831&end_utf16=16855",
+              "start_lid": "1.36"
+            },
+            {
+              "end_lid": "1.37",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16879,
+                "start": 16855
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.37&end_lid=1.37&start_utf16=16855&end_utf16=16879",
+              "start_lid": "1.37"
+            },
+            {
+              "end_lid": "1.38",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16903,
+                "start": 16879
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.38&end_lid=1.38&start_utf16=16879&end_utf16=16903",
+              "start_lid": "1.38"
+            },
+            {
+              "end_lid": "1.39",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16927,
+                "start": 16903
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.39&end_lid=1.39&start_utf16=16903&end_utf16=16927",
+              "start_lid": "1.39"
+            },
+            {
+              "end_lid": "1.40",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16951,
+                "start": 16927
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.40&end_lid=1.40&start_utf16=16927&end_utf16=16951",
+              "start_lid": "1.40"
+            }
+          ],
+          "total_items": 40
+        }
+      ],
+      "reconstructed_count": 40
+    },
+    {
+      "first": {
+        "complete": false,
+        "data": {
+          "anchor": "1",
+          "items": [
+            {
+              "layer": "near",
+              "lid": "1.1",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.1",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.2",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.2",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.3",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.3",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.4",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.4",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.5",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.5",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.6",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.6",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.7",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.7",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.8",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.8",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.9",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.9",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.10",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.10",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.11",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.11",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.12",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.12",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.13",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.13",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.14",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.14",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.15",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.15",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.16",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.16",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.17",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.17",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.18",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.18",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.19",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.19",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.20",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.20",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            }
+          ],
+          "returned_count": 60,
+          "total_candidates": 60,
+          "truncated": false
+        },
+        "data_path": "",
+        "next_calls": [
+          {
+            "arguments": {
+              "granularity": "far",
+              "k": 60,
+              "lid": "1",
+              "page": {
+                "limit": 20,
+                "offset": 20,
+                "path": "/items"
+              },
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              }
+            },
+            "name": "book_context"
+          }
+        ],
+        "published_book_ref": {
+          "book_id": "beta",
+          "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+        },
+        "sources": [
+          {
+            "end_lid": "1",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 17431,
+              "start": 0
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1&end_lid=1&start_utf16=0&end_utf16=17431",
+            "start_lid": "1"
+          },
+          {
+            "end_lid": "1.1",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16023,
+              "start": 2
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.1&end_lid=1.1&start_utf16=2&end_utf16=16023",
+            "start_lid": "1.1"
+          },
+          {
+            "end_lid": "1.2",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16046,
+              "start": 16023
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.2&end_lid=1.2&start_utf16=16023&end_utf16=16046",
+            "start_lid": "1.2"
+          },
+          {
+            "end_lid": "1.3",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16069,
+              "start": 16046
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.3&end_lid=1.3&start_utf16=16046&end_utf16=16069",
+            "start_lid": "1.3"
+          },
+          {
+            "end_lid": "1.4",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16092,
+              "start": 16069
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.4&end_lid=1.4&start_utf16=16069&end_utf16=16092",
+            "start_lid": "1.4"
+          },
+          {
+            "end_lid": "1.5",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16115,
+              "start": 16092
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.5&end_lid=1.5&start_utf16=16092&end_utf16=16115",
+            "start_lid": "1.5"
+          },
+          {
+            "end_lid": "1.6",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16138,
+              "start": 16115
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.6&end_lid=1.6&start_utf16=16115&end_utf16=16138",
+            "start_lid": "1.6"
+          },
+          {
+            "end_lid": "1.7",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16161,
+              "start": 16138
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.7&end_lid=1.7&start_utf16=16138&end_utf16=16161",
+            "start_lid": "1.7"
+          },
+          {
+            "end_lid": "1.8",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16184,
+              "start": 16161
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.8&end_lid=1.8&start_utf16=16161&end_utf16=16184",
+            "start_lid": "1.8"
+          },
+          {
+            "end_lid": "1.9",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16207,
+              "start": 16184
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.9&end_lid=1.9&start_utf16=16184&end_utf16=16207",
+            "start_lid": "1.9"
+          },
+          {
+            "end_lid": "1.10",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16231,
+              "start": 16207
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.10&end_lid=1.10&start_utf16=16207&end_utf16=16231",
+            "start_lid": "1.10"
+          },
+          {
+            "end_lid": "1.11",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16255,
+              "start": 16231
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.11&end_lid=1.11&start_utf16=16231&end_utf16=16255",
+            "start_lid": "1.11"
+          },
+          {
+            "end_lid": "1.12",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16279,
+              "start": 16255
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.12&end_lid=1.12&start_utf16=16255&end_utf16=16279",
+            "start_lid": "1.12"
+          },
+          {
+            "end_lid": "1.13",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16303,
+              "start": 16279
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.13&end_lid=1.13&start_utf16=16279&end_utf16=16303",
+            "start_lid": "1.13"
+          },
+          {
+            "end_lid": "1.14",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16327,
+              "start": 16303
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.14&end_lid=1.14&start_utf16=16303&end_utf16=16327",
+            "start_lid": "1.14"
+          },
+          {
+            "end_lid": "1.15",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16351,
+              "start": 16327
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.15&end_lid=1.15&start_utf16=16327&end_utf16=16351",
+            "start_lid": "1.15"
+          },
+          {
+            "end_lid": "1.16",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16375,
+              "start": 16351
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.16&end_lid=1.16&start_utf16=16351&end_utf16=16375",
+            "start_lid": "1.16"
+          },
+          {
+            "end_lid": "1.17",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16399,
+              "start": 16375
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.17&end_lid=1.17&start_utf16=16375&end_utf16=16399",
+            "start_lid": "1.17"
+          },
+          {
+            "end_lid": "1.18",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16423,
+              "start": 16399
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.18&end_lid=1.18&start_utf16=16399&end_utf16=16423",
+            "start_lid": "1.18"
+          },
+          {
+            "end_lid": "1.19",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16447,
+              "start": 16423
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.19&end_lid=1.19&start_utf16=16423&end_utf16=16447",
+            "start_lid": "1.19"
+          },
+          {
+            "end_lid": "1.20",
+            "published_book_ref": {
+              "book_id": "beta",
+              "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+            },
+            "source_range": {
+              "end": 16471,
+              "start": 16447
+            },
+            "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.20&end_lid=1.20&start_utf16=16447&end_utf16=16471",
+            "start_lid": "1.20"
+          }
+        ],
+        "total_items": null
+      },
+      "input": {
+        "granularity": "far",
+        "k": 60,
+        "lid": "1",
+        "published_book_ref": {
+          "book_id": "beta",
+          "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+        }
+      },
+      "pages": [
+        {
+          "complete": false,
+          "data": [
+            {
+              "layer": "near",
+              "lid": "1.21",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.21",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.22",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.22",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.23",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.23",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.24",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.24",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.25",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.25",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.26",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.26",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.27",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.27",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.28",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.28",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.29",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.29",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.30",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.30",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.31",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.31",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.32",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.32",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.33",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.33",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.34",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.34",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.35",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.35",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.36",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.36",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.37",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.37",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.38",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.38",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.39",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.39",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.40",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.40",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            }
+          ],
+          "data_path": "/items",
+          "next_calls": [
+            {
+              "arguments": {
+                "granularity": "far",
+                "k": 60,
+                "lid": "1",
+                "page": {
+                  "limit": 20,
+                  "offset": 40,
+                  "path": "/items"
+                },
+                "published_book_ref": {
+                  "book_id": "beta",
+                  "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                }
+              },
+              "name": "book_context"
+            }
+          ],
+          "published_book_ref": {
+            "book_id": "beta",
+            "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+          },
+          "sources": [
+            {
+              "end_lid": "1",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17431,
+                "start": 0
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1&end_lid=1&start_utf16=0&end_utf16=17431",
+              "start_lid": "1"
+            },
+            {
+              "end_lid": "1.21",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16495,
+                "start": 16471
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.21&end_lid=1.21&start_utf16=16471&end_utf16=16495",
+              "start_lid": "1.21"
+            },
+            {
+              "end_lid": "1.22",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16519,
+                "start": 16495
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.22&end_lid=1.22&start_utf16=16495&end_utf16=16519",
+              "start_lid": "1.22"
+            },
+            {
+              "end_lid": "1.23",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16543,
+                "start": 16519
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.23&end_lid=1.23&start_utf16=16519&end_utf16=16543",
+              "start_lid": "1.23"
+            },
+            {
+              "end_lid": "1.24",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16567,
+                "start": 16543
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.24&end_lid=1.24&start_utf16=16543&end_utf16=16567",
+              "start_lid": "1.24"
+            },
+            {
+              "end_lid": "1.25",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16591,
+                "start": 16567
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.25&end_lid=1.25&start_utf16=16567&end_utf16=16591",
+              "start_lid": "1.25"
+            },
+            {
+              "end_lid": "1.26",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16615,
+                "start": 16591
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.26&end_lid=1.26&start_utf16=16591&end_utf16=16615",
+              "start_lid": "1.26"
+            },
+            {
+              "end_lid": "1.27",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16639,
+                "start": 16615
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.27&end_lid=1.27&start_utf16=16615&end_utf16=16639",
+              "start_lid": "1.27"
+            },
+            {
+              "end_lid": "1.28",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16663,
+                "start": 16639
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.28&end_lid=1.28&start_utf16=16639&end_utf16=16663",
+              "start_lid": "1.28"
+            },
+            {
+              "end_lid": "1.29",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16687,
+                "start": 16663
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.29&end_lid=1.29&start_utf16=16663&end_utf16=16687",
+              "start_lid": "1.29"
+            },
+            {
+              "end_lid": "1.30",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16711,
+                "start": 16687
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.30&end_lid=1.30&start_utf16=16687&end_utf16=16711",
+              "start_lid": "1.30"
+            },
+            {
+              "end_lid": "1.31",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16735,
+                "start": 16711
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.31&end_lid=1.31&start_utf16=16711&end_utf16=16735",
+              "start_lid": "1.31"
+            },
+            {
+              "end_lid": "1.32",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16759,
+                "start": 16735
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.32&end_lid=1.32&start_utf16=16735&end_utf16=16759",
+              "start_lid": "1.32"
+            },
+            {
+              "end_lid": "1.33",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16783,
+                "start": 16759
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.33&end_lid=1.33&start_utf16=16759&end_utf16=16783",
+              "start_lid": "1.33"
+            },
+            {
+              "end_lid": "1.34",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16807,
+                "start": 16783
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.34&end_lid=1.34&start_utf16=16783&end_utf16=16807",
+              "start_lid": "1.34"
+            },
+            {
+              "end_lid": "1.35",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16831,
+                "start": 16807
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.35&end_lid=1.35&start_utf16=16807&end_utf16=16831",
+              "start_lid": "1.35"
+            },
+            {
+              "end_lid": "1.36",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16855,
+                "start": 16831
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.36&end_lid=1.36&start_utf16=16831&end_utf16=16855",
+              "start_lid": "1.36"
+            },
+            {
+              "end_lid": "1.37",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16879,
+                "start": 16855
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.37&end_lid=1.37&start_utf16=16855&end_utf16=16879",
+              "start_lid": "1.37"
+            },
+            {
+              "end_lid": "1.38",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16903,
+                "start": 16879
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.38&end_lid=1.38&start_utf16=16879&end_utf16=16903",
+              "start_lid": "1.38"
+            },
+            {
+              "end_lid": "1.39",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16927,
+                "start": 16903
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.39&end_lid=1.39&start_utf16=16903&end_utf16=16927",
+              "start_lid": "1.39"
+            },
+            {
+              "end_lid": "1.40",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16951,
+                "start": 16927
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.40&end_lid=1.40&start_utf16=16927&end_utf16=16951",
+              "start_lid": "1.40"
+            }
+          ],
+          "total_items": 60
+        },
+        {
+          "complete": true,
+          "data": [
+            {
+              "layer": "near",
+              "lid": "1.41",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.41",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.42",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.42",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.43",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.43",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.44",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.44",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.45",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.45",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.46",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.46",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.47",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.47",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.48",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.48",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.49",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.49",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.50",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.50",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.51",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.51",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.52",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.52",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.53",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.53",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.54",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.54",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.55",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.55",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.56",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.56",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.57",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.57",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.58",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.58",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.59",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.59",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            },
+            {
+              "layer": "near",
+              "lid": "1.60",
+              "next_calls": [
+                {
+                  "arguments": {
+                    "lid": "1.60",
+                    "published_book_ref": {
+                      "book_id": "beta",
+                      "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+                    }
+                  },
+                  "name": "book_text"
+                }
+              ],
+              "via": {
+                "kind": "tree",
+                "rel": "child"
+              }
+            }
+          ],
+          "data_path": "/items",
+          "next_calls": [],
+          "published_book_ref": {
+            "book_id": "beta",
+            "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+          },
+          "sources": [
+            {
+              "end_lid": "1",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17431,
+                "start": 0
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1&end_lid=1&start_utf16=0&end_utf16=17431",
+              "start_lid": "1"
+            },
+            {
+              "end_lid": "1.41",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16975,
+                "start": 16951
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.41&end_lid=1.41&start_utf16=16951&end_utf16=16975",
+              "start_lid": "1.41"
+            },
+            {
+              "end_lid": "1.42",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 16999,
+                "start": 16975
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.42&end_lid=1.42&start_utf16=16975&end_utf16=16999",
+              "start_lid": "1.42"
+            },
+            {
+              "end_lid": "1.43",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17023,
+                "start": 16999
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.43&end_lid=1.43&start_utf16=16999&end_utf16=17023",
+              "start_lid": "1.43"
+            },
+            {
+              "end_lid": "1.44",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17047,
+                "start": 17023
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.44&end_lid=1.44&start_utf16=17023&end_utf16=17047",
+              "start_lid": "1.44"
+            },
+            {
+              "end_lid": "1.45",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17071,
+                "start": 17047
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.45&end_lid=1.45&start_utf16=17047&end_utf16=17071",
+              "start_lid": "1.45"
+            },
+            {
+              "end_lid": "1.46",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17095,
+                "start": 17071
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.46&end_lid=1.46&start_utf16=17071&end_utf16=17095",
+              "start_lid": "1.46"
+            },
+            {
+              "end_lid": "1.47",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17119,
+                "start": 17095
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.47&end_lid=1.47&start_utf16=17095&end_utf16=17119",
+              "start_lid": "1.47"
+            },
+            {
+              "end_lid": "1.48",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17143,
+                "start": 17119
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.48&end_lid=1.48&start_utf16=17119&end_utf16=17143",
+              "start_lid": "1.48"
+            },
+            {
+              "end_lid": "1.49",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17167,
+                "start": 17143
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.49&end_lid=1.49&start_utf16=17143&end_utf16=17167",
+              "start_lid": "1.49"
+            },
+            {
+              "end_lid": "1.50",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17191,
+                "start": 17167
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.50&end_lid=1.50&start_utf16=17167&end_utf16=17191",
+              "start_lid": "1.50"
+            },
+            {
+              "end_lid": "1.51",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17215,
+                "start": 17191
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.51&end_lid=1.51&start_utf16=17191&end_utf16=17215",
+              "start_lid": "1.51"
+            },
+            {
+              "end_lid": "1.52",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17239,
+                "start": 17215
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.52&end_lid=1.52&start_utf16=17215&end_utf16=17239",
+              "start_lid": "1.52"
+            },
+            {
+              "end_lid": "1.53",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17263,
+                "start": 17239
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.53&end_lid=1.53&start_utf16=17239&end_utf16=17263",
+              "start_lid": "1.53"
+            },
+            {
+              "end_lid": "1.54",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17287,
+                "start": 17263
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.54&end_lid=1.54&start_utf16=17263&end_utf16=17287",
+              "start_lid": "1.54"
+            },
+            {
+              "end_lid": "1.55",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17311,
+                "start": 17287
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.55&end_lid=1.55&start_utf16=17287&end_utf16=17311",
+              "start_lid": "1.55"
+            },
+            {
+              "end_lid": "1.56",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17335,
+                "start": 17311
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.56&end_lid=1.56&start_utf16=17311&end_utf16=17335",
+              "start_lid": "1.56"
+            },
+            {
+              "end_lid": "1.57",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17359,
+                "start": 17335
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.57&end_lid=1.57&start_utf16=17335&end_utf16=17359",
+              "start_lid": "1.57"
+            },
+            {
+              "end_lid": "1.58",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17383,
+                "start": 17359
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.58&end_lid=1.58&start_utf16=17359&end_utf16=17383",
+              "start_lid": "1.58"
+            },
+            {
+              "end_lid": "1.59",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17407,
+                "start": 17383
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.59&end_lid=1.59&start_utf16=17383&end_utf16=17407",
+              "start_lid": "1.59"
+            },
+            {
+              "end_lid": "1.60",
+              "published_book_ref": {
+                "book_id": "beta",
+                "publication_id": "01a12eff-e371-7633-a301-4b0b292c7dd9"
+              },
+              "source_range": {
+                "end": 17431,
+                "start": 17407
+              },
+              "source_url": "https://reader.example/?book_id=beta&publication_id=01a12eff-e371-7633-a301-4b0b292c7dd9&start_lid=1.60&end_lid=1.60&start_utf16=17407&end_utf16=17431",
+              "start_lid": "1.60"
+            }
+          ],
+          "total_items": 60
+        }
+      ],
+      "reconstructed_count": 60
+    }
+  ]
+}

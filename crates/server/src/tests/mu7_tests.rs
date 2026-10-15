@@ -8,6 +8,7 @@ fn mu7_missing_executor_rejects_all_author_operations_and_http_aliases() {
     let w = f.create(&f.a, &f.x, "page");
     let w = f.action(&f.a, &w, "page", "chat/new", json!({}));
     let mut port = f.run(&w, "page");
+    assert_eq!(port.presentation_unavailable_reason(), Some("not_configured"));
     assert_eq!(
         f.ok(&f.a, "GET", "/api/auth/me", json!({}))["capabilities"]["presentation"]["authoring"],
         false
@@ -56,6 +57,7 @@ fn mu7_invalid_sandbox_configuration_stays_disabled() {
     std::fs::write(root.path().join("presentation-sandbox.json"), "{bad").unwrap();
     let sandbox = crate::presentation_sandbox::Sandbox::load(root.path());
     assert_eq!(sandbox.capability()["reason"], "invalid_configuration");
+    assert_eq!(sandbox.unavailable_reason(), Some("invalid_configuration"));
     assert!(sandbox.require().is_err());
 }
 
@@ -94,6 +96,7 @@ fn mu7_linux_network_author_renders_previews_and_saves_only_owner_version() {
     let w = f.create(&f.a, &f.x, "author");
     let w = f.action(&f.a, &w, "author", "chat/new", json!({}));
     let mut port = f.run(&w, "author");
+    assert_eq!(port.presentation_unavailable_reason(), None);
     let cancel = CancellationToken::default();
     let mut author = |input: Value| {
         port.author_presentation(serde_json::from_value(input).unwrap(), &[], &[], &cancel)

@@ -34,6 +34,9 @@ const fieldNames: Record<string, string> = {
   user_id: "账号",
   period_id: "额度期",
   receipt_id: "原收款",
+  pack_count: "购买包数",
+  units: "赠送次数（次）",
+  delta_units: "次数差额（次）",
   amount_fen: "实际收款（元）",
   delta_fen: "收款差额（元）",
   delta_micro_cny: "授予 / 调整额度（元）",
@@ -53,6 +56,10 @@ const fieldNames: Record<string, string> = {
 function SubmissionSummary({ body }: { body: Record<string, unknown> }) {
   return (
     <dl className="my-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+      {typeof body.pack_count === "number" && <>
+        <dt>确认收款 / 开通次数</dt>
+        <dd>{money(body.pack_count * 1000, 2)} 元 / {body.pack_count * 1000} 次</dd>
+      </>}
       {Object.entries(body)
         .filter(([key]) => fieldNames[key])
         .map(([key, value]) => {
@@ -233,6 +240,19 @@ export function OperationsProvider({ children }: { children: ReactNode }) {
               收款记录：{String(receipt.receipt_id)}
             </p>
           )}
+          {receipt.kind.startsWith("mcp-") && <>
+            {receipt.parameters && <SubmissionSummary body={receipt.parameters} />}
+            {receipt.call_pack && <p>
+              原购 {receipt.call_pack.pack_count} 包 · {money(receipt.call_pack.price_fen, 2)} 元 · {receipt.call_pack.total_units} 次；
+              累计次数调整 {receipt.call_pack.adjusted_units} 次，已用 {receipt.call_pack.used_units} 次，
+              操作完成时未用 {receipt.call_pack.remaining_units} 次 / 可用 {receipt.call_pack.available_units} 次。<br />
+              到期：{date(Date.parse(receipt.call_pack.expires_at) / 1000)}（香港时间）
+            </p>}
+            {receipt.usage && <p>
+              赠送月份：{receipt.month_hk}；操作完成时免费剩余 {receipt.usage.free_remaining} 次，已购剩余 {receipt.usage.paid_remaining} 次。
+            </p>}
+            <p className="text-sm text-muted-foreground">以上为原操作回执，当前余额以刷新后的 MCP 次数面板为准。</p>
+          </>}
           {receipt.account_delta_micro_cny != null && (
             <p>
               本次账号扣减差额：{money(Number(receipt.account_delta_micro_cny))}{" "}

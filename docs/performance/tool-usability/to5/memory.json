@@ -1,0 +1,226 @@
+{
+  "answer": {
+    "answer": "结论依赖前提，需先核对。",
+    "bindings": [
+      {
+        "candidate_id": "concept:premise",
+        "canonical_label": "前提",
+        "kind": "concept",
+        "source_lids": [
+          "1.1"
+        ],
+        "target": "前提"
+      }
+    ],
+    "citations": [
+      {
+        "lid": "1.1",
+        "role": "support",
+        "text": "先核对前提，再下结论"
+      }
+    ],
+    "model_supplement": [],
+    "status": "complete",
+    "support": [
+      {
+        "citation_lids": [
+          "1.1"
+        ],
+        "obligation_index": 0,
+        "support_note": "原文要求先核对前提",
+        "verdict": "supported"
+      }
+    ]
+  },
+  "calls": [
+    {
+      "input": {
+        "anchor_lid": "1.1",
+        "content": "先核对前提，再下结论",
+        "type": "highlight"
+      },
+      "record": {
+        "anchor": {
+          "lid": "1.1"
+        },
+        "book_id": "bookL",
+        "citations": [
+          {
+            "book_id": "bookL",
+            "lid": "1.1"
+          }
+        ],
+        "content": "先核对前提，再下结论",
+        "generated_at": "t1",
+        "layer": "long_term",
+        "mem_id": "mem_a22a6be39d530d2a",
+        "type": "highlight",
+        "usage": {
+          "count": 1,
+          "last_used": "t1"
+        }
+      },
+      "tool": "memory.save"
+    },
+    {
+      "input": {
+        "anchor_lid": "1.1",
+        "content": "读到当前段落，稍后从这里继续",
+        "type": "position"
+      },
+      "record": {
+        "anchor": {
+          "lid": "1.1"
+        },
+        "book_id": "bookL",
+        "citations": [],
+        "content": "读到当前段落，稍后从这里继续",
+        "generated_at": "t1",
+        "layer": "session",
+        "mem_id": "mem_2f8f5d185282a143",
+        "type": "position",
+        "usage": {
+          "count": 1,
+          "last_used": "t1"
+        }
+      },
+      "tool": "memory.save"
+    },
+    {
+      "input": {
+        "anchor_lid": "1.1",
+        "content": "为什么要先核对前提？",
+        "type": "qa"
+      },
+      "record": {
+        "anchor": {
+          "lid": "1.1"
+        },
+        "book_id": "bookL",
+        "citations": [],
+        "content": "为什么要先核对前提？",
+        "generated_at": "t1",
+        "layer": "long_term",
+        "mem_id": "mem_eaeba383a21cd8b4",
+        "type": "qa",
+        "usage": {
+          "count": 1,
+          "last_used": "t1"
+        }
+      },
+      "tool": "memory.save"
+    },
+    {
+      "input": {
+        "anchor_lid": "1.1",
+        "citations": [],
+        "content": "用户说：我有 Rust 基础，读这一段时请先给例子",
+        "type": "context"
+      },
+      "record": {
+        "anchor": {
+          "lid": "1.1"
+        },
+        "book_id": "bookL",
+        "citations": [],
+        "content": "用户说：我有 Rust 基础，读这一段时请先给例子",
+        "generated_at": "t1",
+        "layer": "long_term",
+        "mem_id": "mem_96d41a0403038b0e",
+        "type": "context",
+        "usage": {
+          "count": 1,
+          "last_used": "t1"
+        }
+      },
+      "tool": "memory.save"
+    }
+  ],
+  "context_user_message": "我有 Rust 基础，读这一段时请先给例子",
+  "query": {
+    "anchor_lid": "1.1",
+    "intent": "definition",
+    "obligations": [
+      {
+        "requirement": "解释核对前提的作用"
+      }
+    ],
+    "query": "为什么要先核对前提？",
+    "targets": [
+      "前提"
+    ]
+  },
+  "reader_unchanged": true,
+  "records": [
+    {
+      "anchor": {
+        "lid": "1.1"
+      },
+      "book_id": "bookL",
+      "citations": [],
+      "content": "读到当前段落，稍后从这里继续",
+      "generated_at": "t1",
+      "layer": "session",
+      "mem_id": "mem_2f8f5d185282a143",
+      "type": "position",
+      "usage": {
+        "count": 1,
+        "last_used": "t1"
+      }
+    },
+    {
+      "anchor": {
+        "lid": "1.1"
+      },
+      "book_id": "bookL",
+      "citations": [],
+      "content": "用户说：我有 Rust 基础，读这一段时请先给例子",
+      "generated_at": "t1",
+      "layer": "long_term",
+      "mem_id": "mem_96d41a0403038b0e",
+      "type": "context",
+      "usage": {
+        "count": 1,
+        "last_used": "t1"
+      }
+    },
+    {
+      "anchor": {
+        "lid": "1.1"
+      },
+      "book_id": "bookL",
+      "citations": [
+        {
+          "book_id": "bookL",
+          "lid": "1.1"
+        }
+      ],
+      "content": "先核对前提，再下结论",
+      "generated_at": "t1",
+      "layer": "long_term",
+      "mem_id": "mem_a22a6be39d530d2a",
+      "type": "highlight",
+      "usage": {
+        "count": 1,
+        "last_used": "t1"
+      }
+    },
+    {
+      "anchor": {
+        "lid": "1.1"
+      },
+      "book_id": "bookL",
+      "citations": [],
+      "content": "为什么要先核对前提？",
+      "generated_at": "t1",
+      "layer": "long_term",
+      "mem_id": "mem_eaeba383a21cd8b4",
+      "type": "qa",
+      "usage": {
+        "count": 1,
+        "last_used": "t1"
+      }
+    }
+  ],
+  "source": "先核对前提，再下结论"
+}

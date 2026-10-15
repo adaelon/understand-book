@@ -1,0 +1,29 @@
+{
+  "checks": "all final schemas/examples valid; duplicate, dropped field and missing publication detected; constraints, descriptions and tool inventory unchanged",
+  "totals": [
+    {
+      "surface": "local_mcp",
+      "tools": 16,
+      "examples": 8,
+      "schema_before_bytes": 11182,
+      "schema_after_bytes": 12131,
+      "description_bytes": 3970
+    },
+    {
+      "surface": "remote_mcp",
+      "tools": 11,
+      "examples": 6,
+      "schema_before_bytes": 14358,
+      "schema_after_bytes": 15453,
+      "description_bytes": 14913
+    },
+    {
+      "surface": "resident",
+      "tools": 34,
+      "examples": 9,
+      "schema_before_bytes": 43235,
+      "schema_after_bytes": 44279,
+      "description_bytes": 10552
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+
+running 8 tests
+test mcp_usage::tests::packs::mcp_pack_last_paid_unit_is_not_double_spent ... ok
+test mcp_usage::tests::packs::mcp_pack_debit_and_correction_failures_rollback_all_facts ... ok
+test mcp_usage::tests::packs::mcp_pack_free_first_calendar_expiry_and_cross_month_carry ... ok
+test mcp_usage::tests::packs::mcp_pack_earliest_expiry_then_opening_order_and_expired_exclusion ... ok
+test mcp_usage::tests::packs::mcp_pack_corrections_preserve_consumption_and_separate_cash_and_units ... ok
+test mcp_usage::tests::packs::mcp_pack_purchase_replay_conflicts_rollback_and_restart ... ok
+test mcp_usage::tests::packs::mcp_pack_schema11_migration_preserves_free_history_and_is_atomic ... ok
+test tests::mcp_pack_api_tests::mcp_pack_admin_api_mixed_receipts_gifts_and_corrections ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 700 filtered out; finished in 3.92s
+

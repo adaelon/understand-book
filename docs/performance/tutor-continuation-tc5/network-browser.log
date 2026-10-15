@@ -1,0 +1,43 @@
+
+[WebServer] (node:39292) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+[WebServer] (node:35020) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+
+(node:28392) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1/1] playwright\tutor-continuation-api.spec.ts:45:1 › tc5_actual_multi_user_browser_request_preserves_choice
+  1) playwright\tutor-continuation-api.spec.ts:45:1 › tc5_actual_multi_user_browser_request_preserves_choice 
+
+    Error: "apiRequestContext.fetch: Request context disposed.
+    Call log:
+      - → GET http://127.0.0.1:4196/network/api/tutor/state
+        - user-agent: Playwright/1.61.1 (x64; windows 10.0) node/24.9
+        - accept: */*
+        - accept-encoding: gzip,deflate,br
+    " while running route callback.
+    Consider awaiting `await page.unrouteAll({ behavior: 'ignoreErrors' })`
+    before the end of the test to ignore remaining routes in flight.
+
+      58 |     const event=url.pathname.match(/^(.*\/agent\/runs\/[^/]+)\/events$/);
+      59 |     const path=event ? event[1] : url.pathname+url.search;
+    > 60 |     const response=await request.fetch(`http://127.0.0.1:4196/network${path}`,{method:route.request().method(),data:route.request().postData() ?? undefined});
+         |                                  ^
+      61 |     const value=await response.json();
+      62 |     if(route.request().method()==='POST' && path.endsWith('/agent/runs')) submitted.push({request:route.request().postDataJSON(),response:value});
+      63 |     if(event) {
+        at E:\allwork\download\agent\understand-book\packages\web\playwright\tutor-continuation-api.spec.ts:60:34
+
+    Error Context: test-results\tutor-continuation-api-tc5-d0ad2-er-request-preserves-choice\error-context.md
+
+
+  1 failed
+    playwright\tutor-continuation-api.spec.ts:45:1 › tc5_actual_multi_user_browser_request_preserves_choice 
+undefined
+E:\allwork\download\agent\understand-book\packages\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: playwright test playwright/tutor-continuation-api.spec.ts -g multi_user --workers=1 --reporter=line

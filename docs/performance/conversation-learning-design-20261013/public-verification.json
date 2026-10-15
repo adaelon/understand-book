@@ -1,0 +1,26 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-10-13T01:39:13.336306+00:00",
+  "public": [
+    {
+      "route": "/index.html?login=1",
+      "entry_matches": true,
+      "assets_match": [
+        "/assets/reader-DJnGri3V.js",
+        "/assets/x-CLG-pd4D.js",
+        "/assets/reader-CNKIi8WI.css"
+      ]
+    },
+    {
+      "route": "/",
+      "entry_matches": true,
+      "assets_match": [
+        "/assets/home-BX0lX-lJ.js",
+        "/assets/x-CLG-pd4D.js",
+        "/assets/home-DNMygPjE.css"
+      ]
+    }
+  ],
+  "service_unchanged": true,
+  "model_requests": 0
+}

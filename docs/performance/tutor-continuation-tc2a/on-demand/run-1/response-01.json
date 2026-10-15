@@ -1,0 +1,11 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"operation\": \"select\", \"move_id\": \"move_630c46_avg_speed_time_weight\", \"object_ids\": [], \"kind\": \"explain\", \"prompt\": \"承接上一段：把「按时间加权」推到底——相等路程为什么不能把速度数值平均，以及什么情况下才可以；并给出等路程的通用公式与一个新的自测题。\", \"target\": {\"capability\": \"从定义出发做定量推演，并区分两种平均的适用条件\", \"expected_performance\": \"能说明等路程时平均速度是调和平均（2v1v2/(v1+v2)），等时间时才是速度的算术平均，并用定义解释差别来源\", \"learning_focus\": \"第二句『Equal distances need not take equal times』的定量含义：时间在分母上，所以平均速度按时间加权；权重相等（时间相等）时才退化为简单平均\", \"source_bindings\": [{\"end_lid\": \"1.1\", \"source_id\": \"tc0-average-speed\", \"source_revision\": \"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e\", \"start_lid\": \"1.1\"}]}}",
+      "id": "call_00_RV2XM8Ip0DqEFRCFs9xi2706",
+      "name": "tutor.step"
+    }
+  ],
+  "usage_total_tokens": 17280
+}

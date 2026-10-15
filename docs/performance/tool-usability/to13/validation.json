@@ -1,0 +1,28 @@
+{
+  "resident": {
+    "tools": 34,
+    "input_examples": 47,
+    "output_schemas": 11
+  },
+  "local_mcp": {
+    "tools": 16,
+    "input_examples": 8,
+    "output_schemas": 13
+  },
+  "remote_mcp": {
+    "tools": 11,
+    "input_examples": 6,
+    "output_schemas": 11
+  },
+  "executor": {
+    "tools": 4,
+    "input_examples": 5,
+    "output_schemas": 0
+  },
+  "tutor_states": {
+    "visible": 14,
+    "unavailable": 3,
+    "input_examples": 86
+  },
+  "model_sampling": false
+}

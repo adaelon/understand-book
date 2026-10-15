@@ -1,0 +1,17 @@
+{
+  "operations": 9,
+  "advertised_examples": 14,
+  "rejected_invalid_inputs": 11,
+  "executed_host_calls": 19,
+  "prepare": "real Runtime loop; presentation_to4_prepare_example_applies_at_next_sampling",
+  "input_constraints_unchanged": true,
+  "parameters_bytes": {
+    "before": 10282,
+    "after": 13706
+  },
+  "tool_definition_bytes": {
+    "before": 11575,
+    "after": 15520
+  },
+  "model_sampling": false
+}

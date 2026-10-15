@@ -1,0 +1,23 @@
+{
+  "local": {
+    "schemas": 13,
+    "success": 19,
+    "errors": 2,
+    "collection_pages": 0
+  },
+  "remote": {
+    "schemas": 11,
+    "success": 45,
+    "errors": 2,
+    "collection_pages": 26
+  },
+  "resident": {
+    "schemas": 11,
+    "samples": 64,
+    "statuses": {
+      "ok": 26,
+      "partial": 31,
+      "error": 7
+    }
+  }
+}

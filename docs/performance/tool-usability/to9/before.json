@@ -1,0 +1,664 @@
+[
+  {
+    "expected_returned": 10,
+    "expected_total": 12,
+    "input": {
+      "granularity": "far",
+      "k": null,
+      "lid": "1"
+    },
+    "label": "above_k",
+    "result": {
+      "anchor": "1",
+      "items": [
+        {
+          "layer": "near",
+          "lid": "1.1",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.1"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.2",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.2"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.3",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.3"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.4",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.4"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.5",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.5"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.6",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.6"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.7",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.7"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.8",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.8"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.9",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.9"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.10",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.10"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        }
+      ]
+    },
+    "structure": {
+      "at": null,
+      "available": false,
+      "key_stops": [],
+      "spine_index": null,
+      "spine_unit": null,
+      "throughlines": [],
+      "warning": "book_structure.json not attached"
+    }
+  },
+  {
+    "expected_returned": 12,
+    "expected_total": 12,
+    "input": {
+      "granularity": "far",
+      "k": 12,
+      "lid": "1"
+    },
+    "label": "equal_k",
+    "result": {
+      "anchor": "1",
+      "items": [
+        {
+          "layer": "near",
+          "lid": "1.1",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.1"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.2",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.2"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.3",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.3"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.4",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.4"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.5",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.5"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.6",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.6"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.7",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.7"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.8",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.8"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.9",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.9"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.10",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.10"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.11",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.11"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.12",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.12"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        }
+      ]
+    },
+    "structure": {
+      "at": null,
+      "available": false,
+      "key_stops": [],
+      "spine_index": null,
+      "spine_unit": null,
+      "throughlines": [],
+      "warning": "book_structure.json not attached"
+    }
+  },
+  {
+    "expected_returned": 12,
+    "expected_total": 12,
+    "input": {
+      "granularity": "far",
+      "k": 20,
+      "lid": "1"
+    },
+    "label": "below_k",
+    "result": {
+      "anchor": "1",
+      "items": [
+        {
+          "layer": "near",
+          "lid": "1.1",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.1"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.2",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.2"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.3",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.3"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.4",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.4"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.5",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.5"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.6",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.6"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.7",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.7"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.8",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.8"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.9",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.9"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.10",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.10"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.11",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.11"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        },
+        {
+          "layer": "near",
+          "lid": "1.12",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.12"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "via": {
+            "kind": "tree",
+            "rel": "child"
+          }
+        }
+      ]
+    },
+    "structure": {
+      "at": null,
+      "available": false,
+      "key_stops": [],
+      "spine_index": null,
+      "spine_unit": null,
+      "throughlines": [],
+      "warning": "book_structure.json not attached"
+    }
+  },
+  {
+    "expected_returned": 0,
+    "expected_total": 12,
+    "input": {
+      "granularity": "far",
+      "k": 0,
+      "lid": "1"
+    },
+    "label": "zero_k",
+    "result": {
+      "anchor": "1",
+      "items": []
+    },
+    "structure": {
+      "at": null,
+      "available": false,
+      "key_stops": [],
+      "spine_index": null,
+      "spine_unit": null,
+      "throughlines": [],
+      "warning": "book_structure.json not attached"
+    }
+  },
+  {
+    "expected_returned": 0,
+    "expected_total": 0,
+    "input": {
+      "granularity": "far",
+      "k": null,
+      "lid": "1"
+    },
+    "label": "zero_candidates",
+    "result": {
+      "anchor": "1",
+      "items": []
+    },
+    "structure": {
+      "at": null,
+      "available": false,
+      "key_stops": [],
+      "spine_index": null,
+      "spine_unit": null,
+      "throughlines": [],
+      "warning": "book_structure.json not attached"
+    }
+  }
+]

@@ -1,0 +1,40 @@
+{
+  "name": "Understand Book 主标识",
+  "version": 1,
+  "approvedAt": "2026-10-13",
+  "status": "用户已确认；纯色矢量、透明图与 Web 图标已制作并接入",
+  "reference": {
+    "file": "understand-book-logo-approved.png",
+    "role": "用户选定的主标识原图；后续生产素材的造型基准",
+    "origin": "内置 image_gen 生成，用户回传附件并确认采用",
+    "format": "PNG",
+    "width": 1254,
+    "height": 1254
+  },
+  "construction": "焙橙色打开的书本为正形，从书页中减出歪头页页，脸颊留白接入下方书缝。",
+  "preserve": [
+    "书本外轮廓与左右页边的轻微高低差",
+    "横向展开的宽脸与歪头角度",
+    "左高右低的小圆耳与不对称轮廓",
+    "脸颊下缘连续接入书缝的留白",
+    "完整、无五官和耳内独立小块的负形"
+  ],
+  "palette": {
+    "brandAccent": "#B65A17",
+    "paper": "#F7F3EB",
+    "ink": "#332B25",
+    "role": "生产色值；确认原图保留生成图自身像素，生产稿采用纯色"
+  },
+  "usage": {
+    "primaryMark": "用于 Understand Book 产品身份与应用图标",
+    "companion": "页页全身、头像与神态继续使用既有角色素材"
+  },
+  "productionStatus": {
+    "approvedReference": "saved",
+    "vectorMaster": "understand-book-logo.svg",
+    "transparentAsset": "understand-book-logo-transparent.png",
+    "applicationIcons": "packages/web/public/brand/：SVG、32/180/192/512px PNG 与 manifest",
+    "productIntegration": "首页导航与页脚、登录注册、书架、阅读器顶栏及浏览器图标"
+  },
+  "decision": "../../../../docs/adr/0165-yeye-reading-companion-and-brand-integration.md#7-主标识"
+}

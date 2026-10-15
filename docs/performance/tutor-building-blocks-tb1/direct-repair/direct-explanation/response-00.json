@@ -1,0 +1,16 @@
+{
+  "text": "I'll first locate the exact borrowing code in your book, since no excerpt is attached to this turn.",
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"&foo\", \"match_mode\": \"exact\", \"page_size\": 20}",
+      "id": "call_00_z6jxO2t4lnthvRiqqZuW1694",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"query\": \"bar\", \"match_mode\": \"exact\", \"page_size\": 20}",
+      "id": "call_01_6xn6DJ9CjbYo9YbObCP00664",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 13034
+}

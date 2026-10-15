@@ -77,7 +77,15 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
     fn edit_base(&self, reference: &Option<PresentationRef>, candidate_id: &Option<String>) -> Result<(PresentationContent, Option<PresentationRef>), ToolError> {
         self.with_private(|state| match (reference, candidate_id) {
             (Some(reference), None) => {
-                let version = state.read_presentation(&self.turn_ref.session_id, reference)?;
+                let version = state.read_presentation(&self.turn_ref.session_id, reference).or_else(|original| {
+                    let receipt = state.user.agent_history.sessions.iter().find(|s| s.id == self.turn_ref.session_id)
+                        .and_then(|s| s.turns.iter().find(|t| t.turn_id == self.turn_ref.turn_id))
+                        .and_then(|t| t.presentation_follow_up.as_ref()).filter(|r| &r.reference == reference).ok_or(original)?;
+                    let owner = runtime::presentation::PresentationOwner { book_id: state.book.base.book_id.clone(), session_id: receipt.session_id.clone() };
+                    let store = presentation_store::PresentationStore::for_user(state.user)?;
+                    store.read_retained_state(&owner, receipt)?;
+                    store.read_version(&owner, reference)
+                })?;
                 Ok((version.content, Some(reference.clone())))
             }
             (None, Some(id)) => {
@@ -564,7 +572,7 @@ fn compile(
         runtime::orchestrator::compile_presentation_text(text, &content.source_bindings, messages)
             .map_err(|issues| {
                 let hint = if issues.iter().any(|issue| issue.error_code == "UNKNOWN_SOURCE_REF") {
-                    " Include every cited ref in write.source_ref_ids (or patch.source_ref_ids when adding sources). A ref already observed through source.present or preserved by based_on need not be registered again; it must be explicitly attached to this candidate. Use only observed or preserved refs."
+                    " Include every cited ref in write.source_ref_ids; patch preserves existing bindings, so use write to change sources. A ref already observed through source.present or preserved by based_on need not be registered again; it must be explicitly attached to this candidate. Use only observed or preserved refs."
                 } else { "" };
                 invalid(format!("Public content rejected: {issues:?}{hint}"))
             })?;

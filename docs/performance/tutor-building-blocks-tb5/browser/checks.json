@@ -1,0 +1,33 @@
+{
+  "evidence_id": "interpretation:tb4-followup-copy-shared-access-observation",
+  "fixture": "TB4 captured facts and hypothesis; scripted learner",
+  "viewports": [
+    1280,
+    320,
+    390
+  ],
+  "modes_saved": true,
+  "conditions_visible": true,
+  "correction_reopened": true,
+  "learner_quote_preserved": true,
+  "status": "unassessed",
+  "calls": [
+    "/tutor/understanding",
+    "/tutor/readiness",
+    "/tutor/state",
+    "/tutor/understanding",
+    "/tutor/mutate",
+    "/tutor/mutate",
+    "/tutor/evidence",
+    "/tutor/correct",
+    "/tutor/evidence",
+    "/tutor/understanding",
+    "/tutor/understanding",
+    "/tutor/readiness",
+    "/tutor/state",
+    "/tutor/understanding",
+    "/tutor/evidence"
+  ],
+  "model_calls": 0,
+  "human_readers": 0
+}

@@ -1,0 +1,38 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+ ✓ src/network-client.test.ts (16 tests) 45ms
+stderr | src/NetworkApp.chat.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.chat.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.recovery.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.recovery.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/NetworkApp.recovery.test.ts (6 tests) 239ms
+ ✓ src/NetworkApp.chat.test.ts (6 tests) 741ms
+stderr | src/NetworkApp.resumption.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.resumption.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.recap.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.recap.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/NetworkApp.resumption.test.ts (5 tests) 310ms
+ ✓ src/NetworkApp.recap.test.ts (1 test) 158ms
+
+ Test Files  5 passed (5)
+      Tests  34 passed (34)
+   Start at  16:22:53
+   Duration  26.34s (transform 4.99s, setup 0ms, collect 14.80s, tests 1.49s, environment 23.77s, prepare 3.74s)
+

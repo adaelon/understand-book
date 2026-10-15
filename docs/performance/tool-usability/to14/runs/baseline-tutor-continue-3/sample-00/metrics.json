@@ -1,0 +1,15 @@
+{
+  "completed": true,
+  "recovered_errors": [],
+  "usage": {
+    "input_tokens": 31417,
+    "cached_input_tokens": 0,
+    "output_tokens": 93
+  },
+  "total_tokens": 31510,
+  "actual_cost": null,
+  "final": "{\"text\":\"我先读一下原文，再接着上面的例子说明：什么时候可以直接把两段速度取平均。\",\"tool_calls\":[{\"name\":\"book.text\",\"arguments\":\"{\\\"lid\\\":\\\"1.1\\\",\\\"end_lid\\\":\\\"1.1\\\"}\"}]}",
+  "exit_code": 0,
+  "timed_out": false,
+  "elapsed_ms": 18919.6517
+}

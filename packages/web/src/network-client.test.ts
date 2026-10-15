@@ -9,6 +9,40 @@ const json = (value: unknown, status = 200) => new Response(JSON.stringify(value
 beforeEach(() => { sessionStorage.clear(); localStorage.clear(); installIdentity({ user_id: 'A', csrf_token: 'csrf-A' }); installWorkspace(scene); });
 afterEach(() => { vi.unstubAllGlobals(); network.value = { ...network.value, enabled: false }; });
 describe('MU8 authorized browser context', () => {
+  it('keeps the original choice head and key on lost-response recovery', async () => {
+    const input = { session_id:'chat', client_request_id:'tc5-choice', expected_chat_head:'original', teaching_choice:{delivery_ref:'delivery',option_id:'compare'} };
+    let saved: any;
+    const fetch=vi.fn(async (url: string, init?: RequestInit) => {
+      if(url.includes('client_request_id=')) return json({turn_id:'accepted',session_id:'chat',book_id:'b',dispatch_state:'completed'});
+      if(url.endsWith('/agent/runs')) {saved=JSON.parse(String(init?.body)); throw new Error('lost');}
+      return json(scene);
+    });
+    vi.stubGlobal('fetch',fetch);
+    expect(await api.agentRunCreate('',input)).toMatchObject({turn_id:'accepted'});
+    expect(saved).toMatchObject(input); expect(pendingSubmissions()).toEqual([]);
+    expect(fetch.mock.calls.filter(([url])=>url.endsWith('/agent/runs'))).toHaveLength(1);
+  });
+  it('rejects a typed action captured in a different chat before posting it', async () => {
+    const fetch=vi.fn(async () => json(scene)); vi.stubGlobal('fetch',fetch);
+    await expect(api.agentRunCreate('',{session_id:'old-chat',client_request_id:'tc5-old',entry_action:'clarify_answer',answer_ref:{turn_id:'old-answer'},expected_chat_head:'old-answer'})).rejects.toMatchObject({errorCode:'CHAT_SELECTION_CHANGED'});
+    expect(fetch).toHaveBeenCalledTimes(1); expect(pendingSubmissions()).toEqual([]);
+  });
+  it('does not put selection translation in the reader write queue', async () => {
+    let release!: (value: Response) => void;
+    const fetch = vi.fn(async (url: string) => {
+      if (url.endsWith('/reader/selection.translate')) return new Promise<Response>(resolve => { release = resolve; });
+      return json(scene);
+    });
+    vi.stubGlobal('fetch', fetch);
+    const translation = api.pdfSelectionTranslate({ status: 'resolved', raw_quote: 'X', resolved_quote: 'X', ranges: [{ lid: '1.1', range: { start: 0, end: 1 } }] });
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const write = workspaceAction('checkpoint');
+    await vi.waitFor(() => expect(fetch.mock.calls.some(([url]) => url.endsWith('/checkpoint'))).toBe(true));
+    release(json({ result: { translation_markdown: '译文', target_locale: 'zh-CN' } }));
+    await expect(translation).resolves.toMatchObject({ translation_markdown: '译文' });
+    await write;
+  });
   it('preserves reader commands across a chat change while rejecting old responses and old chat commands', async () => {
     const reader = bindSceneApi(api, readerKey), chat = bindSceneApi(api);
     const initialReader = readerKey();

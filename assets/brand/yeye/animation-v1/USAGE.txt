@@ -1,0 +1,47 @@
+页页 · 第一组动画 / v1
+
+查看
+双击 preview.html 即可离线查看、暂停、拖动进度和更换预览背景。
+yeye-motion-preview.gif 与 yeye-motion-preview.mp4 是三段动作的同步演示。
+
+动画
+idle/lottie.json     日常眨眼，4 秒，循环
+reading/lottie.json  阅读翻页，5 秒，循环
+success/lottie.json  完成反馈，2.5 秒，单次播放，结束后停留
+三段均为 1254 × 1254、30fps、透明背景。
+
+接入
+每份 lottie.json 与同目录 PNG 共同组成一段动画，部署时一起复制。
+页面可使用 vendor/lottie-5.13.0.min.js：
+
+  lottie.loadAnimation({
+    container: document.querySelector('#yeye'),
+    renderer: 'svg',
+    loop: true,
+    autoplay: true,
+    path: '/assets/yeye/idle/lottie.json'
+  });
+
+完成反馈使用 loop: false。遵循 prefers-reduced-motion，允许用户暂停。
+index.html 是采用外部资源路径的接入示例；通过本地 HTTP 服务打开。
+preview.html 已嵌入资源，可直接打开。
+
+实现与来源
+角色图使用已经确认的 v7 PNG；图像原始字节保留。
+局部动画包括眼睑遮罩、闭眼曲线、翻页形变和完成反馈短线。
+完成动作的抬爪来自原始姿态，本版没有把手臂做成独立骨骼。
+这是一组 PNG 与矢量图层混合的 Lottie 资产，适合当前界面展示尺寸。
+
+制作采用 diffusionstudio/lottie 的 Text-to-Lottie 技能及官方 Skia Skottie 播放器。
+官方工具来源：https://github.com/diffusionstudio/lottie
+使用的提交：3c72912fad543897f90045ed4d355813837927fc
+网页播放采用 Airbnb Lottie Web 5.13.0：https://github.com/airbnb/lottie-web
+这两项代码的 MIT 许可允许商业使用；分发相关代码时保留版权和许可声明。
+对应完整许可位于 licenses 目录。美术生成记录位于 ../v7/design-spec.json。
+
+重新生成
+  node build.mjs <diffusionstudio/lottie 本地项目目录>
+会写入三个动画目录，并同步到官方项目 public/projects/yeye/scene-1…scene-3。
+在官方项目内运行 npm run dev 后，通过实际启动端口检查这些场景。
+  node package-preview.mjs
+重建单文件离线预览。

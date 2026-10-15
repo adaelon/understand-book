@@ -1,0 +1,10 @@
+{
+  "verified_sources": 16,
+  "planned_tasks": 16,
+  "cli": "codex-cli 0.162.0-alpha.2",
+  "model": "gpt-6.1-sol",
+  "effort": "medium",
+  "source_content_equal_by_family": true,
+  "remote_prompt_equal": true,
+  "identity_note": "Independent fixtures issue different publication/session/turn IDs; within-run references retain their actual identities. No hashes were used."
+}

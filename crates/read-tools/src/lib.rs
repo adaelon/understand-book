@@ -1,6 +1,7 @@
 //! 读时确定性叶子工具(切片0:manifest/text;context/concept 见 S4c)`[ADR-0014]`。
 //! 消费冻结只读基座 `base.json` + 旁路原文 `source.txt`(UTF-16 span 口径 `[ADR-0024]`)。
 //! 纯函数库,无 LLM、provider 无关;HTTP 暴露推 S7。
+pub mod output_schema;
 use base_schema::{
     Direction, EdgeScope, FormulaSemantics, GraphNodeType, LidNode, NodeKind, ReadOnlyBase, Span,
 };
@@ -173,7 +174,7 @@ pub struct TechnicalLearningDiscourseRelation {
     pub evidence_lids: Vec<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct ProfileArtifactHeader {
     pub book_id: String,
@@ -184,14 +185,14 @@ pub struct ProfileArtifactHeader {
     pub generated_at: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct AnchoredText {
     pub text: String,
     pub evidence_lids: Vec<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum BookStructureSpineRole {
@@ -203,7 +204,7 @@ pub enum BookStructureSpineRole {
     Synthesis,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum BookStructureKeyStopType {
@@ -216,7 +217,7 @@ pub enum BookStructureKeyStopType {
     Summary,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct BookStructureKeyStop {
     pub id: String,
@@ -227,7 +228,7 @@ pub struct BookStructureKeyStop {
     pub reason: AnchoredText,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct BookStructureSpineUnit {
     pub lid: String,
@@ -237,7 +238,7 @@ pub struct BookStructureSpineUnit {
     pub depends_on: Vec<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct BookStructureThroughline {
     pub id: String,
@@ -256,7 +257,7 @@ pub struct BookStructureSidecar {
     pub key_stops: Vec<BookStructureKeyStop>,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct StructureProjection {
     pub available: bool,
@@ -442,7 +443,7 @@ pub struct PaperMinimapBase {
     pub warnings: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct GuidePathSegment {
     pub spine_index: usize,
@@ -450,7 +451,7 @@ pub struct GuidePathSegment {
     pub key_stops: Vec<BookStructureKeyStop>,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct GuidePath {
     pub available: bool,
@@ -469,14 +470,14 @@ pub struct MetadataField<T> {
     pub confidence: Option<f32>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperAuthor {
     pub name: String,
     pub raw: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperReference {
     pub raw: String,
@@ -526,7 +527,7 @@ pub struct PaperLexiconEntry {
     pub chinese_gloss: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum PaperReadingMode {
@@ -535,7 +536,7 @@ pub enum PaperReadingMode {
     Deep,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum PaperReadingStage {
@@ -545,7 +546,7 @@ pub enum PaperReadingStage {
     Creative,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum PaperReadingAnswerSlotKind {
@@ -554,7 +555,7 @@ pub enum PaperReadingAnswerSlotKind {
     UserReflection,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperReadingAnswerSlot {
     pub kind: PaperReadingAnswerSlotKind,
@@ -563,7 +564,7 @@ pub struct PaperReadingAnswerSlot {
     pub evidence_lids: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperReadingQuestion {
     pub id: String,
@@ -573,7 +574,7 @@ pub struct PaperReadingQuestion {
     pub answer_slots: Vec<PaperReadingAnswerSlot>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperCodebookMetadata {
     pub title: Option<String>,
@@ -590,7 +591,7 @@ pub struct PaperCodebookMetadata {
     pub evidence_lids: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperCodebookTerm {
     pub term: String,
@@ -602,7 +603,7 @@ pub struct PaperCodebookTerm {
     pub chinese_gloss: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperCodebookStructureItem {
     pub id: String,
@@ -612,7 +613,7 @@ pub struct PaperCodebookStructureItem {
     pub evidence_lids: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperCodebook {
     pub available: bool,
@@ -623,7 +624,7 @@ pub struct PaperCodebook {
     pub warnings: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperAbstractExcerpt {
     pub lid: String,
@@ -631,7 +632,7 @@ pub struct PaperAbstractExcerpt {
     pub evidence_lids: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperAbstractCheck {
     pub id: String,
@@ -639,7 +640,7 @@ pub struct PaperAbstractCheck {
     pub evidence_lids: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct AbstractReadingAid {
     pub available: bool,
@@ -651,7 +652,7 @@ pub struct AbstractReadingAid {
     pub warning: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperReadingGuide {
     pub available: bool,
@@ -663,7 +664,7 @@ pub struct PaperReadingGuide {
     pub warnings: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperMetadataStringField {
     pub value: String,
@@ -672,7 +673,7 @@ pub struct PaperMetadataStringField {
     pub confidence: Option<f32>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperMetadataStringListField {
     pub value: Vec<String>,
@@ -681,7 +682,7 @@ pub struct PaperMetadataStringListField {
     pub confidence: Option<f32>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperMetadataNumberField {
     pub value: i64,
@@ -690,7 +691,7 @@ pub struct PaperMetadataNumberField {
     pub confidence: Option<f32>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperMetadataAuthorsField {
     pub value: Vec<PaperAuthor>,
@@ -699,7 +700,7 @@ pub struct PaperMetadataAuthorsField {
     pub confidence: Option<f32>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperMetadataReferencesField {
     pub value: Vec<PaperReference>,
@@ -708,7 +709,7 @@ pub struct PaperMetadataReferencesField {
     pub confidence: Option<f32>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperMetadataIdentifiersProjection {
     pub doi: Option<PaperMetadataStringField>,
@@ -716,7 +717,7 @@ pub struct PaperMetadataIdentifiersProjection {
     pub url: Option<PaperMetadataStringField>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperMetadataProjection {
     pub available: bool,
@@ -736,7 +737,7 @@ pub struct PaperMetadataProjection {
     pub warning: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PaperLexiconProjection {
     pub available: bool,
@@ -1415,7 +1416,7 @@ pub fn parse_content_profile_id(raw: &str) -> Result<ContentProfileId, ToolError
 }
 
 /// context 默认 top-K(占位,待 P1 实测回填 ADR-0013/0016「何时回头」)。
-pub const DEFAULT_NEAR_K: usize = 10;
+pub const DEFAULT_NEAR_K: usize = book_tool_contracts::DEFAULT_CONTEXT_K;
 /// route_from 每类前沿默认 top-K(沿用 context 截断惯例 `[ADR-0034 影响段]`)。
 pub const DEFAULT_ROUTE_K: usize = DEFAULT_NEAR_K;
 /// route_to BFS 默认跳数预算(占位,实测回填 `[ADR-0034 决策3 路径式预算全程]`)。
@@ -1424,7 +1425,7 @@ pub const DEFAULT_ROUTE_HOPS: usize = 8;
 const CONCEPT_COOCCURRENCE_WEIGHT: f32 = 0.5;
 
 /// 统一错误信封(子集)`[ADR-0015]`;禁宽松降级——找不到即报错,不静默返最近邻。
-#[derive(Debug, Serialize, PartialEq, TS)]
+#[derive(Debug, Serialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct ToolError {
     pub error_code: String,
@@ -1432,19 +1433,33 @@ pub struct ToolError {
     pub message: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Remote source pages count Unicode scalar values; all positions remain UTF-16.
+pub const MCP_TEXT_PAGE_CHARS: usize = 8_000;
+
+#[cfg(test)]
+mod mcp_text_page_tests;
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct TextPage {
+    pub text: String,
+    pub source_range: Span,
+    pub requested_range: Span,
+    pub next_start_utf16: Option<usize>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
 pub struct SourceTextRange {
     pub start: u32,
     pub end: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
 pub struct SourceSelectedRange {
     pub lid: String,
     pub range: SourceTextRange,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
 pub struct EvidenceRange {
     pub start_lid: String,
     pub end_lid: String,
@@ -1470,7 +1485,7 @@ pub struct ResolvedSource {
     pub excerpt: SourceExcerpt,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum TextMatchType {
@@ -1478,7 +1493,7 @@ pub enum TextMatchType {
     Normalized,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct TextOccurrenceRange {
     pub lid: String,
@@ -1486,14 +1501,14 @@ pub struct TextOccurrenceRange {
     pub end_utf16: usize,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct HeadingPathItem {
     pub lid: String,
     pub title: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct TextOccurrence {
     pub ordinal: usize,
@@ -1504,9 +1519,34 @@ pub struct TextOccurrence {
     pub heading_path: Vec<HeadingPathItem>,
     pub excerpt: String,
     pub match_type: TextMatchType,
+    #[serde(default)]
+    pub next_calls: Vec<BookTextCall>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+/// Optional source reads for a chosen locator; emitting a call does not observe its text.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS, schemars::JsonSchema)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub struct BookTextCall {
+    pub tool: String,
+    #[ts(type = "{ lid: string, end_lid?: string, start_utf16?: number }")]
+    pub arguments: book_tool_contracts::TextInput,
+}
+
+impl BookTextCall {
+    fn new(lid: &str, end_lid: Option<&str>) -> Self {
+        Self {
+            tool: book_tool_contracts::contract_for(book_tool_contracts::BookToolId::Text)
+                .aliases.resident.expect("book.text Resident alias").into(),
+            arguments: book_tool_contracts::TextInput {
+                lid: lid.into(),
+                end_lid: end_lid.filter(|end| *end != lid).map(str::to_owned),
+                start_utf16: None,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct SearchSectionCount {
     pub section_lid: String,
@@ -1524,7 +1564,7 @@ pub struct ExactSearchResult {
     pub section_counts: Vec<SearchSectionCount>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct SearchTextResult {
     pub version: String,
@@ -1536,6 +1576,30 @@ pub struct SearchTextResult {
     pub section_counts: Vec<SearchSectionCount>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_cursor: Option<String>,
+}
+
+impl SearchTextResult {
+    /// Resume this already computed page after its delivered prefix. Ordinals are
+    /// document-wide within the original scope, even for reverse-order pages.
+    pub fn cursor_after_prefix(
+        &self,
+        input: &SearchTextInput,
+        kept: usize,
+    ) -> Result<Option<String>, ToolError> {
+        let Some(omitted) = self.occurrences.get(kept) else {
+            return Ok(self.next_cursor.clone());
+        };
+        let offset = match input.order {
+            SearchOrder::Document => omitted.ordinal - 1,
+            SearchOrder::ReverseDocument => self.total_occurrences - omitted.ordinal,
+        };
+        Ok(Some(encode_search_cursor(&SearchCursorV1 {
+            version: self.version.clone(),
+            source_revision: self.source_revision.clone(),
+            request_digest: search_request_digest(input)?,
+            offset,
+        })?))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1671,7 +1735,7 @@ pub fn disambiguate_source_labels(sources: &mut [ResolvedSource]) {
 }
 
 /// book.manifest 树节点(确定性拓扑)`[ADR-0014]`。
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct ManifestNode {
     pub lid: String,
@@ -1685,7 +1749,7 @@ pub struct ManifestNode {
 }
 
 /// 每 LID 的确定性统计。
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct LidStats {
     pub child_count: usize,
@@ -1694,7 +1758,7 @@ pub struct LidStats {
 }
 
 /// book.manifest() 返回结构(符 V3 §4.1)。
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct Manifest {
     pub tree: Vec<ManifestNode>,
@@ -1704,7 +1768,7 @@ pub struct Manifest {
 /// context item 的确定性接入来源 + 排序键(判别联合)`[ADR-0014]`。
 /// P1 覆盖 Tree / Concept(mid 二跳) / Edge(local 与 long_range 召回路标);
 /// P2a 覆盖 technical_learning discourse sidecar 投影 `[ADR-0033]`。
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum Via {
@@ -1735,19 +1799,29 @@ pub enum Via {
 }
 
 /// book.context 的一个指针项(纯坐标,不带原文)`[ADR-0014]`。
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct ContextItem {
     pub lid: String,
     pub layer: String,
     pub via: Via,
+    pub next_calls: Vec<BookTextCall>,
 }
 
 /// book.context() 返回结构(符 V3 §4.1)。
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct Context {
     pub anchor: String,
+    /// Deduplicated pointers recalled by this anchor/granularity's rules before k.
+    /// Counts relations, not distinct LIDs or all semantic relationships in the book.
+    pub total_candidates: usize,
+    /// Pointers selected by k in the canonical result, before transport pagination
+    /// or the Resident model-output budget is applied.
+    pub returned_count: usize,
+    /// Whether k omitted known candidates; false does not imply semantic completeness
+    /// or availability of built structure artifacts.
+    pub truncated: bool,
     pub items: Vec<ContextItem>,
 }
 
@@ -1769,7 +1843,7 @@ pub enum NavCategory {
 }
 
 /// route_from 前沿的一个排序步:纯坐标 + 结构排序分,不带原文(消费方走 `book.text`)`[ADR-0034]`。
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct RankedStep {
     /// 真实 LID。
@@ -1813,7 +1887,7 @@ pub const MAX_CONCEPT_QUERY_CHARS: usize = book_tool_contracts::MAX_CONCEPT_QUER
 const MAX_CONCEPT_PREVIEWS: usize = 2;
 const MAX_CONCEPT_PREVIEW_CHARS: usize = 180;
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum ConceptCandidateKind {
@@ -1821,7 +1895,7 @@ pub enum ConceptCandidateKind {
     Entity,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord, TS)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord, TS, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum ConceptMatchTier {
@@ -1831,14 +1905,14 @@ pub enum ConceptMatchTier {
     ExactLabel,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct ConceptPreview {
     pub lid: String,
     pub text: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct ConceptCandidate {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1852,15 +1926,21 @@ pub struct ConceptCandidate {
     pub matched_terms: Vec<String>,
     pub match_reasons: Vec<String>,
     pub previews: Vec<ConceptPreview>,
+    #[serde(default)]
+    pub next_calls: Vec<BookTextCall>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct ConceptCandidateSet {
     pub version: String,
     pub query: String,
+    /// Graph candidates matched by this query's recall rules before limit, not all
+    /// semantic matches in the book or proof that graph construction is complete.
     pub matched_count: usize,
+    /// Candidates selected by limit before transport pagination or model-output budgeting.
     pub returned_count: usize,
+    /// Whether limit omitted matched candidates; does not describe occurrence coverage.
     pub truncated: bool,
     pub candidates: Vec<ConceptCandidate>,
 }
@@ -3611,6 +3691,7 @@ impl Book {
                     },
                     name: node.name.clone(),
                     previews: self.concept_previews(query, &occurrences, anchor_index),
+                    next_calls: occurrences.iter().map(|lid| BookTextCall::new(lid, None)).collect(),
                     occurrences,
                     match_tier,
                     matched_terms,
@@ -5724,12 +5805,101 @@ impl Book {
     /// span 是 UTF-16 code unit 下标 `[ADR-0024]` ⇒ 按 UTF-16 切,绝不按 UTF-8 字节直切。
     /// `end_lid = Some(e)` 取 [lid.span.start, e.span.end);None 取单 LID。
     pub fn text(&self, lid: &str, end_lid: Option<&str>) -> Result<String, ToolError> {
-        let start = self.node(lid)?.span.start;
-        let end = match end_lid {
-            Some(e) => self.node(e)?.span.end,
-            None => self.node(lid)?.span.end,
+        let first = self.node(lid)?;
+        let last = self.node(end_lid.unwrap_or(lid))?;
+        let start = first.span.start;
+        let end = last.span.end;
+        if start > last.span.start {
+            return Err(invalid_source_range("Use an ordered LID range inside canonical source"));
+        }
+        let range = self.source_u16.get(start..end)
+            .ok_or_else(|| invalid_source_range("Use an ordered LID range inside canonical source"))?;
+        Ok(String::from_utf16_lossy(range))
+    }
+
+    /// Shared local/Resident/REST result. Initial reads retain the original shape;
+    /// explicit continuations use the same canonical paging as remote MCP.
+    pub fn read_text(
+        &self,
+        input: &book_tool_contracts::TextInput,
+    ) -> Result<serde_json::Value, ToolError> {
+        if input.start_utf16.is_some() {
+            let page = self.text_page(&input.lid, input.end_lid.as_deref(), input.start_utf16)?;
+            let mut result = serde_json::to_value(page).expect("text page serialization");
+            result["lid"] = serde_json::json!(input.lid);
+            Ok(result)
+        } else {
+            Ok(
+                serde_json::json!({"lid":input.lid,"text":self.text(&input.lid,input.end_lid.as_deref())?}),
+            )
+        }
+    }
+
+    /// Validate a delivered absolute interval against the exact canonical text.
+    pub fn text_in_source_range(&self, range: &Span) -> Result<String, ToolError> {
+        let units = self
+            .source_u16
+            .get(range.start..range.end)
+            .ok_or_else(|| invalid_source_range("source range is outside canonical text"))?;
+        String::from_utf16(units)
+            .map_err(|_| invalid_source_range("source range must use UTF-16 character boundaries"))
+    }
+
+    /// Read a bounded page directly from the canonical source, without allocating the full range.
+    /// `start_utf16` is an absolute source position returned by the previous page.
+    pub fn text_page(
+        &self,
+        lid: &str,
+        end_lid: Option<&str>,
+        start_utf16: Option<usize>,
+    ) -> Result<TextPage, ToolError> {
+        let first = self.node(lid)?;
+        let last = self.node(end_lid.unwrap_or(lid))?;
+        let requested_range = Span {
+            start: first.span.start,
+            end: last.span.end,
         };
-        Ok(String::from_utf16_lossy(&self.source_u16[start..end]))
+        let invalid = || {
+            invalid_source_range(
+                "Use an ordered LID range and a UTF-16 character boundary inside that range",
+            )
+        };
+        let boundary = |at: usize| {
+            at <= self.source_u16.len()
+                && !(at > 0
+                    && at < self.source_u16.len()
+                    && (0xD800..=0xDBFF).contains(&self.source_u16[at - 1])
+                    && (0xDC00..=0xDFFF).contains(&self.source_u16[at]))
+        };
+        if first.span.start > last.span.start
+            || requested_range.start > requested_range.end
+            || !boundary(requested_range.start)
+            || !boundary(requested_range.end)
+        {
+            return Err(invalid());
+        }
+        let start = start_utf16.unwrap_or(requested_range.start);
+        if start < requested_range.start
+            || start > requested_range.end
+            || !boundary(start)
+            || (start == requested_range.end && start != requested_range.start)
+        {
+            return Err(invalid());
+        }
+        let units = &self.source_u16[start..requested_range.end];
+        let mut end = start;
+        let mut text = String::new();
+        for ch in char::decode_utf16(units.iter().copied()).take(MCP_TEXT_PAGE_CHARS) {
+            let ch = ch.map_err(|_| invalid())?;
+            end += ch.len_utf16();
+            text.push(ch);
+        }
+        Ok(TextPage {
+            text,
+            source_range: Span { start, end },
+            next_start_utf16: (end < requested_range.end).then_some(end),
+            requested_range,
+        })
     }
 
     fn source_passage(
@@ -6262,6 +6432,7 @@ impl Book {
             ordinal,
             start_lid: first_range.lid.clone(),
             end_lid: last_range.lid.clone(),
+            next_calls: vec![BookTextCall::new(&first_range.lid, Some(&last_range.lid))],
             heading_path: self.source_heading_path_items(start_node)?,
             excerpt: self.search_excerpt(source_range.start, source_range.end),
             source_range_utf16: source_range,
@@ -6307,6 +6478,7 @@ impl Book {
                 ordinal: occurrences.len() + 1,
                 start_lid: first_range.lid.clone(),
                 end_lid: last_range.lid.clone(),
+                next_calls: vec![BookTextCall::new(&first_range.lid, Some(&last_range.lid))],
                 heading_path: self.source_heading_path_items(start_node)?,
                 excerpt: self.search_excerpt(source_range.start, source_range.end),
                 source_range_utf16: source_range,
@@ -6818,6 +6990,7 @@ impl Book {
     fn tree_item(&self, lid: &str, rel: &str) -> ContextItem {
         ContextItem {
             lid: lid.to_string(),
+            next_calls: vec![BookTextCall::new(lid, None)],
             layer: "near".into(),
             via: Via::Tree { rel: rel.into() },
         }
@@ -6853,6 +7026,7 @@ impl Book {
     fn edge_item(&self, lid: &str, layer: &str, e: &base_schema::GraphEdge) -> ContextItem {
         ContextItem {
             lid: lid.to_string(),
+            next_calls: vec![BookTextCall::new(lid, None)],
             layer: layer.into(),
             via: Via::Edge {
                 scope: match &e.scope {
@@ -6939,6 +7113,7 @@ impl Book {
                     r.confidence,
                     ContextItem {
                         lid: other_lid.to_string(),
+                        next_calls: vec![BookTextCall::new(other_lid, None)],
                         layer: layer.into(),
                         via: Via::Discourse {
                             source_lid: item.lid.clone(),
@@ -6970,7 +7145,8 @@ impl Book {
         k: Option<usize>,
     ) -> Result<Context, ToolError> {
         let anchor = self.node(lid)?;
-        let granularity = granularity.unwrap_or("near");
+        let granularity =
+            granularity.unwrap_or(book_tool_contracts::DEFAULT_CONTEXT_GRANULARITY.as_str());
         if !matches!(granularity, "near" | "mid" | "far") {
             return Err(ToolError {
                 error_code: "INVALID_GRANULARITY".into(),
@@ -7037,6 +7213,7 @@ impl Book {
                             if l != lid {
                                 mid.push(ContextItem {
                                     lid: l.clone(),
+                                    next_calls: vec![BookTextCall::new(l, None)],
                                     layer: "mid".into(),
                                     via: Via::Concept {
                                         name: n.name.clone(),
@@ -7066,9 +7243,13 @@ impl Book {
             }
         }
 
+        let total_candidates = items.len();
         items.truncate(k.unwrap_or(DEFAULT_NEAR_K));
         Ok(Context {
             anchor: lid.to_string(),
+            total_candidates,
+            returned_count: items.len(),
+            truncated: total_candidates > items.len(),
             items,
         })
     }
@@ -9058,6 +9239,71 @@ mod tests {
             .iter()
             .any(|i| i.lid == "1" && matches!(i.via, Via::Tree { .. })));
         assert!(ctx.items.iter().all(|i| i.layer == "near"));
+    }
+
+    #[test]
+    fn context_to9_counts_known_candidates_before_k_and_preserves_availability() {
+        // The public tree rule recalls 12 children, exceeding the default k=10.
+        let source = "abcdefghijkl";
+        let children: Vec<String> = (1..=12).map(|n| format!("1.{n}")).collect();
+        let mut nodes = vec![LidNode {
+            lid: "1".into(), path: vec![1], kind: NodeKind::Chapter,
+            span: Span { start: 0, end: 12 }, children: children.clone(),
+        }];
+        nodes.extend(children.iter().enumerate().map(|(i, lid)| LidNode {
+            lid: lid.clone(), path: vec![1, (i + 1) as u32], kind: NodeKind::Paragraph,
+            span: Span { start: i, end: i + 1 }, children: Vec::new(),
+        }));
+        let b = Book::new(ReadOnlyBase {
+            book_id: "to9-tree".into(), lid_nodes: nodes,
+            graph_nodes: Vec::new(), graph_edges: Vec::new(),
+        }, source);
+        let isolated = concept_candidate_book(&[("1", "isolated")], Vec::new());
+        let mut samples = Vec::new();
+        for (label, book, k, total, returned) in [
+            ("above_k", &b, None, 12, 10),
+            ("equal_k", &b, Some(12), 12, 12),
+            ("below_k", &b, Some(20), 12, 12),
+            ("zero_k", &b, Some(0), 12, 0),
+            ("zero_candidates", &isolated, None, 0, 0),
+        ] {
+            let result = serde_json::to_value(book.context("1", Some("far"), k).unwrap()).unwrap();
+            samples.push(serde_json::json!({
+                "label": label, "input": {"lid":"1", "granularity":"far", "k":k},
+                "expected_total":total, "expected_returned":returned, "result":result,
+                "structure":book.structure(None).unwrap(),
+            }));
+        }
+        if let Ok(path) = std::env::var("TO9_CONTEXT_SNAPSHOT") {
+            std::fs::write(path, serde_json::to_vec_pretty(&samples).unwrap()).unwrap();
+        }
+        for sample in samples {
+            let result = &sample["result"];
+            assert_eq!(result["total_candidates"], sample["expected_total"], "{}", sample["label"]);
+            assert_eq!(result["returned_count"], sample["expected_returned"]);
+            assert_eq!(result["returned_count"], result["items"].as_array().unwrap().len());
+            assert_eq!(result["truncated"], sample["expected_total"] != sample["expected_returned"]);
+            assert_eq!(sample["structure"]["available"], false);
+            assert_eq!(sample["structure"]["warning"], "book_structure.json not attached");
+            for item in result["items"].as_array().unwrap() {
+                assert_eq!(item["next_calls"][0]["arguments"]["lid"], item["lid"]);
+            }
+        }
+    }
+
+    #[test]
+    fn context_to9_counts_deduplicated_relations_across_layers() {
+        let b = book_with_discourse_projection();
+        for granularity in ["near", "mid", "far"] {
+            let full = b.context("1.1", Some(granularity), Some(100)).unwrap();
+            let keys: HashSet<_> = full.items.iter().map(context_item_key).collect();
+            assert_eq!(keys.len(), full.items.len());
+            let limited = serde_json::to_value(b.context("1.1", Some(granularity), Some(1)).unwrap()).unwrap();
+            assert_eq!(limited["total_candidates"], keys.len());
+            assert_eq!(limited["returned_count"], 1);
+            assert_eq!(limited["truncated"], keys.len() > 1);
+            assert_eq!(limited["items"][0], serde_json::to_value(&full.items[0]).unwrap());
+        }
     }
 
     #[test]

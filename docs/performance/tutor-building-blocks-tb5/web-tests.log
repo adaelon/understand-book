@@ -1,0 +1,15 @@
+
+> @understand-book/web@0.0.0 test E:\allwork\download\agent\understand-book-reading-share\packages\web
+> vitest run "src/components/TutorPanel.test.ts" "src/components/UnderstandingSpace.test.ts"
+
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+ ✓ src/components/UnderstandingSpace.test.ts (12 tests) 239ms
+ ✓ src/components/TutorPanel.test.ts (8 tests) 487ms
+
+ Test Files  2 passed (2)
+      Tests  20 passed (20)
+   Start at  17:41:07
+   Duration  5.42s (transform 979ms, setup 0ms, collect 1.94s, tests 726ms, environment 5.40s, prepare 1.19s)
+

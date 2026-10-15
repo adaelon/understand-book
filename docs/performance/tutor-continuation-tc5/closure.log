@@ -1,0 +1,1216 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/web
+
+ ✓ src/local-reading-action.test.ts (3 tests) 19ms
+ ✓ src/components/TutorActivities.test.ts (4 tests) 84ms
+ ✓ src/network-client.test.ts (19 tests) 124ms
+ ✓ src/components/TutorContinuation.test.ts (6 tests) 121ms
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.pdf-note-placement.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/AgentPresentation.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.pdf-note-placement.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/AgentPresentation.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/AgentPresentation.test.ts (2 tests) 114ms
+stderr | src/NetworkApp.resumption.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.resumption.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/NetworkApp.resumption.test.ts (9 tests) 257ms
+ ✓ src/components/RightRail.pdf-note-placement.test.ts (1 test) 111ms
+stderr | src/components/RightRail.test.ts > JL9 recap jumps > opens without navigation, then locates the turn, bound source, kept object and exact presentation version
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > JL9 recap jumps > opens without navigation, then locates the turn, bound source, kept object and exact presentation version
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > JL9 recap jumps > opens without navigation, then locates the turn, bound source, kept object and exact presentation version
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > JL9 recap jumps > opens without navigation, then locates the turn, bound source, kept object and exact presentation version
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > keeps a completed table intact when sources occur inside cells
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > keeps a completed table intact when sources occur inside cells
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > keeps the newest source click and ignores a superseded late resolve
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > keeps the newest source click and ignores a superseded late resolve
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > keeps the newest source click and ignores a superseded late resolve
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > keeps the newest source click and ignores a superseded late resolve
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > keeps the newest source click and ignores a superseded late resolve
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts > RightRail agent sources > keeps the newest source click and ignores a superseded late resolve
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+stderr | src/components/RightRail.test.ts
+AggregateError: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED 127.0.0.1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3000
+    },
+    Error: connect ECONNREFUSED ::1:3000
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3000
+    }
+  ]
+}
+
+ ❯ src/components/RightRail.test.ts (52 tests | 2 failed) 2558ms
+   ✓ puts the first-question learning entry in the conversation 79ms
+   ✓ keeps learning actions in the chat and the teaching switch next to the composer 39ms
+   ✓ RightRail history visibility > ADM8 exposes allowance from a stop while retaining partial answers and requiring an explicit click 37ms
+   ✓ RightRail history visibility > shows only conversations with questions: 'first-open empty session' 33ms
+   ✓ RightRail history visibility > shows only conversations with questions: 'repeated new empty sessions' 29ms
+   ✓ RightRail history visibility > shows only conversations with questions: 'saved conversation alongside empty se…' 31ms
+   ✓ RightRail history visibility > keeps the current conversation with a pending answer 43ms
+   ✓ RightRail history visibility > keeps the current conversation with a failed answer 24ms
+   ✓ RightRail history visibility > keeps the current conversation with a cancelled answer 27ms
+   ✓ RightRail history visibility > updates the open history list when a question is saved and when the last conversation is deleted 37ms
+   ✓ RightRail history recovery > shows oldest turns first while effect actions retain their original turn indexes 130ms
+   ✓ RightRail history recovery > follows new turns at the bottom, preserves older reading, and resets when switching chats 38ms
+   ✓ RightRail history recovery > loads delivered presentations when history and chat identity arrive together 26ms
+   ✓ RightRail history recovery > keeps the draft editable, blocks chat changes until recovery, and offers retry 25ms
+   ✓ JL9 recap jumps > offers undo of a retained note and removes that action after its receipt 24ms
+   ✓ JL9 recap jumps > opens without navigation, then locates the turn, bound source, kept object and exact presentation version 126ms
+   ✓ JL9 recap jumps > requests the original publication before any source navigation in another publication 19ms
+   ✓ RightRail fullscreen > keeps the live answer and draft mounted across fullscreen changes, and exits with Escape 46ms
+   ✓ RightRail Note placement actions > offers Markdown move for body Notes and placement for legacy, but never for selection or PDF Notes 27ms
+   ✓ answer rendering on local UI changes > reuses unchanged answers across menus, history, input and hidden tabs 206ms
+   ✓ answer rendering on local UI changes > updates only the growing draft and invalidates when the renderer changes 51ms
+   ✓ RightRail agent sources > keeps a completed table intact when sources occur inside cells 73ms
+   ✓ RightRail agent sources > keeps a draft table intact when sources occur inside cells 40ms
+   ✓ RightRail agent sources > keeps a table source 'after the closing pipe' inside its preceding row 24ms
+   ✓ RightRail agent sources > keeps a table source 'on the next line' inside its preceding row 20ms
+   ✓ RightRail agent sources > shows context shortage only for an actual context-budget warning 20ms
+   ✓ RightRail agent sources > distinguishes compaction, physical capacity, and tool-turn stop reasons 18ms
+   ✓ RightRail agent sources > renders inline single and grouped source buttons without visible LIDs 27ms
+   × RightRail agent sources > resolves on first click and opens the reader only from the secondary action 61ms
+     → expected "spy" to be called 1 times, but got 2 times
+   ✓ RightRail agent sources > shows stale snapshots and disables reader navigation 53ms
+   × RightRail agent sources > keeps the newest source click and ignores a superseded late resolve 41ms
+     → expected '回答来源正在载入来源Cannot read properties of u…' to contain 'new evidence'
+   ✓ RightRail agent sources > does not restore a closed popup or emit navigation after a late open 52ms
+   ✓ RightRail AskQuote > shows recovered resolved provenance as an ordinary citation 31ms
+   ✓ RightRail AskQuote > shows partial provenance while preserving the user-visible raw quote 53ms
+   ✓ RightRail AskQuote > keeps legacy lid/quote drafts and sends only on explicit non-empty input 49ms
+   ✓ RightRail AskQuote > exposes every auxiliary surface as a labelled keyboard-operable tab 60ms
+   ✓ RightRail AskQuote > keeps profile updates quiet, undoable, and exposes usage only on demand 64ms
+   ✓ RightRail AskQuote > keeps saved and live tool diagnostics out of the reader while retaining the answer 49ms
+   ✓ RightRail AskQuote > opens the active target artifacts without coupling their refresh or evidence navigation to chat 59ms
+   ✓ Resident activities > retains live progress, emits stop and preserves upward scrolling without diagnostics 59ms
+   ✓ RightRail Resident task controls > keeps running tasks collapsed and exposes only the stop action beside the draft 52ms
+   ✓ RightRail Resident task controls > preserves drafts and older reading while task details open and close 46ms
+   ✓ RightRail Resident task controls > does not send another turn through Ctrl+Enter while a run is active 36ms
+   ✓ RightRail Resident task controls > does not leave a completed task notice in the input area 41ms
+   ✓ RightRail Resident task controls > shows a saved open task and sends explicit continue and cancel targets 90ms
+   ✓ mobile input continuity > does not submit a composing IME value and keeps Ctrl+Enter for an explicit submit 33ms
+   ✓ RN4 note retrieval > searches excerpts and titles, mixes highlights by real time, clears filters for a targeted record and follows replacements 130ms
+   ✓ RS6 exposes an answer menu only for a delivered complete answer: completed 48ms
+   ✓ RS6 exposes an answer menu only for a delivered complete answer: pending 33ms
+   ✓ RS6 exposes an answer menu only for a delivered complete answer: incomplete 28ms
+   ✓ RS6 exposes an answer menu only for a delivered complete answer: failed 30ms
+   ✓ RS6 exposes an answer menu only for a delivered complete answer: cancelled 35ms
+ ✓ src/App.startup.test.ts (67 tests) 1616ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/RightRail.test.ts > RightRail agent sources > resolves on first click and opens the reader only from the secondary action
+AssertionError: expected "spy" to be called 1 times, but got 2 times
+ ❯ src/components/RightRail.test.ts:706:23
+    704|     await flushPromises();
+    705| 
+    706|     expect(fetchMock).toHaveBeenCalledTimes(1);
+       |                       ^
+    707|     expect(String(fetchMock.mock.calls[0][0])).toContain("/agent/sourc…
+    708|     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqu…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/components/RightRail.test.ts > RightRail agent sources > keeps the newest source click and ignores a superseded late resolve
+AssertionError: expected '回答来源正在载入来源Cannot read properties of u…' to contain 'new evidence'
+
+Expected: "new evidence"
+Received: "回答来源正在载入来源Cannot read properties of undefined (reading 'promise')在正文中查看"
+
+ ❯ src/components/RightRail.test.ts:798:77
+    796|     }), { status: 200 }));
+    797|     await flushPromises();
+    798|     expect(document.body.querySelector(".agent-source-popup")?.textCon…
+       |                                                                             ^
+    799| 
+    800|     first.resolve(new Response(JSON.stringify({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 8 passed (9)
+      Tests  2 failed | 161 passed (163)
+   Start at  21:59:09
+   Duration  18.14s (transform 7.61s, setup 0ms, collect 29.99s, tests 5.00s, environment 58.08s, prepare 10.58s)
+
+undefined
+E:\allwork\download\agent\understand-book\packages\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/components/TutorContinuation.test.ts src/local-reading-action.test.ts src/network-client.test.ts src/components/TutorActivities.test.ts src/components/RightRail.test.ts src/components/RightRail.pdf-note-placement.test.ts src/components/AgentPresentation.test.ts src/App.startup.test.ts src/NetworkApp.resumption.test.ts

@@ -214,6 +214,34 @@ describe("automatic build executor dispatch runtime", () => {
     expect(released.selected_manifests).toEqual([plan.dispatches[0]]);
   });
 
+  it.each(["held", "leased"] as const)("reports waiting when all work belongs to another live run (%s)", (ownership) => {
+    const { target, descriptors, plan, manifest, bindings } = fixture(1);
+    const original = persistAutomaticBuildDispatch(target, manifest, {
+      owner: "original-plan", created_at: "2026-09-02T01:00:00.000Z",
+      reserve_ttl_ms: 60_000, run_ttl_ms: 1_800_000,
+    }).persisted;
+    if (ownership === "leased") {
+      expect(advanceAutomaticBuildDispatch(target, "profile_sidecar", manifest.dispatch_id, {
+        now: "2026-09-02T01:00:00.100Z", dispatch_run_id: original.dispatch_run_id,
+        descriptors, task_bindings: bindings,
+      }).status).toBe("leased");
+    }
+    const refill = selectAutomaticBuildDispatchHandoff(target, {
+      accepted_plan_digest: "changed-ready-work", current_dispatch_plan: plan,
+      available_new_executor_slots: 2, created_at: "2026-09-02T01:00:00.200Z",
+      ...(ownership === "held" ? { held_work_unit_ids: manifest.ordered_work_unit_ids } : {}),
+    });
+    expect(refill.selected_manifests).toEqual([]);
+    expect(refill.active_dispatch_ids).toEqual([]);
+    expect(refill.waiting_reason).toBe(ownership === "held" ? "active_executors" : "active_leases");
+    const released = selectAutomaticBuildDispatchHandoff(target, {
+      accepted_plan_digest: "changed-ready-work", current_dispatch_plan: plan,
+      available_new_executor_slots: 2, created_at: "2026-09-02T02:00:00.000Z",
+    });
+    expect(released.selected_manifests).toEqual([manifest]);
+    expect(released.waiting_reason).toBeUndefined();
+  });
+
   it("R2 preserves an active lease when a stale unopened correction is reported", () => {
     const { target, descriptors, manifest, bindings } = fixture();
     const persisted = persistAutomaticBuildDispatch(target, manifest, {

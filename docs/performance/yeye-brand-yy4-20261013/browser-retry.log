@@ -1,0 +1,17 @@
+
+> @understand-book/web@0.0.0 test:e2e E:\allwork\download\agent\understand-book\packages\web
+> playwright test "playwright/conversation-learning-entry.spec.ts" "playwright/agent-presentation.spec.ts" "--grep" "YY4|compact mobile toolbar" "--workers=2" "--output=../../docs/performance/yeye-brand-yy4-20261013/browser-retry-results"
+
+
+Running 4 tests using 2 workers
+
+(node:34544) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:22832) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 playwright\agent-presentation.spec.ts:117:1 › compact mobile toolbar remains reachable when switching to discussion (1.7s)
+  ok 2 playwright\conversation-learning-entry.spec.ts:218:3 › YY4 welcome becomes a compact identity after the first question at 1440px (2.4s)
+  ok 3 playwright\conversation-learning-entry.spec.ts:218:3 › YY4 welcome becomes a compact identity after the first question at 390px (1.2s)
+  ok 4 playwright\conversation-learning-entry.spec.ts:218:3 › YY4 welcome becomes a compact identity after the first question at 320px (1.2s)
+
+  4 passed (6.9s)

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { notePreview } from '../reading-notes';
+import NoteDetail from "./NoteDetail.vue";
 import type { MemoryRecord } from "../api";
 
 const props = defineProps<{
@@ -7,7 +9,9 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  (event: "open-note", record: MemoryRecord, restore?: boolean): void;
   (event: "focus-source", source: { lid: string; quote: string | null }): void;
+  (event: "show-notes", note: MemoryRecord): void;
   (event: "edit", note: MemoryRecord): void;
   (event: "delete", note: MemoryRecord): void;
 }>();
@@ -24,14 +28,8 @@ function leadingQuote(content: string): string | null {
   return quote || null;
 }
 
-function notePreview(note: MemoryRecord): string {
-  const content = note.content.replace(/^>.*(\n>.*)*\n*/m, "").trim();
-  if (content.length <= 260) return content;
-  return `${content.slice(0, 260).trimEnd()}...`;
-}
-
 function noteSourceLabel(note: MemoryRecord): string {
-  const quote = leadingQuote(note.content);
+  const quote = note.selection_context?.resolved_quote;
   if (quote) return "引用来源";
   return note.anchor.lid ? "跳到来源" : "无来源";
 }
@@ -43,7 +41,7 @@ function isLongNote(note: MemoryRecord): boolean {
 function focusSource() {
   const lid = props.note.anchor.lid;
   if (!lid) return;
-  emit("focus-source", { lid, quote: leadingQuote(props.note.content) });
+  emit("focus-source", { lid, quote: props.note.selection_context?.resolved_quote ?? null });
 }
 </script>
 
@@ -62,14 +60,19 @@ function focusSource() {
       <span v-if="isLongNote(props.note)" class="note-fold">展开/收起</span>
       <div
         v-if="isLongNote(props.note)"
-        class="note-preview note-summary-preview md"
-        v-html="props.renderMarkdown(notePreview(props.note))"
-      ></div>
+        class="note-preview note-summary-preview"
+      >{{ notePreview(props.note) }}</div>
     </summary>
-    <div class="note-md md" v-html="props.renderMarkdown(props.note.content)"></div>
+    <NoteDetail :note="props.note" embedded @answer="emit('open-note', props.note)" @locate="emit('open-note', props.note)" @restore="emit('open-note', props.note, true)" />
     <div class="note-actions">
+      <button class="note-btn" @click="emit('show-notes', props.note)">在笔记中查看</button>
       <button class="note-btn" title="编辑" @click="emit('edit', props.note)">编辑</button>
       <button class="note-btn del" title="删除" @click="emit('delete', props.note)">删除</button>
     </div>
   </details>
 </template>
+
+<style scoped>
+.note-summary-preview { overflow: hidden; max-height: 4.5em; overflow-wrap: anywhere; }
+.note-actions { flex-wrap: wrap; }
+</style>

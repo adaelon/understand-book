@@ -1,0 +1,16 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+stderr | src/components/SessionRecap.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/SessionRecap.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/SessionRecap.test.ts (5 tests) 564ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  16:01:38
+   Duration  7.41s (transform 936ms, setup 0ms, collect 1.92s, tests 564ms, environment 3.70s, prepare 548ms)
+

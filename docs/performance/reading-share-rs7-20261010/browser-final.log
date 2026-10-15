@@ -1,0 +1,23 @@
+[WebServer] (node:35436) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:37816) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 12 tests using 1 worker
+
+(node:32752) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 playwright\pdf-selection-actions.spec.ts:934:34 › RS2 rich content paginates completely and saves the exact preview at 1440px (15.2s)
+  ok  2 playwright\presentation-bridge.spec.ts:34:1 › a delayed observation keeps the accepted result and focused slider visible (621ms)
+  ok  3 playwright\presentation-bridge.spec.ts:91:1 › a pending subtree replacement shows only the last accepted public text (520ms)
+  ok  4 playwright\presentation-bridge.spec.ts:125:1 › semantic observation preserves the focused control for repeated keyboard input (229ms)
+  ok  5 playwright\presentation-bridge.spec.ts:151:1 › restore runs after page DOMContentLoaded initialization without saving again (225ms)
+  ok  6 playwright\presentation-bridge.spec.ts:183:1 › snapshot reads visible results, custom step and live controls in one browser task (275ms)
+  ok  7 playwright\presentation-bridge.spec.ts:216:1 › editing focus reports only a boolean bound to the host content generation (449ms)
+  ok  8 playwright\reading-share-diagram.spec.ts:62:1 › RS7 current SVG Canvas DOM and formula freeze together; landscape/portrait PNG and live scene continuity (9.7s)
+  ok  9 playwright\reading-share-diagram.spec.ts:113:1 › RS7 retained scene uses note read/observe/source after deletion and leaves current count untouched (1.7s)
+  ok 10 playwright\reading-share-diagram.spec.ts:129:44 › RS7 retained partial fails visibly without exporting initial state (1.0s)
+  ok 11 playwright\reading-share-diagram.spec.ts:129:44 › RS7 retained mismatch fails visibly without exporting initial state (1.2s)
+  ok 12 playwright\reading-share-diagram.spec.ts:137:1 › RS7 missing resources and media report concrete failures, then retry succeeds with unavailable source label (1.6s)
+
+  12 passed (42.3s)

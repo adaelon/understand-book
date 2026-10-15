@@ -1,0 +1,51 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "redacted_reasoning_chars": 2000,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{}",
+              "name": "book_structure"
+            },
+            "id": "call_00_QGyodqg41szCtif4zVVh7836",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"query\": \"bar\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_01_zhgiVBNq1ltD9EUC36YE6052",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"query\": \"println!\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_02_2qd4oyvnvGSbBZasJoNZ2117",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 539,
+    "completion_tokens_details": {
+      "reasoning_tokens": 458
+    },
+    "prompt_cache_hit_tokens": 9088,
+    "prompt_cache_miss_tokens": 3164,
+    "prompt_tokens": 12252,
+    "prompt_tokens_details": {
+      "cached_tokens": 9088
+    },
+    "total_tokens": 12791
+  }
+}

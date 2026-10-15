@@ -339,3 +339,23 @@ fn jl8_recap_goals_and_failed_or_dismissed_effects_use_explicit_facts() {
         "dismissed"
     );
 }
+
+
+#[test]
+fn rn4_recap_follows_edited_note_and_reports_deletion() {
+    let (_dir, mut state, turn, input, _) = super::effect_disposition_tests::fixture(false);
+    crate::effect_disposition::route(&mut state, &input, "kept").unwrap();
+    let before = recap(&mut state, &turn.session_id, None);
+    let original = before["effects"][0]["object_id"].as_str().unwrap();
+    let saved = state.user.store.replace(memory::ReplaceInput {
+        mem_id: original.into(), content: "edited in RN4".into(), selection_context: None,
+    }, "edited").unwrap();
+    assert_ne!(saved.mem_id, original);
+    let cutoff = before["through_seq"].as_u64();
+    let after = recap(&mut state, &turn.session_id, cutoff);
+    assert_eq!(after["effects"][0]["object_id"], saved.mem_id);
+    assert_eq!(after["effects"][0]["unavailable_reason"], Value::Null);
+    state.user.store.delete(&saved.mem_id).unwrap();
+    let deleted = recap(&mut state, &turn.session_id, cutoff);
+    assert_eq!(deleted["effects"][0]["unavailable_reason"], "原成果当前不可用");
+}

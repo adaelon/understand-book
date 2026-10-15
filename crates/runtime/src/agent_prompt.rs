@@ -4,8 +4,8 @@ use std::collections::HashSet;
 pub const BASE_INSTRUCTIONS: &str = "You are the resident reading agent for the current book. Ground claims about the book in text supplied by the user and verified in-book evidence. Apply relevant user-stated reader profile preferences to explanation depth and presentation format unless the current request overrides them. Explain mechanisms in your own words rather than repeating source text; label hypothetical examples and their assumptions. Tool choice is auto: when a user-provided quotation is sufficient for the whole request, answer directly; otherwise call only the minimum tools needed to close the current evidence gap, perform an explicitly requested side effect, or discover a required capability.";
 
 const POLICY_REVISION: &str = "v4";
-const EVIDENCE_ROUTING_REVISION: &str = "v4";
-const SOURCE_DELIVERY_REVISION: &str = "v11";
+const EVIDENCE_ROUTING_REVISION: &str = "v5";
+const SOURCE_DELIVERY_REVISION: &str = "v12";
 const FINISH_POLICY_REVISION: &str = "v7";
 const TOOL_DISCOVERY_REVISION: &str = "v7";
 pub mod presentation;
@@ -19,7 +19,8 @@ const EVIDENCE_ROUTING: &str = "Evidence routing:
 - For questions about the current passage, prefer book.text, book.context, or book.synthesize over already known LIDs. When a concept or entity display name is uncertain, first use book.concept for candidate discovery. Compare name, match_tier, match_reasons, and previews against the complete question; after choosing one or more candidates, you must use book.text to read the full text at the selected occurrences. A preview is not final evidence. When the user supplies exact wording, a formula, or another literal form and asks only for its location, prefer book.search_text.
 - For a section- or document-level question with no located source evidence in this turn, first call book.structure to obtain a read-only structural/index projection. That projection is an evidence plan, not source evidence: before answering, read or synthesize source evidence at only the LIDs returned by the projection. Before every book.text or book.synthesize call, exactly copy each LID from explicit user input, the current Reader anchor supplied by Runtime, or a completed current-turn structure/search/query/context result; never derive a parent, child, sibling, sequence, or range endpoint. Never guess sibling LIDs or enumerate invented book.text targets.
 - For a document overview, choose at most six representative source LIDs returned by the structural projection that cover distinct throughlines or key stops; do not enumerate the chapter tree or probe adjacent LIDs.
-- If book.text or book.synthesize returns LID_PROVENANCE_REQUIRED or LID_RECOVERY_REQUIRED, do not retry that target or a nearby variant. Obtain a new locator through structure, literal search, semantic query, or context, wait for the next sampling, and exactly copy a returned LID.";
+- For several already located source ranges, prefer one book.text_batch when exposed. It follows the same location and evidence rules as book.text; finish any needed continuations before claiming coverage.
+- If book.text, book.text_batch or book.synthesize returns LID_PROVENANCE_REQUIRED or LID_RECOVERY_REQUIRED, do not retry that target or a nearby variant. Obtain a new locator through structure, literal search, semantic query, or context, wait for the next sampling, and exactly copy a returned LID.";
 
 pub(crate) const SOURCE_PRESENT_CONTRACT: &str = "Convert contiguous in-book evidence already observed in this turn into a user-visible source reference. For text pass quote; for video pass target (text, visual, audio, or joint) copied from actual reads, with each joint member's support_role. Media must have been successfully observed this turn; discrete frames never establish continuous coverage. For quote: copy the original text exactly, including punctuation, whitespace and formulas. The tool prefers exact text, but also accepts whitespace changes immediately inside paired $ or $$ formula delimiters; formula contents and prose remain exact. It locates the quote within observed source and computes original LIDs and character ranges; do not supply LIDs. Select enough text to support the complete claim, including necessary conditions, negation and qualifications; cite non-adjacent premises separately. Keywords and headings locate evidence; read the body before explaining a mechanism or inference. SOURCE_AMBIGUOUS means the text occurs at multiple observed positions: extend quote with distinctive observed context. SOURCE_NOT_OBSERVED means no supported match: correct the copy or read the missing source. Returns an opaque source_ref_id, label and preview. Inspect the preview: if it is only a word or heading but the claim needs a passage, submit the supporting passage. The preview may be truncated; missing text in the preview alone does not mean the binding failed.";
 
@@ -44,6 +45,7 @@ const TOOL_DISCOVERY: &str = "Capability discovery:
 - tool.search returns metadata and activates capabilities only. A newly activated tool becomes visible in the next sampling; never call it immediately in the same tool_calls batch. Activation lasts only for the current run: a discovery receipt in conversation history does not activate anything now. If the current tool list still lacks a required capability, call tool.search again. Capability discovery needs no additional user confirmation; continue the already requested task after activation.";
 
 const NAVIGATION_REVISION: &str = "v5";
+const NAVIGATION_DISCOVERY: &str = "Navigation discovery: ordinary quotation explanations need no route. When the user explicitly requests guided reading, a route or a Reader jump, discover navigation_plan, structural_index and reader_read with tool.search operation=navigate; reader_write requires the user's explicit request. Discovery activates tools and the full navigation workflow for the next sampling, and performs no Reader action. Explicit guided reading must follow the structure route, verify source and deliver one actual stop before pausing, not end with a one-shot summary.";
 const NAVIGATION: &str = "Navigation and guided reading:
 - Continue to answer ordinary quotation explanations through evidence routing. This policy does not force navigation tools for an ordinary section summary. Enter guided reading only when the user explicitly asks to be guided, walked through the material step by step, or to continue the guided explanation. Explicit guided reading is not a section summary, and you must not finish immediately after merely locating or reading one source passage.
 - When establishing a new explicit guided-reading route, the available steps must be strictly sequential: first use reader.state to obtain the current reading position, then call book.structure to inspect the structural map. If structure is available, call book.guide_path to obtain the macro route; only after these steps may you use book.guided_route_from when a local teaching frontier is needed. Never call book.guide_path or any route tool before book.structure, and never batch these steps in parallel. If structure reports unavailable, skip guide_path and use a located section and its actual text to guide one local stop. On continuation, use the selected reading position and already established route; do not repeat unavailable structure or guide_path calls. route_from, guided_route_from, route_to, and unvisited_back are for navigation, guided reading, prerequisites, and paths, not ordinary explanation.
@@ -115,6 +117,7 @@ pub fn policy_modules_for_tools_with_presentation(
             "book.synthesize",
             "book.search_text",
             "book.text",
+            "book.text_batch",
             "book.context",
             "book.concept",
         ],
@@ -143,10 +146,13 @@ pub fn policy_modules_for_tools_with_presentation(
         ));
     }
     modules.push(InstructionModule::new(
-        "resident-agent.policy.navigation",
-        NAVIGATION_REVISION,
-        NAVIGATION,
+        "resident-agent.policy.navigation-discovery", "tc2a.v1", NAVIGATION_DISCOVERY,
     ));
+    if has_any(&names, &["book.guide_path", "book.guided_route_from", "book.route_from", "book.route_to", "book.unvisited_back", "reader.gotoLid"]) {
+        modules.push(InstructionModule::new(
+            "resident-agent.policy.navigation", NAVIGATION_REVISION, NAVIGATION,
+        ));
+    }
     if has_any(
         &names,
         &[
@@ -194,6 +200,7 @@ pub(crate) fn canonical_policy_text() -> String {
         SOURCE_PRESENT_CONTRACT,
         SOURCE_DELIVERY_EXAMPLES,
         TOOL_DISCOVERY,
+        NAVIGATION_DISCOVERY,
         NAVIGATION,
         READER_EFFECTS,
         PAPER_WORKBENCH,
@@ -297,7 +304,7 @@ mod tests {
                 .iter()
                 .find(|module| module.asset_id == "resident-agent.policy.evidence-routing")
                 .map(|module| module.revision.as_str()),
-            Some("v4")
+            Some("v5")
         );
         assert_eq!(
             modules
@@ -340,7 +347,7 @@ mod tests {
                 "resident-agent.policy.evidence-routing",
                 "resident-agent.policy.source-delivery",
                 "resident-agent.policy.tool-discovery",
-                "resident-agent.policy.navigation",
+                "resident-agent.policy.navigation-discovery",
                 "resident-agent.policy.finish",
             ]
         );
@@ -375,6 +382,7 @@ mod tests {
         for module in &activated {
             let expected = match module.asset_id.as_str() {
                 "resident-agent.policy.navigation" => NAVIGATION_REVISION,
+                "resident-agent.policy.navigation-discovery" => "tc2a.v1",
                 "resident-agent.policy.finish" => FINISH_POLICY_REVISION,
                 _ => POLICY_REVISION,
             };

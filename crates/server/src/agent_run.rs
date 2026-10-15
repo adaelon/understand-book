@@ -591,6 +591,9 @@ impl RunCoordinator {
         now: &str,
     ) -> Result<(PreparedAgentChat, CancellationToken, Arc<RunStream>), Reply> {
         let mut slot = self.slot.lock().unwrap_or_else(|error| error.into_inner());
+        if let Some(reply) = self.state.with_app(|state| interaction_input::local_repeat(state, body))? {
+            return Err(reply);
+        }
         if slot.active.is_some() || slot.boundary || slot.stopping {
             return Err(Reply { status: 409, body: json!({ "error_code": "AGENT_RUN_BUSY", "category": "conflict",
                 "message": "A Resident run or context transition is active", "turn_id": slot.active.as_ref().map(|r| &r.turn_ref.turn_id) }).to_string() });

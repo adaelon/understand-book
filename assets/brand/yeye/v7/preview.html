@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>页页 · 六种状态</title>
+  <style>
+    :root { color-scheme: light; --paper:#f7f3eb; --ink:#332b25; --orange:#b65a17; --muted:#766858; --line:#dfd5c7; --surface:#fffcf6; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif; }
+    button,a { -webkit-tap-highlight-color:transparent; }
+    button { font:inherit; color:inherit; cursor:pointer; }
+    button:focus-visible,a:focus-visible { outline:3px solid var(--orange); outline-offset:4px; }
+    button:disabled { cursor:default; opacity:.55; }
+    main { max-width:1180px; margin:auto; padding:36px 32px 30px; }
+    .topline { display:flex; gap:16px; align-items:center; justify-content:space-between; margin-bottom:16px; }
+    .eyebrow { font-size:11px; letter-spacing:.17em; color:var(--muted); font-weight:600; }
+    .version { font-size:12px; color:var(--muted); }
+    h1 { font-size:36px; line-height:1.2; margin:0; font-weight:700; letter-spacing:.04em; }
+    .intro { margin:10px 0 26px; font-size:15px; color:var(--muted); }
+    .workbench { display:grid; grid-template-columns:minmax(0,1.08fr) minmax(320px,1fr); gap:30px; align-items:start; }
+    .stage { position:relative; background:var(--surface); border-radius:26px; overflow:hidden; aspect-ratio:1.06; display:grid; place-items:center; }
+    .stage[data-surface="dark"] { background:#25211f; }
+    .stage[data-surface="white"] { background:#fff; }
+    .hero { display:block; width:88%; height:88%; object-fit:contain; transform-origin:50% 94%; }
+    .surface-bar { position:absolute; z-index:1; top:16px; left:16px; display:flex; gap:4px; padding:4px; background:#f7f3ebe8; border-radius:12px; }
+    .surface-bar button { border:0; padding:6px 9px; border-radius:8px; background:transparent; font-size:12px; }
+    .surface-bar button[aria-pressed="true"] { background:var(--ink); color:var(--paper); }
+    .caption-row { display:flex; gap:14px; align-items:center; justify-content:space-between; padding:19px 2px 12px; }
+    h2 { margin:0 0 5px; font-size:23px; line-height:1.3; }
+    .caption { color:var(--muted); font-size:13px; margin:0; }
+    .play { border:0; border-radius:13px; padding:12px 16px; background:var(--orange); color:#fffaf2; font-weight:600; white-space:nowrap; font-size:13px; min-width:110px; }
+    .motion-note { display:flex; gap:12px; align-items:center; justify-content:space-between; min-height:25px; font-size:12px; color:var(--muted); }
+    .motion-note a { color:var(--orange); text-underline-offset:4px; }
+    .section-label { font-size:12px; color:var(--muted); letter-spacing:.08em; margin:1px 0 13px; }
+    .states { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .state { display:flex; flex-direction:column; align-items:center; min-width:0; padding:10px 7px 11px; background:transparent; border:1px solid var(--line); border-radius:18px; }
+    .state[aria-pressed="true"] { background:#f4e6d4; border:2px solid var(--orange); padding:9px 6px 10px; }
+    .state img { width:100%; height:auto; aspect-ratio:1; object-fit:contain; display:block; }
+    .state strong { font-size:13px; font-weight:600; margin-top:4px; }
+    .state small { font-size:11px; color:var(--muted); margin-top:3px; }
+    .small-preview { margin-top:25px; padding-top:19px; border-top:1px solid var(--line); }
+    .sizes { display:flex; gap:22px; align-items:end; justify-content:space-around; }
+    .size-item { margin:0; text-align:center; }
+    .size-item img { object-fit:contain; display:block; }
+    .size-item figcaption { margin-top:7px; font-size:11px; color:var(--muted); }
+    footer { margin-top:27px; padding-top:16px; border-top:1px solid var(--line); display:flex; gap:12px; justify-content:space-between; flex-wrap:wrap; font-size:12px; color:var(--muted); line-height:1.7; }
+    @media(max-width:800px) { main { padding:25px 20px; } .workbench { grid-template-columns:1fr; gap:24px; } .stage { aspect-ratio:1.18; } .hero { width:85%; height:85%; } .states { gap:10px; } .state img { max-width:150px; } .small-preview { margin-top:20px; } }
+    @media(max-width:390px) { main { padding:22px 14px; } h1 { font-size:30px; } .intro { font-size:13px; } .caption-row { gap:8px; } h2 { font-size:20px; } .play { padding:11px; min-width:99px; } .states { gap:8px; } .state small { font-size:10px; } .sizes { gap:12px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="topline"><span class="eyebrow">UNDERSTAND BOOK / YEYE</span><span class="version">角色状态 · V7</span></div>
+    <h1>页页</h1>
+    <p class="intro">好奇、有主意，偶尔一本正经地犯迷糊。</p>
+  </header>
+  <div class="workbench">
+    <section aria-label="当前角色与动效">
+      <div class="stage" id="stage" data-surface="paper">
+        <div class="surface-bar" role="group" aria-label="预览底色">
+          <button type="button" data-surface="paper" aria-pressed="true">暖纸</button>
+          <button type="button" data-surface="white" aria-pressed="false">白底</button>
+          <button type="button" data-surface="dark" aria-pressed="false">深棕</button>
+        </div>
+        <img class="hero" id="hero" src="yeye-idle.png" width="1254" height="1254" alt="日常态：歪头抱书，机灵地看向读者">
+      </div>
+      <div class="caption-row">
+        <div aria-live="polite"><h2 id="state-title">我在听。</h2><p class="caption" id="state-caption">日常 · 认真听着，心里已经有点主意。</p></div>
+        <button class="play" id="play" type="button" aria-label="播放当前状态的轻动效">播放轻动效</button>
+      </div>
+      <div class="motion-note"><span id="motion-note">微微呼吸 · 3.2 秒</span><a id="download" href="yeye-idle.png" download="yeye-idle.png">下载当前图</a></div>
+    </section>
+    <section aria-label="六种状态">
+      <p class="section-label">同一只页页 · 六种小情绪</p>
+      <div class="states" role="group" aria-label="切换角色状态">
+        <button type="button" class="state" data-state="idle" aria-pressed="true" aria-label="切换到日常态"><img src="yeye-idle.png" width="1254" height="1254" alt=""><strong>日常</strong><small>我在听</small></button>
+        <button type="button" class="state" data-state="smug" aria-pressed="false" aria-label="切换到小得意态"><img src="yeye-smug.png" width="1254" height="1254" alt=""><strong>小得意</strong><small>这个我懂</small></button>
+        <button type="button" class="state" data-state="reading" aria-pressed="false" aria-label="切换到阅读态"><img src="yeye-reading-cream.png" width="1254" height="1254" alt=""><strong>阅读</strong><small>再读一页</small></button>
+        <button type="button" class="state" data-state="thinking" aria-pressed="false" aria-label="切换到思考态"><img src="yeye-thinking.png" width="1254" height="1254" alt=""><strong>思考</strong><small>让我想想</small></button>
+        <button type="button" class="state" data-state="success" aria-pressed="false" aria-label="切换到完成态"><img src="yeye-success.png" width="1254" height="1254" alt=""><strong>完成</strong><small>原来如此</small></button>
+        <button type="button" class="state" data-state="resting" aria-pressed="false" aria-label="切换到休息态"><img src="yeye-resting.png" width="1254" height="1254" alt=""><strong>休息</strong><small>眯一小会儿</small></button>
+      </div>
+      <div class="small-preview">
+        <p class="section-label">缩小以后</p>
+        <div class="sizes">
+          <figure class="size-item"><img class="size-image" src="yeye-idle.png" width="48" height="48" alt="当前状态，48 像素"><figcaption>48 px</figcaption></figure>
+          <figure class="size-item"><img class="size-image" src="yeye-idle.png" width="80" height="80" alt="当前状态，80 像素"><figcaption>80 px</figcaption></figure>
+          <figure class="size-item"><img class="size-image" src="yeye-idle.png" width="120" height="120" alt="当前状态，120 像素"><figcaption>120 px</figcaption></figure>
+        </div>
+      </div>
+    </section>
+  </div>
+  <footer><span>奶油白的书，烘焙橙的书脊，一点点自己的想法。</span><span>静态素材与轻动效节奏预览</span></footer>
+</main>
+<script>
+  const states = {
+    idle: { file:'yeye-idle.png', title:'我在听。', caption:'日常 · 认真听着，心里已经有点主意。', alt:'日常态：歪头抱书，机灵地看向读者', motion:'微微呼吸 · 3.2 秒', duration:3200, frames:[{transform:'scale(1)'},{transform:'scale(1.008,1.014)',offset:.5},{transform:'scale(1)'}] },
+    smug: { file:'yeye-smug.png', title:'这个，我懂。', caption:'小得意 · 发现线索，忍不住分享一下。', alt:'小得意态：夹着书，半睑侧目，微微得意', motion:'轻轻一歪 · 1.4 秒', duration:1400, frames:[{transform:'rotate(0deg)'},{transform:'translateY(-2px) rotate(-1.8deg)',offset:.42},{transform:'translateY(-2px) rotate(-1.8deg)',offset:.67},{transform:'rotate(0deg)'}] },
+    reading: { file:'yeye-reading-cream.png', title:'再读一页。', caption:'阅读 · 视线落到书里，故事接着往下走。', alt:'阅读态：双爪捧着打开的书，低头看书页', motion:'小幅俯身 · 2.4 秒', duration:2400, frames:[{transform:'rotate(0deg)'},{transform:'translateY(2px) rotate(1deg)',offset:.5},{transform:'rotate(0deg)'}] },
+    thinking: { file:'yeye-thinking.png', title:'让我想想。', caption:'思考 · 托着腮，正在把线索串起来。', alt:'思考态：一只爪子托腮，抬眼琢磨', motion:'缓缓轻摆 · 2.8 秒', duration:2800, frames:[{transform:'rotate(0deg)'},{transform:'rotate(-1.2deg)',offset:.3},{transform:'rotate(.8deg)',offset:.7},{transform:'rotate(0deg)'}] },
+    success: { file:'yeye-success.png', title:'原来如此！', caption:'完成 · 理解了一点，值得小小得意一下。', alt:'完成态：抱着书，抬起一只小爪子', motion:'轻快回弹 · 0.95 秒', duration:950, frames:[{transform:'translateY(0) scale(1)'},{transform:'translateY(2px) scale(1.018,.98)',offset:.18},{transform:'translateY(-11px) scale(.99,1.015)',offset:.46},{transform:'translateY(0) scale(1.01,.993)',offset:.72},{transform:'translateY(-2px) scale(1)',offset:.88},{transform:'translateY(0) scale(1)'}] },
+    resting: { file:'yeye-resting.png', title:'眯一小会儿。', caption:'休息 · 书还抱着，眼睛先休息一下。', alt:'休息态：闭眼抱书，安静小憩', motion:'慢慢呼吸 · 4.2 秒', duration:4200, frames:[{transform:'scale(1)'},{transform:'scale(1.005,1.012)',offset:.5},{transform:'scale(1)'}] }
+  };
+  const hero = document.getElementById('hero');
+  const playButton = document.getElementById('play');
+  const stateButtons = Array.from(document.querySelectorAll('[data-state]'));
+  const sampleImages = Array.from(document.querySelectorAll('.size-image'));
+  const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let activeState = 'idle';
+  let playingAnimation = null;
+  function stopMotion() {
+    if (playingAnimation) playingAnimation.cancel();
+    playingAnimation = null;
+    playButton.textContent = motionPreference.matches ? '已减少动态效果' : '播放轻动效';
+    playButton.setAttribute('aria-label','播放当前状态的轻动效');
+  }
+  function selectState(id) {
+    stopMotion();
+    activeState = id;
+    const state = states[id];
+    hero.src = state.file;
+    hero.alt = state.alt;
+    document.getElementById('state-title').textContent = state.title;
+    document.getElementById('state-caption').textContent = state.caption;
+    document.getElementById('motion-note').textContent = state.motion;
+    const download = document.getElementById('download');
+    download.href = state.file;
+    download.download = state.file;
+    sampleImages.forEach(function(img) { img.src = state.file; img.alt = state.alt + '，' + img.width + ' 像素'; });
+    stateButtons.forEach(function(button) { button.setAttribute('aria-pressed',String(button.dataset.state === id)); });
+  }
+  stateButtons.forEach(function(button) { button.addEventListener('click',function() { selectState(button.dataset.state); }); });
+  playButton.addEventListener('click',function() {
+    if (playingAnimation) { stopMotion(); return; }
+    if (motionPreference.matches) return;
+    const state = states[activeState];
+    playingAnimation = hero.animate(state.frames,{ duration:state.duration, easing:'ease-in-out', iterations:1 });
+    playButton.textContent = '停止动效';
+    playButton.setAttribute('aria-label','停止当前动效');
+    playingAnimation.onfinish = function() { playingAnimation = null; playButton.textContent = '播放轻动效'; playButton.setAttribute('aria-label','播放当前状态的轻动效'); };
+  });
+  document.querySelectorAll('button[data-surface]').forEach(function(button) {
+    button.addEventListener('click',function() {
+      document.getElementById('stage').dataset.surface = button.dataset.surface;
+      document.querySelectorAll('button[data-surface]').forEach(function(other) { other.setAttribute('aria-pressed',String(other === button)); });
+    });
+  });
+  function applyMotionPreference() { stopMotion(); playButton.disabled = motionPreference.matches; }
+  motionPreference.addEventListener('change',applyMotionPreference);
+  applyMotionPreference();
+</script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+{
+  "scope": "Three fixed-input continuations after the no-progress repair; persisted targets and public answers inspected separately.",
+  "counterexample_reference": "../counterexamples.json",
+  "equality_rule": "For two segments with positive total duration, the time-weighted and arithmetic means are equal exactly when (v1-v2)*(t1-t2)=0.",
+  "runs": [
+    {
+      "run": 1,
+      "persisted_target": {
+        "finding": "The general learning-focus statement still treats equal time as necessary, omitting equal speeds. The expected-performance statement and choice answer for the fixed 60/30 example are correct.",
+        "quote": "看清算术平均只在时间等权时成立",
+        "counterexample_id": "equal_speed_unequal_time"
+      },
+      "public_answer": {
+        "finding": "The 40/45 examples and harmonic-mean formula are correct. The equal-distance discussion explicitly includes the equal-speed exception, but the later general summary does not state the complete equality condition.",
+        "correct_exception_quote": "算术平均一定偏高（除非两段速度本来相同）",
+        "general_summary_quote": "准确的说法应该是**只在各段用时不相等的场合才不能用**"
+      }
+    },
+    {
+      "run": 2,
+      "persisted_target": {
+        "finding": "The target describes time weighting and the fixed 60/30 comparison without asserting that equal time is a necessary condition."
+      },
+      "public_answer": {
+        "finding": "The time-weighted formula, 40/45 examples and harmonic mean agree with the checked arithmetic; no explicit equal-time-only claim was found in the reviewed statements."
+      }
+    },
+    {
+      "run": 3,
+      "persisted_target": {
+        "finding": "The target asks for total-distance/total-time calculation and a contrast between equal-distance and equal-time cases; it does not explicitly assert an equal-time-only condition."
+      },
+      "public_answer": {
+        "finding": "The final general rule excludes the role of equal speeds, so the same equal-speed/unequal-time counterexample still applies.",
+        "quote": "能不能直接平均速度，看的是分母那个量（时间）是否等量分配，而不是看速度本身。",
+        "summary_quote": "速度能不能直接平均，取决于时间是否等分。",
+        "counterexample_id": "equal_speed_unequal_time",
+        "additional_issue": {
+          "quote": "你上一轮那个 60 km / 30 km 的例子",
+          "finding": "The original values were speeds of 60 and 30 km/h, with distances of 60 km for both segments; this sentence mislabels the units. Subsequent numerical calculations remain correct."
+        }
+      }
+    }
+  ],
+  "runtime_attribution": {
+    "all_three_delivered": true,
+    "run_1_two_teaching_rejections_then_success": true,
+    "new_recovery_allowance_exercised_by_run_1": false,
+    "reason": "The first tutor rejection shares sampling batch 2 with a successful first source.present. SourcePresentation enters completed_capabilities and resets the stalled-batch count; sampling batch 3 contributes only one stalled batch before the successful selection in batch 4. The existing isolated pre-fix/post-fix regression remains the evidence for the added recovery allowance."
+  }
+}

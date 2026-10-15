@@ -1,0 +1,30 @@
+{
+  "status": "passed",
+  "control_schema": 9,
+  "preserved_control_tables": {
+    "users": 4,
+    "auth_sessions": 2,
+    "book_publications": 10,
+    "book_grants": 39,
+    "book_defaults": 9,
+    "reader_workspaces": 56,
+    "run_admissions": 19,
+    "admin_operations": 18,
+    "allowance_periods": 4,
+    "manual_receipts": 0,
+    "allowance_adjustments": 5,
+    "model_call_charges": 158,
+    "receipt_corrections": 0,
+    "charge_reports": 158,
+    "charge_reconciliations": 0,
+    "admin_usage_events": 205,
+    "invite_batches": 0,
+    "beta_invites": 0,
+    "registration_requests": 0,
+    "email_binding_requests": 0,
+    "password_reset_requests": 0
+  },
+  "preserved_files": 1698,
+  "preserved_private_files": 225,
+  "compared_file_databases": 4
+}

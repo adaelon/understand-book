@@ -1,0 +1,23 @@
+
+> @understand-book/admin@0.0.0 test E:\allwork\download\agent\understand-book-reading-share\apps\admin
+> vitest run
+
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/apps/admin
+
+ ✓ src/lib/usage.test.ts (2 tests) 19ms
+ ✓ src/lib/format.test.ts (2 tests) 19ms
+ ✓ src/lib/api.test.ts (4 tests) 21ms
+ ✓ src/lib/operations.test.ts (3 tests) 15ms
+ ✓ src/lib/invites.test.ts (4 tests) 17ms
+stderr | src/pages/mcp.test.tsx > previews integer packs and submits the fixed-price contract with CSRF
+A component is changing a controlled input to be uncontrolled. This is likely caused by the value changing from a defined to undefined, which should not happen. Decide between using a controlled or uncontrolled input element for the lifetime of the component. More info: https://react.dev/link/controlled-components
+
+ ✓ src/pages/mcp.test.tsx (13 tests) 2588ms
+   ✓ routes mixed receipts to their own correction forms and preserves model correction  311ms
+
+ Test Files  6 passed (6)
+      Tests  28 passed (28)
+   Start at  11:32:51
+   Duration  9.50s (transform 563ms, setup 0ms, collect 3.52s, tests 2.68s, environment 3.23s, prepare 5.26s)
+

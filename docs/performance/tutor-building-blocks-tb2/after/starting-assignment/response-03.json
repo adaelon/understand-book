@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"lid\": \"1.1\", \"granularity\": \"near\", \"k\": 12}",
+      "id": "call_00_tmhwnXBOmsFbyqsetKUc1846",
+      "name": "book.context"
+    },
+    {
+      "arguments": "{\"anchor_lid\": \"1.1\", \"intent\": \"explanation\", \"obligations\": [{\"requirement\": \"State what the earlier ownership-section example did with foo and bar, and whether that version compiled.\"}, {\"requirement\": \"State what happens to foo after it is assigned/moved (can foo still be printed?).\"}], \"query\": \"What happens in the earlier ownership example where a Foo value is assigned from one variable to another without using &, and why does the resulting program fail to compile?\", \"targets\": [\"所有权 example with Foo\", \"move of a value into another variable\"]}",
+      "id": "call_01_I5etypkUTHquVMqYzAXd3038",
+      "name": "book.query"
+    }
+  ],
+  "usage_total_tokens": 18020
+}

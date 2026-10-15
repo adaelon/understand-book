@@ -1,0 +1,39 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+ ❯ src/reading-notes.test.ts (3 tests | 1 failed) 20ms
+   × RN4 current-material projection > reads native host millisecond timestamps and sorts them with seconds and ISO dates 15ms
+     → expected 1791590400000000 to be 1791590400000 // Object.is equality
+   ✓ RN4 current-material projection > keeps missing times and associations unknown and sorts numeric seconds with ISO dates 2ms
+   ✓ RN4 current-material projection > keeps identical text from distinct presentation scenes and searches binding labels and retained excerpts 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/reading-notes.test.ts > RN4 current-material projection > reads native host millisecond timestamps and sorts them with seconds and ISO dates
+AssertionError: expected 1791590400000000 to be 1791590400000 // Object.is equality
+
+- Expected
++ Received
+
+- 1791590400000
++ 1791590400000000
+
+ ❯ src/reading-notes.test.ts:11:35
+      9|     const records = [native, { ...legacy, mem_id: 'seconds', generated…
+     10|       { ...legacy, mem_id: 'iso', generated_at: '2026-10-10T00:00:02Z'…
+     11|     expect(noteTimestamp(native)).toBe(Date.parse('2026-10-10T00:00:00…
+       |                                   ^
+     12|     expect(noteTimeLabel(native)).toContain('2026');
+     13|     expect(findNotes(records, '', 'all', 'recent', [], () => '').map(n…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  15:22:00
+   Duration  4.53s (transform 145ms, setup 0ms, collect 184ms, tests 20ms, environment 0ms, prepare 1.40s)
+
+undefined
+E:\allwork\download\agent\understand-book-reading-share\packages\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/reading-notes.test.ts

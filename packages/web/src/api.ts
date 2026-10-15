@@ -1,9 +1,13 @@
 import { network } from './network-context';
 import { networkRequest, publishedUrl } from './network-client';
+import { createReadingAction, recoverReadingAction, type PendingReadingAction } from './local-reading-action';
 import type { RunDescriptor, RunSnapshot, RunActivity } from "./agent-run-state";
 // 类型化命令面 REST 客户端 `[ADR-0028]`:前端经 `/api` dev proxy 打到 tiny_http。
 // 端点名 = 命令名;book.*→GET、reader.*/memory.*/book.query→POST;错误透传 §4.4 信封。
 import type { Manifest } from "./generated/Manifest";
+import type { NoteData } from "./generated/NoteData";
+import type { NoteCreateRequest } from "./generated/NoteCreateRequest";
+export type { NoteData, NoteCreateRequest };
 import type { BookQueryRequest } from "./generated/BookQueryRequest";
 import type { QueryOutcome } from "./generated/QueryOutcome";
 import type { ToolError } from "./generated/ToolError";
@@ -97,6 +101,17 @@ export type {
 };
 
 const BASE = "/api";
+export interface McpCredential {
+  credential_id: string; label: string; created_at: number; revoked_at: number | null; active: boolean;
+}
+export interface McpUsage {
+  month_hk: string; free_granted: number; free_used: number; free_remaining: number; free_resets_at: string;
+  paid_remaining: number; paid_next_expires_at: string | null;
+  call_packs: Array<{ pack_id: string; pack_count: number; total_units: number; adjusted_units: number;
+    used_units: number; remaining_units: number; available_units: number; opened_at: string; expires_at: string }>;
+  top_up_url: string; top_up_instruction: string;
+}
+export interface AccountMcpState { credentials: McpCredential[]; usage: McpUsage; mcp_url: string }
 export const agentRunEventsUrl = (turnId: string, cursor?: string) => `${BASE}/agent/runs/${encodeURIComponent(turnId)}/events${cursor ? `?after=${encodeURIComponent(cursor)}` : ""}`;
 
 /** reader.* 会话态(符 V3 §4.2),与 Rust `Viewport`/`ReaderState` 对齐(memory 类型未走 ts-rs,在此手定)。 */
@@ -112,6 +127,7 @@ export interface ViewportEffect {
   viewport: Viewport;
 }
 export interface ReaderState {
+  visible_position?: VisibleReadingPosition | null;
   book_id: string;
   revision: number;
   viewport: Viewport;
@@ -119,6 +135,11 @@ export interface ReaderState {
   selection: string | null;
   layout: ReaderLayoutState;
   profile: ProfileSummary;
+}
+export interface VisibleReadingPosition {
+  lid: string;
+  text_position?: { start: number; end: number; text: string };
+  ranges: { lid: string; start: number; end: number }[];
 }
 export interface PaperMinimapStateResponse {
   base: PaperMinimapBase;
@@ -175,21 +196,8 @@ export interface SelectionContext {
   resolved_quote: string;
   ranges: SelectedRange[];
 }
-export type NoteBodyPlacement =
-  | {
-      kind: "lid_block";
-      source_fingerprint: string;
-      lid: string;
-    }
-  | {
-      kind: "pdf_region";
-      source_fingerprint: string;
-      lid: string;
-      source_map_version: "pdf_source_map.v1" | "pdf_source_map.v2";
-      source_map_config_hash: string;
-      page_index: number;
-      region_id: string;
-    };
+export type { NoteBodyPlacement } from "./generated/NoteBodyPlacement";
+import type { NoteBodyPlacement } from "./generated/NoteBodyPlacement";
 export type NoteSaveStatus = "CREATED" | "EXISTING";
 /** memory 记录(符 V3 §4.3;JSON 字段 `type` = Rust mem_type 的 serde rename)。 */
 export interface MemoryRecord {
@@ -202,6 +210,8 @@ export interface MemoryRecord {
   range?: TextRange | null; // 高亮段内区间;note / 整段高亮为空 `[ADR-0031]`
   selection_context?: SelectionContext | null;
   note_placement?: NoteBodyPlacement | null;
+  note?: NoteData | null;
+  generated_at?: string;
   source_session_id?: string | null;
 }
 export interface NoteSaveOutcome {
@@ -237,6 +247,7 @@ export interface AssetManifest {
 }
 export interface BookCoverSource { kind: 'image' | 'pdf'; url: string }
 export interface BookLibraryEntry {
+  title?: string | null;
   name: string;
   book_id: string;
   dir: string;
@@ -1125,7 +1136,7 @@ export interface AgentQuestionQuoteView {
 }
 export interface AgentChatTurn {
   video_question?: import("../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
-  domain?: { effects: { effect_id: string; effect: { kind: "reader"; effect: AgentEffect } | { kind: "presentation"; reference: { presentation_id: string; revision: number } }; disposition: import("./effect-disposition").EffectDisposition | null }[] };
+  domain?: { teaching?: { session_id: string; revision: number; receipt_ids: string[] }[]; interaction?: import("./generated/ResolvedInteraction").ResolvedInteraction; effects: { effect_id: string; effect: { kind: "reader"; effect: AgentEffect } | { kind: "presentation"; reference: { presentation_id: string; revision: number } }; disposition: import("./effect-disposition").EffectDisposition | null }[] };
   teaching_ref?: string | null;
   presentation_follow_up?: import('./generated/PresentationFollowUp').PresentationFollowUp | null;
   goal_ref?: { id: string; revision: number } | null;
@@ -1183,6 +1194,7 @@ export interface AgentHistoryResponse {
   current: AgentChatSession;
 }
 export interface TutorActivity {
+  continuation?: import('./generated/TutorContinuationView').TutorContinuationView | null;
   delivery_ref: string; move: { move_id: string; prompt: string; actions: string[] }; status: string; attempted: boolean; help_seen: unknown[];
   assessment?: { action_ref?: string; status: string; attempt?: number; assistance_count?: number; items?: { id: string; reason: string }[] } | null;
 }
@@ -1205,6 +1217,15 @@ export interface LearningEvidenceView {
 export interface AgentChatMeta {
   video_window_id?: string;
   video_draft_id?: string;
+  session_id?: string;
+  client_request_id?: string;
+  source_id?: string;
+  source_revision?: string;
+  entry_action?: import("./generated/EntryAction").EntryAction;
+  answer_ref?: import("./generated/AnswerRef").AnswerRef;
+  teaching_choice?: import("./generated/TeachingChoice").TeachingChoice;
+  expected_chat_head?: string | null;
+  note_mem_id?: string;
   teaching_ref?: string;
   goal_id?: string;
   goal_action?: "cancel" | "replace";
@@ -1241,6 +1262,7 @@ export interface SourcePopupView {
   frames?: { frame: import('../../core/src/generated/FrameLocation').FrameLocation; region?: import('../../core/src/generated/FrameRegion').FrameRegion | null; url: string }[];
   source_ref_id: string;
   label: string;
+  material_title?: string | null;
   highlighted_quote: string;
   context_before: string;
   context_after: string;
@@ -1268,9 +1290,9 @@ export class ApiError extends Error {
   }
 }
 
-async function http<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
-  if (network.value.enabled) return networkRequest<T>(method, path, body);
-  const init: RequestInit = { method };
+async function http<T>(method: "GET" | "POST", path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  if (network.value.enabled) return networkRequest<T>(method, path, body, signal);
+  const init: RequestInit = { method, signal };
   if (body !== undefined) {
     init.headers = { "Content-Type": "application/json" };
     init.body = JSON.stringify(body);
@@ -1360,8 +1382,8 @@ export const api = {
     kind: IntentBuildReaderUsageKind;
     artifact_id?: string;
   }) => http<IntentBuildUsageAppendResultV1>("POST", "/build_intent/usage.event", payload),
-  text: (lid: string, end?: string) =>
-    http<BookText>("GET", `/book/text${qs({ lid, end })}`),
+  text: (lid: string, end?: string, signal?: AbortSignal) =>
+    http<BookText>("GET", `/book/text${qs({ lid, end })}`, undefined, signal),
   structure: (at?: string) => http<StructureProjection>("GET", `/book/structure${qs({ at })}`),
   paperReadingGuide: (mode?: PaperReadingMode, stage?: PaperReadingStage) =>
     http<PaperReadingGuide>("GET", `/book/paper_reading_guide${qs({ mode, stage })}`),
@@ -1426,6 +1448,7 @@ export const api = {
 
   // ── reader.*(可变 POST,返 effect)──
   goto: (lid: string) => http<ViewportEffect>("POST", "/reader/goto", { lid }),
+  confirmReadingPosition: (position: VisibleReadingPosition) => http<ViewportEffect>("POST", "/reader/position", position),
   scroll: (delta: number) => http<ViewportEffect>("POST", "/reader/scroll", { delta }),
   // range?:段内自由高亮 {start,end}(UTF-16 偏移);缺省=整段高亮 `[ADR-0031]`。
   highlight: (lid: string, range?: TextRange, sourceSessionId?: string) =>
@@ -1468,6 +1491,7 @@ export const api = {
     layer?: string;
     selection_context?: SelectionContext;
     note_placement?: NoteBodyPlacement;
+    note?: NoteCreateRequest;
     source_session_id?: string;
   }) => http<MemoryRecord | NoteSaveOutcome>("POST", "/memory/save", r),
   reanchor: (mem_id: string, note_placement: NoteBodyPlacement) =>
@@ -1479,7 +1503,13 @@ export const api = {
   delete: (mem_id: string) => http<{ ok: boolean }>("POST", "/memory/delete", { mem_id }),
 
   // ── agent.*(外层 E agent,POST)`[ADR-0030]` ──
-  agentRunCreate: (message: string, meta: AgentChatMeta = {}) => http<RunDescriptor | OuterOutcome>("POST", "/agent/runs", { message, ...meta }),
+  agentRunCreate: (message: string, meta: AgentChatMeta = {}) => {
+    type Result = RunDescriptor | OuterOutcome | { kind: 'activity_help'; delivery_refs: string[]; activity?: { session_id: string; turn_id: string } };
+    const body = { message, ...meta };
+    return !network.value.enabled && (meta.entry_action || meta.teaching_choice)
+      ? createReadingAction<Result>(http, body) : http<Result>('POST', '/agent/runs', body);
+  },
+  recoverReadingAction: (item: PendingReadingAction, retry = false) => recoverReadingAction(http, item, retry),
   agentRun: (turn_id: string) => http<RunSnapshot>("GET", `/agent/runs/${encodeURIComponent(turn_id)}`),
   agentRunRetrySave: (turn_id: string) => http<RunSnapshot>("POST", `/agent/runs/${encodeURIComponent(turn_id)}/retry-save`, {}),
   agentRunCancel: (turn_id: string) => http<RunSnapshot>("POST", `/agent/runs/${encodeURIComponent(turn_id)}/cancel`, {}),
@@ -1497,8 +1527,8 @@ export const api = {
     http<AgentHistoryResponse>("POST", "/agent/history/select", { session_id }),
   agentHistoryDelete: (session_id: string) =>
     http<AgentHistoryResponse>("POST", "/agent/history/delete", { session_id }),
-  agentSourceResolve: (turn_id: string, source_ref_id: string) =>
-    http<SourcePopupView>("POST", "/agent/source.resolve", { turn_id, source_ref_id }),
+  agentSourceResolve: (turn_id: string, source_ref_id: string, note_mem_id?: string) =>
+    http<SourcePopupView>("POST", "/agent/source.resolve", { turn_id, source_ref_id, note_mem_id }),
   tutorState: () => http<import('./generated/TutorState').TutorState>('GET', '/tutor/state'),
   tutorUnderstanding: (after = 0, rebuild = false) => http<UnderstandingView>('POST', '/tutor/understanding', { after, rebuild }),
   tutorEvidence: (evidence_ref: string) => http<LearningEvidenceView>('POST', '/tutor/evidence', { evidence_ref }),
@@ -1507,18 +1537,23 @@ export const api = {
   tutorCorrect: (request: { evidence_ref: string; operation_id: string; text: string }) => http<{ evidence_ref: string }>('POST', '/tutor/correct', request),
   tutorStart: () => http<{ started: boolean; message?: string; reason?: string }>("POST", "/tutor/start", {}),
   tutorActivities: (session_id: string, turn_id: string, reference?: import("./generated/PresentationRef").PresentationRef) => http<{ activities: TutorActivity[] }>("POST", "/tutor/activities", { session_id, turn_id, reference }),
+  tutorContinuationDisplayed: (input: import('./generated/ContinuationDisplayed').ContinuationDisplayed) => http<{ event_id: string }>('POST', '/tutor/continuation-displayed', input),
   tutorDisplay: (delivery_ref: string, scene?: import("./generated/PresentationFollowUp").PresentationFollowUp) => http("POST", "/tutor/display", { delivery_ref, scene }),
   tutorAction: (request: { operation_id: string; delivery_ref: string; action: string; response?: string | null; scene?: import("./generated/PresentationFollowUp").PresentationFollowUp }) => http<{ event_id: string; assessment: string; help: { event_id: string; text: string } | null }>("POST", "/tutor/action", request),
   tutorHelpDisplayed: (help_ref: string) => http("POST", "/tutor/help-displayed", { help_ref }),
   tutorReadiness: () => http<{ status: 'preparing' | 'ready'; source_id: string; source_revision: string; limitations: string[]; reason: string;
     teaching_assets: { status: 'preparing' | 'ready' | 'stale'; teaching_map_revision: string | null; limitations: string[]; reason: string } }>('GET', '/tutor/readiness'),
   tutorMutate: (request: import('./generated/TutorMutation').TutorMutation) => http<import('./generated/TutorState').TutorState>('POST', '/tutor/mutate', request),
+  notePresentationRead: (mem_id: string, restore = false) =>
+    http<import("./generated/PresentationView").PresentationView>("POST", "/memory/presentation.read", { mem_id, restore }),
+  notePresentationObserve: (mem_id: string, text: string, source_ref_ids: string[]) =>
+    http<{ accepted: boolean }>("POST", "/memory/presentation.observe", { mem_id, text, source_ref_ids }),
   presentationRead: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, saved_state?: import("./generated/PresentationFollowUp").PresentationFollowUp) =>
     http<import("./generated/PresentationView").PresentationView>("POST", "/agent/presentation.read", { session_id, turn_id, reference, saved_state }),
   presentationSaveState: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, state: import("./generated/PresentationState").PresentationState) =>
     http<import("./generated/PresentationFollowUp").PresentationFollowUp>("POST", "/agent/presentation.state.save", { session_id, turn_id, reference, state }),
   presentationObserve: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, text: string, source_ref_ids: string[]) =>
     http<{ accepted: boolean }>("POST", "/agent/presentation.observe", { session_id, turn_id, reference, text, source_ref_ids }),
-  agentSourceOpen: (turn_id: string, source_ref_id: string) =>
-    http<SourceOpenView>("POST", "/agent/source.open", { turn_id, source_ref_id }),
+  agentSourceOpen: (turn_id: string, source_ref_id: string, note_mem_id?: string) =>
+    http<SourceOpenView>("POST", "/agent/source.open", { turn_id, source_ref_id, note_mem_id }),
 };

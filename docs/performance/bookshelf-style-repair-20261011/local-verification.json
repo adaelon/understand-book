@@ -1,0 +1,821 @@
+{
+  "verifiedAt": "2026-10-11T03:44:14.035Z",
+  "base": "http://127.0.0.1:5598",
+  "apiFixture": true,
+  "results": [
+    {
+      "engine": "chromium",
+      "phase": "before",
+      "loading": {
+        "height": 112,
+        "centerX": -139,
+        "centerY": -366
+      },
+      "width": 390,
+      "height": 844,
+      "gridDisplay": "block",
+      "columns": 1,
+      "padding": 0,
+      "overflow": 0,
+      "cards": [
+        {
+          "x": 0,
+          "y": 242.484375,
+          "width": 390,
+          "right": 390
+        },
+        {
+          "x": 0,
+          "y": 836.25,
+          "width": 124.875,
+          "right": 124.875
+        },
+        {
+          "x": 0,
+          "y": 1012.578125,
+          "width": 270.203125,
+          "right": 270.203125
+        },
+        {
+          "x": 0,
+          "y": 1406.890625,
+          "width": 153.890625,
+          "right": 153.890625
+        },
+        {
+          "x": 153.890625,
+          "y": 1410.09375,
+          "width": 151.75,
+          "right": 305.640625
+        },
+        {
+          "x": 0,
+          "y": 1677.609375,
+          "width": 138.3125,
+          "right": 138.3125
+        },
+        {
+          "x": 138.3125,
+          "y": 1626.734375,
+          "width": 172.234375,
+          "right": 310.546875
+        },
+        {
+          "x": 0,
+          "y": 1874.09375,
+          "width": 97.984375,
+          "right": 97.984375
+        }
+      ],
+      "failures": [
+        "bookshelf grid missing",
+        "bookshelf margin missing",
+        "card dimensions outside shelf",
+        "first row misaligned"
+      ]
+    },
+    {
+      "engine": "chromium",
+      "phase": "before",
+      "loading": {
+        "height": 112,
+        "centerX": -139,
+        "centerY": -366
+      },
+      "width": 1440,
+      "height": 900,
+      "gridDisplay": "block",
+      "columns": 1,
+      "padding": 0,
+      "overflow": 0,
+      "cards": [
+        {
+          "x": 0,
+          "y": 190.484375,
+          "width": 636.5625,
+          "right": 636.5625
+        },
+        {
+          "x": 636.5625,
+          "y": 958.015625,
+          "width": 124.875,
+          "right": 761.4375
+        },
+        {
+          "x": 761.4375,
+          "y": 740.03125,
+          "width": 270.203125,
+          "right": 1031.640625
+        },
+        {
+          "x": 1031.640625,
+          "y": 914.5,
+          "width": 153.890625,
+          "right": 1185.53125
+        },
+        {
+          "x": 1185.53125,
+          "y": 917.703125,
+          "width": 151.75,
+          "right": 1337.28125
+        },
+        {
+          "x": 0,
+          "y": 1185.21875,
+          "width": 138.3125,
+          "right": 138.3125
+        },
+        {
+          "x": 138.3125,
+          "y": 1134.34375,
+          "width": 172.234375,
+          "right": 310.546875
+        },
+        {
+          "x": 310.546875,
+          "y": 1245.71875,
+          "width": 97.984375,
+          "right": 408.53125
+        }
+      ],
+      "failures": [
+        "bookshelf grid missing",
+        "bookshelf margin missing",
+        "card dimensions outside shelf",
+        "first row misaligned"
+      ]
+    },
+    {
+      "engine": "chromium",
+      "phase": "after",
+      "loading": {
+        "height": 844,
+        "centerX": 0,
+        "centerY": 0
+      },
+      "width": 320,
+      "height": 640,
+      "gridDisplay": "grid",
+      "columns": 2,
+      "padding": 20,
+      "overflow": 0,
+      "cards": [
+        {
+          "x": 20,
+          "y": 234.375,
+          "width": 134,
+          "right": 154
+        },
+        {
+          "x": 166,
+          "y": 234.375,
+          "width": 134,
+          "right": 300
+        },
+        {
+          "x": 20,
+          "y": 620.109375,
+          "width": 134,
+          "right": 154
+        },
+        {
+          "x": 166,
+          "y": 620.109375,
+          "width": 134,
+          "right": 300
+        },
+        {
+          "x": 20,
+          "y": 916.28125,
+          "width": 134,
+          "right": 154
+        },
+        {
+          "x": 166,
+          "y": 916.28125,
+          "width": 134,
+          "right": 300
+        },
+        {
+          "x": 20,
+          "y": 1190.0625,
+          "width": 134,
+          "right": 154
+        },
+        {
+          "x": 166,
+          "y": 1190.0625,
+          "width": 134,
+          "right": 300
+        }
+      ],
+      "failures": []
+    },
+    {
+      "engine": "chromium",
+      "phase": "after",
+      "loading": {
+        "height": 844,
+        "centerX": 0,
+        "centerY": 0
+      },
+      "width": 390,
+      "height": 844,
+      "gridDisplay": "grid",
+      "columns": 2,
+      "padding": 20,
+      "overflow": 0,
+      "cards": [
+        {
+          "x": 20,
+          "y": 234.375,
+          "width": 169,
+          "right": 189
+        },
+        {
+          "x": 201,
+          "y": 234.375,
+          "width": 169,
+          "right": 370
+        },
+        {
+          "x": 20,
+          "y": 627.828125,
+          "width": 169,
+          "right": 189
+        },
+        {
+          "x": 201,
+          "y": 627.828125,
+          "width": 169,
+          "right": 370
+        },
+        {
+          "x": 20,
+          "y": 954.109375,
+          "width": 169,
+          "right": 189
+        },
+        {
+          "x": 201,
+          "y": 954.109375,
+          "width": 169,
+          "right": 370
+        },
+        {
+          "x": 20,
+          "y": 1258,
+          "width": 169,
+          "right": 189
+        },
+        {
+          "x": 201,
+          "y": 1258,
+          "width": 169,
+          "right": 370
+        }
+      ],
+      "failures": []
+    },
+    {
+      "engine": "chromium",
+      "phase": "after",
+      "loading": {
+        "height": 844,
+        "centerX": 0,
+        "centerY": 0
+      },
+      "width": 844,
+      "height": 390,
+      "gridDisplay": "grid",
+      "columns": 4,
+      "padding": 42.2,
+      "overflow": 0,
+      "cards": [
+        {
+          "x": 42.1875,
+          "y": 140.484375,
+          "width": 171.90625,
+          "right": 214.09375
+        },
+        {
+          "x": 238.09375,
+          "y": 140.484375,
+          "width": 171.90625,
+          "right": 410
+        },
+        {
+          "x": 434,
+          "y": 140.484375,
+          "width": 171.90625,
+          "right": 605.90625
+        },
+        {
+          "x": 629.90625,
+          "y": 140.484375,
+          "width": 171.90625,
+          "right": 801.8125
+        },
+        {
+          "x": 42.1875,
+          "y": 544.296875,
+          "width": 171.90625,
+          "right": 214.09375
+        },
+        {
+          "x": 238.09375,
+          "y": 544.296875,
+          "width": 171.90625,
+          "right": 410
+        },
+        {
+          "x": 434,
+          "y": 544.296875,
+          "width": 171.90625,
+          "right": 605.90625
+        },
+        {
+          "x": 629.90625,
+          "y": 544.296875,
+          "width": 171.90625,
+          "right": 801.8125
+        }
+      ],
+      "failures": []
+    },
+    {
+      "engine": "chromium",
+      "phase": "after",
+      "loading": {
+        "height": 844,
+        "centerX": 0,
+        "centerY": 0
+      },
+      "width": 1440,
+      "height": 900,
+      "gridDisplay": "grid",
+      "columns": 6,
+      "padding": 64,
+      "overflow": 0,
+      "cards": [
+        {
+          "x": 170,
+          "y": 168.140625,
+          "width": 163.328125,
+          "right": 333.328125
+        },
+        {
+          "x": 357.328125,
+          "y": 168.140625,
+          "width": 163.328125,
+          "right": 520.65625
+        },
+        {
+          "x": 544.65625,
+          "y": 168.140625,
+          "width": 163.328125,
+          "right": 707.984375
+        },
+        {
+          "x": 731.984375,
+          "y": 168.140625,
+          "width": 163.34375,
+          "right": 895.328125
+        },
+        {
+          "x": 919.328125,
+          "y": 168.140625,
+          "width": 163.328125,
+          "right": 1082.65625
+        },
+        {
+          "x": 1106.65625,
+          "y": 168.140625,
+          "width": 163.328125,
+          "right": 1269.984375
+        },
+        {
+          "x": 170,
+          "y": 559.078125,
+          "width": 163.328125,
+          "right": 333.328125
+        },
+        {
+          "x": 357.328125,
+          "y": 559.078125,
+          "width": 163.328125,
+          "right": 520.65625
+        }
+      ],
+      "failures": []
+    },
+    {
+      "engine": "webkit",
+      "phase": "before",
+      "loading": {
+        "height": 112,
+        "centerX": -139,
+        "centerY": -366
+      },
+      "width": 390,
+      "height": 844,
+      "gridDisplay": "block",
+      "columns": 1,
+      "padding": 0,
+      "overflow": 0,
+      "cards": [
+        {
+          "x": 0,
+          "y": 242.484375,
+          "width": 390,
+          "right": 390
+        },
+        {
+          "x": 0,
+          "y": 836.25,
+          "width": 124.875,
+          "right": 124.875
+        },
+        {
+          "x": 0,
+          "y": 1012.578125,
+          "width": 270.203125,
+          "right": 270.203125
+        },
+        {
+          "x": 0,
+          "y": 1406.890625,
+          "width": 153.890625,
+          "right": 153.890625
+        },
+        {
+          "x": 153.890625,
+          "y": 1410.09375,
+          "width": 151.75,
+          "right": 305.640625
+        },
+        {
+          "x": 0,
+          "y": 1677.609375,
+          "width": 138.3125,
+          "right": 138.3125
+        },
+        {
+          "x": 138.3125,
+          "y": 1626.734375,
+          "width": 172.234375,
+          "right": 310.546875
+        },
+        {
+          "x": 0,
+          "y": 1874.09375,
+          "width": 97.984375,
+          "right": 97.984375
+        }
+      ],
+      "failures": [
+        "bookshelf grid missing",
+        "bookshelf margin missing",
+        "card dimensions outside shelf",
+        "first row misaligned"
+      ]
+    },
+    {
+      "engine": "webkit",
+      "phase": "before",
+      "loading": {
+        "height": 112,
+        "centerX": -139,
+        "centerY": -366
+      },
+      "width": 1440,
+      "height": 900,
+      "gridDisplay": "block",
+      "columns": 1,
+      "padding": 0,
+      "overflow": 0,
+      "cards": [
+        {
+          "x": 0,
+          "y": 190.484375,
+          "width": 636.5625,
+          "right": 636.5625
+        },
+        {
+          "x": 636.5625,
+          "y": 958.015625,
+          "width": 124.875,
+          "right": 761.4375
+        },
+        {
+          "x": 761.4375,
+          "y": 740.03125,
+          "width": 270.203125,
+          "right": 1031.640625
+        },
+        {
+          "x": 1031.640625,
+          "y": 914.5,
+          "width": 153.890625,
+          "right": 1185.53125
+        },
+        {
+          "x": 1185.53125,
+          "y": 917.703125,
+          "width": 151.75,
+          "right": 1337.28125
+        },
+        {
+          "x": 0,
+          "y": 1185.21875,
+          "width": 138.3125,
+          "right": 138.3125
+        },
+        {
+          "x": 138.3125,
+          "y": 1134.34375,
+          "width": 172.234375,
+          "right": 310.546875
+        },
+        {
+          "x": 310.546875,
+          "y": 1245.71875,
+          "width": 97.984375,
+          "right": 408.53125
+        }
+      ],
+      "failures": [
+        "bookshelf grid missing",
+        "bookshelf margin missing",
+        "card dimensions outside shelf",
+        "first row misaligned"
+      ]
+    },
+    {
+      "engine": "webkit",
+      "phase": "after",
+      "loading": {
+        "height": 843.984375,
+        "centerX": 0,
+        "centerY": -0.015625
+      },
+      "width": 320,
+      "height": 640,
+      "gridDisplay": "grid",
+      "columns": 2,
+      "padding": 20,
+      "overflow": 0,
+      "cards": [
+        {
+          "x": 20,
+          "y": 234.375,
+          "width": 134,
+          "right": 154
+        },
+        {
+          "x": 166,
+          "y": 234.375,
+          "width": 134,
+          "right": 300
+        },
+        {
+          "x": 20,
+          "y": 627.828125,
+          "width": 134,
+          "right": 154
+        },
+        {
+          "x": 166,
+          "y": 627.828125,
+          "width": 134,
+          "right": 300
+        },
+        {
+          "x": 20,
+          "y": 954.109375,
+          "width": 134,
+          "right": 154
+        },
+        {
+          "x": 166,
+          "y": 954.109375,
+          "width": 134,
+          "right": 300
+        },
+        {
+          "x": 20,
+          "y": 1258,
+          "width": 134,
+          "right": 154
+        },
+        {
+          "x": 166,
+          "y": 1258,
+          "width": 134,
+          "right": 300
+        }
+      ],
+      "failures": []
+    },
+    {
+      "engine": "webkit",
+      "phase": "after",
+      "loading": {
+        "height": 843.984375,
+        "centerX": 0,
+        "centerY": -0.015625
+      },
+      "width": 390,
+      "height": 844,
+      "gridDisplay": "grid",
+      "columns": 2,
+      "padding": 20,
+      "overflow": 0,
+      "cards": [
+        {
+          "x": 20,
+          "y": 234.375,
+          "width": 169,
+          "right": 189
+        },
+        {
+          "x": 201,
+          "y": 234.375,
+          "width": 169,
+          "right": 370
+        },
+        {
+          "x": 20,
+          "y": 627.828125,
+          "width": 169,
+          "right": 189
+        },
+        {
+          "x": 201,
+          "y": 627.828125,
+          "width": 169,
+          "right": 370
+        },
+        {
+          "x": 20,
+          "y": 954.109375,
+          "width": 169,
+          "right": 189
+        },
+        {
+          "x": 201,
+          "y": 954.109375,
+          "width": 169,
+          "right": 370
+        },
+        {
+          "x": 20,
+          "y": 1258,
+          "width": 169,
+          "right": 189
+        },
+        {
+          "x": 201,
+          "y": 1258,
+          "width": 169,
+          "right": 370
+        }
+      ],
+      "failures": []
+    },
+    {
+      "engine": "webkit",
+      "phase": "after",
+      "loading": {
+        "height": 843.984375,
+        "centerX": 0,
+        "centerY": -0.015625
+      },
+      "width": 844,
+      "height": 390,
+      "gridDisplay": "grid",
+      "columns": 4,
+      "padding": 42.199997,
+      "overflow": 0,
+      "cards": [
+        {
+          "x": 42.1875,
+          "y": 140.484375,
+          "width": 171.90625,
+          "right": 214.09375
+        },
+        {
+          "x": 238.09375,
+          "y": 140.484375,
+          "width": 171.90625,
+          "right": 410
+        },
+        {
+          "x": 434,
+          "y": 140.484375,
+          "width": 171.90625,
+          "right": 605.90625
+        },
+        {
+          "x": 629.90625,
+          "y": 140.484375,
+          "width": 171.90625,
+          "right": 801.8125
+        },
+        {
+          "x": 42.1875,
+          "y": 544.296875,
+          "width": 171.90625,
+          "right": 214.09375
+        },
+        {
+          "x": 238.09375,
+          "y": 544.296875,
+          "width": 171.90625,
+          "right": 410
+        },
+        {
+          "x": 434,
+          "y": 544.296875,
+          "width": 171.90625,
+          "right": 605.90625
+        },
+        {
+          "x": 629.90625,
+          "y": 544.296875,
+          "width": 171.90625,
+          "right": 801.8125
+        }
+      ],
+      "failures": []
+    },
+    {
+      "engine": "webkit",
+      "phase": "after",
+      "loading": {
+        "height": 843.984375,
+        "centerX": 0,
+        "centerY": -0.015625
+      },
+      "width": 1440,
+      "height": 900,
+      "gridDisplay": "grid",
+      "columns": 6,
+      "padding": 64,
+      "overflow": 0,
+      "cards": [
+        {
+          "x": 170,
+          "y": 168.140625,
+          "width": 163.328125,
+          "right": 333.328125
+        },
+        {
+          "x": 357.328125,
+          "y": 168.140625,
+          "width": 163.328125,
+          "right": 520.65625
+        },
+        {
+          "x": 544.65625,
+          "y": 168.140625,
+          "width": 163.34375,
+          "right": 708
+        },
+        {
+          "x": 732,
+          "y": 168.140625,
+          "width": 163.328125,
+          "right": 895.328125
+        },
+        {
+          "x": 919.328125,
+          "y": 168.140625,
+          "width": 163.328125,
+          "right": 1082.65625
+        },
+        {
+          "x": 1106.65625,
+          "y": 168.140625,
+          "width": 163.34375,
+          "right": 1270
+        },
+        {
+          "x": 170,
+          "y": 559.078125,
+          "width": 163.328125,
+          "right": 333.328125
+        },
+        {
+          "x": 357.328125,
+          "y": 559.078125,
+          "width": 163.328125,
+          "right": 520.65625
+        }
+      ],
+      "failures": []
+    }
+  ],
+  "errors": [],
+  "unexpectedApi": []
+}

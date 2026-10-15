@@ -1,0 +1,2749 @@
+<script setup lang="ts">
+import { inject } from 'vue';
+import { deliveredAnswerText, shareHighlightKey } from '../reading-share';
+const shareHighlight = inject(shareHighlightKey, null);
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type ComputedRef } from "vue";
+import { ChevronDown, ExternalLink, Maximize2, Minimize2, Undo2, X } from "@lucide/vue";
+import { api as sharedApi } from "../api";
+import { bindSceneApi, network, readerKey } from '../network-context';
+const api = bindSceneApi(sharedApi, readerKey);
+import { findNotes, noteKindLabel, notePreview, noteTimeLabel, type NoteFilter } from '../reading-notes';
+import type {
+  AgentAnswerPart,
+  AgentEffect,
+  AgentQuestionQuoteView,
+  AskQuote,
+  FormulaSemantics,
+  HistoricalBackfillJobRequest,
+  HistoricalBackfillStartRequest,
+  HistoricalBackfillStateView,
+  IntentArtifactOverlayV1,
+  MemoryRecord,
+  OuterOutcome,
+  ProfileGovernanceActionRequest,
+  ProfileMemoryState,
+  ProfileMemoryUpdate,
+  ProfileUsageTrace,
+  ResidentGoal,
+  SourcePopupView,
+  TraceStep,
+} from "../api";
+import type { PdfAnnotationLocation } from "../pdf-annotation-projection";
+import { answerNoteExcerpt } from "../answer-note-selection";
+import AgentActivities from "./AgentActivities.vue";
+import TutorActivities from "./TutorActivities.vue";
+import TutorContinuation from './TutorContinuation.vue';
+import type { TutorContinuationView } from '../generated/TutorContinuationView';
+import NoteDetail from "./NoteDetail.vue";
+import AgentPresentation from "./AgentPresentation.vue";
+import { sourceChipLabel } from "../source-chip.js";
+import SourceExcerpt from './SourceExcerpt.vue';
+import PresentationSceneCard from './PresentationSceneCard.vue';
+import { presentationKey, type PresentationWorkspace } from '../presentation-workspace';
+import type { PresentationFollowUp } from '../generated/PresentationFollowUp';
+import type { PresentationRef } from '../generated/PresentationRef';
+import type { RunActivity } from "../agent-run-state";
+import ProfileMemoryPanel from "./ProfileMemoryPanel.vue";
+import IntentArtifactPanel from "./IntentArtifactPanel.vue";
+import SessionRecap from './SessionRecap.vue';
+import { targetPublication, type RecapTarget } from '../session-recap';
+
+type ContextTab = "agent" | "artifacts" | "profile" | "formula" | "notes";
+
+type AskDraft = AskQuote;
+type DisplayQuestionQuote = AskDraft | AgentQuestionQuoteView;
+interface ChatTurn {
+  hasTeaching?: boolean;
+  interaction?: import("../generated/ResolvedInteraction").ResolvedInteraction | null;
+  spendStop?: import('../account-allowance').SpendNotice;
+  teachingRef?: string | null;
+  presentationFollowUp?: PresentationFollowUp | null;
+  turnId: string | null;
+  user: string;
+  outcome: OuterOutcome | null;
+  pending: boolean;
+  error?: string;
+  questionAnchorLid: string | null;
+  questionQuote: AgentQuestionQuoteView | null;
+  questionSelection: AskDraft | null;
+  liveEffects?: { effect_id: string; effect: AgentEffect }[];
+  effectLabels: string[];
+  activities?: RunActivity[];
+  runTrace?: TraceStep[];
+  runStatus?: string;
+  draft?: import("./../agent-run-state").AnswerDraft | null;
+}
+interface ChatSessionSummary {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  turn_count: number;
+  turns: ChatSessionTurnSummary[];
+}
+interface ChatSessionTurnSummary {
+  user: string;
+  question_source_label: string | null;
+  question_quote: AgentQuestionQuoteView | null;
+}
+
+const props = defineProps<{
+  chat: ChatTurn[];
+  chatSessions: ChatSessionSummary[];
+  chatGoals?: ResidentGoal[];
+  targetGoalId?: string | null;
+  activeChatSessionId: string;
+  fullscreen?: boolean;
+  agentInput: string;
+  sending: boolean;
+  historyLoading?: boolean;
+  historyError?: string | null;
+  runConnection?: string;
+  canStop?: boolean;
+  unquotedNotePlacementAvailable?: boolean;
+  notePlacementSurface?: "markdown" | "pdf";
+  noteSourceFingerprint?: string | null;
+  selectedLid: string | null;
+  selectedFormula: FormulaSemantics | null;
+  contextNotes: MemoryRecord[];
+  contextHighlights: MemoryRecord[];
+  noteBookOrder?: string[];
+  noteSourceLabels?: Record<string, string>;
+  noteScopeKey?: string;
+  annotationLocation?: Record<string, PdfAnnotationLocation>;
+  renderMarkdown: (source: string) => string;
+  effLabel: (effect: AgentEffect) => string;
+  effState: (turnIndex: number, effectIndex: number) => string | undefined;
+  isGoto: (effect: AgentEffect) => boolean;
+  showEffectPrimary: (effect: AgentEffect) => boolean;
+  showEffectSecondary: (effect: AgentEffect) => boolean;
+  effectPrimaryLabel: (effect: AgentEffect) => string;
+  effectSecondaryLabel: (effect: AgentEffect) => string;
+  gotoBack: (effect: AgentEffect) => string;
+  askDraft: AskDraft | null;
+  profileMemory?: ProfileMemoryState | null;
+  profileMemoryLoading?: boolean;
+  profileMemoryBusy?: boolean;
+  profileMemoryError?: string | null;
+  profileMemoryNotice?: string | null;
+  profileBackfill?: HistoricalBackfillStateView | null;
+  profileBackfillLoading?: boolean;
+  profileBackfillBusy?: boolean;
+  profileBackfillError?: string | null;
+  profileBackfillNotice?: string | null;
+  profileUpdateStates?: Record<string, string>;
+  intentArtifacts?: IntentArtifactOverlayV1 | null;
+  preparationAvailable?: boolean;
+  continuationEnabled?: boolean;
+  tutorEnabled?: boolean;
+  tutorEnableBusy?: boolean;
+  continuationLabel?: string;
+  intentArtifactsLoading?: boolean;
+  intentArtifactsError?: string | null;
+  requestedTab?: ContextTab | null;
+  requestedTabRevision?: number;
+}>();
+const emit = defineEmits<{
+  (e: 'prepare-artifacts'): void;
+  (e: 'recap-publication', target: RecapTarget): void;
+  (e: "open-note-answer", note: MemoryRecord): void;
+  (e: "record-note", receipt: PresentationFollowUp, title: string, summary: string): void;
+  (e: "note-follow-up", message: string, receipt: PresentationFollowUp, memId: string): void;
+  (e: "presentation-follow-up", message: string, receipt: import("../generated/PresentationFollowUp").PresentationFollowUp): void;
+  (e: "update:agentInput", value: string): void;
+  (e: "send-agent"): void;
+  (e: 'continue-answer', turnId: string): void;
+  (e: 'clarify-answer', turnId: string, excerpt?: string, receipt?: PresentationFollowUp): void;
+  (e: 'choose-continuation', view: TutorContinuationView, optionId: string, receipt?: PresentationFollowUp): void;
+  (e: 'return-reading'): void;
+  (e: 'enable-tutor'): void;
+  (e: "retry-history"): void;
+  (e: "stop-agent"): void;
+  (e: "toggle-fullscreen"): void;
+  (e: "continue-goal", goalId: string): void;
+  (e: "show-allowance"): void;
+  (e: "cancel-goal", goalId: string): void;
+  (e: "target-goal", goalId: string): void;
+  (e: "clear-goal-target"): void;
+  (e: "new-chat"): void;
+  (e: "select-chat", sessionId: string): void;
+  (e: "delete-chat", sessionId: string): void;
+  (e: "clear-ask"): void;
+  (e: "undo-effect", turnIndex: number, effectIndex: number, effect: AgentEffect): void;
+  (e: "keep-effect", turnIndex: number, effectIndex: number, effect: AgentEffect): void;
+  (e: "save-answer-selection", turn: ChatTurn, text: string): void;
+  (e: "share-answer", turn: ChatTurn, text?: string): void;
+  (e: "place-note", note: MemoryRecord): void;
+  (e: "edit-note" | "delete-note" | "modify-highlight" | "delete-highlight", record: MemoryRecord): void;
+  (e: "goto", lid: string): void;
+  (e: "focus-source", source: { lid: string; quote: string | null; memId?: string }): void;
+  (e: "refresh-profile"): void;
+  (e: "mutate-profile", action: ProfileGovernanceActionRequest): void;
+  (e: "confirm-sensitive-profile"): void;
+  (e: "start-profile-backfill", request: HistoricalBackfillStartRequest): void;
+  (e: "mutate-profile-backfill", action: "cancel" | "retry" | "clear", request: HistoricalBackfillJobRequest): void;
+  (e: "undo-profile-update", turnIndex: number, updateIndex: number, update: ProfileMemoryUpdate): void;
+  (e: "agent-source-will-open", source: { turnId: string; sourceRefId: string }): void;
+  (e: "agent-source-opened"): void;
+  (e: "refresh-artifacts"): void;
+  (e: "open-artifacts"): void;
+  (e: "artifact-cited", artifactId: string): void;
+}>();
+
+const activeTab = ref<ContextTab>("agent");
+const workspace = defineModel<PresentationWorkspace | null>('presentationWorkspace', { default: null });
+const workspaceVisible = computed(() => !!workspace.value && !workspace.value.suspended);
+const workspaceKey = computed(() => workspace.value ? presentationKey(workspace.value.turnId, workspace.value.reference) : '');
+const chatHead = computed(() => props.chat.filter(t => t.turnId).at(-1)?.turnId ?? null);
+const suggestionHosts = ref(new Set<string>());
+function suggestionAvailable(key: string, available: boolean) { if (available) suggestionHosts.value.add(key); else suggestionHosts.value.delete(key); }
+function hasSuggestion(turnId: string) { return [...suggestionHosts.value].some(key => key.startsWith(`${turnId}:`)); }
+watch(() => props.activeChatSessionId, () => suggestionHosts.value.clear());
+function editQuestion() {
+  discussionOpen.value = true;
+  void nextTick(() => document.querySelector<HTMLTextAreaElement>('.agent-input textarea')?.focus());
+}
+function locateAccepted(turnId: string) { workspace.value = null; discussionOpen.value = true; void nextTick(() => scrollToTurn(turnId)); }
+function returnReading() { workspace.value = null; emit('return-reading'); }
+const retainedNote = ref<MemoryRecord | null>(null);
+const noteFollowUp = ref<MemoryRecord | null>(null);
+const retainedPresentation = ref<InstanceType<typeof AgentPresentation>>();
+const retainedReceipt = computed(() => retainedNote.value?.note?.association.kind === 'presentation' ? retainedNote.value.note.association.receipt : undefined);
+watch(() => props.contextNotes, notes => {
+  if (noteFollowUp.value && !notes.some(n => n.mem_id === noteFollowUp.value!.mem_id)) noteFollowUp.value = null;
+  if (retainedNote.value && !notes.some(n => n.mem_id === retainedNote.value!.mem_id)) { retainedNote.value = null; workspace.value = null; }
+});
+async function openNotePresentation(note: MemoryRecord, restore = false) {
+  if (note.note?.association.kind !== 'presentation') return;
+  const receipt = note.note.association.receipt;
+  const sameChat = receipt.session_id === props.activeChatSessionId && props.chat.some(t => t.turnId === receipt.turn_id && t.outcome && answerParts(t.outcome).some(p => p.kind === 'presentation' && presentationKey(t.turnId!, p) === presentationKey(receipt.turn_id, receipt.reference)));
+  activeTab.value = 'agent';
+  // Reuse an already mounted version so merely opening it cannot reset its state.
+  if (sameChat) { retainedNote.value = null; await locateScene(receipt, restore); noteFollowUp.value = note; return; }
+  noteFollowUp.value = note;
+  retainedNote.value = note;
+  workspace.value = { turnId: receipt.turn_id, reference: receipt.reference };
+  sceneBound.value = true;
+  await nextTick();
+  if (restore) await retainedPresentation.value?.restore(receipt);
+}
+function retainedSent(message: string, receipt: PresentationFollowUp) {
+  if (!retainedNote.value || !props.activeChatSessionId) return;
+  discussionOpen.value = true;
+  emit('note-follow-up', message, receipt, retainedNote.value.mem_id);
+}
+const sceneBound = ref(true);
+const discussionOpen = ref(false);
+const split = ref(63);
+const workspaceTools = ref<HTMLElement>();
+const workspaceTop = ref(60);
+let toolbarObserver: ResizeObserver | undefined;
+watch(workspaceVisible, async visible => {
+  toolbarObserver?.disconnect();
+  if (!visible) return;
+  await nextTick();
+  if (!workspaceTools.value) return;
+  toolbarObserver = new ResizeObserver(() => {
+    workspaceTop.value = (workspaceTools.value?.getBoundingClientRect().bottom ?? 44) + 4;
+  });
+  toolbarObserver.observe(workspaceTools.value);
+});
+onBeforeUnmount(() => toolbarObserver?.disconnect());
+const presentationInstances = new Map<string, InstanceType<typeof AgentPresentation>>();
+const loadedPresentations = ref(new Set<string>());
+let loadedSession = props.activeChatSessionId;
+watch(() => [props.chat, props.activeChatSessionId, workspace.value] as const, () => {
+  if (loadedSession !== props.activeChatSessionId) {
+    retainedNote.value = null; noteFollowUp.value = null; workspace.value = null; loadedPresentations.value.clear(); presentationInstances.clear(); loadedSession = props.activeChatSessionId;
+  }
+  if (workspace.value) return;
+  for (const turn of props.chat) for (const part of turn.outcome ? answerParts(turn.outcome) : []) {
+    if (part.kind === 'presentation' && turn.turnId) loadedPresentations.value.add(presentationKey(turn.turnId, part));
+  }
+}, { immediate: true, deep: true });
+function selectPresentation(turnId: string, reference: PresentationRef, open = true) {
+  retainedNote.value = null; noteFollowUp.value = null;
+  loadedPresentations.value.add(presentationKey(turnId, reference));
+  workspace.value = open ? { turnId, reference } : null;
+  sceneBound.value = true;
+  if (open) void scrollToTurn(turnId);
+}
+function submitMessage() {
+  if (props.sending || props.canStop || props.historyLoading || props.historyError || !props.agentInput.trim()) return;
+  if (workspaceVisible.value && sceneBound.value) {
+    discussionOpen.value = true;
+    followTranscript.value = true;
+    if (retainedNote.value) void retainedPresentation.value?.followUp();
+    else void presentationInstances.get(workspaceKey.value)?.followUp();
+  } else emit('send-agent');
+}
+function presentationSent(message: string, receipt: PresentationFollowUp) {
+  followTranscript.value = true;
+  discussionOpen.value = true;
+  const note = noteFollowUp.value;
+  if (note?.note?.association.kind === 'presentation') emit('note-follow-up', message, note.note.association.receipt, note.mem_id);
+  else emit('presentation-follow-up', message, receipt);
+}
+async function locateScene(receipt: PresentationFollowUp, restore = false) {
+  if (receipt.session_id !== props.activeChatSessionId) {
+    const note = props.contextNotes.find(n => n.note?.association.kind === 'presentation' && n.note.association.receipt.saved_state_ref === receipt.saved_state_ref);
+    if (note) { await openNotePresentation(note, restore); return; }
+  }
+  selectPresentation(receipt.turn_id, receipt.reference);
+  await nextTick();
+  if (restore) await presentationInstances.get(workspaceKey.value)?.restore(receipt);
+}
+const historySessions = computed(() => props.chatSessions.filter(session => session.turn_count > 0));
+const historyOpen = ref(false);
+const recapOpen = ref(false);
+const recapButton = ref<HTMLButtonElement>();
+const chatMenuOpen = ref(false);
+const contextMenuOpen = ref(false);
+const contextTools = ref<HTMLElement | null>(null);
+const contextMenuButton = ref<HTMLButtonElement | null>(null);
+const chatActions = ref<HTMLElement | null>(null);
+const chatMenuButton = ref<HTMLButtonElement | null>(null);
+function focusChatAction(button: HTMLButtonElement | null | undefined) {
+  (button?.getClientRects().length ? button : chatMenuButton.value)?.focus({ preventScroll: true });
+}
+function dismissChatMenu(event: PointerEvent) {
+  if (!(event.target instanceof Node)) return;
+  if (!chatActions.value?.contains(event.target)) chatMenuOpen.value = false;
+  if (!contextTools.value?.contains(event.target)) contextMenuOpen.value = false;
+}
+function closeChatMenuAfterAction(event: MouseEvent) {
+  if (!(event.target instanceof Element) || !event.target.closest('button')) return;
+  chatMenuOpen.value = false;
+  chatMenuButton.value?.focus({ preventScroll: true });
+}
+watch(historyOpen, (open, previous) => {
+  if (previous && !open) void nextTick(() => focusChatAction(chatActions.value?.querySelector('.history-button')));
+});
+const recapPresentation = ref<{ turnId: string; reference: PresentationRef } | null>(null);
+function closeRecap() {
+  recapOpen.value = false;
+  void nextTick(() => focusChatAction(recapButton.value));
+}
+watch(() => props.activeChatSessionId, () => { recapOpen.value = false; recapPresentation.value = null; });
+async function openRecapTarget(target: RecapTarget) {
+  if (target.session_id !== props.activeChatSessionId) throw new Error('对话已切换，请重新打开回顾');
+  if (target.kind === 'turn') {
+    activeTab.value = 'agent'; followTranscript.value = false;
+    if (!await scrollToTurn(target.turn_id)) throw new Error('该回合当前不可用，请刷新对话');
+    return;
+  }
+  // Recheck current availability while preserving the panel's factual cutoff.
+  const scope = readerKey();
+  const current = await api.sessionRecap(target.session_id, target.through_seq);
+  if (scope !== readerKey() || target.session_id !== props.activeChatSessionId) throw new Error('阅读现场已切换');
+  const item = target.kind === 'source'
+    ? current.sources.find(s => s.source_ref_id === target.source.source_ref_id && s.evidence[0].turn_id === target.turn_id)
+    : current.effects.find(e => e.effect_id === target.effect.effect_id && e.evidence[0].turn_id === target.turn_id);
+  if (!item || item.unavailable_reason) throw new Error(item?.unavailable_reason ?? '原记录当前不可用');
+  const publication = targetPublication(target), active = network.value.workspace?.published_book_ref;
+  if (network.value.enabled && publication && (publication.book_id !== active?.book_id || publication.publication_id !== active?.publication_id)) {
+    emit('recap-publication', target); return;
+  }
+  if (target.kind === 'source') {
+    const turn = props.chat.find(t => t.turnId === target.turn_id);
+    if (!turn) throw new Error('关联回合当前不可用，请刷新对话');
+    await openAgentSources(turn, [target.source.source_ref_id], { currentTarget: recapButton.value ?? null }, true);
+  } else if (target.effect.effect.kind === 'presentation') {
+    const reference = target.effect.effect.reference;
+    await api.presentationRead(target.session_id, target.turn_id, reference);
+    if (!props.chat.some(t => t.turnId === target.turn_id && t.outcome && answerParts(t.outcome).some(p => p.kind === 'presentation' && presentationKey(target.turn_id, p) === presentationKey(target.turn_id, reference)))) {
+      recapPresentation.value = { turnId: target.turn_id, reference };
+    }
+    selectPresentation(target.turn_id, reference);
+  } else if (target.effect.object_id && ['Note', 'Highlight'].includes(target.effect.effect.effect.kind)) {
+    const records = await api.recall();
+    const record = records.find(r => r.mem_id === ('object_id' in item ? item.object_id : null));
+    if (scope !== readerKey() || target.session_id !== props.activeChatSessionId) throw new Error('阅读现场已切换');
+    if (!record || !await showMemory(record.mem_id)) throw new Error('原成果当前不可用，请刷新笔记');
+  } else {
+    activeTab.value = 'agent'; followTranscript.value = false;
+    if (!await scrollToTurn(target.turn_id)) throw new Error('操作记录当前不可用');
+  }
+}
+const fullscreenButton = ref<HTMLButtonElement | null>(null);
+const noteQuery = ref('');
+const noteFilter = ref<NoteFilter>('all');
+const noteOrder = ref<'recent' | 'original'>('recent');
+const filteredNotes = computed(() => findNotes([...props.contextNotes, ...props.contextHighlights],
+  noteQuery.value, noteFilter.value, noteOrder.value, props.noteBookOrder ?? [...props.contextNotes, ...props.contextHighlights].map(n => n.mem_id), noteAssociationTitle));
+function noteAssociationTitle(note: MemoryRecord): string {
+  const association = note.note?.association;
+  if (association?.kind === 'presentation') return association.title;
+  if (association?.kind === 'answer') {
+    return props.chatSessions.find(s => s.id === association.session_id)?.title || '助手回答';
+  }
+  return props.noteSourceLabels?.[note.mem_id] || note.note?.source_bindings?.[0]?.label_snapshot || '来源未知';
+}
+watch(() => props.noteScopeKey, () => {
+  noteQuery.value = ''; noteFilter.value = 'all'; noteOrder.value = 'recent';
+  openNoteDetails.value.clear();
+  retainedNote.value = null; noteFollowUp.value = null; workspace.value = null;
+});
+const openNoteDetails = ref(new Set<string>());
+const transcriptRef = ref<HTMLElement | null>(null);
+const followTranscript = ref(true);
+function trackTranscriptScroll() {
+  const el = transcriptRef.value;
+  if (el) followTranscript.value = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+}
+async function scrollToTurn(turnId: string): Promise<boolean> {
+  await nextTick();
+  const turn = Array.from(transcriptRef.value?.querySelectorAll<HTMLElement>("[data-turn-id]") ?? [])
+    .find((candidate) => candidate.dataset.turnId === turnId);
+  if (!turn) return false;
+  turn.scrollIntoView({ block: "start" });
+  return true;
+}
+const openGoals = computed(() => (props.chatGoals ?? []).filter(goal => goal.status === "open"));
+const targetGoal = computed(() => openGoals.value.find(goal => goal.id === props.targetGoalId) ?? null);
+const taskDetailsOpen = ref(false);
+const taskSummaryButton = ref<HTMLButtonElement | null>(null);
+let taskDetailsTrigger: HTMLElement | null = null;
+const taskCloseButton = ref<HTMLButtonElement | null>(null);
+const runActive = computed(() => props.sending || props.canStop);
+const taskSummary = computed(() => {
+  if (runActive.value) return "正在执行";
+  return openGoals.value.length === 1 ? goalStopLabel(openGoals.value[0].last_stop_reason) : `${openGoals.value.length} 项任务尚未完成`;
+});
+function openTaskDetails(event?: Event) {
+  taskDetailsTrigger = event?.currentTarget as HTMLElement | null;
+  taskDetailsOpen.value = true;
+  void nextTick(() => taskCloseButton.value?.focus({ preventScroll: true }));
+}
+function closeTaskDetails() {
+  taskDetailsOpen.value = false;
+  void nextTick(() => (taskDetailsTrigger ?? taskSummaryButton.value)?.focus({ preventScroll: true }));
+}
+function supplementGoal(goalId: string) {
+  emit('target-goal', goalId);
+  taskDetailsOpen.value = false;
+  void nextTick(() => agentInputRef.value?.focus({ preventScroll: true }));
+}
+watch(() => [props.activeChatSessionId, openGoals.value.length] as const, ([session, count], previous) => {
+  if (!count || session !== previous?.[0]) taskDetailsOpen.value = false;
+});
+function goalStopLabel(reason: string | null | undefined): string {
+  if (!reason) return "任务尚未完成";
+  if (reason === "TURN_LIMIT_EXCEEDED") return "本次达到运行上限";
+  if (reason === "AGENT_RUN_CANCELLED") return "本次生成已停止";
+  if (reason === "AGENT_NO_PROGRESS") return "本次未能继续推进";
+  return "本次运行未完成";
+}
+const agentInputRef = ref<HTMLTextAreaElement | null>(null);
+const composeExpanded = ref(false);
+const composeTall = ref(false);
+let inputResizeObserver: ResizeObserver | undefined;
+let inputWidth = 0;
+function resizeAgentInput() {
+  const input = agentInputRef.value;
+  if (!input) return;
+  if (!input.clientWidth) return;
+  const previousHeight = input.style.height;
+  input.style.height = '44px';
+  const height = composeExpanded.value ? Math.min(120, Math.max(44, input.scrollHeight + 2)) : 44;
+  input.style.height = `${height}px`;
+  composeTall.value = height > 48;
+  if (previousHeight !== input.style.height && followTranscript.value) void scrollTranscriptToLatest();
+}
+function collapseAgentInput() {
+  composeExpanded.value = false;
+  if (agentInputRef.value) agentInputRef.value.scrollTop = 0;
+  agentInputRef.value?.blur();
+}
+onMounted(() => {
+  document.addEventListener('pointerdown', dismissChatMenu);
+  document.addEventListener('selectionchange', onAnswerSelectionChange);
+  window.addEventListener('scroll', positionAnswerSelection, true);
+  window.addEventListener('resize', positionAnswerSelection);
+  window.visualViewport?.addEventListener('resize', positionAnswerSelection);
+  window.visualViewport?.addEventListener('scroll', positionAnswerSelection);
+  answerSelectionObserver = new ResizeObserver(positionAnswerSelection);
+  if (transcriptRef.value) answerSelectionObserver.observe(transcriptRef.value);
+  inputResizeObserver = new ResizeObserver(entries => {
+    const width = entries[0]?.contentRect.width ?? 0;
+    if (width === inputWidth) return;
+    inputWidth = width;
+    resizeAgentInput();
+  });
+  if (agentInputRef.value) inputResizeObserver.observe(agentInputRef.value);
+  resizeAgentInput();
+});
+watch(() => [props.agentInput, activeTab.value, props.fullscreen, composeExpanded.value], () => resizeAgentInput(), { flush: 'post' });
+const tabs: { id: ContextTab; label: string }[] = [
+  { id: "agent", label: "问答" },
+  { id: "artifacts", label: "成果" },
+  { id: "profile", label: "画像" },
+  { id: "formula", label: "公式" },
+  { id: "notes", label: "笔记" },
+];
+watch(
+  () => [props.requestedTab, props.requestedTabRevision] as const,
+  ([tab]) => {
+    if (tab && tabs.some((candidate) => candidate.id === tab)) selectTab(tab);
+  },
+);
+const noteCount = computed(() => props.contextNotes.length + props.contextHighlights.length);
+const profileAttentionCount = computed(() => (
+  (props.profileMemory?.pending_candidates.length ?? 0)
+  + (props.profileMemory?.status.pending_sensitive_confirmation ? 1 : 0)
+));
+const artifactAcceptedCount = computed(() => (
+  props.intentArtifacts?.artifacts.filter((artifact) => artifact.state === "accepted").length ?? 0
+));
+watch(() => props.askDraft, async (draft) => {
+  if (!draft) return;
+  activeTab.value = "agent";
+  await nextTick();
+  agentInputRef.value?.focus();
+});
+
+async function scrollTranscriptToLatest() {
+  await nextTick();
+  const el = transcriptRef.value;
+  if (!el || !followTranscript.value) return;
+  el.scrollTop = el.scrollHeight;
+}
+watch(() => props.activeChatSessionId, () => {
+  followTranscript.value = true;
+  void scrollTranscriptToLatest();
+});
+watch(
+  () => {
+    const last = props.chat[props.chat.length - 1];
+    return [
+      props.chat.length,
+      last?.pending ? 1 : 0,
+      last?.activities?.map(a => `${a.step_id}:${a.status}`).join(",") ?? "",
+      last?.outcome?.answer?.length ?? 0,
+      props.askDraft ? 1 : 0,
+    ].join(":");
+  },
+  () => { void scrollTranscriptToLatest(); },
+  { flush: "post" },
+);
+
+const answerSelection = ref<{ x: number; y: number; text: string; turn: ChatTurn } | null>(null);
+const answerSelectionError = ref('');
+const answerPopover = ref<HTMLElement | null>(null);
+const answerSelectionPositioned = ref(false);
+let answerSelectionRange: Range | null = null;
+let answerSelectionObserver: ResizeObserver | undefined;
+
+interface AgentSourcePopupState {
+  fromRecap: boolean;
+  noteMemId?: string;
+  turnId: string;
+  sourceRefIds: string[];
+  activeSourceRefId: string;
+  sources: SourcePopupView[];
+  loading: boolean;
+  opening: boolean;
+  error: string | null;
+  left: number;
+  top: number;
+}
+
+const agentSourcePopup = ref<AgentSourcePopupState | null>(null);
+const agentSourcePopupRef = ref<HTMLElement | null>(null);
+let sourceRequestSequence = 0;
+let agentSourceAnchor: HTMLElement | null = null;
+const SOURCE_POPUP_MARGIN = 12;
+const SOURCE_POPUP_GAP = 8;
+const SOURCE_POPUP_WIDTH = 620;
+const SOURCE_POPUP_INITIAL_HEIGHT = 240;
+const SOURCE_POPUP_BOTTOM_SHEET_MAX_WIDTH = 700;
+const activeAgentSource = computed(() => {
+  const popup = agentSourcePopup.value;
+  return popup?.sources.find((source) => source.source_ref_id === popup.activeSourceRefId) ?? null;
+});
+function sourceTabLabel(source: SourcePopupView) {
+  const turn = props.chat.find(turn => turn.turnId === agentSourcePopup.value?.turnId);
+  const sources = turn?.outcome?.answer_view?.sources ?? turn?.draft?.view?.sources ?? agentSourcePopup.value?.sources ?? [];
+  return sourceChipLabel(sources, source.source_ref_id);
+}
+const agentSourcePopupStyle = computed(() => {
+  const popup = agentSourcePopup.value;
+  return popup ? { left: `${popup.left}px`, top: `${popup.top}px` } : {};
+});
+
+// Keep completed rendered blocks mounted while the active tail grows.
+function draftMarkdownBlocks(html: string): string[] {
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  return Array.from(template.content.childNodes).flatMap(node => {
+    if (node.nodeType === Node.ELEMENT_NODE) return [(node as Element).outerHTML];
+    if (!node.textContent?.trim()) return [];
+    const span = document.createElement("span"); span.textContent = node.textContent;
+    return [span.outerHTML];
+  });
+}
+
+function answerParts(outcome: OuterOutcome): AgentAnswerPart[] {
+  return outcome.answer_view?.parts?.length
+    ? outcome.answer_view.parts
+    : outcome.answer
+      ? [{ kind: "markdown", text: outcome.answer }]
+      : [];
+}
+
+function incompleteNotice(outcome: OuterOutcome): string | null {
+  if (!outcome.incomplete || !outcome.warning) return null;
+  switch (outcome.warning) {
+    case "CONTEXT_BUDGET_EXCEEDED":
+      return "上下文不足";
+    case "COMPACTION_FAILED":
+      return "上下文整理失败，请重试";
+    case "ACTIVE_CONTEXT_EXHAUSTED":
+      return "当前内容超过模型可处理范围";
+    case "TURN_LIMIT_EXCEEDED":
+      return "本轮模型—工具循环次数已达上限";
+    default:
+      return outcome.warning;
+  }
+}
+
+type AnswerDisplayPart = { kind: "html"; html: string; blocks?: string[] } | Extract<AgentAnswerPart, { kind: "presentation" }>;
+// Each turn tracks its own content dependencies; opening a menu must not parse the transcript.
+const answerDisplayCache = new WeakMap<ChatTurn, { answer: ComputedRef<AnswerDisplayPart[]>; draft: ComputedRef<AnswerDisplayPart[]> }>();
+function turnDisplayParts(turn: ChatTurn, draft = false): AnswerDisplayPart[] {
+  let cached = answerDisplayCache.get(turn);
+  if (!cached) {
+    cached = {
+      answer: computed(() => turn.outcome
+        ? answerDisplayParts(answerParts(turn.outcome), turn.outcome.answer_view?.sources ?? [], false, !!turn.turnId) : []),
+      draft: computed(() => turn.draft?.view
+        ? answerDisplayParts(turn.draft.view.parts, turn.draft.view.sources, true) : []),
+    };
+    answerDisplayCache.set(turn, cached);
+  }
+  return (draft ? cached.draft : cached.answer).value;
+}
+const SOURCE_PLACEHOLDER = /\uE000UB_SOURCE_(\d+)\uE001/g;
+const SOURCE_AFTER_TABLE_ROW = /^(\s*\|.*\|)[ \t]*(\uE000UB_SOURCE_\d+\uE001(?:[ \t]*\uE000UB_SOURCE_\d+\uE001)*)[ \t]*$/;
+const SOURCE_ONLY_LINE = /^[ \t]*(\uE000UB_SOURCE_\d+\uE001(?:[ \t]*\uE000UB_SOURCE_\d+\uE001)*)[ \t]*$/;
+
+function placeTableSourcesInCells(markdown: string): string {
+  const lines = markdown.split(/\r?\n/);
+  const putInLastCell = (row: string, tokens: string) => `${row.trimEnd().slice(0, -1)} ${tokens} |`;
+  for (let index = 0; index < lines.length; index += 1) {
+    const trailing = lines[index].match(SOURCE_AFTER_TABLE_ROW);
+    if (trailing) {
+      lines[index] = putInLastCell(trailing[1], trailing[2]);
+      continue;
+    }
+    const standalone = lines[index].match(SOURCE_ONLY_LINE);
+    if (standalone && index > 0 && /^\s*\|.*\|\s*$/.test(lines[index - 1])) {
+      lines[index - 1] = putInLastCell(lines[index - 1], standalone[1]);
+      lines.splice(index, 1);
+      index -= 1;
+    }
+  }
+  return lines.join("\n");
+}
+
+function inlineSourceButton(part: Extract<AgentAnswerPart, { kind: "sources" }>, index: number, sources: NonNullable<OuterOutcome["answer_view"]>["sources"], draft: boolean, canOpen: boolean): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = draft ? "agent-source-button draft-source" : "agent-source-button";
+  button.dataset.answerSourceIndex = String(index);
+  button.disabled = !draft && !canOpen;
+  if (!draft) {
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.setAttribute("width", "14");
+    icon.setAttribute("height", "14");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    icon.setAttribute("fill", "none");
+    icon.setAttribute("stroke", "currentColor");
+    icon.setAttribute("stroke-width", "2");
+    icon.setAttribute("stroke-linecap", "round");
+    icon.setAttribute("stroke-linejoin", "round");
+    icon.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", "M12 7v14M3 18V5a2 2 0 0 1 2-2h4a3 3 0 0 1 3 3 3 3 0 0 1 3-3h4a2 2 0 0 1 2 2v13a1 1 0 0 1-1 1h-5a3 3 0 0 0-3 3 3 3 0 0 0-3-3H4a1 1 0 0 1-1-1Z");
+    icon.append(path);
+    button.append(icon);
+  }
+  const label = document.createElement("span");
+  label.textContent = part.source_ref_ids.length === 1
+    ? sourceChipLabel(sources, part.source_ref_ids[0])
+    : `${part.source_ref_ids.length} 个来源`;
+  button.append(label);
+  return button;
+}
+
+function answerDisplayParts(parts: AgentAnswerPart[], sources: NonNullable<OuterOutcome["answer_view"]>["sources"], draft = false, canOpen = true): AnswerDisplayPart[] {
+  const display: AnswerDisplayPart[] = [];
+  let markdown = "";
+  const inlineSources = new Map<number, Extract<AgentAnswerPart, { kind: "sources" }>>();
+  const flush = () => {
+    if (!markdown) return;
+    if (inlineSources.size === 0) {
+      display.push({ kind: "html", html: props.renderMarkdown(markdown) });
+      markdown = "";
+      return;
+    }
+    const template = document.createElement("template");
+    template.innerHTML = props.renderMarkdown(placeTableSourcesInCells(markdown));
+    const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_TEXT);
+    const textNodes: Text[] = [];
+    while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
+    for (const node of textNodes) {
+      const content = node.textContent ?? "";
+      SOURCE_PLACEHOLDER.lastIndex = 0;
+      if (!SOURCE_PLACEHOLDER.test(content)) continue;
+      SOURCE_PLACEHOLDER.lastIndex = 0;
+      const replacement = document.createDocumentFragment();
+      let cursor = 0;
+      for (const match of content.matchAll(SOURCE_PLACEHOLDER)) {
+        const index = Number(match[1]);
+        const source = inlineSources.get(index);
+        if (!source) continue;
+        replacement.append(document.createTextNode(content.slice(cursor, match.index)));
+        replacement.append(inlineSourceButton(source, index, sources, draft, canOpen));
+        cursor = match.index + match[0].length;
+      }
+      replacement.append(document.createTextNode(content.slice(cursor)));
+      node.replaceWith(replacement);
+    }
+    display.push({ kind: "html", html: template.innerHTML });
+    markdown = "";
+    inlineSources.clear();
+  };
+  parts.forEach((part, index) => {
+    if (part.kind === "markdown") markdown += part.text;
+    else if (part.kind === "sources") {
+      markdown += `\uE000UB_SOURCE_${index}\uE001`;
+      inlineSources.set(index, part);
+    } else {
+      flush();
+      display.push(part);
+    }
+  });
+  flush();
+  return draft ? display.map(part => part.kind === 'html' ? { ...part, blocks: draftMarkdownBlocks(part.html) } : part) : display;
+}
+
+function onAnswerSourceClick(turn: ChatTurn, parts: AgentAnswerPart[], event: MouseEvent) {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  const button = target.closest<HTMLButtonElement>("button[data-answer-source-index]");
+  if (!button || !(event.currentTarget as Element).contains(button)) return;
+  const part = parts[Number(button.dataset.answerSourceIndex)];
+  if (part?.kind !== "sources") return;
+  event.stopPropagation();
+  void openAgentSources(turn, part.source_ref_ids, { currentTarget: button });
+}
+
+function closeAgentSourcePopup() {
+  sourceRequestSequence += 1;
+  agentSourcePopup.value = null;
+  agentSourceAnchor = null;
+}
+
+function clampToRange(value: number, minimum: number, maximum: number): number {
+  return Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
+}
+
+function positionAgentSourcePopup() {
+  const popup = agentSourcePopup.value;
+  const popupElement = agentSourcePopupRef.value;
+  const anchor = agentSourceAnchor;
+  if (!popup || !popupElement || !anchor || window.innerWidth <= SOURCE_POPUP_BOTTOM_SHEET_MAX_WIDTH) return;
+
+  const anchorRect = anchor.getBoundingClientRect();
+  const popupRect = popupElement.getBoundingClientRect();
+  const popupWidth = popupRect.width || Math.min(SOURCE_POPUP_WIDTH, window.innerWidth - (SOURCE_POPUP_MARGIN * 2));
+  const popupHeight = popupRect.height || SOURCE_POPUP_INITIAL_HEIGHT;
+  const leftCandidate = anchorRect.left - SOURCE_POPUP_GAP - popupWidth;
+  const rightCandidate = anchorRect.right + SOURCE_POPUP_GAP;
+  const leftFits = leftCandidate >= SOURCE_POPUP_MARGIN;
+  const rightFits = rightCandidate + popupWidth <= window.innerWidth - SOURCE_POPUP_MARGIN;
+
+  let left: number;
+  if (leftFits) {
+    left = leftCandidate;
+  } else if (rightFits) {
+    left = rightCandidate;
+  } else {
+    const spaceOnLeft = anchorRect.left - SOURCE_POPUP_GAP - SOURCE_POPUP_MARGIN;
+    const spaceOnRight = window.innerWidth - SOURCE_POPUP_MARGIN - anchorRect.right - SOURCE_POPUP_GAP;
+    left = spaceOnLeft >= spaceOnRight ? leftCandidate : rightCandidate;
+  }
+
+  popup.left = clampToRange(
+    left,
+    SOURCE_POPUP_MARGIN,
+    window.innerWidth - SOURCE_POPUP_MARGIN - popupWidth,
+  );
+  popup.top = clampToRange(
+    anchorRect.top,
+    SOURCE_POPUP_MARGIN,
+    window.innerHeight - SOURCE_POPUP_MARGIN - popupHeight,
+  );
+}
+
+async function refreshAgentSourcePopupPosition() {
+  await nextTick();
+  positionAgentSourcePopup();
+}
+
+function onAgentSourceViewportResize() {
+  void refreshAgentSourcePopupPosition();
+}
+
+window.addEventListener("resize", onAgentSourceViewportResize);
+function onFullscreenKeydown(event: KeyboardEvent) {
+  // The native share dialog owns Escape, including after a browser download moves focus.
+  if (event.key === 'Escape' && document.querySelector('.share-image-panel[open]')) return;
+  if (event.key === 'Escape' && taskDetailsOpen.value) { event.preventDefault(); closeTaskDetails(); return; }
+  if (event.key === 'Escape' && contextMenuOpen.value) {
+    event.preventDefault(); contextMenuOpen.value = false; contextMenuButton.value?.focus(); return;
+  }
+  if (event.key === 'Escape' && chatMenuOpen.value) {
+    event.preventDefault(); chatMenuOpen.value = false; chatMenuButton.value?.focus(); return;
+  }
+  if (event.key === 'Escape' && recapOpen.value) { event.preventDefault(); closeRecap(); return; }
+  if (event.key !== "Escape" || !props.fullscreen) return;
+  if (document.querySelector(".agent-presentation.expanded")) return;
+  event.preventDefault();
+  if (agentSourcePopup.value) { closeAgentSourcePopup(); return; }
+  if (historyOpen.value) { historyOpen.value = false; return; }
+  emit("toggle-fullscreen");
+  void nextTick(() => focusChatAction(fullscreenButton.value));
+}
+window.addEventListener("keydown", onFullscreenKeydown);
+onBeforeUnmount(() => {
+  inputResizeObserver?.disconnect();
+  answerSelectionObserver?.disconnect();
+  document.removeEventListener('selectionchange', onAnswerSelectionChange);
+  window.removeEventListener('scroll', positionAnswerSelection, true);
+  window.removeEventListener('resize', positionAnswerSelection);
+  window.visualViewport?.removeEventListener('resize', positionAnswerSelection);
+  window.visualViewport?.removeEventListener('scroll', positionAnswerSelection);
+  document.removeEventListener('pointerdown', dismissChatMenu);
+  window.removeEventListener("resize", onAgentSourceViewportResize);
+  window.removeEventListener("keydown", onFullscreenKeydown);
+});
+
+async function openAgentSources(turn: Pick<ChatTurn, 'turnId'>, sourceRefIds: string[], event: { currentTarget: EventTarget | null }, fromRecap = false, noteMemId?: string) {
+  if (!turn.turnId || sourceRefIds.length === 0) return;
+  agentSourceAnchor = event.currentTarget as HTMLElement | null;
+  const requestSequence = ++sourceRequestSequence;
+  agentSourcePopup.value = {
+    fromRecap, noteMemId,
+    turnId: turn.turnId,
+    sourceRefIds: [...sourceRefIds],
+    activeSourceRefId: sourceRefIds[0],
+    sources: [],
+    loading: true,
+    opening: false,
+    error: null,
+    left: SOURCE_POPUP_MARGIN,
+    top: SOURCE_POPUP_MARGIN,
+  };
+  await refreshAgentSourcePopupPosition();
+  try {
+    const sources = await Promise.all(
+      sourceRefIds.map((sourceRefId) => api.agentSourceResolve(turn.turnId!, sourceRefId, noteMemId)),
+    );
+    if (requestSequence !== sourceRequestSequence || !agentSourcePopup.value) return;
+    agentSourcePopup.value.sources = sources;
+    agentSourcePopup.value.loading = false;
+    await refreshAgentSourcePopupPosition();
+  } catch (error) {
+    if (requestSequence !== sourceRequestSequence || !agentSourcePopup.value) return;
+    agentSourcePopup.value.loading = false;
+    agentSourcePopup.value.error = error instanceof Error ? error.message : String(error);
+    await refreshAgentSourcePopupPosition();
+  }
+}
+
+function selectAgentSource(sourceRefId: string) {
+  if (agentSourcePopup.value?.sources.some((source) => source.source_ref_id === sourceRefId)) {
+    agentSourcePopup.value.activeSourceRefId = sourceRefId;
+    void refreshAgentSourcePopupPosition();
+  }
+}
+
+async function openActiveAgentSourceInReader() {
+  const popup = agentSourcePopup.value;
+  const source = activeAgentSource.value;
+  if (!popup || !source || source.stale || !source.can_open_in_reader || popup.opening) return;
+  const requestSequence = sourceRequestSequence;
+  popup.opening = true;
+  popup.error = null;
+  emit("agent-source-will-open", { turnId: popup.turnId, sourceRefId: source.source_ref_id });
+  try {
+    await api.agentSourceOpen(popup.turnId, source.source_ref_id, popup.noteMemId);
+    if (requestSequence !== sourceRequestSequence) return;
+    closeAgentSourcePopup();
+    emit("agent-source-opened");
+  } catch (error) {
+    if (requestSequence !== sourceRequestSequence || !agentSourcePopup.value) return;
+    agentSourcePopup.value.opening = false;
+    agentSourcePopup.value.error = error instanceof Error ? error.message : String(error);
+  }
+}
+
+function onAgentInputKeydown(event: KeyboardEvent) {
+  if (event.isComposing || event.keyCode === 229) return;
+  if (event.key === 'Escape' && composeExpanded.value) {
+    event.preventDefault(); event.stopPropagation(); collapseAgentInput(); return;
+  }
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") { event.preventDefault(); submitMessage(); }
+}
+
+const notesPanel = ref<HTMLElement | null>(null);
+async function showMemory(memId: string): Promise<boolean> {
+  activeTab.value = 'notes';
+  noteQuery.value = ''; noteFilter.value = 'all'; openNoteDetails.value.add(memId);
+  await nextTick();
+  const card = Array.from(notesPanel.value?.querySelectorAll<HTMLElement>('[data-mem-id]') ?? [])
+    .find(el => el.dataset.memId === memId);
+  if (!card) return false;
+  if (card instanceof HTMLDetailsElement) card.open = true;
+  card.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+  card.focus({ preventScroll: true });
+  return true;
+}
+function replaceMemory(oldId: string, record: MemoryRecord) {
+  if (openNoteDetails.value.delete(oldId)) openNoteDetails.value.add(record.mem_id);
+  if (retainedNote.value?.mem_id === oldId) retainedNote.value = record;
+  if (noteFollowUp.value?.mem_id === oldId) noteFollowUp.value = record;
+}
+function focusActivityHelp(deliveryRefs: string[]) {
+  const node = Array.from(document.querySelectorAll<HTMLElement>('[data-delivery-ref]'))
+    .find(node => deliveryRefs.includes(node.dataset.deliveryRef ?? ''));
+  node?.scrollIntoView({ block: 'center' });
+  node?.querySelector<HTMLButtonElement>('[data-help-action]')?.focus();
+}
+defineExpose({ focusActivityHelp, scrollToTurn, showMemory, replaceMemory, openRecapTarget, openNotePresentation });
+
+watch(() => props.activeChatSessionId, () => { closeAgentSourcePopup(); clearAnswerSelection(); });
+watch(activeTab, clearAnswerSelection);
+watch(() => props.chat, () => {
+  const popup = agentSourcePopup.value;
+  if (!popup || popup.fromRecap) return;
+  const turn = props.chat.find(turn => turn.turnId === popup.turnId);
+  const view = turn?.pending ? turn.draft?.view : turn?.outcome?.answer_view;
+  if (!view?.parts.some(part => part.kind === 'presentation') && !popup.sourceRefIds.every(id => view?.sources.some(source => source.source_ref_id === id))) closeAgentSourcePopup();
+}, { deep: true });
+
+function clearAnswerSelection() {
+  answerSelection.value = null;
+  answerSelectionRange = null;
+  answerSelectionError.value = '';
+  answerSelectionPositioned.value = false;
+}
+function dismissAnswerSelection() {
+  clearAnswerSelection();
+  window.getSelection()?.removeAllRanges();
+}
+function onAnswerSelectionChange() {
+  answerSelectionError.value = '';
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed || activeTab.value !== 'agent') {
+    clearAnswerSelection();
+    return;
+  }
+  const range = sel.getRangeAt(0);
+  const start = range.startContainer.nodeType === 3 ? range.startContainer.parentElement : (range.startContainer as HTMLElement);
+  const end = range.endContainer.nodeType === 3 ? range.endContainer.parentElement : (range.endContainer as HTMLElement);
+  const startAnswer = start?.closest?.(".ans-text");
+  if (!startAnswer || startAnswer !== end?.closest?.(".ans-text") || !transcriptRef.value?.contains(startAnswer)) {
+    clearAnswerSelection();
+    return;
+  }
+  const turnId = startAnswer.closest<HTMLElement>('.turn')?.dataset.turnId;
+  const turn = props.chat.find(candidate => candidate.turnId === turnId);
+  if (!turn || turn.pending || turn.error || !turn.turnId || !turn.outcome) {
+    clearAnswerSelection();
+    return;
+  }
+  const text = answerNoteExcerpt(range, answerParts(turn.outcome).flatMap(part => part.kind === 'markdown' ? [part.text] : []));
+  if (!text) {
+    clearAnswerSelection();
+    answerSelectionError.value = '这段选区无法对应单个连续的回答片段，请在同一段回答文字内重新选择。';
+    return;
+  }
+  answerSelectionRange = range.cloneRange();
+  answerSelectionPositioned.value = false;
+  answerSelection.value = { x: 0, y: 0, text, turn };
+  void nextTick(positionAnswerSelection);
+}
+function positionAnswerSelection() {
+  const selected = answerSelection.value;
+  const range = answerSelectionRange;
+  const popup = answerPopover.value;
+  const transcript = transcriptRef.value;
+  if (!selected || !range || !popup || !transcript) return;
+  const bounds = transcript.getBoundingClientRect();
+  const viewport = window.visualViewport;
+  const top = Math.max(bounds.top, viewport?.offsetTop ?? 0);
+  const bottom = Math.min(bounds.bottom, (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight));
+  const rects = Array.from(range.getClientRects()).filter(rect => rect.height > 0 && rect.bottom > top && rect.top < bottom);
+  if (!bounds.height || !rects.length || !transcript.contains(range.commonAncestorContainer)) {
+    clearAnswerSelection();
+    return;
+  }
+  const first = rects[0], last = rects[rects.length - 1];
+  const popupBounds = popup.getBoundingClientRect();
+  const below = last.bottom + 10 + popupBounds.height <= bottom;
+  const anchor = below ? last : first;
+  const left = viewport?.offsetLeft ?? 0;
+  const right = left + (viewport?.width ?? window.innerWidth);
+  selected.x = Math.max(left + 8, Math.min(anchor.right - popupBounds.width, right - popupBounds.width - 8));
+  selected.y = Math.max(top + 4, Math.min(below ? last.bottom + 10 : first.top - popupBounds.height - 10, bottom - popupBounds.height - 4));
+  answerSelectionPositioned.value = true;
+}
+function saveAnswerSelection(turn: ChatTurn) {
+  const selected = answerSelection.value;
+  if (!selected || selected.turn !== turn) return;
+  emit("save-answer-selection", turn, selected.text);
+  clearAnswerSelection();
+  window.getSelection()?.removeAllRanges();
+}
+function shareAnswerSelection() {
+  const selected = answerSelection.value;
+  if (!selected || !deliveredAnswerText(selected.turn)) return;
+  emit('share-answer', selected.turn, selected.text);
+  clearAnswerSelection();
+  window.getSelection()?.removeAllRanges();
+}
+function clarifySelection() {
+  const selected = answerSelection.value;
+  if (!selected?.turn.turnId || !deliveredAnswerText(selected.turn) || props.sending) return;
+  emit('clarify-answer', selected.turn.turnId, selected.text);
+  dismissAnswerSelection();
+}
+function compactText(value: string, max = 96): string {
+  const text = value.replace(/\s+/g, " ").trim();
+  return text.length > max ? `${text.slice(0, max)}...` : text;
+}
+function leadingQuote(content: string): string | null {
+  const lines = content.split("\n");
+  const quoteLines: string[] = [];
+  for (const line of lines) {
+    if (line.startsWith(">")) quoteLines.push(line.replace(/^>\s?/, ""));
+    else if (quoteLines.length > 0 && line.trim() === "") break;
+    else if (quoteLines.length > 0) break;
+  }
+  const quote = quoteLines.join(" ").replace(/\s+/g, " ").trim();
+  return quote || null;
+}
+function askQuoteLabel(quote: DisplayQuestionQuote): string {
+  if ("label" in quote) return quote.label;
+  return quote.status === "partial" ? "部分定位引用" : "引用来源";
+}
+function annotationLocationLabel(record: MemoryRecord): string | null {
+  const status = props.annotationLocation?.[record.mem_id];
+  if (status === "exact") return "PDF 已定位";
+  if (status === "partial") return "PDF 部分定位";
+  if (status === "unmapped") return "PDF 未定位";
+  return null;
+}
+function noteSourceLid(note: MemoryRecord): string | null {
+  if (note.type === 'highlight' || note.selection_context) return note.anchor.lid ?? null;
+  if (note.note_placement?.kind === 'pdf_region' && note.note_placement.source_fingerprint === props.noteSourceFingerprint && props.annotationLocation?.[note.mem_id] === 'exact') return note.anchor.lid ?? null;
+  if (note.note_placement?.kind !== "lid_block"
+    || note.note_placement.source_fingerprint !== props.noteSourceFingerprint
+    || note.anchor.lid !== note.note_placement.lid) {
+    return null;
+  }
+  return note.note_placement.lid;
+}
+function canFocusNoteSource(note: MemoryRecord): boolean {
+  return noteSourceLid(note) !== null;
+}
+function noteSourceLabel(note: MemoryRecord): string {
+  const placement = note.note_placement;
+  if (placement?.source_fingerprint && placement.source_fingerprint !== props.noteSourceFingerprint) return '来源已变更';
+  if (placement?.kind === 'pdf_region') return `第 ${placement.page_index + 1} 页`;
+  return noteAssociationTitle(note);
+}
+function notePlacementActionLabel(note: MemoryRecord): string | null {
+  if (!props.unquotedNotePlacementAvailable || note.selection_context) return null;
+  if (!note.note_placement) return "放置到正文";
+  const surface = props.notePlacementSurface ?? "markdown";
+  if ((surface === "markdown" && note.note_placement.kind !== "lid_block")
+    || (surface === "pdf" && note.note_placement.kind !== "pdf_region")) return null;
+  if (note.note_placement.source_fingerprint !== props.noteSourceFingerprint) return "重新放置";
+  if (note.note_placement.kind === "pdf_region") {
+    return props.annotationLocation?.[note.mem_id] === "exact" ? "移动" : "重新放置";
+  }
+  return "移动";
+}
+function isLongNote(note: MemoryRecord): boolean {
+  return note.content.length > 360 || note.content.split("\n").length > 8;
+}
+function excerpt(rec: MemoryRecord): string {
+  const c = rec.content.replace(/\s+/g, " ").trim();
+  return c.length > 120 ? `${c.slice(0, 120)}…` : c;
+}
+function turnSourceLabel(turn: ChatSessionTurnSummary): string | null {
+  return turn.question_source_label ?? turn.question_quote?.label ?? null;
+}
+function openHistorySession(sessionId: string) {
+  if (!sessionId || sessionId === props.activeChatSessionId) return;
+  emit("select-chat", sessionId);
+  historyOpen.value = false;
+}
+function openHistorySessionFromCard(sessionId: string, event: MouseEvent | KeyboardEvent) {
+  const target = event.target instanceof HTMLElement ? event.target : null;
+  if (target?.closest("button,a,input,textarea,select")) return;
+  if (event instanceof KeyboardEvent) event.preventDefault();
+  openHistorySession(sessionId);
+}
+function deleteHistorySession(sessionId: string) {
+  if (!sessionId) return;
+  emit("delete-chat", sessionId);
+}
+
+function selectTab(tab: ContextTab) {
+  activeTab.value = tab;
+  contextMenuOpen.value = false;
+  chatMenuOpen.value = false;
+  if (tab === "profile") emit("refresh-profile");
+  if (tab === "artifacts") emit("open-artifacts");
+}
+
+function memoryUpdateLabel(update: ProfileMemoryUpdate): string {
+  return {
+    remembered: "画像已记住",
+    corrected: "画像已纠正",
+    forgotten: "画像已忘记",
+    needs_clarification: "画像需要澄清",
+    needs_sensitive_confirmation: "敏感画像等待确认",
+    sensitive_confirmation_cancelled: "敏感画像保存已取消",
+    rejected: "画像更新未保存",
+  }[update.kind];
+}
+
+function memoryUpdateKey(turnIndex: number, updateIndex: number): string {
+  return `${turnIndex}:${updateIndex}`;
+}
+
+function canUndoMemoryUpdate(update: ProfileMemoryUpdate): boolean {
+  return update.kind === "remembered" || update.kind === "corrected";
+}
+
+function hasProfileUsage(usage: ProfileUsageTrace): boolean {
+  return usage.injected_fact_ids.length > 0
+    || usage.claimed_used_fact_ids.length > 0
+    || usage.influences.length > 0;
+}
+
+function influenceLabel(influence: ProfileUsageTrace["influences"][number]): string {
+  return {
+    retrieval_plan: "检索计划",
+    explanation_depth: "讲解深度",
+    terminology: "术语选择",
+    example_choice: "示例选择",
+    navigation: "阅读导航",
+  }[influence];
+}
+</script>
+
+<template>
+  <aside class="right-rail" :class="{ fullscreen: props.fullscreen, 'presentation-workspace': workspaceVisible, 'discussion-open': discussionOpen }" :style="{ '--presentation-split': `${split}%`, '--presentation-top': `${workspaceTop}px` }">
+    <div v-if="workspaceVisible" ref="workspaceTools" class="workspace-tools">
+      <div v-if="$slots['learning-details']" class="workspace-learning-details"><slot name="learning-details" /></div>
+      <label class="workspace-split">演示宽度 <input v-model="split" type="range" min="40" max="72" aria-label="演示宽度" /></label>
+      <button class="discussion-toggle" @click="discussionOpen = !discussionOpen">{{ discussionOpen ? '收起讨论' : '展开讨论' }}</button>
+    </div>
+    <div v-if="!workspaceVisible" class="rail-toolbar agent-head">
+      <h3 class="rail-title">问这本书</h3>
+      <div v-if="!props.fullscreen" class="context-tabs" role="tablist" aria-label="辅助阅读功能">
+      <button
+        v-for="tab in tabs.slice(0, 2)"
+        :key="tab.id"
+        class="tab"
+        :class="{ active: activeTab === tab.id }"
+        type="button"
+        role="tab"
+        :id="`reader-tab-${tab.id}`"
+        :aria-selected="activeTab === tab.id"
+        :aria-controls="`reader-panel-${tab.id}`"
+        @click="selectTab(tab.id)"
+      >
+        {{ tab.label }}
+        <span v-if="tab.id === 'profile' && profileAttentionCount" class="tab-badge">
+          {{ profileAttentionCount }}
+        </span>
+        <span v-if="tab.id === 'artifacts' && artifactAcceptedCount" class="tab-badge">
+          {{ artifactAcceptedCount }}
+        </span>
+      </button>
+      <div ref="contextTools" class="context-tools">
+        <button ref="contextMenuButton" class="context-menu-toggle" :class="{ active: !['agent', 'artifacts'].includes(activeTab) }" type="button" aria-label="阅读工具" :aria-expanded="contextMenuOpen" aria-controls="reader-secondary-tabs" @click="contextMenuOpen = !contextMenuOpen; chatMenuOpen = false">
+          {{ tabs.find(tab => tab.id === activeTab && !['agent', 'artifacts'].includes(tab.id))?.label ?? '工具' }}
+          <span v-if="profileAttentionCount" class="tool-attention">{{ profileAttentionCount }}</span>
+          <ChevronDown :size="14" aria-hidden="true" />
+        </button>
+        <div v-show="contextMenuOpen" id="reader-secondary-tabs" class="secondary-tabs" role="tablist" aria-label="更多阅读工具">
+          <button v-for="tab in tabs.slice(2)" :key="tab.id" class="tab" :class="{ active: activeTab === tab.id }" type="button" role="tab" :id="`reader-tab-${tab.id}`" :aria-selected="activeTab === tab.id" :aria-controls="`reader-panel-${tab.id}`" @click="selectTab(tab.id)">
+            {{ tab.label }}<span v-if="tab.id === 'profile' && profileAttentionCount" class="tab-badge">{{ profileAttentionCount }}</span>
+          </button>
+        </div>
+      </div>
+      </div>
+      <button v-if="openGoals.length && activeTab === 'agent'" class="mobile-task-toggle" type="button" :aria-expanded="taskDetailsOpen" aria-controls="reader-task-details" @click="openTaskDetails">{{ openGoals.length }} 项待办</button>
+      <div ref="chatActions" class="chat-actions" :class="{ 'menu-open': chatMenuOpen }">
+          <button ref="chatMenuButton" class="chat-menu-toggle" type="button" aria-label="问答操作" :aria-expanded="chatMenuOpen" aria-controls="chat-secondary-actions" @click="chatMenuOpen = !chatMenuOpen; contextMenuOpen = false">会话<ChevronDown :size="14" aria-hidden="true" /></button>
+          <div v-show="chatMenuOpen" id="chat-secondary-actions" class="chat-secondary-actions" @click.capture="closeChatMenuAfterAction">
+          <button class="new-chat" title="新对话" :disabled="props.historyLoading || !!props.historyError" @click="emit('new-chat')">新对话</button>
+          <button ref="recapButton" class="recap-button" :disabled="!props.activeChatSessionId || props.historyLoading || !!props.historyError" @click="recapOpen = true">本次阅读回顾</button>
+          <button class="history-button" title="打开对话历史" :disabled="props.historyLoading || !!props.historyError" @click="historyOpen = true">
+            本书历史
+            <span>{{ historySessions.length }}</span>
+          </button>
+          <slot name="learning-details" />
+          </div>
+          <button
+            ref="fullscreenButton"
+            type="button"
+            class="fullscreen-button"
+            :aria-label="props.fullscreen ? '退出问答全屏' : '问答全屏'"
+            :aria-pressed="!!props.fullscreen"
+            @click="emit('toggle-fullscreen')"
+          ><Minimize2 v-if="props.fullscreen" :size="16" aria-hidden="true" /><Maximize2 v-else :size="16" aria-hidden="true" /></button>
+        </div>
+    </div>
+
+    <section id="reader-panel-agent" v-show="activeTab === 'agent'" class="tab-panel agent-panel" role="tabpanel" :aria-labelledby="props.fullscreen ? undefined : 'reader-tab-agent'" :aria-label="props.fullscreen ? '问这本书' : undefined">
+      <slot name="learning-goal" />
+      <button v-if="openGoals.length" ref="taskSummaryButton" class="task-summary-toggle" type="button" :aria-expanded="taskDetailsOpen" aria-controls="reader-task-details" @click="openTaskDetails">
+        <span class="task-summary-status">{{ taskSummary }}</span>
+        <span class="task-summary-title">{{ openGoals.length === 1 ? openGoals[0].interpretation : '查看未完成任务' }}</span>
+        <span class="task-summary-action">查看任务</span>
+      </button>
+      <div v-if="taskDetailsOpen && openGoals.length" class="goal-overlay" @click.self="closeTaskDetails">
+        <section id="reader-task-details" class="goal-details" role="dialog" aria-label="当前任务详情">
+          <header class="goal-details-head"><strong>当前任务</strong><button ref="taskCloseButton" type="button" aria-label="关闭任务详情" @click="closeTaskDetails"><X :size="16" aria-hidden="true" /></button></header>
+          <div class="goal-list" aria-label="当前任务">
+            <div v-for="goal in openGoals" :key="goal.id" class="goal-card">
+              <strong>{{ goal.interpretation }}</strong>
+              <p>{{ runActive ? '当前对话正在执行' : goalStopLabel(goal.last_stop_reason) }}<span v-if="goal.result_refs.length"> · 已有部分结果</span></p>
+              <p v-if="goal.requirements.length" class="goal-requirements">交付要求：{{ goal.requirements.map(item => item.description).join('；') }}</p>
+              <ul v-if="goal.working.items.length" class="goal-work-items"><li v-for="item in goal.working.items" :key="item.id"><span>{{ { pending: '待做', in_progress: '进行中', completed: '已完成' }[item.status] }}</span>{{ item.description }}</li></ul>
+              <div class="goal-actions">
+                <button :disabled="runActive" @click="emit('continue-goal', goal.id); closeTaskDetails()">继续任务</button>
+                <button :disabled="runActive" @click="supplementGoal(goal.id)">补充要求</button>
+                <button :disabled="runActive" @click="emit('cancel-goal', goal.id); closeTaskDetails()">结束任务</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <AgentPresentation v-if="retainedNote && retainedReceipt" ref="retainedPresentation"
+        :session-id="retainedReceipt.session_id" :turn-id="retainedReceipt.turn_id" :reference="retainedReceipt.reference"
+        :note-mem-id="retainedNote.mem_id" :note-receipt="retainedReceipt" :workspace="workspaceVisible"
+        :toolbar-target="workspaceVisible ? workspaceTools : undefined" :shared-question="props.agentInput"
+        @update:shared-question="emit('update:agentInput', $event)" @follow-up="retainedSent"
+        :busy="!props.activeChatSessionId || props.sending || props.historyLoading || !!props.historyError"
+        @expand="workspace = $event ? { turnId: retainedReceipt!.turn_id, reference: retainedReceipt!.reference } : null"
+        @source="(id, anchor) => openAgentSources({ turnId: retainedReceipt!.turn_id }, [id], { currentTarget: anchor }, true, retainedNote!.mem_id)" />
+      <SessionRecap v-if="recapOpen" :session-id="props.activeChatSessionId" :session-title="props.chatSessions.find(session => session.id === props.activeChatSessionId)?.title" :navigate="openRecapTarget" @close="closeRecap" />
+      <AgentPresentation v-if="recapPresentation" :session-id="props.activeChatSessionId" :turn-id="recapPresentation.turnId"
+        :toolbar-target="workspaceVisible && workspaceKey === presentationKey(recapPresentation.turnId, recapPresentation.reference) ? workspaceTools : undefined"
+        :ref="instance => { if (instance && recapPresentation) presentationInstances.set(presentationKey(recapPresentation.turnId, recapPresentation.reference), instance as InstanceType<typeof AgentPresentation>); }"
+        :reference="recapPresentation.reference" :workspace="workspaceVisible && workspaceKey === presentationKey(recapPresentation.turnId, recapPresentation.reference)"
+        :busy="props.sending || props.historyLoading || !!props.historyError" @follow-up="presentationSent" @record-note="(receipt, title, summary) => emit('record-note', receipt, title, summary)"
+        @source="(id, anchor) => openAgentSources({ turnId: recapPresentation!.turnId }, [id], { currentTarget: anchor }, true)"
+        @expand="selectPresentation(recapPresentation.turnId, recapPresentation.reference, $event)" />
+      <p v-if="answerSelectionError" role="status">{{ answerSelectionError }}</p>
+      <div ref="transcriptRef" class="transcript" @scroll="trackTranscriptScroll">
+        <p v-if="props.historyLoading" role="status">正在恢复对话，可以先阅读正文。</p>
+        <div v-else-if="props.historyError" role="alert">
+          <p>对话暂时无法加载：{{ props.historyError }}</p>
+          <button @click="emit('retry-history')">重试</button>
+        </div>
+        <div v-for="(turn, ti) in props.chat" :key="turn.turnId ?? ti" class="turn" :data-turn-id="turn.turnId || undefined">
+          <details v-if="turn.interaction?.answer_ref" class="turn-quote">
+            <summary>接续的原回答</summary>
+            <blockquote>{{ turn.interaction.answer_text }}</blockquote>
+            <button @click="scrollToTurn(turn.interaction.answer_ref.turn_id)">回到原回答</button>
+          </details>
+          <div v-if="turn.questionQuote" class="turn-quote">
+            <div class="turn-quote-head">
+              <span>{{ askQuoteLabel(turn.questionQuote) }}</span>
+            </div>
+            <blockquote>{{ turn.questionQuote.quote }}</blockquote>
+          </div>
+          <p class="u-msg">{{ turn.user }}</p>
+          <PresentationSceneCard v-if="turn.presentationFollowUp" :receipt="turn.presentationFollowUp" :mem-id="props.contextNotes.find(n => n.note?.association.kind === 'presentation' && n.note.association.receipt.saved_state_ref === turn.presentationFollowUp?.saved_state_ref)?.mem_id" @locate="locateScene(turn.presentationFollowUp)" @restore="locateScene(turn.presentationFollowUp, true)" />
+          <AgentActivities v-if="turn.activities?.length" :activities="turn.activities" />
+          <p v-if="turn.runStatus" class="run-status" role="status">{{ turn.runStatus }}</p>
+          <p v-if="turn.pending && !turn.runStatus" class="pending">正在接收运行...</p>
+          <div v-if="!turn.outcome && turn.liveEffects?.length" class="live-effects">
+            <p v-for="item in turn.liveEffects" :key="item.effect_id">{{ props.effLabel(item.effect) }}</p>
+          </div>
+          <div v-if="turn.pending && turn.draft?.view" class="answer-draft ans-text md" aria-label="回答草稿" @click="onAnswerSourceClick(turn, turn.draft.view.parts, $event)">
+            <template v-for="(part, pi) in turnDisplayParts(turn, true)" :key="`${turn.draft.message_id}-${turn.draft.revision}-${pi}`">
+              <template v-if="part.kind === 'html'">
+                <div v-for="(block, bi) in part.blocks" :key="bi" v-memo="[block]" class="answer-markdown" v-html="block"></div>
+              </template>
+            </template>
+          </div>
+          <div v-if="!turn.pending && turn.spendStop" class="incomplete" role="status">
+            <p>{{ turn.spendStop.message }}</p>
+            <button v-if="network.enabled" type="button" @click="emit('show-allowance')">查看使用额度</button>
+          </div>
+          <p v-else-if="!turn.pending && turn.error" class="incomplete">{{ turn.error }}</p>
+
+          <div v-if="turn.outcome && (!turn.error || turn.spendStop)" class="a-msg">
+            <div v-if="answerParts(turn.outcome).length" class="ans-text md" @mouseup="onAnswerSelectionChange" @click="onAnswerSourceClick(turn, answerParts(turn.outcome), $event)">
+              <template v-for="(part, pi) in turnDisplayParts(turn)" :key="pi">
+                <div
+                  v-if="part.kind === 'html'"
+                  class="answer-markdown"
+                  v-html="part.html"
+                ></div>
+                <template v-else-if="part.kind === 'presentation' && turn.turnId">
+                <button v-if="workspaceVisible" class="presentation-reference" @click="selectPresentation(turn.turnId, part)">打开演示 · 版本 {{ part.revision }}</button>
+                <AgentPresentation v-if="loadedPresentations.has(presentationKey(turn.turnId, part))"
+                  :toolbar-target="workspaceVisible && workspaceKey === presentationKey(turn.turnId, part) ? workspaceTools : undefined"
+                  v-show="!workspaceVisible || workspaceKey === presentationKey(turn.turnId, part)"
+                  :ref="instance => { if (instance) presentationInstances.set(presentationKey(turn.turnId!, part), instance as InstanceType<typeof AgentPresentation>); else presentationInstances.delete(presentationKey(turn.turnId!, part)); }"
+                  :session-id="props.activeChatSessionId" :turn-id="turn.turnId" :reference="part" :teaching="!!turn.hasTeaching || !!turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step')"
+                  :workspace="workspaceVisible && workspaceKey === presentationKey(turn.turnId, part)"
+                  :continuation-enabled="!!continuationEnabled" :chat-head="chatHead" :answer-available="!!deliveredAnswerText(turn)"
+                  @choose-continuation="(view, option, receipt) => emit('choose-continuation', view, option, receipt)"
+                  @clarify-answer="receipt => emit('clarify-answer', turn.turnId!, undefined, receipt)"
+                  @locate-turn="locateAccepted" @edit-question="editQuestion" @return-reading="returnReading"
+                  @continuation-available="suggestionAvailable(`${turn.turnId}:${presentationKey(turn.turnId!, part)}`, $event)"
+                  :shared-question="props.agentInput" @update:shared-question="emit('update:agentInput', $event)"
+                  @expand="selectPresentation(turn.turnId!, part, $event)"
+                  :busy="props.sending || props.historyLoading || !!props.historyError" @follow-up="presentationSent" @record-note="(receipt, title, summary) => emit('record-note', receipt, title, summary)"
+                  @source="(id, anchor) => openAgentSources(turn, [id], { currentTarget: anchor })" />
+                </template>
+              </template>
+            </div>
+            <p v-else class="ans-text">暂无回答。</p>
+            <button v-if="deliveredAnswerText(turn) && turn.turnId && !workspaceVisible" class="clarify-answer" :disabled="sending || historyLoading || !!historyError" @click="emit('clarify-answer', turn.turnId)">这一步没跟上</button>
+            <TutorContinuation v-if="turn.turnId && deliveredAnswerText(turn) && (turn.hasTeaching || turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step')) && !workspaceVisible"
+              :session-id="activeChatSessionId" :turn-id="turn.turnId" :head="chatHead" :enabled="!!continuationEnabled" :busy="sending || historyLoading || !!historyError"
+              @available="suggestionAvailable(`${turn.turnId}:plain`, $event)"
+              @choose="(view, option, receipt) => emit('choose-continuation', view, option, receipt)" @locate="locateAccepted" @edit="editQuestion" @read="returnReading" />
+            <div v-if="deliveredAnswerText(turn) && turn.turnId && !hasSuggestion(turn.turnId) && !workspaceVisible && (turn.interaction?.source_bindings.length || turn.questionQuote?.status === 'resolved' || turn.outcome.answer_view?.sources.length)" class="reading-continuation">
+              <template v-if="!tutorEnabled">
+                <button :disabled="sending || tutorEnableBusy" @click="emit('enable-tutor')">开启连续教学</button>
+                <small>对所有书籍生效；开启后可选择继续理解。</small>
+              </template>
+              <button v-else-if="continuationEnabled" :disabled="sending" @click="emit('continue-answer', turn.turnId)">继续理解这段</button>
+              <small v-else>{{ continuationLabel }}</small>
+            </div>
+            <details v-if="deliveredAnswerText(turn)" class="answer-actions">
+              <summary>回答操作</summary>
+              <button @click="emit('share-answer', turn)">生成理解卡</button>
+            </details>
+            <TutorActivities v-if="turn.turnId && !turn.pending && (turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step'))" :session-id="props.activeChatSessionId" :turn-id="turn.turnId" />
+            <p v-if="incompleteNotice(turn.outcome)" class="incomplete">
+              未完成: {{ incompleteNotice(turn.outcome) }}
+            </p>
+
+            <div v-if="turn.outcome.effects.length" class="proposals">
+              <p class="prop-h">建议变更</p>
+              <div v-for="(eff, ei) in turn.outcome.effects" :key="ei" class="proposal">
+                <span class="prop-label">{{ turn.effectLabels?.[ei] ?? props.effLabel(eff) }}</span>
+                <template v-if="props.effState(ti, ei)">
+                  <span class="done">{{ props.effState(ti, ei) }}</span>
+                  <button v-if="props.effState(ti, ei) === '已保留' && (eff.kind === 'Note' || eff.kind === 'Highlight')"
+                    class="undo" @click="emit('undo-effect', ti, ei, eff)">撤销保留</button>
+                </template>
+                <template v-else>
+                  <button v-if="props.isGoto(eff)" @click="emit('undo-effect', ti, ei, eff)">返回原位置</button>
+                  <template v-else>
+                    <button v-if="props.showEffectPrimary(eff)" @click="emit('keep-effect', ti, ei, eff)">
+                      {{ props.effectPrimaryLabel(eff) }}
+                    </button>
+                    <button v-if="props.showEffectSecondary(eff)" class="undo" @click="emit('undo-effect', ti, ei, eff)">
+                      {{ props.effectSecondaryLabel(eff) }}
+                    </button>
+                  </template>
+                </template>
+              </div>
+            </div>
+
+            <div v-if="turn.outcome.memory_updates.length" class="memory-update-list">
+              <div
+                v-for="(update, ui) in turn.outcome.memory_updates"
+                :key="`${update.operation_id ?? update.kind}:${ui}`"
+                class="memory-update-row"
+              >
+                <span>{{ memoryUpdateLabel(update) }}</span>
+                <small v-if="update.message">{{ update.message }}</small>
+                <em v-if="props.profileUpdateStates?.[memoryUpdateKey(ti, ui)]">
+                  {{ props.profileUpdateStates[memoryUpdateKey(ti, ui)] }}
+                </em>
+                <button
+                  v-else-if="canUndoMemoryUpdate(update)"
+                  type="button"
+                  title="撤销画像更新"
+                  aria-label="撤销画像更新"
+                  :disabled="props.profileMemoryBusy"
+                  @click="emit('undo-profile-update', ti, ui, update)"
+                >
+                  <Undo2 :size="15" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+
+            <details v-if="hasProfileUsage(turn.outcome.profile_usage)" class="profile-usage">
+              <summary>画像依据 · {{ turn.outcome.profile_usage.injected_fact_ids.length }}</summary>
+              <p>快照版本 {{ turn.outcome.profile_usage.snapshot_revision }}</p>
+              <p v-if="turn.outcome.profile_usage.influences.length">
+                {{ turn.outcome.profile_usage.influences.map(influenceLabel).join(" · ") }}
+              </p>
+              <code v-if="turn.outcome.profile_usage.claimed_used_fact_ids.length">
+                {{ turn.outcome.profile_usage.claimed_used_fact_ids.join(", ") }}
+              </code>
+            </details>
+
+
+
+
+          </div>
+        </div>
+        <div v-if="props.chat.length === 0 && !props.historyLoading && !props.historyError" class="empty">
+          <h3>哪里还没读懂？</h3>
+          <p>问一个问题，或说说你想学会什么。</p>
+          <button v-if="!props.agentInput.trim() && !props.askDraft" type="button" class="question-example" @click="emit('update:agentInput', '帮我梳理当前这一节的核心概念。'); agentInputRef?.focus()">帮我讲清当前这一节 <span aria-hidden="true">↗</span></button>
+          <button v-if="historySessions.length" type="button" class="history-button empty-history-button" @click="historyOpen = true">查看本书的 {{ historySessions.length }} 段历史对话</button>
+        </div>
+      </div>
+
+      <div class="agent-input" :class="{ composing: composeExpanded }">
+        <div v-if="$slots['tutor-control'] || $slots['learning-actions']" class="agent-input-tools">
+          <slot name="tutor-control" />
+          <div v-if="$slots['learning-actions']" class="conversation-learning-actions" role="group" aria-label="学习记录"><slot name="learning-actions" /></div>
+        </div>
+        <div v-if="workspaceVisible || props.runConnection === 'reconnecting' || targetGoal || props.askDraft" class="agent-input-context">
+        <div v-if="workspaceVisible" class="scene-binding">
+          <span>{{ sceneBound ? `${noteFollowUp ? '绑定记录时的现场' : '发送时绑定当前现场'} · 版本 ${workspace?.reference.revision}` : '普通聊天' }}</span>
+          <button @click="sceneBound = !sceneBound">{{ sceneBound ? '移除现场绑定' : '绑定当前演示' }}</button>
+        </div>
+        <p v-if="props.runConnection === 'reconnecting'" role="status">连接中断，正在重新连接；运行仍可继续。</p>
+        <div v-if="targetGoal" class="goal-target">
+          <span>补充任务：{{ targetGoal.interpretation }}</span>
+          <button aria-label="取消补充任务" @click="emit('clear-goal-target')">×</button>
+        </div>
+        <div v-if="props.askDraft" class="ask-draft">
+          <div class="ask-draft-head">
+            <span>{{ askQuoteLabel(props.askDraft) }}</span>
+            <button title="清除引用来源" aria-label="清除引用来源" @click="emit('clear-ask')">
+              <X :size="14" aria-hidden="true" />
+            </button>
+          </div>
+          <blockquote>{{ props.askDraft.quote }}</blockquote>
+        </div>
+        </div>
+        <div v-if="composeTall" class="compose-caption"><span>草稿会保留</span><button type="button" aria-label="收起输入" @click="collapseAgentInput">收起</button></div>
+        <div class="agent-compose-row">
+        <textarea
+          ref="agentInputRef"
+          data-workspace-input="agent"
+          :disabled="network.enabled && (props.historyLoading || !!props.historyError)"
+          :value="props.agentInput"
+          rows="1"
+          aria-label="围绕当前阅读内容提问"
+          :placeholder="props.askDraft ? '围绕引用来源提问...' : !props.chat.length ? '输入问题或学习目标…' : '从当前阅读位置提问...'"
+          @input="emit('update:agentInput', ($event.target as HTMLTextAreaElement).value)"
+          @focus="composeExpanded = true"
+          @keydown="onAgentInputKeydown"
+        />
+        <button v-if="props.canStop" class="stop-agent" @click="emit('stop-agent')">停止</button>
+        <button v-else class="send-agent" :disabled="props.sending || props.historyLoading || !!props.historyError || !props.agentInput.trim()" @click="submitMessage">
+          {{ props.sending ? "发送中" : "发送" }}
+        </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="reader-panel-artifacts" v-show="activeTab === 'artifacts'" class="tab-panel artifact-panel" role="tabpanel" aria-labelledby="reader-tab-artifacts">
+      <IntentArtifactPanel
+        :preparation-available="props.preparationAvailable"
+        @prepare="emit('prepare-artifacts')"
+        :overlay="props.intentArtifacts"
+        :loading="props.intentArtifactsLoading"
+        :error="props.intentArtifactsError"
+        @refresh="emit('refresh-artifacts')"
+        @goto="emit('goto', $event)"
+        @cite="emit('artifact-cited', $event)"
+      />
+    </section>
+
+    <section id="reader-panel-profile" v-show="activeTab === 'profile'" class="tab-panel profile-panel" role="tabpanel" aria-labelledby="reader-tab-profile">
+      <ProfileMemoryPanel
+        :state="props.profileMemory"
+        :loading="props.profileMemoryLoading"
+        :busy="props.profileMemoryBusy"
+        :error="props.profileMemoryError"
+        :notice="props.profileMemoryNotice"
+        :backfill="props.profileBackfill"
+        :backfill-loading="props.profileBackfillLoading"
+        :backfill-busy="props.profileBackfillBusy"
+        :backfill-error="props.profileBackfillError"
+        :backfill-notice="props.profileBackfillNotice"
+        @refresh="emit('refresh-profile')"
+        @mutate="emit('mutate-profile', $event)"
+        @confirm-sensitive="emit('confirm-sensitive-profile')"
+        @backfill-start="emit('start-profile-backfill', $event)"
+        @backfill-action="(action, request) => emit('mutate-profile-backfill', action, request)"
+        @goto="emit('goto', $event)"
+      />
+    </section>
+
+    <section id="reader-panel-formula" v-show="activeTab === 'formula'" class="tab-panel context-panel" role="tabpanel" aria-labelledby="reader-tab-formula">
+      <div class="panel-head">
+        <p class="rail-kicker">公式剖面</p>
+        <h3>{{ props.selectedFormula?.formula_lid ?? props.selectedLid ?? "未选择" }}</h3>
+      </div>
+      <div v-if="props.selectedFormula" class="formula-card">
+        <p class="formula-meaning">{{ props.selectedFormula.composition.meaning }}</p>
+        <div v-if="props.selectedFormula.parameters.length" class="context-block">
+          <h4>参数</h4>
+          <dl>
+            <template v-for="p in props.selectedFormula.parameters" :key="p.symbol">
+              <dt>{{ p.symbol }}<span v-if="p.label"> · {{ p.label }}</span></dt>
+              <dd>
+                {{ p.meaning }}
+                <span v-if="p.unit"> · 单位: {{ p.unit }}</span>
+                <span v-if="p.domain"> · 取值域: {{ p.domain }}</span>
+              </dd>
+            </template>
+          </dl>
+        </div>
+        <div v-if="props.selectedFormula.context_links.length" class="context-block">
+          <h4>上下文关系</h4>
+          <ul>
+            <li v-for="link in props.selectedFormula.context_links" :key="`${link.target_lid}:${link.relation}`">
+              <strong>{{ link.relation }}</strong> {{ link.description }}
+            </li>
+          </ul>
+        </div>
+      </div>
+      <p v-else class="empty panel-empty">在阅读区选择公式后查看预构建剖面。</p>
+    </section>
+
+    <section ref="notesPanel" id="reader-panel-notes" v-show="activeTab === 'notes'" class="tab-panel context-panel" role="tabpanel" aria-labelledby="reader-tab-notes">
+      <div class="panel-head">
+        <p class="rail-kicker">全部笔记</p>
+        <h3>{{ noteCount }} 条</h3>
+        <div v-if="noteCount" class="note-fold-controls">
+          <button @click="filteredNotes.forEach(note => openNoteDetails.add(note.mem_id))">展开</button>
+          <button @click="openNoteDetails.clear()">收起</button>
+        </div>
+      </div>
+      <div v-if="noteCount" class="note-search-controls">
+        <input v-model="noteQuery" type="search" aria-label="搜索笔记" placeholder="搜索文字、摘录或关联标题" />
+        <label>类型 <select v-model="noteFilter" aria-label="笔记类型">
+          <option value="all">全部</option><option value="original">原文</option><option value="answer">回答</option>
+          <option value="presentation">演示</option><option value="highlight">高亮</option><option value="unknown">旧笔记（类型未知）</option>
+        </select></label>
+        <label>排序 <select v-model="noteOrder" aria-label="笔记排序"><option value="recent">最近记录</option><option value="original">原文顺序</option></select></label>
+        <p role="status">{{ filteredNotes.length }} 条记录</p>
+      </div>
+      <div v-if="noteCount" class="memory-list">
+        <details v-for="note in filteredNotes" :key="note.mem_id"
+          class="memory-card note-memory-card" :class="{ 'highlight-card': note.type === 'highlight' }"
+          :data-mem-id="note.mem_id" tabindex="-1" :open="openNoteDetails.has(note.mem_id)"
+          @toggle="($event.target as HTMLDetailsElement).open ? openNoteDetails.add(note.mem_id) : openNoteDetails.delete(note.mem_id)">
+          <summary class="memory-meta note-memory-summary">
+            <span class="memory-kind-with-location">{{ noteKindLabel(note) }}
+              <small v-if="annotationLocationLabel(note)" :data-location="props.annotationLocation?.[note.mem_id]">{{ annotationLocationLabel(note) }}</small>
+            </span>
+            <button v-if="canFocusNoteSource(note)" class="note-source-button" @click.prevent.stop="emit('focus-source', { lid: noteSourceLid(note)!, quote: note.selection_context?.resolved_quote ?? (note.type === 'highlight' ? note.content : null), memId: note.mem_id })">{{ noteSourceLabel(note) }}</button>
+            <span v-else class="note-association-title">{{ noteSourceLabel(note) }}</span>
+            <em>展开/收起</em>
+            <time class="note-time">{{ noteTimeLabel(note) }}</time>
+            <div class="note-preview">{{ notePreview(note) }}</div>
+          </summary>
+          <NoteDetail v-if="note.type !== 'highlight' && openNoteDetails.has(note.mem_id)" :note="note"
+            @locate="openNotePresentation(note)" @restore="openNotePresentation(note, true)"
+            @answer="emit('open-note-answer', note)" @edit="emit('edit-note', note)" @delete="emit('delete-note', note)" />
+          <template v-if="note.type === 'highlight' && openNoteDetails.has(note.mem_id)">
+            <blockquote class="highlight-content">{{ note.content }}</blockquote>
+            <button v-if="shareHighlight" @click="shareHighlight(note)">生成分享图</button>
+            <div class="note-actions"><button @click="emit('modify-highlight', note)">编辑</button><button @click="emit('delete-highlight', note)">删除</button></div>
+          </template>
+          <button v-if="note.type !== 'highlight' && notePlacementActionLabel(note)" type="button" class="note-placement-action" data-note-placement-action :data-mem-id="note.mem_id" @click="emit('place-note', note)">{{ notePlacementActionLabel(note) }}</button>
+        </details>
+        <p v-if="!filteredNotes.length" class="empty">没有匹配的记录。</p>
+      </div>
+      <p v-else class="empty panel-empty">暂无笔记或高亮。</p>
+    </section>
+    <Teleport to="body">
+      <div
+        v-if="answerSelection"
+        ref="answerPopover"
+        class="answer-popover"
+        role="group"
+        aria-label="选中文字的操作"
+        :style="{ left: answerSelection.x + 'px', top: answerSelection.y + 'px', visibility: answerSelectionPositioned ? 'visible' : 'hidden' }"
+        @mousedown.prevent
+        @keydown.esc="clearAnswerSelection"
+      >
+        <button type="button" @click="saveAnswerSelection(answerSelection.turn)">记笔记</button>
+        <button v-if="deliveredAnswerText(answerSelection.turn)" type="button" :disabled="sending" @click="clarifySelection">这一步没跟上</button>
+        <button v-if="deliveredAnswerText(answerSelection.turn)" type="button" @click="shareAnswerSelection">生成理解卡</button>
+        <button type="button" aria-label="取消选区" @click="dismissAnswerSelection">×</button>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="historyOpen" class="history-backdrop" @click.self="historyOpen = false">
+        <section class="history-dialog" role="dialog" aria-modal="true" aria-labelledby="history-title">
+          <header class="history-dialog-head">
+            <div>
+              <p class="rail-kicker">助手历史</p>
+              <h3 id="history-title">对话历史</h3>
+            </div>
+            <button class="history-close" title="关闭历史" aria-label="关闭历史" @click="historyOpen = false">×</button>
+          </header>
+          <div class="history-list">
+            <article
+              v-for="session in historySessions"
+              :key="session.id"
+              class="history-card"
+              :class="{ active: session.id === props.activeChatSessionId }"
+              :role="session.id === props.activeChatSessionId ? undefined : 'button'"
+              :tabindex="session.id === props.activeChatSessionId ? -1 : 0"
+              @click="openHistorySessionFromCard(session.id, $event)"
+              @keydown.enter="openHistorySessionFromCard(session.id, $event)"
+              @keydown.space="openHistorySessionFromCard(session.id, $event)"
+            >
+              <div class="history-card-head">
+                <div>
+                  <h4>{{ compactText(session.title, 72) }}</h4>
+                  <p>{{ session.turn_count }} 个问题</p>
+                </div>
+                <span v-if="session.id === props.activeChatSessionId" class="active-badge">当前</span>
+              </div>
+
+              <ol v-if="session.turns.length" class="history-turns">
+                <li v-for="(turn, i) in session.turns" :key="`${session.id}:${i}`">
+                  <p class="history-question">{{ compactText(turn.user, 180) }}</p>
+                  <div class="history-anchor-row">
+                    <span>来源</span>
+                    <span class="history-source-label">{{ turnSourceLabel(turn) ?? "无" }}</span>
+                  </div>
+                </li>
+              </ol>
+              <p v-else class="empty history-empty">暂无问题。</p>
+
+              <div class="history-card-actions">
+                <button
+                  class="history-open"
+                  :disabled="session.id === props.activeChatSessionId"
+                  @click.stop="openHistorySession(session.id)"
+                >
+                  打开对话
+                </button>
+                <button class="history-delete" @click.stop="deleteHistorySession(session.id)">删除</button>
+              </div>
+            </article>
+            <p v-if="historySessions.length === 0" class="empty history-empty">暂无保存的对话历史。</p>
+          </div>
+        </section>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="agentSourcePopup"
+        class="agent-source-popup-layer"
+        @mousedown.self="closeAgentSourcePopup"
+      >
+        <section
+          ref="agentSourcePopupRef"
+          class="agent-source-popup"
+          :style="agentSourcePopupStyle"
+          role="dialog"
+          aria-label="回答来源"
+        >
+          <header class="source-popup-head">
+            <div>
+              <span class="source-popup-kicker">回答来源</span>
+              <strong>{{ activeAgentSource?.heading_path?.join(' / ') || activeAgentSource?.label || "正在载入来源" }}</strong>
+            </div>
+            <button type="button" title="关闭来源" aria-label="关闭来源" @click="closeAgentSourcePopup">
+              <X :size="16" aria-hidden="true" />
+            </button>
+          </header>
+
+          <div v-if="agentSourcePopup.sources.length > 1" class="source-tabs" role="tablist" aria-label="来源列表">
+            <button
+              v-for="source in agentSourcePopup.sources"
+              :key="source.source_ref_id"
+              type="button"
+              role="tab"
+              :aria-selected="source.source_ref_id === agentSourcePopup.activeSourceRefId"
+              :class="{ active: source.source_ref_id === agentSourcePopup.activeSourceRefId }"
+              @click="selectAgentSource(source.source_ref_id)"
+            >
+              {{ sourceTabLabel(source) }}
+            </button>
+          </div>
+
+          <div class="source-popup-body">
+            <p v-if="agentSourcePopup.loading" class="source-loading">正在载入...</p>
+            <p v-else-if="agentSourcePopup.error" class="source-error">{{ agentSourcePopup.error }}</p>
+            <template v-else-if="activeAgentSource">
+              <p v-if="activeAgentSource.stale" class="source-stale">该来源已失效，以下为回答生成时保存的内容。</p>
+              <SourceExcerpt :source="activeAgentSource" />
+            </template>
+          </div>
+
+          <footer class="source-popup-actions">
+            <button
+              type="button"
+              class="source-open-reader"
+              :disabled="!activeAgentSource || activeAgentSource.stale || !activeAgentSource.can_open_in_reader || agentSourcePopup.opening"
+              @click="openActiveAgentSourceInReader"
+            >
+              <ExternalLink :size="15" aria-hidden="true" />
+              <span>{{ agentSourcePopup.opening ? "正在打开..." : "在正文中查看" }}</span>
+            </button>
+          </footer>
+        </section>
+      </div>
+    </Teleport>
+
+  </aside>
+</template>
+
+<style scoped>
+.reading-continuation { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 12px; }
+.reading-continuation small { color: var(--muted); line-height: 1.5; }
+.note-search-controls { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.note-search-controls input { width: 100%; min-width: 0; }
+.note-search-controls input, .note-search-controls select { min-height: 40px; padding: 8px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.note-search-controls label { min-width: 0; }
+.note-search-controls p { width: 100%; margin: 0; }
+.note-time { grid-column: 1 / -1; color: var(--stone); font-size: 12px; }
+.highlight-content { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.right-rail {
+  container-type: inline-size;
+  container-name: reading-assistant;
+  min-width: 0;
+  border-left: 1px solid var(--hairline);
+  background: var(--reader-card);
+  backdrop-filter: saturate(160%) blur(18px);
+  -webkit-backdrop-filter: saturate(160%) blur(18px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* A backdrop filter makes fixed children relative to the rail. Keep the live
+   iframe in place when expanding, but release that containing block. */
+.right-rail:has(.agent-presentation.expanded) {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.presentation-workspace::before { content: ''; position: fixed; inset: 0; z-index: 89; background: var(--canvas); }
+.presentation-workspace .agent-panel { position: fixed; z-index: 90; top: var(--presentation-top); bottom: 12px; right: 12px; width: calc(100% - var(--presentation-split) - 24px); background: var(--canvas); border: 1px solid var(--hairline); border-radius: 12px; }
+.presentation-workspace :deep(.agent-presentation.expanded) { inset: var(--presentation-top) auto 12px 12px; width: calc(var(--presentation-split) - 12px); max-height: none; }
+.workspace-tools { position: fixed; z-index: 92; inset: 4px 12px auto; min-height: 36px; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px 8px; background: var(--canvas); }
+.workspace-tools :deep(.presentation-toolbar) { order: -1; padding: 2px 0; }
+.workspace-learning-details :deep(button) { min-height: 44px; padding: 4px 8px; border: 0; background: transparent; color: var(--brand-green-deep); }
+.workspace-split { display: flex; align-items: center; gap: 8px; }
+.workspace-split { font-size: 12px; }
+.workspace-split input { width: 80px; }
+.discussion-toggle { display: none; }
+.scene-binding { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; font-size: .82rem; background: var(--surface); }
+.presentation-workspace .agent-head { display: none; }
+@media (max-width: 700px) {
+  .workspace-split { display: none; }
+  .discussion-toggle { display: block; min-height: 44px; }
+  .presentation-workspace .agent-panel { right: 8px; left: 8px; width: auto; bottom: 8px; }
+  .presentation-workspace :deep(.agent-presentation.expanded) { inset: var(--presentation-top) 8px 8px; width: auto; }
+  .presentation-workspace.discussion-open :deep(.agent-presentation.expanded) { visibility: hidden; }
+  .presentation-workspace:not(.discussion-open) .agent-input { visibility: hidden; }
+  .workspace-tools :deep(.presentation-toolbar) { flex-basis: 100%; }
+}
+.right-rail.fullscreen {
+  position: fixed;
+  inset: var(--app-input-viewport-top, 0px) 0 auto;
+  z-index: 70;
+  width: 100%;
+  height: var(--app-input-viewport-height, 100dvh);
+  max-height: none;
+  border: 0;
+  background: var(--canvas);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.right-rail.fullscreen .agent-panel {
+  width: 100%;
+}
+.right-rail.fullscreen .agent-head,
+.right-rail.fullscreen .agent-input {
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+}
+.right-rail.fullscreen .transcript > * {
+  max-width: 72rem;
+  margin-inline: auto;
+}
+.right-rail.fullscreen .transcript {
+  min-height: 0;
+}
+.fullscreen-button {
+  min-height: 40px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--ink);
+  padding: 0.5rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.right-rail.fullscreen .agent-input {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+.context-tabs {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.2rem;
+  padding: 0.55rem;
+  border-bottom: 1px solid var(--hairline-soft);
+  background: var(--surface-soft);
+}
+.tab {
+  position: relative;
+  min-height: 40px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 6px;
+  color: var(--steel);
+  background: transparent;
+  padding: 0.55rem 0.25rem;
+  font-size: 0.82rem;
+  transition: color var(--motion-fast) var(--motion-ease), border-color var(--motion-tab) var(--motion-ease);
+}
+.tab-badge {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  min-width: 17px;
+  height: 17px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--reader-amber);
+  color: var(--ink);
+  padding: 0 4px;
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+}
+.tab.active {
+  color: var(--brand-green-deep);
+  border-bottom-color: var(--reader-coral);
+  background: var(--reader-card);
+}
+.tab-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.agent-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.agent-input-tools { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px 8px; }
+.agent-input-tools :deep(.tutor-control) { flex: 1; }
+.conversation-learning-actions { flex: 0 0 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.conversation-learning-actions :deep(button) { min-height: 36px; padding: 4px 6px; border: 0; background: transparent; color: var(--brand-green-deep); font: inherit; font-size: .78rem; cursor: pointer; }
+.empty h3 { margin: 0 0 8px; font-size: 1.18rem; font-weight: 500; color: var(--ink); }
+.empty .question-example { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin: 20px 0 12px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--canvas); color: var(--ink); text-align: left; font: inherit; }
+.question-example span { color: var(--brand-green-deep); }
+.empty .empty-history-button { margin-top: 16px; }
+.context-panel {
+  overflow-y: auto;
+  padding: 1rem;
+}
+.agent-head,
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.agent-head {
+  padding: 1rem 1rem 0.7rem;
+}
+.profile-panel {
+  overflow: hidden;
+}
+.artifact-panel {
+  min-width: 0;
+  overflow: hidden;
+}
+.chat-actions {
+  flex: 0 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+.chat-secondary-actions { display: contents; }
+.chat-menu-toggle { display: none; }
+.chat-actions > .new-chat { order: 1; }
+.chat-actions button,
+.history-card-actions button,
+.history-goto {
+  white-space: nowrap;
+}
+.chat-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.history-button,
+.recap-button,
+.new-chat,
+.history-open {
+  min-height: 40px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  padding: 0.5rem 0.95rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.history-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-color: var(--hairline);
+  background: var(--canvas);
+  color: var(--ink);
+}
+.history-button span {
+  min-width: 1.35rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  color: var(--ink);
+  background: var(--brand-green);
+  font-size: 0.72rem;
+  text-align: center;
+}
+.panel-head {
+  margin-bottom: 0.8rem;
+}
+.note-fold-controls {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.35rem;
+}
+.note-fold-controls button {
+  min-height: 32px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 0.75rem;
+}
+.rail-kicker {
+  margin: 0 0 0.15rem;
+  color: var(--steel);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+.agent-head h3,
+.panel-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.new-chat {
+  flex: 0 0 auto;
+}
+.history-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(10, 10, 10, 0.28);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+.history-dialog {
+  width: min(760px, calc(100vw - 2rem));
+  max-height: min(78vh, 780px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: none;
+  pointer-events: auto;
+}
+.history-dialog-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.history-dialog-head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.history-close {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--ink);
+  padding: 0;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+.history-list {
+  min-height: 0;
+  display: grid;
+  gap: 0.75rem;
+  overflow-y: auto;
+  padding: 0.85rem;
+  background: var(--canvas-parchment);
+}
+.history-card {
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--canvas);
+  padding: 0.9rem;
+  cursor: pointer;
+}
+.history-card.active {
+  border-color: var(--brand-green);
+  box-shadow: inset 0 0 0 1px rgba(0, 212, 164, 0.18);
+  cursor: default;
+}
+.history-card:not(.active):hover {
+  border-color: var(--ink);
+}
+.history-card:focus-visible {
+  outline: 2px solid var(--brand-green);
+  outline-offset: 2px;
+}
+.history-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+.history-card-head h4 {
+  margin: 0 0 0.15rem;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+.history-card-head p {
+  margin: 0;
+  color: var(--steel);
+  font-size: 0.78rem;
+}
+.active-badge {
+  align-self: flex-start;
+  border-radius: 999px;
+  background: var(--brand-green);
+  color: var(--ink);
+  padding: 0.18rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+.history-turns {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.history-turns li {
+  border-top: 1px solid var(--hairline-soft);
+  padding-top: 0.55rem;
+}
+.history-question {
+  margin: 0 0 0.4rem;
+  color: var(--charcoal);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.history-anchor-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--steel);
+  font-size: 0.76rem;
+}
+.history-source-label {
+  color: var(--charcoal);
+  font-weight: 600;
+}
+.history-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  margin-top: 0.8rem;
+}
+.history-card-actions button:disabled {
+  border-color: var(--hairline);
+  background: var(--hairline);
+  color: var(--muted);
+}
+.history-delete {
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--brand-error);
+  padding: 0.48rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.history-empty {
+  margin: 0;
+}
+.transcript {
+  flex: 1;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  padding: 0 1rem 1rem;
+}
+.turn {
+  margin-bottom: 1rem;
+}
+.turn-quote {
+  margin: 0 0 0.45rem;
+  border: 1px solid var(--hairline-soft);
+  border-radius: 8px;
+  background: var(--canvas);
+  padding: 0.55rem 0.65rem;
+}
+.turn-quote-head {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  color: var(--steel);
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+.turn-quote-head code {
+  margin-left: auto;
+  font-family: var(--mono);
+  text-transform: none;
+}
+.turn-quote blockquote {
+  margin: 0;
+  color: var(--slate);
+  font-size: 0.84rem;
+  max-height: 8rem;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+.u-msg {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+}
+.a-msg,
+.formula-card,
+.memory-card {
+  background: var(--canvas);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem;
+}
+.ans-text {
+  line-height: 1.58;
+}
+.answer-markdown {
+  display: contents;
+}
+.ans-text :deep(.agent-source-button) {
+  min-height: 26px;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin: 0 0.2rem 0.15rem;
+  border: 1px solid rgba(33, 112, 214, 0.32);
+  border-radius: 6px;
+  background: rgba(33, 112, 214, 0.08);
+  color: #1764c0;
+  padding: 0.18rem 0.42rem;
+  vertical-align: baseline;
+  font-size: 0.74rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+.ans-text :deep(.agent-source-button:hover:not(:disabled)) {
+  border-color: #1764c0;
+  background: rgba(33, 112, 214, 0.14);
+}
+.ans-text :deep(.agent-source-button span) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pending,
+.empty {
+  color: var(--steel);
+}
+.panel-empty {
+  margin-top: 1rem;
+}
+.incomplete {
+  color: var(--brand-error);
+}
+.proposals {
+  margin-top: 0.7rem;
+  border-top: 1px solid var(--hairline-soft);
+  padding-top: 0.55rem;
+}
+.prop-h {
+  margin: 0 0 0.35rem;
+  color: var(--steel);
+  font-size: 0.78rem;
+}
+.proposal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.3rem 0;
+  font-size: 0.86rem;
+}
+.prop-label {
+  flex: 1;
+}
+.proposal button.undo {
+  color: var(--brand-error);
+}
+.done {
+  color: var(--brand-green-deep);
+  font-size: 0.82rem;
+}
+.memory-meta code {
+  font-family: var(--mono);
+}
+.memory-card p {
+  overflow-wrap: anywhere;
+}
+.answer-popover {
+  position: fixed;
+  z-index: 1100;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--canvas);
+  max-width: calc(100vw - 16px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+}
+.answer-popover button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.28rem 0.65rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+.answer-popover button:first-child { color: var(--brand-green-deep); }
+.answer-actions { margin-top:8px; font-size:12px; color:var(--ink-muted); }
+.answer-actions summary { cursor:pointer; }
+.answer-actions button { margin-top:6px; min-height:36px; }
+.ask-draft {
+  border: 1px solid var(--hairline-soft);
+  border-radius: 8px;
+  background: var(--canvas);
+  padding: 0.65rem 0.75rem;
+}
+.memory-update-list {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+  border-top: 1px solid var(--hairline-soft);
+  padding-top: 0.55rem;
+}
+.memory-update-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.12rem 0.45rem;
+  border-left: 2px solid var(--brand-tag);
+  padding: 0.22rem 0 0.22rem 0.5rem;
+  color: var(--charcoal);
+  font-size: 0.78rem;
+}
+.memory-update-row small {
+  grid-column: 1 / -1;
+  color: var(--steel);
+  overflow-wrap: anywhere;
+}
+.memory-update-row em {
+  color: var(--brand-green-deep);
+  font-size: 0.72rem;
+  font-style: normal;
+}
+.memory-update-row button {
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  padding: 0;
+}
+.profile-usage {
+  margin-top: 0.55rem;
+  color: var(--steel);
+  font-size: 0.72rem;
+}
+.profile-usage summary {
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 600;
+}
+.profile-usage p {
+  margin: 0.3rem 0 0;
+}
+.profile-usage code {
+  display: block;
+  margin-top: 0.3rem;
+  overflow-wrap: anywhere;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+}
+.ask-draft-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+  color: var(--steel);
+  font-size: 0.74rem;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+.ask-draft-head code {
+  margin-left: auto;
+  font-family: var(--mono);
+  text-transform: none;
+}
+.ask-draft-head button {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+}
+.agent-source-popup-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1250;
+}
+.agent-source-popup {
+  position: fixed;
+  width: min(620px, calc(100vw - 24px));
+  max-height: min(760px, calc(100dvh - 24px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--canvas);
+  box-shadow: 0 16px 44px rgba(20, 28, 38, 0.22);
+}
+.source-popup-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--hairline-soft);
+  padding: 0.78rem 0.85rem;
+}
+.source-popup-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.16rem;
+}
+.source-popup-kicker {
+  color: var(--steel);
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+.source-popup-head strong {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+.source-popup-head > button {
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  flex: 0 0 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 0;
+}
+.source-tabs {
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--hairline-soft);
+  padding: 0.55rem 0.85rem;
+}
+.source-tabs button {
+  flex: 0 0 auto;
+  min-height: 32px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--steel);
+  padding: 0.32rem 0.58rem;
+  font-size: 0.74rem;
+}
+.source-tabs button.active {
+  border-color: #1764c0;
+  background: rgba(33, 112, 214, 0.08);
+  color: #1764c0;
+}
+.source-popup-body {
+  min-height: 8rem;
+  overflow-y: auto;
+  padding: 0.9rem;
+}
+.source-loading,
+.source-error,
+.source-stale {
+  margin: 0;
+  font-size: 0.8rem;
+}
+.source-loading {
+  color: var(--steel);
+}
+.source-error {
+  color: var(--brand-error);
+}
+.source-stale {
+  margin-bottom: 0.65rem;
+  border-left: 3px solid var(--reader-amber);
+  background: rgba(255, 193, 7, 0.1);
+  color: var(--charcoal);
+  padding: 0.48rem 0.58rem;
+}
+.source-popup-actions {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--hairline-soft);
+  padding: 0.7rem 0.85rem;
+}
+.source-open-reader {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  border-color: #1764c0;
+  border-radius: 6px;
+  background: #1764c0;
+  color: #fff;
+  padding: 0.48rem 0.72rem;
+  font-weight: 650;
+}
+.source-open-reader:disabled {
+  border-color: var(--hairline);
+  background: var(--hairline);
+  color: var(--muted);
+}
+
+@media (max-width: 700px) {
+  .agent-source-popup {
+    inset: auto 0 0 !important;
+    width: 100%;
+    max-height: 78dvh;
+    border-radius: 8px 8px 0 0;
+  }
+}
+.ask-draft blockquote {
+  margin: 0;
+  color: var(--slate);
+  font-size: 0.84rem;
+  max-height: 6rem;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+.agent-input {
+  border-top: 1px solid var(--hairline);
+  flex: 0 0 auto;
+  padding: 8px max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.goal-list { display: grid; gap: 0.5rem; }
+.goal-card { border: 1px solid var(--hairline); border-radius: 0.6rem; padding: 0.6rem; background: var(--canvas-parchment); }
+.goal-card strong { display: block; font-size: 0.83rem; overflow-wrap: anywhere; }
+.goal-card p { margin: 0.35rem 0; color: var(--steel); font-size: 0.76rem; }
+.goal-actions { display: flex; gap: 0.5rem; }
+.goal-actions button { font-size: 0.75rem; }
+.goal-target { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.76rem; color: var(--steel); }
+.goal-target span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-input textarea {
+  box-sizing: border-box;
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  min-height: 44px;
+  height: 44px;
+  max-height: 120px;
+  resize: none;
+  font-size: 16px;
+  line-height: 24px;
+  padding: 9px 12px;
+}
+.agent-input:not(.composing) textarea { overflow-y: hidden; }
+.agent-compose-row { display: flex; flex-direction: row; align-items: flex-end; gap: 0.5rem; }
+.agent-compose-row > button { flex: 0 0 auto; min-width: 44px; min-height: 44px; }
+.agent-input-context { display: grid; gap: 0.5rem; max-height: min(128px, calc(var(--app-input-viewport-height, 100dvh) * .22)); overflow-y: auto; }
+.compose-caption { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--steel); font-size: .75rem; }
+.compose-caption button { min-height: 28px; padding: 2px 8px; border: 0; background: transparent; }
+.transcript { min-height: 0; padding: 12px 16px 16px; }
+.rail-toolbar.agent-head { flex: 0 0 auto; min-height: 52px; padding: 4px 12px; align-items: center; flex-wrap: nowrap; gap: 8px; border-bottom: 1px solid var(--hairline-soft); z-index: 6; }
+.rail-title { display: none; margin: 0; white-space: nowrap; }
+.right-rail.fullscreen .rail-title { display: block; }
+.rail-toolbar .context-tabs { display: flex; align-items: center; gap: 2px; padding: 0; border: 0; background: transparent; position: static; }
+.rail-toolbar .tab { padding: 6px 10px; min-height: 40px; white-space: nowrap; }
+.context-tools, .chat-actions { position: relative; }
+.chat-actions { flex: 0 0 auto; flex-wrap: nowrap; align-items: center; margin-left: auto; gap: 4px; }
+.chat-menu-toggle, .context-menu-toggle { display: inline-flex; min-height: 40px; align-items: center; gap: 4px; padding: 5px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--steel); font-size: .82rem; white-space: nowrap; }
+.context-menu-toggle.active { background: var(--surface-soft); color: var(--ink); }
+.tool-attention { color: var(--brand-green-deep); font-size: .75rem; }
+.chat-actions .fullscreen-button { width: 40px; min-height: 40px; padding: 0; border: 0; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
+.chat-secondary-actions, .secondary-tabs { display: flex; flex-direction: column; align-items: stretch; gap: 4px; position: absolute; z-index: 20; top: calc(100% + 4px); width: 230px; max-height: calc(var(--app-input-viewport-height, 100dvh) - 80px); overflow-y: auto; padding: 8px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--canvas); box-shadow: 0 8px 24px #0002; }
+.chat-secondary-actions { right: 0; }
+.secondary-tabs { left: 0; width: 160px; }
+.chat-secondary-actions button, .secondary-tabs .tab { justify-content: flex-start; text-align: left; min-height: 40px; padding: 7px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); font-weight: 400; }
+.chat-secondary-actions button:hover, .secondary-tabs .tab:hover { background: var(--surface-soft); }
+.task-summary-toggle { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 6px 16px; border: 0; border-radius: 0; background: var(--canvas-parchment); font-size: .76rem; text-align: left; color: var(--steel); }
+.mobile-task-toggle { display: none; }
+.task-summary-status { flex: 0 1 auto; max-width: 50%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.task-summary-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-summary-action { margin-left: auto; white-space: nowrap; color: var(--ink); }
+.goal-overlay { position: absolute; z-index: 5; inset: 0; padding: 8px; background: #0002; }
+.goal-details { max-height: 100%; overflow-y: auto; padding: 10px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--canvas); box-shadow: 0 8px 24px #0002; }
+.goal-details-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.goal-details-head > button { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 40px; padding: 0; border: 0; background: transparent; }
+.goal-work-items { display: grid; gap: 5px; list-style: none; margin: 8px 0; padding: 0; font-size: .78rem; }
+.goal-work-items li { display: flex; align-items: baseline; gap: 8px; }
+.goal-work-items span { flex: 0 0 auto; color: var(--steel); }
+.goal-actions { flex-wrap: wrap; }
+@container reading-assistant (max-width: 380px) {
+  .rail-toolbar.agent-head { padding-inline: 8px; gap: 4px; }
+  .rail-toolbar .tab { padding-inline: 8px; }
+  .task-summary-title { display: none; }
+  .secondary-tabs { left: auto; right: 0; }
+}
+@media (max-width: 1023px) {
+  .rail-title { display: block; }
+  .rail-toolbar .context-tabs { display: none; }
+  .rail-toolbar.agent-head { min-height: 48px; padding: 0 8px 0 12px; gap: 4px; }
+  .rail-title { font-size: 1rem; margin-right: auto; }
+  .chat-actions { margin-left: 0; gap: 0; }
+  .mobile-task-toggle { display: block; flex: 0 0 auto; border: 0; background: transparent; color: var(--brand-green-deep); min-height: 44px; padding: 0 6px; font-size: .76rem; white-space: nowrap; }
+  .task-summary-toggle { display: none; }
+  .presentation-workspace .task-summary-toggle { display: flex; }
+  .agent-input { padding-top: 0; gap: 0; }
+  .agent-input-context, .compose-caption { margin-bottom: 8px; }
+  .conversation-learning-actions :deep(button) { min-height: 44px; padding: 4px 0 4px 6px; white-space: nowrap; }
+  .goal-overlay { z-index: 10; display: flex; align-items: flex-end; padding: 0; }
+  .goal-details { width: 100%; border-radius: 14px 14px 0 0; }
+}
+.formula-meaning {
+  margin: 0 0 0.75rem;
+  font-weight: 600;
+}
+.context-block {
+  margin-top: 0.75rem;
+}
+.context-block h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.86rem;
+}
+.context-block dl {
+  margin: 0;
+}
+.context-block dt {
+  font-weight: 600;
+}
+.context-block dd {
+  margin: 0 0 0.45rem 1rem;
+  color: var(--slate);
+}
+.context-block ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.memory-list {
+  display: grid;
+  gap: 0.65rem;
+}
+.memory-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  color: var(--steel);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.note-memory-card[open] .note-preview {
+  display: none;
+}
+.note-preview {
+  grid-column: 1 / -1;
+  margin: 0.45rem 0 0;
+  color: var(--slate);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-transform: none;
+}
+.note-preview :deep(h1),
+.note-preview :deep(h2),
+.note-preview :deep(h3),
+.note-preview :deep(h4),
+.note-preview :deep(h5),
+.note-preview :deep(h6) {
+  margin: 0.35em 0 0.25em;
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+.note-preview :deep(table) {
+  min-width: 100%;
+  font-size: 0.78rem;
+}
+.note-preview :deep(th),
+.note-preview :deep(td) {
+  padding: 0.25em 0.35em;
+}
+.note-preview :deep(ul),
+.note-preview :deep(ol) {
+  padding-left: 1.25em;
+}
+.note-preview :deep(.katex-display) {
+  margin: 0.35em 0;
+}
+.note-source-button {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  border-radius: 6px;
+  padding: 0;
+  color: var(--stone);
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: none;
+}
+.note-source-button:hover {
+  color: var(--ink);
+}
+.note-placement-action {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 0.65rem;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.note-memory-summary {
+  cursor: pointer;
+  list-style: none;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+.note-memory-summary::-webkit-details-marker {
+  display: none;
+}
+.note-association-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: none;
+}
+.note-memory-summary em {
+  color: var(--stone);
+  font-style: normal;
+  text-transform: uppercase;
+}
+.memory-kind-with-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.memory-kind-with-location small {
+  padding: 0.08rem 0.28rem;
+  border: 1px solid var(--hairline-soft);
+  border-radius: 5px;
+  color: var(--stone);
+  font-size: 0.64rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-transform: none;
+  white-space: nowrap;
+}
+.memory-kind-with-location small[data-location="partial"],
+.memory-kind-with-location small[data-location="unmapped"] {
+  border-color: rgba(194, 132, 38, 0.28);
+  color: #8a5a14;
+  background: rgba(252, 239, 198, 0.42);
+}
+.highlight-card {
+  background: #fffdf0;
+}
+</style>

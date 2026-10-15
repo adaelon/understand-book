@@ -1,8 +1,11 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount, enableAutoUnmount } from "@vue/test-utils";
+import { nextTick, reactive } from 'vue';
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import RightRail from "./RightRail.vue";
+import YeyeMascot from './YeyeMascot.vue';
+import { yeyeAssets } from '../yeye-assets';
 import { api } from '../api';
 import { renderMarkdown } from '../md';
 import { network, installIdentity, installWorkspace } from '../network-context';
@@ -18,8 +21,6 @@ const baseProps = {
   sending: false,
   unquotedNotePlacementAvailable: false,
   askDraft: null,
-  showTrace: {},
-  latestTrace: [],
   selectedLid: "1.1",
   selectedFormula: null,
   contextNotes: [],
@@ -34,6 +35,146 @@ const baseProps = {
   effectSecondaryLabel: () => "undo",
   gotoBack: () => "1.1",
 };
+
+it('requests formula details when the panel opens, selection changes or a read is retried', async () => {
+  const wrapper = mount(RightRail, { props: { ...baseProps, formulaSelected: true }, shallow: true });
+  await wrapper.get('#reader-tab-formula').trigger('click');
+  expect(wrapper.emitted('request-formula')).toHaveLength(1);
+  await wrapper.setProps({ formulaLoading: true });
+  expect(wrapper.get('#reader-panel-formula').text()).toContain('正在读取公式解释');
+  await wrapper.setProps({ formulaLoading: false, formulaError: '读取失败' });
+  await wrapper.get('#reader-panel-formula [role="alert"] button').trigger('click');
+  expect(wrapper.emitted('request-formula')).toHaveLength(2);
+  await wrapper.setProps({ selectedLid: '1.2', formulaError: null });
+  expect(wrapper.emitted('request-formula')).toHaveLength(3);
+  expect(wrapper.get('#reader-panel-formula').text()).toContain('暂时没有解释资料');
+  wrapper.unmount();
+});
+
+it('puts the first-question learning entry in the conversation', () => {
+  const wrapper = mount(RightRail, { props: baseProps, shallow: true,
+    global: { stubs: { Teleport: false } },
+    slots: { 'learning-goal': '<p>这次想弄懂什么？</p>' } });
+  expect(wrapper.get('#reader-panel-agent').text()).toContain('这次想弄懂什么？');
+  expect(wrapper.get('textarea[data-workspace-input="agent"]').attributes('placeholder')).toContain('学习目标');
+  wrapper.unmount();
+});
+
+it('exchanges the welcome illustration for a compact identity without replacing the focused draft', async () => {
+  const wrapper = mount(RightRail, { props: baseProps, attachTo: document.body });
+  try {
+    const input = wrapper.get<HTMLTextAreaElement>('.agent-input textarea');
+    expect(wrapper.get('.conversation-welcome h3').text()).toBe('这一节，想先弄明白什么？');
+    expect(wrapper.get('.welcome-mascot img').attributes('src')).toBe(yeyeAssets.idle);
+    expect(wrapper.get('.welcome-mascot').attributes('aria-hidden')).toBe('true');
+    await wrapper.get('.question-example').trigger('click');
+    expect(document.activeElement).toBe(input.element);
+    expect(wrapper.emitted('send-agent')).toBeUndefined();
+    await wrapper.setProps({ agentInput: '帮我梳理当前这一节的核心概念。' });
+    await wrapper.get('.send-agent').trigger('click');
+    expect(wrapper.emitted('send-agent')).toHaveLength(1);
+    await wrapper.setProps({ sending: true, agentInput: '下一条问题的草稿', chat: [{
+      turnId: 'first-question', user: '帮我梳理当前这一节的核心概念。', pending: true, outcome: null,
+      questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+    }] });
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(false);
+    expect(wrapper.get('.u-msg').text()).toBe('帮我梳理当前这一节的核心概念。');
+    expect(wrapper.get('.agent-input textarea').element).toBe(input.element);
+    expect(document.activeElement).toBe(input.element);
+    expect(input.element.value).toBe('下一条问题的草稿');
+    for (const selector of ['#reader-tab-agent', '.rail-title', '.mobile-learning-title']) {
+      expect(wrapper.get(`${selector} .yeye-mascot img`).attributes('src')).toBe(yeyeAssets.avatar);
+    }
+    await wrapper.setProps({ sending: false, chat: [], activeChatSessionId: 'new-chat' });
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(true);
+    expect(input.element.value).toBe('下一条问题的草稿');
+  } finally { wrapper.unmount(); }
+});
+
+it.each([{ sending: true }, { canStop: true }])('keeps the welcome out of an active run: %j', async state => {
+  const wrapper = mount(RightRail, { props: { ...baseProps, ...state }, shallow: true });
+  try {
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(false);
+    await wrapper.setProps({ sending: false, canStop: false });
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(true);
+    await wrapper.setProps({ presentationWorkspace: { turnId: 'saved-turn', reference: { presentation_id: 'scene', revision: 1 } } });
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(false);
+  } finally { wrapper.unmount(); }
+});
+
+it('passes host and tab visibility to the welcome without rebuilding the draft', async () => {
+  const wrapper = mount(RightRail, { props: baseProps, shallow: true });
+  try {
+    const mascot = () => wrapper.findAllComponents(YeyeMascot).find(item => item.props('motion') === 'idle')!;
+    expect(mascot().props('active')).toBe(true);
+    await wrapper.setProps({ companionVisible: false }); expect(mascot().props('active')).toBe(false);
+    await wrapper.setProps({ companionVisible: true, requestedTab: 'notes', requestedTabRevision: 1 });
+    expect(mascot().props('active')).toBe(false);
+    await wrapper.setProps({ requestedTab: 'agent', requestedTabRevision: 2 }); expect(mascot().props('active')).toBe(true);
+  } finally { wrapper.unmount(); }
+});
+
+it('uses a full reading pose only for the current pending wait in a wide conversation', async () => {
+  const match = vi.spyOn(window, 'matchMedia').mockImplementation(query => ({
+    matches: query.includes('min-width'), addEventListener() {}, removeEventListener() {},
+  } as unknown as MediaQueryList));
+  const pending = { turnId: 'wait', user: '解释这一步', pending: true, outcome: null,
+    questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [], runStatus: '正在等待模型资源' };
+  const wrapper = mount(RightRail, { props: { ...baseProps, sending: true, canStop: true, chat: [pending], waitingTurnId: 'wait' }, shallow: true });
+  try {
+    expect(wrapper.find('.waiting-mascot').exists()).toBe(false);
+    await wrapper.setProps({ fullscreen: true }); expect(wrapper.find('.waiting-mascot').exists()).toBe(true);
+    expect(wrapper.get('.run-status').text()).toBe('正在等待模型资源');
+    await wrapper.setProps({ companionVisible: false });
+    expect(wrapper.findAllComponents(YeyeMascot).find(item => item.props('motion') === 'waiting')!.props('active')).toBe(false);
+    await wrapper.setProps({ waitingTurnId: null }); expect(wrapper.find('.waiting-mascot').exists()).toBe(false);
+    await wrapper.setProps({ waitingTurnId: 'wait', chat: [{ ...pending, draft: { message_id: 0, revision: 1, operation: 'replace', view: { parts: [{ kind: 'markdown', text: '正在出现的回答' }], sources: [] } } }] });
+    expect(wrapper.find('.waiting-mascot').exists()).toBe(false);
+  } finally { wrapper.unmount(); match.mockRestore(); }
+});
+
+it('keeps learning actions in the chat and the teaching switch next to the composer', async () => {
+  const wrapper = mount(RightRail, { props:baseProps, shallow:true, global: { stubs: { Teleport: false } }, slots:{
+    'learning-actions':'<button>我的理解</button><button>学习详情</button>',
+    'tutor-control':'<button role="switch">连续教学</button>',
+  } });
+  expect(wrapper.get('#reader-panel-agent .conversation-learning-actions').text()).toContain('我的理解');
+  expect(wrapper.findAll('[role=switch]')).toHaveLength(1);
+  expect(wrapper.get('.agent-input [role=switch]').text()).toBe('连续教学');
+  await wrapper.get('.question-example').trigger('click');
+  expect(wrapper.emitted('update:agentInput')).toEqual([['帮我梳理当前这一节的核心概念。']]);
+  expect(wrapper.emitted('send-agent')).toBeUndefined();
+  await wrapper.setProps({agentInput:'已经写下的问题',fullscreen:true});
+  expect(wrapper.find('.question-example').exists()).toBe(false);
+  expect(wrapper.findAll('[role=switch]')).toHaveLength(1);
+  wrapper.unmount();
+});
+
+it('keeps help bound to the latest delivered answer and focuses the existing draft without sending it', async () => {
+  const turn = { turnId: 'current-answer', user: '解释这一步', pending: false,
+    questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+    outcome: { answer: '一段较长的讲解', warning: null, effects: [], trace: [], memory_updates: [], turns: 1, tokens_spent: 0, incomplete: false,
+      profile_usage: { snapshot_revision: 0, injected_fact_ids: [], claimed_used_fact_ids: [], influences: [] } } };
+  const wrapper = mount(RightRail, { attachTo: document.body, shallow: true,
+    global: { stubs: { Teleport: false } },
+    props: { ...baseProps, agentInput: '尚未发送的想法', chat: [turn] } });
+  try {
+    await wrapper.get('.learning-help').trigger('click');
+    expect(wrapper.emitted('clarify-answer')).toEqual([['current-answer']]);
+    await wrapper.get('.learning-respond').trigger('click');
+    await nextTick();
+    expect(document.activeElement).toBe(wrapper.get('.agent-input textarea').element);
+    expect((document.activeElement as HTMLTextAreaElement).value).toBe('尚未发送的想法');
+    expect(wrapper.emitted('send-agent')).toBeUndefined();
+    expect(wrapper.emitted('update:agentInput')).toBeUndefined();
+    await wrapper.setProps({ sending: true });
+    expect(wrapper.get('.learning-help').attributes('disabled')).toBeDefined();
+    await wrapper.setProps({ sending: false, chat: [turn, { ...turn, turnId: 'new-turn', outcome: null, pending: true }] });
+    expect(wrapper.find('.learning-dock').exists()).toBe(false);
+    await wrapper.setProps({ chat: [], activeChatSessionId: 'another-chat' });
+    expect(wrapper.find('.learning-dock').exists()).toBe(false);
+  } finally { wrapper.unmount(); }
+});
 
 describe("RightRail history visibility", () => {
   it('ADM8 exposes allowance from a stop while retaining partial answers and requiring an explicit click', async () => {
@@ -69,10 +210,10 @@ describe("RightRail history visibility", () => {
     try {
       expect(wrapper.get(".chat-actions .history-button span").text()).toBe(String(count));
       if (count === 0) {
-        expect(wrapper.get(".transcript .empty").text()).toContain("本书还没有保存的对话");
+        expect(wrapper.get(".transcript .empty").text()).toContain("这一节，想先弄明白什么？");
         expect(wrapper.find(".empty-history-button").exists()).toBe(false);
       } else {
-        expect(wrapper.get(".transcript .empty").text()).toContain("本书有 1 段已保存的历史对话");
+        expect(wrapper.get(".transcript .empty").text()).toContain("1 段历史对话");
         expect(wrapper.get(".empty-history-button").text()).toContain("1 段历史对话");
       }
       await wrapper.get(".chat-actions .history-button").trigger("click");
@@ -125,7 +266,7 @@ describe("RightRail history visibility", () => {
 });
 
 describe("RightRail history recovery", () => {
-  it('shows oldest turns first while effect and trace actions retain their original turn indexes', async () => {
+  it('shows oldest turns first while effect actions retain their original turn indexes', async () => {
     const effect = { kind: 'Note' as const, mem_id: 'new-note', lid: '1.1', text: '笔记' };
     const turns = ['old', 'new'].map(turnId => ({ turnId, user: turnId, pending: false,
       questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
@@ -136,8 +277,7 @@ describe("RightRail history recovery", () => {
       expect(wrapper.findAll('.turn').map(t => t.attributes('data-turn-id'))).toEqual(['old', 'new']);
       await wrapper.findAll('.turn')[1].get('.undo').trigger('click');
       expect(wrapper.emitted('undo-effect')).toEqual([[1, 0, effect]]);
-      await wrapper.findAll('.turn')[1].get('.trace-toggle').trigger('click');
-      expect(wrapper.emitted('toggle-trace')).toEqual([[1]]);
+      expect(wrapper.find('.trace-toggle').exists()).toBe(false);
       expect(turns.map(t => t.turnId)).toEqual(['old', 'new']);
     } finally { wrapper.unmount(); }
   });
@@ -178,13 +318,17 @@ describe("RightRail history recovery", () => {
   it("keeps the draft editable, blocks chat changes until recovery, and offers retry", async () => {
     const wrapper = mount(RightRail, { props: { ...baseProps, agentInput: "保留草稿", historyLoading: true } });
     expect(wrapper.get('[role="status"]').text()).toContain("正在恢复对话");
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(false);
     expect((wrapper.get(".new-chat").element as HTMLButtonElement).disabled).toBe(true);
     expect((wrapper.get(".agent-input textarea").element as HTMLTextAreaElement).disabled).toBe(false);
-    expect((wrapper.get(".agent-input button:last-child").element as HTMLButtonElement).disabled).toBe(true);
+    expect((wrapper.get(".agent-input .send-agent").element as HTMLButtonElement).disabled).toBe(true);
     await wrapper.setProps({ historyLoading: false, historyError: "暂时无法连接" });
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(false);
+    expect(wrapper.get('[role="alert"]').text()).toContain('暂时无法连接');
     await wrapper.get('[role="alert"] button').trigger("click");
     expect(wrapper.emitted("retry-history")).toHaveLength(1);
     await wrapper.setProps({ historyError: null });
+    expect(wrapper.find('.conversation-welcome').exists()).toBe(true);
     expect((wrapper.get(".agent-input button:last-child").element as HTMLButtonElement).disabled).toBe(false);
     wrapper.unmount();
   });
@@ -220,14 +364,14 @@ describe('JL9 recap jumps', () => {
   const chat = [{ turnId: 'turn-1', user: '原问题', pending: false, outcome: null, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] }];
   const base = { session_id: 'chat-1', through_seq: 10, turn_id: 'turn-1' };
   it('opens without navigation, then locates the turn, bound source, kept object and exact presentation version', async () => {
-    vi.spyOn(api, 'sessionRecap').mockResolvedValue(recap);
+    vi.spyOn(api, 'sessionRecap').mockResolvedValue({ ...recap, effects: [{ ...note, object_id: 'edited-object' }, presentation] });
     const resolve = vi.spyOn(api, 'agentSourceResolve').mockResolvedValue({ source_ref_id: 'source-1', label: '原文', highlighted_quote: '引文', context_before: '', context_after: '', stale: false, can_open_in_reader: true });
     const read = vi.spyOn(api, 'presentationRead').mockResolvedValue({} as never);
-    vi.spyOn(api, 'recall').mockResolvedValue([{ mem_id: 'kept-object', anchor: { lid: '1.2' }, content: '保留后的笔记' }] as never);
+    vi.spyOn(api, 'recall').mockResolvedValue([{ mem_id: 'edited-object', anchor: { lid: '1.2' }, content: '保留后的笔记' }] as never);
     const scroll = vi.fn(); vi.stubGlobal('HTMLElement', HTMLElement);
     const prior = HTMLElement.prototype.scrollIntoView;
     HTMLElement.prototype.scrollIntoView = scroll;
-    const wrapper = mount(RightRail, { props: { ...baseProps, chat }, global: { stubs: { AgentPresentation: true } } });
+    const wrapper = mount(RightRail, { props: { ...baseProps, chat, contextNotes: [{ mem_id: 'edited-object', type: 'note', book_id: 'book', layer: 'long_term', anchor: {}, content: '保留后的笔记' }] }, global: { stubs: { AgentPresentation: true } } });
     try {
       await wrapper.get('.recap-button').trigger('click'); await flushPromises();
       expect(document.body.querySelector('.session-recap')).not.toBeNull();
@@ -235,11 +379,12 @@ describe('JL9 recap jumps', () => {
       const rail = wrapper.vm as unknown as { openRecapTarget: (t: RecapTarget) => Promise<void> };
       await rail.openRecapTarget({ ...base, kind: 'turn' }); expect(scroll).toHaveBeenCalled();
       await rail.openRecapTarget({ ...base, kind: 'source', source });
-      expect(resolve).toHaveBeenCalledWith('turn-1', 'source-1');
+      expect(resolve).toHaveBeenCalledWith('turn-1', 'source-1', undefined);
       await wrapper.setProps({ chat: [{ ...chat[0], pending: true, runStatus: '新活动' }] });
       expect(document.body.querySelector('.agent-source-popup')).not.toBeNull();
       await rail.openRecapTarget({ ...base, kind: 'effect', effect: note });
-      expect(wrapper.emitted('focus-source')?.[0]).toEqual([{ lid: '1.2', quote: null, memId: 'kept-object' }]);
+      expect(wrapper.get('[data-mem-id="edited-object"]').attributes('open')).toBeDefined();
+      expect(wrapper.emitted('focus-source')).toBeUndefined();
       await rail.openRecapTarget({ ...base, kind: 'effect', effect: presentation });
       expect(read).toHaveBeenCalledWith('chat-1', 'turn-1', { presentation_id: 'p', revision: 2 });
       expect(wrapper.getComponent({ name: 'AgentPresentation' }).props('reference')).toEqual({ presentation_id: 'p', revision: 2 });
@@ -397,6 +542,60 @@ function sourceOutcome(stale = false) {
     stale,
   };
 }
+
+describe('answer rendering on local UI changes', () => {
+  it('reuses unchanged answers across menus, history, input and hidden tabs', async () => {
+    const render = vi.fn(renderMarkdown);
+    const chat = reactive(Array.from({ length: 10 }, (_, index) => ({
+      turnId: `cached-${index}`, user: '问题', pending: false, outcome: sourceOutcome(),
+      questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+    })));
+    const wrapper = mount(RightRail, { props: { ...baseProps, chat, renderMarkdown: render } });
+    try {
+      const initial = render.mock.calls.length;
+      expect(initial).toBe(10);
+      await wrapper.get('.context-menu-toggle').trigger('click');
+      await wrapper.get('.context-menu-toggle').trigger('click');
+      await wrapper.get('.history-button').trigger('click');
+      (document.querySelector('.history-close') as HTMLButtonElement).click();
+      await nextTick();
+      await wrapper.setProps({ agentInput: '新问题' });
+      await wrapper.get('#reader-tab-notes').trigger('click');
+      await wrapper.setProps({ agentInput: '继续输入' });
+      await wrapper.get('#reader-tab-agent').trigger('click');
+      expect(render).toHaveBeenCalledTimes(initial);
+
+      chat[0].outcome.answer_view.parts[0] = { kind: 'markdown', text: '已经修订的回答。' };
+      await nextTick();
+      expect(render).toHaveBeenCalledTimes(initial + 1);
+      expect(wrapper.get('.answer-markdown').text()).toContain('已经修订');
+      chat[0].outcome.answer_view.sources[0].label = '更新后的来源';
+      await nextTick();
+      expect(render).toHaveBeenCalledTimes(initial + 2);
+      expect(wrapper.get('.agent-source-button').text()).toContain('更新后的来源');
+    } finally { wrapper.unmount(); }
+  });
+
+  it('updates only the growing draft and invalidates when the renderer changes', async () => {
+    const render = vi.fn(renderMarkdown);
+    const saved = { turnId: 'saved', user: '旧问题', pending: false, outcome: sourceOutcome(),
+      questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] };
+    const draft = reactive({ ...saved, turnId: 'draft', pending: true, outcome: null,
+      draft: { message_id: 1, revision: 1, operation: 'replace', view: { parts: [{ kind: 'markdown', text: '第一段草稿' }], sources: [] } } });
+    const wrapper = mount(RightRail, { props: { ...baseProps, chat: [saved, draft] as never, renderMarkdown: render } });
+    try {
+      render.mockClear();
+      draft.draft.revision++;
+      draft.draft.view.parts[0].text = '第一段草稿，继续解释';
+      await nextTick();
+      expect(render.mock.calls.map(([text]) => text)).toEqual(['第一段草稿，继续解释']);
+      expect(wrapper.get('.answer-draft').text()).toContain('继续解释');
+      const replacement = vi.fn(renderMarkdown);
+      await wrapper.setProps({ renderMarkdown: replacement });
+      expect(replacement).toHaveBeenCalledTimes(2);
+    } finally { wrapper.unmount(); }
+  });
+});
 
 describe("RightRail agent sources", () => {
   it.each(["completed", "draft"])("keeps a %s table intact when sources occur inside cells", async (state) => {
@@ -860,13 +1059,13 @@ describe("RightRail AskQuote", () => {
   it("exposes every auxiliary surface as a labelled keyboard-operable tab", async () => {
     const wrapper = mount(RightRail, { attachTo: document.body, props: baseProps });
     const tabs = wrapper.findAll('.context-tabs [role="tab"]');
-    expect(tabs.map((tab) => tab.text().trim())).toEqual(["问答", "成果", "画像", "轨迹", "公式", "笔记"]);
+    expect(tabs.map((tab) => tab.text().trim())).toEqual(["问答", "成果", "画像", "公式", "笔记"]);
     expect(tabs[0].attributes("aria-selected")).toBe("true");
     expect(wrapper.get('.secondary-tabs').isVisible()).toBe(false);
     await wrapper.get('[aria-label="阅读工具"]').trigger('click');
     expect(wrapper.get('.secondary-tabs').isVisible()).toBe(true);
-    await tabs[4].trigger("click");
-    expect(tabs[4].attributes("aria-selected")).toBe("true");
+    await tabs[3].trigger("click");
+    expect(tabs[3].attributes("aria-selected")).toBe("true");
     expect(wrapper.get("#reader-panel-formula").attributes("role")).toBe("tabpanel");
     wrapper.unmount();
   });
@@ -968,7 +1167,7 @@ describe("RightRail AskQuote", () => {
     expect(wrapper.get(".profile-memory-panel").isVisible()).toBe(true);
   });
 
-  it("renders persisted QueryAudit without placing it in the result digest", async () => {
+  it("keeps saved and live tool diagnostics out of the reader while retaining the answer", async () => {
     const audit = {
       budget_version: "referent-first-v1",
       model_calls: 2,
@@ -1047,26 +1246,37 @@ describe("RightRail AskQuote", () => {
       props: {
         ...baseProps,
         askDraft: null,
-        latestTrace: [{
-          tool: "book.query",
-          args: "typed request",
-          result_digest: "complete response only",
-          model_tool_loop: 2,
-          query_audit: audit,
+        chat: [{
+          turnId: 'saved-trace', user: '问题', pending: false,
+          questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+          outcome: { answer: '给读者的解释', effects: [], memory_updates: [], turns: 2, tokens_spent: 0, incomplete: false, warning: null,
+            profile_usage: { snapshot_revision: 0, injected_fact_ids: [], claimed_used_fact_ids: [], influences: [] },
+            trace: [{
+              tool: "book.query",
+              args: "typed request",
+              result_digest: "complete response only",
+              model_tool_loop: 2,
+              query_audit: audit,
+            }],
+          },
+        }, {
+          turnId: 'live-trace', user: '继续解释', pending: true, outcome: null,
+          questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+          runTrace: [{ tool: 'book.text', args: 'live request', result_digest: 'live diagnostic' }],
         }],
       },
     });
-    const traceTab = wrapper.findAll(".tab").find((tab) => tab.text().includes("轨迹"));
-    await traceTab!.trigger("click");
-    expect(wrapper.get(".panel-head h3").text()).toBe("2 个模型—工具循环 · 1 次工具调用");
-    expect(wrapper.get(".trace-loop").text()).toBe("循环 2");
-    expect(wrapper.get(".trace-result").text()).toBe("complete response only");
-    const panel = wrapper.get(".query-audit");
-    expect(panel.text()).toContain("QueryAudit");
-    await panel.get("summary").trigger("click");
-    expect(panel.text()).toContain("entity:command");
-    expect(panel.text()).toContain("seed: 1.1");
-    expect(panel.text()).toContain("citations=true");
+    try {
+      expect(wrapper.get('.answer-markdown').text()).toContain('给读者的解释');
+      await wrapper.get('[aria-label="阅读工具"]').trigger('click');
+      expect(wrapper.find('#reader-tab-trace').exists()).toBe(false);
+      expect(wrapper.find('#reader-panel-trace').exists()).toBe(false);
+      expect(wrapper.find('.trace-toggle').exists()).toBe(false);
+      expect(wrapper.find('.query-audit').exists()).toBe(false);
+      for (const detail of ['模型—工具循环', '工具调用', 'book.query', 'typed request', 'complete response only', 'entity:command', 'live request', 'live diagnostic']) {
+        expect(wrapper.text()).not.toContain(detail);
+      }
+    } finally { wrapper.unmount(); }
   });
 
   it("opens the active target artifacts without coupling their refresh or evidence navigation to chat", async () => {
@@ -1110,15 +1320,16 @@ describe("RightRail AskQuote", () => {
 });
 
 describe("Resident activities", () => {
-  it("shares live steps with trace, emits stop and preserves upward scrolling", async () => {
+  it("retains live progress, emits stop and preserves upward scrolling without diagnostics", async () => {
     const activity = { step_id: 1, parent_step_id: null, kind: "model", name: "outer", label: "生成回答", status: "running" as const, started_ms: 0, duration_ms: null, result_count: null, error_code: null, usage_total_tokens: null, usage: null, model_first_text_ms: null, model_name: null, model_name_source: null, accepted_evidence_count: null, evidence_refs: [] };
     const turn = { turnId: "turn", user: "问题", outcome: null, pending: true, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [], activities: [activity], runStatus: "正在运行" };
     const wrapper = mount(RightRail, { props: { ...baseProps, chat: [turn], sending: true, canStop: true } });
     expect(wrapper.find(".transcript .agent-activity").attributes("data-status")).toBe("running");
     await wrapper.find(".stop-agent").trigger("click");
     expect(wrapper.emitted("stop-agent")).toHaveLength(1);
-    await wrapper.findAll("button.tab").find(button => button.text().includes("轨迹"))!.trigger("click");
-    expect(wrapper.findAll('.agent-activity[data-step-id="1"]')).toHaveLength(2);
+    expect(wrapper.find('#reader-panel-trace').exists()).toBe(false);
+    expect(wrapper.findAll('.agent-activity[data-step-id="1"]')).toHaveLength(1);
+    expect(wrapper.find('.activity-group.diagnostic').exists()).toBe(false);
     const transcript = wrapper.find(".transcript");
     const el = transcript.element as HTMLElement;
     Object.defineProperty(el, "scrollHeight", { value: 1000, configurable: true });
@@ -1129,7 +1340,7 @@ describe("Resident activities", () => {
     expect(el.scrollTop).toBe(50);
     expect(wrapper.find(".pending").exists()).toBe(false);
     expect(wrapper.find(".run-status").text()).toBe("已停止");
-    expect(wrapper.findAll('.agent-activity[data-status="cancelled"]')).toHaveLength(2);
+    expect(wrapper.findAll('.agent-activity[data-status="cancelled"]')).toHaveLength(1);
     wrapper.unmount();
   });
 });
@@ -1242,4 +1453,55 @@ it('opens media beside the answer and enters the main video only after the expli
   await wrapper.findAll('.agent-source-button')[0].trigger('click'); await flushPromises();
   (document.body.querySelector('.source-open-reader') as HTMLButtonElement).click(); await flushPromises();
   expect(wrapper.emitted('media-source-enter')).toEqual([[media]]); expect(open).not.toHaveBeenCalled(); wrapper.unmount();
+});
+
+
+describe('RN4 note retrieval', () => {
+  const note = (id: string, content: string, more = {}) => ({ mem_id: id, content, type: 'note', layer: 'long_term', book_id: 'book', anchor: {}, ...more });
+  it('searches excerpts and titles, mixes highlights by real time, clears filters for a targeted record and follows replacements', async () => {
+    const notes = [note('legacy', '> 混排旧正文'), note('answer', '自己的想法', { generated_at: '1700000000', note: {
+      association: { kind: 'answer', session_id: 'original-chat', turn_id: 'answer-turn' }, retained_excerpt: { kind: 'assistant', text: '助手独有片段' }, source_bindings: [],
+    } })];
+    const highlight = note('highlight', '原文高亮', { type: 'highlight', generated_at: '2025-01-01T00:00:00Z' });
+    const w = mount(RightRail, { props: { ...baseProps, contextNotes: notes as never, contextHighlights: [highlight], noteBookOrder: ['legacy', 'highlight', 'answer'],
+      chatSessions: [{ id: 'original-chat', title: '梯度下降的讨论', turn_count: 1, turns: [], created_at: '', updated_at: '' }] } });
+    const ids = () => w.findAll('.memory-card').map(c => c.attributes('data-mem-id'));
+    const rail = w.vm as unknown as { showMemory: (id: string) => Promise<boolean>; replaceMemory: (id: string, record: any) => void };
+    const scroll = vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(() => {});
+    try {
+      expect(ids()).toEqual(['highlight', 'answer', 'legacy']);
+      expect(w.get('[data-mem-id="legacy"]').text()).toContain('保存时间未知');
+      await w.get('[aria-label="搜索笔记"]').setValue('助手独有'); expect(ids()).toEqual(['answer']);
+      await w.get('[aria-label="搜索笔记"]').setValue('梯度下降'); expect(ids()).toEqual(['answer']);
+      await w.get('[aria-label="笔记类型"]').setValue('highlight'); expect(ids()).toEqual([]);
+      expect(await rail.showMemory('answer')).toBe(true); await flushPromises();
+      await w.get('[data-mem-id="answer"]').findAll('button').find(b => b.text() === '返回原回答')!.trigger('click');
+      expect(w.emitted('open-note-answer')?.[0]?.[0]).toMatchObject({ mem_id: 'answer' });
+      const edited = { ...notes[1], mem_id: 'edited', content: '修订后的想法' };
+      rail.replaceMemory('answer', edited); await w.setProps({ contextNotes: [notes[0], edited] as never });
+      expect(w.get('[data-mem-id="edited"]').attributes('open')).toBeDefined();
+      expect(w.get('[data-mem-id="edited"] .note-detail').text()).toContain('修订后的想法');
+      await w.get('[aria-label="笔记排序"]').setValue('original');
+      await w.setProps({ noteBookOrder: ['legacy', 'highlight', 'edited'] }); expect(ids()).toEqual(['legacy', 'highlight', 'edited']);
+      await w.get('[aria-label="搜索笔记"]').setValue('私人查询');
+      await w.setProps({ noteScopeKey: 'another-publication', contextNotes: [], contextHighlights: [] });
+      await w.setProps({ contextNotes: [notes[0]] as never });
+      expect((w.get('[aria-label="搜索笔记"]').element as HTMLInputElement).value).toBe('');
+    } finally { w.unmount(); scroll.mockRestore(); }
+  });
+});
+
+it.each(['completed', 'pending', 'incomplete', 'failed', 'cancelled'])('RS6 exposes an answer menu only for a delivered complete answer: %s', async status => {
+  const turn = { turnId: 'rs6-turn', user: '原问题', pending: status === 'pending', error: status === 'failed' ? 'failed' : undefined,
+    runStatus: status === 'cancelled' ? '已停止' : undefined, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+    outcome: { answer: '仅当条件成立时，结论成立。', incomplete: status === 'incomplete', effects: [], trace: [], memory_updates: [],
+      profile_usage: { injected_fact_ids: [], claimed_used_fact_ids: [], influences: [] } } as any };
+  const wrapper = mount(RightRail, { props: { ...baseProps, renderMarkdown, chat: [turn] } });
+  try {
+    expect(wrapper.find('.answer-actions').exists()).toBe(status === 'completed');
+    if (status === 'completed') {
+      await wrapper.get('.answer-actions button').trigger('click');
+      expect(wrapper.emitted('share-answer')?.[0]).toEqual([turn]);
+    }
+  } finally { wrapper.unmount(); }
 });

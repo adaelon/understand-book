@@ -1,0 +1,284 @@
+[WebServer] (node:42992) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:42736) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 13 tests using 1 worker
+
+(node:26536) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x   1 playwright\presentation-bridge.spec.ts:4:37 › async restoration waits before observation and capture (5.9s)
+(node:42776) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  2 playwright\presentation-bridge.spec.ts:4:37 › async restoration fails without saving defaults (560ms)
+  x   3 playwright\presentation-bridge.spec.ts:34:1 › a delayed observation keeps the accepted result and focused slider visible (5.5s)
+(node:41404) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x   4 playwright\presentation-bridge.spec.ts:91:1 › a pending subtree replacement shows only the last accepted public text (5.5s)
+(node:44292) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  5 playwright\presentation-bridge.spec.ts:124:1 › semantic observation preserves the focused control for repeated keyboard input (380ms)
+  x   6 playwright\presentation-bridge.spec.ts:150:1 › restore runs after page DOMContentLoaded initialization without saving again (5.3s)
+(node:24840) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x   7 playwright\presentation-bridge.spec.ts:182:1 › snapshot reads visible results, custom step and live controls in one browser task (5.4s)
+(node:34360) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x   8 playwright\presentation-bridge.spec.ts:215:1 › editing focus reports only a boolean bound to the host content generation (5.7s)
+(node:44024) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x   9 playwright\reading-share-diagram.spec.ts:57:1 › RS7 current SVG Canvas DOM and formula freeze together; landscape/portrait PNG and live scene continuity (6.4s)
+(node:36888) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  10 playwright\reading-share-diagram.spec.ts:98:1 › RS7 retained scene uses note read/observe/source after deletion and leaves current count untouched (5.8s)
+(node:35220) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 11 playwright\reading-share-diagram.spec.ts:114:44 › RS7 retained partial fails visibly without exporting initial state (938ms)
+  x  12 playwright\reading-share-diagram.spec.ts:114:44 › RS7 retained mismatch fails visibly without exporting initial state (5.8s)
+(node:28580) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  13 playwright\reading-share-diagram.spec.ts:122:1 › RS7 missing resources and media report concrete failures, then retry succeeds with unavailable source label (5.9s)
+
+
+  1) playwright\presentation-bridge.spec.ts:4:37 › async restoration waits before observation and capture 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1.5
+    Received: undefined
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      27 |     expect(await page.evaluate(()=>(window as any).events.filter((e:any)=>['observe','state'].includes(e.kind)))).toEqual([]);
+      28 |   }else{
+    > 29 |     await expect.poll(()=>page.evaluate(()=>(window as any).events.find((e:any)=>e.kind==='state'&&e.request_id===7)?.state.values.page.time)).toBe(1.5);
+         |                                                                                                                                                ^
+      30 |     expect(await page.evaluate(()=>(window as any).events.filter((e:any)=>e.kind==='observe').map((e:any)=>e.text))).toEqual(['Restored 1.5']);
+      31 |   }
+      32 | });
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\presentation-bridge.spec.ts:29:144
+
+    Error Context: test-results\presentation-bridge-async--e37a8-ore-observation-and-capture\error-context.md
+
+  2) playwright\presentation-bridge.spec.ts:34:1 › a delayed observation keeps the accepted result and focused slider visible 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      85 |     item.source.postMessage({ channel: "agent-presentation", kind: "accepted", revision: item.revision }, "*");
+      86 |   });
+    > 87 |   await expect.poll(() => page.evaluate(() => (window as any).states.filter((item: any) => item.request_id === 9).length)).toBe(1);
+         |                                                                                                                            ^
+      88 |   expect(await page.evaluate(() => (window as any).states.find((item: any) => item.request_id === 9).state.observed_result)).toContain("1/3");
+      89 | });
+      90 |
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\presentation-bridge.spec.ts:87:124
+
+    Error Context: test-results\presentation-bridge-a-dela-28a70--and-focused-slider-visible\error-context.md
+
+  3) playwright\presentation-bridge.spec.ts:91:1 › a pending subtree replacement shows only the last accepted public text 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 2
+    Received: 1
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      115 |   await expect(frame.locator("#region p")).toHaveText("Accepted explanation");
+      116 |   await frame.locator("#replace").click();
+    > 117 |   await expect.poll(() => page.evaluate(() => (window as any).observations.length)).toBe(2);
+          |                                                                                     ^
+      118 |   await expect(frame.locator("#region")).toHaveCSS("opacity", "0");
+      119 |   await expect(frame.locator("#region")).toHaveAttribute("aria-hidden", "true");
+      120 |   await expect(frame.locator("[data-presentation-mask]")).toHaveAttribute("data-accepted-text", "Accepted explanation");
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\presentation-bridge.spec.ts:117:85
+
+    Error Context: test-results\presentation-bridge-a-pend-b4f30-e-last-accepted-public-text\error-context.md
+
+  4) playwright\presentation-bridge.spec.ts:150:1 › restore runs after page DOMContentLoaded initialization without saving again 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      174 |   await expect(page.frameLocator("iframe").locator("#result")).toHaveText("1/3");
+      175 |   await page.locator("iframe").evaluate((node: HTMLIFrameElement) => node.contentWindow!.postMessage({ channel: "agent-presentation", kind: "snapshot", request_id: 2 }, "*"));
+    > 176 |   await expect.poll(() => page.evaluate(() => (window as any).events.filter((e: any) => e.kind === "state").length)).toBe(1);
+          |                                                                                                                      ^
+      177 |   const events = await page.evaluate(() => (window as any).events);
+      178 |   expect(events.some((e: any) => e.kind === "restore-partial")).toBe(false);
+      179 |   expect(events.filter((e: any) => e.kind === "state")[0]).toMatchObject({ request_id: 2, state: { values: { page: { count: 1 } } } });
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\presentation-bridge.spec.ts:176:118
+
+    Error Context: test-results\presentation-bridge-restor-6a68a-zation-without-saving-again\error-context.md
+
+  5) playwright\presentation-bridge.spec.ts:182:1 › snapshot reads visible results, custom step and live controls in one browser task 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      202 |   await expect(page.frameLocator("iframe").locator("#result")).toBeVisible();
+      203 |   await page.locator("iframe").evaluate((node: HTMLIFrameElement) => node.contentWindow!.postMessage({ channel: "agent-presentation", kind: "snapshot", request_id: 1 }, "*"));
+    > 204 |   await expect.poll(() => page.evaluate(() => (window as any).scenes.length)).toBe(1);
+          |                                                                               ^
+      205 |   const scene = await page.evaluate(() => (window as any).scenes[0]);
+      206 |   expect(scene.request_id).toBe(1);
+      207 |   expect(scene.state.values.page).toEqual({ count: 2 });
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\presentation-bridge.spec.ts:204:79
+
+    Error Context: test-results\presentation-bridge-snapsh-057a1-ontrols-in-one-browser-task\error-context.md
+
+  6) playwright\presentation-bridge.spec.ts:215:1 › editing focus reports only a boolean bound to the host content generation 
+
+    Error: expect(received).toMatchObject(expected)
+
+    Matcher error: received value must be a non-null object
+
+    Received has value: undefined
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      238 |   await expect(editor).toBeVisible();
+      239 |   await editor.click();
+    > 240 |   await expect.poll(() => page.evaluate(() => (window as any).focusEvents.at(-1))).toMatchObject({
+          |                                                                                    ^
+      241 |     kind: "editing-focus",
+      242 |     generation: 7,
+      243 |     editing: true,
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\presentation-bridge.spec.ts:240:84
+
+    Error Context: test-results\presentation-bridge-editin-b4551-the-host-content-generation\error-context.md
+
+  7) playwright\reading-share-diagram.spec.ts:57:1 › RS7 current SVG Canvas DOM and formula freeze together; landscape/portrait PNG and live scene continuity 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('dialog', { name: '生成分享图' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for getByRole('dialog', { name: '生成分享图' })
+
+
+      64 |   requests.length = 0;
+      65 |   await page.getByRole('button', { name: '导出当前图解' }).click();
+    > 66 |   const panel = page.getByRole('dialog', { name: '生成分享图' }); await expect(panel).toBeVisible();
+         |                                                                                  ^
+      67 |   const source = await page.evaluate(() => (window as any).lastShare);
+      68 |   expect(source.parts[0].text).toContain('结果 3/3'); expect(source.parts[0].text).toContain('count = 3');
+      69 |   expect(source.sources).toEqual(['《原来的书》 · 原材料 · 第 2 页']);
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\reading-share-diagram.spec.ts:66:82
+
+    Error Context: test-results\reading-share-diagram-RS7--3854e-G-and-live-scene-continuity\error-context.md
+
+  8) playwright\reading-share-diagram.spec.ts:98:1 › RS7 retained scene uses note read/observe/source after deletion and leaves current count untouched 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('dialog', { name: '生成分享图' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for getByRole('dialog', { name: '生成分享图' })
+
+
+      103 |   requests.length = 0;
+      104 |   await page.getByRole('button', { name: '分享记录时的图解' }).click();
+    > 105 |   await expect(page.getByRole('dialog', { name: '生成分享图' })).toBeVisible();
+          |                                                             ^
+      106 |   const source = await page.evaluate(() => (window as any).lastShare);
+      107 |   expect(source.parts[0].text).toContain('结果 1/3'); expect(source.association).toContain('记录时的图解 · 版本 2');
+      108 |   await expect(frame.locator('#count')).toHaveValue('3');
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\reading-share-diagram.spec.ts:105:61
+
+    Error Context: test-results\reading-share-diagram-RS7--b40b2-ves-current-count-untouched\error-context.md
+
+  9) playwright\reading-share-diagram.spec.ts:114:44 › RS7 retained mismatch fails visibly without exporting initial state 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('alert')
+    Expected substring: "不一致"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" with timeout 5000ms
+      - waiting for getByRole('alert')
+
+
+      115 |   await setup(page,mode);await page.getByRole('button',{name:'笔记详情'}).click();
+      116 |   await page.getByRole('button',{name:'分享记录时的图解'}).click();
+    > 117 |   await expect(page.getByRole('alert')).toContainText(mode === 'partial' ? '无法完整恢复' : '不一致');
+          |                                         ^
+      118 |   await expect(page.getByRole('dialog',{name:'生成分享图'})).toHaveCount(0);
+      119 |   expect(await page.locator('iframe').count()).toBe(1);
+      120 | });
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\reading-share-diagram.spec.ts:117:41
+
+    Error Context: test-results\reading-share-diagram-RS7--14229-out-exporting-initial-state\error-context.md
+
+  10) playwright\reading-share-diagram.spec.ts:122:1 › RS7 missing resources and media report concrete failures, then retry succeeds with unavailable source label 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('status').filter({ hasText: '图解未导出' })
+    Expected substring: "图片资源"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" with timeout 5000ms
+      - waiting for getByRole('status').filter({ hasText: '图解未导出' })
+
+
+      124 |   await frame.locator('img').evaluate((img:HTMLImageElement)=>img.src='data:image/png;base64,broken');
+      125 |   await page.getByRole('button',{name:'导出当前图解'}).click();
+    > 126 |   await expect(page.getByRole('status').filter({hasText:'图解未导出'})).toContainText('图片资源');
+          |                                                                    ^
+      127 |   await frame.locator('img').evaluate(img=>img.remove());
+      128 |   await frame.locator('body').evaluate(body=>body.append(document.createElement('video')));
+      129 |   await page.getByRole('button',{name:'导出当前图解'}).click();
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\reading-share-diagram.spec.ts:126:68
+
+    Error Context: test-results\reading-share-diagram-RS7--d30bd-th-unavailable-source-label\error-context.md
+
+  10 failed
+    playwright\presentation-bridge.spec.ts:4:37 › async restoration waits before observation and capture 
+    playwright\presentation-bridge.spec.ts:34:1 › a delayed observation keeps the accepted result and focused slider visible 
+    playwright\presentation-bridge.spec.ts:91:1 › a pending subtree replacement shows only the last accepted public text 
+    playwright\presentation-bridge.spec.ts:150:1 › restore runs after page DOMContentLoaded initialization without saving again 
+    playwright\presentation-bridge.spec.ts:182:1 › snapshot reads visible results, custom step and live controls in one browser task 
+    playwright\presentation-bridge.spec.ts:215:1 › editing focus reports only a boolean bound to the host content generation 
+    playwright\reading-share-diagram.spec.ts:57:1 › RS7 current SVG Canvas DOM and formula freeze together; landscape/portrait PNG and live scene continuity 
+    playwright\reading-share-diagram.spec.ts:98:1 › RS7 retained scene uses note read/observe/source after deletion and leaves current count untouched 
+    playwright\reading-share-diagram.spec.ts:114:44 › RS7 retained mismatch fails visibly without exporting initial state 
+    playwright\reading-share-diagram.spec.ts:122:1 › RS7 missing resources and media report concrete failures, then retry succeeds with unavailable source label 
+  3 passed (1.5m)
+undefined
+E:\allwork\download\agent\understand-book-reading-share\packages\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: playwright test playwright/reading-share-diagram.spec.ts playwright/presentation-bridge.spec.ts --workers=1

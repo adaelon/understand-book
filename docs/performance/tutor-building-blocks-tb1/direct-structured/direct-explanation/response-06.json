@@ -1,0 +1,11 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"match_mode\": \"exact\", \"page_size\": 20, \"query\": \"&mut\"}",
+      "id": "call_00_eR7liKOGzURUe2iTB3ay5592",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 26748
+}

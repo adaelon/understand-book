@@ -1,0 +1,86 @@
+
+> @understand-book/core@0.0.0 test E:\allwork\download\agent\understand-book\packages\core
+> vitest run "test/automatic-build-concurrency.test.ts" "test/automatic-build-dispatch-runtime.test.ts" "test/automatic-build-driver.test.ts"
+
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/core
+
+ ✓ test/automatic-build-dispatch-runtime.test.ts (24 tests) 8682ms
+   ✓ automatic build executor dispatch runtime > changes recovery identity after a committed work unit while keeping the dispatch slot stable  322ms
+   ✓ automatic build executor dispatch runtime > runs an eight-task formula dispatch with one lease at a time and eight canonical receipts  3192ms
+   ✓ automatic build executor dispatch runtime > preserves three commits, recovers the fourth lease, and never claims the remaining suffix  1308ms
+   ✓ automatic build executor dispatch runtime > partially finishes task_failure only after a terminal exhausted task and preserves the exact suffix  834ms
+   ✓ automatic build executor dispatch runtime > rejects task_failure while a dispatch lease is active  329ms
+ ✓ test/automatic-build-concurrency.test.ts (7 tests) 13876ms
+   ✓ automatic build safe concurrent execution > refills from the accepted runtime plan while slower dispatches remain active  7678ms
+   ✓ automatic build safe concurrent execution > produces identical semantic artifact digests with one, two, or three fake workers  4477ms
+   ✓ automatic build safe concurrent execution > keeps every pending task when live slots shrink from three to one  1372ms
+ ✓ test/automatic-build-driver.test.ts (66 tests) 296952ms
+   ✓ S0 deterministic automatic-build driver protocol > keeps the root response limited to 64 KiB independently of refill stdin capacity  501ms
+   ✓ S0 deterministic automatic-build driver protocol > preserves the distinct structure_execution_budget_exceeded boundary and bounded recovery diagnostics  540ms
+   ✓ S0 deterministic automatic-build driver protocol > preserves the distinct structure_preparation_incomplete boundary and bounded recovery diagnostics  377ms
+   ✓ S0 deterministic automatic-build driver protocol > preserves the distinct quality_gate_failed boundary and bounded recovery diagnostics  340ms
+   ✓ S0 deterministic automatic-build driver protocol > persists explicit V2 Codex selection and rejects mixed record versions and incomplete DSH configuration  522ms
+   ✓ S0 deterministic automatic-build driver protocol > uses the confirmed BuildPlan book id for a non-ASCII source throughout the driver  437ms
+   ✓ S0 deterministic automatic-build driver protocol > returns only the four root actions and never exposes internal or semantic fields  770ms
+   ✓ S0 deterministic automatic-build driver protocol > replays an active dispatch after more than 512 valid projection records accumulate  8853ms
+   ✓ S0 deterministic automatic-build driver protocol > P3 observes a child commit between plan and dispatch without reclaiming it  3617ms
+   ✓ S0 deterministic automatic-build driver protocol > R2 terminal recovers an open refusal and commits B once on a new connection  8075ms
+   ✓ S0 deterministic automatic-build driver protocol > R2 correction recovers an open refusal and commits B once on a new connection  8217ms
+   ✓ S0 deterministic automatic-build driver protocol > R2 refuses a different ref that already opened another child and accepts an unopened typo  5449ms
+   ✓ S0 deterministic automatic-build driver protocol > recovers terminal children interrupted before_open before generation while preserving a live sibling  14358ms
+   ✓ S0 deterministic automatic-build driver protocol > recovers terminal children interrupted after_open before generation while preserving a live sibling  14861ms
+   ✓ S0 deterministic automatic-build driver protocol > returns WAIT with spare slots while the last executor owns all remaining work  804ms
+   ✓ S0 deterministic automatic-build driver protocol > L1 refills the released slot while sibling children have not opened yet  7373ms
+   ✓ S0 deterministic automatic-build driver protocol > L1 commits six units through fresh connections while refilling one of three live slots  19254ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 bootstrap: recovers a zero-call bootstrap failure once without consuming a semantic attempt  8813ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 connection_terminal: recovers a zero-call bootstrap failure once without consuming a semantic attempt  8889ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 handoff_ref_mismatch: recovers a zero-call bootstrap failure once without consuming a semantic attempt  8203ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 correction: recovers a zero-call bootstrap failure once without consuming a semantic attempt  8062ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 bootstrap: rejects bootstrap reports from another invocation without changing its tasks  416ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 connection_terminal: rejects bootstrap reports from another invocation without changing its tasks  523ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 handoff_ref_mismatch: rejects bootstrap reports from another invocation without changing its tasks  471ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 correction: rejects bootstrap reports from another invocation without changing its tasks  437ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 bootstrap: keeps accepted work when bootstrap recovery resumes a dispatch between units  10546ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 connection_terminal: keeps accepted work when bootstrap recovery resumes a dispatch between units  7851ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 handoff_ref_mismatch: keeps accepted work when bootstrap recovery resumes a dispatch between units  10734ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 correction: keeps accepted work when bootstrap recovery resumes a dispatch between units  12766ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 bootstrap: bounds repeated bootstrap failures and resumes only after an explicit recovery decision  2940ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 connection_terminal: bounds repeated bootstrap failures and resumes only after an explicit recovery decision  3223ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 handoff_ref_mismatch: bounds repeated bootstrap failures and resumes only after an explicit recovery decision  4301ms
+   ✓ S0 deterministic automatic-build driver protocol > L2 correction: bounds repeated bootstrap failures and resumes only after an explicit recovery decision  3222ms
+   ✓ S0 deterministic automatic-build driver protocol > gives an expired recovery generation a new handoff in the same invocation while keeping its dispatch slot  8555ms
+   ✓ S0 deterministic automatic-build driver protocol > gives an expired recovery generation a new handoff in the fresh invocation while keeping its dispatch slot  6982ms
+   ✓ S0 deterministic automatic-build driver protocol > reissues a durable active dispatch after volatile registry loss without another semantic attempt  7021ms
+   ✓ S0 deterministic automatic-build driver protocol > resumes an expired running dispatch without republishing its manifest  604ms
+   ✓ S0 deterministic automatic-build driver protocol > rejects expired dispatch re-entry when the persisted owner identity conflicts  334ms
+   ✓ S0 deterministic automatic-build driver protocol > rejects a stale decision after BuildPlan drift without caller-supplied digests  496ms
+   ✓ S0 deterministic automatic-build driver protocol > binds a fresh budget decision to the current deterministic receipt  720ms
+   ✓ S0 deterministic automatic-build driver protocol > keeps deterministic retry_current side-effect free while the policy scope is unchanged  625ms
+   ✓ S0 deterministic automatic-build driver protocol > projects mixed candidate failures without hiding a real operator fix: {"hasOperatorFailure":false,"sameCode":false}  1746ms
+   ✓ S0 deterministic automatic-build driver protocol > projects mixed candidate failures without hiding a real operator fix: {"hasOperatorFailure":true,"sameCode":false}  2003ms
+   ✓ S0 deterministic automatic-build driver protocol > projects mixed candidate failures without hiding a real operator fix: {"hasOperatorFailure":true,"sameCode":true}  2233ms
+   ✓ S0 deterministic automatic-build driver protocol > authorizes field candidate correction from an old recovery request without rewriting failures  2247ms
+   ✓ S0 deterministic automatic-build driver protocol > authorizes teaching candidate correction from an old recovery request without rewriting failures  2284ms
+   ✓ S0 deterministic automatic-build driver protocol > authorizes transport candidate correction from an old recovery request without rewriting failures  2155ms
+   ✓ S0 deterministic automatic-build driver protocol > retries after sibling progress while enforcing the current wall budget (limited=false)  3097ms
+   ✓ S0 deterministic automatic-build driver protocol > retries after sibling progress while enforcing the current wall budget (limited=true)  2455ms
+   ✓ S0 deterministic automatic-build driver protocol > writes one terminal-bound recovery receipt for an allowlisted transient retry_current  1234ms
+   ✓ S0 deterministic automatic-build driver protocol > rejects terminal receipt drift without persisting a decision or recovery effect  669ms
+   ✓ S0 deterministic automatic-build driver protocol > replans retry_current when the complete policy scope changes  1867ms
+   ✓ S0 deterministic automatic-build driver protocol > closes and replans internally instead of returning a close command  3409ms
+   ✓ S0 deterministic automatic-build driver protocol > advances from a terminal dispatch receipt on disk without a receipt body from root  3501ms
+   ✓ S0 deterministic automatic-build driver protocol > terminalizes a fully committed V4 dispatch before build.step refills it  15856ms
+   ✓ S0 deterministic automatic-build driver protocol > terminalizes a V4 committed-failed-committed dispatch as task_failure and retries the failure  13901ms
+   ✓ S0 deterministic automatic-build driver protocol > runs driver commands and accepts a PowerShell-style UTF-8 BOM on executor stdin  21572ms
+   ✓ S4 private artifact driver and executor session > R2 resolves private frozen delivery material once at generation.start  446ms
+   ✓ S4 private artifact driver and executor session > R2 rejects private task, Blueprint, and output-contract drift before creating generation state  579ms
+   ✓ S4 private artifact driver and executor session > RG6 gives private artifacts the four-budget contract and records oversize before staging  610ms
+   ✓ S4 private artifact driver and executor session > drives public completion through private preparation and accepts every artifact without root leakage  1328ms
+   ✓ S4 private artifact driver and executor session > lets an untouched sibling commit before retrying one failed artifact and resumes the retry in place  2025ms
+
+ Test Files  3 passed (3)
+      Tests  97 passed (97)
+   Start at  16:37:46
+   Duration  309.76s (transform 7.70s, setup 0ms, collect 30.42s, tests 319.51s, environment 1ms, prepare 3.36s)
+

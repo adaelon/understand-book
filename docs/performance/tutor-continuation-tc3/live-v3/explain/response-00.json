@@ -1,0 +1,16 @@
+{
+  "text": "I'll read the definition passage in full before explaining it.",
+  "tool_calls": [
+    {
+      "arguments": "{\"lid\": \"1.1\"}",
+      "id": "call_00_AIdUh1O9SvlnPw9tcraA9331",
+      "name": "book.text"
+    },
+    {
+      "arguments": "{\"lid\": \"1.1\", \"granularity\": \"near\"}",
+      "id": "call_01_KVrYk5Ww5znRqp3tsIyk6208",
+      "name": "book.context"
+    }
+  ],
+  "usage_total_tokens": 12679
+}

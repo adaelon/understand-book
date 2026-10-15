@@ -323,7 +323,7 @@ pub(crate) fn link_teaching(user: &mut user_runtime::UserRuntime, reference: &Ag
     user.session_store.as_mut().unwrap().settle(&mut user.agent_history, &reference.session_id)?;
     let learning = user.learning_store()?;
     let mut sessions = BTreeSet::new();
-    for prefix in ["binding", "response"] {
+    for prefix in ["binding", "response", "chosen"] {
         match learning.teaching_event(&format!("{prefix}:{}", reference.turn_id)) {
             Ok(event) => { sessions.insert(event.binding.tutor_session_id); }
             Err(e) if e.error_code == "TEACHING_INVALID" => {},

@@ -1,0 +1,66 @@
+
+> @understand-book/web@0.0.0 test:e2e E:\allwork\download\agent\understand-book\packages\web
+> playwright test "--config" "../../docs/performance/yeye-brand-yy7-20261013/playwright.config.ts"
+
+[WebServer] (node:40656) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:43112) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 22 tests using 1 worker
+
+(node:1016) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 playwright\yeye-integration.spec.ts:158:34 › YY6 production home loads only the visible idle animation at 1440px (2.1s)
+  ok  2 playwright\yeye-integration.spec.ts:158:34 › YY6 production home loads only the visible idle animation at 390px (1.7s)
+  ok  3 playwright\yeye-integration.spec.ts:201:64 › YY7 saved task nods once in the tab identity and preserves the draft (1.8s)
+  ok  4 playwright\yeye-integration.spec.ts:201:64 › YY7 saved task nods once in the fullscreen identity and preserves the draft (1.4s)
+  ok  5 playwright\yeye-integration.spec.ts:201:64 › YY7 saved task nods once in the mobile identity and preserves the draft (1.4s)
+  ok  6 playwright\yeye-integration.spec.ts:225:123 › YY7 does not nod for ordinary answer (986ms)
+  ok  7 playwright\yeye-integration.spec.ts:225:123 › YY7 does not nod for missing result (995ms)
+  ok  8 playwright\yeye-integration.spec.ts:225:123 › YY7 does not nod for failed (925ms)
+  ok  9 playwright\yeye-integration.spec.ts:225:123 › YY7 does not nod for cancelled (940ms)
+  ok 10 playwright\yeye-integration.spec.ts:225:123 › YY7 does not nod for unsaved (894ms)
+  ok 11 playwright\yeye-integration.spec.ts:225:123 › YY7 does not nod for created completed (972ms)
+  ok 12 playwright\yeye-integration.spec.ts:239:95 › YY7 consumes completion while hidden by bookshelf (1.0s)
+  ok 13 playwright\yeye-integration.spec.ts:239:95 › YY7 consumes completion while hidden by background (946ms)
+  ok 14 playwright\yeye-integration.spec.ts:239:95 › YY7 consumes completion while hidden by reduced motion (1.0s)
+  ok 15 playwright\yeye-integration.spec.ts:239:95 › YY7 consumes completion while hidden by mobile reader (996ms)
+  ok 16 playwright\yeye-integration.spec.ts:255:1 › YY7 invalidates a completion when the host hides and returns during the saved-history read (1.1s)
+  x  17 playwright\yeye-integration.spec.ts:276:1 › YY7 changing chats, returning to completed history and reloading never replay the nod (45.0s)
+(node:44492) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 18 playwright\yeye-integration.spec.ts:288:1 › YY6 reduced motion and a failed animation request keep the production home usable (995ms)
+  ok 19 playwright\yeye-integration.spec.ts:304:1 › YY6 bookshelf coverage, focus and background stop the retained reader and restart a fresh interval (1.5s)
+  ok 20 playwright\yeye-integration.spec.ts:335:1 › YY6 wide waiting uses real reading artwork, pauses in the background and yields to streaming text (1.3s)
+  ok 21 playwright\yeye-integration.spec.ts:355:1 › YY6 stop, reconnect, finalizing and persistence failure never animate a stale wait (2.6s)
+  ok 22 playwright\yeye-integration.spec.ts:374:1 › YY6 mobile auxiliary hiding stops welcome while compact waiting keeps the avatar and status (1.2s)
+
+
+  1) playwright\yeye-integration.spec.ts:276:1 › YY7 changing chats, returning to completed history and reloading never replay the nod 
+
+    Test timeout of 45000ms exceeded.
+
+    Error: locator.click: Test timeout of 45000ms exceeded.
+    Call log:
+      - waiting for locator('.history-card').filter({ hasText: '当前缓存任务' }).getByRole('button', { name: '打开对话', exact: true })
+
+
+      270 |   if (await menu.isVisible()) await menu.click();
+      271 |   await page.getByTitle('打开对话历史').click();
+    > 272 |   await page.locator('.history-card').filter({ hasText: title }).getByRole('button', { name: '打开对话', exact: true }).click();
+          |                                                                                                                     ^
+      273 |   await expect(page.locator('.history-dialog')).toHaveCount(0);
+      274 | }
+      275 |
+        at selectHistory (E:\allwork\download\agent\understand-book\packages\web\playwright\yeye-integration.spec.ts:272:117)
+        at E:\allwork\download\agent\understand-book\packages\web\playwright\yeye-integration.spec.ts:281:3
+
+    Error Context: ..\..\tmp\yy7-playwright\yeye-integration-YY7-chang-dd2db-oading-never-replay-the-nod\error-context.md
+
+  1 failed
+    playwright\yeye-integration.spec.ts:276:1 › YY7 changing chats, returning to completed history and reloading never replay the nod 
+  21 passed (1.3m)
+E:\allwork\download\agent\understand-book\packages\web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @understand-book/web@0.0.0 test:e2e: `playwright test "--config" "../../docs/performance/yeye-brand-yy7-20261013/playwright.config.ts"`
+Exit status 1

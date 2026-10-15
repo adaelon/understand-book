@@ -22,3 +22,5 @@
 ## 发布结果
 
 2026-10-09 15:26 HKT 已上线，15:32 HKT 公网验收通过。入口下载、身份恢复、真实书籍打开与刷新恢复验证正常，页面脚本错误 0。发布与回退见[验收记录](../performance/reader-loading-20261009/README.md)。
+
+2026-10-11 10:24 HKT 修复登录检查阶段加载区域仅高 112px 的布局问题：`.network-loading` 增加 `height: 100%`。10:25 HKT 公网 Chromium、WebKit 手机与桌面验证通过。见[高度修复记录](../performance/loading-height-20261011/README.md)。

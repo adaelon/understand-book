@@ -1,2 +1,5 @@
 *.pdf binary
+agents/*.md text eol=lf
 scripts/linux/*.sh text eol=lf
+crates/server/src/tests/fixtures/tutor-continuation/source.md text eol=lf
+docs/performance/tutor-building-blocks-tb1/source.txt text eol=lf

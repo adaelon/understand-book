@@ -1,0 +1,27 @@
+{
+  "evidence": {
+    "operation": "evidence",
+    "nature": "hypothesis",
+    "operation_id": "tb3-cannot-start-connection",
+    "target": {"learning_focus": "从赋值后的可用关系判断一次打印", "expected_performance": "借助逐行示范，判断去掉 & 后第一条打印能否读取 foo", "capability": "explanation", "source_bindings": [{"start_lid": "1.1", "end_lid": "1.1"}], "object_refs": []},
+    "fact_refs": ["usage:tutor-begin-1:user:turn_ec4483ec1c26a847", "usage:tutor-begin-1:user:turn_ec4484ec1c26a9fa"],
+    "interpretation": "学习者自述能认出赋值左右两边，但在收到所有权和借用解释后，仍不能把拥有关系与后续打印联系起来，并明确请求更小步骤的示范。这支持暂时把教学重点放在‘赋值后这个变量还能否读取值’的连接上；没有独立作答证据，不据此判断规则掌握程度或一般能力。",
+    "teaching_implication": "用变量可用状态把赋值与一次 println 接起来，先示范一个非 Copy 值转移后旧变量不能打印的微型例子，再只留原文修改后第一条打印这一判断。"
+  },
+  "select": {
+    "operation": "select",
+    "move": {
+      "move_id": "tb3-cannot-start-one-print",
+      "kind": "explain",
+      "capability": "explanation",
+      "interaction_intent": "guided_inquiry",
+      "intent_origin": "current_request",
+      "intent_quote": "先示范一个更小的步骤，再留一步让我做。",
+      "interpretation_refs": ["interpretation:tb3-cannot-start-connection"],
+      "object_ids": [],
+      "prompt": "将拥有关系具体连接到变量是否仍可读取。简要锚定原文 &foo 保留 foo 的拥有关系；以另一个具有 Debug、没有 Copy 的类型示范直接赋值后为何不能打印旧变量。补充打印需要变量仍可读取且不会恢复已转移的值，只让学习者判断原文去掉 & 后第一条 println 是否可用，不代答，不要求一次判断整个程序。",
+      "target": {"learning_focus": "从赋值后的可用关系判断一次打印", "expected_performance": "借助逐行示范，判断去掉 & 后第一条打印能否读取 foo，并指出用到的可用关系", "capability": "explanation", "source_bindings": [{"start_lid": "1.1", "end_lid": "1.1"}], "object_refs": []}
+    }
+  },
+  "answer": "先只连接两件事：**这一行之后，变量还能不能读取值 → 下一次打印能不能使用它。**\n\n原文的 `let bar = &foo;` 让 `bar` 借用值，`foo` 仍拥有值，所以 `foo` 仍可读取；`bar` 也能通过引用读取同一个值。[[source:source_ref_b7cdf804a5f27a0d]] [[source:source_ref_9af277d1d3d785d4]]\n\n下面是补充示范，用另一个类型只看一个打印：\n\n```rust\n#[derive(Debug)]\nstruct Parcel(u32); // 没有 Copy 能力\n\nlet a = Parcel(0);\nlet b = a;\nprintln!(\"{:?}\", a);\n```\n\n我这样逐行判断：\n\n1. `let a = Parcel(0);` 后，`a` 拥有值，可以读取它。\n2. `let b = a;` 的右边没有 `&`，而 `Parcel` 没有 `Copy` 能力，所以值的所有权交给 `b`。现在 `b` 可读取这个值，`a` 已不能读取它。\n3. 打印写的是 `a`。**打印需要先能读取所写变量的值**，但第二步已经让 `a` 不能读取，所以这条打印不能编译。若这里打印的是 `b`，则可以。\n\n这里用到的补充规则是：`println!` 的这种格式化打印会借用内容，不会拿走所有权；但借用也要求变量此时仍可读取，不能把已经交走的值重新变回来。\n\n现在只留一个判断给你。原文的 `Foo` 只声明了 `Debug`，没有 `Copy` 能力。[[source:source_ref_4c3de5a75d5bc2f7]] 把第二行改成没有 `&` 的写法，暂时只看第一条打印：\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo);\n```\n\n**这条 `println!` 还能使用 `foo` 吗？**你可以只填一句：‘第二行之后，`foo` ______读取那个值，所以这条打印______。’"
+}

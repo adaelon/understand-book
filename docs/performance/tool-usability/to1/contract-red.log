@@ -1,0 +1,23 @@
+    Blocking waiting for file lock on artifact directory
+   Compiling book-tool-contracts v0.0.0 (E:\allwork\download\agent\understand-book\crates\book-tool-contracts)
+    Finished `test` profile [unoptimized] target(s) in 22.63s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\book_tool_contracts-82378eeb74e4a5f1.exe)
+
+running 1 test
+test tests::common_parameters_explain_nested_fields_and_tool_specific_meanings ... FAILED
+
+failures:
+
+---- tests::common_parameters_explain_nested_fields_and_tool_specific_meanings stdout ----
+
+thread 'tests::common_parameters_explain_nested_fields_and_tool_specific_meanings' (13876) panicked at crates\book-tool-contracts\src\lib.rs:900:21:
+Text.end_lid
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tests::common_parameters_explain_nested_fields_and_tool_specific_meanings
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p book-tool-contracts --lib`

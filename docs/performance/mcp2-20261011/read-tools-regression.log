@@ -1,0 +1,203 @@
+   Compiling read-tools v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\read-tools)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 16.93s
+     Running unittests src\lib.rs (target\debug\deps\read_tools-6562bf434eb796ad.exe)
+
+running 172 tests
+test export_bindings_contentprofileid ... ok
+test export_bindings_bookstructurekeystoptype ... ok
+test export_bindings_bookstructurespinerole ... ok
+test export_bindings_conceptmatchtier ... ok
+test export_bindings_conceptpreview ... ok
+test export_bindings_anchoredtext ... ok
+test export_bindings_conceptcandidatekind ... ok
+test export_bindings_concept ... ok
+test export_bindings_bookstructurethroughline ... ok
+test export_bindings_agenttoolspec ... ok
+test export_bindings_guidedreadingpolicyspec ... ok
+test export_bindings_headingpathitem ... ok
+test export_bindings_layoutregion ... ok
+test export_bindings_bookstructurekeystop ... ok
+test export_bindings_contextitem ... ok
+test export_bindings_bookstructurespineunit ... ok
+test export_bindings_frontier ... ok
+test export_bindings_navcategory ... ok
+test export_bindings_context ... ok
+test export_bindings_layoutsizekind ... ok
+test export_bindings_abstractreadingaid ... ok
+test export_bindings_memorypolicyref ... ok
+test export_bindings_lidstats ... ok
+test export_bindings_layoutsize ... ok
+test export_bindings_conceptcandidate ... ok
+test export_bindings_conceptcandidateset ... ok
+test export_bindings_paperabstractcheck ... ok
+test export_bindings_paperabstractexcerpt ... ok
+test export_bindings_paperauthor ... ok
+test export_bindings_paperargumentslot ... ok
+test export_bindings_manifestnode ... ok
+test export_bindings_layoutpresetspec ... ok
+test export_bindings_layoutpresetslot ... ok
+test export_bindings_papercodebookmetadata ... ok
+test export_bindings_papercodebookterm ... ok
+test export_bindings_papercodebookstructureitem ... ok
+test export_bindings_paperargumentrelation ... ok
+test export_bindings_paperlandmarkkind ... ok
+test export_bindings_bookstructuresidecar ... ok
+test export_bindings_guidepathsegment ... ok
+test export_bindings_paperlidspan ... ok
+test export_bindings_paperlandmarkprovenance ... ok
+test export_bindings_papermetadatanumberfield ... ok
+test export_bindings_manifest ... ok
+test export_bindings_papermetadatareferencesfield ... ok
+test export_bindings_guidepath ... ok
+test export_bindings_papermetadatastringlistfield ... ok
+test export_bindings_paperminimapavailabilitystatus ... ok
+test export_bindings_paperminimaprelation ... ok
+test export_bindings_papermetadataauthorsfield ... ok
+test export_bindings_papermetadataidentifiersprojection ... ok
+test export_bindings_paperlandmark ... ok
+test export_bindings_paperpagespan ... ok
+test export_bindings_papermetadatastringfield ... ok
+test export_bindings_paperlexiconprojection ... ok
+test export_bindings_paperreadingmode ... ok
+test export_bindings_papercodebook ... ok
+test export_bindings_paperminimaplayerstatus ... ok
+test export_bindings_paperreference ... ok
+test export_bindings_paperreadinganswerslotkind ... ok
+test export_bindings_paperreadingstage ... ok
+test export_bindings_paperreadinganswerslot ... ok
+test export_bindings_paperregionclassificationsource ... ok
+test export_bindings_pinnedevidence ... ok
+test export_bindings_paperregionkind ... ok
+test export_bindings_profileartifactheader ... ok
+test export_bindings_profiledefaults ... ok
+test export_bindings_projectionkind ... ok
+test export_bindings_rankedstep ... ok
+test export_bindings_readerlayoutactionkind ... ok
+test export_bindings_paperreadingquestion ... ok
+test export_bindings_projectionspec ... ok
+test export_bindings_searchsectioncount ... ok
+test export_bindings_textmatchtype ... ok
+test export_bindings_profilesummary ... ok
+test export_bindings_textoccurrencerange ... ok
+test export_bindings_toolerror ... ok
+test export_bindings_paperregion ... ok
+test export_bindings_readerlayoutaction ... ok
+test export_bindings_uislotkind ... ok
+test export_bindings_readerlayoutproposal ... ok
+test export_bindings_readerlayoutstate ... ok
+test export_bindings_papermetadataprojection ... ok
+test export_bindings_readerlayouteffect ... ok
+test export_bindings_textoccurrence ... ok
+test export_bindings_structureprojection ... ok
+test export_bindings_paperminimapbase ... ok
+test export_bindings_readerlayoutapplyoutcome ... ok
+test export_bindings_paperreadingguide ... ok
+test export_bindings_searchtextresult ... ok
+test export_bindings_profilemanifest ... ok
+test export_bindings_uislotspec ... ok
+test search_text_exact_tests::search_text_exact_rejects_invalid_partition_and_stabilizes_revision ... ok
+test search_text_exact_tests::search_text_exact_preserves_global_whitespace_gap_and_leaf_ranges ... ok
+test mcp_text_page_tests::mcp_text_page_rejects_reversed_out_of_range_and_split_surrogate_positions ... ok
+test search_text_exact_tests::search_text_exact_counts_overlaps_and_uses_span_document_order ... ok
+test search_text_exact_tests::search_text_pagination_distinguishes_invalid_mismatch_and_stale_cursors ... ok
+test export_bindings_via ... ok
+test mcp_text_page_tests::mcp_text_page_reassembles_cross_lid_unicode_source_with_exact_coordinates ... ok
+test mcp_text_page_tests::mcp_text_page_handles_exact_limit_empty_source_and_last_page ... ok
+test search_text_exact_tests::search_text_exact_scope_and_utf16_offsets_are_stable ... ok
+test search_text_exact_tests::search_text_pagination_intersects_within_and_relative_scopes ... ok
+test search_text_exact_tests::search_text_pagination_normalized_maps_nfkc_casefold_and_whitespace_to_source ... ok
+test search_text_exact_tests::search_text_pagination_concatenates_the_complete_set_in_both_orders ... ok
+test search_text_exact_tests::search_text_real_book_replays_all_formula_occurrences ... FAILED
+test search_text_exact_tests::search_text_release_5_mib_p95_is_under_one_second ... ok
+test tests::concept_candidates_v2_uses_anchor_only_after_lexical_quality ... ok
+test tests::context_far_accumulates_near_mid_and_long_range ... ok
+test tests::concept_candidates_v2_enforces_strict_tiers_graph_scope_and_stable_identity ... ok
+test tests::bsr5_chapter_projection_keeps_detailed_stops_outside_macro_route ... ok
+test tests::concept_found_and_missing ... ok
+test tests::load_missing_book_structure_sidecar_degrades_explicitly ... ok
+test tests::context_near_missing_lid_errors ... ok
+test tests::context_near_tree_adjacency ... ok
+test tests::context_projects_discourse_relations_to_near_and_far ... ok
+test tests::candidate_preview_enforces_fair_topk_and_match_centered_caps ... ok
+test tests::context_rejects_unknown_granularity ... ok
+test tests::concept_candidates_v2_enforces_counts_limits_and_validation ... ok
+test tests::nav_category_of_maps_each_bucket_and_unknown_to_cross ... ok
+test tests::load_bad_paper_lexicon_fails_fast ... ok
+test tests::load_reads_headered_formula_semantics_sidecar ... ok
+test tests::manifest_stats_correct ... ok
+test tests::manifest_includes_outline_first_lines_without_chapter_bodies ... ok
+test tests::load_reads_optional_discourse_index_sidecar ... ok
+test tests::load_bad_book_structure_sidecar_fails_fast ... ok
+test tests::load_valid_book_structure_projects_structure_and_guide_path ... ok
+test tests::load_reads_optional_formula_semantics_sidecar ... ok
+test tests::outline_first_line_skips_blank_lines_and_preserves_unicode ... ok
+test tests::paper_minimap_base_contract_round_trips_closed_types ... ok
+test tests::paper_minimap_contract_rejects_unknown_enum_and_missing_required_field ... ok
+test tests::load_valid_paper_sidecars_projects_reading_guide ... ok
+test tests::paper_reading_guide_missing_paper_artifacts_degrades_explicitly ... ok
+test tests::paper_minimap_stale_config_degrades_without_breaking_book_load ... ok
+test tests::route_from_consumes_discourse_relations_via_mapping ... ok
+test tests::paper_minimap_drops_dangling_pass2_evidence_and_degrades_arguments_only ... ok
+test tests::paper_minimap_projects_heading_alias_unknown_and_cross_page_region ... ok
+test tests::profile_registry_returns_current_and_explicit_manifests ... ok
+test tests::reader_layout_action_contract_uses_closed_snake_case_tags ... ok
+test tests::paper_minimap_missing_semantic_sidecars_keeps_topology_and_marks_layers_unavailable ... ok
+test tests::profile_manifest_contract_covers_paper_slots_and_actions ... ok
+test tests::paper_referent_catalog_merges_only_alias_and_shared_lid_matches ... ok
+test tests::paper_minimap_recovers_structured_abstract_and_flattened_major_sections ... ok
+test tests::referent_ranking_uses_anchor_only_as_peer_tiebreak ... ok
+test tests::referent_catalog_characterization_preserves_context_only_anchor_order ... ok
+test tests::route_from_groups_far_edge_concept_and_sibling ... ok
+test tests::paper_minimap_projects_deduped_landmarks_provenance_and_closed_relations ... ok
+test tests::route_from_truncates_each_group_to_k ... ok
+test tests::route_from_invalid_at_returns_not_found ... ok
+test tests::route_from_leaf_no_edges_returns_empty_groups_not_error ... ok
+test tests::route_to_same_endpoint_returns_empty_not_error ... ok
+test tests::route_to_respects_hop_budget ... ok
+test tests::source_presentation_disambiguates_duplicate_titles_with_parent_headings ... ok
+test tests::route_to_finds_direct_path ... ok
+test tests::source_presentation_accepts_adjacent_multi_lid_and_rejects_skipped_leaf ... ok
+test tests::source_presentation_accepts_cross_heading_continuity_and_bounds_context ... ok
+test tests::route_to_invalid_endpoint_returns_not_found ... ok
+test tests::source_presentation_context_keeps_words_and_paragraph_separators ... ok
+test tests::route_to_unreachable_returns_empty_not_error ... ok
+test tests::route_to_finds_multi_hop_path ... ok
+test tests::source_presentation_context_obeys_hard_word_limit_and_keeps_nearest_text ... ok
+test tests::source_label_preserves_preview_labels_and_range_validation ... ok
+test tests::source_presentation_excerpt_keeps_complete_code_block_around_short_quote ... ok
+test tests::source_presentation_preserves_chinese_heading_and_falls_back_without_heading ... ok
+test tests::source_presentation_preserves_newline_gaps_and_saved_legacy_references ... ok
+test tests::source_presentation_preserves_structural_book_text_passage ... ok
+test tests::source_presentation_truncation_preserves_internal_whitespace ... ok
+test tests::source_presentation_rejects_invalid_utf16_range ... ok
+test tests::text_by_single_lid ... ok
+test tests::text_missing_lid_errors_not_silent ... ok
+test tests::source_presentation_resolves_original_heading_localized_kind_and_stable_digest ... ok
+test tests::source_presentation_rejects_digest_mismatch ... ok
+test tests::paper_minimap_dual_reads_v1_and_v2_source_maps_but_rejects_unknown_versions ... ok
+
+failures:
+
+---- search_text_exact_tests::search_text_real_book_replays_all_formula_occurrences stdout ----
+
+thread 'search_text_exact_tests::search_text_real_book_replays_all_formula_occurrences' (28360) panicked at crates\read-tools\src\lib.rs:11509:9:
+real-book base is missing
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    search_text_exact_tests::search_text_real_book_replays_all_formula_occurrences
+
+test result: FAILED. 171 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.55s
+
+error: test failed, to rerun pass `-p read-tools --lib`

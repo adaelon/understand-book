@@ -1,0 +1,256 @@
+[
+  {
+    "body": {
+      "lid": "1.1",
+      "text": "甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needl...[truncated]"
+    },
+    "continuation": {
+      "arguments": {
+        "lid": "1.1"
+      },
+      "guidance": "the selected LID is too large; request a narrower child LID or nearby context",
+      "kind": "refine_call",
+      "tool": "book.text"
+    },
+    "evidence": [],
+    "input": {
+      "lid": "1.1"
+    },
+    "label": "single_leaf",
+    "limit": 1800,
+    "truncated": true
+  },
+  {
+    "body": {
+      "lid": "1.0",
+      "text": "heading\n"
+    },
+    "continuation": {
+      "arguments": {
+        "end_lid": "1.2",
+        "lid": "1.1"
+      },
+      "kind": "next_call",
+      "reason": "continue the omitted LID range",
+      "tool": "book.text"
+    },
+    "evidence": [
+      {
+        "end_lid": "1.0",
+        "start_lid": "1.0"
+      }
+    ],
+    "input": {
+      "lid": "1"
+    },
+    "label": "cross_leaf",
+    "limit": 1800,
+    "truncated": true
+  },
+  {
+    "body": {
+      "exhaustive": true,
+      "next_cursor": "st1.7b2276657273696f6e223a227365617263685f746578742e7631222c22736f757263655f7265766973696f6e223a2239326331636261313564326239636637303537326135663938396530613834653833643637646662306663396561316463363061346133613533343661323837222c22726571756573745f646967657374223a2264303634306632386566633531386164396335383433363662383632303662393839333135333464643336326136656330326638376162643235366262343637222c226f6666736574223a317d.a4d5bcc45d62d8ba63855baeeae035969ecaba50119fa2f0d085c20a73148ec6",
+      "occurrences": [
+        {
+          "end_lid": "1.1",
+          "excerpt": "heading\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀need",
+          "heading_path": [],
+          "match_type": "exact",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.1"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "ordinal": 1,
+          "ranges": [
+            {
+              "end_utf16": 9,
+              "lid": "1.1",
+              "start_utf16": 3
+            }
+          ],
+          "source_range_utf16": {
+            "end": 17,
+            "start": 11
+          },
+          "start_lid": "1.1"
+        }
+      ],
+      "section_counts": [
+        {
+          "count": 1000,
+          "label": "1.1",
+          "section_lid": "1.1"
+        },
+        {
+          "count": 80,
+          "label": "1.2",
+          "section_lid": "1.2"
+        }
+      ],
+      "source_revision": "92c1cba15d2b9cf70572a5f989e0a84e83d67dfb0fc9ea1dc60a4a3a5346a287",
+      "total_lids": 2,
+      "total_occurrences": 1080,
+      "version": "search_text.v1"
+    },
+    "continuation": {
+      "arguments": {
+        "cursor": "st1.7b2276657273696f6e223a227365617263685f746578742e7631222c22736f757263655f7265766973696f6e223a2239326331636261313564326239636637303537326135663938396530613834653833643637646662306663396561316463363061346133613533343661323837222c22726571756573745f646967657374223a2264303634306632386566633531386164396335383433363662383632303662393839333135333464643336326136656330326638376162643235366262343637222c226f6666736574223a317d.a4d5bcc45d62d8ba63855baeeae035969ecaba50119fa2f0d085c20a73148ec6",
+        "page_size": 1,
+        "query": "needle"
+      },
+      "kind": "tool_cursor",
+      "tool": "book.search_text"
+    },
+    "evidence": [
+      {
+        "end_lid": "1.1",
+        "ranges": [
+          {
+            "lid": "1.1",
+            "range": {
+              "end": 9,
+              "start": 3
+            }
+          }
+        ],
+        "start_lid": "1.1"
+      }
+    ],
+    "input": {
+      "page_size": 1,
+      "query": "needle"
+    },
+    "label": "native_search",
+    "limit": 16384,
+    "truncated": false
+  },
+  {
+    "body": {
+      "exhaustive": false,
+      "occurrences": [
+        {
+          "end_lid": "1.1",
+          "excerpt": "heading\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀need",
+          "heading_path": [],
+          "match_type": "exact",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.1"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "ordinal": 1,
+          "ranges": [
+            {
+              "end_utf16": 9,
+              "lid": "1.1",
+              "start_utf16": 3
+            }
+          ],
+          "source_range_utf16": {
+            "end": 17,
+            "start": 11
+          },
+          "start_lid": "1.1"
+        },
+        {
+          "end_lid": "1.1",
+          "excerpt": "heading\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀needle\n甲😀need",
+          "heading_path": [],
+          "match_type": "exact",
+          "next_calls": [
+            {
+              "arguments": {
+                "lid": "1.1"
+              },
+              "tool": "book.text"
+            }
+          ],
+          "ordinal": 2,
+          "ranges": [
+            {
+              "end_utf16": 19,
+              "lid": "1.1",
+              "start_utf16": 13
+            }
+          ],
+          "source_range_utf16": {
+            "end": 27,
+            "start": 21
+          },
+          "start_lid": "1.1"
+        }
+      ],
+      "section_counts": [
+        {
+          "count": 1000,
+          "label": "1.1",
+          "section_lid": "1.1"
+        },
+        {
+          "count": 80,
+          "label": "1.2",
+          "section_lid": "1.2"
+        }
+      ],
+      "source_revision": "92c1cba15d2b9cf70572a5f989e0a84e83d67dfb0fc9ea1dc60a4a3a5346a287",
+      "total_lids": 2,
+      "total_occurrences": 1080,
+      "version": "search_text.v1"
+    },
+    "continuation": {
+      "arguments": {
+        "page_size": 1,
+        "query": "needle",
+        "scope": {
+          "within_lid": "1.1"
+        }
+      },
+      "kind": "next_call",
+      "reason": "continue from the first occurrence omitted by the model-body budget",
+      "tool": "book.search_text"
+    },
+    "evidence": [
+      {
+        "end_lid": "1.1",
+        "ranges": [
+          {
+            "lid": "1.1",
+            "range": {
+              "end": 9,
+              "start": 3
+            }
+          }
+        ],
+        "start_lid": "1.1"
+      },
+      {
+        "end_lid": "1.1",
+        "ranges": [
+          {
+            "lid": "1.1",
+            "range": {
+              "end": 19,
+              "start": 13
+            }
+          }
+        ],
+        "start_lid": "1.1"
+      }
+    ],
+    "input": {
+      "page_size": 50,
+      "query": "needle"
+    },
+    "label": "budget_search",
+    "limit": 1800,
+    "truncated": true
+  }
+]

@@ -1,0 +1,16 @@
+
+[WebServer] (node:26852) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+[WebServer] (node:27560) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+
+(node:47944) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/2] playwright\tutor-continuation-api.spec.ts:5:42 › tc5_actual_rust_api_ordinary
+[2/2] playwright\tutor-continuation-api.spec.ts:5:42 › tc5_actual_rust_api_presentation
+  2 passed (13.7s)

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Field, OperationDialog, useOperations } from "@/components/operation";
 import { AllowancePanel, HistoryPanel } from "./allowance";
+import { McpPanel } from "./mcp";
 import { ChargesPanel } from "./charges";
 import { ActivitySummary, UsagePage } from "./usage";
 
@@ -199,6 +200,7 @@ export function UserPage({ userId }: { userId: string }) {
         <>
           <ActivitySummary activity={user.activity} />
           <AllowancePanel userId={userId} current={user.current_allowance} />
+          <McpPanel userId={userId} />
           <Materials user={user} offset={offset} setOffset={setOffset} />
           <ChargesPanel userId={userId} />
           <HistoryPanel userId={userId} />

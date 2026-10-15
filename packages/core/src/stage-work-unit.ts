@@ -471,7 +471,8 @@ export function validateWorkUnitDescriptorV3(
   const basisParentLids = inputBasis.kind === "source_slices"
     ? inputBasis.slices.map((slice) => slice.parent_lid)
     : inputBasis.parent_lids;
-  if (basisParentLids.some((lid) => !evidenceLids.includes(lid))) {
+  const evidenceLidSet = new Set(evidenceLids);
+  if (basisParentLids.some((lid) => !evidenceLidSet.has(lid))) {
     throw new Error("v3 work unit input basis contains a parent outside evidence_lids");
   }
   if (inputBasis.kind === "artifact_reduction") {
@@ -484,7 +485,7 @@ export function validateWorkUnitDescriptorV3(
   }
   if (descriptor.aggregation) {
     boundedIdentity(descriptor.aggregation.parent_lid, "aggregation.parent_lid");
-    if (!evidenceLids.includes(descriptor.aggregation.parent_lid)) {
+    if (!evidenceLidSet.has(descriptor.aggregation.parent_lid)) {
       throw new Error("aggregation parent_lid must be present in evidence_lids");
     }
     if (descriptor.aggregation.role === "fragment"
@@ -573,7 +574,8 @@ export function validateWorkUnitDescriptorV4(
   const basisParentLids = inputBasis.kind === "source_slices"
     ? inputBasis.slices.map((slice) => slice.parent_lid)
     : inputBasis.parent_lids;
-  if (basisParentLids.some((lid) => !evidenceLids.includes(lid))) {
+  const evidenceLidSet = new Set(evidenceLids);
+  if (basisParentLids.some((lid) => !evidenceLidSet.has(lid))) {
     throw new Error("v4 work unit input basis contains a parent outside evidence_lids");
   }
   if (inputBasis.kind === "artifact_reduction") {
@@ -586,7 +588,7 @@ export function validateWorkUnitDescriptorV4(
   }
   if (descriptor.aggregation) {
     boundedIdentity(descriptor.aggregation.parent_lid, "aggregation.parent_lid");
-    if (!evidenceLids.includes(descriptor.aggregation.parent_lid)) {
+    if (!evidenceLidSet.has(descriptor.aggregation.parent_lid)) {
       throw new Error("v4 aggregation parent_lid must be present in evidence_lids");
     }
     if (descriptor.aggregation.role === "fragment"

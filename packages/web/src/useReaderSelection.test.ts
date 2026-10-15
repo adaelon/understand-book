@@ -19,6 +19,20 @@ function selectText(node: Text, start: number, end: number) {
 }
 
 describe("reader selection", () => {
+  it('accepts both columns of one current screen and excludes prepared or animated screens', () => {
+    const root = document.createElement('div');
+    root.innerHTML = '<div class="focus-screen"><article><span data-lid="1" data-source-start="0">left</span></article><article><span data-lid="1" data-source-start="4">right</span></article></div><div class="focus-screen" hidden inert><span data-lid="2">prefetch</span></div>';
+    document.body.append(root);
+    const nodes = root.querySelectorAll('span'), first = nodes[0].firstChild!, last = nodes[1].firstChild!;
+    const range = selectText(first as Text, 1, 3); range.setEnd(last, 3);
+    window.getSelection()!.removeAllRanges(); window.getSelection()!.addRange(range);
+    expect(readReaderSelection(root)?.text).toBe('eftrig');
+    nodes[0].closest('.focus-screen')!.setAttribute('inert', '');
+    expect(readReaderSelection(root)).toBeNull();
+    selectText(nodes[2].firstChild as Text, 0, 3);
+    expect(readReaderSelection(root)).toBeNull();
+    root.remove(); window.getSelection()!.removeAllRanges();
+  });
   it("clones an in-reader range and rejects editable or crossing selections", () => {
     const root = document.createElement("div");
     root.innerHTML = '<p data-lid="L1">alpha😀beta</p><textarea>draft</textarea>';

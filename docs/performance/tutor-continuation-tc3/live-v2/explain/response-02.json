@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+      "id": "call_00_EMgfiSBjI3mrlg9G2Fsx5153",
+      "name": "source.present"
+    },
+    {
+      "arguments": "{\"operation\": \"evidence\", \"nature\": \"hypothesis\", \"operation_id\": \"op-avg-speed-denominator-1\", \"fact_refs\": [\"usage:tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af:user:turn_91d156344eb35fb3\"], \"target\": {\"capability\": \"explanation\", \"expected_performance\": \"能用\\\"整段行程的单一速率\\\"说明分母为何是总时间,并说出等距分段的用时不等会使简单算术平均失效\", \"learning_focus\": \"平均速度定义中分母为总时间的理由\", \"source_bindings\": [{\"start_lid\": \"1.1\", \"end_lid\": \"1.1\"}]}, \"interpretation\": \"学习者这一轮只提出概念性问题(\\\\\\\"请讲清楚这段平均速度定义\\\\\\\"),并把关注点主动放在分母的合理性上,而不是要求练习或检验答案。可支持的解释是:他目前把平均速度当作待记忆的公式,需要先建立\\\\\\\"整段行程的单一速率\\\\\\\"这一含义,才会接受分母是全程经过的时间;对加权机制尚无可见证据(既不能认定他已有,也不能认定他缺)。\", \"teaching_implication\": \"起点设在定义本身而非练习:先用\\\\\\\"距离÷时间\\\\\\\"的单位一致性说明分母必须是全程经过的时间,再用等距离、不等用时的对比说明为什么不能用分段速度的简单平均替代,然后才谈时间加权的含义。\"}",
+      "id": "call_01_O0Hlnqktlwegv4vB5Hrl6384",
+      "name": "tutor.step"
+    }
+  ],
+  "usage_total_tokens": 17087
+}

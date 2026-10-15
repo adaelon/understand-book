@@ -237,8 +237,7 @@ enum RequiredSemanticState {
 #[derive(Debug, Clone)]
 pub struct PreparedCompaction {
     request: CompactionRequest,
-    raw_messages: Vec<Message>,
-    deterministic_messages: Vec<Message>,
+    eligible_messages: Vec<Message>,
     full_turn_source_ids: Vec<Vec<String>>,
     required_semantic_states: BTreeMap<String, RequiredSemanticState>,
     tool_receipts: Vec<HistoricalToolReceipt>,
@@ -249,6 +248,28 @@ pub struct PreparedCompaction {
 impl PreparedCompaction {
     pub fn request(&self) -> &CompactionRequest {
         &self.request
+    }
+
+    /// Lower bound: even an empty semantic payload carries this fixed envelope.
+    /// Compare against the whole eligible provider projection, including legacy
+    /// protocol quoting, so this precheck cannot reject a useful short source.
+    pub(crate) fn can_reduce(&self, profile: &ModelRuntimeProfile, wrapper: &str) -> Result<bool, CompactionError> {
+        let minimum = serde_json::json!({
+            "schema_version": COMPACTION_CHECKPOINT_VERSION,
+            "prompt_version": self.request.prompt_version,
+            "window_id": "",
+            "source_history_revision": self.request.source_history_revision,
+            "raw_retained_item_ids": self.request.raw_retained_item_ids,
+            "semantic": {"active_goal":[],"progress":[],"decisions":[],"user_constraints":[],
+                "open_obligations":[],"unresolved_ambiguities":[],"critical_facts":[],
+                "critical_examples":[],"next_steps":[],"source_coverage":[]},
+            "tool_receipts": self.tool_receipts,
+            "pending_effects": self.pending_effects,
+            "context_revisions": self.context_revisions,
+        });
+        let envelope = Message::system(format!("{CONTEXT_COMPACTION_ITEM_VERSION}\n{wrapper}\ncompaction_checkpoint:\n{minimum}"));
+        let eligible = crate::AgentRequestPlan::for_ad_hoc(profile.clone(), &self.eligible_messages, &[]);
+        Ok(eligible.active_context.estimated_input_tokens > message_tokens(&[envelope])?)
     }
 
     #[cfg(test)]
@@ -597,8 +618,7 @@ pub fn prepare_compaction(
     validate_request(&request)?;
     Ok(PreparedCompaction {
         request,
-        raw_messages: raw_messages.to_vec(),
-        deterministic_messages: deterministic_messages.to_vec(),
+        eligible_messages: deterministic_messages[compactable_turns[0].0..raw_start].to_vec(),
         full_turn_source_ids,
         required_semantic_states: BTreeMap::new(),
         tool_receipts,
@@ -1553,31 +1573,9 @@ pub fn compact_with_adapter(
     };
     checkpoint.window_id = checkpoint_window_id(&checkpoint)?;
     validate_checkpoint_structure(&checkpoint)?;
-    let wrapper = profile
-        .compaction
-        .consumption_wrapper_asset
-        .resolve(COMPACTION_CONSUMPTION_WRAPPER);
-    let projected =
-        project_compaction_checkpoint_messages(&prepared.raw_messages, &checkpoint, &[], &wrapper)?;
-    let original_tokens = message_tokens(&prepared.deterministic_messages)?;
-    let replacement_tokens = message_tokens(&projected)?;
-    if replacement_tokens >= original_tokens {
-        return Err(CompactionError {
-            error_code: "COMPACTION_INSUFFICIENT_REDUCTION".into(),
-            message: format!(
-                "checkpoint uses {replacement_tokens} estimated tokens versus {original_tokens} before compaction"
-            ),
-        });
-    }
-    if replacement_tokens > limits.target_active_tokens {
-        return Err(CompactionError {
-            error_code: "COMPACTION_TARGET_NOT_REACHED".into(),
-            message: format!(
-                "checkpoint uses {replacement_tokens} estimated tokens, above target {}",
-                limits.target_active_tokens
-            ),
-        });
-    }
+    // This is a validated candidate. Only the caller has the complete sampling
+    // projection (live tool bodies, frozen context, tools and output reserve)
+    // needed to decide whether to install it.
     Ok(checkpoint)
 }
 

@@ -3,6 +3,10 @@ import { prepareAutomaticBuildSnapshot } from "../src/build-orchestrator";
 import { freezePass1ShadowTask } from "../src/pass1-reduction";
 import { automaticBuildGenerationArtifactPath } from "../src/semantic-artifact";
 import { createHash } from "node:crypto";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import { createInterface } from "node:readline";
+import { fileURLToPath } from "node:url";
 import { setImmediate as yieldToRunner } from "node:timers/promises";
 import {
   existsSync,
@@ -18,7 +22,20 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const diskFailure = vi.hoisted(() => ({ failNextWrite: false }));
+vi.mock("node:fs", async importOriginal => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  return { ...actual, writeFileSync: (...args: Parameters<typeof actual.writeFileSync>) => {
+    if (diskFailure.failNextWrite) {
+      diskFailure.failNextWrite = false;
+      actual.writeFileSync(args[0], Buffer.alloc(0), args[2]);
+      throw Object.assign(new Error("disk full"), { code: "ENOSPC" });
+    }
+    return actual.writeFileSync(...args);
+  } };
+});
 import {
   failAutomaticBuildExecutorSession,
   AutomaticBuildExecutorStaleGenerationSessionError,
@@ -39,6 +56,7 @@ import {
 import { canonicalAutomaticBuildJson } from "../src/automatic-build-protocol";
 import { BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3 } from "../src/build-executor-connection-capability";
 import { createBuildExecutorToolAdapter } from "../src/build-executor-tool-adapter";
+import { BUILD_EXECUTOR_TOOL_CONTRACTS_V3, type BuildExecutorToolNameV1 } from "../src/build-executor-tool-contract";
 import {
   CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
   measureExecutorTransportResponse,
@@ -511,6 +529,19 @@ describe("automatic build executor.open", () => {
       version: "automatic_build_opaque_handoff_record.v4",
       recovery_identity: currentRecoveryIdentity(value, "2026-08-08T06:00:03.000Z"),
     });
+    expectNoAttempts(value);
+  });
+
+  it("removes a newly created handoff record when disk exhaustion interrupts its write", () => {
+    const value = v3Fixture("disk-full-write");
+    const file = path.join(value.registryRoot, "opaque-handoffs", `${value.envelope.opaque_handoff_ref}.json`);
+    unlinkSync(file);
+    diskFailure.failNextWrite = true;
+    expect(() => issueCurrentRecoveryHandoff(value, "2026-08-08T06:00:03.000Z")).toThrow("disk full");
+    expect(existsSync(file)).toBe(false);
+    const recovered = issueCurrentRecoveryHandoff(value, "2026-08-08T06:00:04.000Z");
+    expect(recovered.opaque_handoff_ref).toBe(value.envelope.opaque_handoff_ref);
+    expect(JSON.parse(readFileSync(file, "utf8")).issued_at).toBe("2026-08-08T06:00:04.000Z");
     expectNoAttempts(value);
   });
 
@@ -2191,5 +2222,219 @@ describe("automatic build bounded executor session V3", () => {
     expect(readAutomaticBuildAttemptSnapshot(value.target)
       .stages[value.envelope.manifest.stage]?.[value.envelope.manifest.ordered_work_unit_ids[0]])
       .toMatchObject({ semantic_attempt: 1, lease_epoch: 1, failures: 0, submit_revision: 0 });
+  }, 30_000);
+});
+
+describe("TO6 executor lifecycle examples", () => {
+  it("TO6 executes advertised examples over the real stdio transport", async () => {
+    const value = v3Fixture("to6-stdio");
+    const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+    const child = spawn(process.execPath, ["--import", "tsx", "skills/build/build-executor-mcp.ts",
+      "--bootstrap-version", BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.version,
+      "--protocol-generation", BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.session_protocol], {
+      cwd: repoRoot, windowsHide: true, stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT: value.registryRoot },
+    });
+    const closed = once(child, "close");
+    let stderr = "";
+    child.stderr.on("data", chunk => { stderr += chunk; });
+    const lines = createInterface({ input: child.stdout })[Symbol.asyncIterator]();
+    const exchanges: Array<{ request: unknown; response: unknown }> = [];
+    const rpc = async (method: string, params: unknown = {}) => {
+      const request = { jsonrpc: "2.0", id: exchanges.length + 1, method, params };
+      child.stdin.write(`${JSON.stringify(request)}\n`);
+      const line = await lines.next();
+      if (line.done) throw new Error(`TO6 stdio ended before response: ${stderr}`);
+      const response = JSON.parse(line.value);
+      exchanges.push({ request, response });
+      expect(response.id).toBe(request.id);
+      expect(response.error).toBeUndefined();
+      return response.result;
+    };
+    try {
+      expect(await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {},
+        clientInfo: { name: "to6-test", version: "1" } })).toMatchObject({ capabilities: { tools: { listChanged: false } } });
+      const listed = await rpc("tools/list");
+      const call = async (name: BuildExecutorToolNameV1, bindings: Record<string, unknown>) => {
+        const schema = listed.tools.find((tool: { name: string }) => tool.name === name).inputSchema;
+        expect(schema).toEqual(BUILD_EXECUTOR_TOOL_CONTRACTS_V3.find(tool => tool.name === name)!.input_schema);
+        const args = { ...schema.examples[name === "executor.input.next" && "ack_through_ordinal" in bindings ? 1 : 0], ...bindings };
+        const result = await rpc("tools/call", { name, arguments: args });
+        expect(result.isError, JSON.stringify(result)).toBe(false);
+        return JSON.parse(result.content[0].text) as AutomaticBuildExecutorSessionResponseV3;
+      };
+      const wrongVersion = await rpc("tools/call", { name: "executor.open", arguments: {
+        ...listed.tools[0].inputSchema.examples[0], version: "automatic_build_executor_open_request.v4",
+        opaque_handoff_ref: value.envelope.opaque_handoff_ref,
+      } });
+      expect(wrongVersion.isError).toBe(true);
+      expect(JSON.parse(wrongVersion.content[0].text)).toMatchObject({ diagnostic_code: "protocol_incompatible", phase: "open" });
+      expectNoAttempts(value);
+      const opened = expectDeliverInput(await call("executor.open", { opaque_handoff_ref: value.envelope.opaque_handoff_ref }));
+      const refs = { opaque_session_ref: opened.input_manifest.opaque_session_ref, generation_input_ref: opened.input_manifest.generation_input_ref };
+      let last: number | undefined;
+      for (let batchIndex = 0; batchIndex < 128; batchIndex++) {
+        const batch = expectInputBatch(await call("executor.input.next", { ...refs,
+          ...(last === undefined ? {} : { ack_through_ordinal: last }) })).batch;
+        expect(batch.first_ordinal).toBe((last ?? -1) + 1);
+        last = batch.last_ordinal;
+        if (batch.final_for_generation) break;
+      }
+      expect(last).toBe(opened.input_manifest.total_chunk_count - 1);
+      const generated = expectGenerateV3(await call("executor.generation.start", { ...refs, confirmed_through_ordinal: last }));
+      const done = await call("executor.submit_candidate", { opaque_session_ref: generated.opaque_session_ref, candidate_sink_ref: generated.candidate_sink_ref });
+      expect(done.action).toEqual({ kind: "DONE", status: "committed" });
+      expect(readAutomaticBuildAttemptSnapshot(value.target).stages[value.envelope.manifest.stage]?.[value.envelope.manifest.ordered_work_unit_ids[0]])
+        .toMatchObject({ semantic_attempt: 1, failures: 0, submit_revision: 1 });
+      child.stdin.end();
+      expect((await closed)[0], stderr).toBe(0);
+      if (process.env.TO6_CAPTURE_DIR) {
+        mkdirSync(process.env.TO6_CAPTURE_DIR, { recursive: true });
+        writeFileSync(path.join(process.env.TO6_CAPTURE_DIR, "stdio.json"), `${JSON.stringify({ exchanges }, null, 2)}\n`);
+      }
+    } finally {
+      if (child.exitCode === null) child.kill();
+      await lines.return?.();
+    }
+  }, 30_000);
+
+  it.each(["normal", "recovery"] as const)("TO6 executes %s through the real MCP and session", (scenario) => {
+    const sourceBody = "A deterministic TO6 executor example.";
+    const value = v3Fixture(`to6-${scenario}`, sourceBody);
+    let now = "2026-08-08T08:00:01.000Z";
+    let connectionOrdinal = 0;
+    const connect = () => createBuildExecutorMcpSession({
+      bootstrap_version: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.version,
+      protocol_generation: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.session_protocol,
+      session_private_root: path.join(value.root, `connection-${++connectionOrdinal}`),
+      execute_request: (request, timing) => runAutomaticBuildExecutorSessionCommand(
+        { ...(request as Record<string, unknown>), now }, { timing },
+      ) as AutomaticBuildExecutorSessionResponseV3,
+    });
+    let session = connect();
+    const listed = session.handle_message({ jsonrpc: "2.0", id: 0, method: "tools/list" }) as {
+      result: { tools: Array<{ name: BuildExecutorToolNameV1; description: string; inputSchema: { examples: Record<string, unknown>[] } }> };
+    };
+    const calls: Array<{ name: BuildExecutorToolNameV1; arguments: Record<string, unknown>; result: unknown }> = [];
+    const requestFor = (name: BuildExecutorToolNameV1, fields: Record<string, unknown>) => {
+      const schema = listed.result.tools.find(tool => tool.name === name)!.inputSchema;
+      expect(schema).toEqual(BUILD_EXECUTOR_TOOL_CONTRACTS_V3.find(tool => tool.name === name)!.input_schema);
+      const example = schema.examples[name === "executor.input.next" && "ack_through_ordinal" in fields ? 1 : 0]!;
+      const bound = { ...example };
+      for (const [key, field] of Object.entries(fields)) {
+        if (key.endsWith("_ref") || key.endsWith("_ordinal")) bound[key] = field;
+        else expect(field).toEqual(example[key]);
+      }
+      return bound;
+    };
+    const invoke = (name: BuildExecutorToolNameV1, args: Record<string, unknown>, error = false) => {
+      expect(args).toEqual(requestFor(name, args));
+      const rpc = session.handle_message({ jsonrpc: "2.0", id: calls.length + 1,
+        method: "tools/call", params: { name, arguments: args } }) as {
+        result: { isError: boolean; content: Array<{ text: string }> };
+      };
+      calls.push({ name, arguments: args, result: rpc.result });
+      expect(rpc.result.isError).toBe(error);
+      return JSON.parse(rpc.result.content[0]!.text);
+    };
+    const open = (ref: string) => expectDeliverInput(invoke("executor.open",
+      requestFor("executor.open", { opaque_handoff_ref: ref })));
+    const firstDelivery = open(value.envelope.opaque_handoff_ref);
+    const beforeStart = requestFor("executor.generation.start", {
+      opaque_session_ref: firstDelivery.input_manifest.opaque_session_ref,
+      generation_input_ref: firstDelivery.input_manifest.generation_input_ref,
+      confirmed_through_ordinal: firstDelivery.input_manifest.total_chunk_count - 1,
+    });
+    expect(invoke("executor.generation.start", beforeStart, true)).toMatchObject({
+      diagnostic_code: "protocol_incompatible", phase: "generation_start",
+    });
+    expectNoAttempts(value);
+    const firstBatch = invoke("executor.input.next", { ...firstDelivery.next_request });
+    expect(invoke("executor.input.next", { ...firstDelivery.next_request })).toEqual(firstBatch);
+    // A replacement connection resumes from the first unconfirmed input batch.
+    session = connect();
+    const resumed = open(value.envelope.opaque_handoff_ref);
+    expect(resumed).toEqual(firstDelivery);
+    const deliver = (delivery: ReturnType<typeof expectDeliverInput>) => {
+      let request: Record<string, unknown> = { ...delivery.next_request };
+      const chunks: ReturnType<typeof expectInputBatch>["batch"]["chunks"] = [];
+      for (let index = 0; index < 128; index++) {
+        const batch = expectInputBatch(invoke("executor.input.next", request)).batch;
+        expect(batch.first_ordinal).toBe(chunks.length);
+        chunks.push(...batch.chunks);
+        if (batch.final_for_generation) {
+          expect(chunks.map(chunk => chunk.ordinal)).toEqual(
+            Array.from({ length: delivery.input_manifest.total_chunk_count }, (_, ordinal) => ordinal),
+          );
+          return { chunks, start: requestFor("executor.generation.start", {
+            opaque_session_ref: delivery.input_manifest.opaque_session_ref,
+            generation_input_ref: delivery.input_manifest.generation_input_ref,
+            confirmed_through_ordinal: batch.last_ordinal,
+          }) };
+        }
+        request = requestFor("executor.input.next", {
+          opaque_session_ref: delivery.input_manifest.opaque_session_ref,
+          generation_input_ref: delivery.input_manifest.generation_input_ref,
+          ack_through_ordinal: batch.last_ordinal,
+        });
+      }
+      throw new Error("TO6 fixture did not finish input delivery");
+    };
+    const delivered = deliver(resumed);
+    expectNoAttempts(value);
+    const generated = expectGenerateV3(invoke("executor.generation.start", delivered.start));
+    expect(invoke("executor.generation.start", delivered.start).action).toEqual(generated);
+    expect(generated.opaque_session_ref).not.toBe(firstDelivery.input_manifest.opaque_session_ref);
+    let currentGeneration = generated;
+    let recovery: unknown;
+    if (scenario === "normal") {
+      // Lost GENERATE response: reread input on a fresh connection, then replay attempt 1.
+      session = connect();
+      const rehydrated = deliver(open(value.envelope.opaque_handoff_ref));
+      expect(rehydrated.chunks).toEqual(delivered.chunks);
+      currentGeneration = expectGenerateV3(invoke("executor.generation.start", rehydrated.start));
+      expect(currentGeneration).toEqual(generated);
+    } else {
+      now = "2026-08-09T08:00:01.000Z";
+      const replacement = issueCurrentRecoveryHandoff(value, now);
+      recovery = replacement;
+      expect(replacement.recovery_identity).toMatchObject({ semantic_attempt: 1, lease_epoch: 2 });
+      expect(invoke("executor.generation.start", delivered.start, true)).toMatchObject({
+        diagnostic_code: "stale_generation_session", phase: "generation_start",
+      });
+      expect(invoke("executor.submit_candidate", requestFor("executor.submit_candidate", {
+        opaque_session_ref: generated.opaque_session_ref, candidate_sink_ref: generated.candidate_sink_ref,
+        candidate: { nodes: [], edges: [] },
+      }), true)).toMatchObject({ diagnostic_code: "lease_expired", phase: "candidate_submit" });
+      session = connect();
+      const replacementInput = deliver(open(replacement.opaque_handoff_ref));
+      expect(replacementInput.chunks.map(chunk => chunk.payload_utf8)).toEqual(delivered.chunks.map(chunk => chunk.payload_utf8));
+      currentGeneration = expectGenerateV3(invoke("executor.generation.start", replacementInput.start));
+      expect(currentGeneration.opaque_session_ref).not.toBe(generated.opaque_session_ref);
+      expect(currentGeneration.candidate_sink_ref).not.toBe(generated.candidate_sink_ref);
+      expect(currentGeneration.semantic_attempt).toBe(1);
+    }
+    const submit = requestFor("executor.submit_candidate", {
+      opaque_session_ref: currentGeneration.opaque_session_ref,
+      candidate_sink_ref: currentGeneration.candidate_sink_ref,
+      candidate: { nodes: [], edges: [] },
+    });
+    const committed = invoke("executor.submit_candidate", submit);
+    expect(committed.action).toEqual({ kind: "DONE", status: "committed" });
+    expect(JSON.stringify(committed)).not.toMatch(/"nodes"|"edges"|candidate_path|candidate_sink_ref/u);
+    const taskSession = JSON.parse(readFileSync(path.join(value.registryRoot, "executor-task-sessions",
+      `${currentGeneration.opaque_session_ref}.json`), "utf8"));
+    const mailbox = readFileSync(path.join(path.dirname(taskSession.lease_ref), "candidate.json"), "utf8");
+    expect(mailbox).toBe('{"edges":[],"nodes":[]}\n');
+    const snapshot = readAutomaticBuildAttemptSnapshot(value.target);
+    expect(snapshot.stages[value.envelope.manifest.stage]?.[value.envelope.manifest.ordered_work_unit_ids[0]])
+      .toMatchObject({ semantic_attempt: 1, lease_epoch: scenario === "normal" ? 1 : 2, failures: 0, submit_revision: 1 });
+    if (process.env.TO6_CAPTURE_DIR) {
+      mkdirSync(process.env.TO6_CAPTURE_DIR, { recursive: true });
+      writeFileSync(path.join(process.env.TO6_CAPTURE_DIR, `${scenario}.json`), `${JSON.stringify({
+        scenario, fixture: { source_body: sourceBody, heading: "Guide" },
+        specs: listed.result.tools, calls, recovery, snapshot, mailbox,
+      }, null, 2)}\n`, "utf8");
+    }
   }, 30_000);
 });

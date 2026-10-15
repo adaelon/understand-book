@@ -2,7 +2,7 @@
 import type { QueryAudit } from "./QueryAudit";
 
 /**
- * 查询踪迹一步 `[ADR-0030 决策5]`:tool_calls 序列摘要,对用户可见(book.query 的检索范围 + citations 链在 `result_digest` 里)。
+ * 查询踪迹一步：保留 tool_calls 序列摘要用于开发诊断；阅读器展示边界见 `[ADR-0160 §11]`。
  * `model_tool_loop` 是 1-based 模型—工具循环序号；同一采样批次的并行调用共享该值。
  */
 export type TraceStep = { model_tool_loop?: number, tool: string, args: string, result_digest: string, query_audit?: QueryAudit, };

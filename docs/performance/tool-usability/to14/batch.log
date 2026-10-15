@@ -1,0 +1,27 @@
+START baseline-rainwater-1 cumulative_tokens=0
+END baseline-rainwater-1 exit=0
+START candidate-rainwater-1 cumulative_tokens=136816
+END candidate-rainwater-1 exit=0
+START baseline-tutor-continue-1 cumulative_tokens=286938
+END baseline-tutor-continue-1 exit=0
+START candidate-tutor-continue-1 cumulative_tokens=387476
+END candidate-tutor-continue-1 exit=0
+START baseline-rainwater-2 cumulative_tokens=496905
+END baseline-rainwater-2 exit=0
+START candidate-rainwater-2 cumulative_tokens=634938
+END candidate-rainwater-2 exit=0
+START baseline-tutor-continue-2 cumulative_tokens=783774
+END baseline-tutor-continue-2 exit=0
+START candidate-tutor-continue-2 cumulative_tokens=884012
+END candidate-tutor-continue-2 exit=0
+START baseline-rainwater-3 cumulative_tokens=994005
+END baseline-rainwater-3 exit=0
+START candidate-rainwater-3 cumulative_tokens=1128597
+END candidate-rainwater-3 exit=0
+START baseline-tutor-continue-3 cumulative_tokens=1277472
+END baseline-tutor-continue-3 exit=0
+START candidate-tutor-continue-3 cumulative_tokens=1377379
+END candidate-tutor-continue-3 exit=0
+START baseline-save-note-1 cumulative_tokens=1487334
+END baseline-save-note-1 exit=0
+Fixed schedule ended; no failed task was resampled.

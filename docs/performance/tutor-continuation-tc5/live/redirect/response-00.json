@@ -1,0 +1,21 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"lid\": \"1.1\"}",
+      "id": "call_00_dkvayCX0NR5gLokV5fNx7413",
+      "name": "book.text"
+    },
+    {
+      "arguments": "{\"lid\": \"1.1\", \"granularity\": \"near\"}",
+      "id": "call_01_A6z0OxpY5qAzgDNpSP7Z3558",
+      "name": "book.context"
+    },
+    {
+      "arguments": "{\"task\": \"Present the original book sentence defining average speed for citation in a focused clarification answer\", \"required_capabilities\": [\"source_presentation\"], \"scope\": \"passage\", \"operation\": \"read_source\", \"effect_mode\": \"read_only\", \"max_results\": 3}",
+      "id": "call_02_DQSFSIZsdA9F5Um4uZNJ2554",
+      "name": "tool.search"
+    }
+  ],
+  "usage_total_tokens": 23229
+}

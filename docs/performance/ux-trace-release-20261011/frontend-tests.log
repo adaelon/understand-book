@@ -1,0 +1,75 @@
+Scope: all 8 workspace projects
+Lockfile is up to date, resolution step is skipped
+Packages: -123
+--------------------------------------------------------------------------------
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: esbuild@0.25.12, esbuild@0.28.1.                    │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Done in 1.2s using pnpm v10.34.2
+
+[1m[46m RUN [49m[22m [36mv3.2.6 [39m[90m/opt/understand-book/releases/ux-trace-20261011/packages/web[39m
+
+[90mstderr[2m | src/components/RightRail.test.ts
+[22m[39mWarning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+[90mstderr[2m | src/App.startup.test.ts
+[22m[39mWarning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+[90mstderr[2m | src/App.startup.test.ts
+[22m[39mWarning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+[90mstderr[2m | src/components/RightRail.test.ts
+[22m[39mWarning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ [32m✓[39m src/components/IntentArtifactPanel.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 102[2mms[22m[39m
+[90mstderr[2m | src/components/ShareImagePanel.test.ts
+[22m[39mWarning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+[90mstderr[2m | src/components/ShareImagePanel.test.ts
+[22m[39mWarning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ [32m✓[39m src/components/ShareImagePanel.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 198[2mms[22m[39m
+ [32m✓[39m src/components/ProfileMemoryPanel.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 335[2mms[22m[39m
+ [32m✓[39m src/components/RightRail.test.ts [2m([22m[2m50 tests[22m[2m)[22m[33m 1779[2mms[22m[39m
+ [32m✓[39m src/components/BuildIntentPane.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 102[2mms[22m[39m
+ [32m✓[39m src/components/ReaderWorkspace.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 80[2mms[22m[39m
+ [32m✓[39m src/components/AgentActivities.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 50[2mms[22m[39m
+[90mstderr[2m | src/NetworkApp.resumption.test.ts
+[22m[39mWarning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+[90mstderr[2m | src/NetworkApp.resumption.test.ts
+[22m[39mWarning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ [32m✓[39m src/App.startup.test.ts [2m([22m[2m65 tests[22m[2m)[22m[33m 1400[2mms[22m[39m
+ [32m✓[39m src/NetworkApp.resumption.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 107[2mms[22m[39m
+ [32m✓[39m src/book-title.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 2[2mms[22m[39m
+ [32m✓[39m src/components/AccountAllowance.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 88[2mms[22m[39m
+[90mstderr[2m | src/components/RightRail.pdf-note-placement.test.ts
+[22m[39mWarning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+[90mstderr[2m | src/components/RightRail.pdf-note-placement.test.ts
+[22m[39mWarning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ [32m✓[39m src/components/RightRail.pdf-note-placement.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 71[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m12 passed[39m[22m[90m (12)[39m
+[2m      Tests [22m [1m[32m169 passed[39m[22m[90m (169)[39m
+[2m   Start at [22m 09:52:15
+[2m   Duration [22m 6.70s[2m (transform 4.32s, setup 0ms, collect 9.27s, tests 4.32s, environment 2.43s, prepare 727ms)[22m
+
+
+> @understand-book/web@0.0.0 build /opt/understand-book/releases/ux-trace-20261011/packages/web
+> vue-tsc --noEmit && vite build --outDir dist-multi
+
+src/components/ConversationLearningGoal.test.ts(8,46): error TS2322: Type '{ session: null; enabled: false; busy: false; available: true; error: string; }' is not assignable to type 'VNodeProps & { __v_isVNode?: undefined; [Symbol.iterator]?: undefined; } & Record<string, any> & { readonly session: TutorSession | null; ... 8 more ...; readonly onManage?: (() => any) | undefined; } & AllowedComponentProps & ComponentCustomProps'.
+  Type '{ session: null; enabled: false; busy: false; available: true; error: string; }' is missing the following properties from type '{ readonly session: TutorSession | null; readonly enabled: boolean; readonly busy: boolean; readonly available: boolean; readonly ready: boolean; readonly otherSession: boolean; readonly error: string; readonly onResume?: (() => any) | undefined; readonly onGoal?: ((value: string) => any) | undefined; readonly onMan...': ready, otherSession
+src/components/ConversationLearningGoal.test.ts(19,46): error TS2322: Type '{ session: TutorSession; enabled: true; busy: false; available: true; error: string; }' is not assignable to type 'VNodeProps & { __v_isVNode?: undefined; [Symbol.iterator]?: undefined; } & Record<string, any> & { readonly session: TutorSession | null; ... 8 more ...; readonly onManage?: (() => any) | undefined; } & AllowedComponentProps & ComponentCustomProps'.
+  Type '{ session: TutorSession; enabled: true; busy: false; available: true; error: string; }' is missing the following properties from type '{ readonly session: TutorSession | null; readonly enabled: boolean; readonly busy: boolean; readonly available: boolean; readonly ready: boolean; readonly otherSession: boolean; readonly error: string; readonly onResume?: (() => any) | undefined; readonly onGoal?: ((value: string) => any) | undefined; readonly onMan...': ready, otherSession
+src/components/ConversationLearningGoal.test.ts(32,46): error TS2322: Type '{ session: null; enabled: true; busy: false; available: true; error: string; }' is not assignable to type 'VNodeProps & { __v_isVNode?: undefined; [Symbol.iterator]?: undefined; } & Record<string, any> & { readonly session: TutorSession | null; ... 8 more ...; readonly onManage?: (() => any) | undefined; } & AllowedComponentProps & ComponentCustomProps'.
+  Type '{ session: null; enabled: true; busy: false; available: true; error: string; }' is missing the following properties from type '{ readonly session: TutorSession | null; readonly enabled: boolean; readonly busy: boolean; readonly available: boolean; readonly ready: boolean; readonly otherSession: boolean; readonly error: string; readonly onResume?: (() => any) | undefined; readonly onGoal?: ((value: string) => any) | undefined; readonly onMan...': ready, otherSession
+ ELIFECYCLE  Command failed with exit code 2.

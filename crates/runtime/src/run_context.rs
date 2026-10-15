@@ -224,6 +224,7 @@ pub trait ResidentStatePort {
     fn read_video_frames(&mut self, _request: crate::video::ReadFrames, _cancellation: &CancellationToken) -> Result<crate::video::FrameBatch, read_tools::ToolError> {
         Err(crate::video::unavailable())
     }
+    fn presentation_unavailable_reason(&self) -> Option<&'static str> { None }
     fn tutor_assessment_input(&mut self, _action: &str) -> Result<serde_json::Value, read_tools::ToolError> {
         Err(memory::teaching::invalid("Assessment unavailable"))
     }

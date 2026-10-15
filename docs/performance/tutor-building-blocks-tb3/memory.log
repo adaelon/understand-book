@@ -1,0 +1,37 @@
+   Compiling syn v2.0.118
+   Compiling serde_json v1.0.150
+   Compiling smallvec v1.15.2
+   Compiling once_cell v1.21.4
+   Compiling tempfile v3.27.0
+   Compiling rusqlite v0.40.2
+   Compiling serde_derive_internals v0.29.1
+   Compiling thiserror-impl v2.0.18
+   Compiling serde_derive v1.0.228
+   Compiling thiserror v2.0.18
+   Compiling schemars_derive v0.8.22
+   Compiling ts-rs-macros v10.1.0
+   Compiling serde v1.0.228
+   Compiling schemars v0.8.22
+   Compiling ts-rs v10.1.0
+   Compiling base-schema v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\base-schema)
+   Compiling book-tool-contracts v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\book-tool-contracts)
+   Compiling read-tools v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\read-tools)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling memory v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\memory)
+    Finished `test` profile [unoptimized] target(s) in 39.28s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-tb-195\debug\deps\memory-1500666128b2cb2f.exe)
+
+running 1 test
+test learning_evidence::tests::learning_evidence_replays_conditions_corrections_and_interrupted_projection ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 148 filtered out; finished in 0.19s
+

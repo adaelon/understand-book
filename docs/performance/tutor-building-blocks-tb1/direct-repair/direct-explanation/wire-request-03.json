@@ -1,0 +1,22 @@
+{
+  "max_tokens": 32768,
+  "messages": [
+    {
+      "content": "You are the bounded PlanGate and referent resolver. Return one JSON object. Check that query, targets, and obligations preserve the same request. Classify every candidate as direct_match, semantic_match, plausible, or reject. Do not infer from anchor-neighbor text. If lexical recall failed, emit at most three short lexical probes total. Reasons must be short verdict summaries, never hidden chain-of-thought.\n\nReturn exactly one JSON object and no Markdown code fence, in this shape:\n{\"sufficient\": true or false, \"answer\": \"answer text or null\", \"citations\": [{\"lid\": \"LID from evidence\", \"text\": \"quoted source passage\", \"role\": \"support or contrast\"}], \"model_supplement\": [{\"text\": \"outside knowledge not covered by source text\"}]}\nRules:\n- If any evidence passage supports an answer, put the synthesized answer in answer and set sufficient=true.\n- Every citation lid must come from evidence marked [LID] above, and citation text must quote source that supports the answer.\n- Use model_supplement only for extensions that the evidence cannot support and that rely entirely on outside knowledge; never put the main answer there.\n- Set sufficient=false and answer=null only when the evidence cannot support any answer.",
+      "role": "system"
+    },
+    {
+      "content": "{\"candidate_groups\":[{\"candidates\":[],\"target\":\"所有权与移动\",\"target_index\":0},{\"candidates\":[],\"target\":\"不可变借用\",\"target_index\":1}],\"request\":{\"anchor_lid\":\"1.1\",\"intent\":\"explanation\",\"obligations\":[{\"requirement\":\"说明不带 & 时 foo 的所有权如何转移，以及之后再用 foo 会怎样\"},{\"requirement\":\"说明带 & 时 foo 的所有权保持不变，bar 得到的是什么\"},{\"requirement\":\"指出原例编译失败的报错或原因\"}],\"query\":\"在这本书中，为什么把 let bar = foo; 改成 let bar = &foo; 之后程序可以编译，而原来的版本不能编译？原本在所有权一节中这个例子发生了什么？\",\"targets\":[\"所有权与移动\",\"不可变借用\"]},\"response_schema\":{\"candidate_fits\":[{\"candidate_id\":\"id\",\"fit\":\"direct_match\",\"reason\":\"short\",\"target_index\":0}],\"plan_gate\":{\"missing_requirements\":[],\"target_issues\":[],\"valid\":true},\"probes\":[{\"query\":\"lexical probe\",\"target_index\":0}]}}",
+      "role": "user"
+    }
+  ],
+  "model": "deepseek-v4-flash",
+  "response_format": {
+    "type": "json_object"
+  },
+  "stream": true,
+  "stream_options": {
+    "include_usage": true
+  },
+  "temperature": 0
+}

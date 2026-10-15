@@ -19,6 +19,7 @@
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@traptitech/markdown-it-katex": "^3.6.0",
     "katex": "^0.17.0",
+    "lottie-web": "5.13.0",
     "markdown-it": "^14.2.0",
     "pdfjs-dist": "^6.1.200",
     "vue": "^3.5.13"

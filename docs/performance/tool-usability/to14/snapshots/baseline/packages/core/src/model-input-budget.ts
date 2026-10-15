@@ -1,0 +1,621 @@
+import { createHash } from "node:crypto";
+import {
+  validateExecutorTransportPack,
+  validateExecutorTransportCapabilities,
+  type ExecutorTransportPackResultV2,
+  type ExecutorTransportProfile,
+} from "./executor-transport";
+import {
+  inspectModelExecutionInput,
+  MODEL_INPUT_RENDER_CONTRACT_VERSION,
+} from "./model-input-renderer";
+import { estimateTokens } from "./window";
+
+export const MODEL_INPUT_ESTIMATOR_VERSION = "weighted_codepoint_estimator.v1" as const;
+// The estimator charges a non-CJK code point 0.25 token while UTF-8 can use
+// four bytes for that code point. This is the conservative byte/token ratio.
+const MAX_UTF8_BYTES_PER_ESTIMATED_TOKEN = 16;
+
+export interface ModelInputBudgetEvidenceV2 {
+  version: "model_input_budget_evidence.v2";
+  estimator_version: string;
+  render_contract_version: string;
+  router_version: string;
+  prompt_sha256: string;
+  rendered_input_sha256: string;
+  estimated_rendered_tokens: number;
+  stage_body_limit_tokens: number;
+  executor_context_floor_tokens: number;
+  prompt_reserve_tokens: number;
+  protocol_reserve_tokens: number;
+  output_reserve_tokens: number;
+  safety_margin_tokens: number;
+  effective_body_limit_tokens: number;
+  status: "within_limit";
+}
+
+export interface ModelInputBudgetRequestV1 {
+  rendered_input: string;
+  router_version: string;
+  prompt_sha256: string;
+  stage_body_limit_tokens: number;
+  executor_context_floor_tokens: number;
+  prompt_reserve_tokens: number;
+  protocol_reserve_tokens: number;
+  output_reserve_tokens: number;
+  safety_margin_tokens: number;
+  estimator_version?: string;
+  render_contract_version?: string;
+}
+
+export interface ModelInputOverLimitV2 {
+  version: "model_input_budget_evaluation.v2";
+  status: "over_limit";
+  estimator_version: string;
+  render_contract_version: string;
+  router_version: string;
+  prompt_sha256: string;
+  rendered_input_sha256: string;
+  estimated_rendered_tokens: number;
+  stage_body_limit_tokens: number;
+  executor_context_floor_tokens: number;
+  prompt_reserve_tokens: number;
+  protocol_reserve_tokens: number;
+  output_reserve_tokens: number;
+  safety_margin_tokens: number;
+  effective_body_limit_tokens: number;
+}
+
+export type ModelInputBudgetEvaluationV2 =
+  | { status: "within_limit"; proof: ModelInputBudgetEvidenceV2 }
+  | ModelInputOverLimitV2;
+
+export interface ModelExecutionBudgetEvidenceV3 {
+  version: "model_execution_budget_evidence.v3";
+  estimator_version: string;
+  render_contract_version: string;
+  router_version: string;
+  prompt_sha256: string;
+  rendered_input_sha256: string;
+  estimated_prompt_tokens: number;
+  estimated_rendered_tokens: number;
+  input_chunk_count: number;
+  input_delivery_overhead_tokens: number;
+  output_reserve_tokens: number;
+  max_candidate_tokens: number;
+  effective_body_limit_tokens: number;
+}
+
+export interface ModelExecutionBudgetRequestV2 {
+  semantic_prompt: string;
+  rendered_input: string;
+  router_version: string;
+  stage_body_limit_tokens: number;
+  executor_context_floor_tokens: number;
+  output_reserve_tokens: number;
+  safety_margin_tokens: number;
+  max_candidate_tokens: number;
+  transport_profile: ExecutorTransportProfile;
+  input_transport_packs: readonly [ExecutorTransportPackResultV2, ExecutorTransportPackResultV2];
+  estimator_version?: string;
+  render_contract_version?: string;
+}
+
+export type ModelExecutionBudgetBlockReasonV2 =
+  | "stage_limit"
+  | "context_limit"
+  | "input_transport"
+  | "candidate_transport";
+
+export interface ModelExecutionBudgetBlockedV3 {
+  version: "model_execution_budget_evaluation.v3";
+  status: "blocked";
+  estimator_version: string;
+  render_contract_version: string;
+  router_version: string;
+  prompt_sha256: string;
+  rendered_input_sha256: string;
+  estimated_prompt_tokens: number;
+  estimated_rendered_tokens: number;
+  input_chunk_count: number;
+  input_delivery_overhead_tokens: number;
+  output_reserve_tokens: number;
+  max_candidate_tokens: number;
+  effective_body_limit_tokens: number;
+  reasons: ModelExecutionBudgetBlockReasonV2[];
+}
+
+export type ModelExecutionBudgetEvaluationV3 =
+  | { status: "within_limit"; proof: ModelExecutionBudgetEvidenceV3 }
+  | ModelExecutionBudgetBlockedV3;
+
+function stableJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(",")}}`;
+}
+
+function positiveSafeInteger(value: number, field: string): number {
+  if (!Number.isSafeInteger(value) || value < 1) throw new Error(`${field} must be a positive safe integer`);
+  return value;
+}
+
+function nonNegativeSafeInteger(value: number, field: string): number {
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${field} must be a non-negative safe integer`);
+  return value;
+}
+
+function boundedIdentity(value: string, field: string): string {
+  if (!value || Buffer.byteLength(value, "utf8") > 256) throw new Error(`${field} must be a non-empty bounded string`);
+  return value;
+}
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function sha256Identity(value: string, field: string): string {
+  if (!/^[a-f0-9]{64}$/i.test(value)) throw new Error(`${field} must be a SHA-256 hex digest`);
+  return value.toLowerCase();
+}
+
+const MODEL_INPUT_BUDGET_EVIDENCE_KEYS = [
+  "effective_body_limit_tokens",
+  "estimated_rendered_tokens",
+  "estimator_version",
+  "executor_context_floor_tokens",
+  "output_reserve_tokens",
+  "prompt_reserve_tokens",
+  "prompt_sha256",
+  "protocol_reserve_tokens",
+  "render_contract_version",
+  "rendered_input_sha256",
+  "router_version",
+  "safety_margin_tokens",
+  "stage_body_limit_tokens",
+  "status",
+  "version",
+] as const;
+
+const MODEL_EXECUTION_BUDGET_EVIDENCE_KEYS = [
+  "effective_body_limit_tokens",
+  "estimated_prompt_tokens",
+  "estimated_rendered_tokens",
+  "estimator_version",
+  "input_chunk_count",
+  "input_delivery_overhead_tokens",
+  "max_candidate_tokens",
+  "output_reserve_tokens",
+  "prompt_sha256",
+  "render_contract_version",
+  "rendered_input_sha256",
+  "router_version",
+  "version",
+] as const;
+
+type LegacyModelInputBudgetProofV1 = Omit<ModelInputBudgetEvidenceV2, "version"> & {
+  version: "model_input_budget_proof.v1";
+  proof_digest: string;
+};
+
+type LegacyModelExecutionBudgetProofV2 = Omit<ModelExecutionBudgetEvidenceV3, "version"> & {
+  version: "model_execution_budget_proof.v2";
+  transport_profile_digest: string;
+  proof_digest: string;
+};
+
+const LEGACY_MODEL_INPUT_BUDGET_PROOF_KEYS = [
+  ...MODEL_INPUT_BUDGET_EVIDENCE_KEYS.filter((key) => key !== "version"),
+  "proof_digest",
+  "version",
+].sort();
+
+const LEGACY_MODEL_EXECUTION_BUDGET_PROOF_KEYS = [
+  ...MODEL_EXECUTION_BUDGET_EVIDENCE_KEYS.filter((key) => key !== "version"),
+  "proof_digest",
+  "transport_profile_digest",
+  "version",
+].sort();
+
+/**
+ * Validate persisted budget evidence without requiring the private rendered body.
+ *
+ * This is the read-side gate used by planning and claiming. The executor-side
+ * gate still calls `verifyModelInputBudgetProof`, which additionally hashes and
+ * re-estimates the exact rendered bytes.
+ */
+export function validateModelInputBudgetProof(
+  proof: ModelInputBudgetEvidenceV2,
+): ModelInputBudgetEvidenceV2 {
+  if (!proof || typeof proof !== "object" || Array.isArray(proof)) {
+    throw new Error("budget proof must be an object");
+  }
+  const keys = Object.keys(proof).sort();
+  if (keys.length !== MODEL_INPUT_BUDGET_EVIDENCE_KEYS.length
+    || keys.some((key, index) => key !== MODEL_INPUT_BUDGET_EVIDENCE_KEYS[index])) {
+    throw new Error("budget evidence contains unsupported or missing fields");
+  }
+  if (proof.version !== "model_input_budget_evidence.v2" || proof.status !== "within_limit") {
+    throw new Error("budget evidence version or status is invalid");
+  }
+  boundedIdentity(proof.estimator_version, "estimator_version");
+  boundedIdentity(proof.render_contract_version, "render_contract_version");
+  boundedIdentity(proof.router_version, "router_version");
+  sha256Identity(proof.prompt_sha256, "prompt_sha256");
+  sha256Identity(proof.rendered_input_sha256, "rendered_input_sha256");
+  const stageBodyLimitTokens = positiveSafeInteger(proof.stage_body_limit_tokens, "stage_body_limit_tokens");
+  const executorContextFloorTokens = positiveSafeInteger(
+    proof.executor_context_floor_tokens,
+    "executor_context_floor_tokens",
+  );
+  const promptReserveTokens = nonNegativeSafeInteger(proof.prompt_reserve_tokens, "prompt_reserve_tokens");
+  const protocolReserveTokens = nonNegativeSafeInteger(proof.protocol_reserve_tokens, "protocol_reserve_tokens");
+  const outputReserveTokens = nonNegativeSafeInteger(proof.output_reserve_tokens, "output_reserve_tokens");
+  const safetyMarginTokens = nonNegativeSafeInteger(proof.safety_margin_tokens, "safety_margin_tokens");
+  const estimatedRenderedTokens = nonNegativeSafeInteger(
+    proof.estimated_rendered_tokens,
+    "estimated_rendered_tokens",
+  );
+  const effectiveBodyLimitTokens = nonNegativeSafeInteger(
+    proof.effective_body_limit_tokens,
+    "effective_body_limit_tokens",
+  );
+  const expectedEffectiveBodyLimit = Math.min(
+    stageBodyLimitTokens,
+    Math.max(
+      0,
+      executorContextFloorTokens
+        - promptReserveTokens
+        - protocolReserveTokens
+        - outputReserveTokens
+        - safetyMarginTokens,
+    ),
+  );
+  if (effectiveBodyLimitTokens !== expectedEffectiveBodyLimit) {
+    throw new Error("budget evidence effective body limit is inconsistent with its reserves");
+  }
+  if (estimatedRenderedTokens > effectiveBodyLimitTokens) {
+    throw new Error("budget evidence exceeds its effective body limit");
+  }
+  return proof;
+}
+
+/** One-shot forward migration used by synthetic fixtures and the guarded R8 migration. */
+export function migrateModelInputBudgetProofV1(value: unknown): ModelInputBudgetEvidenceV2 {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("legacy model input budget proof must be an object");
+  }
+  const keys = Object.keys(value).sort();
+  if (keys.length !== LEGACY_MODEL_INPUT_BUDGET_PROOF_KEYS.length
+    || keys.some((key, index) => key !== LEGACY_MODEL_INPUT_BUDGET_PROOF_KEYS[index])) {
+    throw new Error("legacy model input budget proof contains unsupported or missing fields");
+  }
+  const legacy = value as LegacyModelInputBudgetProofV1;
+  if (legacy.version !== "model_input_budget_proof.v1") {
+    throw new Error("legacy model input budget proof version is unsupported");
+  }
+  sha256Identity(legacy.proof_digest, "legacy proof_digest");
+  const {
+    version: _legacyVersion,
+    proof_digest: _legacyProofDigest,
+    ...fields
+  } = legacy;
+  return validateModelInputBudgetProof({
+    version: "model_input_budget_evidence.v2",
+    ...fields,
+  });
+}
+
+export function evaluateModelInputBudget(input: ModelInputBudgetRequestV1): ModelInputBudgetEvaluationV2 {
+  const estimatorVersion = boundedIdentity(
+    input.estimator_version ?? MODEL_INPUT_ESTIMATOR_VERSION,
+    "estimator_version",
+  );
+  const renderContractVersion = boundedIdentity(
+    input.render_contract_version ?? MODEL_INPUT_RENDER_CONTRACT_VERSION,
+    "render_contract_version",
+  );
+  const routerVersion = boundedIdentity(input.router_version, "router_version");
+  const promptSha256 = sha256Identity(input.prompt_sha256, "prompt_sha256");
+  const stageBodyLimitTokens = positiveSafeInteger(input.stage_body_limit_tokens, "stage_body_limit_tokens");
+  const executorContextFloorTokens = positiveSafeInteger(
+    input.executor_context_floor_tokens,
+    "executor_context_floor_tokens",
+  );
+  const promptReserveTokens = nonNegativeSafeInteger(input.prompt_reserve_tokens, "prompt_reserve_tokens");
+  const protocolReserveTokens = nonNegativeSafeInteger(input.protocol_reserve_tokens, "protocol_reserve_tokens");
+  const outputReserveTokens = nonNegativeSafeInteger(input.output_reserve_tokens, "output_reserve_tokens");
+  const safetyMarginTokens = nonNegativeSafeInteger(input.safety_margin_tokens, "safety_margin_tokens");
+  const contextBodyLimit = executorContextFloorTokens
+    - promptReserveTokens
+    - protocolReserveTokens
+    - outputReserveTokens
+    - safetyMarginTokens;
+  const effectiveBodyLimitTokens = Math.min(stageBodyLimitTokens, Math.max(0, contextBodyLimit));
+  const estimatedRenderedTokens = estimateTokens(input.rendered_input);
+  const renderedInputSha256 = sha256(input.rendered_input);
+  const shared = {
+    estimator_version: estimatorVersion,
+    render_contract_version: renderContractVersion,
+    router_version: routerVersion,
+    prompt_sha256: promptSha256,
+    rendered_input_sha256: renderedInputSha256,
+    estimated_rendered_tokens: estimatedRenderedTokens,
+    stage_body_limit_tokens: stageBodyLimitTokens,
+    executor_context_floor_tokens: executorContextFloorTokens,
+    prompt_reserve_tokens: promptReserveTokens,
+    protocol_reserve_tokens: protocolReserveTokens,
+    output_reserve_tokens: outputReserveTokens,
+    safety_margin_tokens: safetyMarginTokens,
+    effective_body_limit_tokens: effectiveBodyLimitTokens,
+  };
+  if (estimatedRenderedTokens > effectiveBodyLimitTokens) {
+    return {
+      version: "model_input_budget_evaluation.v2",
+      status: "over_limit",
+      ...shared,
+    };
+  }
+  const proof: ModelInputBudgetEvidenceV2 = {
+    version: "model_input_budget_evidence.v2",
+    ...shared,
+    status: "within_limit",
+  };
+  return {
+    status: "within_limit",
+    proof,
+  };
+}
+
+export function verifyModelInputBudgetProof(
+  renderedInput: string,
+  proof: ModelInputBudgetEvidenceV2,
+): ModelInputBudgetEvidenceV2 {
+  validateModelInputBudgetProof(proof);
+  const evaluated = evaluateModelInputBudget({
+    rendered_input: renderedInput,
+    estimator_version: proof.estimator_version,
+    render_contract_version: proof.render_contract_version,
+    router_version: proof.router_version,
+    prompt_sha256: proof.prompt_sha256,
+    stage_body_limit_tokens: proof.stage_body_limit_tokens,
+    executor_context_floor_tokens: proof.executor_context_floor_tokens,
+    prompt_reserve_tokens: proof.prompt_reserve_tokens,
+    protocol_reserve_tokens: proof.protocol_reserve_tokens,
+    output_reserve_tokens: proof.output_reserve_tokens,
+    safety_margin_tokens: proof.safety_margin_tokens,
+  });
+  if (evaluated.status !== "within_limit") throw new Error("budget evidence no longer fits the effective body limit");
+  if (stableJson(evaluated.proof) !== stableJson(proof)) {
+    throw new Error("budget evidence does not match rendered input or policy");
+  }
+  return proof;
+}
+
+export function validateModelExecutionBudgetProof(
+  proof: ModelExecutionBudgetEvidenceV3,
+  transportProfile?: ExecutorTransportProfile,
+): ModelExecutionBudgetEvidenceV3 {
+  if (!proof || typeof proof !== "object" || Array.isArray(proof)) {
+    throw new Error("model execution budget proof must be an object");
+  }
+  const keys = Object.keys(proof).sort();
+  if (keys.length !== MODEL_EXECUTION_BUDGET_EVIDENCE_KEYS.length
+    || keys.some((key, index) => key !== MODEL_EXECUTION_BUDGET_EVIDENCE_KEYS[index])) {
+    throw new Error("model execution budget evidence contains unsupported or missing fields");
+  }
+  if (proof.version !== "model_execution_budget_evidence.v3") {
+    throw new Error("model execution budget evidence version is unsupported");
+  }
+  boundedIdentity(proof.estimator_version, "estimator_version");
+  boundedIdentity(proof.render_contract_version, "render_contract_version");
+  boundedIdentity(proof.router_version, "router_version");
+  sha256Identity(proof.prompt_sha256, "prompt_sha256");
+  sha256Identity(proof.rendered_input_sha256, "rendered_input_sha256");
+  nonNegativeSafeInteger(proof.estimated_prompt_tokens, "estimated_prompt_tokens");
+  const estimatedRenderedTokens = nonNegativeSafeInteger(
+    proof.estimated_rendered_tokens,
+    "estimated_rendered_tokens",
+  );
+  const inputChunkCount = positiveSafeInteger(proof.input_chunk_count, "input_chunk_count");
+  nonNegativeSafeInteger(
+    proof.input_delivery_overhead_tokens,
+    "input_delivery_overhead_tokens",
+  );
+  const outputReserveTokens = nonNegativeSafeInteger(
+    proof.output_reserve_tokens,
+    "output_reserve_tokens",
+  );
+  const maxCandidateTokens = nonNegativeSafeInteger(
+    proof.max_candidate_tokens,
+    "max_candidate_tokens",
+  );
+  const effectiveBodyLimitTokens = nonNegativeSafeInteger(
+    proof.effective_body_limit_tokens,
+    "effective_body_limit_tokens",
+  );
+  if (estimatedRenderedTokens > effectiveBodyLimitTokens) {
+    throw new Error("model execution budget evidence exceeds its effective body limit");
+  }
+  if (maxCandidateTokens > outputReserveTokens) {
+    throw new Error("model execution candidate exceeds its output reserve");
+  }
+  if (transportProfile) {
+    validateExecutorTransportCapabilities(transportProfile);
+    if (inputChunkCount > transportProfile.max_input_chunks) {
+      throw new Error("model execution budget evidence exceeds the transport chunk limit");
+    }
+    if (maxCandidateTokens > transportProfile.max_candidate_request_tokens
+      || maxCandidateTokens > Math.floor(
+        transportProfile.max_candidate_request_bytes / MAX_UTF8_BYTES_PER_ESTIMATED_TOKEN,
+      )) {
+      throw new Error("model execution candidate exceeds the transport request limit");
+    }
+  }
+  return proof;
+}
+
+/** One-shot forward migration used by synthetic fixtures and the guarded R8 migration. */
+export function migrateModelExecutionBudgetProofV2(
+  value: unknown,
+  transportProfile?: ExecutorTransportProfile,
+): ModelExecutionBudgetEvidenceV3 {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("legacy model execution budget proof must be an object");
+  }
+  const keys = Object.keys(value).sort();
+  if (keys.length !== LEGACY_MODEL_EXECUTION_BUDGET_PROOF_KEYS.length
+    || keys.some((key, index) => key !== LEGACY_MODEL_EXECUTION_BUDGET_PROOF_KEYS[index])) {
+    throw new Error("legacy model execution budget proof contains unsupported or missing fields");
+  }
+  const legacy = value as LegacyModelExecutionBudgetProofV2;
+  if (legacy.version !== "model_execution_budget_proof.v2") {
+    throw new Error("legacy model execution budget proof version is unsupported");
+  }
+  sha256Identity(legacy.transport_profile_digest, "legacy transport_profile_digest");
+  sha256Identity(legacy.proof_digest, "legacy proof_digest");
+  const {
+    version: _legacyVersion,
+    transport_profile_digest: _legacyTransportProfileDigest,
+    proof_digest: _legacyProofDigest,
+    ...fields
+  } = legacy;
+  return validateModelExecutionBudgetProof({
+    version: "model_execution_budget_evidence.v3",
+    ...fields,
+  }, transportProfile);
+}
+
+export function evaluateModelExecutionBudget(
+  input: ModelExecutionBudgetRequestV2,
+): ModelExecutionBudgetEvaluationV3 {
+  if (typeof input.semantic_prompt !== "string" || typeof input.rendered_input !== "string") {
+    throw new Error("model execution prompt and rendered input must be strings");
+  }
+  const estimatorVersion = boundedIdentity(
+    input.estimator_version ?? MODEL_INPUT_ESTIMATOR_VERSION,
+    "estimator_version",
+  );
+  const renderContractVersion = boundedIdentity(
+    input.render_contract_version ?? MODEL_INPUT_RENDER_CONTRACT_VERSION,
+    "render_contract_version",
+  );
+  const routerVersion = boundedIdentity(input.router_version, "router_version");
+  const stageBodyLimitTokens = positiveSafeInteger(
+    input.stage_body_limit_tokens,
+    "stage_body_limit_tokens",
+  );
+  const executorContextFloorTokens = positiveSafeInteger(
+    input.executor_context_floor_tokens,
+    "executor_context_floor_tokens",
+  );
+  const outputReserveTokens = nonNegativeSafeInteger(
+    input.output_reserve_tokens,
+    "output_reserve_tokens",
+  );
+  const safetyMarginTokens = nonNegativeSafeInteger(
+    input.safety_margin_tokens,
+    "safety_margin_tokens",
+  );
+  const maxCandidateTokens = nonNegativeSafeInteger(
+    input.max_candidate_tokens,
+    "max_candidate_tokens",
+  );
+  const transportProfile = validateExecutorTransportCapabilities(input.transport_profile);
+  if (!Array.isArray(input.input_transport_packs) || input.input_transport_packs.length !== 2) {
+    throw new Error("model execution budget requires prompt and rendered-input transport packs");
+  }
+  const inspected = inspectModelExecutionInput({
+    semantic_prompt: input.semantic_prompt,
+    rendered_input: input.rendered_input,
+    render_contract_version: renderContractVersion,
+  });
+  const expectedPayloads = [
+    input.semantic_prompt,
+    input.rendered_input,
+  ] as const;
+  let inputChunkCount = 0;
+  let inputDeliveryOverheadTokens = 0;
+  let inputTransportFit = true;
+  for (let index = 0; index < input.input_transport_packs.length; index += 1) {
+    const pack = input.input_transport_packs[index];
+    if (pack.status === "blocked") {
+      if (pack.version !== "executor_transport_pack.v2"
+        || pack.payload_byte_length !== Buffer.byteLength(expectedPayloads[index], "utf8")
+        || !Number.isSafeInteger(pack.required_chunk_count)
+        || pack.required_chunk_count < 1
+        || !Array.isArray(pack.blocking_reasons)) {
+        throw new Error("model execution blocked transport pack does not match its original payload");
+      }
+      inputTransportFit = false;
+      inputChunkCount += pack.required_chunk_count;
+      continue;
+    }
+    validateExecutorTransportPack(pack, transportProfile, expectedPayloads[index]);
+    inputChunkCount += pack.chunk_count;
+    inputDeliveryOverheadTokens += pack.input_delivery_overhead_tokens;
+  }
+  if (inputChunkCount > transportProfile.max_input_chunks) inputTransportFit = false;
+  const contextBodyLimit = executorContextFloorTokens
+    - inspected.estimated_prompt_tokens
+    - inputDeliveryOverheadTokens
+    - outputReserveTokens
+    - safetyMarginTokens;
+  const effectiveBodyLimitTokens = Math.min(stageBodyLimitTokens, Math.max(0, contextBodyLimit));
+  const stageFit = inspected.estimated_rendered_tokens <= stageBodyLimitTokens;
+  const contextFit = inspected.estimated_rendered_tokens <= Math.max(0, contextBodyLimit);
+  const candidateTransportFit = maxCandidateTokens <= outputReserveTokens
+    && maxCandidateTokens <= transportProfile.max_candidate_request_tokens
+    && maxCandidateTokens <= Math.floor(
+      transportProfile.max_candidate_request_bytes / MAX_UTF8_BYTES_PER_ESTIMATED_TOKEN,
+    );
+  const reasons: ModelExecutionBudgetBlockReasonV2[] = [];
+  if (!stageFit) reasons.push("stage_limit");
+  if (!contextFit) reasons.push("context_limit");
+  if (!inputTransportFit) reasons.push("input_transport");
+  if (!candidateTransportFit) reasons.push("candidate_transport");
+  const shared = {
+    estimator_version: estimatorVersion,
+    render_contract_version: inspected.render_contract_version,
+    router_version: routerVersion,
+    prompt_sha256: inspected.prompt_sha256,
+    rendered_input_sha256: inspected.rendered_input_sha256,
+    estimated_prompt_tokens: inspected.estimated_prompt_tokens,
+    estimated_rendered_tokens: inspected.estimated_rendered_tokens,
+    input_chunk_count: inputChunkCount,
+    input_delivery_overhead_tokens: inputDeliveryOverheadTokens,
+    output_reserve_tokens: outputReserveTokens,
+    max_candidate_tokens: maxCandidateTokens,
+    effective_body_limit_tokens: effectiveBodyLimitTokens,
+  };
+  if (reasons.length) {
+    return {
+      version: "model_execution_budget_evaluation.v3",
+      status: "blocked",
+      ...shared,
+      reasons,
+    };
+  }
+  const proof: ModelExecutionBudgetEvidenceV3 = {
+    version: "model_execution_budget_evidence.v3",
+    ...shared,
+  };
+  validateModelExecutionBudgetProof(proof, transportProfile);
+  return { status: "within_limit", proof };
+}
+
+export function verifyModelExecutionBudgetProof(
+  input: ModelExecutionBudgetRequestV2,
+  proof: ModelExecutionBudgetEvidenceV3,
+): ModelExecutionBudgetEvidenceV3 {
+  validateModelExecutionBudgetProof(proof, input.transport_profile);
+  const evaluated = evaluateModelExecutionBudget(input);
+  if (evaluated.status !== "within_limit") {
+    throw new Error("model execution budget evidence no longer fits its execution constraints");
+  }
+  if (stableJson(evaluated.proof) !== stableJson(proof)) {
+    throw new Error("model execution budget evidence does not match its input, transport, or policy");
+  }
+  return proof;
+}

@@ -2,11 +2,17 @@ import { ApiError, type AgentHistoryResponse } from './api';
 import { initialRun, type RunDescriptor, type RunSnapshot } from './agent-run-state';
 import { network, sceneKey, installWorkspace, forgetNetwork, workspaceStorageKey, type NetworkWorkspace } from './network-context';
 
-export async function networkFetch<T>(method: string, path: string, body?: unknown): Promise<T> {
+export const accountMcp = {
+  read: () => networkFetch<import('./api').AccountMcpState>('GET', '/account/mcp'),
+  create: (label: string) => networkFetch<{ credential: import('./api').McpCredential; token: string }>('POST', '/account/mcp/credentials', { label }),
+  revoke: (id: string) => networkFetch('POST', `/account/mcp/credentials/${encodeURIComponent(id)}/revoke`, {}),
+};
+
+export async function networkFetch<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const key = sceneKey();
   const identity = network.value.identity;
   const res = await fetch(`/api${path}`, {
-    method, credentials: 'same-origin', cache: 'no-store',
+    method, signal, credentials: 'same-origin', cache: 'no-store',
     headers: { 'Content-Type': 'application/json', ...(identity ? { 'X-CSRF-Token': identity.csrf_token } : {}) },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
@@ -24,18 +30,39 @@ export async function networkFetch<T>(method: string, path: string, body?: unkno
 // Serialize CAS writes from this page. Each operation captures its scene before joining the queue.
 let writes: Promise<unknown> = Promise.resolve();
 let bindingRecovery: { key: string; task: Promise<void> } | null = null;
+export interface ReadingResumption {
+  workspace_id: string;
+  published_book_ref: import('./network-context').PublishedBookRef;
+  selected_chat: string | null;
+  position_label: string | null;
+  position_excerpt: string | null;
+  last_question: string | null;
+}
+function savedWorkspaceId(): string | null {
+  const saved = sessionStorage.getItem(workspaceStorageKey());
+  return network.value.workspace?.workspace_id ?? (saved ? JSON.parse(saved).workspace_id : null);
+}
+export async function readReadingResumption(): Promise<ReadingResumption | null> {
+  const id = savedWorkspaceId();
+  return id ? networkFetch<ReadingResumption>('GET', `/workspaces/${id}/resumption`) : null;
+}
 /** Reclaim a cold main scene before exposing its new generation to the Reader. */
-export function recoverWorkspaceBinding(): Promise<void> {
+export function recoverWorkspaceBinding(expected?: ReadingResumption): Promise<void> {
   const key = sceneKey();
   if (bindingRecovery?.key === key) return bindingRecovery.task;
   if (network.value.linked) return Promise.reject(new ApiError(409, 'WORKSPACE_STALE', 'conflict', '请从原阅读窗口重新打开附属窗口'));
   const result = writes.catch(() => {}).then(async () => {
     if (key !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', '阅读现场已切换');
     const n = network.value;
-    const saved = sessionStorage.getItem(workspaceStorageKey());
-    const id = n.workspace?.workspace_id ?? (saved ? JSON.parse(saved).workspace_id : null);
+    const id = savedWorkspaceId();
     if (!id) return;
     const latest = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${id}`);
+    if (expected && (latest.workspace_id !== expected.workspace_id
+      || latest.published_book_ref.book_id !== expected.published_book_ref.book_id
+      || latest.published_book_ref.publication_id !== expected.published_book_ref.publication_id
+      || latest.selected_chat !== expected.selected_chat)) {
+      throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', '接续现场已更新，请查看最新记录后继续。');
+    }
     const attached = await networkFetch<NetworkWorkspace>('POST', `/workspaces/${id}/attach`, {
       attachment_id: n.attachment, generation: latest.generation, expected_revision: latest.revision,
     });
@@ -83,8 +110,8 @@ export async function workspaceRead<T = unknown>(action: string, body: Record<st
     ...body, attachment_id: n.attachment, generation: w.generation, expected_revision: w.revision,
   });
 }
-const readActions = new Set(['reader/state', 'profile/manifest', 'profile/memory', 'memory/recall',
-  'reader/paper_minimap.state', 'reader/pdf_selection.resolve', 'reader/pdf_ranges.project', 'agent/source.resolve']);
+const readActions = new Set(['memory/presentation.read', 'memory/presentation.observe', 'reader/state', 'profile/manifest', 'profile/memory', 'memory/recall',
+  'reader/paper_minimap.state', 'reader/pdf_selection.resolve', 'reader/pdf_ranges.project', 'agent/source.resolve', 'reader/selection.translate']);
 
 interface Admission extends RunDescriptor {
   dispatch_state: string; persistence_state: string; snapshot?: RunSnapshot;
@@ -142,8 +169,11 @@ async function createRun(body: Record<string, unknown>) {
   }
   const latest = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${w.workspace_id}`);
   if (latest.generation !== w.generation) { installWorkspace(latest); throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', '现场已更新'); }
+  if ((body.entry_action || body.teaching_choice) && (body.session_id !== w.selected_chat || latest.selected_chat !== w.selected_chat)) {
+    throw new ApiError(409, 'CHAT_SELECTION_CHANGED', 'conflict', '聊天已切换，请返回原聊天重新发起操作');
+  }
   installWorkspace(latest);
-  const key = crypto.randomUUID();
+  const key = typeof body.client_request_id === 'string' ? body.client_request_id : crypto.randomUUID();
   const input = { ...body, client_request_id: key, session_id: w.selected_chat, attachment_id: network.value.attachment,
     generation: latest.generation, expected_revision: latest.revision, published_book_ref: latest.published_book_ref };
   sessionStorage.setItem(pendingPrefix() + key, JSON.stringify({ key, body: input, workspace: w.workspace_id }));
@@ -169,7 +199,7 @@ async function history(): Promise<AgentHistoryResponse> {
   return (await workspaceRead<{ result: AgentHistoryResponse }>('chat/history')).result;
 }
 
-export async function networkRequest<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+export async function networkRequest<T>(method: 'GET' | 'POST', path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const input = (body ?? {}) as Record<string, unknown>;
   if (path === '/profile/memory/apply' && !network.value.workspace?.selected_chat) await workspaceAction('chat/new');
   let value: unknown;
@@ -189,9 +219,9 @@ export async function networkRequest<T>(method: 'GET' | 'POST', path: string, bo
     await workspaceAction('book/open', { published_book_ref: JSON.parse(String(input.dir)) });
     value = { ok: true, book_id: network.value.workspace!.published_book_ref.book_id };
   } else if (path === '/book/library') {
-    const result = await networkFetch<{ books: { published_book_ref: import('./network-context').PublishedBookRef; cover?: import('./api').BookCoverSource | null }[] }>('GET', '/library');
-    value = { root: '', books: result.books.map(b => ({ name: b.published_book_ref.book_id, book_id: b.published_book_ref.book_id, dir: JSON.stringify(b.published_book_ref), route: 'reader', cover: b.cover })) };
-  } else if (path.startsWith('/book/')) value = await networkFetch(method, publishedUrl(path.slice(6)), body);
+    const result = await networkFetch<{ books: { published_book_ref: import('./network-context').PublishedBookRef; title?: string | null; cover?: import('./api').BookCoverSource | null }[] }>('GET', '/library');
+    value = { root: '', books: result.books.map(b => ({ name: b.published_book_ref.book_id, title: b.title, book_id: b.published_book_ref.book_id, dir: JSON.stringify(b.published_book_ref), route: 'reader', cover: b.cover })) };
+  } else if (path.startsWith('/book/')) value = await networkFetch(method, publishedUrl(path.slice(6)), body, signal);
   else if (path === '/tutor/state' || path === '/tutor/mutate') value = await networkFetch(method, path, body);
   else if (path === '/tutor/readiness') value = await networkFetch('GET', publishedUrl('tutor_readiness'));
   else if (path.startsWith('/agent/presentation.read') || path.startsWith('/agent/presentation.observe')) {

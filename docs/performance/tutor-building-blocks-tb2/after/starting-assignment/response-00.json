@@ -1,0 +1,16 @@
+{
+  "text": "I'll locate the exact passage in the book first.",
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"let bar = &foo;\", \"page_size\": 20}",
+      "id": "call_00_zX0zyly3hCtXA4RsrrlV4805",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"query\": \"&foo\", \"page_size\": 20}",
+      "id": "call_01_iCPYYsZ3IlNJFJXPBfVY7292",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 12688
+}

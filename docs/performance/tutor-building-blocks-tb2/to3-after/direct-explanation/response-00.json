@@ -1,0 +1,16 @@
+{
+  "text": "I'll locate the borrowing passage first.",
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"&foo\", \"page_size\": 20}",
+      "id": "call_00_Fior0PGteAC9rMIverTc0791",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{}",
+      "id": "call_01_KIjWN72Rnd0TKCmKDUeC5848",
+      "name": "book.structure"
+    }
+  ],
+  "usage_total_tokens": 13867
+}

@@ -1,0 +1,16 @@
+{
+  "text": "I'll locate the exact passage the learner is referring to, then read the surrounding explanation.",
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"bar = &foo\"}",
+      "id": "call_00_BrhnT8TZWTNk2CbOaX1u4707",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"query\": \"&foo\"}",
+      "id": "call_01_Y61Nv1ZMmT08KJtFAFth9195",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 12803
+}

@@ -233,7 +233,32 @@ pub fn spec() -> ToolSpec {
         },"required":["operation"],"additionalProperties":false}),
     };
     tool.parameters["properties"].as_object_mut().unwrap().extend(source_properties.as_object().unwrap().clone());
+    tool.parameters["examples"] = input_examples();
+    tool.description.push_str(" Examples illustrate calls, not live object IDs: replace reference/based_on with the exact delivered reference, candidate_id with the current run's write/patch result, and source/asset refs and asset paths with actual observed results. For an edit chain, read/search the delivered reference, patch it, then read/search/patch the returned candidate before preview and deliver. Observe each preview in a later sampling before deliver; explicit viewport previews must cover all environments required by the returned receipt.");
     crate::tool_schema::complete_spec(tool)
+}
+
+fn input_examples() -> Value {
+    let reference = json!({"presentation_id":"PRESENTATION_ID_FROM_DELIVER","revision":1});
+    let candidate = "CANDIDATE_ID_FROM_WRITE_OR_PATCH";
+    let html = "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script>";
+    let readable = "已找到两处证据，共需三处。补齐后为一。";
+    json!([
+        {"operation":"prepare","phase":"local","framework":"Compare the found evidence with the required total.","focus":"Revise the existing button label and verify its result.","needs":["editing","state"]},
+        {"operation":"render_plot","code":"ax.plot(data['x'], data['y'], marker='o'); ax.set_xlabel('Required'); ax.set_ylabel('Found')","data":{"x":[1,2,3],"y":[1,2,2]},"size":{"width":640,"height":400}},
+        {"operation":"render_animation","code":"class PresentationAnimation(Scene):\n    def construct(self):\n        dot = Dot(LEFT)\n        self.add(dot)\n        self.play(dot.animate.shift(RIGHT * data['distance']), run_time=1)\n","data":{"distance":2},"size":{"width":640,"height":360},"cues":[{"id":"middle","label":"Midpoint","at_seconds":0.5}]},
+        {"operation":"read","reference":reference},
+        {"operation":"read","candidate_id":candidate,"file":"readable_content","offset":0,"length":200},
+        {"operation":"search","reference":reference,"query":"补齐证据","max_matches":5},
+        {"operation":"search","candidate_id":candidate,"query":"补齐全部证据","max_matches":5},
+        {"operation":"patch","reference":reference,"edits":[{"old_text":"补齐证据","new_text":"补齐全部证据"}]},
+        {"operation":"patch","candidate_id":candidate,"edits":[{"old_text":"补齐全部证据","new_text":"补齐所需证据"}]},
+        {"operation":"write","new_object":true,"title":"证据召回率","html":html,"readable_content":readable,"initial_state":{"count":2}},
+        {"operation":"write","based_on":reference,"title":"证据召回率与图示","html":format!("{html}<img src='assets/PLOT_ASSET_REF.svg' alt='Required and found evidence'><button data-source-ref='SOURCE_REF_FROM_SOURCE_PRESENT'>来源</button>"),"readable_content":format!("{readable} [[source:SOURCE_REF_FROM_SOURCE_PRESENT]]"),"initial_state":{"count":2},"asset_refs":["PLOT_ASSET_REF"],"source_ref_ids":["SOURCE_REF_FROM_SOURCE_PRESENT"]},
+        {"operation":"preview","candidate_id":candidate,"width":960,"actions":[{"kind":"click","selector":"#add"}],"read_selector":"#result"},
+        {"operation":"preview","candidate_id":candidate,"viewport":{"width":320,"height":420,"input":"touch"},"actions":[{"kind":"click","selector":"#add"},{"kind":"scroll","y":0}],"read_selector":"#result"},
+        {"operation":"deliver","candidate_id":candidate}
+    ])
 }
 
 pub fn bindings_for(

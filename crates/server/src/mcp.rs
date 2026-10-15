@@ -9,7 +9,7 @@ use artifact_tools::{
     ARTIFACT_SEARCH_MCP_ALIAS, ARTIFACT_SNAPSHOT_INVALID, ARTIFACT_TOOL_INPUT_INVALID,
 };
 use book_tool_contracts::{
-    contracts, from_mcp_alias, input_schema, validate_input, BookToolId, BookToolInput,
+    contract_for, contracts, from_mcp_alias, input_schema, validate_input, BookToolId, BookToolInput,
     GuideAction, GuideInput,
 };
 use read_tools::{Book, RankedStep, ToolError};
@@ -208,8 +208,10 @@ pub fn tools_list_result() -> Value {
             contract.aliases.mcp.map(|name| {
                 json!({
                     "name": name,
-                    "description": contract.description,
+                    "description": contract.mcp_description(),
                     "inputSchema": input_schema(contract.id),
+                    "outputSchema": crate::mcp_output_schema::local(contract.id),
+                    "annotations": crate::mcp_output_schema::local_annotations(contract.id),
                 })
             })
         })
@@ -247,7 +249,7 @@ pub fn dispatch_mcp_tool(state: &mut AppState, name: &str, arguments: Value, now
         (BookToolId::Text, BookToolInput::Text(input)) => route_book_text(state, input),
         (BookToolId::SearchText, BookToolInput::SearchText(input)) => {
             match state.workspace.book.search_text(&input) {
-                Ok(result) => ok_json(&result),
+                Ok(result) => candidate_reply(id, json!(result)),
                 Err(error) => err_reply(&error),
             }
         }
@@ -367,8 +369,8 @@ fn artifact_overlay_unavailable(message: impl Into<String>) -> ToolError {
 }
 
 fn route_book_text(state: &AppState, input: book_tool_contracts::TextInput) -> Reply {
-    match state.workspace.book.text(&input.lid, input.end_lid.as_deref()) {
-        Ok(text) => ok_json(&json!({ "lid": input.lid, "text": text })),
+    match state.workspace.book.read_text(&input) {
+        Ok(result) => ok_json(&result),
         Err(e) => err_reply(&e),
     }
 }
@@ -376,7 +378,7 @@ fn route_book_text(state: &AppState, input: book_tool_contracts::TextInput) -> R
 fn route_book_context(state: &AppState, input: book_tool_contracts::ContextInput) -> Reply {
     let granularity = input.granularity.map(|value| value.as_str());
     match state.workspace.book.context(&input.lid, granularity, input.k) {
-        Ok(ctx) => ok_json(&ctx),
+        Ok(ctx) => candidate_reply(BookToolId::Context, json!(ctx)),
         Err(e) => err_reply(&e),
     }
 }
@@ -385,8 +387,40 @@ fn route_book_concept(state: &AppState, input: book_tool_contracts::ConceptInput
     match state.workspace.book
         .concept_candidates(&input.query, input.anchor_lid.as_deref(), input.limit)
     {
-        Ok(concept) => ok_json(&concept),
+        Ok(concept) => candidate_reply(BookToolId::Concept, json!(concept)),
         Err(e) => err_reply(&e),
+    }
+}
+
+fn candidate_reply(id: BookToolId, mut result: Value) -> Reply {
+    project_candidate_read_calls(id, &mut result, None);
+    ok_json(&result)
+}
+
+/// Candidate reads use MCP aliases; top-level pagination calls remain owned by McpRead.
+pub(crate) fn project_candidate_read_calls(
+    id: BookToolId,
+    result: &mut Value,
+    reference: Option<&crate::published_library::PublishedBookRef>,
+) {
+    let collection = match id {
+        BookToolId::SearchText => "occurrences",
+        BookToolId::Concept => "candidates",
+        BookToolId::Context => "items",
+        _ => return,
+    };
+    let Some(items) = result[collection].as_array_mut() else { return };
+    let name = contract_for(BookToolId::Text).aliases.mcp.unwrap();
+    for item in items {
+        if let Some(calls) = item["next_calls"].as_array_mut() {
+            for call in calls {
+                call.as_object_mut().unwrap().remove("tool");
+                call["name"] = json!(name);
+                if let Some(reference) = reference {
+                    call["arguments"]["published_book_ref"] = json!(reference);
+                }
+            }
+        }
     }
 }
 
@@ -713,6 +747,7 @@ fn jsonrpc_error(id: Value, code: i64, message: impl Into<String>, data: Value) 
 
 #[cfg(test)]
 mod tests {
+    mod examples { include!("mcp_example_tests.rs"); }
     use super::*;
     use crate::UnconfiguredAdapter;
     use artifact_tools::{
@@ -1066,7 +1101,8 @@ mod tests {
             .and_then(|tool| tool["description"].as_str())
             .expect("book_concept description");
         assert!(concept_description.contains("candidates"));
-        assert!(concept_description.contains("book.text"));
+        assert!(concept_description.contains("book_text"));
+        assert!(!concept_description.contains("book.text"));
 
         for name in tool_names() {
             assert_eq!(
@@ -1115,8 +1151,12 @@ mod tests {
         assert_eq!(schema("book_concept")["properties"]["limit"]["minimum"], 1);
         assert_eq!(schema("book_concept")["properties"]["limit"]["maximum"], 50);
         assert_eq!(
-            schema("book_context")["properties"]["granularity"]["enum"],
+            schema("book_context")["properties"]["granularity"]["anyOf"][0]["enum"],
             json!(["near", "mid", "far"])
+        );
+        assert_eq!(
+            schema("book_context")["properties"]["granularity"]["anyOf"][1],
+            json!({"type":"null"})
         );
         assert_eq!(schema("book_search_text")["required"], json!(["query"]));
         assert_eq!(

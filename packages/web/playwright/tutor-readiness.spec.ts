@@ -7,9 +7,10 @@ test('readiness updates independently, exposes source gaps and preserves the sav
     await route.fulfill({ response });
   });
   await page.goto('/agent-presentation-visual.html?tutor');
-  await page.getByRole('button', { name: '管理教学会话' }).click();
-  const panel = page.getByRole('dialog', { name: '学习会话', exact: true });
-  await expect(panel.getByTestId('teaching-readiness')).toContainText('接纳');
+  await page.getByRole('button', { name: '学习详情' }).click();
+  const panel = page.getByRole('dialog', { name: '学习详情', exact: true });
+  await expect(panel.locator('.tutor-notices')).toContainText('接纳');
+  await panel.getByRole('button', { name: '新学习', exact: true }).click();
   await panel.getByRole('textbox').fill('辨析平均值与各段速度');
   await panel.getByRole('button', { name: '保存学习意图' }).click();
   // The Server contract is tested with real version files. This browser projection
@@ -17,12 +18,12 @@ test('readiness updates independently, exposes source gaps and preserves the sav
   await page.route('**/api/tutor/readiness', route => route.fulfill({ json: { status: 'ready', source_id: 'fixture-book', source_revision: 's1',
     limitations: ['作者未提供各段测量记录'], reason: '可以学习', teaching_assets: { status: 'ready', teaching_map_revision: 'v1', limitations: ['作者未提供各段测量记录'], reason: '资料已就绪' } } }));
   await panel.getByRole('button', { name: '刷新学习状态' }).click();
-  await expect(panel.getByTestId('teaching-readiness')).toContainText('可以开始或继续学习');
+  await expect(panel.getByTestId('teaching-readiness')).toHaveAttribute('data-ready', 'true');
   await expect(panel.getByText('作者未提供各段测量记录')).toBeVisible();
-  await expect(panel.getByRole('heading', { name: '辨析平均值与各段速度 当前' })).toBeVisible();
+  await expect(panel.getByRole('heading', { name: '辨析平均值与各段速度', exact: true })).toBeVisible();
   await expect(page.getByRole('switch').first()).toHaveAttribute('aria-checked', 'false');
   await page.route('**/api/tutor/readiness', route => route.fulfill({ status: 503, json: { error_code: 'UNAVAILABLE', category: 'unavailable', message: '读取失败' } }));
   await panel.getByRole('button', { name: '刷新学习状态' }).click();
   await expect(panel.getByTestId('teaching-readiness')).toContainText('读取失败');
-  await expect(panel.getByTestId('teaching-readiness')).not.toContainText('可以开始或继续学习');
+  await expect(panel.getByTestId('teaching-readiness')).toHaveAttribute('data-ready', 'false');
 });

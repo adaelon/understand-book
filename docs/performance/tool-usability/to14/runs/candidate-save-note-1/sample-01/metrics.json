@@ -1,0 +1,15 @@
+{
+  "completed": true,
+  "recovered_errors": [],
+  "usage": {
+    "input_tokens": 27692,
+    "cached_input_tokens": 0,
+    "output_tokens": 144
+  },
+  "total_tokens": 27836,
+  "actual_cost": null,
+  "final": "{\"text\":null,\"tool_calls\":[{\"name\":\"tool.search\",\"arguments\":\"{\\\"task\\\":\\\"在当前段落保存用户指定的阅读笔记：平均速度＝总路程／总时间\\\",\\\"required_capabilities\\\":[\\\"reader_write\\\"],\\\"scope\\\":\\\"passage\\\",\\\"operation\\\":\\\"mutate_reader\\\",\\\"effect_mode\\\":\\\"reader_mutation_explicitly_requested\\\",\\\"max_results\\\":1}\"}]}",
+  "exit_code": 0,
+  "timed_out": false,
+  "elapsed_ms": 16112.272200000001
+}

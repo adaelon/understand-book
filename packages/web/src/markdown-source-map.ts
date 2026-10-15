@@ -1,3 +1,5 @@
+import { cooperativeSourceEdits } from './markdown-cooperative-alignment';
+
 export interface SourceTextRange {
   start: number;
   end: number;
@@ -9,7 +11,7 @@ interface Edit {
   kind: EditKind;
 }
 
-interface AlignmentSpan {
+export interface AlignmentSpan {
   sourceStart: number;
   sourceEnd: number;
   semanticStart: number;
@@ -17,7 +19,7 @@ interface AlignmentSpan {
   kind: "equal" | "replacement" | "source-only" | "semantic-only";
 }
 
-interface DomProjection {
+export interface DomProjection {
   text: string;
   pieces: DomPiece[];
   offsetForPoint(container: Node, offset: number, edge: "start" | "end"): number;
@@ -122,8 +124,7 @@ function backtrackEdits(
   return reversed.reverse();
 }
 
-function alignmentSpans(source: string, semantic: string, sourceSyntax?: Uint8Array): AlignmentSpan[] {
-  const edits = shortestEditScript(source, semantic, sourceSyntax);
+function alignmentSpans(source: string, semantic: string, sourceSyntax?: Uint8Array, edits = shortestEditScript(source, semantic, sourceSyntax)): AlignmentSpan[] {
   const spans: AlignmentSpan[] = [];
   let sourceOffset = 0;
   let semanticOffset = 0;
@@ -176,7 +177,7 @@ function katexMarkdown(element: Element): string {
   return `${delimiter}${latex}${delimiter}`;
 }
 
-function projectDom(root: Node): DomProjection {
+export function projectMarkdownDom(root: Node): DomProjection {
   const textParts: string[] = [];
   const bounds = new Map<Node, { start: number; end: number }>();
   const childBoundaries = new Map<Node, number[]>();
@@ -282,10 +283,20 @@ function htmlTableSourceSyntax(source: string): Uint8Array {
 }
 
 export function createMarkdownDomSourceMap(source: string, root: Node) {
-  const projection = projectDom(root);
+  const projection = projectMarkdownDom(root);
   const renderedHtmlTable = /^\s*<table(?:\s|>)/i.test(source)
     && root instanceof Element && (root.tagName === "TABLE" || root.querySelector("table"));
   const spans = alignmentSpans(source, projection.text, renderedHtmlTable ? htmlTableSourceSyntax(source) : undefined);
+  return bindMarkdownSourceMap(source, projection, spans);
+}
+
+/** Pure reusable alignment; holds no DOM. Tables are paginated as whole objects. */
+export async function alignMarkdownSource(source: string, semantic: string, checkpoint?: () => Promise<void>): Promise<AlignmentSpan[]> {
+  const edits = await cooperativeSourceEdits(source, semantic, undefined, checkpoint);
+  return alignmentSpans(source, semantic, undefined, edits);
+}
+
+export function bindMarkdownSourceMap(source: string, projection: DomProjection, spans: AlignmentSpan[]) {
 
   function sourceRangesForSemanticRange(start: number, end: number): SourceTextRange[] {
     const selectionStart = Math.max(0, Math.min(start, projection.text.length));
@@ -332,6 +343,18 @@ export function createMarkdownDomSourceMap(source: string, root: Node) {
   }
 
   return {
+    spans,
+    /** A contiguous pagination boundary includes non-rendered Markdown syntax.
+     * Selection ranges below deliberately continue to omit that syntax. */
+    sourceBoundary(offset: number): number {
+      if (offset <= 0) return 0;
+      if (offset >= projection.text.length) return source.length;
+      for (const span of spans) {
+        if (span.semanticEnd <= offset || span.kind === 'source-only') continue;
+        return span.kind === 'equal' ? span.sourceStart + Math.max(0, offset - span.semanticStart) : span.sourceStart;
+      }
+      return source.length;
+    },
     semanticText: projection.text,
     domPieces: projection.pieces,
     sourceRangesForRange(range: Range): SourceTextRange[] {
@@ -416,7 +439,13 @@ export function markMarkdownDomSourceRanges(
   const semanticRanges = disjointMarkedRanges(ranges.flatMap(({ start, end, className }) =>
     map.semanticRangesForSourceRange(start, end).map((range) => ({ ...range, className })),
   ));
-  for (const piece of [...map.domPieces].reverse()) {
+  markMarkdownDomSemanticRanges({ text: map.semanticText, pieces: map.domPieces } as DomProjection, semanticRanges);
+}
+
+/** Apply already aligned ranges without re-aligning the canonical source. */
+export function markMarkdownDomSemanticRanges(projection: DomProjection, ranges: MarkedSourceRange[]): void {
+  const semanticRanges = disjointMarkedRanges(ranges);
+  for (const piece of [...projection.pieces].reverse()) {
     if (piece.kind === "text") wrapTextPiece(piece, semanticRanges);
     else if (piece.kind === "atomic") wrapAtomicPiece(piece, semanticRanges);
   }

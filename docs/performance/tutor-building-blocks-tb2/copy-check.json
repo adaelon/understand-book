@@ -1,0 +1,14 @@
+{
+  "case": "Copy struct can be assigned and both bindings remain usable",
+  "command": [
+    "rustup",
+    "run",
+    "1.95.0",
+    "rustc",
+    "docs\\performance\\tutor-building-blocks-tb2\\copy-example.rs",
+    "-o",
+    "D:\\codex-build\\tb1-temp\\tb2-copy-example.exe"
+  ],
+  "compile_exit": 0,
+  "stdout": "Foo is Foo(0)\nBar is Foo(0)\n"
+}

@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-11",
+  "purpose": "Replay three fixed-input TC2A continuations using the current teaching validation recovery implementation.",
+  "model": "deepseek-v4-flash",
+  "temperature": 0,
+  "repetitions": 3,
+  "input_reference": "../on-demand/configuration.json",
+  "test": "continuation_tc2a_live_fixed_input_comparison",
+  "failure_question": "Does a continuation still stop before a legal correction, or fail to persist and deliver a teaching move?",
+  "response_to_failure": "Keep every sample and identify the last specific tool error and recovery outcome; do not add samples to obtain a pass.",
+  "content_question": "Do persisted targets and public answers state the average-speed equality conditions correctly and consistently?",
+  "content_response_to_failure": "Retain the concrete output and arithmetic counterexample as an unresolved TC2 content issue.",
+  "status": "completed",
+  "outcome": {
+    "completed_teaching_runs": 3,
+    "total_runs": 3,
+    "content_acceptance": "not_passed",
+    "new_recovery_allowance_exercised_by_live_samples": false,
+    "deployed": false
+  }
+}

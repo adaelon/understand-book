@@ -1,0 +1,101 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling server v0.0.0 (E:\allwork\download\agent\understand-book-reading-share\crates\server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 35.01s
+     Running unittests src\lib.rs (target\debug\deps\server-e6140f0c20c22aad.exe)
+
+running 18 tests
+test tests::mu5_tests::mu5_idle_history_requires_reattachment_even_after_refreshing_the_generation ... ok
+test tests::mu5_tests::mu5_history_order_is_identical_before_and_after_selecting_a_chat ... ok
+test tests::mu5_tests::mu5_attachment_refresh_duplicate_takeover_and_checkpoint_cas ... ok
+test tests::mu5_tests::mu5_presentation_linked_view_keeps_chat_and_late_restore_cannot_replace_user_state ... ok
+test tests::mu5_tests::mu5_old_run_keeps_original_private_scope_but_reader_stales_and_revocation_stops_access ... ok
+test tests::mu5_tests::mu5_tutor_shared_revision_and_old_teaching_control_are_enforced ... ok
+test tests::mu5_tests::mu5_capacity_idle_reload_pins_and_continue_reading_use_server_sequence ... ok
+test tests::mu5_tests::rn2_network_notes_keep_private_access_after_chat_deletion_and_restart ... ok
+test tests::mu5_tests::mu5_real_http_windows_isolate_readers_and_share_user_authority ... ok
+test tests::mu5_tests::mu5_live_reader_observes_user_navigation_but_late_run_effect_does_not_override_it ... ok
+test tests::mu5_tests::adm1_admin_identity_does_not_bypass_reader_private_or_material_scope ... ok
+test tests::mu5_tests::rs5_resumption_reads_committed_scene_without_warming_or_writing_it ... ok
+test tests::mu5_tests::mu5_checkpoint_failure_unknown_version_and_deleted_chat_reconcile ... ok
+test tests::mu5_tests::mu5_schema_two_upgrade_keeps_owner_rows_and_workspace_book_budget_is_shared ... ok
+test tests::mu5_tests::mu5_restart_restores_exact_publication_chat_position_and_layout ... ok
+test tests::mu5_tests::rs5_resumption_without_questions_and_after_chat_deletion_keeps_position ... ok
+test tests::mu5_tests::tutor_t18_published_readiness_requires_the_exact_reader_grant ... ok
+test tests::mu5_tests::mu5_global_capacity_and_admission_pin_prevent_idle_eviction ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 663 filtered out; finished in 18.09s
+

@@ -27,7 +27,8 @@ export interface ObjectAlignmentWork {
   source_ranges: Record<string, TeachingSourceRange[]>;
   inspected: string[];
   read_ranges: Array<TeachingSourceRange & { source_id: string; source_revision: string }>;
-  search?: { query: string; offset: number; keys: string[]; next_offset: number | null; preparation_required?: true };
+  search?: { query: string; offset: number; keys: string[]; next_offset: number | null; preparation_required?: true;
+    lookup?: { page_size: number; order: "meaning_first" } };
   reading?: { lid: string; start: number; end: number; text: string };
   steps_since_progress: number;
   /** A parallel branch keeps its candidate focus until its resolve action. */
@@ -163,11 +164,15 @@ export function objectAlignmentInput(work: ObjectAlignmentWork, source: Teaching
 }
 
 export function advanceObjectAlignment(input: { work: ObjectAlignmentWork; action: unknown; source: TeachingSource;
-  previous?: FormalObjects; operation_id: string; retrieval?: PreparedRetrieval }): ObjectAlignmentWork {
-  const work = structuredClone(input.work), { source, previous } = input;
+  previous?: FormalObjects; operation_id: string; retrieval?: PreparedRetrieval;
+  lookup?: { page_size: number; order: "meaning_first" } }): ObjectAlignmentWork {
+  const action = AlignmentActionZ.parse(input.action);
+  // Retrieval changes only the cursor. Keep the large proposal shared until a semantic
+  // decision changes it; the returned state must never mutate a previously frozen task.
+  const work = { ...input.work }, { source, previous } = input;
   if (work.version !== "formal_object_alignment.v3") throw new Error("object alignment contract is stale");
   if (work.result) throw new Error("object alignment already complete");
-  const action = AlignmentActionZ.parse(input.action), focus = alignmentFocus(work, previous);
+  const focus = alignmentFocus(work, previous);
   if (work.steps_since_progress >= ALIGNMENT_RETRIEVAL_STEP_LIMIT) {
     const required = focus.kind === "candidate" ? "resolve" : focus.kind === "identity" ? "identity" : "finish";
     const supplemental = action.kind === "read" && action.start < action.end && supplementalReadRanges(work, source, previous)
@@ -188,9 +193,18 @@ export function advanceObjectAlignment(input: { work: ObjectAlignmentWork; actio
     }
     const terms = action.query.toLocaleLowerCase().split(/\s+/u).filter(Boolean);
     const hits = records.filter(r => !terms.length || terms.some(t => JSON.stringify(r.object).toLocaleLowerCase().includes(t)));
+    if (input.lookup && terms.length) {
+      const score = (record: typeof records[number]) => {
+        const meaning = record.object.meaning.toLocaleLowerCase();
+        const aliases = record.object.aliases.join(" ").toLocaleLowerCase();
+        return terms.reduce((sum, term) => sum + (meaning.includes(term) ? 4 : 0) + (aliases.includes(term) ? 2 : 0), 0);
+      };
+      hits.sort((a, b) => score(b) - score(a));
+    }
     if (action.offset > hits.length) throw new Error("alignment search offset out of range");
-    const page = hits.slice(action.offset, action.offset + 6);
-    work.search = { query: action.query, offset: action.offset, keys: page.map(r => r.key), next_offset: action.offset + page.length < hits.length ? action.offset + page.length : null };
+    const page = hits.slice(action.offset, action.offset + (input.lookup?.page_size ?? 6));
+    work.search = { query: action.query, offset: action.offset, keys: page.map(r => r.key), next_offset: action.offset + page.length < hits.length ? action.offset + page.length : null,
+      ...(input.lookup ? { lookup: input.lookup } : {}) };
     return work;
   }
   if (action.kind === "inspect") {
@@ -209,7 +223,7 @@ export function advanceObjectAlignment(input: { work: ObjectAlignmentWork; actio
     work.reading = { ...action, text: passage.text.slice(action.start, action.end) };
     const samePassage = (r: ObjectAlignmentWork["read_ranges"][number]) => r.source_id === source.source_id
       && r.source_revision === source.source_revision && r.lid === action.lid;
-    const ranges = [...work.read_ranges.filter(samePassage), { source_id: source.source_id,
+    const ranges = [...work.read_ranges.filter(samePassage).map(r => ({ ...r })), { source_id: source.source_id,
       source_revision: source.source_revision, lid: action.lid, start: action.start, end: action.end }].sort((a, b) => a.start - b.start);
     const merged: ObjectAlignmentWork["read_ranges"] = [];
     for (const range of ranges) {
@@ -238,20 +252,30 @@ export function advanceObjectAlignment(input: { work: ObjectAlignmentWork; actio
     requireReadBindings(work, action.object.source_bindings, source, "/object/source_bindings");
     const replacement = { ...action.object, candidate_refs: unique([...action.object.candidate_refs, ...selected.flatMap(o => o.candidate_refs)]) };
     const ranges = action.keys.flatMap(key => work.source_ranges[key] ?? []);
+    work.source_ranges = { ...work.source_ranges };
+    work.proposal = { ...work.proposal };
+    work.redirects = { ...work.redirects };
     for (const key of action.keys) delete work.source_ranges[key];
     work.source_ranges[replacement.key] = ranges;
     work.proposal.objects = work.proposal.objects.filter(o => !action.keys.includes(o.key));
     work.proposal.objects.push(replacement);
     const remap = (key: string) => action.keys.includes(key) ? replacement.key : key;
-    for (const object of work.proposal.objects) {
-      object.participants = object.participants.map(p => ({ ...p, object_key: remap(p.object_key) }));
-      object.component_keys = unique(object.component_keys.map(remap));
-      if (object.component_keys.includes(object.key)) throw new Error("alignment merge creates self containment");
-    }
-    for (const coverage of work.proposal.coverage) coverage.object_keys = unique(coverage.object_keys.map(remap));
-    for (const prerequisite of work.proposal.prerequisites) {
-      prerequisite.target_key = remap(prerequisite.target_key); prerequisite.prerequisite_key = remap(prerequisite.prerequisite_key);
-    }
+    work.proposal.objects = work.proposal.objects.map(object => {
+      const participants = object.participants.map(p => p.object_key === remap(p.object_key) ? p : { ...p, object_key: remap(p.object_key) });
+      const component_keys = unique(object.component_keys.map(remap));
+      if (component_keys.includes(object.key)) throw new Error("alignment merge creates self containment");
+      return participants.every((p, i) => p === object.participants[i]) && isDeepStrictEqual(component_keys, object.component_keys)
+        ? object : { ...object, participants, component_keys };
+    });
+    work.proposal.coverage = work.proposal.coverage.map(coverage => {
+      const object_keys = unique(coverage.object_keys.map(remap));
+      return isDeepStrictEqual(object_keys, coverage.object_keys) ? coverage : { ...coverage, object_keys };
+    });
+    work.proposal.prerequisites = work.proposal.prerequisites.map(prerequisite => {
+      const target_key = remap(prerequisite.target_key), prerequisite_key = remap(prerequisite.prerequisite_key);
+      return target_key === prerequisite.target_key && prerequisite_key === prerequisite.prerequisite_key
+        ? prerequisite : { ...prerequisite, target_key, prerequisite_key };
+    });
     for (const key of Object.keys(work.redirects)) work.redirects[key] = remap(work.redirects[key]);
     for (const key of action.keys) work.redirects[key] = replacement.key;
     work.resolved = unique([...work.resolved.map(remap), replacement.key]);
@@ -269,10 +293,12 @@ export function advanceObjectAlignment(input: { work: ObjectAlignmentWork; actio
     if (action.source_bindings.some(b => !targets.some(o => o.source_bindings.some(binding => binding.lid === b.lid)))) throw new Error("identity evidence must bind current objects");
     if (action.from.length > 1 && targets.length > 1) throw new Error("identity decision must be a split or merge");
     requireReadBindings(work, action.source_bindings, source, "/source_bindings");
-    if (action.from.length === 1 && targets.length === 1) targets[0].existing_ref = action.from[0];
+    work.proposal = { ...work.proposal };
+    if (action.from.length === 1 && targets.length === 1) work.proposal.objects = work.proposal.objects.map(object =>
+      object === targets[0] ? { ...object, existing_ref: action.from[0] } : object);
     else {
-      work.proposal.correspondences.push({ kind: action.from.length > 1 ? "merge" : "split", from: action.from,
-        to_keys: action.to_keys, reason: action.reason, source_bindings: action.source_bindings });
+      work.proposal.correspondences = [...work.proposal.correspondences, { kind: action.from.length > 1 ? "merge" : "split", from: action.from,
+        to_keys: action.to_keys, reason: action.reason, source_bindings: action.source_bindings }];
     }
   } else {
     if (focus.kind !== "finish") throw new Error("object alignment coverage incomplete");
@@ -300,7 +326,7 @@ export function mergeObjectAlignmentBranch(input: { current: ObjectAlignmentWork
     if (!isDeepStrictEqual(before, current)
       || (action.keys.includes(key) && input.current.resolved.includes(key) !== input.branch.resolved.includes(key))) return;
   }
-  const work = structuredClone(input.current);
+  const work = { ...input.current };
   work.focus_key = input.branch.focus_key;
   work.inspected = [...input.branch.inspected];
   work.read_ranges = structuredClone(input.branch.read_ranges);

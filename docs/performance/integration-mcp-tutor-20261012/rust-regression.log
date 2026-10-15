@@ -1,0 +1,751 @@
+   Compiling read-tools v0.0.0 (E:\allwork\download\agent\understand-book\crates\read-tools)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling memory v0.0.0 (E:\allwork\download\agent\understand-book\crates\memory)
+   Compiling reader v0.0.0 (E:\allwork\download\agent\understand-book\crates\reader)
+   Compiling runtime v0.0.0 (E:\allwork\download\agent\understand-book\crates\runtime)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling server v0.0.0 (E:\allwork\download\agent\understand-book\crates\server)
+    Finished `test` profile [unoptimized] target(s) in 2m 05s
+     Running unittests src\lib.rs (D:\codex-build\understand-book-no-progress-195\debug\deps\memory-2623df4d18a69235.exe)
+
+running 13 tests
+test learning::export_bindings_tutorcontrol ... ok
+test learning::export_bindings_tutorfocus ... ok
+test learning::export_bindings_tutoraction ... ok
+test learning::export_bindings_tutormaterial ... ok
+test learning::export_bindings_tutormaterialrole ... ok
+test learning::export_bindings_tutormutation ... ok
+test learning::export_bindings_tutorsessionmode ... ok
+test learning::export_bindings_tutorsession ... ok
+test learning::export_bindings_tutorsessionstatus ... ok
+test teaching::export_bindings_continuationchosen ... ok
+test teaching::export_bindings_continuationdisplayed ... ok
+test learning::export_bindings_tutorstate ... ok
+test teaching::tests::continuation_events_roundtrip_without_becoming_performance ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 136 filtered out; finished in 0.12s
+
+     Running unittests src\lib.rs (D:\codex-build\understand-book-no-progress-195\debug\deps\read_tools-59922bc7edd61e9b.exe)
+
+running 3 tests
+test mcp_text_page_tests::mcp_text_page_reassembles_cross_lid_unicode_source_with_exact_coordinates ... ok
+test mcp_text_page_tests::mcp_text_page_rejects_reversed_out_of_range_and_split_surrogate_positions ... ok
+test mcp_text_page_tests::mcp_text_page_handles_exact_limit_empty_source_and_last_page ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 169 filtered out; finished in 0.02s
+
+     Running unittests src\lib.rs (D:\codex-build\understand-book-no-progress-195\debug\deps\runtime-cad3f0ebaa73517b.exe)
+
+running 71 tests
+test auto_compaction::tests::active_context_budget_uses_current_request_and_reserves_not_cumulative_usage ... ok
+test compaction::tests::compaction_checkpoint_failure_is_byte_equivalent_and_stale_history_fails_closed ... ok
+test compaction::tests::compaction_checkpoint_hierarchical_chunks_preserve_every_complete_turn ... ok
+test compaction::tests::compaction_checkpoint_prepare_keeps_current_text_and_incomplete_pairs_raw ... ok
+test compaction::tests::compaction_checkpoint_prompt_and_schema_are_canonical_and_strict ... ok
+test compaction::tests::compaction_checkpoint_receipts_are_runtime_owned_and_evidence_is_whitelisted ... ok
+test compaction::tests::compaction_checkpoint_validator_rejects_forgery_coverage_and_closed_pending_state ... ok
+test compaction::tests::compaction_prepare_covers_past_user_only_turn_without_consuming_current_turn ... ok
+test compaction::tests::compaction_repairs_rejected_draft_once_without_relaxing_validation ... ok
+test compaction::tests::ex13_compaction_budgets_the_exact_projected_input_and_repair_tail ... ok
+test compaction::tests::compaction_checkpoint_install_projects_fixed_order_without_mutating_history ... ok
+test compaction::tests::ex13_compaction_repair_cannot_bypass_source_or_schema_validation ... ok
+test memory_review::tests::assistant_only_or_forged_evidence_is_rejected ... ok
+test memory_review::tests::explicit_global_inference_remains_inferred_for_pending_trust ... ok
+test memory_review::tests::historical_backfill_reuses_one_turn_validation_and_keeps_only_fact_candidates ... ok
+test memory_review::tests::intent_observation_is_typed_separately_from_profile_facts ... ok
+test memory_review::tests::provider_executor_uses_structured_prompt_and_returns_validated_types ... ok
+test memory_review::tests::sensitive_and_secret_candidates_are_rejected_without_echoing_values ... ok
+test memory_review::tests::tc6_action_only_turns_keep_review_sequence_without_profile_evidence ... ok
+test memory_review::tests::user_statement_is_typed_and_ambiguous_scope_defaults_to_book ... ok
+test model_runtime::tests::deepseek_flash_aliases_preserve_application_compaction_budget ... ok
+test model_runtime::tests::provider_capabilities_unknown_models_fail_closed_without_guessed_continuation ... ok
+test orchestrator::tests::adm6::adm6_compaction_stop_keeps_original_history_and_checkpoint ... ok
+test orchestrator::tests::adm6::adm6_tutor_and_observation_keep_typed_reason_without_text_matching ... ok
+test orchestrator::tests::adm6::adm6_tutor_tool_stops_run_before_next_tool_and_leaves_response_unassessed ... ok
+test compaction::tests::ex13_compaction_replays_source_failure_with_stable_repair_prefix ... ok
+test orchestrator::tests::auto_compaction_ignores_cumulative_usage_when_active_request_fits ... ok
+test orchestrator::tests::auto_compaction_failure_keeps_history_and_new_user_uncommitted ... ok
+test orchestrator::tests::auto_compaction_mid_turn_preserves_current_tool_pair_and_continues_same_turn ... ok
+test orchestrator::tests::auto_compaction_precheck_redaction_is_committed_only_after_install ... ok
+test orchestrator::tests::auto_compaction_reports_active_context_exhausted_when_no_history_is_compactable ... ok
+test orchestrator::tests::ex11_pre_turn_compaction_projects_last_completed_tool_turn ... ok
+test orchestrator::tests::auto_compaction_pre_turn_installs_checkpoint_before_sampling_new_user ... ok
+test orchestrator::tests::presentation_author_read_continuations_are_progress ... ok
+test orchestrator::tests::presentation_authoring::ex12_current_framework_survives_mid_turn_compaction ... ok
+test orchestrator::tests::presentation_authoring::ex14::ex14_manim_review_guidance_is_selected_once_and_survives_compaction ... ok
+test orchestrator::tests::presentation_authoring::ex14::ex14_review_scene_guidance_survives_compaction ... ok
+test orchestrator::tests::turn_failures::compaction_candidate_retains_large_current_body_and_may_miss_soft_target ... ok
+test orchestrator::tests::turn_failures::tiny_eligible_history_does_not_abort_or_regenerate_compaction ... ok
+test orchestrator::tests::turn_failures::tutor_pause_overrides_frozen_context_at_next_sample ... ok
+test orchestrator::tests::turn_failures::tutor_tc2a_navigation_discovery_loads_workflow_on_next_sample ... ok
+test orchestrator::tests::turn_failures::compaction_adoption_uses_actual_budget_and_remembers_no_benefit ... ok
+test orchestrator::tests::turn_failures::tutor_tc2a_presentation_guidance_follows_discovery_phase_and_delivery ... ok
+test orchestrator::tests::tutor_t16_literal_occurrence_requires_original_read_for_teaching ... ok
+test request_diagnostics::tests::tracks_append_rewrite_truncation_and_separates_compaction_baseline ... ok
+test tests::deepseek_compaction_limits_reach_the_wire ... ok
+test tests::deepseek_final_answer_continuation_survives_history_reload ... ok
+test orchestrator::tests::turn_failures::tutor_turn_context_appears_once_across_five_samples ... ok
+test tests::provider_equivalence_compaction_uses_one_prompt_schema_and_validator ... ok
+test tool_registry::contract_tests::mcp_guide_schema_has_conditional_requirements ... ok
+test tests::ex13_compaction_repair_prefix_reaches_native_and_react_wire ... ok
+test tool_result::tests::presentation_edit_search_projection_preserves_matches_and_continuation ... ok
+test tutor::t15_tests::tutor_t15_move_roundtrips_source_target_and_historical_objects ... ok
+test tutor_continuation::export_bindings_answerref ... ok
+test tutor_continuation::export_bindings_continuationavailability ... ok
+test tutor_continuation::export_bindings_continuationmovekind ... ok
+test tutor_continuation::export_bindings_continuationoption ... ok
+test tool_registry::contract_tests::tutor_operations_require_their_payloads ... ok
+test tutor_continuation::export_bindings_entryaction ... ok
+test tutor_continuation::export_bindings_interactionaction ... ok
+test tutor_continuation::export_bindings_interactionresolution ... ok
+test tutor_continuation::export_bindings_resolvedinteraction ... ok
+test tutor_continuation::export_bindings_teachingchoice ... ok
+test tutor_continuation::export_bindings_teachingcontinuation ... ok
+test tutor_continuation::export_bindings_tutorcontinuationview ... ok
+test tutor_continuation_tests::continuation_contract_action_origins_and_direction_are_distinct ... ok
+test tutor_continuation_tests::continuation_contract_legacy_move_and_public_allowlist ... ok
+test tutor_continuation_tests::tutor_action_intent_preserves_request_default_and_preference_precedence ... ok
+test tutor_continuation_tests::tutor_projection_exposes_only_current_operations ... ok
+test tutor_continuation_tests::tutor_projection_pure_click_owns_intent_and_accepts_optional_continuation ... ok
+test tutor_continuation_tests::continuation_contract_runtime_and_schema_reject_invalid_options ... ok
+
+test result: ok. 71 passed; 0 failed; 0 ignored; 0 measured; 443 filtered out; finished in 1.11s
+
+     Running unittests src\lib.rs (D:\codex-build\understand-book-no-progress-195\debug\deps\server-d6ca67c640d9d740.exe)
+
+running 223 tests
+test auth::tests::inv5_email_and_legacy_login_share_identity_role_and_attempt_budget ... ok
+test auth::tests::mu4_global_attempt_budget_resets_and_does_not_grow_unbounded ... ok
+test auth::tests::adm1_admin_role_is_current_and_obeys_all_session_revocations ... ok
+test book_title::tests::book_title_uses_metadata_then_import_title_then_source_heading ... ok
+test control_store::account_registration_schema_tests::inv1_email_invite_and_request_constraints_persist_on_reopen ... ok
+test control_store::account_registration_schema_tests::inv1_failed_upgrade_rolls_back_email_tables_and_version ... ok
+test control_store::account_registration_schema_tests::inv1_upgrades_preserve_old_fields_and_match_fresh_schema_on_reopen ... ok
+test control_store::admin_schema_tests::adm1_failed_upgrade_rolls_back_role_and_version ... ok
+test control_store::admin_schema_tests::adm1_new_schema_enforces_ownership_money_periods_and_charge_facts ... ok
+test control_store::admin_schema_tests::adm1_upgrades_every_supported_schema_and_preserves_existing_data_on_reopen ... ok
+test control_store::tests::mu2_control_future_or_unversioned_foreign_schema_is_not_rewritten ... ok
+test control_store::tests::mu2_control_schema_pragmas_owner_constraints_and_reopen ... ok
+test auth::tests::mu4_session_cap_prunes_expired_and_hash_slot_does_not_block_validation ... ok
+
+running 1 test
+test control_store::tests::mu2_writer_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 800 filtered out; finished in 0.00s
+
+
+running 1 test
+test control_store::tests::mu2_exclusive_writer_survives_handles_and_releases_on_process_exit ... ok
+test control_store::tests::mu2_writer_child ... ok
+test mcp::tests::artifact_refs_fail_closed_after_the_current_snapshot_changes ... ok
+test mcp::tests::artifact_tools_fail_closed_when_overlay_is_unavailable ... ok
+test mcp::tests::artifact_tools_use_the_shared_executor_and_reread_snapshot_per_call ... ok
+test mcp::tests::book_concept_v2_mcp_contract_and_dispatch ... ok
+test mcp::tests::book_guide_opens_refines_and_closes_ephemeral_session ... ok
+test mcp::tests::concurrent_visitor_sessions_are_isolated ... ok
+test mcp::tests::expired_visitor_sessions_are_gc_during_dispatch ... ok
+test mcp::tests::jsonrpc_tools_call_wraps_tool_result ... ok
+test mcp::tests::mcp_tool_characterization ... ok
+test mcp::tests::tier1_readonly_calls_do_not_create_visitor_session ... ok
+test mcp::tests::tools_list_excludes_private_and_bare_route_tools ... ok
+test mcp::tests::unconfigured_adapter_errors_do_not_create_tier1_session ... ok
+test mcp::tests::visitor_dispatch_has_no_reader_or_memory_branch ... ok
+test mcp::tests::visitor_guide_never_reads_or_injects_reader_private_profile ... ok
+test control_store::tests::mu2_database_busy_returns_storage_error_without_partial_user ... ok
+test mcp_access::tests::mcp_access_account_revocations_never_revive_old_credentials ... ok
+test mcp_access::tests::mcp_access_account_routes_keep_cookie_csrf_and_private_state_boundaries ... ok
+test mcp_access::tests::mcp_access_real_http_create_list_and_revoke_without_reader_workspace ... ok
+test mcp_access::tests::mcp_access_owner_isolation_one_time_secret_and_reopen ... ok
+test mcp_access::tests::mcp_access_schema_v9_upgrade_preserves_accounts_and_rolls_back_on_failure ... ok
+test mcp_access::tests::mcp_access_rejects_missing_wrong_credentials_and_stale_web_sessions ... ok
+test mcp_read::tests::mcp_read_nested_structure_and_paper_collections_reassemble_without_omissions ... ok
+test mcp_read::tests::mcp_read_catalog_isolates_accounts_pages_versions_and_avoids_private_or_resident_state ... ok
+test mcp_read::tests::mcp_read_text_pages_keep_exact_source_and_recheck_cached_grants_on_continuation ... ok
+test mcp_usage::tests::mcp_usage_debit_samples_clock_inside_write_transaction_after_preflight ... ok
+test mcp_usage::tests::mcp_usage_failed_debits_leave_no_consumption_or_partial_grant ... ok
+test mcp_usage::tests::mcp_usage_first_month_is_full_account_owned_and_history_is_minimal ... ok
+test mcp_read::tests::mcp_read_search_context_empty_results_and_remote_parameter_validation ... ok
+test mcp_usage::tests::mcp_usage_hong_kong_rollover_and_unused_gifts_do_not_carry ... ok
+test mcp_usage::tests::mcp_usage_gifts_require_admin_and_replay_business_fields_atomically ... ok
+test mcp_usage::tests::mcp_usage_restart_and_replaced_credentials_share_original_month ... ok
+test mcp_usage::tests::mcp_usage_schema_10_upgrade_preserves_existing_data_and_rolls_back ... ok
+test mcp_usage::tests::packs::mcp_pack_corrections_preserve_consumption_and_separate_cash_and_units ... ok
+test mcp_usage::tests::packs::mcp_pack_debit_and_correction_failures_rollback_all_facts ... ok
+test mcp_usage::tests::packs::mcp_pack_earliest_expiry_then_opening_order_and_expired_exclusion ... ok
+test mcp_usage::tests::packs::mcp_pack_free_first_calendar_expiry_and_cross_month_carry ... ok
+test mcp_usage::tests::packs::mcp_pack_last_paid_unit_is_not_double_spent ... ok
+test mcp_usage::tests::packs::mcp_pack_purchase_replay_conflicts_rollback_and_restart ... ok
+test mcp_usage::tests::mcp_usage_two_connections_compete_for_last_unit_without_overdraft ... ok
+test remote_mcp::tests::mcp_acceptance::mcp9_external_agent_fixture ... ignored, external Agent acceptance; requires MCP9_AGENT_DIR and a separately launched client
+test mcp_usage::tests::packs::mcp_pack_schema11_migration_preserves_free_history_and_is_atomic ... ok
+test remote_mcp::tests::mcp_acceptance::mcp9_small_concurrent_reads_measure_bytes_and_ledger ... ok
+test remote_mcp::tests::mcp_acceptance::mcp9_two_accounts_purchase_recovery_and_source_evidence ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_discover_locate_read_and_cite_exact_pages ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_errors_give_actionable_recovery_without_evidence_or_charge ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_initialize_and_all_tool_schemas_explain_the_reading_path ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_paid_expiry_and_exhausted_discovery_are_stable ... ok
+test remote_mcp::tests::remote_mcp_exhaustion_skips_load_and_keeps_free_tools_available ... ok
+test remote_mcp::tests::remote_mcp_failed_reads_authorization_and_ledger_never_deliver_or_charge ... ok
+test remote_mcp::tests::remote_mcp_http_free_then_paid_and_purchase_restores_access ... ok
+test remote_mcp::tests::remote_mcp_http_initialize_discover_read_continue_and_charge ... ok
+test remote_mcp::tests::remote_mcp_http_two_clients_compete_for_last_call ... ok
+test remote_mcp::tests::remote_mcp_identity_origin_methods_versions_and_envelopes ... ok
+test tests::adm2_tests::adm2_permission_csrf_validation_pagination_and_actor_scoped_replay ... ok
+test tests::adm2_tests::adm2_online_lifecycle_receipts_and_other_reader_workspace ... ok
+test tests::adm2_tests::adm2_real_http_host_concurrent_create_and_current_role ... ok
+test tests::adm2_tests::adm2_receipt_failure_rolls_back_account_password_sessions_and_material ... ok
+test tests::adm3_tests::adm3_concurrent_same_operation_and_revision_commit_once ... ok
+test tests::adm3_tests::adm3_conflicts_overlap_ownership_and_occupied_allowance ... ok
+test tests::adm3_tests::adm3_failure_rolls_back_receipt_grant_revision_and_operation ... ok
+test tests::adm3_tests::adm3_schema5_upgrade_keeps_original_receipts_and_failure_is_atomic ... ok
+test tests::agent_compaction_checkpoint_is_server_only_restartable_and_keeps_raw_messages ... ok
+test tests::compaction_checkpoint_finalization_tracks_redacted_or_truncated_history ... ok
+test tests::deepseek_continuation_persists_privately_across_server_history_reload ... ok
+test tests::adm3_tests::adm3_receipt_grant_replay_corrections_and_reopen ... ok
+test tests::mu3_tests::book_cover_local_reads_an_unopened_book_and_pdf_without_switching_the_reader ... ok
+test tests::mu3_tests::book_cover_publication_copies_metadata_cover_and_enforces_grants_without_loading_book ... ok
+test tests::mu3_tests::mu3_default_change_keeps_old_run_history_and_capacity_pins ... ok
+test tests::mu3_tests::mu3_failed_registration_is_invisible_and_byte_budget_prevents_loading ... ok
+test tests::mcp_pack_api_tests::mcp_pack_admin_api_mixed_receipts_gifts_and_corrections ... ok
+test tests::mu3_tests::mu3_publications_isolate_same_name_resources_and_require_grants_on_cache_hits ... ok
+test tests::mu3_tests::mu3_published_localization_is_shared_single_flight_and_urls_are_bound ... ok
+test tests::mu3_tests::mu3_readonly_pdf_package_relocates_attachments_and_routes_without_writes ... ok
+test tests::mu3_tests::mu3_service_metadata_reopens_defaults_and_schema_one_upgrades_without_losing_users ... ok
+test tests::mu3_tests::mu3_unready_build_and_unsafe_declared_dependency_never_become_defaults ... ok
+test tests::mu3_tests::mu3_url_binding_preserves_user_and_source_plaintext ... ok
+test tests::mu3_tests::mu3_rejects_revised_content_missing_dependencies_and_preserves_teaching_readiness ... ok
+test tests::mu3_tests::mu3_writer_reopen_preserves_sealed_package_permissions ... ok
+test tests::mu3_tests::tutor_t15_publication_preserves_admission_without_private_build_files ... ok
+test tests::mu4_tests::mu4_identity_origin_csrf_and_directory_injection_fail_before_side_effects ... FAILED
+test tests::mu4_tests::mu4_login_limiter_and_mode_are_bounded_and_explicit ... FAILED
+test tests::mu4_tests::mu4_mu0_inventory_has_no_anonymous_or_legacy_bypass ... FAILED
+test tests::mu4_tests::mu4_open_sse_closes_on_logout_disable_and_material_revocation ... FAILED
+test tests::mu4_tests::mu4_private_objects_are_owner_scoped_at_real_host ... FAILED
+test tests::mu4_tests::mu4_real_host_login_cookie_rotation_csrf_logout_and_no_static_fallback ... FAILED
+test tests::mu4_tests::mu4_pdf_real_host_is_bound_and_private_storage_failure_is_sanitized ... ok
+test tests::mu4_tests::mu4_same_legacy_ids_and_delivered_presentation_stay_in_user_root ... FAILED
+test tests::mu4_tests::mu4_resources_authorize_before_head_range_conditionals_cache_and_revoke ... ok
+test tests::mu4_tests::mu4_sessions_survive_restart_expire_and_revoke_without_plaintext_storage ... FAILED
+test tests::mu4_tests::mu4_selection_translation_reaches_the_configured_service ... ok
+test tests::mu4_tests::multi_user_review_consumes_idle_jobs_without_holding_user_lock ... ok
+test tests::mu5_tests::mu5_tutor_shared_revision_and_old_teaching_control_are_enforced ... ok
+test tests::presentation_author_tests::ex12::ex12_archived_profile_keeps_catalog_authoring_and_compaction_budgets ... ok
+test tests::presentation_author_tests::ex12::ex13_live::ex13_continuation_restores_goal_checkpoint_and_exact_patch ... ignored, EX13.6 archived local publication; offline admission only
+test tests::presentation_author_tests::ex12::ex13_live::ex13_live_continuation ... ignored, EX13.6 paid continuation: invoke only via run.py with approved budget
+test tests::mu5_tests::tutor_t18_published_readiness_requires_the_exact_reader_grant ... ok
+test tests::search_text_rest_mcp_and_resident_contracts_have_parity ... ok
+test tests::search_text_real_book_mcp_pages_match_the_core_result ... ok
+test tests::session_runtime_tests::jl4_local_run_reopens_and_public_history_hides_continuation ... FAILED
+test tests::session_runtime_tests::jl5_bound_sources_survive_compaction_and_reopen ... ok
+test tests::session_runtime_tests::jl4_pre_turn_failure_keeps_previous_answer_and_accepted_question ... ok
+test tests::tutor_continuation_tests::continuation_baseline_local_blank_chat_is_rejected ... ok
+test tests::tutor_continuation_tests::continuation_baseline_foundation_and_selection_are_shared_across_ready_states ... ok
+test tests::tutor_continuation_tests::continuation_baseline_local_jsonl_replays_delivered_answer_and_quote ... ok
+test tests::tutor_continuation_tests::continuation_baseline_original_help_preserves_assisted_conditions ... ok
+test tests::tutor_continuation_tests::continuation_contract_candidate_snapshot_freezes_before_chat_acceptance ... ok
+test tests::tutor_continuation_tests::continuation_contract_input_shapes_and_normalized_identity ... ok
+test tests::tutor_continuation_tests::continuation_contract_no_action_cannot_claim_current_action ... ok
+test tests::tutor_continuation_tests::continuation_contract_references_reject_invalid_clarification ... ok
+test tests::tutor_continuation_tests::continuation_contract_snapshot_survives_jsonl_and_drives_current_action ... ok
+test tests::tutor_continuation_tests::continuation_baseline_network_lost_acceptance_recovers_one_execution ... ok
+test tests::tutor_continuation_tests::continuation_red_answer_excerpt_reaches_model_input ... ok
+test tests::tutor_continuation_tests::continuation_red_choice_cannot_record_chat_response ... ok
+test tests::tutor_continuation_tests::continuation_red_clarification_cannot_record_chat_response ... ok
+test tests::tutor_continuation_tests::continuation_red_local_lost_result_does_not_execute_twice ... ok
+test tests::tutor_continuation_tests::continuation_contract_unknown_choice_is_rejected_before_admission ... ok
+test tests::tutor_continuation_tests::continuation_red_paused_choice_is_not_an_ordinary_request ... ignored, TC4 red: paused Tutor must reject stale choice before accepting a turn (E03/E09)
+test tests::tutor_continuation_tests::continuation_red_object_question_help_is_assisted ... ok
+test tests::tutor_continuation_tests::continuation_red_source_question_help_is_assisted ... ok
+test tests::tutor_continuation_tests::continuation_tc2_cross_lid_and_direct_help_require_full_source_before_select ... ok
+test tests::tutor_continuation_tests::continuation_tc2_actual_tools_and_delivered_intent_follow_the_accepted_action ... ok
+test tests::tutor_continuation_tests::continuation_tc2_default_off_enable_then_continue_is_explicit_and_bounded ... ok
+test tests::tutor_continuation_tests::continuation_tc2_live_first_help_enable_then_continue ... ignored, configured real model; two-action TC2 first-help and continuation acceptance
+test tests::tutor_continuation_tests::continuation_tc2_local_restart_marks_unknown_execution_without_replay ... ok
+test tests::tutor_continuation_tests::continuation_tc2_current_question_routes_answer_and_source_without_recording_help ... ok
+test tests::tutor_continuation_tests::continuation_tc2_network_continue_uses_original_answer_and_same_key ... ok
+test tests::tutor_continuation_tests::continuation_tc2_network_question_help_returns_location_without_run ... ok
+test tests::tutor_continuation_tests::continuation_tc2_rejects_stale_and_unresolved_source_before_acceptance ... ok
+test tests::tutor_continuation_tests::continuation_tc2_selection_freezes_action_without_inventing_user_text_or_session ... ok
+test tests::tutor_continuation_tests::continuation_tc2_unready_paused_ended_and_other_material_keep_session_boundary ... ok
+test tests::tutor_continuation_tests::continuation_tc2a_continue_omits_assessment_workflow ... ok
+test tests::tutor_continuation_tests::continuation_tc2a_live_fixed_input_comparison ... ignored, TC2A fixed-input real-model comparison: three continuations; set TC2A_OUTPUT
+test tests::tutor_continuation_tests::continuation_tc2_network_action_recovers_each_preparation_boundary ... ok
+test tests::tutor_continuation_tests::continuation_tc2a_selection_omits_navigation_workflow ... ok
+test tests::tutor_continuation_tests::continuation_tc2a_understanding_read_opens_update_workflow_without_enabling_teaching ... ok
+test tests::tutor_continuation_tests::continuation_tc3_current_assessment_and_unrelated_history_are_distinct ... ok
+test tests::tutor_continuation_tests::continuation_tc3_delivery_failure_and_pause_do_not_offer_executable_candidates ... ok
+test tests::tutor_continuation_tests::continuation_tc3_fixture_supports_lexical_source_discovery ... ok
+test tests::tutor_continuation_tests::continuation_tc3_failed_or_cancelled_delivery_keeps_candidates_private ... ok
+test tests::tutor_continuation_tests::continuation_tc3_live_answer_and_optional_suggestions ... ignored, TC3 fixed two-scenario model observation; set fresh TC3_OUTPUT
+test tests::tutor_continuation_tests::continuation_tc3_incomplete_and_empty_answers_cannot_publish_suggestions ... ok
+test tests::tutor_continuation_tests::continuation_tc3_optional_set_delivers_once_and_reads_without_provider ... ok
+test tests::tutor_continuation_tests::continuation_tc3_pending_formal_activity_suppresses_related_suggestions ... ok
+test tests::tutor_continuation_tests::continuation_tc3_rejects_second_set_and_unread_or_missing_target ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_answer_identity_and_open_goal ... ok
+test tests::tutor_continuation_tests::continuation_tc4_both_hosts_execute_chosen_action_to_delivery ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_choice_boundaries_and_historical_answer ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_choice_is_consumed_once_and_keeps_goal ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_started_execution_is_not_replayed ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_two_tabs_accept_only_one_choice ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_restarts_repair_facts_without_execution ... ok
+test tests::tutor_continuation_tests::continuation_tc4_network_restart_keeps_choice_snapshot_and_authorization ... ok
+test tests::tutor_continuation_tests::continuation_tc4_network_two_choices_conflicts_and_unknown_execution ... ok
+test tests::tutor_continuation_tests::continuation_tc5_browser_api ... ignored, TC5 bounded real API browser fixture; set TC5_BROWSER_OUTPUT
+test tests::tutor_continuation_tests::continuation_tc5_display_records_visible_subset_once_without_consuming ... ok
+test tests::tutor_continuation_tests::continuation_tc5_live_correction ... ignored, TC5 real material correction; set fresh TC5_LIVE_OUTPUT
+test tests::tutor_continuation_tests::continuation_tc5_local_status_never_accepts_or_executes ... ok
+test tests::tutor_continuation_tests::continuation_tc5_network_display_uses_original_workspace_authority ... ok
+test tests::tutor_continuation_tests::continuation_tc6_answer_actions_preserve_authorship_and_require_real_expression ... ok
+test tests::tutor_continuation_tests::continuation_tc6_assistant_delivery_alone_cannot_diagnose_learner ... ok
+test tests::tutor_continuation_tests::continuation_tc6_live_correction_trajectory ... ignored, TC6 real model correction trajectory; set TC6_LIVE_OUTPUT and provider environment
+test tests::tutor_continuation_tests::continuation_tc4_network_choice_recovers_preparation_boundaries ... ok
+test tests::tutor_continuation_tests::continuation_tc6_recent_interactions_are_not_cognitive_todos ... ok
+test tests::tutor_continuation_tests::continuation_tc6_network_snapshot_and_review_keep_choice_separate ... ok
+test tests::tutor_continuation_tests::continuation_tc6_repeated_choices_and_reads_leave_learning_and_profile_unchanged ... ok
+test tests::tutor_continuation_tests::continuation_tc6_source_change_excludes_old_interpretations ... ok
+test tests::tutor_loop_tests::mu1c_tutor_material_keeps_original_binding_after_workspace_replacement ... ok
+test tests::tutor_loop_tests::tutor_assessment_browser_host ... ignored, bounded real Server host for tutor-assessment.spec.ts
+test tests::tutor_loop_tests::tutor_browser_host ... ignored, bounded real Server host for tutor-activities.spec.ts
+test tests::tutor_loop_tests::jl5_teaching_receipts_keep_original_revision_across_chats_and_restart ... ok
+test tests::tutor_loop_tests::tutor_first_question_becomes_starting_intent_when_enabled ... ok
+test tests::tutor_loop_tests::tutor_candidate_failed_and_unmounted_deliveries_are_distinct ... ok
+test tests::tutor_loop_tests::tutor_live_model_source_and_move_acceptance ... ignored, requires configured real model; bounded two-turn Tutor acceptance
+test tests::tutor_loop_tests::tutor_live_open_rubric_assessment ... ignored, configured provider; three independently specified source-grounded assessment cases
+test tests::tutor_loop_tests::tutor_frozen_assessment_uses_original_key_and_retains_attempt_conditions ... ok
+test tests::tutor_loop_tests::tutor_malformed_evaluator_output_keeps_response_unassessed ... ok
+test tests::tutor_loop_tests::tutor_old_activity_and_object_revision_remain_bound_after_new_map ... ok
+test tests::tutor_loop_tests::tutor_open_assessment_is_isolated_budgeted_and_contract_checked ... ok
+test tests::tutor_loop_tests::tutor_ordinary_chat_records_understanding_without_enabling_teaching ... ok
+test tests::tutor_loop_tests::tutor_ordinary_reply_keeps_help_facts_and_unready_never_exposes_formal_moves ... ok
+test tests::tutor_loop_tests::tutor_resident_reads_sources_then_adapts_next_turn_and_stops_when_disabled ... ok
+test tests::tutor_loop_tests::tutor_scoring_keys_stay_out_of_history_and_public_trace ... ok
+test tests::tutor_loop_tests::tutor_t16_context_keeps_confirmed_background_without_inventing_knowledge ... ok
+test tests::tutor_loop_tests::tutor_t16_accepted_objects_without_materials_stay_frozen_and_deliver ... ok
+test tests::tutor_loop_tests::tutor_t16_target_requires_exact_current_turn_source_and_object_identity ... ok
+test tests::tutor_loop_tests::tutor_t16_source_only_resident_delivers_and_continues_after_reopen ... ok
+test tests::tutor_loop_tests::tutor_t17a_ordinary_messages_and_closed_reading_survive_reopen ... ok
+test tests::tutor_loop_tests::tutor_t17a_usage_trace_reads_only_committed_presentations_and_exact_scene ... ok
+test tests::tutor_loop_tests::tutor_t17c_source_only_assessments_keep_help_and_reopen ... ok
+test tests::tutor_loop_tests::tutor_t18_browser_host ... ignored, bounded real Server host for tutor-continuity.spec.ts
+test tests::tutor_loop_tests::tutor_t17b_resident_revises_and_adopts_ordinary_understanding ... ok
+test tests::tutor_loop_tests::tutor_target_binds_current_source_without_model_copying_revision ... ok
+test tests::tutor_loop_tests::tutor_target_coverage_accepts_split_paragraphs_but_rejects_unread_text ... ok
+test tests::tutor_loop_tests::tutor_target_reports_revision_mismatch_before_interpretation_scope ... ok
+test tests::tutor_loop_tests::tutor_t18_publications_add_materials_without_rebinding_prior_activities ... ok
+test tests::tutor_loop_tests::tutor_two_activities_keep_exact_scene_help_and_cross_chat_ownership ... ok
+test tests::tutor_loop_tests::tutor_understanding_correction_changes_next_context_without_changing_public_map ... ok
+test tests::tutor_loop_tests::tutor_ungraded_discrimination_is_referenced_and_self_report_remains_subjective ... ok
+test tests::tutor_loop_tests::tutor_validation_recovery_allows_one_correction_then_stops_churn ... ok
+test tests::tutor_tests::tutor_api_is_global_across_chat_and_reopen_and_reports_storage_failure ... ok
+test tests::tutor_loop_tests::tutor_visible_rubric_feedback_is_help_for_the_next_attempt ... ok
+test tests::tutor_tests::tutor_readiness_is_separate_from_control_and_rejects_stale_or_missing_publication ... ok
+test tests::tutor_tests::tutor_existing_artifacts_work_without_build_or_publication_receipts ... ok
+test tests::tutor_tests::tutor_t15_ignores_build_history_but_rejects_wrong_publication_source ... ok
+test tests::tutor_tests::tutor_t15_admission_needs_artifacts_but_no_build_receipts_optional_teaching_or_pass2 ... ok
+test tests::tutor_tests::tutor_t15_paper_uses_public_artifacts_without_private_reconciliation ... ok
+test tests::tutor_tests::tutor_t15_optional_assets_do_not_change_admission_and_only_accepted_refs_are_offered ... ok
+test tests::tutor_tests::tutor_t18_readiness_endpoint_uses_foundation_and_preserves_enabled_intent ... ok
+
+failures:
+
+---- tests::mu4_tests::mu4_identity_origin_csrf_and_directory_injection_fail_before_side_effects stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+
+thread 'tests::mu4_tests::mu4_identity_origin_csrf_and_directory_injection_fail_before_side_effects' (19008) panicked at crates\server\src\tests\mu4_tests.rs:168:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- tests::mu4_tests::mu4_login_limiter_and_mode_are_bounded_and_explicit stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+
+thread 'tests::mu4_tests::mu4_login_limiter_and_mode_are_bounded_and_explicit' (9392) panicked at crates\server\src\tests\mu4_tests.rs:168:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+---- tests::mu4_tests::mu4_mu0_inventory_has_no_anonymous_or_legacy_bypass stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+
+thread 'tests::mu4_tests::mu4_mu0_inventory_has_no_anonymous_or_legacy_bypass' (4532) panicked at crates\server\src\tests\mu4_tests.rs:168:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+---- tests::mu4_tests::mu4_open_sse_closes_on_logout_disable_and_material_revocation stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+
+thread 'tests::mu4_tests::mu4_open_sse_closes_on_logout_disable_and_material_revocation' (17868) panicked at crates\server\src\tests\mu4_tests.rs:168:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+---- tests::mu4_tests::mu4_private_objects_are_owner_scoped_at_real_host stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+
+thread 'tests::mu4_tests::mu4_private_objects_are_owner_scoped_at_real_host' (2668) panicked at crates\server\src\tests\mu4_tests.rs:168:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+---- tests::mu4_tests::mu4_real_host_login_cookie_rotation_csrf_logout_and_no_static_fallback stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+
+thread 'tests::mu4_tests::mu4_real_host_login_cookie_rotation_csrf_logout_and_no_static_fallback' (1896) panicked at crates\server\src\tests\mu4_tests.rs:168:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+---- tests::mu4_tests::mu4_same_legacy_ids_and_delivered_presentation_stay_in_user_root stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+
+thread 'tests::mu4_tests::mu4_same_legacy_ids_and_delivered_presentation_stay_in_user_root' (3308) panicked at crates\server\src\tests\mu4_tests.rs:168:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+---- tests::mu4_tests::mu4_sessions_survive_restart_expire_and_revoke_without_plaintext_storage stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=12
+
+thread 'tests::mu4_tests::mu4_sessions_survive_restart_expire_and_revoke_without_plaintext_storage' (6264) panicked at crates\server\src\tests\mu4_tests.rs:168:78:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SESSION_EVENT_WRITE_REQUIRED", category: "conflict", message: "This session requires the event writer" }
+
+---- tests::session_runtime_tests::jl4_local_run_reopens_and_public_history_hides_continuation stdout ----
+
+thread 'tests::session_runtime_tests::jl4_local_run_reopens_and_public_history_hides_continuation' (23420) panicked at crates\server\src\tests\session_runtime_tests.rs:74:5:
+assertion `left == right` failed
+  left: "teaching.linked"
+ right: "turn.finished"
+
+
+failures:
+    tests::mu4_tests::mu4_identity_origin_csrf_and_directory_injection_fail_before_side_effects
+    tests::mu4_tests::mu4_login_limiter_and_mode_are_bounded_and_explicit
+    tests::mu4_tests::mu4_mu0_inventory_has_no_anonymous_or_legacy_bypass
+    tests::mu4_tests::mu4_open_sse_closes_on_logout_disable_and_material_revocation
+    tests::mu4_tests::mu4_private_objects_are_owner_scoped_at_real_host
+    tests::mu4_tests::mu4_real_host_login_cookie_rotation_csrf_logout_and_no_static_fallback
+    tests::mu4_tests::mu4_same_legacy_ids_and_delivered_presentation_stay_in_user_root
+    tests::mu4_tests::mu4_sessions_survive_restart_expire_and_revoke_without_plaintext_storage
+    tests::session_runtime_tests::jl4_local_run_reopens_and_public_history_hides_continuation
+
+test result: FAILED. 199 passed; 9 failed; 15 ignored; 0 measured; 578 filtered out; finished in 151.60s
+
+error: test failed, to rerun pass `-p server --lib`

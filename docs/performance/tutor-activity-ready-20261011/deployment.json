@@ -1,0 +1,14 @@
+{
+  "published_at_utc": "2026-10-11T03:16:49.956207+00:00",
+  "release": "/opt/understand-book/releases/ux-trace-20261011",
+  "backup": "/opt/understand-book/backups/tutor-activity-ready-20261011T031621Z",
+  "old_script": "/assets/reader-RcmpWa1T.js",
+  "new_script": "/assets/reader-CZ0ykojC.js",
+  "uploaded_assets": [
+    "reader-CUvM77VD.css",
+    "reader-CZ0ykojC.js"
+  ],
+  "backend_restarted": false,
+  "service": "MainPID=513730\nActiveState=active",
+  "change": "TutorActivities ready defaults to true; explicit false still waits"
+}

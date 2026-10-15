@@ -1,0 +1,22 @@
+/* Smiley Sans v2.0.1, unmodified. License: /licenses/SmileySans-OFL.txt.
+   The original face is already slanted; use its native weight without synthesis. */
+@font-face {
+  font-family: 'Smiley Sans';
+  src: url('./assets/fonts/SmileySans-Oblique.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+.brand-logo { display: block; flex: 0 0 auto; object-fit: contain; }
+.brand-signature { display: inline-flex; align-items: center; gap: 10px; color: var(--brand-accent-deep); text-decoration: none; font: 600 15px/1.3 Georgia, serif; }
+
+:root {
+  --font-display: 'Smiley Sans', 'Noto Sans SC Variable', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --brand-accent: #b65a17;
+  --brand-accent-deep: #91420f;
+  --brand-accent-soft: #f4e5d8;
+  --brand-accent-soft-hover: #ecd5c1;
+  --brand-accent-line: #d7ac8b;
+  --brand-on-accent: #fff;
+}

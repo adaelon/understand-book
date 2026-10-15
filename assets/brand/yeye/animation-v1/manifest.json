@@ -1,0 +1,59 @@
+{
+  "character": "页页",
+  "version": 1,
+  "source": "../v7",
+  "format": "Lottie with original PNG assets and vector animation layers",
+  "dimensions": [
+    1254,
+    1254
+  ],
+  "fps": 30,
+  "authoring": {
+    "project": "https://github.com/diffusionstudio/lottie",
+    "skill": "Text-to-Lottie",
+    "verifier": "official Skia Skottie player"
+  },
+  "runtime": {
+    "project": "https://github.com/airbnb/lottie-web",
+    "version": "5.13.0",
+    "renderer": "svg"
+  },
+  "scenes": [
+    {
+      "id": "idle",
+      "title": "页页 · 日常眨眼",
+      "file": "idle/lottie.json",
+      "asset": "idle/yeye-idle.png",
+      "loop": true,
+      "frames": 120,
+      "seconds": 4,
+      "officialScene": "yeye/scene-1"
+    },
+    {
+      "id": "reading",
+      "title": "页页 · 阅读翻页",
+      "file": "reading/lottie.json",
+      "asset": "reading/yeye-reading-cream.png",
+      "loop": true,
+      "frames": 150,
+      "seconds": 5,
+      "officialScene": "yeye/scene-2"
+    },
+    {
+      "id": "success",
+      "title": "页页 · 完成反馈",
+      "file": "success/lottie.json",
+      "asset": "success/yeye-success.png",
+      "loop": false,
+      "frames": 75,
+      "seconds": 2.5,
+      "officialScene": "yeye/scene-3"
+    }
+  ],
+  "notes": [
+    "Artwork is unchanged from the approved v7 PNGs. Eyelids, page and response marks are local vector layers.",
+    "Success is a one-shot animation. The raised paw is part of the source pose, not a separately articulated limb.",
+    "Keep each lottie.json together with its referenced PNG when distributing. Background is transparent.",
+    "MIT code notices are bundled in licenses. Character artwork provenance is recorded in ../v7/design-spec.json."
+  ]
+}

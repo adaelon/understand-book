@@ -1,0 +1,149 @@
+{
+  "checks": [
+    "Production PDF canvas and selectable text render successfully",
+    "Admin login, usage and invitation deep-link refresh"
+  ],
+  "errors": [],
+  "console": [
+    "Failed to load resource: the server responded with a status of 401 ()",
+    "Failed to load resource: the server responded with a status of 404 ()",
+    "Failed to load resource: the server responded with a status of 404 ()",
+    "Failed to load resource: the server responded with a status of 404 ()",
+    "Failed to load resource: the server responded with a status of 404 ()",
+    "Failed to load resource: the server responded with a status of 404 ()",
+    "Failed to load resource: the server responded with a status of 404 ()",
+    "Failed to load resource: the server responded with a status of 404 ()",
+    "Failed to load resource: the server responded with a status of 404 ()",
+    "Failed to load resource: the server responded with a status of 404 ()",
+    "Failed to load resource: the server responded with a status of 501 ()",
+    "Failed to load resource: the server responded with a status of 401 ()"
+  ],
+  "responses": [
+    {
+      "path": "/api/auth/me",
+      "status": 401,
+      "length": "101"
+    },
+    {
+      "path": "/api/books/understanding-transformer-from-the-perspective-of-associative-memory/publications/01a0f58a-53e1-7262-92cb-e90ffa4b054d/pdf/original",
+      "status": 206,
+      "range": "bytes 0-262143/2646721",
+      "length": "262144"
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/pdf/original",
+      "status": 206,
+      "range": "bytes 0-262143/16504342",
+      "length": "262144"
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/formula_semantics",
+      "status": 404
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/formula_semantics",
+      "status": 404
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/formula_semantics",
+      "status": 404
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/formula_semantics",
+      "status": 404
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/formula_semantics",
+      "status": 404
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/formula_semantics",
+      "status": 404
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/formula_semantics",
+      "status": 404
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/formula_semantics",
+      "status": 404
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/formula_semantics",
+      "status": 404
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/pdf/original",
+      "status": 206,
+      "range": "bytes 0-262143/16504342",
+      "length": "262144"
+    },
+    {
+      "path": "/api/workspaces/ws-01a125aa-fdcf-7811-86b8-1266883c7417/reader/paper_minimap.localize",
+      "status": 501,
+      "length": "132"
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/pdf/original",
+      "status": 206,
+      "range": "bytes 16252928-16504341/16504342",
+      "length": "251414"
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/pdf/original",
+      "status": 206,
+      "range": "bytes 262144-2621439/16504342",
+      "length": "2359296"
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/pdf/original",
+      "status": 206,
+      "range": "bytes 3145728-3670015/16504342",
+      "length": "524288"
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/pdf/original",
+      "status": 206,
+      "range": "bytes 4980736-9175039/16504342",
+      "length": "4194304"
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/pdf/original",
+      "status": 206,
+      "range": "bytes 3670016-4980735/16504342",
+      "length": "1310720"
+    },
+    {
+      "path": "/api/auth/me",
+      "status": 401,
+      "length": "101"
+    }
+  ],
+  "failedRequests": [
+    {
+      "path": "/cdn-cgi/rum",
+      "error": {
+        "errorText": "net::ERR_ABORTED"
+      }
+    },
+    {
+      "path": "/api/workspaces/ws-01a125aa-fdcf-7811-86b8-1266883c7417/detach",
+      "error": {
+        "errorText": "net::ERR_ABORTED"
+      }
+    },
+    {
+      "path": "/cdn-cgi/rum",
+      "error": {
+        "errorText": "net::ERR_ABORTED"
+      }
+    },
+    {
+      "path": "/cdn-cgi/rum",
+      "error": {
+        "errorText": "net::ERR_ABORTED"
+      }
+    }
+  ],
+  "status": "passed-with-existing-minimap-limitation"
+}

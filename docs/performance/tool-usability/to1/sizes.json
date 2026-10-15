@@ -1,0 +1,518 @@
+{
+  "totals": [
+    {
+      "surface": "local_mcp",
+      "tools": 16,
+      "schema_before_bytes": 5207,
+      "schema_after_bytes": 11182,
+      "description_before_bytes": 2335,
+      "description_after_bytes": 3970
+    },
+    {
+      "surface": "remote_mcp",
+      "tools": 11,
+      "schema_before_bytes": 12260,
+      "schema_after_bytes": 14358,
+      "description_before_bytes": 14913,
+      "description_after_bytes": 14913
+    },
+    {
+      "surface": "resident",
+      "tools": 34,
+      "schema_before_bytes": 37960,
+      "schema_after_bytes": 43235,
+      "description_before_bytes": 10552,
+      "description_after_bytes": 10552
+    }
+  ],
+  "tools": [
+    {
+      "surface": "local_mcp",
+      "tool": "book_manifest",
+      "schema_before_bytes": 46,
+      "schema_after_bytes": 46,
+      "description_before_bytes": 35,
+      "description_after_bytes": 154
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_text",
+      "schema_before_bytes": 141,
+      "schema_after_bytes": 497,
+      "description_before_bytes": 64,
+      "description_after_bytes": 176
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_search_text",
+      "schema_before_bytes": 782,
+      "schema_after_bytes": 2738,
+      "description_before_bytes": 156,
+      "description_after_bytes": 317
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_context",
+      "schema_before_bytes": 254,
+      "schema_after_bytes": 795,
+      "description_before_bytes": 212,
+      "description_after_bytes": 326
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_concept",
+      "schema_before_bytes": 269,
+      "schema_after_bytes": 876,
+      "description_before_bytes": 201,
+      "description_after_bytes": 417
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_structure",
+      "schema_before_bytes": 93,
+      "schema_after_bytes": 285,
+      "description_before_bytes": 206,
+      "description_after_bytes": 325
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_guide_path",
+      "schema_before_bytes": 93,
+      "schema_after_bytes": 285,
+      "description_before_bytes": 238,
+      "description_after_bytes": 339
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_paper_metadata",
+      "schema_before_bytes": 46,
+      "schema_after_bytes": 46,
+      "description_before_bytes": 211,
+      "description_after_bytes": 301
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_paper_lexicon",
+      "schema_before_bytes": 46,
+      "schema_after_bytes": 46,
+      "description_before_bytes": 169,
+      "description_after_bytes": 306
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_paper_reading_guide",
+      "schema_before_bytes": 230,
+      "schema_after_bytes": 391,
+      "description_before_bytes": 248,
+      "description_after_bytes": 347
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_query",
+      "schema_before_bytes": 697,
+      "schema_after_bytes": 1646,
+      "description_before_bytes": 154,
+      "description_after_bytes": 300
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_synthesize",
+      "schema_before_bytes": 178,
+      "schema_after_bytes": 499,
+      "description_before_bytes": 142,
+      "description_after_bytes": 251
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "book_guide",
+      "schema_before_bytes": 528,
+      "schema_after_bytes": 1228,
+      "description_before_bytes": 58,
+      "description_after_bytes": 170
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "artifact_list",
+      "schema_before_bytes": 178,
+      "schema_after_bytes": 178,
+      "description_before_bytes": 76,
+      "description_after_bytes": 76
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "artifact_search",
+      "schema_before_bytes": 442,
+      "schema_after_bytes": 442,
+      "description_before_bytes": 84,
+      "description_after_bytes": 84
+    },
+    {
+      "surface": "local_mcp",
+      "tool": "artifact_read",
+      "schema_before_bytes": 1184,
+      "schema_after_bytes": 1184,
+      "description_before_bytes": 81,
+      "description_after_bytes": 81
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_list",
+      "schema_before_bytes": 621,
+      "schema_after_bytes": 621,
+      "description_before_bytes": 681,
+      "description_after_bytes": 681
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_text",
+      "schema_before_bytes": 961,
+      "schema_after_bytes": 1142,
+      "description_before_bytes": 1200,
+      "description_after_bytes": 1200
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_search_text",
+      "schema_before_bytes": 2305,
+      "schema_after_bytes": 3610,
+      "description_before_bytes": 1677,
+      "description_after_bytes": 1677
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_context",
+      "schema_before_bytes": 1462,
+      "schema_after_bytes": 1667,
+      "description_before_bytes": 1502,
+      "description_after_bytes": 1502
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_concept",
+      "schema_before_bytes": 1497,
+      "schema_after_bytes": 1748,
+      "description_before_bytes": 1593,
+      "description_after_bytes": 1593
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_structure",
+      "schema_before_bytes": 1096,
+      "schema_after_bytes": 1170,
+      "description_before_bytes": 1501,
+      "description_after_bytes": 1501
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_guide_path",
+      "schema_before_bytes": 1096,
+      "schema_after_bytes": 1170,
+      "description_before_bytes": 1515,
+      "description_after_bytes": 1515
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_paper_metadata",
+      "schema_before_bytes": 946,
+      "schema_after_bytes": 946,
+      "description_before_bytes": 1477,
+      "description_after_bytes": 1477
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_paper_lexicon",
+      "schema_before_bytes": 946,
+      "schema_after_bytes": 946,
+      "description_before_bytes": 1482,
+      "description_after_bytes": 1482
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "book_paper_reading_guide",
+      "schema_before_bytes": 1268,
+      "schema_after_bytes": 1276,
+      "description_before_bytes": 1523,
+      "description_after_bytes": 1523
+    },
+    {
+      "surface": "remote_mcp",
+      "tool": "mcp_usage",
+      "schema_before_bytes": 62,
+      "schema_after_bytes": 62,
+      "description_before_bytes": 762,
+      "description_after_bytes": 762
+    },
+    {
+      "surface": "resident",
+      "tool": "presentation.author",
+      "schema_before_bytes": 10282,
+      "schema_after_bytes": 10282,
+      "description_before_bytes": 1232,
+      "description_after_bytes": 1232
+    },
+    {
+      "surface": "resident",
+      "tool": "tutor.step",
+      "schema_before_bytes": 11152,
+      "schema_after_bytes": 11152,
+      "description_before_bytes": 1086,
+      "description_after_bytes": 1086
+    },
+    {
+      "surface": "resident",
+      "tool": "book.query",
+      "schema_before_bytes": 697,
+      "schema_after_bytes": 1646,
+      "description_before_bytes": 154,
+      "description_after_bytes": 154
+    },
+    {
+      "surface": "resident",
+      "tool": "book.synthesize",
+      "schema_before_bytes": 178,
+      "schema_after_bytes": 499,
+      "description_before_bytes": 142,
+      "description_after_bytes": 142
+    },
+    {
+      "surface": "resident",
+      "tool": "book.search_text",
+      "schema_before_bytes": 782,
+      "schema_after_bytes": 2738,
+      "description_before_bytes": 156,
+      "description_after_bytes": 156
+    },
+    {
+      "surface": "resident",
+      "tool": "book.text",
+      "schema_before_bytes": 141,
+      "schema_after_bytes": 497,
+      "description_before_bytes": 64,
+      "description_after_bytes": 64
+    },
+    {
+      "surface": "resident",
+      "tool": "tool.search",
+      "schema_before_bytes": 1063,
+      "schema_after_bytes": 1063,
+      "description_before_bytes": 274,
+      "description_after_bytes": 274
+    },
+    {
+      "surface": "resident",
+      "tool": "goal.update",
+      "schema_before_bytes": 2419,
+      "schema_after_bytes": 2419,
+      "description_before_bytes": 617,
+      "description_after_bytes": 617
+    },
+    {
+      "surface": "resident",
+      "tool": "artifact.list",
+      "schema_before_bytes": 178,
+      "schema_after_bytes": 178,
+      "description_before_bytes": 145,
+      "description_after_bytes": 145
+    },
+    {
+      "surface": "resident",
+      "tool": "artifact.search",
+      "schema_before_bytes": 442,
+      "schema_after_bytes": 442,
+      "description_before_bytes": 205,
+      "description_after_bytes": 205
+    },
+    {
+      "surface": "resident",
+      "tool": "artifact.read",
+      "schema_before_bytes": 1184,
+      "schema_after_bytes": 1184,
+      "description_before_bytes": 178,
+      "description_after_bytes": 178
+    },
+    {
+      "surface": "resident",
+      "tool": "source.present",
+      "schema_before_bytes": 312,
+      "schema_after_bytes": 312,
+      "description_before_bytes": 1195,
+      "description_after_bytes": 1195
+    },
+    {
+      "surface": "resident",
+      "tool": "book.context",
+      "schema_before_bytes": 254,
+      "schema_after_bytes": 795,
+      "description_before_bytes": 212,
+      "description_after_bytes": 212
+    },
+    {
+      "surface": "resident",
+      "tool": "book.concept",
+      "schema_before_bytes": 269,
+      "schema_after_bytes": 876,
+      "description_before_bytes": 201,
+      "description_after_bytes": 201
+    },
+    {
+      "surface": "resident",
+      "tool": "book.structure",
+      "schema_before_bytes": 93,
+      "schema_after_bytes": 285,
+      "description_before_bytes": 206,
+      "description_after_bytes": 206
+    },
+    {
+      "surface": "resident",
+      "tool": "book.guide_path",
+      "schema_before_bytes": 93,
+      "schema_after_bytes": 285,
+      "description_before_bytes": 238,
+      "description_after_bytes": 238
+    },
+    {
+      "surface": "resident",
+      "tool": "book.paper_reading_guide",
+      "schema_before_bytes": 230,
+      "schema_after_bytes": 391,
+      "description_before_bytes": 248,
+      "description_after_bytes": 248
+    },
+    {
+      "surface": "resident",
+      "tool": "book.paper_metadata",
+      "schema_before_bytes": 46,
+      "schema_after_bytes": 46,
+      "description_before_bytes": 211,
+      "description_after_bytes": 211
+    },
+    {
+      "surface": "resident",
+      "tool": "book.paper_lexicon",
+      "schema_before_bytes": 46,
+      "schema_after_bytes": 46,
+      "description_before_bytes": 169,
+      "description_after_bytes": 169
+    },
+    {
+      "surface": "resident",
+      "tool": "profile.manifest",
+      "schema_before_bytes": 164,
+      "schema_after_bytes": 164,
+      "description_before_bytes": 140,
+      "description_after_bytes": 140
+    },
+    {
+      "surface": "resident",
+      "tool": "profile.mark_used",
+      "schema_before_bytes": 362,
+      "schema_after_bytes": 362,
+      "description_before_bytes": 209,
+      "description_after_bytes": 209
+    },
+    {
+      "surface": "resident",
+      "tool": "book.route_from",
+      "schema_before_bytes": 180,
+      "schema_after_bytes": 180,
+      "description_before_bytes": 274,
+      "description_after_bytes": 274
+    },
+    {
+      "surface": "resident",
+      "tool": "book.guided_route_from",
+      "schema_before_bytes": 180,
+      "schema_after_bytes": 180,
+      "description_before_bytes": 357,
+      "description_after_bytes": 357
+    },
+    {
+      "surface": "resident",
+      "tool": "book.unvisited_back",
+      "schema_before_bytes": 101,
+      "schema_after_bytes": 101,
+      "description_before_bytes": 450,
+      "description_after_bytes": 450
+    },
+    {
+      "surface": "resident",
+      "tool": "book.route_to",
+      "schema_before_bytes": 237,
+      "schema_after_bytes": 237,
+      "description_before_bytes": 210,
+      "description_after_bytes": 210
+    },
+    {
+      "surface": "resident",
+      "tool": "memory.save",
+      "schema_before_bytes": 394,
+      "schema_after_bytes": 394,
+      "description_before_bytes": 346,
+      "description_after_bytes": 346
+    },
+    {
+      "surface": "resident",
+      "tool": "memory.recall",
+      "schema_before_bytes": 132,
+      "schema_after_bytes": 132,
+      "description_before_bytes": 149,
+      "description_after_bytes": 149
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.gotoLid",
+      "schema_before_bytes": 102,
+      "schema_after_bytes": 102,
+      "description_before_bytes": 151,
+      "description_after_bytes": 151
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.scroll",
+      "schema_before_bytes": 155,
+      "schema_after_bytes": 155,
+      "description_before_bytes": 162,
+      "description_after_bytes": 162
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.highlight",
+      "schema_before_bytes": 180,
+      "schema_after_bytes": 180,
+      "description_before_bytes": 264,
+      "description_after_bytes": 264
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.note",
+      "schema_before_bytes": 136,
+      "schema_after_bytes": 136,
+      "description_before_bytes": 138,
+      "description_after_bytes": 138
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.layout.apply",
+      "schema_before_bytes": 1998,
+      "schema_after_bytes": 1998,
+      "description_before_bytes": 229,
+      "description_after_bytes": 229
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.paper_minimap.apply",
+      "schema_before_bytes": 3745,
+      "schema_after_bytes": 3745,
+      "description_before_bytes": 344,
+      "description_after_bytes": 344
+    },
+    {
+      "surface": "resident",
+      "tool": "reader.state",
+      "schema_before_bytes": 33,
+      "schema_after_bytes": 33,
+      "description_before_bytes": 196,
+      "description_after_bytes": 196
+    }
+  ]
+}

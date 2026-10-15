@@ -1,0 +1,11 @@
+
+Running 4 tests using 1 worker
+
+(node:33860) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 playwright\product-home.spec.ts:4:3 › garden experiment keeps attempts and checks changed conditions at 1440px (5.6s)
+  ok 2 playwright\product-home.spec.ts:4:3 › garden experiment keeps attempts and checks changed conditions at 390px (6.0s)
+  ok 3 playwright\product-home.spec.ts:55:1 › skipped steps do not invent attempts, and a fresh page clears the illustration (1.7s)
+  ok 4 playwright\product-home.spec.ts:76:1 › homepage and experiment fit small and large screens; product images still open (4.4s)
+
+  4 passed (20.6s)

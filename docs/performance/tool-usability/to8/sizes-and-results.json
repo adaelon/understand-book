@@ -1,0 +1,132 @@
+{
+  "candidate_values_unchanged": true,
+  "fixed_results_delivered_in_full": 5,
+  "validated_read_calls": {
+    "resident": 8,
+    "local_mcp": 8,
+    "remote_mcp": 8
+  },
+  "remote_charged_calls": 13,
+  "canonical_results": [
+    {
+      "label": "single",
+      "before_bytes": 1207,
+      "after_bytes": 1393,
+      "before_estimated_tokens": 302,
+      "after_estimated_tokens": 349
+    },
+    {
+      "label": "range",
+      "before_bytes": 602,
+      "after_bytes": 680,
+      "before_estimated_tokens": 151,
+      "after_estimated_tokens": 170
+    },
+    {
+      "label": "empty",
+      "before_bytes": 205,
+      "after_bytes": 205,
+      "before_estimated_tokens": 52,
+      "after_estimated_tokens": 52
+    },
+    {
+      "label": "concept",
+      "before_bytes": 685,
+      "after_bytes": 809,
+      "before_estimated_tokens": 172,
+      "after_estimated_tokens": 203
+    },
+    {
+      "label": "context",
+      "before_bytes": 162,
+      "after_bytes": 284,
+      "before_estimated_tokens": 41,
+      "after_estimated_tokens": 71
+    }
+  ],
+  "remote_results": [
+    {
+      "tool": "book_search_text",
+      "query": "threshold",
+      "without_candidate_calls_bytes": 3055,
+      "with_candidate_calls_bytes": 3568
+    },
+    {
+      "tool": "book_search_text",
+      "query": "10.\nThe beta",
+      "without_candidate_calls_bytes": 2093,
+      "with_candidate_calls_bytes": 2280
+    },
+    {
+      "tool": "book_search_text",
+      "query": "absent-term",
+      "without_candidate_calls_bytes": 991,
+      "with_candidate_calls_bytes": 991
+    },
+    {
+      "tool": "book_concept",
+      "query": "threshold",
+      "without_candidate_calls_bytes": 2176,
+      "with_candidate_calls_bytes": 2518
+    },
+    {
+      "tool": "book_context",
+      "query": null,
+      "without_candidate_calls_bytes": 1999,
+      "with_candidate_calls_bytes": 2339
+    }
+  ],
+  "resident_next_sampling": [
+    {
+      "label": "single",
+      "active_context": {
+        "context_window_tokens": 128000,
+        "estimated_input_tokens": 8184,
+        "fits": true,
+        "output_reserve_tokens": 8000,
+        "remaining_tokens": 107816,
+        "safety_margin_tokens": 4000
+      }
+    },
+    {
+      "label": "range",
+      "active_context": {
+        "context_window_tokens": 128000,
+        "estimated_input_tokens": 7982,
+        "fits": true,
+        "output_reserve_tokens": 8000,
+        "remaining_tokens": 108018,
+        "safety_margin_tokens": 4000
+      }
+    },
+    {
+      "label": "concept",
+      "active_context": {
+        "context_window_tokens": 128000,
+        "estimated_input_tokens": 6549,
+        "fits": true,
+        "output_reserve_tokens": 8000,
+        "remaining_tokens": 109451,
+        "safety_margin_tokens": 4000
+      }
+    },
+    {
+      "label": "context",
+      "active_context": {
+        "context_window_tokens": 128000,
+        "estimated_input_tokens": 6412,
+        "fits": true,
+        "output_reserve_tokens": 8000,
+        "remaining_tokens": 109588,
+        "safety_margin_tokens": 4000
+      }
+    }
+  ],
+  "budget_observation": {
+    "delivered_bytes": 10939,
+    "occurrences": 300,
+    "raw_bytes": 17266,
+    "returned_calls": 189,
+    "truncated": true
+  }
+}

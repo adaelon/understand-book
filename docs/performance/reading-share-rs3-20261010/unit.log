@@ -1,0 +1,472 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/RightRail.test.ts (43 tests) 10593ms
+   ✓ RightRail history visibility > ADM8 exposes allowance from a stop while retaining partial answers and requiring an explicit click  597ms
+   ✓ RightRail history visibility > shows only conversations with questions: 'repeated new empty sessions'  318ms
+   ✓ JL9 recap jumps > opens without navigation, then locates the turn, bound source, kept object and exact presentation version  506ms
+   ✓ RightRail agent sources > keeps a completed table intact when sources occur inside cells  354ms
+   ✓ RightRail agent sources > keeps a draft table intact when sources occur inside cells  342ms
+   ✓ RightRail AskQuote > shows partial provenance while preserving the user-visible raw quote  365ms
+   ✓ RightRail AskQuote > exposes every auxiliary surface as a labelled keyboard-operable tab  323ms
+   ✓ Resident activities > shares live steps with trace, emits stop and preserves upward scrolling  378ms
+   ✓ RightRail Resident task controls > does not send another turn through Ctrl+Enter while a run is active  315ms
+   ✓ RightRail Resident task controls > does not leave a completed task notice in the input area  315ms
+   ✓ RN4 note retrieval > searches excerpts and titles, mixes highlights by real time, clears filters for a targeted record and follows replacements  725ms
+ ❯ src/App.startup.test.ts (47 tests | 4 failed) 2565ms
+   ✓ sends the real start request with optional teaching assets unavailable 140ms
+   ✓ workspace startup > shows the text-free page animation until the first reading window is ready 72ms
+   ✓ workspace startup > removes the loading animation and exposes the error when material loading fails 46ms
+   ✓ workspace startup > ADM8 keeps a submitted draft when first-chat admission remounts App before returning 76ms
+   ✓ workspace startup > ADM8 projects a real terminal snapshot (saved) and preserves the right draft 61ms
+   ✓ workspace startup > ADM8 projects a real terminal snapshot (failed) and preserves the right draft 52ms
+   ✓ workspace startup > ADM8 projects a real terminal snapshot (new-draft) and preserves the right draft 60ms
+   ✓ workspace startup > ADM8 restores a denied draft and quote, exposes the allowance action, and only explicitly continues the original goal 53ms
+   ✓ workspace startup > ADM8 recovers a saved spend stop from history using its code without claiming task completion 29ms
+   ✓ workspace startup > passes the table renderer and canonical focus marks to the reader 132ms
+   ✓ workspace startup > restores the unsent message and quote after the network scene remounts 33ms
+   ✓ workspace startup > rebinds the network workspace before retrying a failed history read 41ms
+   ✓ workspace startup > JL9 resumes a recap target after the original chat has loaded 40ms
+   ✓ workspace startup > uses the attached network reading position without another state round trip 26ms
+   ✓ workspace startup > does not wait for PDF metadata when the saved surface is text 29ms
+   ✓ workspace startup > shows text without waiting for annotations or profile configuration 29ms
+   ✓ workspace startup > starts independent material requests together 25ms
+   ✓ workspace startup > shows the reader while history and profile are still pending 33ms
+   ✓ workspace startup > keeps the reader and unsent draft available when history fails, and supports retry 38ms
+   ✓ workspace startup > ignores history from the previous book after a book switch 89ms
+   ✓ JL6 effect receipts in chat > submits the stable effect identity and restores handled state after reload 93ms
+   ✓ RN2 presentation note draft > keeps the captured association across collapse, chat change and save failure 81ms
+   ✓ RN2 presentation note draft > edits a reactive saved note through replace and binds follow-up to the selected chat 73ms
+   ✓ RN3 unified note draft > records answers directly with their fixed turn, preserving the composer and reading position 63ms
+   ✓ RN3 unified note draft > processes another note with continue, failure, save and discard without overwriting the draft 51ms
+   ✓ RN3 unified note draft > keeps whitespace meaningful to Markdown when saving a legacy note 80ms
+   ✓ RN3 unified note draft > guards material switches and unload, and preserves failed text before leaving 47ms
+   ✓ RN3 unified note draft > clears private drafts on an identity change and ignores late save failures 40ms
+   ✓ RN3 unified note draft > opens original notes from ReaderPane with read-only excerpts and atomic text editing 57ms
+   ✓ RN3 unified note draft > opens original notes from RightRail with read-only excerpts and atomic text editing 86ms
+   ✓ RN4 note continuity > uses the replacement identity immediately and keeps a failed delete visible 80ms
+   ✓ RN4 note continuity > opens the original answer and reports a deleted chat without changing notes 56ms
+   ✓ RN4 note continuity > does not apply a late recall after changing publication 37ms
+   ✓ RN4 note continuity > does not apply a late recall after changing identity 38ms
+   ✓ RN4 note continuity > only projects the current publication for structured notes while retaining unknown legacy records 58ms
+   ✓ RN4 searches and displays all parts of a grouped highlight without changing its deletion identity 26ms
+   ✓ RS1 shared note selection and scope > keeps saved text and an independent editing draft untouched while using the real book title 64ms
+   ✓ RS1 shared note selection and scope > clears a pending source read on chat change 35ms
+   ✓ RS1 shared note selection and scope > clears a pending source read on identity change 35ms
+   ✓ RS1 shared note selection and scope > clears a pending source read on publication change 51ms
+   ✓ RS1 shared note selection and scope > clears a pending source read on material change 43ms
+   ✓ RS1 shared note selection and scope > does not manufacture a source for a legacy unplaced note or after metadata failure 30ms
+   × RS1 shared note selection and scope > discards late PNG output after identity changes the reader scene 47ms
+     → Unable to get button within: <div data-v-7a7a37b1="" fullscreen="false" agent-input="" history-loading="true" chat="" chat-sessions="" chat-goals="" active-chat-session-id="" sending="false" run-connection="closed" can-stop="false" unquoted-note-placement-available="true" note-placement-surface="markdown" note-source-fingerprint="startup" show-trace="[object Object]" latest-trace="" context-highlights="" note-book-order="" note-source-labels="[object Object]" note-scope-key="11:A:w:1:startup:p1:startup" annotation-location="[object Object]" render-markdown="function renderMarkdown(src) {
+  const extracted = extractInlineSuperscripts(normalizeDisplayMath(src ?? &quot;&quot;));
+  return restoreInlineSuperscripts(md.render(normalizeInlineMath(extracted.src)), extracted.superscripts);
+}" eff-label="function effLabel(e) {
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;论文地图已更新&quot;;
+      if (e.kind === &quot;PaperMinimapProposal&quot;) return &quot;论文地图建议&quot;;
+      if (e.kind === &quot;Goto&quot;) return &quot;跳转&quot;;
+      if (e.kind === &quot;Highlight&quot;) return &quot;高亮&quot;;
+      if (e.kind === &quot;Note&quot;) return &quot;笔记&quot;;
+      if (e.kind === &quot;Layout&quot;) return &quot;布局已更新&quot;;
+      return &quot;布局调整建议&quot;;
+    }" eff-state="function effState(ti, ei) {
+      const turn = chat.value[ti];
+      const effect = turn?.outcome?.effects[ei];
+      if (!effect) return void 0;
+      const id = (0,effectId)(effect);
+      if (effectPending.value[`${turn.turnId}:${id}`]) return &quot;正在处理&quot;;
+      return (0,dispositionLabel)(turn.dispositions?.[id], effect);
+    }" is-goto="function isGoto(e) {
+      return e.kind === &quot;Goto&quot;;
+    }" show-effect-primary="function showEffectPrimary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" show-effect-secondary="function showEffectSecondary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimap&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" effect-primary-label="function effectPrimaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;应用&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;保留&quot;;
+      return &quot;&quot;;
+    }" effect-secondary-label="function effectSecondaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;忽略&quot;;
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;撤销&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;撤销&quot;;
+      return &quot;&quot;;
+    }" goto-back="function gotoBack(e) {
+      return e.kind === &quot;Goto&quot; ? e.before_anchor : &quot;&quot;;
+    }" profile-memory-loading="false" profile-memory-busy="false" profile-backfill-loading="false" profile-backfill-busy="false" profile-update-states="[object Object]" intent-artifacts-loading="false" requested-tab-revision="0"></div>
+   × RS1 shared note selection and scope > discards late PNG output after material changes the reader scene 65ms
+     → Unable to get button within: <div data-v-7a7a37b1="" fullscreen="false" agent-input="" history-loading="true" chat="" chat-sessions="" chat-goals="" active-chat-session-id="" sending="false" run-connection="closed" can-stop="false" unquoted-note-placement-available="true" note-placement-surface="markdown" note-source-fingerprint="startup" show-trace="[object Object]" latest-trace="" context-highlights="" note-book-order="" note-source-labels="[object Object]" note-scope-key="12:A:w:1:startup:p1:startup" annotation-location="[object Object]" render-markdown="function renderMarkdown(src) {
+  const extracted = extractInlineSuperscripts(normalizeDisplayMath(src ?? &quot;&quot;));
+  return restoreInlineSuperscripts(md.render(normalizeInlineMath(extracted.src)), extracted.superscripts);
+}" eff-label="function effLabel(e) {
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;论文地图已更新&quot;;
+      if (e.kind === &quot;PaperMinimapProposal&quot;) return &quot;论文地图建议&quot;;
+      if (e.kind === &quot;Goto&quot;) return &quot;跳转&quot;;
+      if (e.kind === &quot;Highlight&quot;) return &quot;高亮&quot;;
+      if (e.kind === &quot;Note&quot;) return &quot;笔记&quot;;
+      if (e.kind === &quot;Layout&quot;) return &quot;布局已更新&quot;;
+      return &quot;布局调整建议&quot;;
+    }" eff-state="function effState(ti, ei) {
+      const turn = chat.value[ti];
+      const effect = turn?.outcome?.effects[ei];
+      if (!effect) return void 0;
+      const id = (0,effectId)(effect);
+      if (effectPending.value[`${turn.turnId}:${id}`]) return &quot;正在处理&quot;;
+      return (0,dispositionLabel)(turn.dispositions?.[id], effect);
+    }" is-goto="function isGoto(e) {
+      return e.kind === &quot;Goto&quot;;
+    }" show-effect-primary="function showEffectPrimary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" show-effect-secondary="function showEffectSecondary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimap&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" effect-primary-label="function effectPrimaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;应用&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;保留&quot;;
+      return &quot;&quot;;
+    }" effect-secondary-label="function effectSecondaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;忽略&quot;;
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;撤销&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;撤销&quot;;
+      return &quot;&quot;;
+    }" goto-back="function gotoBack(e) {
+      return e.kind === &quot;Goto&quot; ? e.before_anchor : &quot;&quot;;
+    }" profile-memory-loading="false" profile-memory-busy="false" profile-backfill-loading="false" profile-backfill-busy="false" profile-update-states="[object Object]" intent-artifacts-loading="false" requested-tab-revision="0"></div>
+   × RS1 shared note selection and scope > discards late PNG output after publication changes the reader scene 22ms
+     → Unable to get button within: <div data-v-7a7a37b1="" fullscreen="false" agent-input="" history-loading="true" chat="" chat-sessions="" chat-goals="" active-chat-session-id="" sending="false" run-connection="closed" can-stop="false" unquoted-note-placement-available="true" note-placement-surface="markdown" note-source-fingerprint="startup" show-trace="[object Object]" latest-trace="" context-highlights="" note-book-order="" note-source-labels="[object Object]" note-scope-key="13:A:w:1:startup:p1:startup" annotation-location="[object Object]" render-markdown="function renderMarkdown(src) {
+  const extracted = extractInlineSuperscripts(normalizeDisplayMath(src ?? &quot;&quot;));
+  return restoreInlineSuperscripts(md.render(normalizeInlineMath(extracted.src)), extracted.superscripts);
+}" eff-label="function effLabel(e) {
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;论文地图已更新&quot;;
+      if (e.kind === &quot;PaperMinimapProposal&quot;) return &quot;论文地图建议&quot;;
+      if (e.kind === &quot;Goto&quot;) return &quot;跳转&quot;;
+      if (e.kind === &quot;Highlight&quot;) return &quot;高亮&quot;;
+      if (e.kind === &quot;Note&quot;) return &quot;笔记&quot;;
+      if (e.kind === &quot;Layout&quot;) return &quot;布局已更新&quot;;
+      return &quot;布局调整建议&quot;;
+    }" eff-state="function effState(ti, ei) {
+      const turn = chat.value[ti];
+      const effect = turn?.outcome?.effects[ei];
+      if (!effect) return void 0;
+      const id = (0,effectId)(effect);
+      if (effectPending.value[`${turn.turnId}:${id}`]) return &quot;正在处理&quot;;
+      return (0,dispositionLabel)(turn.dispositions?.[id], effect);
+    }" is-goto="function isGoto(e) {
+      return e.kind === &quot;Goto&quot;;
+    }" show-effect-primary="function showEffectPrimary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" show-effect-secondary="function showEffectSecondary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimap&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" effect-primary-label="function effectPrimaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;应用&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;保留&quot;;
+      return &quot;&quot;;
+    }" effect-secondary-label="function effectSecondaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;忽略&quot;;
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;撤销&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;撤销&quot;;
+      return &quot;&quot;;
+    }" goto-back="function gotoBack(e) {
+      return e.kind === &quot;Goto&quot; ? e.before_anchor : &quot;&quot;;
+    }" profile-memory-loading="false" profile-memory-busy="false" profile-backfill-loading="false" profile-backfill-busy="false" profile-update-states="[object Object]" intent-artifacts-loading="false" requested-tab-revision="0"></div>
+   × RS1 shared note selection and scope > discards late PNG output after chat changes the reader scene 29ms
+     → Unable to get button within: <div data-v-7a7a37b1="" fullscreen="false" agent-input="" history-loading="true" chat="" chat-sessions="" chat-goals="" active-chat-session-id="" sending="false" run-connection="closed" can-stop="false" unquoted-note-placement-available="true" note-placement-surface="markdown" note-source-fingerprint="startup" show-trace="[object Object]" latest-trace="" context-highlights="" note-book-order="" note-source-labels="[object Object]" note-scope-key="14:A:w:1:startup:p1:startup" annotation-location="[object Object]" render-markdown="function renderMarkdown(src) {
+  const extracted = extractInlineSuperscripts(normalizeDisplayMath(src ?? &quot;&quot;));
+  return restoreInlineSuperscripts(md.render(normalizeInlineMath(extracted.src)), extracted.superscripts);
+}" eff-label="function effLabel(e) {
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;论文地图已更新&quot;;
+      if (e.kind === &quot;PaperMinimapProposal&quot;) return &quot;论文地图建议&quot;;
+      if (e.kind === &quot;Goto&quot;) return &quot;跳转&quot;;
+      if (e.kind === &quot;Highlight&quot;) return &quot;高亮&quot;;
+      if (e.kind === &quot;Note&quot;) return &quot;笔记&quot;;
+      if (e.kind === &quot;Layout&quot;) return &quot;布局已更新&quot;;
+      return &quot;布局调整建议&quot;;
+    }" eff-state="function effState(ti, ei) {
+      const turn = chat.value[ti];
+      const effect = turn?.outcome?.effects[ei];
+      if (!effect) return void 0;
+      const id = (0,effectId)(effect);
+      if (effectPending.value[`${turn.turnId}:${id}`]) return &quot;正在处理&quot;;
+      return (0,dispositionLabel)(turn.dispositions?.[id], effect);
+    }" is-goto="function isGoto(e) {
+      return e.kind === &quot;Goto&quot;;
+    }" show-effect-primary="function showEffectPrimary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" show-effect-secondary="function showEffectSecondary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimap&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" effect-primary-label="function effectPrimaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;应用&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;保留&quot;;
+      return &quot;&quot;;
+    }" effect-secondary-label="function effectSecondaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;忽略&quot;;
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;撤销&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;撤销&quot;;
+      return &quot;&quot;;
+    }" goto-back="function gotoBack(e) {
+      return e.kind === &quot;Goto&quot; ? e.before_anchor : &quot;&quot;;
+    }" profile-memory-loading="false" profile-memory-busy="false" profile-backfill-loading="false" profile-backfill-busy="false" profile-update-states="[object Object]" intent-artifacts-loading="false" requested-tab-revision="0"></div>
+   ✓ RS2 shares all actual highlight group members and their chapter labels without trusting the UI preview text 67ms
+stderr | src/components/PdfReaderPane.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/PdfReaderPane.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/PdfReaderPane.test.ts (13 tests) 962ms
+stderr | src/NetworkApp.chat.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.chat.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.recovery.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.recovery.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/NetworkApp.recovery.test.ts (6 tests) 149ms
+ ✓ src/NetworkApp.chat.test.ts (6 tests) 438ms
+stderr | src/components/ShareImagePanel.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/ShareImagePanel.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/ShareImagePanel.test.ts (4 tests) 108ms
+stderr | src/components/ReaderPane.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/ReaderPane.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/ReaderPane.test.ts (8 tests) 185ms
+stderr | src/reading-share.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/reading-share.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/reading-share.test.ts (5 tests) 51ms
+stderr | src/reading-share-save.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/reading-share-save.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/reading-share-save.test.ts (2 tests) 8ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/App.startup.test.ts > RS1 shared note selection and scope > discards late PNG output after identity changes the reader scene
+Error: Unable to get button within: <div data-v-7a7a37b1="" fullscreen="false" agent-input="" history-loading="true" chat="" chat-sessions="" chat-goals="" active-chat-session-id="" sending="false" run-connection="closed" can-stop="false" unquoted-note-placement-available="true" note-placement-surface="markdown" note-source-fingerprint="startup" show-trace="[object Object]" latest-trace="" context-highlights="" note-book-order="" note-source-labels="[object Object]" note-scope-key="11:A:w:1:startup:p1:startup" annotation-location="[object Object]" render-markdown="function renderMarkdown(src) {
+  const extracted = extractInlineSuperscripts(normalizeDisplayMath(src ?? &quot;&quot;));
+  return restoreInlineSuperscripts(md.render(normalizeInlineMath(extracted.src)), extracted.superscripts);
+}" eff-label="function effLabel(e) {
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;论文地图已更新&quot;;
+      if (e.kind === &quot;PaperMinimapProposal&quot;) return &quot;论文地图建议&quot;;
+      if (e.kind === &quot;Goto&quot;) return &quot;跳转&quot;;
+      if (e.kind === &quot;Highlight&quot;) return &quot;高亮&quot;;
+      if (e.kind === &quot;Note&quot;) return &quot;笔记&quot;;
+      if (e.kind === &quot;Layout&quot;) return &quot;布局已更新&quot;;
+      return &quot;布局调整建议&quot;;
+    }" eff-state="function effState(ti, ei) {
+      const turn = chat.value[ti];
+      const effect = turn?.outcome?.effects[ei];
+      if (!effect) return void 0;
+      const id = (0,effectId)(effect);
+      if (effectPending.value[`${turn.turnId}:${id}`]) return &quot;正在处理&quot;;
+      return (0,dispositionLabel)(turn.dispositions?.[id], effect);
+    }" is-goto="function isGoto(e) {
+      return e.kind === &quot;Goto&quot;;
+    }" show-effect-primary="function showEffectPrimary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" show-effect-secondary="function showEffectSecondary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimap&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" effect-primary-label="function effectPrimaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;应用&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;保留&quot;;
+      return &quot;&quot;;
+    }" effect-secondary-label="function effectSecondaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;忽略&quot;;
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;撤销&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;撤销&quot;;
+      return &quot;&quot;;
+    }" goto-back="function gotoBack(e) {
+      return e.kind === &quot;Goto&quot; ? e.before_anchor : &quot;&quot;;
+    }" profile-memory-loading="false" profile-memory-busy="false" profile-backfill-loading="false" profile-backfill-busy="false" profile-update-states="[object Object]" intent-artifacts-loading="false" requested-tab-revision="0"></div>
+ ❯ VueWrapper.get ../../node_modules/@vue/test-utils/dist/vue-test-utils.cjs.js:7182:15
+    7180|             return result;
+    7181|         }
+    7182|         throw new Error(`Unable to get ${selector} within: ${this.html…
+       |               ^
+    7183|     }
+    7184|     getComponent(selector) {
+ ❯ src/App.startup.test.ts:642:49
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/App.startup.test.ts > RS1 shared note selection and scope > discards late PNG output after material changes the reader scene
+Error: Unable to get button within: <div data-v-7a7a37b1="" fullscreen="false" agent-input="" history-loading="true" chat="" chat-sessions="" chat-goals="" active-chat-session-id="" sending="false" run-connection="closed" can-stop="false" unquoted-note-placement-available="true" note-placement-surface="markdown" note-source-fingerprint="startup" show-trace="[object Object]" latest-trace="" context-highlights="" note-book-order="" note-source-labels="[object Object]" note-scope-key="12:A:w:1:startup:p1:startup" annotation-location="[object Object]" render-markdown="function renderMarkdown(src) {
+  const extracted = extractInlineSuperscripts(normalizeDisplayMath(src ?? &quot;&quot;));
+  return restoreInlineSuperscripts(md.render(normalizeInlineMath(extracted.src)), extracted.superscripts);
+}" eff-label="function effLabel(e) {
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;论文地图已更新&quot;;
+      if (e.kind === &quot;PaperMinimapProposal&quot;) return &quot;论文地图建议&quot;;
+      if (e.kind === &quot;Goto&quot;) return &quot;跳转&quot;;
+      if (e.kind === &quot;Highlight&quot;) return &quot;高亮&quot;;
+      if (e.kind === &quot;Note&quot;) return &quot;笔记&quot;;
+      if (e.kind === &quot;Layout&quot;) return &quot;布局已更新&quot;;
+      return &quot;布局调整建议&quot;;
+    }" eff-state="function effState(ti, ei) {
+      const turn = chat.value[ti];
+      const effect = turn?.outcome?.effects[ei];
+      if (!effect) return void 0;
+      const id = (0,effectId)(effect);
+      if (effectPending.value[`${turn.turnId}:${id}`]) return &quot;正在处理&quot;;
+      return (0,dispositionLabel)(turn.dispositions?.[id], effect);
+    }" is-goto="function isGoto(e) {
+      return e.kind === &quot;Goto&quot;;
+    }" show-effect-primary="function showEffectPrimary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" show-effect-secondary="function showEffectSecondary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimap&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" effect-primary-label="function effectPrimaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;应用&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;保留&quot;;
+      return &quot;&quot;;
+    }" effect-secondary-label="function effectSecondaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;忽略&quot;;
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;撤销&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;撤销&quot;;
+      return &quot;&quot;;
+    }" goto-back="function gotoBack(e) {
+      return e.kind === &quot;Goto&quot; ? e.before_anchor : &quot;&quot;;
+    }" profile-memory-loading="false" profile-memory-busy="false" profile-backfill-loading="false" profile-backfill-busy="false" profile-update-states="[object Object]" intent-artifacts-loading="false" requested-tab-revision="0"></div>
+ ❯ VueWrapper.get ../../node_modules/@vue/test-utils/dist/vue-test-utils.cjs.js:7182:15
+    7180|             return result;
+    7181|         }
+    7182|         throw new Error(`Unable to get ${selector} within: ${this.html…
+       |               ^
+    7183|     }
+    7184|     getComponent(selector) {
+ ❯ src/App.startup.test.ts:642:49
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/App.startup.test.ts > RS1 shared note selection and scope > discards late PNG output after publication changes the reader scene
+Error: Unable to get button within: <div data-v-7a7a37b1="" fullscreen="false" agent-input="" history-loading="true" chat="" chat-sessions="" chat-goals="" active-chat-session-id="" sending="false" run-connection="closed" can-stop="false" unquoted-note-placement-available="true" note-placement-surface="markdown" note-source-fingerprint="startup" show-trace="[object Object]" latest-trace="" context-highlights="" note-book-order="" note-source-labels="[object Object]" note-scope-key="13:A:w:1:startup:p1:startup" annotation-location="[object Object]" render-markdown="function renderMarkdown(src) {
+  const extracted = extractInlineSuperscripts(normalizeDisplayMath(src ?? &quot;&quot;));
+  return restoreInlineSuperscripts(md.render(normalizeInlineMath(extracted.src)), extracted.superscripts);
+}" eff-label="function effLabel(e) {
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;论文地图已更新&quot;;
+      if (e.kind === &quot;PaperMinimapProposal&quot;) return &quot;论文地图建议&quot;;
+      if (e.kind === &quot;Goto&quot;) return &quot;跳转&quot;;
+      if (e.kind === &quot;Highlight&quot;) return &quot;高亮&quot;;
+      if (e.kind === &quot;Note&quot;) return &quot;笔记&quot;;
+      if (e.kind === &quot;Layout&quot;) return &quot;布局已更新&quot;;
+      return &quot;布局调整建议&quot;;
+    }" eff-state="function effState(ti, ei) {
+      const turn = chat.value[ti];
+      const effect = turn?.outcome?.effects[ei];
+      if (!effect) return void 0;
+      const id = (0,effectId)(effect);
+      if (effectPending.value[`${turn.turnId}:${id}`]) return &quot;正在处理&quot;;
+      return (0,dispositionLabel)(turn.dispositions?.[id], effect);
+    }" is-goto="function isGoto(e) {
+      return e.kind === &quot;Goto&quot;;
+    }" show-effect-primary="function showEffectPrimary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" show-effect-secondary="function showEffectSecondary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimap&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" effect-primary-label="function effectPrimaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;应用&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;保留&quot;;
+      return &quot;&quot;;
+    }" effect-secondary-label="function effectSecondaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;忽略&quot;;
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;撤销&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;撤销&quot;;
+      return &quot;&quot;;
+    }" goto-back="function gotoBack(e) {
+      return e.kind === &quot;Goto&quot; ? e.before_anchor : &quot;&quot;;
+    }" profile-memory-loading="false" profile-memory-busy="false" profile-backfill-loading="false" profile-backfill-busy="false" profile-update-states="[object Object]" intent-artifacts-loading="false" requested-tab-revision="0"></div>
+ ❯ VueWrapper.get ../../node_modules/@vue/test-utils/dist/vue-test-utils.cjs.js:7182:15
+    7180|             return result;
+    7181|         }
+    7182|         throw new Error(`Unable to get ${selector} within: ${this.html…
+       |               ^
+    7183|     }
+    7184|     getComponent(selector) {
+ ❯ src/App.startup.test.ts:642:49
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/App.startup.test.ts > RS1 shared note selection and scope > discards late PNG output after chat changes the reader scene
+Error: Unable to get button within: <div data-v-7a7a37b1="" fullscreen="false" agent-input="" history-loading="true" chat="" chat-sessions="" chat-goals="" active-chat-session-id="" sending="false" run-connection="closed" can-stop="false" unquoted-note-placement-available="true" note-placement-surface="markdown" note-source-fingerprint="startup" show-trace="[object Object]" latest-trace="" context-highlights="" note-book-order="" note-source-labels="[object Object]" note-scope-key="14:A:w:1:startup:p1:startup" annotation-location="[object Object]" render-markdown="function renderMarkdown(src) {
+  const extracted = extractInlineSuperscripts(normalizeDisplayMath(src ?? &quot;&quot;));
+  return restoreInlineSuperscripts(md.render(normalizeInlineMath(extracted.src)), extracted.superscripts);
+}" eff-label="function effLabel(e) {
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;论文地图已更新&quot;;
+      if (e.kind === &quot;PaperMinimapProposal&quot;) return &quot;论文地图建议&quot;;
+      if (e.kind === &quot;Goto&quot;) return &quot;跳转&quot;;
+      if (e.kind === &quot;Highlight&quot;) return &quot;高亮&quot;;
+      if (e.kind === &quot;Note&quot;) return &quot;笔记&quot;;
+      if (e.kind === &quot;Layout&quot;) return &quot;布局已更新&quot;;
+      return &quot;布局调整建议&quot;;
+    }" eff-state="function effState(ti, ei) {
+      const turn = chat.value[ti];
+      const effect = turn?.outcome?.effects[ei];
+      if (!effect) return void 0;
+      const id = (0,effectId)(effect);
+      if (effectPending.value[`${turn.turnId}:${id}`]) return &quot;正在处理&quot;;
+      return (0,dispositionLabel)(turn.dispositions?.[id], effect);
+    }" is-goto="function isGoto(e) {
+      return e.kind === &quot;Goto&quot;;
+    }" show-effect-primary="function showEffectPrimary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" show-effect-secondary="function showEffectSecondary(e) {
+      return e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot; || e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimap&quot; || e.kind === &quot;PaperMinimapProposal&quot;;
+    }" effect-primary-label="function effectPrimaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;应用&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;保留&quot;;
+      return &quot;&quot;;
+    }" effect-secondary-label="function effectSecondaryLabel(e) {
+      if (e.kind === &quot;LayoutProposal&quot; || e.kind === &quot;PaperMinimapProposal&quot;) return &quot;忽略&quot;;
+      if (e.kind === &quot;PaperMinimap&quot;) return &quot;撤销&quot;;
+      if (e.kind === &quot;Highlight&quot; || e.kind === &quot;Note&quot;) return &quot;撤销&quot;;
+      return &quot;&quot;;
+    }" goto-back="function gotoBack(e) {
+      return e.kind === &quot;Goto&quot; ? e.before_anchor : &quot;&quot;;
+    }" profile-memory-loading="false" profile-memory-busy="false" profile-backfill-loading="false" profile-backfill-busy="false" profile-update-states="[object Object]" intent-artifacts-loading="false" requested-tab-revision="0"></div>
+ ❯ VueWrapper.get ../../node_modules/@vue/test-utils/dist/vue-test-utils.cjs.js:7182:15
+    7180|             return result;
+    7181|         }
+    7182|         throw new Error(`Unable to get ${selector} within: ${this.html…
+       |               ^
+    7183|     }
+    7184|     getComponent(selector) {
+ ❯ src/App.startup.test.ts:642:49
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed | 8 passed (9)
+      Tests  4 failed | 130 passed (134)
+   Start at  14:51:36
+   Duration  60.31s (transform 16.71s, setup 0ms, collect 48.16s, tests 15.06s, environment 40.54s, prepare 6.76s)
+
+undefined
+E:\allwork\download\agent\understand-book-reading-share\packages\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/App.startup.test.ts src/components/ShareImagePanel.test.ts src/reading-share-save.test.ts src/reading-share.test.ts src/NetworkApp.chat.test.ts src/NetworkApp.recovery.test.ts src/components/ReaderPane.test.ts src/components/PdfReaderPane.test.ts src/components/RightRail.test.ts --maxWorkers=2

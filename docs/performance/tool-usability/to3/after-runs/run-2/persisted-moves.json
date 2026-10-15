@@ -1,0 +1,44 @@
+[
+  {
+    "actions": [],
+    "assessment": null,
+    "capability": "explanation",
+    "continuation": {
+      "options": [
+        {
+          "label": "为什么平均速度一定夹在最慢段和最快段之间？",
+          "move_kind": "observe",
+          "option_id": "bounds-observe",
+          "purpose": "看出「权重非负、权重和为 1」这个加权结构会强制给平均速度划出上下界，因此任何行程都不会比它最快的一段还快。"
+        }
+      ],
+      "recommended_option_id": "bounds-observe"
+    },
+    "explanation": null,
+    "hint": null,
+    "intent_origin": "current_action",
+    "intent_quote": null,
+    "interaction_intent": "neutral",
+    "interpretation_refs": [],
+    "kind": "explain",
+    "move_id": "continue-time-weighted-average",
+    "object_ids": [],
+    "preference_ref": null,
+    "presentation": null,
+    "prompt": "继续理解这段：说明这三句定义为什么本身就等于「速度按时间加权的平均」，并给出「直接平均各段速度数值」成立的确切条件（各段耗时相等）；用等路程与等时间两个算例对照。",
+    "target": {
+      "capability": "explanation",
+      "expected_performance": "Explain why the total-distance/total-time definition is already a time-weighted average, and state the precise condition under which averaging segment speed values is valid.",
+      "learning_focus": "Average speed as a time-weighted average; the condition under which averaging segment speeds is valid",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "end_lid": "1.1",
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "start_lid": "1.1"
+        }
+      ]
+    }
+  }
+]

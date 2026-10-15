@@ -9,7 +9,7 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let result = (|| -> Result<serde_json::Value, String> {
         if args.len() < 3 {
-            return Err("usage: publish_book <absolute-service-root> import <book-directory> | default <book-id> <publication-id> | grant|revoke <user-id> <book-id> <publication-id>".into());
+            return Err("usage: publish_book <absolute-service-root> import <book-directory> | default|grant-all <book-id> <publication-id> | grant|revoke <user-id> <book-id> <publication-id>".into());
         }
         let writer = ServiceWriter::acquire(Path::new(&args[0])).map_err(|e| e.message)?;
         let mut library = PublishedLibrary::new(ControlStore::open(writer).map_err(|e| e.message)?);
@@ -17,6 +17,10 @@ fn main() {
             "import" if args.len() == 3 => library
                 .publish(Path::new(&args[2]))
                 .map(|m| serde_json::json!(m))
+                .map_err(|e| e.message),
+            "grant-all" if args.len() == 4 => library
+                .grant_all(&PublishedBookRef { book_id: args[2].clone(), publication_id: args[3].clone() })
+                .map(|_| serde_json::json!({"ok":true,"existing_and_future_accounts":true}))
                 .map_err(|e| e.message),
             "default" if args.len() == 4 => library
                 .set_default(&PublishedBookRef {

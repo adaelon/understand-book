@@ -1,0 +1,55 @@
+{
+  "original_candidate_values_unchanged": true,
+  "structure_availability_unchanged": true,
+  "canonical_results": [
+    {
+      "label": "above_k",
+      "total_candidates": 12,
+      "returned_count": 10,
+      "truncated": true,
+      "before_bytes": 1296,
+      "after_bytes": 1355,
+      "added_bytes": 59
+    },
+    {
+      "label": "equal_k",
+      "total_candidates": 12,
+      "returned_count": 12,
+      "truncated": false,
+      "before_bytes": 1554,
+      "after_bytes": 1614,
+      "added_bytes": 60
+    },
+    {
+      "label": "below_k",
+      "total_candidates": 12,
+      "returned_count": 12,
+      "truncated": false,
+      "before_bytes": 1554,
+      "after_bytes": 1614,
+      "added_bytes": 60
+    },
+    {
+      "label": "zero_k",
+      "total_candidates": 12,
+      "returned_count": 0,
+      "truncated": true,
+      "before_bytes": 25,
+      "after_bytes": 83,
+      "added_bytes": 58
+    },
+    {
+      "label": "zero_candidates",
+      "total_candidates": 0,
+      "returned_count": 0,
+      "truncated": false,
+      "before_bytes": 25,
+      "after_bytes": 83,
+      "added_bytes": 58
+    }
+  ],
+  "resident_and_local_cases": 4,
+  "remote_pagination_cases": 4,
+  "http_content_calls": 3,
+  "real_model_sampling": false
+}

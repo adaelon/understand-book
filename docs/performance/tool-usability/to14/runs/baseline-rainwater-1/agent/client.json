@@ -1,0 +1,9 @@
+{
+  "client": "codex-cli 0.162.0-alpha.2",
+  "model": "gpt-6.1-sol",
+  "reasoning_effort": "medium",
+  "temperature": null,
+  "timeout_ms": 300000,
+  "transport": "streamable-http",
+  "monetary_budget": "No paid API configured by this runner; host cost unavailable"
+}

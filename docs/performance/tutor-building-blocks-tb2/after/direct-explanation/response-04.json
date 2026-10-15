@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"match_mode\": \"exact\", \"page_size\": 40, \"query\": \"所有权\"}",
+      "id": "call_00_e5gRRTAgDfmwFqb5BFJ70084",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"query\": \"移动 move 所有权 ownership\", \"limit\": 15}",
+      "id": "call_01_qdV1cinxGwkQ60crj1F61211",
+      "name": "book.concept"
+    }
+  ],
+  "usage_total_tokens": 19160
+}

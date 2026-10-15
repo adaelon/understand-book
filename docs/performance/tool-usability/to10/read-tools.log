@@ -1,0 +1,53 @@
+   Compiling read-tools v0.0.0 (E:\allwork\download\agent\understand-book\crates\read-tools)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized] target(s) in 16.66s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\read_tools-c7e341cde690a4ec.exe)
+
+running 35 tests
+test export_bindings_anchoredtext ... ok
+test export_bindings_booktextcall ... ok
+test export_bindings_context ... ok
+test export_bindings_contextitem ... ok
+test export_bindings_searchtextresult ... ok
+test export_bindings_textmatchtype ... ok
+test export_bindings_textoccurrence ... ok
+test export_bindings_textoccurrencerange ... ok
+test mcp_text_page_tests::mcp_text_page_handles_exact_limit_empty_source_and_last_page ... ok
+test mcp_text_page_tests::mcp_text_page_reassembles_cross_lid_unicode_source_with_exact_coordinates ... ok
+test mcp_text_page_tests::mcp_text_page_rejects_reversed_out_of_range_and_split_surrogate_positions ... ok
+test search_text_exact_tests::search_text_exact_counts_overlaps_and_uses_span_document_order ... ok
+test search_text_exact_tests::search_text_exact_preserves_global_whitespace_gap_and_leaf_ranges ... ok
+test search_text_exact_tests::search_text_exact_rejects_invalid_partition_and_stabilizes_revision ... ok
+test search_text_exact_tests::search_text_exact_scope_and_utf16_offsets_are_stable ... ok
+test search_text_exact_tests::search_text_pagination_concatenates_the_complete_set_in_both_orders ... ok
+test search_text_exact_tests::search_text_pagination_distinguishes_invalid_mismatch_and_stale_cursors ... ok
+test search_text_exact_tests::search_text_pagination_intersects_within_and_relative_scopes ... ok
+test search_text_exact_tests::search_text_pagination_normalized_maps_nfkc_casefold_and_whitespace_to_source ... ok
+test search_text_exact_tests::search_text_real_book_replays_all_formula_occurrences ... ok
+test search_text_exact_tests::search_text_release_5_mib_p95_is_under_one_second ... ok
+test tests::context_far_accumulates_near_mid_and_long_range ... ok
+test tests::context_near_missing_lid_errors ... ok
+test tests::context_near_tree_adjacency ... ok
+test tests::context_projects_discourse_relations_to_near_and_far ... ok
+test tests::context_rejects_unknown_granularity ... ok
+test tests::context_to9_counts_deduplicated_relations_across_layers ... ok
+test tests::context_to9_counts_known_candidates_before_k_and_preserves_availability ... ok
+test tests::referent_catalog_characterization_preserves_context_only_anchor_order ... ok
+test tests::source_presentation_accepts_cross_heading_continuity_and_bounds_context ... ok
+test tests::source_presentation_context_keeps_words_and_paragraph_separators ... ok
+test tests::source_presentation_context_obeys_hard_word_limit_and_keeps_nearest_text ... ok
+test tests::source_presentation_preserves_structural_book_text_passage ... ok
+test tests::text_by_single_lid ... ok
+test tests::text_missing_lid_errors_not_silent ... ok
+
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 140 filtered out; finished in 0.80s
+

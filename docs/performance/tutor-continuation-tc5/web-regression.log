@@ -1,0 +1,47 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/web
+
+ ✓ src/local-reading-action.test.ts (3 tests) 13ms
+ ✓ src/components/TutorContinuation.test.ts (6 tests) 89ms
+ ✓ src/network-client.test.ts (17 tests) 116ms
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.pdf-note-placement.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/AgentPresentation.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.pdf-note-placement.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/AgentPresentation.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.resumption.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/NetworkApp.resumption.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/AgentPresentation.test.ts (2 tests) 81ms
+ ✓ src/NetworkApp.resumption.test.ts (9 tests) 161ms
+ ✓ src/components/RightRail.pdf-note-placement.test.ts (1 test) 114ms
+ ✓ src/components/RightRail.test.ts (52 tests) 1425ms
+ ✓ src/App.startup.test.ts (67 tests) 1078ms
+
+ Test Files  8 passed (8)
+      Tests  157 passed (157)
+   Start at  21:47:20
+   Duration  12.52s (transform 5.06s, setup 0ms, collect 19.99s, tests 3.08s, environment 35.34s, prepare 5.55s)
+

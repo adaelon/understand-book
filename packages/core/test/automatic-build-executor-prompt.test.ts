@@ -5,12 +5,14 @@ import { describe, expect, it } from "vitest";
 import {
   AUTOMATIC_BUILD_EXECUTOR_PROMPT_SEPARATOR,
   composeAutomaticBuildExecutorPrompt,
+  registerPackagedBuildAssets,
 } from "../../../skills/build/executor-prompt";
 import {
   AUTOMATIC_BUILD_EXTRACTOR_PROMPT_NAMES,
   AUTOMATIC_BUILD_SHADOW_EXTRACTOR_PROMPT_NAMES,
   runAutomaticBuildExecutorPromptCli,
 } from "../../../skills/build/executor-prompt-cli";
+import { resolveAutomaticBuildExecutorPrompt, resolveAutomaticBuildPromptAsset } from "../../../skills/build/automatic-build";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
@@ -19,6 +21,29 @@ function normalizeBootstrapContract(text: string): string {
 }
 
 describe("automatic build executor prompt", () => {
+  it("reads embedded prompt bytes without launching another executable", () => {
+    const previous = process.env.UNDERSTAND_BOOK_SIDECAR_SELF;
+    const wrapper = readFileSync(path.join(REPO_ROOT, "agents", "automatic-build-dispatch-executor.md"), "utf8");
+    const prompts = Object.fromEntries(AUTOMATIC_BUILD_EXTRACTOR_PROMPT_NAMES.map(name =>
+      [name, readFileSync(path.join(REPO_ROOT, "agents", name), "utf8")]));
+    registerPackagedBuildAssets({ prompts, protocol_wrapper: wrapper, agent_template: "", mcp_config: "", mcp_launcher: "" });
+    process.env.UNDERSTAND_BOOK_SIDECAR_SELF = path.join(REPO_ROOT, "missing-test-sidecar.exe");
+    try {
+      for (const name of AUTOMATIC_BUILD_EXTRACTOR_PROMPT_NAMES) {
+        expect(Buffer.from(resolveAutomaticBuildPromptAsset(name).bytes).toString("utf8")).toBe(prompts[name]);
+        for (const mode of ["dispatch", "task"] as const) {
+          const result = resolveAutomaticBuildExecutorPrompt(name, mode);
+          expect(result.source).toBe("packaged_sidecar");
+          expect(Buffer.from(result.bytes).toString("utf8")).toBe(composeAutomaticBuildExecutorPrompt({
+            mode, extractor_name: name, extractor_prompt: prompts[name], protocol_wrapper: mode === "dispatch" ? wrapper : "" }));
+        }
+      }
+    } finally {
+      registerPackagedBuildAssets(undefined);
+      if (previous === undefined) delete process.env.UNDERSTAND_BOOK_SIDECAR_SELF;
+      else process.env.UNDERSTAND_BOOK_SIDECAR_SELF = previous;
+    }
+  });
   it("keeps one complete canonical bootstrap body for future role projections", () => {
     const wrapper = normalizeBootstrapContract(readFileSync(
       path.join(REPO_ROOT, "agents", "automatic-build-dispatch-executor.md"),

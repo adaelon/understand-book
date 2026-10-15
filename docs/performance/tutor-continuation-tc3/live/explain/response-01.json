@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"平均速度\"}",
+      "id": "call_00_GfsxrGBpx5zuVXpaxPzG7966",
+      "name": "book.concept"
+    },
+    {
+      "arguments": "{\"query\": \"总时间 路程 平均速度 定义\"}",
+      "id": "call_01_hsaJgbZBF2Rm1q11JUTI7406",
+      "name": "book.concept"
+    }
+  ],
+  "usage_total_tokens": 11509
+}

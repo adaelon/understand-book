@@ -1,0 +1,23 @@
+
+running 18 tests
+test mcp_usage::tests::packs::mcp_pack_debit_and_correction_failures_rollback_all_facts ... ok
+test mcp_usage::tests::packs::mcp_pack_free_first_calendar_expiry_and_cross_month_carry ... ok
+test mcp_usage::tests::packs::mcp_pack_earliest_expiry_then_opening_order_and_expired_exclusion ... ok
+test mcp_usage::tests::packs::mcp_pack_last_paid_unit_is_not_double_spent ... ok
+test mcp_usage::tests::packs::mcp_pack_corrections_preserve_consumption_and_separate_cash_and_units ... ok
+test mcp_usage::tests::packs::mcp_pack_purchase_replay_conflicts_rollback_and_restart ... ok
+test tests::adm3_tests::adm3_schema5_upgrade_keeps_original_receipts_and_failure_is_atomic ... ok
+test mcp_usage::tests::packs::mcp_pack_schema11_migration_preserves_free_history_and_is_atomic ... ok
+test mcp_usage::tests::mcp_usage_gifts_require_admin_and_replay_business_fields_atomically ... ok
+test tests::adm3_tests::adm3_conflicts_overlap_ownership_and_occupied_allowance ... ok
+test tests::adm3_tests::adm3_failure_rolls_back_receipt_grant_revision_and_operation ... ok
+test tests::adm2_tests::adm2_permission_csrf_validation_pagination_and_actor_scoped_replay ... ok
+test tests::adm3_tests::adm3_receipt_grant_replay_corrections_and_reopen ... ok
+test tests::adm3_tests::adm3_concurrent_same_operation_and_revision_commit_once ... ok
+test tests::mcp_pack_api_tests::mcp_pack_admin_api_mixed_receipts_gifts_and_corrections ... ok
+test tests::adm2_tests::adm2_real_http_host_concurrent_create_and_current_role ... ok
+test tests::adm2_tests::adm2_receipt_failure_rolls_back_account_password_sessions_and_material ... ok
+test tests::adm2_tests::adm2_online_lifecycle_receipts_and_other_reader_workspace ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 700 filtered out; finished in 11.02s
+

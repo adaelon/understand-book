@@ -1,0 +1,21 @@
+
+> @understand-book/web@0.0.0 test E:\allwork\download\agent\understand-book\packages\web
+> vitest run "src/network-client.test.ts" "src/App.startup.test.ts"
+
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/web
+
+ ✓ src/network-client.test.ts (17 tests) 193ms
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/App.startup.test.ts (65 tests) 1628ms
+
+ Test Files  2 passed (2)
+      Tests  82 passed (82)
+   Start at  10:04:20
+   Duration  25.13s (transform 12.22s, setup 0ms, collect 18.58s, tests 1.82s, environment 8.61s, prepare 1.57s)
+

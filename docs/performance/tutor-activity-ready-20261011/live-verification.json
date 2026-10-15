@@ -1,0 +1,17 @@
+{
+  "verified_at_utc": "2026-10-11T03:18:16.756140+00:00",
+  "entry_status": 200,
+  "script_status": 200,
+  "public_script_matches_build": true,
+  "compiled_ready_default": true,
+  "entry_assets": [
+    {
+      "asset": "/assets/x-DYmTJ8__.js",
+      "status": 200
+    },
+    {
+      "asset": "/assets/reader-DNabvP0n-loading-height-20261011.css",
+      "status": 200
+    }
+  ]
+}

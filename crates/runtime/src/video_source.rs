@@ -63,9 +63,9 @@ pub fn source_schema() -> serde_json::Value {
     let leaf = json!({"oneOf":[text,visual,audio]});
     let joint = json!({"type":"object","properties":{"kind":{"enum":["joint"]},"members":{"type":"array","minItems":2,"items":{"type":"object","properties":{"target":leaf,"support_role":{"type":"string","minLength":1}},"required":["target","support_role"],"additionalProperties":false}}},"required":["kind","members"],"additionalProperties":false});
     json!({"type":"object", "properties": {
-        "quote":{"type":"string","minLength":1,"description":"Continuous verbatim text observed this turn."},
+        "quote":{"type":"string","minLength":1,"description":"Continuous verbatim text already observed this turn; include enough context to support the claim and uniquely identify the passage. The tool computes LIDs and exact offsets."},
         "target":{"oneOf":[text,visual,audio,joint]}
-    },"oneOf":[{"required":["quote"]},{"required":["target"]}],"additionalProperties":false})
+    },"oneOf":[{"required":["quote"]},{"required":["target"]}],"examples":[{"quote":"The alpha threshold activates only when the value is greater than 10."}],"additionalProperties":false})
 }
 
 // serde's internally tagged buffering and arbitrary_precision floats must pass through

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ListChecks, Settings } from "@lucide/vue";
 import { ref, watch } from "vue";
+import brandLogo from '../assets/brand/understand-book-logo.svg';
 
 const props = defineProps<{
   typographyAvailable?: boolean;
@@ -41,7 +42,6 @@ function closeMobileAfterAction(event: MouseEvent) {
 
 <template>
   <button v-if="collapsed" class="topbar-expand ghost-pill" aria-label="展开工具栏" @click="collapsed = false">菜单</button>
-  <div v-if="mobileCollapsible && !mobileOpen && $slots['tutor-control']" class="mobile-tutor-control"><slot name="tutor-control" /></div>
   <button
     v-if="mobileCollapsible && mobileOpen"
     type="button"
@@ -56,11 +56,10 @@ function closeMobileAfterAction(event: MouseEvent) {
     @keydown.esc="emit('close-mobile')"
   >
     <div class="topbar-brand">
-      <span class="brand-mark">understand-book</span>
+      <span class="brand-mark"><img :src="brandLogo" class="brand-logo" width="26" height="26" alt="" />understand-book</span>
       <span class="breadcrumb">{{ chapterTitle || "阅读工作区" }}</span>
     </div>
     <div class="topbar-actions">
-      <slot name="tutor-control" />
       <span class="progress">{{ progressPct }}%</span>
       <button v-if="focusAvailable" class="ghost-pill topbar-focus" :aria-pressed="!!focusReading" @click="emit('toggle-focus')">{{ focusReading ? '退出专注' : '专注阅读' }}</button>
       <button v-if="typographyAvailable" data-typography-trigger class="ghost-pill" @click="emit('open-typography')">阅读设置</button>
@@ -70,8 +69,8 @@ function closeMobileAfterAction(event: MouseEvent) {
         v-if="buildIntentAvailable"
         class="topbar-icon-button"
         :class="{ active: buildIntentOpen }"
-        title="构建方案"
-        aria-label="打开构建方案"
+        title="准备阅读资料"
+        aria-label="准备阅读资料"
         @click="emit('open-build-intent')"
       >
         <ListChecks :size="17" :stroke-width="1.8" aria-hidden="true" />
@@ -87,17 +86,9 @@ function closeMobileAfterAction(event: MouseEvent) {
       >
         <Settings :size="17" :stroke-width="1.8" aria-hidden="true" />
       </button>
-      <button class="ghost-pill" :class="{ active: debugOpen }" @click="emit('toggle-debug')">调试</button>
       <slot name="account" />
       <button class="ghost-pill topbar-collapse" aria-label="收起工具栏" @click="collapsed = true">收起</button>
       <button type="button" class="topbar-mobile-close">关闭</button>
     </div>
   </header>
 </template>
-
-<style scoped>
-.mobile-tutor-control { display: none; }
-@media (max-width: 1023px) {
-  .mobile-tutor-control { display: flex; justify-content: flex-end; padding: 4px 8px; background: var(--canvas); }
-}
-</style>

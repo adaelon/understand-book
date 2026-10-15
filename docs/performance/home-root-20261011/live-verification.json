@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-10-11T00:25:40.881Z",
+  "browser_connection": "Origin IP with original HTTPS hostname and certificate verification; public homepage HTTP also verified separately",
+  "checks": [
+    "Root shows homepage at the bare domain with no-store",
+    "Homepage registration reaches the reader account form",
+    "Existing account and linked-window query links remain intact",
+    "Real login and refresh stay in reader bookshelf"
+  ],
+  "errors": []
+}

@@ -1,0 +1,119 @@
+[WebServer] (node:12308) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:21212) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 19 tests using 1 worker
+
+(node:35540) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x   1 playwright\pdf-selection-actions.spec.ts:357:34 › RS1 previews and downloads selected notes without changing reading state at 390px (8.5s)
+(node:32776) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x   2 playwright\pdf-selection-actions.spec.ts:357:34 › RS1 previews and downloads selected notes without changing reading state at 1440px (6.8s)
+(node:21956) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  3 playwright\pdf-selection-actions.spec.ts:581:1 › resolved real PDF selection performs three explicit actions and sends structured AskQuote (3.9s)
+  ok  4 playwright\pdf-selection-actions.spec.ts:776:1 › RN3 PDF draft survives collapse, failure and a reduced keyboard viewport, then edits through the annotation (4.0s)
+  ok  5 playwright\pdf-selection-actions.spec.ts:816:1 › RN3 Markdown and delivered answer entries share the editor, preserving old mixed notes and material-switch choices (4.6s)
+  ok  6 playwright\pdf-selection-actions.spec.ts:877:44 › RN4 retrieves mixed notes and preserves edit/delete/answer continuity at 320px (2.4s)
+  ok  7 playwright\pdf-selection-actions.spec.ts:877:44 › RN4 retrieves mixed notes and preserves edit/delete/answer continuity at 390px (3.3s)
+  ok  8 playwright\pdf-selection-actions.spec.ts:877:44 › RN4 retrieves mixed notes and preserves edit/delete/answer continuity at 768px (4.2s)
+  ok  9 playwright\pdf-selection-actions.spec.ts:877:44 › RN4 retrieves mixed notes and preserves edit/delete/answer continuity at 1440px (3.4s)
+  x  10 playwright\pdf-selection-actions.spec.ts:934:34 › RS2 rich content paginates completely and saves the exact preview at 390px (18.2s)
+(node:31564) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  11 playwright\pdf-selection-actions.spec.ts:934:34 › RS2 rich content paginates completely and saves the exact preview at 1440px (15.1s)
+(node:28876) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 12 playwright\pdf-selection-actions.spec.ts:979:1 › RS2 PDF exact selection and saved highlight use original text and source, partial selection cannot share (3.8s)
+  ok 13 playwright\pdf-selection-actions.spec.ts:1000:1 › RS2 Markdown cross-paragraph selection preserves source text and downloads a later page (4.8s)
+  ok 14 playwright\pdf-selection-actions.spec.ts:1038:1 › RS3 visual cards group the original excerpt, reflection and source in both layouts and palettes (10.6s)
+  ok 15 playwright\pdf-selection-actions.spec.ts:1073:44 › RS3 all pages save and close preserves reading and chat at 320px (14.8s)
+  ok 16 playwright\pdf-selection-actions.spec.ts:1073:44 › RS3 all pages save and close preserves reading and chat at 390px (14.5s)
+  ok 17 playwright\pdf-selection-actions.spec.ts:1073:44 › RS3 all pages save and close preserves reading and chat at 768px (18.7s)
+  ok 18 playwright\pdf-selection-actions.spec.ts:1073:44 › RS3 all pages save and close preserves reading and chat at 1440px (18.2s)
+  ok 19 playwright\pdf-selection-actions.spec.ts:1140:1 › RS2 overwide tables and formulas fail before PNG export; long ordered lists and code preserve every item (1.8s)
+
+
+  1) playwright\pdf-selection-actions.spec.ts:357:34 › RS1 previews and downloads selected notes without changing reading state at 390px 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 3000
+    Received:   1610
+
+      444 |       return { width: bitmap.width, height: bitmap.height, dark };
+      445 |     }, readFileSync(path).toString('base64'));
+    > 446 |     expect(decoded.width).toBe(1080); expect(decoded.height).toBe(1440); expect(decoded.dark).toBeGreaterThan(3000);
+          |                                                                                               ^
+      447 |     await page.screenshot({ path: info.outputPath(`rs1-panel-${width}.png`) });
+      448 |     await panel.getByRole('button', { name: '关闭分享' }).click();
+      449 |     await expect(open).toBeFocused();
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\pdf-selection-actions.spec.ts:446:95
+
+    Error Context: test-results\pdf-selection-actions-RS1--a5217-ging-reading-state-at-390px\error-context.md
+
+  2) playwright\pdf-selection-actions.spec.ts:357:34 › RS1 previews and downloads selected notes without changing reading state at 1440px 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 3000
+    Received:   1610
+
+      444 |       return { width: bitmap.width, height: bitmap.height, dark };
+      445 |     }, readFileSync(path).toString('base64'));
+    > 446 |     expect(decoded.width).toBe(1080); expect(decoded.height).toBe(1440); expect(decoded.dark).toBeGreaterThan(3000);
+          |                                                                                               ^
+      447 |     await page.screenshot({ path: info.outputPath(`rs1-panel-${width}.png`) });
+      448 |     await panel.getByRole('button', { name: '关闭分享' }).click();
+      449 |     await expect(open).toBeFocused();
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\pdf-selection-actions.spec.ts:446:95
+
+    Error Context: test-results\pdf-selection-actions-RS1--20956-ing-reading-state-at-1440px\error-context.md
+
+  3) playwright\pdf-selection-actions.spec.ts:934:34 › RS2 rich content paginates completely and saves the exact preview at 390px 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 3000
+    Received:   788
+
+      971 |   for (const [index,file] of result.files.entries()) { const {writeFileSync}=await import('node:fs');writeFileSync(info.outputPath(`rs2-page-${index+1}.png`),Buffer.from(file.bytes)); }
+      972 |   for (const [index,file] of result.files.entries()) {
+    > 973 |     expect(file.headerMatches, `page ${index+1}`).toBe(true); expect(file.width).toBe(1080); expect(file.height).toBe(1440); expect(file.dark).toBeGreaterThan(3000);
+          |                                                                                                                                                ^
+      974 |     expect(result.sources[index]).toContain('《学习与理解》');
+      975 |   }
+      976 |   expect(calls.notes).toEqual([]); expect(calls.agent).toEqual([]);
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\pdf-selection-actions.spec.ts:973:144
+
+    Error Context: test-results\pdf-selection-actions-RS2--b6d9b--the-exact-preview-at-390px\error-context.md
+
+  4) playwright\pdf-selection-actions.spec.ts:934:34 › RS2 rich content paginates completely and saves the exact preview at 1440px 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 3000
+    Received:   788
+
+      971 |   for (const [index,file] of result.files.entries()) { const {writeFileSync}=await import('node:fs');writeFileSync(info.outputPath(`rs2-page-${index+1}.png`),Buffer.from(file.bytes)); }
+      972 |   for (const [index,file] of result.files.entries()) {
+    > 973 |     expect(file.headerMatches, `page ${index+1}`).toBe(true); expect(file.width).toBe(1080); expect(file.height).toBe(1440); expect(file.dark).toBeGreaterThan(3000);
+          |                                                                                                                                                ^
+      974 |     expect(result.sources[index]).toContain('《学习与理解》');
+      975 |   }
+      976 |   expect(calls.notes).toEqual([]); expect(calls.agent).toEqual([]);
+        at E:\allwork\download\agent\understand-book-reading-share\packages\web\playwright\pdf-selection-actions.spec.ts:973:144
+
+    Error Context: test-results\pdf-selection-actions-RS2--9a230-the-exact-preview-at-1440px\error-context.md
+
+  4 failed
+    playwright\pdf-selection-actions.spec.ts:357:34 › RS1 previews and downloads selected notes without changing reading state at 390px 
+    playwright\pdf-selection-actions.spec.ts:357:34 › RS1 previews and downloads selected notes without changing reading state at 1440px 
+    playwright\pdf-selection-actions.spec.ts:934:34 › RS2 rich content paginates completely and saves the exact preview at 390px 
+    playwright\pdf-selection-actions.spec.ts:934:34 › RS2 rich content paginates completely and saves the exact preview at 1440px 
+  15 passed (3.1m)
+undefined
+E:\allwork\download\agent\understand-book-reading-share\packages\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: playwright test playwright/pdf-selection-actions.spec.ts --grep RS1|RS2|RS3|RN4|RN3|resolved real PDF selection performs --workers=1

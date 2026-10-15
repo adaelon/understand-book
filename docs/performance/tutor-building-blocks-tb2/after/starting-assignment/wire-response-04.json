@@ -1,0 +1,26 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "message": {
+        "content": "{\"candidate_fits\":[],\"plan_gate\":{\"missing_requirements\":[],\"target_issues\":[],\"valid\":true},\"probes\":[{\"query\":\"ownership example Foo assignment move compile error\",\"target_index\":0},{\"query\":\"move value into another variable foo cannot print\",\"target_index\":1}]}",
+        "redacted_reasoning_chars": 8042,
+        "role": "assistant",
+        "tool_calls": []
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 1784,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1718
+    },
+    "prompt_cache_hit_tokens": 0,
+    "prompt_cache_miss_tokens": 368,
+    "prompt_tokens": 368,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2152
+  }
+}

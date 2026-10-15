@@ -1,0 +1,709 @@
+{
+  "native": {
+    "messages": [
+      {
+        "content": "把‘先核对前提再下结论’记为这一段的笔记",
+        "role": "user"
+      }
+    ],
+    "model": "test",
+    "parallel_tool_calls": false,
+    "temperature": 0,
+    "tool_choice": "auto",
+    "tools": [
+      {
+        "function": {
+          "description": "Update the active Resident task only when interpretation, requirements or working state changes. working saves focus/next_move and optionally replaces the plan; refine sets interpretation/requirements only in the goal's origin turn; revise changes requirements using the current user turn ID and an exact quote from that message. Replace example turn IDs with actual IDs from the active Goal; each requirement must cite the origin or current user turn. Working items record a revisable plan, not user requirements. Keep the plan consistent with actual results and remaining content gaps before finishing. Success returns {goal_id, revision, changed}; changed=false means no state change. This tool cannot mark delivery or Goal completion; completed items do not prove either. Short direct answers need no update or plan. Use working in a separate call to save focus, next_move or plan items; refine/revise do not accept these fields.",
+          "name": "goal_update",
+          "parameters": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "focus": {},
+                  "items": {},
+                  "next_move": {},
+                  "open_questions": {},
+                  "operation": {
+                    "enum": [
+                      "working"
+                    ]
+                  }
+                },
+                "required": [
+                  "operation",
+                  "focus",
+                  "next_move"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "interpretation": {},
+                  "operation": {
+                    "enum": [
+                      "refine"
+                    ]
+                  },
+                  "requirements": {}
+                },
+                "required": [
+                  "operation",
+                  "interpretation",
+                  "requirements"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "basis_quote": {},
+                  "basis_turn_id": {},
+                  "interpretation": {},
+                  "operation": {
+                    "enum": [
+                      "revise"
+                    ]
+                  },
+                  "requirements": {}
+                },
+                "required": [
+                  "operation",
+                  "basis_turn_id",
+                  "basis_quote",
+                  "interpretation",
+                  "requirements"
+                ]
+              }
+            ],
+            "examples": [
+              {
+                "focus": "核对当前段落的解释依据",
+                "items": [
+                  {
+                    "description": "核对原文并解释",
+                    "id": "explain",
+                    "status": "in_progress"
+                  },
+                  {
+                    "description": "保存用户要求的笔记并核对回执",
+                    "id": "note",
+                    "status": "pending"
+                  }
+                ],
+                "next_move": "解释后保存用户要求的笔记",
+                "operation": "working"
+              },
+              {
+                "interpretation": "解释当前段落并保存用户要求的笔记",
+                "operation": "refine",
+                "requirements": [
+                  {
+                    "basis_turn_id": "origin-user-turn-id",
+                    "description": "解释当前段落",
+                    "id": "explain",
+                    "verification": "content"
+                  },
+                  {
+                    "basis_turn_id": "origin-user-turn-id",
+                    "description": "在当前段落保存笔记",
+                    "id": "note",
+                    "verification": "reader_action"
+                  }
+                ]
+              },
+              {
+                "basis_quote": "只解释，不要保存笔记",
+                "basis_turn_id": "current-user-turn-id",
+                "interpretation": "只解释当前段落",
+                "operation": "revise",
+                "requirements": [
+                  {
+                    "basis_turn_id": "current-user-turn-id",
+                    "description": "只解释当前段落，不保存笔记",
+                    "id": "explain",
+                    "verification": "content"
+                  }
+                ]
+              }
+            ],
+            "properties": {
+              "basis_quote": {
+                "type": "string"
+              },
+              "basis_turn_id": {
+                "type": "string"
+              },
+              "focus": {
+                "type": "string"
+              },
+              "interpretation": {
+                "type": "string"
+              },
+              "items": {
+                "description": "For operation=working: replace the whole ordered work plan atomically. Omit to retain it; [] clears it. Use non-empty unique IDs and non-empty descriptions. Reorder, split, merge, remove abandoned steps or reopen completed items as observations require; this does not change requirements.",
+                "items": {
+                  "properties": {
+                    "description": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "id": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "in_progress",
+                        "completed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "description",
+                    "status"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "array",
+                  "null"
+                ]
+              },
+              "next_move": {
+                "type": "string"
+              },
+              "open_questions": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "operation": {
+                "enum": [
+                  "working",
+                  "refine",
+                  "revise"
+                ],
+                "type": "string"
+              },
+              "requirements": {
+                "items": {
+                  "properties": {
+                    "basis_turn_id": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "verification": {
+                      "description": "content: explanation correctness and features inside the authored page, including page controls, dragging, playback, pause, seeking and saved scene restoration. presentation_delivery: actually save and deliver the requested page. reader_action: an explicitly requested host Reader operation such as navigating the book or changing its panels; requires an actual Reader effect. Page interactions and preview actions are content requirements, not reader_action. Keep the user's required behavior in description; choose verification by what must actually be delivered.",
+                      "enum": [
+                        "content",
+                        "presentation_delivery",
+                        "reader_action"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "description",
+                    "basis_turn_id",
+                    "verification"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "operation"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "description": "Save the user's requested note text at a verified source lid. The lid is the note's body placement; text is the content to retain, not a highlight quote. Use this tool for notes, including requested summaries of an explanation; memory.save cannot create notes. Success returns {ok:true,note_id,status:CREATED|EXISTING}; note_id is the persisted memory ID. EXISTING reuses the same note rather than creating another. New Agent notes are saved in the session layer. If reader_effect.status=not_applied, the note is saved but Reader selection did not apply. Replace the example lid with the actual requested location. Do not create a note for an explanation-only request or claim success before the receipt.",
+          "name": "reader_note",
+          "parameters": {
+            "examples": [
+              {
+                "lid": "1.1",
+                "text": "先核对前提再下结论"
+              }
+            ],
+            "properties": {
+              "lid": {
+                "type": "string"
+              },
+              "text": {
+                "description": "Note content",
+                "type": "string"
+              }
+            },
+            "required": [
+              "lid",
+              "text"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "description": "Save a user-requested source highlight at a verified LID. For a sentence, pass the exact unique quote within that LID; omit quote only for the whole passage. This interface accepts one lid and an optional quote, not offsets, an end_lid or note text. Use reader.note for commentary. Success returns {ok:true,highlight_id}, the saved session memory ID. If reader_effect.status=not_applied, persistence succeeded but the Reader selection did not apply. Replace example locations and quotes with observed source text; an explanation alone needs no highlight.",
+          "name": "reader_highlight",
+          "parameters": {
+            "examples": [
+              {
+                "lid": "1.1",
+                "quote": "先核对前提"
+              },
+              {
+                "lid": "1.1"
+              }
+            ],
+            "properties": {
+              "lid": {
+                "type": "string"
+              },
+              "quote": {
+                "description": "Exact requested original text within this LID; must match once",
+                "type": "string"
+              }
+            },
+            "required": [
+              "lid"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "description": "Save an existing reader fact at a verified anchor_lid. type=highlight stores supplied content as long_term memory without resolving a source range or selecting it in Reader; use reader.highlight for a requested source highlight. position stores a session reading-position memory, without navigating. qa stores the user's original substantive question after answering with book.query, not the generated answer or routine chat history. context stores sourced reader background, preferences, interests or sticking points; retain what the user actually said and distinguish inference. Use reader.note for every note. context needs no book citation for a user-stated preference; citations may contain real supporting LIDs, and invalid LIDs are dropped. Success returns the saved record {mem_id,type,layer,anchor,content,citations,...}; it is not a note_id or proof of learning. Replace example locations and content with observed facts; do not write merely to explain selected text.",
+          "name": "memory_save",
+          "parameters": {
+            "examples": [
+              {
+                "anchor_lid": "1.1",
+                "content": "先核对前提，再下结论",
+                "type": "highlight"
+              },
+              {
+                "anchor_lid": "1.1",
+                "content": "读到当前段落，稍后从这里继续",
+                "type": "position"
+              },
+              {
+                "anchor_lid": "1.1",
+                "content": "为什么要先核对前提？",
+                "type": "qa"
+              },
+              {
+                "anchor_lid": "1.1",
+                "citations": [],
+                "content": "用户说：我有 Rust 基础，读这一段时请先给例子",
+                "type": "context"
+              }
+            ],
+            "properties": {
+              "anchor_lid": {
+                "type": "string"
+              },
+              "citations": {
+                "description": "Optional real LIDs supporting this memory, primarily for context; invalid LIDs are dropped and the list may be empty",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "content": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "highlight",
+                  "position",
+                  "qa",
+                  "context"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "anchor_lid",
+              "content"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      }
+    ]
+  },
+  "react": {
+    "messages": [
+      {
+        "content": "Your provider has no native tool calling. tool_choice=auto;parallel_tool_calls=false. You must output exactly one JSON object per turn and no Markdown.\nTo call a tool, output only an exact name from this turn's list. Shape example; replace values for the current task: {\"tool_calls\":[{\"arguments\":\"1.1\",\"name\":\"goal.update\"}]}\nFor a final answer, output: {\"final\":\"answer text\"}\nSelect tools only from the following list. arguments must satisfy the corresponding JSON Schema:\n[\n  {\n    \"description\": \"Update the active Resident task only when interpretation, requirements or working state changes. working saves focus/next_move and optionally replaces the plan; refine sets interpretation/requirements only in the goal's origin turn; revise changes requirements using the current user turn ID and an exact quote from that message. Replace example turn IDs with actual IDs from the active Goal; each requirement must cite the origin or current user turn. Working items record a revisable plan, not user requirements. Keep the plan consistent with actual results and remaining content gaps before finishing. Success returns {goal_id, revision, changed}; changed=false means no state change. This tool cannot mark delivery or Goal completion; completed items do not prove either. Short direct answers need no update or plan. Use working in a separate call to save focus, next_move or plan items; refine/revise do not accept these fields.\",\n    \"name\": \"goal.update\",\n    \"parameters\": {\n      \"anyOf\": [\n        {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"focus\": {},\n            \"items\": {},\n            \"next_move\": {},\n            \"open_questions\": {},\n            \"operation\": {\n              \"enum\": [\n                \"working\"\n              ]\n            }\n          },\n          \"required\": [\n            \"operation\",\n            \"focus\",\n            \"next_move\"\n          ]\n        },\n        {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"interpretation\": {},\n            \"operation\": {\n              \"enum\": [\n                \"refine\"\n              ]\n            },\n            \"requirements\": {}\n          },\n          \"required\": [\n            \"operation\",\n            \"interpretation\",\n            \"requirements\"\n          ]\n        },\n        {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"basis_quote\": {},\n            \"basis_turn_id\": {},\n            \"interpretation\": {},\n            \"operation\": {\n              \"enum\": [\n                \"revise\"\n              ]\n            },\n            \"requirements\": {}\n          },\n          \"required\": [\n            \"operation\",\n            \"basis_turn_id\",\n            \"basis_quote\",\n            \"interpretation\",\n            \"requirements\"\n          ]\n        }\n      ],\n      \"examples\": [\n        {\n          \"focus\": \"核对当前段落的解释依据\",\n          \"items\": [\n            {\n              \"description\": \"核对原文并解释\",\n              \"id\": \"explain\",\n              \"status\": \"in_progress\"\n            },\n            {\n              \"description\": \"保存用户要求的笔记并核对回执\",\n              \"id\": \"note\",\n              \"status\": \"pending\"\n            }\n          ],\n          \"next_move\": \"解释后保存用户要求的笔记\",\n          \"operation\": \"working\"\n        },\n        {\n          \"interpretation\": \"解释当前段落并保存用户要求的笔记\",\n          \"operation\": \"refine\",\n          \"requirements\": [\n            {\n              \"basis_turn_id\": \"origin-user-turn-id\",\n              \"description\": \"解释当前段落\",\n              \"id\": \"explain\",\n              \"verification\": \"content\"\n            },\n            {\n              \"basis_turn_id\": \"origin-user-turn-id\",\n              \"description\": \"在当前段落保存笔记\",\n              \"id\": \"note\",\n              \"verification\": \"reader_action\"\n            }\n          ]\n        },\n        {\n          \"basis_quote\": \"只解释，不要保存笔记\",\n          \"basis_turn_id\": \"current-user-turn-id\",\n          \"interpretation\": \"只解释当前段落\",\n          \"operation\": \"revise\",\n          \"requirements\": [\n            {\n              \"basis_turn_id\": \"current-user-turn-id\",\n              \"description\": \"只解释当前段落，不保存笔记\",\n              \"id\": \"explain\",\n              \"verification\": \"content\"\n            }\n          ]\n        }\n      ],\n      \"properties\": {\n        \"basis_quote\": {\n          \"type\": \"string\"\n        },\n        \"basis_turn_id\": {\n          \"type\": \"string\"\n        },\n        \"focus\": {\n          \"type\": \"string\"\n        },\n        \"interpretation\": {\n          \"type\": \"string\"\n        },\n        \"items\": {\n          \"description\": \"For operation=working: replace the whole ordered work plan atomically. Omit to retain it; [] clears it. Use non-empty unique IDs and non-empty descriptions. Reorder, split, merge, remove abandoned steps or reopen completed items as observations require; this does not change requirements.\",\n          \"items\": {\n            \"properties\": {\n              \"description\": {\n                \"minLength\": 1,\n                \"type\": \"string\"\n              },\n              \"id\": {\n                \"minLength\": 1,\n                \"type\": \"string\"\n              },\n              \"status\": {\n                \"enum\": [\n                  \"pending\",\n                  \"in_progress\",\n                  \"completed\"\n                ],\n                \"type\": \"string\"\n              }\n            },\n            \"required\": [\n              \"id\",\n              \"description\",\n              \"status\"\n            ],\n            \"type\": \"object\"\n          },\n          \"type\": [\n            \"array\",\n            \"null\"\n          ]\n        },\n        \"next_move\": {\n          \"type\": \"string\"\n        },\n        \"open_questions\": {\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"type\": \"array\"\n        },\n        \"operation\": {\n          \"enum\": [\n            \"working\",\n            \"refine\",\n            \"revise\"\n          ],\n          \"type\": \"string\"\n        },\n        \"requirements\": {\n          \"items\": {\n            \"properties\": {\n              \"basis_turn_id\": {\n                \"type\": \"string\"\n              },\n              \"description\": {\n                \"type\": \"string\"\n              },\n              \"id\": {\n                \"type\": \"string\"\n              },\n              \"verification\": {\n                \"description\": \"content: explanation correctness and features inside the authored page, including page controls, dragging, playback, pause, seeking and saved scene restoration. presentation_delivery: actually save and deliver the requested page. reader_action: an explicitly requested host Reader operation such as navigating the book or changing its panels; requires an actual Reader effect. Page interactions and preview actions are content requirements, not reader_action. Keep the user's required behavior in description; choose verification by what must actually be delivered.\",\n                \"enum\": [\n                  \"content\",\n                  \"presentation_delivery\",\n                  \"reader_action\"\n                ],\n                \"type\": \"string\"\n              }\n            },\n            \"required\": [\n              \"id\",\n              \"description\",\n              \"basis_turn_id\",\n              \"verification\"\n            ],\n            \"type\": \"object\"\n          },\n          \"type\": \"array\"\n        }\n      },\n      \"required\": [\n        \"operation\"\n      ],\n      \"type\": \"object\"\n    }\n  },\n  {\n    \"description\": \"Save the user's requested note text at a verified source lid. The lid is the note's body placement; text is the content to retain, not a highlight quote. Use this tool for notes, including requested summaries of an explanation; memory.save cannot create notes. Success returns {ok:true,note_id,status:CREATED|EXISTING}; note_id is the persisted memory ID. EXISTING reuses the same note rather than creating another. New Agent notes are saved in the session layer. If reader_effect.status=not_applied, the note is saved but Reader selection did not apply. Replace the example lid with the actual requested location. Do not create a note for an explanation-only request or claim success before the receipt.\",\n    \"name\": \"reader.note\",\n    \"parameters\": {\n      \"examples\": [\n        {\n          \"lid\": \"1.1\",\n          \"text\": \"先核对前提再下结论\"\n        }\n      ],\n      \"properties\": {\n        \"lid\": {\n          \"type\": \"string\"\n        },\n        \"text\": {\n          \"description\": \"Note content\",\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"lid\",\n        \"text\"\n      ],\n      \"type\": \"object\"\n    }\n  },\n  {\n    \"description\": \"Save a user-requested source highlight at a verified LID. For a sentence, pass the exact unique quote within that LID; omit quote only for the whole passage. This interface accepts one lid and an optional quote, not offsets, an end_lid or note text. Use reader.note for commentary. Success returns {ok:true,highlight_id}, the saved session memory ID. If reader_effect.status=not_applied, persistence succeeded but the Reader selection did not apply. Replace example locations and quotes with observed source text; an explanation alone needs no highlight.\",\n    \"name\": \"reader.highlight\",\n    \"parameters\": {\n      \"examples\": [\n        {\n          \"lid\": \"1.1\",\n          \"quote\": \"先核对前提\"\n        },\n        {\n          \"lid\": \"1.1\"\n        }\n      ],\n      \"properties\": {\n        \"lid\": {\n          \"type\": \"string\"\n        },\n        \"quote\": {\n          \"description\": \"Exact requested original text within this LID; must match once\",\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"lid\"\n      ],\n      \"type\": \"object\"\n    }\n  },\n  {\n    \"description\": \"Save an existing reader fact at a verified anchor_lid. type=highlight stores supplied content as long_term memory without resolving a source range or selecting it in Reader; use reader.highlight for a requested source highlight. position stores a session reading-position memory, without navigating. qa stores the user's original substantive question after answering with book.query, not the generated answer or routine chat history. context stores sourced reader background, preferences, interests or sticking points; retain what the user actually said and distinguish inference. Use reader.note for every note. context needs no book citation for a user-stated preference; citations may contain real supporting LIDs, and invalid LIDs are dropped. Success returns the saved record {mem_id,type,layer,anchor,content,citations,...}; it is not a note_id or proof of learning. Replace example locations and content with observed facts; do not write merely to explain selected text.\",\n    \"name\": \"memory.save\",\n    \"parameters\": {\n      \"examples\": [\n        {\n          \"anchor_lid\": \"1.1\",\n          \"content\": \"先核对前提，再下结论\",\n          \"type\": \"highlight\"\n        },\n        {\n          \"anchor_lid\": \"1.1\",\n          \"content\": \"读到当前段落，稍后从这里继续\",\n          \"type\": \"position\"\n        },\n        {\n          \"anchor_lid\": \"1.1\",\n          \"content\": \"为什么要先核对前提？\",\n          \"type\": \"qa\"\n        },\n        {\n          \"anchor_lid\": \"1.1\",\n          \"citations\": [],\n          \"content\": \"用户说：我有 Rust 基础，读这一段时请先给例子\",\n          \"type\": \"context\"\n        }\n      ],\n      \"properties\": {\n        \"anchor_lid\": {\n          \"type\": \"string\"\n        },\n        \"citations\": {\n          \"description\": \"Optional real LIDs supporting this memory, primarily for context; invalid LIDs are dropped and the list may be empty\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"type\": \"array\"\n        },\n        \"content\": {\n          \"type\": \"string\"\n        },\n        \"type\": {\n          \"enum\": [\n            \"highlight\",\n            \"position\",\n            \"qa\",\n            \"context\"\n          ],\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"type\",\n        \"anchor_lid\",\n        \"content\"\n      ],\n      \"type\": \"object\"\n    }\n  }\n]",
+        "role": "system"
+      },
+      {
+        "content": "把‘先核对前提再下结论’记为这一段的笔记",
+        "role": "user"
+      }
+    ],
+    "model": "test",
+    "temperature": 0
+  },
+  "specs": [
+    {
+      "description": "Update the active Resident task only when interpretation, requirements or working state changes. working saves focus/next_move and optionally replaces the plan; refine sets interpretation/requirements only in the goal's origin turn; revise changes requirements using the current user turn ID and an exact quote from that message. Replace example turn IDs with actual IDs from the active Goal; each requirement must cite the origin or current user turn. Working items record a revisable plan, not user requirements. Keep the plan consistent with actual results and remaining content gaps before finishing. Success returns {goal_id, revision, changed}; changed=false means no state change. This tool cannot mark delivery or Goal completion; completed items do not prove either. Short direct answers need no update or plan. Use working in a separate call to save focus, next_move or plan items; refine/revise do not accept these fields.",
+      "name": "goal.update",
+      "parameters": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "focus": {},
+              "items": {},
+              "next_move": {},
+              "open_questions": {},
+              "operation": {
+                "enum": [
+                  "working"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "focus",
+              "next_move"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "interpretation": {},
+              "operation": {
+                "enum": [
+                  "refine"
+                ]
+              },
+              "requirements": {}
+            },
+            "required": [
+              "operation",
+              "interpretation",
+              "requirements"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "basis_quote": {},
+              "basis_turn_id": {},
+              "interpretation": {},
+              "operation": {
+                "enum": [
+                  "revise"
+                ]
+              },
+              "requirements": {}
+            },
+            "required": [
+              "operation",
+              "basis_turn_id",
+              "basis_quote",
+              "interpretation",
+              "requirements"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "focus": "核对当前段落的解释依据",
+            "items": [
+              {
+                "description": "核对原文并解释",
+                "id": "explain",
+                "status": "in_progress"
+              },
+              {
+                "description": "保存用户要求的笔记并核对回执",
+                "id": "note",
+                "status": "pending"
+              }
+            ],
+            "next_move": "解释后保存用户要求的笔记",
+            "operation": "working"
+          },
+          {
+            "interpretation": "解释当前段落并保存用户要求的笔记",
+            "operation": "refine",
+            "requirements": [
+              {
+                "basis_turn_id": "origin-user-turn-id",
+                "description": "解释当前段落",
+                "id": "explain",
+                "verification": "content"
+              },
+              {
+                "basis_turn_id": "origin-user-turn-id",
+                "description": "在当前段落保存笔记",
+                "id": "note",
+                "verification": "reader_action"
+              }
+            ]
+          },
+          {
+            "basis_quote": "只解释，不要保存笔记",
+            "basis_turn_id": "current-user-turn-id",
+            "interpretation": "只解释当前段落",
+            "operation": "revise",
+            "requirements": [
+              {
+                "basis_turn_id": "current-user-turn-id",
+                "description": "只解释当前段落，不保存笔记",
+                "id": "explain",
+                "verification": "content"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "basis_quote": {
+            "type": "string"
+          },
+          "basis_turn_id": {
+            "type": "string"
+          },
+          "focus": {
+            "type": "string"
+          },
+          "interpretation": {
+            "type": "string"
+          },
+          "items": {
+            "description": "For operation=working: replace the whole ordered work plan atomically. Omit to retain it; [] clears it. Use non-empty unique IDs and non-empty descriptions. Reorder, split, merge, remove abandoned steps or reopen completed items as observations require; this does not change requirements.",
+            "items": {
+              "properties": {
+                "description": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "pending",
+                    "in_progress",
+                    "completed"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "description",
+                "status"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "next_move": {
+            "type": "string"
+          },
+          "open_questions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "operation": {
+            "enum": [
+              "working",
+              "refine",
+              "revise"
+            ],
+            "type": "string"
+          },
+          "requirements": {
+            "items": {
+              "properties": {
+                "basis_turn_id": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "verification": {
+                  "description": "content: explanation correctness and features inside the authored page, including page controls, dragging, playback, pause, seeking and saved scene restoration. presentation_delivery: actually save and deliver the requested page. reader_action: an explicitly requested host Reader operation such as navigating the book or changing its panels; requires an actual Reader effect. Page interactions and preview actions are content requirements, not reader_action. Keep the user's required behavior in description; choose verification by what must actually be delivered.",
+                  "enum": [
+                    "content",
+                    "presentation_delivery",
+                    "reader_action"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "description",
+                "basis_turn_id",
+                "verification"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Save the user's requested note text at a verified source lid. The lid is the note's body placement; text is the content to retain, not a highlight quote. Use this tool for notes, including requested summaries of an explanation; memory.save cannot create notes. Success returns {ok:true,note_id,status:CREATED|EXISTING}; note_id is the persisted memory ID. EXISTING reuses the same note rather than creating another. New Agent notes are saved in the session layer. If reader_effect.status=not_applied, the note is saved but Reader selection did not apply. Replace the example lid with the actual requested location. Do not create a note for an explanation-only request or claim success before the receipt.",
+      "name": "reader.note",
+      "parameters": {
+        "examples": [
+          {
+            "lid": "1.1",
+            "text": "先核对前提再下结论"
+          }
+        ],
+        "properties": {
+          "lid": {
+            "type": "string"
+          },
+          "text": {
+            "description": "Note content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lid",
+          "text"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Save a user-requested source highlight at a verified LID. For a sentence, pass the exact unique quote within that LID; omit quote only for the whole passage. This interface accepts one lid and an optional quote, not offsets, an end_lid or note text. Use reader.note for commentary. Success returns {ok:true,highlight_id}, the saved session memory ID. If reader_effect.status=not_applied, persistence succeeded but the Reader selection did not apply. Replace example locations and quotes with observed source text; an explanation alone needs no highlight.",
+      "name": "reader.highlight",
+      "parameters": {
+        "examples": [
+          {
+            "lid": "1.1",
+            "quote": "先核对前提"
+          },
+          {
+            "lid": "1.1"
+          }
+        ],
+        "properties": {
+          "lid": {
+            "type": "string"
+          },
+          "quote": {
+            "description": "Exact requested original text within this LID; must match once",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lid"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Save an existing reader fact at a verified anchor_lid. type=highlight stores supplied content as long_term memory without resolving a source range or selecting it in Reader; use reader.highlight for a requested source highlight. position stores a session reading-position memory, without navigating. qa stores the user's original substantive question after answering with book.query, not the generated answer or routine chat history. context stores sourced reader background, preferences, interests or sticking points; retain what the user actually said and distinguish inference. Use reader.note for every note. context needs no book citation for a user-stated preference; citations may contain real supporting LIDs, and invalid LIDs are dropped. Success returns the saved record {mem_id,type,layer,anchor,content,citations,...}; it is not a note_id or proof of learning. Replace example locations and content with observed facts; do not write merely to explain selected text.",
+      "name": "memory.save",
+      "parameters": {
+        "examples": [
+          {
+            "anchor_lid": "1.1",
+            "content": "先核对前提，再下结论",
+            "type": "highlight"
+          },
+          {
+            "anchor_lid": "1.1",
+            "content": "读到当前段落，稍后从这里继续",
+            "type": "position"
+          },
+          {
+            "anchor_lid": "1.1",
+            "content": "为什么要先核对前提？",
+            "type": "qa"
+          },
+          {
+            "anchor_lid": "1.1",
+            "citations": [],
+            "content": "用户说：我有 Rust 基础，读这一段时请先给例子",
+            "type": "context"
+          }
+        ],
+        "properties": {
+          "anchor_lid": {
+            "type": "string"
+          },
+          "citations": {
+            "description": "Optional real LIDs supporting this memory, primarily for context; invalid LIDs are dropped and the list may be empty",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "content": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "highlight",
+              "position",
+              "qa",
+              "context"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "anchor_lid",
+          "content"
+        ],
+        "type": "object"
+      }
+    }
+  ],
+  "tasks": {
+    "context": "我有 Rust 基础，读这一段时请先给例子",
+    "explain": "只解释选中的原文，不保存笔记、高亮或记忆",
+    "note": "把‘先核对前提再下结论’记为这一段的笔记",
+    "origin": "解释这一段并保存一条笔记",
+    "revision": "改成只解释，不要保存笔记"
+  }
+}

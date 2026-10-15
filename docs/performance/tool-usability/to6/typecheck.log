@@ -1,0 +1,13 @@
+
+> @understand-book/core@0.0.0 typecheck E:\allwork\download\agent\understand-book\packages\core
+> tsc --noEmit
+
+test/automatic-build-executor-session.test.ts(2352,54): error TS2345: Argument of type 'AutomaticBuildExecutorInputNextRequestV4' is not assignable to parameter of type 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'AutomaticBuildExecutorInputNextRequestV4'.
+test/automatic-build-executor-session.test.ts(2353,42): error TS2345: Argument of type 'AutomaticBuildExecutorInputNextRequestV4' is not assignable to parameter of type 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'AutomaticBuildExecutorInputNextRequestV4'.
+test/automatic-build-executor-session.test.ts(2359,11): error TS2322: Type 'AutomaticBuildExecutorInputNextRequestV4' is not assignable to type 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'AutomaticBuildExecutorInputNextRequestV4'.
+E:\allwork\download\agent\understand-book\packages\core:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @understand-book/core@0.0.0 typecheck: `tsc --noEmit`
+Exit status 2

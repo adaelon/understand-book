@@ -63,6 +63,7 @@ it('keeps enabled intent and session ownership across optional failure, pause, b
   vi.mocked(api.tutorReadiness).mockResolvedValue(ready);
   await tutor.loadReadiness();
   expect(tutor.label.value).toContain('可以开始或继续学习');
+  expect(tutor.currentForSource.value?.id).toBe('learn');
   expect(tutor.state.value?.control.enabled).toBe(true);
   tutor.state.value!.sessions.learn!.status = 'paused';
   expect(tutor.label.value).toContain('已暂停');
@@ -70,6 +71,11 @@ it('keeps enabled intent and session ownership across optional failure, pause, b
   vi.mocked(api.tutorReadiness).mockResolvedValueOnce({ ...ready, source_id: 'other' });
   await tutor.loadReadiness();
   expect(tutor.label.value).toContain('不属于本次学习');
+  expect(tutor.currentForSource.value).toBeNull();
+  expect(tutor.hasOtherSourceSession.value).toBe(true);
+  tutor.state.value!.sessions.learn!.status = 'paused';
+  expect(tutor.label.value).toContain('不属于本次学习');
+  tutor.state.value!.sessions.learn!.status = 'active';
   await tutor.loadReadiness();
   expect(tutor.label.value).toContain('可以开始或继续学习');
   expect(tutor.current.value?.id).toBe('learn');

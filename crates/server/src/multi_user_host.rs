@@ -102,7 +102,7 @@ impl Site {
 }
 pub(crate) struct Headers(pub Vec<(String, String)>);
 impl Headers {
-    fn get(&self, name: &str) -> Option<&str> {
+    pub(crate) fn get(&self, name: &str) -> Option<&str> {
         let mut values = self
             .0
             .iter()
@@ -121,7 +121,8 @@ pub(crate) struct HttpReply {
     pub body: Vec<u8>,
     pub content_type: String,
     pub cookie: Option<String>,
-    waiting: Option<SyncWait>,
+    extra_headers: Vec<(String, String)>,
+    waiting: Option<PendingReply>,
     observation: Option<(
         Arc<crate::agent_stream::RunStream>,
         authorization::AuthorizedObservation,
@@ -129,13 +130,14 @@ pub(crate) struct HttpReply {
     )>,
 }
 impl HttpReply {
-    fn json(value: Value) -> Self {
+    pub(crate) fn json(value: Value) -> Self {
         Self {
             media: None,
             status: 200,
             body: value.to_string().into_bytes(),
             content_type: "application/json; charset=utf-8".into(),
             cookie: None,
+            extra_headers: vec![],
             observation: None,
             waiting: None,
         }
@@ -154,6 +156,7 @@ impl HttpReply {
                 body: reply.body.into_bytes(),
                 content_type: "application/json; charset=utf-8".into(),
                 cookie: None,
+                extra_headers: vec![],
                 observation: None,
                 waiting: None,
             }
@@ -243,6 +246,35 @@ pub(crate) fn start_with_access(
     {
         let (access, stop) = (access.clone(), stop.clone());
         handles.push(thread::spawn(move || {
+            let cancellation = runtime::run_context::CancellationToken::with_host_stop(stop.clone());
+            let mut backlog = access.users.lock().unwrap().pending_review_owners().unwrap_or_else(|e| {
+                eprintln!("Memory review recovery: {}",e.error_code); Default::default()
+            });
+            while !stop.load(Ordering::Acquire) {
+                crate::multi_user_review::remember_pending(&access, &mut backlog);
+                let now_ms = time::OffsetDateTime::now_utc().unix_timestamp_nanos() / 1_000_000;
+                let recovering = backlog.pop_front().map(|owner| {
+                    let handle = access.users.lock().unwrap().load_for_review(&owner,&now_ms.to_string());
+                    (owner,handle)
+                });
+                crate::multi_user_review::tick(&access, &cancellation, now_ms as u64);
+                if let Some((owner,handle)) = recovering {
+                    match handle {
+                        Ok(handle) => if handle.lock().unwrap().store.review_state().review_jobs.iter().any(|j| j.status != memory::ReviewJobStatus::Completed) { backlog.push_back(owner); },
+                        Err(e) if e.error_code == "USER_RUNTIME_CAPACITY" => backlog.push_back(owner),
+                        Err(e) => eprintln!("Memory review recovery: {}",e.error_code),
+                    }
+                }
+                for _ in 0..10 {
+                    if stop.load(Ordering::Acquire) { break; }
+                    thread::sleep(Duration::from_millis(100));
+                }
+            }
+        }));
+    }
+    {
+        let (access, stop) = (access.clone(), stop.clone());
+        handles.push(thread::spawn(move || {
             let mut last = std::time::Instant::now();
             while !stop.load(Ordering::Acquire) {
                 thread::sleep(Duration::from_millis(100));
@@ -309,6 +341,7 @@ pub(crate) fn start_with_access(
                 }
                 if let Some(wait) = reply.waiting {
                     let access = access.clone();
+                    let stop = stop.clone();
                     let mut handles = waiters.lock().unwrap();
                     let mut pending = Vec::new();
                     for handle in handles.drain(..) {
@@ -320,7 +353,17 @@ pub(crate) fn start_with_access(
                     }
                     *handles = pending;
                     handles.push(thread::spawn(move || {
-                        respond(request, wait_for_turn(&access, &wait));
+                        let reply = match wait {
+                            PendingReply::Turn(wait) => wait_for_turn(&access, &wait),
+                            PendingReply::Translation(task) => match task.execute(
+                                &access,
+                                runtime::run_context::CancellationToken::with_host_stop(stop),
+                            ) {
+                                Ok(value) => HttpReply::json(value),
+                                Err(error) => HttpReply::error(error),
+                            },
+                        };
+                        respond(request, reply);
                     }));
                     continue;
                 }
@@ -339,11 +382,20 @@ pub(crate) fn start_with_access(
 
 fn respond(request: tiny_http::Request, reply: HttpReply) {
     if let Some(path) = reply.media { crate::video_media::serve(request, &path); return; }
+    let remote_mcp = request.url().split('?').next() == Some("/mcp");
     let mut response = Response::from_data(reply.body).with_status_code(reply.status);
+    if remote_mcp && reply.status == 405 {
+        response.add_header(Header::from_bytes("Allow", "POST").unwrap());
+    }
+    if remote_mcp && reply.status == 401 {
+        response.add_header(Header::from_bytes("WWW-Authenticate", "Bearer realm=\"understand-book-mcp\"").unwrap());
+    }
     if reply.content_type == "application/pdf" {
-        // PDF bytes are already buffered. Keep their known Content-Length so the
-        // HTTPS proxy can serve byte ranges and PDF.js can render before EOF.
+        // Both complete and bounded PDF responses have a known Content-Length.
         response = response.with_chunked_threshold(usize::MAX);
+    }
+    for (key, value) in reply.extra_headers {
+        response.add_header(Header::from_bytes(key, value).unwrap());
     }
     for (key, value) in [
                     ("Content-Type", reply.content_type.as_str()), ("Cache-Control", "no-store"),
@@ -368,6 +420,12 @@ pub(crate) fn dispatch(
     body: &str,
     now: i64,
 ) -> HttpReply {
+    if url.split('?').next() == Some("/mcp") {
+        if let Err(error) = site.validate(headers, false) {
+            return HttpReply::error(error);
+        }
+        return crate::remote_mcp::dispatch(access, &site.origin, method, headers, body);
+    }
     let result = (|| -> Result<HttpReply, ToolError> {
         site.validate(headers, !matches!(method, "GET" | "HEAD"))?;
         // Only this fixed credential-free shell is public. No SPA/static fallback for unknown URLs.
@@ -394,6 +452,7 @@ pub(crate) fn dispatch(
                     body: body.as_bytes().to_vec(),
                     content_type: content_type.into(),
                     cookie: None,
+                    extra_headers: vec![],
                     observation: None,
                     waiting: None,
                 });
@@ -487,8 +546,27 @@ pub(crate) fn dispatch(
             }
         }
         let capability = authorization::capability(path)?;
-        // Login/logout/me do not load private state; all other routes get the authenticated authority.
+        // Account management does not load private Reader state.
         match capability {
+            Capability::McpList => {
+                expect_method(method, "GET")?;
+                if !query.is_empty() || !matches!(input, Value::Null) { return Err(invalid()); }
+                let credentials = access.mcp_access.list(&principal, now)?;
+                let usage = crate::remote_mcp::usage_value(access.mcp_usage.status(principal.user_id())?, 0, Value::Null, &site.origin);
+                return Ok(HttpReply::json(json!({"credentials":credentials,"usage":usage,"mcp_url":format!("{}/mcp", site.origin)})));
+            }
+            Capability::McpCreate => {
+                expect_method(method, "POST")?;
+                if !query.is_empty() { return Err(invalid()); }
+                let input: crate::mcp_access::Create = serde_json::from_value(input).map_err(|_| invalid())?;
+                return Ok(HttpReply::json(json!(access.mcp_access.create(&principal, &input.label, now)?)));
+            }
+            Capability::McpRevoke(ref id) => {
+                expect_method(method, "POST")?;
+                if !query.is_empty() || !(input.is_null() || input.as_object().is_some_and(|v|v.is_empty())) { return Err(invalid()); }
+                access.mcp_access.revoke(&principal, id, now)?;
+                return Ok(HttpReply::json(json!({"revoked":true})));
+            }
             Capability::Password => {
                 expect_method(method, "POST")?;
                 if !query.is_empty() { return Err(invalid()); }
@@ -585,8 +663,7 @@ pub(crate) fn dispatch(
                 if !authorization::book_leaf_allowed(&leaf) {
                     return Err(authorization::missing());
                 }
-                // HEAD is authorized first, then handled explicitly. Range is supported by returning
-                // the complete representation (200); conditional requests never bypass authorization.
+                // Conditional and range requests never bypass material authorization.
                 if !matches!(method, "GET" | "HEAD") {
                     return Err(method_error());
                 }
@@ -596,6 +673,24 @@ pub(crate) fn dispatch(
                     let mut reply = HttpReply::json(json!({}));
                     reply.media = Some(publication.directory().join(manifest.source.imported_path));
                     return Ok(reply);
+                }
+                if matches!(leaf.as_str(), "pdf/original" | "original.pdf") {
+                    // No validators are emitted, so an If-Range request gets the full representation.
+                    let range = if method == "GET" && headers.get("If-Range").is_none() {
+                        headers.get("Range")
+                    } else {
+                        None
+                    };
+                    let pdf = library.pdf(context.user_id(), &reference, range)
+                        .map_err(|_| authorization::missing())?;
+                    let mut extra_headers = vec![("Accept-Ranges".into(), "bytes".into())];
+                    if let Some(value) = pdf.content_range {
+                        extra_headers.push(("Content-Range".into(), value));
+                    }
+                    return Ok(HttpReply {
+                        status: pdf.status, body: pdf.body, content_type: "application/pdf".into(),
+                        cookie: None, extra_headers, observation: None, waiting: None, media: None,
+                    });
                 }
                 let reply = if leaf.starts_with("assets/")
                     || matches!(leaf.as_str(), "pdf/original" | "original.pdf")
@@ -617,6 +712,7 @@ pub(crate) fn dispatch(
                         body: asset.body,
                         content_type: asset.content_type,
                         cookie: None,
+                        extra_headers: vec![],
                         observation: None,
                         waiting: None,
                     }
@@ -666,7 +762,7 @@ pub(crate) fn dispatch(
             Capability::Workspace(id) => {
                 let prefix = format!("/workspaces/{id}");
                 let action = path.strip_prefix(&prefix).unwrap().trim_start_matches('/');
-                expect_method(method, if action.is_empty() { "GET" } else { "POST" })?;
+                expect_method(method, if action.is_empty() || action == "resumption" { "GET" } else { "POST" })?;
                 if matches!(action, "agent/runs" | "agent/chat") {
                     return admit_reply(
                         access,
@@ -676,6 +772,14 @@ pub(crate) fn dispatch(
                         &now.to_string(),
                         action == "agent/chat",
                     );
+                }
+                if action == "reader/selection.translate" {
+                    let task = crate::selection_translation::PreparedTranslation::prepare(
+                        access, context, &id, &input,
+                    )?;
+                    let mut reply = HttpReply::json(Value::Null);
+                    reply.waiting = Some(PendingReply::Translation(task));
+                    return Ok(reply);
                 }
                 access.workspace(&context, &id)?;
                 let mut user = context.user.lock().unwrap();
@@ -824,6 +928,7 @@ pub(crate) fn dispatch(
                         body: vec![],
                         content_type: "text/event-stream".into(),
                         cookie: None,
+                        extra_headers: vec![],
                         waiting: None,
                         observation: Some((stream, permit, cursor)),
                     });
@@ -869,7 +974,7 @@ pub(crate) fn dispatch(
                 }
                 Ok(HttpReply::from_reply(reply))
             }
-            Capability::Me | Capability::Logout | Capability::Allowance | Capability::AccountUsage | Capability::EmailBinding | Capability::Password => unreachable!(),
+            Capability::Me | Capability::Logout | Capability::Allowance | Capability::AccountUsage | Capability::EmailBinding | Capability::Password | Capability::McpList | Capability::McpCreate | Capability::McpRevoke(_) => unreachable!(),
         }
     })();
     match result {
@@ -913,6 +1018,7 @@ fn admit_reply(
     wait: bool,
 ) -> Result<HttpReply, ToolError> {
     let mut accepted = reader_run_view(access, context, access.runs.admit(access, context, workspace, input, now)?)?;
+    if accepted["kind"] == "activity_help" { return Ok(HttpReply::json(accepted)); }
     if accepted["dispatch_state"] == "admission_failed" {
         accepted["error_code"] = json!("ADMISSION_FAILED");
         let mut reply = HttpReply::json(accepted);
@@ -935,15 +1041,19 @@ fn admit_reply(
         return Ok(reply);
     };
     let mut reply = HttpReply::json(accepted);
-    reply.waiting = Some(SyncWait {
+    reply.waiting = Some(PendingReply::Turn(SyncWait {
         context: authorization::AuthorizedContext {
             principal: context.principal.clone(),
             user: context.user.clone(),
         },
         turn,
         _permit: permit,
-    });
+    }));
     Ok(reply)
+}
+enum PendingReply {
+    Turn(SyncWait),
+    Translation(crate::selection_translation::PreparedTranslation),
 }
 struct SyncWait {
     context: authorization::AuthorizedContext,

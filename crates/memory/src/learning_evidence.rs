@@ -127,12 +127,21 @@ impl LearningStore {
                 || evidence.assessment_ref.is_some() || evidence.status != AssessmentStatus::Unassessed
                 || evidence.delivery_ref.is_some() || evidence.object_id.is_some() || evidence.object_revision.is_some()
             { return Err(invalid("理解假设需要事实与教学影响，不附加评分或对象能力")); }
+            let mut has_learner_expression = false;
             for id in &evidence.fact_refs {
                 let fact = self.teaching_event(id)?;
+                has_learner_expression |= fact.learner_expression().is_some();
+                if fact.payload["usage"]["kind"] == "reading_action" && fact.learner_expression().is_none() {
+                    return Err(invalid("纯阅读操作没有用户补充，不能作为理解假设依据；保留理解未知并继续原请求，无需创建理解假设"));
+                }
                 if fact.binding.source_id != evidence.source_id || fact.binding.source_revision != evidence.source_revision
                     || fact.binding.tutor_session_id != evidence.session_id
-                    || matches!(fact.kind, TeachingFact::TurnBound | TeachingFact::MoveSelected | TeachingFact::HelpDelivered)
+                    || matches!(fact.kind, TeachingFact::TurnBound | TeachingFact::MoveSelected | TeachingFact::HelpDelivered
+                        | TeachingFact::ContinuationDisplayed | TeachingFact::ContinuationChosen)
                 { return Err(invalid("理解依据不属于当前来源、会话或实际使用事实")); }
+            }
+            if !has_learner_expression {
+                return Err(invalid("理解假设需要真实用户表达；助手交付或内容展示不能单独支持知识诊断"));
             }
             let target = evidence.target.as_ref().ok_or_else(||invalid("理解假设缺少适用目标"))?;
             target.validate(&action.binding)?;
@@ -163,8 +172,8 @@ impl LearningStore {
         if let Some(id) = &evidence.supersedes {
             let previous = self.evidence(id)?;
             if previous.nature != evidence.nature || previous.source_id != evidence.source_id
-                || previous.source_revision != evidence.source_revision || previous.session_id != evidence.session_id
-                || (evidence.nature == EvidenceNature::Performance && (previous.action_ref != evidence.action_ref
+                || previous.source_revision != evidence.source_revision
+                || (evidence.nature == EvidenceNature::Performance && (previous.session_id != evidence.session_id || previous.action_ref != evidence.action_ref
                     || previous.object_id != evidence.object_id))
             {
                 return Err(invalid("替代解释必须属于同一次对象表现"));
@@ -312,9 +321,9 @@ impl LearningStore {
 
     /// Current source-bound interpretations, including source-only performances.
     /// Replacement is resolved before the page limit, so superseded claims never reappear.
-    pub fn current_interpretations(&self, source: &str, revision: &str, before: Option<u64>, limit: u32) -> Result<Vec<(u64, LearningEvidence)>, ToolError> {
-        let mut q = self.connection.prepare("SELECT e.seq,e.evidence FROM learning_evidence e WHERE e.source_id=? AND json_extract(e.evidence,'$.source_revision')=? AND e.seq<? AND NOT EXISTS (SELECT 1 FROM learning_evidence n WHERE json_extract(n.evidence,'$.supersedes')=e.evidence_id) ORDER BY e.seq DESC LIMIT ?").map_err(storage)?;
-        let rows = q.query_map(params![source, revision, before.unwrap_or(i64::MAX as u64), limit.min(20)], |r|Ok((r.get::<_,u64>(0)?,r.get::<_,String>(1)?))).map_err(storage)?;
+    pub fn current_interpretations(&self, source: &str, revision: &str, after: u64, limit: u32) -> Result<Vec<(u64, LearningEvidence)>, ToolError> {
+        let mut q = self.connection.prepare("SELECT e.seq,e.evidence FROM learning_evidence e WHERE e.source_id=? AND json_extract(e.evidence,'$.source_revision')=? AND NOT EXISTS (SELECT 1 FROM learning_evidence n WHERE json_extract(n.evidence,'$.supersedes')=e.evidence_id) ORDER BY e.seq DESC LIMIT ? OFFSET ?").map_err(storage)?;
+        let rows = q.query_map(params![source, revision, limit.min(20), after], |r|Ok((r.get::<_,u64>(0)?,r.get::<_,String>(1)?))).map_err(storage)?;
         rows.map(|r| { let (seq,text)=r.map_err(storage)?; Ok((seq,serde_json::from_str(&text).map_err(storage)?)) }).collect()
     }
 

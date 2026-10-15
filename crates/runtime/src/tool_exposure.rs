@@ -21,6 +21,10 @@ pub const CAPABILITY_BLOCK_REASON_MAX_CHARS: usize = 48;
 pub const DEFAULT_DIRECT_TOOL_LIMIT: usize = 9;
 pub const MAX_DISCOVERY_ACTIVATIONS: usize = TOOL_SEARCH_MAX_RESULTS;
 
+#[cfg(test)]
+#[path = "tool_discovery_tests.rs"]
+mod discovery_tests;
+
 /// Keep prior discovery useful as conversation context without making a
 /// run-local activation receipt look active in a later run.
 pub fn redact_history(messages: &mut [crate::Message]) {
@@ -113,6 +117,7 @@ pub fn classify_turn_intent(question: &str) -> BTreeSet<TurnIntentHint> {
         &[
             "保存",
             "记下",
+            "记为",
             "添加",
             "记一条",
             "写一条",
@@ -205,7 +210,7 @@ fn explicit_action(text: &str, requests: &[&str], verbs: &[&str]) -> bool {
         if !verbs.iter().any(|verb| clause.contains(verb)) {
             continue;
         }
-        if ["不要", "不用", "别", "不需要", "don't", "do not"]
+        if ["不要", "不用", "别", "不需要", "不保存", "don't", "do not"]
             .iter()
             .any(|neg| clause.contains(neg))
         {
@@ -359,6 +364,7 @@ pub enum ToolExposureReason {
     ContentProfile,
     ProfileMismatch,
     PermissionDenied,
+    PresentationUnavailable,
     RuntimeOwned,
     AwaitingDiscovery,
     Activated,
@@ -384,6 +390,7 @@ pub struct ToolExposureEntry {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ToolExposureState {
     activated: BTreeSet<String>,
+    pub(crate) presentation_unavailable_reason: Option<&'static str>,
     explicit_reader_mutation_intent: bool,
     action_hints: BTreeSet<TurnIntentHint>,
 }
@@ -416,7 +423,7 @@ impl ToolExposureState {
         self.activated.iter().map(String::as_str)
     }
 
-    fn activate(&mut self, name: &str) {
+    pub(crate) fn activate(&mut self, name: &str) {
         self.activated.insert(name.to_string());
     }
 
@@ -493,7 +500,11 @@ impl ToolExposurePlan {
         state: &ToolExposureState,
     ) -> Self {
         let tutor_slot = usize::from(registry.registration("tutor.step").is_some() && state.activated.contains("tutor.step"));
-        let direct_limit = tutor_slot + if registry.registration("goal.update").is_some() {
+        let batch_read_slot = usize::from(
+            registry.registration("book.text_batch").is_some()
+                && state.is_activated("book.text_batch"),
+        );
+        let direct_limit = tutor_slot + batch_read_slot + if registry.registration("goal.update").is_some() {
             DEFAULT_DIRECT_TOOL_LIMIT
         } else {
             DEFAULT_DIRECT_TOOL_LIMIT - 1
@@ -504,6 +515,12 @@ impl ToolExposurePlan {
             .map(|registration| {
                 let (disposition, reason) = if registration.handler == ToolHandlerId::TutorStep && tutor_slot == 1 {
                     (ToolExposureDisposition::Direct, ToolExposureReason::RuntimeOwned)
+                } else if registration.handler == ToolHandlerId::BookTextBatch && batch_read_slot == 1 {
+                    (ToolExposureDisposition::Direct, ToolExposureReason::CoreRead)
+                } else if registration.handler == ToolHandlerId::PresentationAuthor
+                    && state.presentation_unavailable_reason.is_some()
+                {
+                    (ToolExposureDisposition::Hidden, ToolExposureReason::PresentationUnavailable)
                 } else { classify(registration.handler, context) };
                 ToolExposureEntry {
                     name: registration.spec.name.clone(),
@@ -723,6 +740,8 @@ pub enum ToolSearchVisibility {
 pub struct ToolSearchMatchV2 {
     pub name: String,
     pub description: String,
+    pub use_when: Vec<String>,
+    pub avoid_when: Vec<String>,
     pub score: u64,
     pub matched_fields: Vec<String>,
     pub matched_terms: Vec<String>,
@@ -803,6 +822,8 @@ pub struct ToolSearchOutcomeV2 {
     pub normalization: &'static str,
     pub task: String,
     pub matches: Vec<ToolSearchMatchV2>,
+    pub unmet_capabilities: Vec<ToolCapability>,
+    pub blocked: Vec<CapabilityRecoveryV2>,
     pub activated: Vec<String>,
     pub deferred_remaining: usize,
     pub visible_from: &'static str,
@@ -812,6 +833,17 @@ pub struct ToolSearchOutcomeV2 {
     pub capability_plan: CapabilityPlan,
     #[serde(skip)]
     pub request_audit: CapabilityRequestAudit,
+}
+
+/// Capability-level guidance only. Internal tool identities and exposure/audit
+/// reasons stay in CapabilityPlan; these searches are suggestions, not actions.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CapabilityRecoveryV2 {
+    pub capability: ToolCapability,
+    pub reason: &'static str,
+    pub message: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub next_searches: Vec<CapabilityRequestV2>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -827,6 +859,7 @@ fn exposure_block_reason(reason: ToolExposureReason) -> CapabilityBlockReason {
         ToolExposureReason::ProfileMismatch => CapabilityBlockReason::ProfileMismatch,
         ToolExposureReason::EvidenceRequired => CapabilityBlockReason::EvidenceRequired,
         ToolExposureReason::ArtifactOverlayUnavailable
+        | ToolExposureReason::PresentationUnavailable
         | ToolExposureReason::ArtifactRoutable
         | ToolExposureReason::ArtifactCallBudget => CapabilityBlockReason::PreconditionsUnavailable,
         _ => CapabilityBlockReason::RuntimeHidden,
@@ -912,6 +945,13 @@ pub fn resolve_capabilities(
     let mut blocked = Vec::new();
     for (index, registration) in registry.registrations().iter().enumerate() {
         if registration.handler == ToolHandlerId::ToolSearch {
+            continue;
+        }
+        // Batch reading is enabled by the locator ledger, not discovered. An
+        // unavailable optimization must not add a public source-read blocker.
+        if registration.handler == ToolHandlerId::BookTextBatch
+            && !sampled_plan.is_visible(&registration.spec.name)
+        {
             continue;
         }
         let card = &registration.routing_card;
@@ -1082,6 +1122,8 @@ pub fn resolve_capabilities(
             ToolSearchMatchV2 {
                 name: registration.spec.name.clone(),
                 description: registration.spec.description.clone(),
+                use_when: registration.routing_card.use_when.clone(),
+                avoid_when: registration.routing_card.avoid_when.clone(),
                 score: candidate.score,
                 matched_fields: candidate.matched_fields,
                 matched_terms: candidate.matched_terms,
@@ -1136,6 +1178,151 @@ pub fn resolve_capabilities(
         blocked,
         visible_from,
     }
+}
+
+fn recovery_search(
+    need: &TaskNeed,
+    capability: ToolCapability,
+    scope: ToolScope,
+    operation: ToolOperation,
+    sampled_plan: &ToolExposurePlan,
+    registry: &ToolRegistry,
+) -> Option<CapabilityRequestV2> {
+    if !sampled_plan.is_visible("tool.search") {
+        return None;
+    }
+    let mut recovery_need = need.clone();
+    recovery_need.request.required_capabilities = vec![capability];
+    recovery_need.request.scope = scope;
+    recovery_need.request.operation = operation;
+    recovery_need.request.effect_mode = ToolSearchEffectMode::ReadOnly;
+    recovery_need.request.max_results = 1;
+    recovery_need.authorized_effect_mode = ToolSearchEffectMode::ReadOnly;
+    let plan = resolve_capabilities(&recovery_need, sampled_plan, registry);
+    (!plan.matched_tools.is_empty()
+        && plan.matched_tools.iter().all(|tool| tool.effect_mode == ToolEffect::ReadOnly))
+        .then_some(recovery_need.request)
+}
+
+fn public_capability_recovery(
+    need: &TaskNeed,
+    plan: &CapabilityPlan,
+    sampled_plan: &ToolExposurePlan,
+    registry: &ToolRegistry,
+    state: &ToolExposureState,
+) -> Vec<CapabilityRecoveryV2> {
+    use CapabilityBlockReason as Reason;
+    use ToolCapability as Capability;
+    use ToolOperation as Operation;
+    use ToolScope as Scope;
+
+    let search = |capability, scope, operation| {
+        recovery_search(need, capability, scope, operation, sampled_plan, registry)
+    };
+    let locate = || {
+        [
+            search(Capability::StructuralIndex, Scope::Document, Operation::Summarize),
+            search(Capability::LexicalLocate, Scope::Document, Operation::LocateLiteral),
+        ].into_iter().flatten().collect::<Vec<_>>()
+    };
+    let read_or_locate = || {
+        search(Capability::SourceRead, Scope::Passage, Operation::ReadSource)
+            .map(|request| vec![request])
+            .unwrap_or_else(locate)
+    };
+    let mut public = Vec::new();
+    for &capability in &plan.unmet_capabilities {
+        if capability == Capability::PresentationAuthoring {
+            if let Some(reason) = state.presentation_unavailable_reason {
+                public.push(CapabilityRecoveryV2 {
+                    capability,
+                    reason: "presentation_unavailable",
+                    message: format!("Presentation execution environment is unavailable ({reason}). Repeating discovery or changing authored content cannot restore it. Explain that the requested page remains undelivered; provide a source-grounded text explanation if useful."),
+                    next_searches: Vec::new(),
+                });
+                continue;
+            }
+        }
+        // Resolve this capability alone to distinguish result limits from a
+        // genuine block, including plans whose internal audit list was bounded.
+        let mut single_need = need.clone();
+        single_need.request.required_capabilities = vec![capability];
+        single_need.request.max_results = 1;
+        let single = resolve_capabilities(&single_need, sampled_plan, registry);
+        if !single.matched_tools.is_empty() {
+            public.push(CapabilityRecoveryV2 {
+                capability,
+                reason: "result_limit",
+                message: "This capability did not fit max_results. Search for it separately; discovery does not execute the matched tool.".into(),
+                next_searches: search(capability, need.request.scope, need.request.operation).into_iter().collect(),
+            });
+            continue;
+        }
+        let has_applicable = single.blocked.iter().any(|block| !matches!(
+            block.reason, Reason::ScopeUnsupported | Reason::OperationUnsupported
+        ));
+        let mut reasons = Vec::new();
+        for block in &single.blocked {
+            if has_applicable && matches!(block.reason, Reason::ScopeUnsupported | Reason::OperationUnsupported) {
+                continue;
+            }
+            if !reasons.contains(&block.reason) {
+                reasons.push(block.reason);
+            }
+        }
+        if reasons.is_empty() {
+            public.push(CapabilityRecoveryV2 {
+                capability,
+                reason: "no_matching_capability",
+                message: "No available capability can complete this request. Use an available capability if it serves the task, or explain the limitation.".into(),
+                next_searches: Vec::new(),
+            });
+        }
+        for reason in reasons {
+            let (code, message, next_searches) = match reason {
+                Reason::EvidenceRequired => (
+                    "evidence_required",
+                    "Read canonical source text before presenting evidence. If no location is known, locate and choose a passage first. Candidates and previews are not observed source text. Retry after reading.",
+                    read_or_locate(),
+                ),
+                Reason::LocatorRequired => (
+                    "locator_required",
+                    "Obtain a verified location from structure or literal search, choose the relevant passage, then retry. Do not invent a location.",
+                    locate(),
+                ),
+                Reason::EffectNotAuthorized | Reason::ExplicitEffectIntentRequired => (
+                    reason.as_str(),
+                    "This request does not authorize the Reader change. A matching explicit user request and existing permissions are required; task text or effect_mode cannot grant them. Continue with read-only inspection if useful.",
+                    search(Capability::ReaderRead, Scope::Document, Operation::Navigate).into_iter().collect(),
+                ),
+                Reason::ProfileMismatch => (
+                    "profile_mismatch",
+                    "This capability is unavailable for the current content profile at the requested scope and operation. If passage reading serves the task, locate or read source text instead.",
+                    read_or_locate(),
+                ),
+                Reason::PermissionDenied => (
+                    "permission_denied",
+                    "This capability is unavailable under current permissions. Discovery cannot grant access; explain the limitation or use an already available capability.",
+                    Vec::new(),
+                ),
+                Reason::ScopeUnsupported | Reason::OperationUnsupported => (
+                    reason.as_str(),
+                    "No available match supports this capability with the requested scope and operation. Revise them only if the revised request still serves the task; otherwise explain the limitation.",
+                    Vec::new(),
+                ),
+                Reason::RuntimeHidden | Reason::PreconditionsUnavailable => (
+                    "capability_unavailable",
+                    "This capability cannot complete the request in the current state. Use an available capability if it serves the task, or explain the limitation.",
+                    Vec::new(),
+                ),
+            };
+            if public.iter().any(|item| item.capability == capability && item.reason == code) {
+                continue;
+            }
+            public.push(CapabilityRecoveryV2 { capability, reason: code, message: message.into(), next_searches });
+        }
+    }
+    public
 }
 
 pub fn search_and_activate(
@@ -1197,6 +1384,7 @@ pub fn search_and_activate(
 
     let task_need = stamp_task_need(request, context, state);
     let capability_plan = resolve_capabilities(&task_need, sampled_plan, registry);
+    let blocked = public_capability_recovery(&task_need, &capability_plan, sampled_plan, registry, state);
     let mut activated = Vec::new();
     for matched in &capability_plan.matched_tools {
         if matched.visibility == ToolSearchVisibility::NextSampling {
@@ -1241,6 +1429,8 @@ pub fn search_and_activate(
         normalization: ARTIFACT_SEARCH_NORMALIZATION_VERSION,
         task: task_need.request.task.clone(),
         matches: capability_plan.matched_tools.clone(),
+        unmet_capabilities: capability_plan.unmet_capabilities.clone(),
+        blocked,
         activated,
         deferred_remaining,
         visible_from,
@@ -1259,6 +1449,7 @@ fn classify(
     use ToolHandlerId as Handler;
 
     match handler {
+        Handler::BookTextBatch => (Disposition::Hidden, Reason::RuntimeOwned),
         Handler::PresentationAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio => (Disposition::Deferred, Reason::CapabilityDeferred),
         Handler::ToolSearch => (Disposition::Direct, Reason::Discovery),
         Handler::GoalUpdate => (Disposition::Direct, Reason::RuntimeOwned),
@@ -1355,7 +1546,7 @@ fn direct_priority(handler: ToolHandlerId) -> usize {
     match handler {
         ToolHandlerId::ToolSearch => 0,
         ToolHandlerId::GoalUpdate | ToolHandlerId::TutorStep => 1,
-        ToolHandlerId::Book(BookToolId::Text) => 1,
+        ToolHandlerId::Book(BookToolId::Text) | ToolHandlerId::BookTextBatch => 1,
         ToolHandlerId::Book(BookToolId::Context) => 2,
         ToolHandlerId::Book(BookToolId::SearchText) => 3,
         ToolHandlerId::Book(BookToolId::Concept) => 4,
@@ -1445,6 +1636,9 @@ mod tests {
             ("请跳转到原文，并保存笔记和高亮这段", true, true, true),
             ("解释如何做笔记和高亮", false, false, false),
             ("不要保存笔记，只高亮这段", false, true, false),
+            ("把‘先核对前提再下结论’记为这一段的笔记", true, false, false),
+            ("只解释选中的原文，不保存笔记、高亮或记忆", false, false, false),
+            ("不保存笔记，只高亮这段", false, true, false),
         ] {
             let mut state = ToolExposureState::default();
             seed_turn_tool_activations(
@@ -1720,6 +1914,12 @@ mod tests {
             ]
         );
         assert!(technical.visible_tools.len() <= DEFAULT_DIRECT_TOOL_LIMIT);
+        assert_eq!(technical.direct_limit, DEFAULT_DIRECT_TOOL_LIMIT);
+        assert_eq!(
+            technical.entry("book.text_batch").unwrap().disposition,
+            ToolExposureDisposition::Hidden
+        );
+        assert!(!technical.is_visible("book.text_batch"));
         assert!(technical.schema_bytes <= technical.schema_budget_bytes);
         assert_eq!(
             technical.entry("book.paper_metadata").unwrap().disposition,
@@ -1762,6 +1962,85 @@ mod tests {
     }
 
     #[test]
+    fn tool_exposure_batch_read_activation_adds_one_slot_without_displacing_visible_tools() {
+        let registry = resident_tool_registry();
+        let without_batch = registry
+            .clone()
+            .experimental_subset(|spec| spec.name != "book.text_batch");
+        let runtime_profile = model();
+
+        for evidence_state in [
+            EvidenceState::Unlocated,
+            EvidenceState::CurrentAnchorOnly,
+            EvidenceState::KnownLids,
+            EvidenceState::UserProvided,
+        ] {
+            for activated in [false, true] {
+                let mut state = ToolExposureState::default();
+                if activated {
+                    state.activate("book.text_batch");
+                }
+                let mut exposure_context = context(ContentProfileId::TechnicalLearning);
+                exposure_context.evidence_state = evidence_state;
+                let before = ToolExposurePlan::build(
+                    &without_batch, &runtime_profile, &exposure_context, &state,
+                );
+                let after = ToolExposurePlan::build(
+                    &registry, &runtime_profile, &exposure_context, &state,
+                );
+                assert_eq!(after.is_visible("book.text_batch"), activated);
+                assert_eq!(after.direct_limit, before.direct_limit + usize::from(activated));
+                for name in visible_names(&before) {
+                    assert!(after.is_visible(name), "{evidence_state:?} displaced {name}");
+                }
+                assert!(after.is_visible("book.text"));
+                if activated {
+                    assert_eq!(after.entry("book.text_batch").unwrap().reason, ToolExposureReason::CoreRead);
+                } else {
+                    assert_eq!(visible_names(&before), visible_names(&after));
+                    assert_eq!(after.entry("book.text_batch").unwrap().disposition, ToolExposureDisposition::Hidden);
+                    assert_eq!(after.entry("book.text_batch").unwrap().reason, ToolExposureReason::RuntimeOwned);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn tool_exposure_unavailable_batch_read_preserves_source_read_recovery() {
+        let registry = resident_tool_registry();
+        let without_batch = registry
+            .clone()
+            .experimental_subset(|spec| spec.name != "book.text_batch");
+        let exposure_context = context(ContentProfileId::TechnicalLearning);
+        let request = r#"{"task":"read source","required_capabilities":["source_read"],"scope":"passage","operation":"read_source","effect_mode":"read_only","max_results":3}"#;
+
+        for schema_budget in [1, model().tool_schema_budget_bytes] {
+            let mut runtime_profile = model();
+            runtime_profile.tool_schema_budget_bytes = schema_budget;
+            let mut before_state = ToolExposureState::default();
+            let before_plan = ToolExposurePlan::build(
+                &without_batch, &runtime_profile, &exposure_context, &before_state,
+            );
+            let before = search_and_activate(
+                request, &exposure_context, &before_plan, &without_batch, &mut before_state,
+            ).unwrap();
+            let mut after_state = ToolExposureState::default();
+            let after_plan = ToolExposurePlan::build(
+                &registry, &runtime_profile, &exposure_context, &after_state,
+            );
+            let after = search_and_activate(
+                request, &exposure_context, &after_plan, &registry, &mut after_state,
+            ).unwrap();
+            assert_eq!(
+                serde_json::to_value(&after.blocked).unwrap(),
+                serde_json::to_value(&before.blocked).unwrap(),
+                "unavailable batch read changed recovery at schema budget {schema_budget}",
+            );
+            assert!(!after.matches.iter().any(|tool| tool.name == "book.text_batch"));
+        }
+    }
+
+    #[test]
     fn tool_search_v2_schema_is_closed_bounded_and_provider_equivalent() {
         let registry = resident_tool_registry();
         let search = registry.registration("tool.search").unwrap();
@@ -1769,8 +2048,9 @@ mod tests {
             .iter()
             .map(|capability| serde_json::Value::String(capability.as_str().into()))
             .collect::<Vec<_>>();
-        let expected = serde_json::json!({
+        let mut expected = serde_json::json!({
             "type": "object",
+            "description": "Matches include use_when/avoid_when. Unmet capabilities have capability-level reasons. Optional next_searches entries are complete arguments for tool.search; choose one only if useful. Discovery and recovery suggestions do not execute matched tools or grant permissions.",
             "properties": {
                 "task": {
                     "type": "string",
@@ -1808,6 +2088,7 @@ mod tests {
             ],
             "additionalProperties": false
         });
+        expected["examples"] = search.spec.parameters["examples"].clone();
         assert_eq!(search.spec.parameters, expected);
 
         let request = AgentRequestPlan::for_agent_turn(

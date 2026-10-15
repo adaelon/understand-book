@@ -1,0 +1,44 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+stderr | src/reading-share.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/reading-share.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/reading-share.test.ts (6 tests) 42ms
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/App.startup.test.ts (56 tests) 1320ms
+ ✓ src/components/RightRail.test.ts (48 tests) 1705ms
+stderr | src/answer-note-selection.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/answer-note-selection.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/answer-note-selection.test.ts (7 tests) 52ms
+stderr | src/components/ShareImagePanel.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/ShareImagePanel.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/ShareImagePanel.test.ts (5 tests) 137ms
+
+ Test Files  5 passed (5)
+      Tests  122 passed (122)
+   Start at  16:36:14
+   Duration  17.89s (transform 3.32s, setup 0ms, collect 9.27s, tests 3.26s, environment 16.25s, prepare 2.60s)
+

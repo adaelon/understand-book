@@ -72,6 +72,16 @@ const overlay: IntentArtifactOverlayV1 = {
 };
 
 describe("IntentArtifactPanel", () => {
+  it('explains where results come from and offers preparation only when available', async () => {
+    const wrapper = mount(IntentArtifactPanel);
+    expect(wrapper.text()).toContain('资料准备完成后');
+    expect(wrapper.text()).not.toContain('准备目标成果');
+    await wrapper.setProps({ overlay: { ...overlay, artifacts: [] } });
+    expect(wrapper.get('h3').text()).toBe('把阅读整理成成果');
+    await wrapper.setProps({ preparationAvailable: true });
+    await wrapper.findAll('button').find(button => button.text() === '准备目标成果')!.trigger('click');
+    expect(wrapper.emitted('prepare')).toHaveLength(1);
+  });
   it("projects all four stable artifact views and navigates through evidence LIDs", async () => {
     const wrapper = mount(IntentArtifactPanel, {
       props: { overlay, loading: false, error: null },
@@ -268,6 +278,9 @@ describe("IntentArtifactPanel", () => {
     expect(wrapper.text()).toContain("drives");
     expect(wrapper.text()).toContain("运行确定性测试");
     expect(wrapper.text()).toContain("五种形态共享同一 accepted 实例合同。");
+    expect(wrapper.get('.generic-document h5').text()).toBe('结论');
+    expect(wrapper.get('.generic-sequence h5').text()).toBe('验证');
+    expect(wrapper.get('.generic-document').findAll('dt')).toHaveLength(0);
     expect(wrapper.find(".generic-field-value").classes()).toContain("artifact-wrap");
     expect(wrapper.text()).toContain(longToken);
     expect(wrapper.text()).not.toContain("c".repeat(64));
@@ -414,7 +427,7 @@ describe("IntentArtifactPanel", () => {
       props: { overlay: degradedOverlay, loading: false, error: null },
     });
 
-    expect(wrapper.get('[data-artifact-shape="collection"]').text()).toContain("暂无可展示字段");
+    expect(wrapper.get('[data-artifact-shape="collection"]').text()).toContain("暂无内容");
     expect(wrapper.text()).toContain("未知展示形态，已按列表展示");
     expect(wrapper.text()).not.toContain("payload_digest");
     expect(wrapper.text()).not.toContain("6".repeat(64));

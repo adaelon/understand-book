@@ -1,0 +1,176 @@
+{
+  "name": "页页",
+  "romanizedName": "Yeye",
+  "version": 7,
+  "created": "2026-10-13",
+  "status": "六状态素材与交互动效节奏预览已完成",
+  "approvedReference": "../v6/yeye-expression-v6.png",
+  "approval": "用户认可 v6 后要求继续制作。",
+  "identity": "大圆脸、歪头、奶油色腮帮、短胖身材、奶油尾尖、暖棕橙配色；神态机灵、亲近、有主意。",
+  "plannedStates": [
+    "idle",
+    "smug",
+    "reading",
+    "thinking",
+    "success",
+    "resting"
+  ],
+  "paletteIntent": {
+    "ink": "#332B25",
+    "cream": "#F7F3EB",
+    "paper": "#EEE1CF",
+    "orange": "#B65A17",
+    "tan": "#E4B486"
+  },
+  "assets": [
+    {
+      "state": "idle",
+      "label": "日常",
+      "file": "yeye-idle.png",
+      "role": "单独使用的日常态",
+      "source": "C:/Users/Lenovo/.codex/generated_images/01a132d5-a0b7-7120-9aef-c53fd754d65b/exec-c65966d4-615c-4f5f-b019-3c8d689082b9.png",
+      "prompt": "Use case: identity-preserve.\nAsset type: standalone mascot master PNG for the reading app Understand Book.\nInput image role: approved identity and pose reference. Select ONLY the LEFTMOST cat in this three-cat sheet.\n\nCreate a single isolated full-body version of that exact LEFTMOST cat in a square transparent canvas. This is an asset extraction and cleanup, not a redesign. Preserve the approved smart, attentive expression exactly: softly lowered upper eyelids, both pupils coherently looking slightly toward viewer-right, tiny asymmetrical closed smile. Preserve the huge tilted round bean head, broad cream cheek cloud, small rounded triangle ears, orange nose, apricot cheek dots, short plump body, closed cream book with burnt-orange spine and ribbon hugged in both paws, forward feet with pads, curved tail on viewer-left with cream tip.\n\nKeep the same proportions, contour character, illustration rendering, warm ink-brown and cream colors. Preserve the reference's recognizable organic rounded geometry, not a rigid reconstruction. No accessories, new markings, extra characters, text or scenery.\n\nCenter one complete character at about 78% of the square canvas height with comfortable transparent margins on every side; all ears, feet and tail fully visible. This same scale will be used for the rest of the asset family. Clean smooth alpha boundaries: remove the reference sheet's accidental loose white specks outside the actual silhouette, including under the left cheek and around the tail, while preserving intentional cream fur. No background, no ground shadow. Genuinely transparent PNG.",
+      "width": 1254,
+      "height": 1254,
+      "format": "PNG RGBA",
+      "transparent": true
+    },
+    {
+      "state": "smug",
+      "label": "小得意",
+      "file": "yeye-smug.png",
+      "role": "发现线索时的轻微得意",
+      "source": "C:/Users/Lenovo/.codex/generated_images/01a132d5-a0b7-7120-9aef-c53fd754d65b/exec-89b9501d-2ca3-4624-8be7-df1a297cb2d8.png",
+      "prompt": "Use case: identity-preserve.\nAsset type: standalone mascot state, SMUG / FOUND A CLUE.\nImage 1 is the approved single-cat identity, color, scale and canvas reference. Image 2 is the approved three-pose sheet; its CENTER cat supplies the exact target expression and pose.\n\nCreate one isolated full-body Yeye in a square transparent canvas. Faithfully reproduce the CENTER cat from image 2 at the same scale and rendering as the single cat in image 1: seated, feet a little splayed, cream book tucked diagonally under the paw on viewer-left, the other round paw on the hip. Both eyes OPEN with slightly lowered lids, pupils looking toward viewer-right, small crooked closed smile. That gentle clever self-satisfied look is approved; preserve it.\n\nKeep the huge tilted plush bean head, broad cream cheek cloud, small rounded triangle ears, orange nose, restrained apricot cheek marks, very short round body, feet pads and cream-tipped tail curved on viewer-left. Same warm brown/cream/baked orange palette and soft geometric illustration as the references. No anatomical realism, no new markings, no eyebrow doodles, no winking, no large teeth or tongue, no props except the same book.\n\nUse the square composition of image 1: same apparent head size, foot baseline and outer margins, ears and tail completely in frame. One character only. Smooth clean alpha contours, remove accidental specks outside the silhouette. Transparent background; no shadow, lettering, labels, symbols or scene.",
+      "width": 1254,
+      "height": 1254,
+      "format": "PNG RGBA",
+      "transparent": true
+    },
+    {
+      "state": "reading",
+      "label": "阅读",
+      "file": "yeye-reading-cream.png",
+      "role": "认真阅读书页",
+      "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a132d5-a0b7-7120-9aef-c53fd754d65b\\exec-78146e48-b49e-464e-a9fd-d7e8f429b9eb.png",
+      "prompt": "Use case: precise-object-edit.\nEdit the supplied Yeye reading-cat PNG. Change ONLY the large front and back outer book COVER panels from orange to warm cream #F7F3EB. Preserve the central SPINE and the ribbon bookmark as baked orange #B65A17. The book should have cream covers, cream pages with pale beige edges, and small orange spine/ribbon accents, matching Yeye's established book.\n\nKeep the cat completely unchanged: exact face, eyes looking down, smile, head tilt, colors, head/body proportions, paws, feet, tail, position and size. Keep the exact open-book shape and its edges; only recolor the large cover fields. Same square framing, same transparency. No text, no symbols, no new accessories.",
+      "initialGeneration": {
+        "file": "yeye-reading.png",
+        "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a132d5-a0b7-7120-9aef-c53fd754d65b\\exec-f894e614-d743-4fec-973f-1100d380a14a.png",
+        "prompt": "Use case: identity-preserve.\nAsset type: standalone Yeye mascot state for a reading app.\nThe supplied image is the APPROVED single-character master. Make the SAME character in the requested pose, preserving the exact round soft-bean head contour and large head/body ratio, broad cream cheek cloud, tiny orange nose, small rounded ears, compact plump body, cream chest, forward oval feet with apricot pads, thick curved tail with cream tip, and cream/baked-orange book. Preserve the warm ink-brown/cream/apricot/baked-orange palette and the reference's soft geometric 2D illustration. No new character design or accessories.\nSquare canvas, one full-body character, same apparent head size and foot baseline as the reference, comfortable transparent margins with all ears, feet and tail visible. Genuinely transparent background. Clean smooth alpha edges with no loose white specks. No lettering, labels, decorative symbols, scenery, shadows, fur texture or realism.\n\nSTATE: READING.\nThe cat is seated, holding the same book OPEN across its lower chest and lap with both round paws. Simple cream pages, baked-orange cover and central spine, one orange ribbon; only a couple of page-edge shapes, no written text. The book stays BELOW the face and the mouth remains visible. Eyes are both open with relaxed upper lids and substantial dark pupils. Both pupils look down toward the same area of the book, giving a clearly focused reading gaze. Keep a tiny asymmetrical closed smile, interested and quietly absorbed rather than sleepy. Head is gently tipped toward the book while retaining the familiar tilt. The big round cheeks and orange nose must stay recognizable. Same curved tail on viewer-left and feet planted in front. Change only the pose and eye direction needed for reading; keep identity stable."
+      },
+      "width": 1254,
+      "height": 1254,
+      "format": "PNG RGBA",
+      "transparent": true
+    },
+    {
+      "state": "thinking",
+      "label": "思考",
+      "file": "yeye-thinking.png",
+      "role": "托腮思考与整理线索",
+      "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a132d5-a0b7-7120-9aef-c53fd754d65b\\exec-62ba3272-4c0e-47a5-b709-793062033382.png",
+      "prompt": "Use case: identity-preserve.\nAsset type: standalone Yeye mascot state for a reading app.\nThe supplied image is the APPROVED single-character master. Make the SAME character in the requested pose, preserving the exact round soft-bean head contour and large head/body ratio, broad cream cheek cloud, tiny orange nose, small rounded ears, compact plump body, cream chest, forward oval feet with apricot pads, thick curved tail with cream tip, and cream/baked-orange book. Preserve the warm ink-brown/cream/apricot/baked-orange palette and the reference's soft geometric 2D illustration. No new character design or accessories.\nSquare canvas, one full-body character, same apparent head size and foot baseline as the reference, comfortable transparent margins with all ears, feet and tail visible. Genuinely transparent background. Clean smooth alpha edges with no loose white specks. No lettering, labels, decorative symbols, scenery, shadows, fur texture or realism.\n\nSTATE: THINKING.\nSeated same character. One rounded paw supports a CLOSED book across the lower tummy; its covers are CREAM, with a baked-orange spine and ribbon only. The other tiny round paw is tucked gently under one cheek/chin in a clear \"let me think\" pose, not rubbing or scratching the eye. Keep the entire face visible. Eyes both comfortably open, with substantial pupils shifted together slightly upward toward viewer-left, as if following an idea. One eyelid is subtly lower; expression perceptive, mildly puzzled but composed. Tiny off-center closed mouth, a small thoughtful curve, not a W kitten mouth and not a big shocked O. Preserve the familiar head tilt and round cheeks. Tail rests curled on viewer-left, feet in front as in the master. Gentle intelligent humor, no question marks, lightbulbs, sweat, floating eyebrows or symbols.",
+      "width": 1254,
+      "height": 1254,
+      "format": "PNG RGBA",
+      "transparent": true
+    },
+    {
+      "state": "success",
+      "label": "完成",
+      "file": "yeye-success.png",
+      "role": "理解完成时的轻轻抬爪",
+      "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a132d5-a0b7-7120-9aef-c53fd754d65b\\exec-078917c0-b68c-4b4a-9dea-23cec5e38ed3.png",
+      "prompt": "Use case: identity-preserve.\nAsset type: standalone Yeye mascot state for a reading app.\nThe supplied image is the APPROVED single-character master. Make the SAME character in the requested pose, preserving the exact round soft-bean head contour and large head/body ratio, broad cream cheek cloud, tiny orange nose, small rounded ears, compact plump body, cream chest, forward oval feet with apricot pads, thick curved tail with cream tip, and cream/baked-orange book. Preserve the warm ink-brown/cream/apricot/baked-orange palette and the reference's soft geometric 2D illustration. No new character design or accessories.\nSquare canvas, one full-body character, same apparent head size and foot baseline as the reference, comfortable transparent margins with all ears, feet and tail visible. Genuinely transparent background. Clean smooth alpha edges with no loose white specks. No lettering, labels, decorative symbols, scenery, shadows, fur texture or realism.\n\nSTATE: SUCCESS / GOT IT.\nSame seated Yeye, same tilted giant round head and short plump body. The cat just understood a tricky passage and gives one small proud celebratory paw lift. The CLOSED book with CREAM covers, baked-orange spine and ribbon is hugged against the lower tummy by the paw on viewer-left. The other rounded paw on viewer-right is lifted beside its cheek, below ear height, like a tiny \"yes!\" fist, no human fingers. Its face should show pleased clever confidence: BOTH oval eyes OPEN, substantial pupils focused slightly toward viewer-right, relaxed upper eyelids with subtle asymmetry. Small broader-than-idle crooked CLOSED smile, no big open mouth, no teeth or tongue, no wink. A slight buoyant lean but feet remain planted in the seated pose. Curved tail on viewer-left. The celebration is warm and restrained, consistent with a quiet reading companion; no confetti, badges, checkmarks, floating stars, thumbs-up fingers, accessories or symbols. The largest cream cheek shape remains exactly recognizable.",
+      "width": 1254,
+      "height": 1254,
+      "format": "PNG RGBA",
+      "transparent": true
+    },
+    {
+      "state": "resting",
+      "label": "休息",
+      "file": "yeye-resting.png",
+      "role": "闭眼抱书的小憩",
+      "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a132d5-a0b7-7120-9aef-c53fd754d65b\\exec-c7e2f38d-c9d9-4a3d-9cff-20e30aa7d12a.png",
+      "prompt": "Use case: identity-preserve.\nAsset type: standalone Yeye mascot state for a reading app.\nThe supplied image is the APPROVED single-character master. Make the SAME character in the requested pose, preserving the exact round soft-bean head contour and large head/body ratio, broad cream cheek cloud, tiny orange nose, small rounded ears, compact plump body, cream chest, forward oval feet with apricot pads, thick curved tail with cream tip, and cream/baked-orange book. Preserve the warm ink-brown/cream/apricot/baked-orange palette and the reference's soft geometric 2D illustration. No new character design or accessories.\nSquare canvas, one full-body character, same apparent head size and foot baseline as the reference, comfortable transparent margins with all ears, feet and tail visible. Genuinely transparent background. Clean smooth alpha edges with no loose white specks. No lettering, labels, decorative symbols, scenery, shadows, fur texture or realism.\n\nSTATE: RESTING.\nSame seated Yeye has dozed off contentedly while hugging its book. Preserve the EXACT familiar tilted round head outline and broad cream cheeks; do not turn it into a different sleeping kitten or a realistic curled animal. Both eyes are peacefully CLOSED, each shown as a simple soft curved dark line in the same eye positions, no visible eyeballs, no lashes. Mouth is a tiny relaxed closed asymmetrical curve. The head is gently lowered a little toward the top of the book, cheeks still fully recognizable. Both small round paws loosely hug the CLOSED cream-cover book with baked-orange spine and ribbon against the tummy. Same compact torso, forward feet with pads and rounded cream-tipped tail resting on viewer-left. Sweet and restful, not sick, sad or exhausted. Keep the same square scale and grounded seated silhouette as the reference. No bed, pillow, nightcap, moon, stars, floating Z letters, scenery or symbols.",
+      "width": 1254,
+      "height": 1254,
+      "format": "PNG RGBA",
+      "transparent": true
+    }
+  ],
+  "provenance": {
+    "tool": "内置 image_gen",
+    "mode": "reference image edits",
+    "thirdPartyCharacterAssets": []
+  },
+  "animationStatus": "已制作基于整张 PNG 的轻动效节奏预览，尚未制作分层的眨眼、翻页、摆尾或 Lottie 动画。",
+  "designStage": "沿用用户确认的 v6 造型进行状态延展",
+  "preview": {
+    "file": "preview.html",
+    "screenshot": "yeye-preview-v7.png",
+    "overview": "yeye-states-preview.png",
+    "localUrl": "http://127.0.0.1:8797/preview.html",
+    "features": [
+      "六状态切换",
+      "48、80、120 像素缩略图",
+      "暖纸、白底和深棕背景",
+      "一次性轻动效播放与停止",
+      "下载当前状态"
+    ],
+    "implementation": "浏览器原生 Web Animations API，直接引用同目录 PNG，无第三方运行时依赖。",
+    "verified": [
+      "六个状态的图片、标题、选中态、缩略图和下载地址对应正确",
+      "全部图片成功载入",
+      "当前浏览器布局无横向溢出",
+      "播放后按钮切换为停止，停止后恢复播放",
+      "暖纸与深棕背景已视觉核对"
+    ]
+  },
+  "motion": [
+    {
+      "state": "idle",
+      "durationMs": 3200,
+      "behavior": "整图轻微呼吸",
+      "loop": false
+    },
+    {
+      "state": "smug",
+      "durationMs": 1400,
+      "behavior": "整图轻微歪头与回位",
+      "loop": false
+    },
+    {
+      "state": "reading",
+      "durationMs": 2400,
+      "behavior": "整图小幅俯身",
+      "loop": false
+    },
+    {
+      "state": "thinking",
+      "durationMs": 2800,
+      "behavior": "整图缓缓轻摆",
+      "loop": false
+    },
+    {
+      "state": "success",
+      "durationMs": 950,
+      "behavior": "整图短促回弹",
+      "loop": false
+    },
+    {
+      "state": "resting",
+      "durationMs": 4200,
+      "behavior": "整图慢呼吸",
+      "loop": false
+    }
+  ],
+  "productionNotes": [
+    "所有状态保持相同 1254 × 1254 画布；主体边界略有差异。",
+    "素材保留确认造型的轻微渐变，仍为位图素材。",
+    "后续分层动画的造型依据为 v6 和本套 v7，保留脸型、腮帮轮廓、眼神与书的奶油封面。"
+  ]
+}
+

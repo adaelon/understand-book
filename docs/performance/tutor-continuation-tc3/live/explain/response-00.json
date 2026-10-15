@@ -1,0 +1,16 @@
+{
+  "text": "I'll locate the definition passage in the source first.",
+  "tool_calls": [
+    {
+      "arguments": "{}",
+      "id": "call_00_iumm6doFa6DUopq6T6186476",
+      "name": "book.structure"
+    },
+    {
+      "arguments": "{\"query\": \"平均速度\"}",
+      "id": "call_01_wdjh5GGKFoC1NeYFsmJb6489",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 10690
+}

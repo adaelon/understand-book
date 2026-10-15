@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+      "id": "call_00_HJrMKBITiu8l3U7XKiLt9700",
+      "name": "source.present"
+    },
+    {
+      "arguments": "{\"operation\": \"select\", \"move\": {\"move_id\": \"time-weighting-mirror-case\", \"object_ids\": [], \"kind\": \"compare\", \"prompt\": \"同样两个速度 60 km/h 与 30 km/h：一种是「路程各 60 km」得 40 km/h，另一种是「时间各 1 小时」得 45 km/h。为什么速度数值一模一样，平均速度却不一样？\", \"target\": {\"capability\": \"把定义用于区分两种加权方式(按路程配对 vs 按时间配对)，并解释第二句的约束作用\", \"expected_performance\": \"能说明等路程时慢段占用更多时间份额因而把平均值拉低，等时间时两段份额相等因而得到算术平均；并能指出平均速度必落在两段速度之间\", \"learning_focus\": \"平均速度是按时间加权的平均：权重等于每段占总时间的比例\", \"source_bindings\": [{\"start_lid\": \"1.1\", \"end_lid\": \"1.1\"}]}}}",
+      "id": "call_01_aIPfdh4r6oNW6aBx8G7X4586",
+      "name": "tutor.step"
+    }
+  ],
+  "usage_total_tokens": 18321
+}

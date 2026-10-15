@@ -1,0 +1,241 @@
+import { describe, expect, it } from "vitest";
+import { markdownToBlocks, parseMarkdownSourceBlocks } from "../src/md-adapter";
+import { segment } from "../src/segment";
+import { checkPartitionInvariant } from "../src/partition";
+
+describe("SA2 markdown asset block recognition", () => {
+  const src = [
+    "# Assets",
+    "",
+    "Before assets.",
+    "",
+    "```ts",
+    "const x = 1;",
+    "",
+    "console.log(x);",
+    "```",
+    "",
+    "| A | B |",
+    "| - | - |",
+    "| 1 | 2 |",
+    "",
+    "![diagram](img.png)",
+    "",
+    "$$",
+    "E = mc^2",
+    "$$",
+    "",
+    "$a+b$",
+    "",
+    "After assets.",
+  ].join("\n");
+
+  it("marks code/table/image/formula leaves while preserving source marker text", () => {
+    const blocks = markdownToBlocks(src);
+    const assets = blocks.filter((b) => b.assetKind);
+    expect(assets.map((b) => b.assetKind)).toEqual(["code", "table", "image", "formula", "formula"]);
+    expect(assets[0].text).toBe("```ts\nconst x = 1;\n\nconsole.log(x);\n```");
+    expect(assets[1].text).toBe("| A | B |\n| - | - |\n| 1 | 2 |");
+    expect(assets[2].text).toBe("![diagram](img.png)");
+    expect(assets[3].text).toBe("$$\nE = mc^2\n$$");
+    expect(assets[4].text).toBe("$a+b$");
+  });
+
+  it("passes assetKind through segment while preserving the partition invariant", () => {
+    const blocks = markdownToBlocks(src);
+    const nodes = segment(blocks);
+    const report = checkPartitionInvariant(nodes, src);
+    expect(report.ok).toBe(true);
+    expect(report.coverage).toBe(1);
+    const assetNodes = blocks
+      .filter((block) => block.assetKind)
+      .map((b) => nodes.find((n) => n.children.length === 0 && n.span.start === b.span.start && n.span.end === b.span.end)?.kind);
+    expect(assetNodes).toEqual(["code", "table", "image", "formula", "formula"]);
+  });
+
+  it("splits inline formulas inside paragraphs into formula leaves", () => {
+    const inline = "Before $a+b$ after and $$c=d$$ done.";
+    const blocks = markdownToBlocks(inline);
+    expect(blocks.map((b) => ({ text: b.text, assetKind: b.assetKind ?? "paragraph" }))).toEqual([
+      { text: "Before ", assetKind: "paragraph" },
+      { text: "$a+b$", assetKind: "formula" },
+      { text: " after and ", assetKind: "paragraph" },
+      { text: "$$c=d$$", assetKind: "formula" },
+      { text: " done.", assetKind: "paragraph" },
+    ]);
+
+    const nodes = segment(blocks);
+    const report = checkPartitionInvariant(nodes, inline);
+    expect(report.ok).toBe(true);
+    expect(nodes.filter((n) => n.kind === "formula")).toHaveLength(2);
+  });
+
+  it("recognizes single-dollar display math blocks as formula leaves", () => {
+    const display = ["Before.", "", "$", "I(X;Y) \\le H(Y)", "$", "", "After."].join("\n");
+    const blocks = markdownToBlocks(display);
+    expect(blocks.map((b) => ({ text: b.text, assetKind: b.assetKind ?? "paragraph" }))).toEqual([
+      { text: "Before.", assetKind: "paragraph" },
+      { text: "$\nI(X;Y) \\le H(Y)\n$", assetKind: "formula" },
+      { text: "After.", assetKind: "paragraph" },
+    ]);
+
+    const nodes = segment(blocks);
+    const report = checkPartitionInvariant(nodes, display);
+    expect(report.ok).toBe(true);
+    expect(nodes.filter((n) => n.kind === "formula")).toHaveLength(1);
+  });
+
+  it("keeps unmatched dollar markers as paragraph text", () => {
+    const src = "Price ends with $ and unmatched $$ marker.";
+    const blocks = markdownToBlocks(src);
+    expect(blocks).toEqual([{ kind: "leaf", text: src, span: { start: 0, end: src.length } }]);
+  });
+
+  it("recognizes div-wrapped raw HTML image tags as image leaves", () => {
+    const src = [
+      "Before.",
+      "",
+      '<div style="text-align: center;"><img src="https://example.com/markdown_2/imgs/chart.jpg?authorization=bce-auth-v1%2Ftoken" alt="Image" width="42%" /></div>',
+      "",
+      "After.",
+    ].join("\n");
+    const blocks = markdownToBlocks(src);
+    const image = blocks.find((block) => block.assetKind === "image");
+
+    expect(image).toMatchObject({
+      kind: "leaf",
+      assetKind: "image",
+      text: '<div style="text-align: center;"><img src="https://example.com/markdown_2/imgs/chart.jpg?authorization=bce-auth-v1%2Ftoken" alt="Image" width="42%" /></div>',
+      image: {
+        alt: "Image",
+        src: "https://example.com/markdown_2/imgs/chart.jpg?authorization=bce-auth-v1%2Ftoken",
+      },
+    });
+
+    const nodes = segment(blocks);
+    const report = checkPartitionInvariant(nodes, src);
+    expect(report.ok).toBe(true);
+    expect(nodes.filter((n) => n.kind === "image")).toHaveLength(1);
+  });
+
+  it("recognizes a raw HTML table block as one table asset", () => {
+    const src = [
+      "Before.",
+      "",
+      "<table><tr><th>A</th></tr><tr><td>$ x $</td></tr></table>",
+      "",
+      "After.",
+    ].join("\n");
+    const blocks = markdownToBlocks(src);
+    const table = blocks.find((block) => block.assetKind === "table");
+
+    expect(table).toMatchObject({
+      kind: "leaf",
+      assetKind: "table",
+      text: "<table><tr><th>A</th></tr><tr><td>$ x $</td></tr></table>",
+    });
+    expect(checkPartitionInvariant(segment(blocks), src)).toMatchObject({
+      ok: true,
+      coverage: 1,
+      violations: [],
+    });
+  });
+
+  it("uses parser source positions for headings, list items, fenced and indented code, tables, images, and math", () => {
+    const structured = [
+      "# Real heading",
+      "",
+      "- first item",
+      "- second item",
+      "",
+      "```python",
+      "# seed all",
+      "print('seeded')",
+      "```",
+      "",
+      "    # project",
+      "    projected = value",
+      "",
+      "| A | B |",
+      "| - | - |",
+      "| 1 | 2 |",
+      "",
+      "![plot](plot.png)",
+      "",
+      "$$",
+      "x = y + 1",
+      "$$",
+      "",
+      "Before $z$ after.",
+    ].join("\n");
+
+    const parsed = parseMarkdownSourceBlocks(structured);
+    expect(parsed.blocks.filter((block) => block.kind === "heading").map((block) => block.text)).toEqual([
+      "Real heading",
+    ]);
+    expect(parsed.blocks.filter((block) => block.assetKind === "code").map((block) => block.text)).toEqual([
+      "```python\n# seed all\nprint('seeded')\n```",
+      "    # project\n    projected = value",
+    ]);
+    expect(parsed.blocks.filter((block) => block.assetKind === "table")).toHaveLength(1);
+    expect(parsed.blocks.filter((block) => block.assetKind === "image")).toHaveLength(1);
+    expect(parsed.blocks.filter((block) => block.assetKind === "formula").map((block) => block.text)).toEqual([
+      "$$\nx = y + 1\n$$",
+      "$z$",
+    ]);
+    expect(parsed.blocks.filter((block) => block.text === "- first item" || block.text === "- second item"))
+      .toHaveLength(2);
+  });
+
+  it("keeps malformed nested dollar math intact and emits a source-review proposal", () => {
+    const malformed = "Before $ \\underline{\\text{can $ TC^0 $ remain intact?}} $ after.";
+    const parsed = parseMarkdownSourceBlocks(malformed);
+
+    expect(parsed.blocks).toEqual([{
+      kind: "leaf",
+      text: malformed,
+      span: { start: 0, end: malformed.length },
+    }]);
+    expect(parsed.review_proposals).toEqual([expect.objectContaining({
+      kind: "malformed_inline_math",
+      source_span: { start: 0, end: malformed.length },
+    })]);
+  });
+
+  it("proposes review for unfenced code-like listings without silently turning them into code assets", () => {
+    const unfenced = [
+      "### E.4 Toy Experiment",
+      "",
+      "import random",
+      "import numpy as np",
+      "def seed_all(seed):",
+      "    random.seed(seed)",
+      "",
+      "# seed all",
+      "seed_all(42)",
+    ].join("\n");
+    const parsed = parseMarkdownSourceBlocks(unfenced);
+
+    expect(parsed.review_proposals).toEqual(expect.arrayContaining([expect.objectContaining({
+      kind: "unfenced_code",
+      source_span: expect.objectContaining({ start: expect.any(Number), end: expect.any(Number) }),
+    })]));
+    expect(parsed.blocks.filter((block) => block.assetKind === "code")).toHaveLength(0);
+  });
+
+  it("keeps UTF-16 spans ordered, non-overlapping, and complete for every non-whitespace source unit", () => {
+    const mixed = "# 标题\r\n\r\n段落 😀 with $x$.\r\n\r\n- item\r\n\r\n```ts\r\nconst y = 1;\r\n```";
+    const parsed = parseMarkdownSourceBlocks(mixed);
+    const nodes = segment(parsed.blocks);
+    const report = checkPartitionInvariant(nodes, mixed);
+
+    expect(report).toMatchObject({ ok: true, coverage: 1, violations: [] });
+    for (let index = 1; index < parsed.blocks.length; index += 1) {
+      expect(parsed.blocks[index - 1].span.end).toBeLessThanOrEqual(parsed.blocks[index].span.start);
+    }
+    for (const block of parsed.blocks) {
+      if (block.kind === "heading") expect(block.text).toBe("标题");
+      else expect(block.text).toBe(mixed.slice(block.span.start, block.span.end));
+    }
+  });
+});

@@ -1,0 +1,28 @@
+
+> @understand-book/web@0.0.0 test:e2e E:\allwork\download\agent\understand-book\packages\web
+> playwright test "playwright/product-home.spec.ts" "playwright/conversation-learning-design.spec.ts" "playwright/mobile-chat-interactions.spec.ts" "playwright/pdf-annotation.spec.ts" "playwright/reader-annotations.spec.ts" "--workers=2"
+
+
+Running 15 tests using 2 workers
+
+(node:8952) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:352) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  2 playwright\mobile-chat-interactions.spec.ts:21:1 › touch selection offers notes beside the selected answer and taps save the excerpt (1.4s)
+  ok  3 playwright\mobile-chat-interactions.spec.ts:37:1 › selection menu follows scrolling and clears on collapse or leaving the conversation (1.0s)
+  ok  1 playwright\conversation-learning-design.spec.ts:43:154 › long teaching keeps help and the real answer reachable at 1907px (2.6s)
+  ok  4 playwright\mobile-chat-interactions.spec.ts:53:1 › goal and teaching controls leave most of the mobile screen for answers with direct entries (1.5s)
+  ok  5 playwright\conversation-learning-design.spec.ts:43:154 › long teaching keeps help and the real answer reachable at 1526px (2.2s)
+  ok  6 playwright\mobile-chat-interactions.spec.ts:82:1 › selection actions fit a narrow viewport and also work with the keyboard (893ms)
+  ok  8 playwright\pdf-annotation.spec.ts:3:1 › desktop exact annotations stay on-page and open one bounded surface (957ms)
+  ok  9 playwright\pdf-annotation.spec.ts:45:1 › mobile annotation surface becomes a safe bounded bottom sheet (1.5s)
+  ok  7 playwright\conversation-learning-design.spec.ts:43:154 › long teaching keeps help and the real answer reachable at 1440px (3.7s)
+  ok 11 playwright\conversation-learning-design.spec.ts:43:154 › long teaching keeps help and the real answer reachable at 390px (1.8s)
+  ok 12 playwright\reader-annotations.spec.ts:3:1 › RE3 long paragraph marker closes at its source line and on buffer recycling (1.2s)
+  ok 10 playwright\product-home.spec.ts:4:3 › garden experiment keeps attempts and checks changed conditions at 1440px (5.5s)
+  ok 13 playwright\product-home.spec.ts:4:3 › garden experiment keeps attempts and checks changed conditions at 390px (5.7s)
+  ok 14 playwright\product-home.spec.ts:55:1 › skipped steps do not invent attempts, and a fresh page clears the illustration (1.3s)
+  ok 15 playwright\product-home.spec.ts:76:1 › homepage and experiment fit small and large screens; product images still open (4.5s)
+
+  15 passed (26.7s)

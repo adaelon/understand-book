@@ -1,0 +1,8 @@
+{
+  "started_at_utc": "2026-10-11T09:52:15.5803746+00:00",
+  "completed_at_utc": "2026-10-11T09:53:28.3125288+00:00",
+  "exit_code": 0,
+  "test": "continuation_tc2a_live_fixed_input_comparison",
+  "executable": "D:\\codex-build\\understand-book-no-progress-195\\debug\\deps\\server-d6ca67c640d9d740.exe",
+  "source_root": "E:\\allwork\\download\\agent\\understand-book"
+}

@@ -22,6 +22,12 @@ export class ApiError extends Error {
   }
 }
 const messages: Record<string, string> = {
+  MCP_PACK_REVISION_CONFLICT: "调用包已被更正，请重新读取后确认金额与次数。",
+  MCP_PACK_ALREADY_CONSUMED: "只能扣回尚未消费的次数，请刷新调用包后重新填写。",
+  MCP_USAGE_INPUT_INVALID: "赠送次数须为正整数，并填写原因。",
+  MCP_USAGE_STORAGE_UNAVAILABLE: "MCP 操作结果尚未确认，请核对原操作回执后重试。",
+  RECEIPT_CORRECTION_EXCEEDS_AMOUNT: "收款更正后的金额不能小于零。",
+  USER_UNAVAILABLE: "账号已停用或不可用，请先核对账号状态。",
   INVITE_BATCH_CONFLICT: "原操作号的生成数量不同，请核对原批次。",
   INVITE_ALREADY_USED: "内测码已被使用，不能停用。请刷新列表查看使用账号。",
   INVITE_STORAGE_UNAVAILABLE: "内测码操作暂未确认，请核对原批次后重试。",

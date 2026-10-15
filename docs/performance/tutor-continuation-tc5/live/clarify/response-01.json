@@ -1,0 +1,11 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+      "id": "call_00_69vApnM1Nf8szM1tO8AU8979",
+      "name": "source.present"
+    }
+  ],
+  "usage_total_tokens": 17296
+}

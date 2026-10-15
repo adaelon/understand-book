@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { inject } from 'vue';
+import { shareHighlightKey } from '../reading-share';
+const shareHighlight = inject(shareHighlightKey, null);
+import NoteDetail from './NoteDetail.vue';
 import type { MemoryRecord } from '../api';
 const props = defineProps<{
   records: MemoryRecord[];
@@ -7,16 +11,27 @@ const props = defineProps<{
   renderMarkdown: (source: string) => string;
 }>();
 const emit = defineEmits<{
+  (event: "open-note", record: MemoryRecord, restore?: boolean): void;
   (event: 'select', id: string): void;
   (event: 'close'): void;
   (event: 'edit' | 'delete' | 'show-notes' | 'place', record: MemoryRecord): void;
-  (event: 'source', source: { lid: string; quote: string | null }): void;
+  (event: 'source', source: { lid: string; quote: string | null; ranges?: Map<string, [number, number]> }): void;
 }>();
 function quote() {
   if (props.active.type === 'highlight') return props.active.content;
   return props.active.selection_context?.resolved_quote
     || props.active.content.match(/^(?:>.*\n?)+/)?.[0].replace(/^>\s?/gm, '').trim()
     || null;
+}
+function source() {
+  const lid = props.active.anchor.lid!;
+  const ranges = new Map<string, [number, number]>();
+  const selected = props.active.selection_context?.ranges ?? (props.active.range ? [{ lid, range: props.active.range }] : []);
+  for (const item of selected) {
+    const previous = ranges.get(item.lid);
+    ranges.set(item.lid, previous ? [Math.min(previous[0], item.range.start), Math.max(previous[1], item.range.end)] : [item.range.start, item.range.end]);
+  }
+  emit('source', { lid, quote: quote(), ...(ranges.size ? { ranges } : {}) });
 }
 </script>
 
@@ -33,16 +48,18 @@ function quote() {
         {{ record.type === 'highlight' ? '高亮' : '笔记' }} {{ index + 1 }}
       </button>
     </div>
-    <div class="annotation-content">
+    <NoteDetail v-if="props.active.type === 'note'" :note="props.active" embedded @answer="emit('open-note', props.active)" @locate="emit('open-note', props.active)" @restore="emit('open-note', props.active, true)" />
+    <div v-else class="annotation-content">
       <blockquote class="annotation-source">{{ quote() || props.sourceText }}</blockquote>
       <div class="md" v-html="props.renderMarkdown(props.active.content)"></div>
     </div>
     <footer>
+      <button v-if="props.active.type === 'highlight' && shareHighlight" @click="shareHighlight(props.active)">生成分享图</button>
       <button @click="emit('edit', props.active)">编辑</button>
       <button @click="emit('delete', props.active)">删除</button>
       <button v-if="props.active.type === 'note' && props.active.note_placement?.kind === 'lid_block' && !props.active.selection_context"
         @click="emit('place', props.active)">移动</button>
-      <button v-if="props.active.anchor.lid" @click="emit('source', { lid: props.active.anchor.lid, quote: quote() })">查看来源</button>
+      <button v-if="props.active.anchor.lid" @click="source">查看来源</button>
       <button @click="emit('show-notes', props.active)">在笔记中查看</button>
     </footer>
   </section>

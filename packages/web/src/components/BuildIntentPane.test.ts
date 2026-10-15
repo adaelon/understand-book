@@ -137,8 +137,8 @@ describe("BuildIntentPane", () => {
     const wrapper = mountPane();
 
     expect(wrapper.attributes("role")).toBe("complementary");
-    expect(wrapper.text()).toContain("先阅读");
-    expect(wrapper.text()).toContain("标准深读");
+    expect(wrapper.text()).toContain("直接阅读");
+    expect(wrapper.text()).toContain("深入理解");
     expect(wrapper.text()).toContain("围绕目标");
     expect(wrapper.emitted()).toEqual({});
 

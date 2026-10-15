@@ -1,0 +1,19 @@
+✔ missing usage remains unknown and cached input is not billed twice (1.4906ms)
+✔ a recovered transport error does not discard a completed Codex turn (0.8399ms)
+✔ unstarted and failed tasks remain in the fixed denominator (0.2051ms)
+✔ correct-looking rainwater answer without actual cited pages fails (0.5656ms)
+✔ mentioning all three numbers does not prove the requested decrease (0.28ms)
+✔ saved goal or prose alone cannot replace a teaching delivery (0.4089ms)
+✔ actual Runtime Tool role and duplicate request history count one rejection (0.3894ms)
+✔ discarded recovered client output is an invalid trial, not a product rejection (0.1774ms)
+✔ wrong note text and incomplete execution remain failures (0.2375ms)
+✔ a rejected write attempt still violates the explain-only tool boundary (0.3496ms)
+✔ explain-only sources must be the actually presented selected text (0.4273ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 224.4311

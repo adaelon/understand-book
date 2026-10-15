@@ -1,0 +1,10 @@
+{
+  "text": "我会按选中的原文解释，并附上来源。",
+  "tool_calls": [
+    {
+      "name": "source.present",
+      "arguments": "{\"quote\":\"Average speed is total distance divided by total time.\"}"
+    }
+  ],
+  "usage_total_tokens": 26903
+}

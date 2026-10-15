@@ -1,0 +1,19 @@
+{
+  "status": "deployed-and-publicly-verified",
+  "started_at_utc": "2026-10-12T00:53:05.066713+00:00",
+  "deployed_at_utc": "2026-10-12T00:53:21.739617+00:00",
+  "commit": "8497f29a6ab1315af89f65094033b03d767e999d",
+  "origin": "https://understandbook.top",
+  "release": "/opt/understand-book/releases/mcp10-20261012",
+  "data_root": "/opt/understand-book/data/multi-reader-mcp10-20261012",
+  "previous_release": "/opt/understand-book/releases/ux-trace-20261011",
+  "previous_data_root": "/opt/understand-book/data/multi-reader-main-12b765b-20261010",
+  "backup": "/opt/understand-book/backups/mcp10-20261012",
+  "control_schema": 12,
+  "active_or_unsaved_before_stop": 0,
+  "service_pid": 587272,
+  "running_binary_matches": true,
+  "old_assets_retained": true,
+  "model_requests": 0,
+  "verified_at_utc": "2026-10-12T00:57:06.489159+00:00"
+}

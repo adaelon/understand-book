@@ -796,13 +796,13 @@ impl ReviewCoordinator {
 }
 
 #[derive(Clone)]
-struct ReviewMoment {
+pub(crate) struct ReviewMoment {
     millis: u64,
     timestamp: String,
 }
 
 impl ReviewMoment {
-    fn from_millis(millis: u64) -> Self {
+    pub(crate) fn from_millis(millis: u64) -> Self {
         Self {
             millis,
             timestamp: millis.to_string(),
@@ -861,7 +861,7 @@ fn retry_delay_ms(attempts: u32) -> u64 {
         .min(REVIEW_RETRY_MAX_MS)
 }
 
-fn mark_review_retryable(
+pub(crate) fn mark_review_retryable(
     store: &mut MemoryStore,
     job: &memory::ReviewJob,
     error: &read_tools::ToolError,
@@ -955,7 +955,8 @@ fn copy_historical_backfill_input(
         turn: ReviewTurnInput {
             turn_id: turn.turn_id.clone(),
             user_turn_ordinal: turn.user_turn_ordinal,
-            user: turn.user.clone(),
+            user: turn.user_authored_text().into(),
+            input_action: turn.domain.interaction.as_ref().map(|a|a.action.clone()),
             assistant_status: match turn.status {
                 AgentAssistantStatus::PendingAssistant => ReviewTurnStatus::PendingAssistant,
                 AgentAssistantStatus::Completed => ReviewTurnStatus::Completed,
@@ -974,8 +975,15 @@ fn copy_review_input(
     state: &AppState,
     job: &memory::ReviewJob,
 ) -> Result<ReviewInput, read_tools::ToolError> {
-    let session = state
-        .user.agent_history
+    copy_user_review_input(&state.user, job, crate::current_content_profile(&state.workspace.book))
+}
+
+pub(crate) fn copy_user_review_input(
+    user: &crate::user_runtime::UserRuntime,
+    job: &memory::ReviewJob,
+    content_profile: &str,
+) -> Result<ReviewInput, read_tools::ToolError> {
+    let session = user.agent_history
         .sessions
         .iter()
         .find(|session| session.id == job.session_id && session.book_id == job.book_id)
@@ -990,7 +998,8 @@ fn copy_review_input(
         .map(|turn| ReviewTurnInput {
             turn_id: turn.turn_id.clone(),
             user_turn_ordinal: turn.user_turn_ordinal,
-            user: turn.user.clone(),
+            user: turn.user_authored_text().into(),
+            input_action: turn.domain.interaction.as_ref().map(|a|a.action.clone()),
             assistant_status: match turn.status {
                 AgentAssistantStatus::PendingAssistant => ReviewTurnStatus::PendingAssistant,
                 AgentAssistantStatus::Completed => ReviewTurnStatus::Completed,
@@ -1021,7 +1030,7 @@ fn copy_review_input(
         job_id: job.job_id.clone(),
         session_id: job.session_id.clone(),
         book_id: job.book_id.clone(),
-        content_profile: crate::current_content_profile(&state.workspace.book).into(),
+        content_profile: content_profile.into(),
         from_turn_exclusive: job.from_turn_exclusive,
         to_turn_inclusive: job.to_turn_inclusive,
         turns,
@@ -1243,6 +1252,7 @@ fn start_server_with_memory_path(
     if let Some(top) = saved_top {
         reader.restore_top_lid(&book, &top);
     }
+    if let Some(position) = session.as_ref().and_then(|s| s.visible_position_for_dir(&dir)) { reader.restore_visible_position(&book, position); }
     crate::restore_saved_paper_minimap_overlay(&mut reader, &book, &session_path)
         .map_err(|error| format!("failed to restore paper minimap overlay: {}", error.message))?;
     let provider_config = ProviderConfig::from_env().ok();
@@ -1323,6 +1333,9 @@ fn start_server_with_memory_path(
         let mut guard = state.lock().unwrap();
         let AppState { workspace, user, .. } = &mut *guard;
         user.session_store = session_store;
+        for turn in user.agent_history.sessions.iter().flat_map(|s| &s.turns).filter(|t| t.domain.local_action.is_some()) {
+            crate::interaction_input::resume_local_facts(&user, turn).map_err(|e| e.message)?;
+        }
         workspace.restore_chat(&mut user.agent_history, "server-start");
     }
     let observability = crate::observability::ObservabilityRuntime::from_env();
@@ -1407,7 +1420,7 @@ fn start_server_with_memory_path(
                         let source = (|| {
                             let (turn_id, source_ref_id) = path.split_once('/').ok_or_else(crate::authorization::missing)?;
                             let guard = state.lock().unwrap();
-                            let binding = crate::agent_source_binding(&guard, &crate::AgentSourceRequest { turn_id: turn_id.into(), source_ref_id: source_ref_id.into() })?;
+                            let binding = crate::agent_source_binding(&guard, &crate::AgentSourceRequest { turn_id: turn_id.into(), source_ref_id: source_ref_id.into(), note_mem_id: None })?;
                             let media = binding.media.ok_or_else(crate::authorization::missing)?;
                             let directory = crate::video_source::local_directory(&guard.workspace, &media.publication)?;
                             let book = Book::load(directory.to_str().ok_or_else(crate::authorization::missing)?).map_err(|_| crate::authorization::missing())?;
@@ -2661,6 +2674,29 @@ mod tests {
         assert_eq!(state.user.store.review_state().reviewed_through.len(), 2);
         assert!(state.user.store.review_state().last_error.is_none());
         assert_eq!(state.user.store.profile_facts().len(), 2);
+    }
+
+    #[test]
+    fn tc6_historical_backfill_copies_only_authored_supplement() {
+        let state=review_test_state_with("tc6-backfill",1,1);
+        let mut state=state.lock().unwrap();
+        let book_id=state.workspace.book.base.book_id.clone();
+        let job=state.user.store.start_historical_backfill_job(HistoricalBackfillRange {
+            session_id:"review-session-0".into(),book_id,from_turn_exclusive:0,to_turn_inclusive:1,
+        },"start").unwrap();
+        for supplement in ["","Across books I prefer concise explanations."] {
+            let turn=&mut state.user.agent_history.sessions[0].turns[0];
+            turn.user="选择：请用例子解释".into();
+            turn.domain.interaction=Some(serde_json::from_value(serde_json::json!({
+                "action":{"origin":"ui_choice","teaching_choice":{"delivery_ref":"delivery","option_id":"example"},"move_kind":"explain"},
+                "user_supplement":supplement,"accepted_request":"请用例子解释","source_bindings":[],
+                "answer_ref":null,"answer_text":"助手的说明","source_excerpt":null,"target":null,
+                "expected_chat_head":null,"presentation_follow_up":null})).unwrap());
+            let input=copy_historical_backfill_input(&state,&job).unwrap();
+            assert_eq!(input.turn.user,supplement);
+            assert!(input.turn.input_action.is_some());
+            assert!(input.review_input().is_ok());
+        }
     }
 
     #[test]

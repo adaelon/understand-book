@@ -1,6 +1,7 @@
 # ADR-0104 Intent-seeded guided-reading tool exposure and resident navigation policy
 
 Status: Accepted, 2026-08-11.
+Updated: 2026-10-11，TC2A 将完整流程改为按需装配，常驻发现入口和显式带读预激活保留。
 Extends: ADR-0034, ADR-0037, ADR-0044 and ADR-0045.
 Revises: ADR-0091 §3 的首轮激活输入与 §4 的主动带读路由边界。
 Change type: [边界重构]。
@@ -19,17 +20,17 @@ Change type: [边界重构]。
 **命门**:当前用户原文在首个预算计算和请求计划前经过版本化、高精度、可单测的闭集匹配；命中后按 ToolRegistry 的 `Navigation` capability 加 `reader.state`、`reader.gotoLid` 建立本回合激活集，仍服从 content profile、权限、hidden 与 schema 预算门。受支持模型配置必须证明完整允许组可容纳，不得把半套工具面当成功。
 **何时回头**:真实误报/漏报表明闭集措辞不够时升级匹配器版本；不得用自动执行副作用补召回率。
 
-### §2 常驻导航规则
+### §2 常驻发现入口与按需导航规则
 
-**决策**:导航与带读规则在住户采样中常驻。
+**决策**:常驻短发现入口，激活导航后加载完整流程。
 
 **否决**:
-- 继续按当前可见工具条件注入:会保留“先看见工具才知道要发现工具”的循环。
+- 连发现入口也按工具可见性注入:会恢复首轮循环依赖。
 - 只把规则写进工具 description:工具不可见时规则仍不可见。
-- 恢复单体巨型 prompt:会撤销 ADR-0091 的模块化与请求审计边界。
+- 普通解释常驻完整路线流程:未触发的任务继续占用输入。
 
-**命门**:`resident-agent.policy.navigation` 独立于 `visible_tools` 注入 Resident 业务采样；显式带读须在必要定位后读取 Reader 状态与结构路线，校验候选原文，真实 goto 后只讲一个停靠点并停下，不能在 `search_text -> text` 后把整节一次性总结。缺少所需能力时仍以 `tool.search` 作通用回退。
-**何时回头**:请求审计证明该小模块对非导航任务造成可测退化时，可缩短措辞但不得恢复可见性条件。
+**命门**:`resident-agent.policy.navigation-discovery` 常驻并说明适用条件与 `tool.search` 获取方式；§1 预激活使显式带读首轮即加载原 `navigation` 完整流程，延迟发现使下一次采样加载。路线、引导或 Goto 工具进入实际工具面时加载完整规则，普通 `book.structure` 读取不触发。能力激活仍不执行 Reader 操作；结构路线、目标原文、唯一 Goto 和单停靠点反馈边界保持。
+**何时回头**:受支持的带读因发现入口或触发条件缺失而退化时修正装配；不得移除短发现入口。实施与回归见 [TC2A](../performance/tutor-continuation-tc2a.md)。
 
 ### §3 副作用与表面边界
 

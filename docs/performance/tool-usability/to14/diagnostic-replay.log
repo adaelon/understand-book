@@ -1,0 +1,7 @@
+
+running 1 test
+test tests::tutor_continuation_tests::to14::to14_resident_trial ... TO14 case=tutor-continue status=200 output=E:\allwork\download\agent\understand-book\docs\performance\tool-usability\to14\diagnostic-replay\baseline-tutor-continue-2
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 801 filtered out; finished in 2.03s
+

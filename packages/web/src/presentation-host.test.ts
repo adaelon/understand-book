@@ -6,6 +6,7 @@ describe("MU7 frame channel", () => {
     const source = {} as Window;
     const event = { source, origin: "null", data: { channel: "current", kind: "source", source_ref_id: "source-1" } } as MessageEvent;
     expect(acceptsPresentationMessage(event, source, "current")).toBe(true);
+    expect(acceptsPresentationMessage({ ...event, data: { channel: "current", kind: "ready" } } as MessageEvent, source, "current")).toBe(true);
     expect(acceptsPresentationMessage(event, {} as Window, "current")).toBe(false);
     expect(acceptsPresentationMessage(event, source, "old")).toBe(false);
     expect(acceptsPresentationMessage({ ...event, origin: "https://reader.example" } as MessageEvent, source, "current")).toBe(false);
@@ -30,4 +31,18 @@ describe("presentation host editing focus", () => {
       { generation: 4, frameFocused: false, visible: true },
     )).toBe(false);
   });
+});
+
+
+it('RS7 accepts static output only from the same opaque frame and current channel', () => {
+  const source = {} as Window;
+  for (const data of [
+    { kind: 'static-result', request_id: 'export-1', state: {}, image: { svg: '<svg/>', width: 640, height: 360, resources: [] } },
+    { kind: 'static-error', request_id: 'export-1', message: '资源未就绪' },
+  ]) {
+    const event = { source, origin: 'null', data: { ...data, channel: 'current' } } as MessageEvent;
+    expect(acceptsPresentationMessage(event, source, 'current')).toBe(true);
+    expect(acceptsPresentationMessage(event, source, 'previous')).toBe(false);
+    expect(acceptsPresentationMessage(event, {} as Window, 'current')).toBe(false);
+  }
 });

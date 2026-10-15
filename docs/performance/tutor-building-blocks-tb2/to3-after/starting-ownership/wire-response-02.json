@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "redacted_reasoning_chars": 1394,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"lid\": \"1.1\", \"granularity\": \"near\", \"k\": 12}",
+              "name": "book_context"
+            },
+            "id": "call_00_1x8Sa4A3RqP6HiclytFI2934",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"match_mode\": \"exact\", \"page_size\": 20, \"query\": \"let bar = foo;\"}",
+              "name": "book_search_text"
+            },
+            "id": "call_01_iT0uiymlYMAP9tfDiXsg5823",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 490,
+    "completion_tokens_details": {
+      "reasoning_tokens": 349
+    },
+    "prompt_cache_hit_tokens": 16512,
+    "prompt_cache_miss_tokens": 1002,
+    "prompt_tokens": 17514,
+    "prompt_tokens_details": {
+      "cached_tokens": 16512
+    },
+    "total_tokens": 18004
+  }
+}

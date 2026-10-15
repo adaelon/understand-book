@@ -427,6 +427,28 @@ impl WorkspaceRegistry {
         Ok(result)
     }
 
+    pub(crate) fn prepare_translation(
+        &mut self,
+        context: &AuthorizedContext,
+        user: &UserRuntime,
+        library: &Mutex<PublishedLibrary>,
+        id: &str,
+        input: &Value,
+    ) -> Result<(crate::SelectionTranslationWork, PublishedBookRef), ToolError> {
+        let scene = self.scene(context.user_id(), id, user, library)?;
+        let scene = scene.lock().unwrap();
+        let stamp = serde_json::from_value(input.clone()).map_err(|_| invalid())?;
+        scene.check_attachment(&stamp)?;
+        let mut command = input.clone();
+        for key in ["attachment_id", "generation", "expected_revision"] {
+            command.as_object_mut().ok_or_else(invalid)?.remove(key);
+        }
+        let request = serde_json::from_value(command).map_err(|_| invalid())?;
+        crate::selection_manifest_value(&scene.workspace.book_dir)?;
+        let work = crate::prepare_selection_translation(&scene.workspace.book, request)?;
+        Ok((work, scene.workspace.publication.as_ref().ok_or_else(missing)?.reference.clone()))
+    }
+
     pub(crate) fn request(
         &mut self,
         context: &AuthorizedContext,
@@ -438,6 +460,27 @@ impl WorkspaceRegistry {
         now: &str,
     ) -> Result<Value, ToolError> {
         let owner = context.user_id();
+        if action == "resumption" {
+            // Read the committed scene without loading/attaching a resident workspace.
+            let record = self.record(owner, id)?;
+            let publication = library.lock().unwrap().load(owner, &record.reference)?;
+            let lid = &record.checkpoint.reader.top_lid;
+            let position = publication.book.source_label(&read_tools::EvidenceRange {
+                start_lid: lid.clone(), end_lid: lid.clone(), ranges: vec![],
+            }, "zh").ok();
+            let excerpt = publication.book.text(lid, None).ok()
+                .map(|text| text.chars().take(140).collect::<String>());
+            let chat = user.agent_history.sessions.iter().find(|session|
+                Some(&session.id) == record.selected_chat.as_ref()
+                    && session.book_id == record.reference.book_id);
+            let question = chat.and_then(|session| session.turns.iter().rev().find(|turn|
+                turn.published_book_ref.as_ref() == Some(&record.reference)
+                    && !turn.user.trim().is_empty()))
+                .map(|turn| turn.user.chars().take(240).collect::<String>());
+            return Ok(json!({"workspace_id":id, "published_book_ref":record.reference,
+                "selected_chat":chat.map(|session| &session.id), "position_label":position,
+                "position_excerpt":excerpt, "last_question":question}));
+        }
         // Attach compares the client's last persisted version before a cold reload increments it.
         if matches!(action, "attach" | "takeover" | "fork") {
             let record = self.record(owner, id)?;
@@ -490,7 +533,7 @@ impl WorkspaceRegistry {
         let stamp: WorkspaceStamp = serde_json::from_value(input.clone()).map_err(|_| invalid())?;
         if matches!(action, "reader/state" | "profile/manifest" | "profile/memory" | "memory/recall"
             | "chat/history" | "reader/paper_minimap.state" | "reader/pdf_selection.resolve"
-            | "reader/pdf_ranges.project" | "agent/source.resolve") {
+            | "reader/pdf_ranges.project" | "agent/source.resolve" | "memory/presentation.read" | "memory/presentation.observe") {
             scene.check_attachment(&stamp)?;
         } else {
             scene.check(&stamp)?;
@@ -779,6 +822,8 @@ impl WorkspaceRegistry {
                 reader.goto_lid(book, &mut user.store, &range.start_lid, now)?;
                 json!({"source_ref_id":binding.source_ref_id,"opened":true})
             }
+            "reader/position" => json!(reader.confirm_visible_position(book, &mut user.store,
+                serde_json::from_value(input.clone()).map_err(|_| invalid())?, now)?),
             "reader/goto" => json!(reader.goto_lid(
                 book,
                 &mut user.store,
@@ -1230,6 +1275,10 @@ impl runtime::run_context::ResidentStatePort for NetworkRunPort {
         self.authorized()?;
         Ok(result)
     }
+    fn presentation_unavailable_reason(&self) -> Option<&'static str> {
+        self.access.sandbox.unavailable_reason()
+    }
+
     fn author_presentation(&mut self, request: runtime::presentation_author::AuthorRequest,
         bindings: &[runtime::orchestrator::SourceBinding], messages: &[runtime::Message], cancellation: &runtime::run_context::CancellationToken,
     ) -> Result<runtime::presentation_author::AuthorResult, ToolError> {

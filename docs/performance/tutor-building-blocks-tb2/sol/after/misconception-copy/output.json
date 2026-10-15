@@ -1,0 +1,23 @@
+{
+  "select": {
+    "operation": "select",
+    "move": {
+      "move_id": "repair-borrow-copy-link",
+      "object_ids": [],
+      "capability": "explanation",
+      "kind": "explain",
+      "prompt": "针对学习者把 &foo 理解为复制 Foo 的具体误解，沿用其对赋值的认识，区分右侧表达式产生引用与把引用绑定给 bar；用一个 Foo 和一个引用的关系图提供支撑，再让学习者自己解释原例中两个 println 为什么都能使用。",
+      "interaction_intent": "guided_inquiry",
+      "intent_origin": "current_request",
+      "intent_quote": "帮我找出该改哪一步，再让我试着解释。",
+      "target": {
+        "capability": "explanation",
+        "learning_focus": "let bar = &foo 创建对原值的不可变引用，而非复制 Foo",
+        "expected_performance": "在引用关系图的支持下，用自己的话说明 bar 与 foo 的关系，并据此解释原例中两个 println 能使用的原因。",
+        "source_bindings": [{ "start_lid": "1.1", "end_lid": "1.1" }],
+        "object_refs": []
+      }
+    }
+  },
+  "answer": "该改的是这一步：**你把右侧的 `&foo` 理解成了“复制一份 Foo”。** `&foo` 实际上创建的是对原来那个值的引用；借用让代码临时访问值，并不取得这个值的所有权。[[source:source_ref_b7cdf804a5f27a0d]]\n\n沿用你熟悉的赋值思路，把这一行拆开看：\n\n- 先看右侧 `&foo`：产生一个不可变引用。\n- 再看 `let bar = ...`：把这个引用绑定给 `bar`，所以 `bar` 的类型是 `&Foo`，不是 `Foo`。[[source:source_ref_9af277d1d3d785d4]]\n\n可以用下面这张关系图理解原例：\n\n```text\nfoo 拥有 ────────────> Foo(0)\n                         ↑\nbar 保存的不可变引用 ────┘\n```\n\n图里只有原来的那个 `Foo(0)`。`bar` 提供了访问它的另一条路径，但不能通过 `bar` 修改其中的值。[[source:source_ref_b7cdf804a5f27a0d]][[source:source_ref_9af277d1d3d785d4]]\n\n现在请你用自己的话解释原例中的这两行：\n\n```rust\nprintln!(\"Foo is {:?}\", foo);\nprintln!(\"Bar is {:?}\", bar);\n```\n\n**它们为什么都能使用？** 试着把“谁仍拥有那个 Foo”和“bar 保存了什么”连起来说明，不再用“复制了两份 Foo”作为理由。"
+}

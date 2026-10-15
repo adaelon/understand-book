@@ -1,0 +1,44 @@
+[
+  {
+    "actions": [],
+    "assessment": null,
+    "capability": "explanation",
+    "continuation": {
+      "options": [
+        {
+          "label": "把\"路程相等、速度不同\"的平均速度写成一个只用两段速度的公式",
+          "move_kind": "explain",
+          "option_id": "harmonic-form",
+          "purpose": "把 60/30→40 这个数字例子升级为一般结论:路程相等时平均速度是调和平均,它总是不高于两段速度的普通平均,并说明为什么差总是朝着变小的方向"
+        }
+      ],
+      "recommended_option_id": "harmonic-form"
+    },
+    "explanation": null,
+    "hint": null,
+    "intent_origin": "current_action",
+    "intent_quote": null,
+    "interaction_intent": "neutral",
+    "interpretation_refs": [],
+    "kind": "compare",
+    "move_id": "continue-need-not-equal-time",
+    "object_ids": [],
+    "preference_ref": null,
+    "presentation": null,
+    "prompt": "「继续理解这段」——这一步接着上一段的结论往前走一格。\n\n原文三句里,上一段重点用了第二句的前半段:\"相等的路程不一定花相等的时间\",并说明了为什么在「两段路程相等」时直接平均两个速度是错的。这次我要指出第二句里之前一带而过的一个词:need not。\n\n「Equal distances need not take equal times」说的是**不一定**,不是**一定不**。所以这句话并没有宣布\"直接平均速度永远错\",它只是让你别默认\"路程一样、时间就一样\"。真正决定能不能直接平均的,是相等的是**路程**还是**时间**。\n\n下面两个情形都是按第一句的定义推出来的(数字例子是我自己编的,不是原文的例子):\n\n**情形 A —— 路程相等**(上一段用过的那组)\n两段各 60 km,速度分别是 60 km/h 和 30 km/h。\n总路程 = 120 km;总时间 = 60/60 + 60/30 = 1 + 2 = 3 h;平均速度 = 120 ÷ 3 = **40 km/h**。\n直接平均两个速度 → (60+30)/2 = 45 km/h,与定义算出的结果不符。\n\n**情形 B —— 时间相等**(只换这一个条件)\n两段各走 1 小时,速度分别是 60 km/h 和 30 km/h。\n总路程 = 60×1 + 30×1 = 90 km;总时间 = 1 + 1 = 2 h;平均速度 = 90 ÷ 2 = **45 km/h**。\n这时直接平均 (60+30)/2 = 45 km/h,恰好和定义算出来的一样。\n\n两个情形的两个速度完全相同、定义也完全相同,只是一个把**路程**定成相等,一个把**时间**定成相等,做法就反过来了。原因还是第一句的那个除法:\n\n平均速度 = (v₁·t₁ + v₂·t₂) ÷ (t₁ + t₂)\n\n把它读成\"两段速度在投票\":每段速度的票数就是它占用的时间 t。时间一样多 → 票数一样 → 结果就是普通平均(情形 B)。路程一样多时,慢的那段花的时间更长 → 票数更多 → 把结果往下拉(情形 A:45 被拉到 40)。这也正好说明第二句为什么用 \"need not\":路程相等时时间是被速度决定的结果,它会不等——除非两段速度刚好相同。\n\n所以第二句的实用价值是一个判据,不是一句禁令:看到\"两段速度求平均\",先问\"相等的是什么\"——\n- 相等的是**时间** → 直接平均,结果正确;\n- 相等的是**路程**(更常见) → 不能直接平均,回到定义:总路程 ÷ 总时间。\n\n小小的确认(不是考试,只是看你这边的感觉):如果题目说\"一半路程用 20 km/h,另一半路程用 60 km/h\",要判断能不能把 20 和 60 直接平均成 40,你依据的是这两个量里的哪一个相等?",
+    "target": {
+      "capability": "explanation",
+      "expected_performance": "Explain that the definition (total distance ÷ total time) makes the time each speed occupies the weight, so directly averaging two speeds is valid exactly when the times are equal and fails when the distances are equal; and state which quantity's equality is the criterion.",
+      "learning_focus": "平均速度中\"相等的是路程还是时间\"决定能否直接平均速度",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "end_lid": "1.1",
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "start_lid": "1.1"
+        }
+      ]
+    }
+  }
+]

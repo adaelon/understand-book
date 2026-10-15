@@ -1,0 +1,152 @@
+{
+  "samples": [
+    {
+      "input": {
+        "granularity": "far",
+        "k": 0,
+        "lid": "1.1"
+      },
+      "result": {
+        "anchor": "1.1",
+        "items": [],
+        "returned_count": 0,
+        "total_candidates": 2,
+        "truncated": true
+      }
+    },
+    {
+      "input": {
+        "granularity": "far",
+        "k": 1,
+        "lid": "1.1"
+      },
+      "result": {
+        "anchor": "1.1",
+        "items": [
+          {
+            "layer": "near",
+            "lid": "1",
+            "next_calls": [
+              {
+                "arguments": {
+                  "lid": "1"
+                },
+                "name": "book_text"
+              }
+            ],
+            "via": {
+              "kind": "tree",
+              "rel": "parent"
+            }
+          }
+        ],
+        "returned_count": 1,
+        "total_candidates": 2,
+        "truncated": true
+      }
+    },
+    {
+      "input": {
+        "granularity": "far",
+        "k": 2,
+        "lid": "1.1"
+      },
+      "result": {
+        "anchor": "1.1",
+        "items": [
+          {
+            "layer": "near",
+            "lid": "1",
+            "next_calls": [
+              {
+                "arguments": {
+                  "lid": "1"
+                },
+                "name": "book_text"
+              }
+            ],
+            "via": {
+              "kind": "tree",
+              "rel": "parent"
+            }
+          },
+          {
+            "layer": "near",
+            "lid": "1.2",
+            "next_calls": [
+              {
+                "arguments": {
+                  "lid": "1.2"
+                },
+                "name": "book_text"
+              }
+            ],
+            "via": {
+              "kind": "tree",
+              "rel": "next_sibling"
+            }
+          }
+        ],
+        "returned_count": 2,
+        "total_candidates": 2,
+        "truncated": false
+      }
+    },
+    {
+      "input": {
+        "granularity": "far",
+        "k": 10,
+        "lid": "1.1"
+      },
+      "result": {
+        "anchor": "1.1",
+        "items": [
+          {
+            "layer": "near",
+            "lid": "1",
+            "next_calls": [
+              {
+                "arguments": {
+                  "lid": "1"
+                },
+                "name": "book_text"
+              }
+            ],
+            "via": {
+              "kind": "tree",
+              "rel": "parent"
+            }
+          },
+          {
+            "layer": "near",
+            "lid": "1.2",
+            "next_calls": [
+              {
+                "arguments": {
+                  "lid": "1.2"
+                },
+                "name": "book_text"
+              }
+            ],
+            "via": {
+              "kind": "tree",
+              "rel": "next_sibling"
+            }
+          }
+        ],
+        "returned_count": 2,
+        "total_candidates": 2,
+        "truncated": false
+      }
+    }
+  ],
+  "structure": {
+    "at": null,
+    "available": false,
+    "key_stops": [],
+    "spine_index": null,
+    "spine_unit": null,
+    "throughlines": [],
+    "warning": "book_structure.json not attached"
+  }
+}

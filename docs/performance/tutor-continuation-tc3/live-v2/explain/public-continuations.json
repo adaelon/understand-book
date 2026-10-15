@@ -1,0 +1,28 @@
+[
+  {
+    "availability": {
+      "status": "offered"
+    },
+    "continuation": {
+      "options": [
+        {
+          "label": "我用两段行程的具体数字算一遍,让你看清分段速度为什么不能简单平均",
+          "move_kind": "compare",
+          "option_id": "apply-numbers",
+          "purpose": "把\"分母是总时间\"套到一段真实行程上,与分段速度的算术平均直接对照"
+        },
+        {
+          "label": "解释\"总时间必须为正\"这条限制意味着什么",
+          "move_kind": "explain",
+          "option_id": "positivity",
+          "purpose": "说明分母为零时定义为何失效,以及这条条件在什么情况下起作用"
+        }
+      ],
+      "recommended_option_id": "apply-numbers"
+    },
+    "delivery_ref": "delivery:turn_91d156344eb35fb3:avg-speed-denominator",
+    "expected_chat_head": "turn_91d156344eb35fb3",
+    "origin_turn_id": "turn_91d156344eb35fb3",
+    "target_summary": "平均速度定义中分母为总时间的理由"
+  }
+]

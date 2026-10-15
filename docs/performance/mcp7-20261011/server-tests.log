@@ -1,0 +1,21 @@
+
+running 16 tests
+test mcp_access::tests::mcp_access_schema_v9_upgrade_preserves_accounts_and_rolls_back_on_failure ... ok
+test mcp_access::tests::mcp_access_real_http_create_list_and_revoke_without_reader_workspace ... ok
+test mcp_access::tests::mcp_access_owner_isolation_one_time_secret_and_reopen ... ok
+test mcp_access::tests::mcp_access_rejects_missing_wrong_credentials_and_stale_web_sessions ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_initialize_and_all_tool_schemas_explain_the_reading_path ... ok
+test remote_mcp::tests::remote_mcp_exhaustion_skips_load_and_keeps_free_tools_available ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_errors_give_actionable_recovery_without_evidence_or_charge ... ok
+test remote_mcp::tests::remote_mcp_http_initialize_discover_read_continue_and_charge ... ok
+test remote_mcp::tests::remote_mcp_http_two_clients_compete_for_last_call ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_paid_expiry_and_exhausted_discovery_are_stable ... ok
+test remote_mcp::tests::mcp_contract::mcp_contract_discover_locate_read_and_cite_exact_pages ... ok
+test mcp_access::tests::mcp_access_account_routes_keep_cookie_csrf_and_private_state_boundaries ... ok
+test remote_mcp::tests::remote_mcp_identity_origin_methods_versions_and_envelopes ... ok
+test remote_mcp::tests::remote_mcp_failed_reads_authorization_and_ledger_never_deliver_or_charge ... ok
+test remote_mcp::tests::remote_mcp_http_free_then_paid_and_purchase_restores_access ... ok
+test mcp_access::tests::mcp_access_account_revocations_never_revive_old_credentials ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 702 filtered out; finished in 16.52s
+

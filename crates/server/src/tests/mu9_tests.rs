@@ -52,6 +52,7 @@ impl MigrationFixture {
                     content: r"原文 C:\books\中文 空格 保持不动".into(),
                     range: None,
                     selection_context: None,
+                    note: None,
                     note_placement: None,
                     citations: None,
                     source_session_id: Some("chat-old".into()),

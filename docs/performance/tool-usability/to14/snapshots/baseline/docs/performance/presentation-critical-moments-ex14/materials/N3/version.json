@@ -1,0 +1,28 @@
+{
+  "based_on": null,
+  "candidate_id": "candidate-1791457237623684600-1",
+  "content": {
+    "animation_assets": {},
+    "assumptions": [
+      "EX14 N3 自包含教学基准：整数整除和平面欧氏几何；不是书籍引文。"
+    ],
+    "content_files": {
+      "index.html": "<!doctype html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>必要条件与充分条件</title>\n<style>\n* { box-sizing: border-box; }\nbody { margin: 0; padding: 20px; color: #203044; background: #f5f7fa; font: 16px/1.75 system-ui, sans-serif; }\nmain { max-width: 720px; margin: auto; }\nh1 { font-size: 26px; line-height: 1.4; }\nh2 { font-size: 19px; margin-top: 0; }\nsection { padding: 16px; margin: 16px 0; border: 1px solid #cad4df; border-radius: 10px; background: white; }\n.relation { font-size: 20px; font-weight: 600; color: #174a7c; }\n</style>\n</head>\n<body><main id=\"page\">\n<h1>必要条件与充分条件</h1>\n<p>先确定推理的方向：A 成立能推出 B，不保证反向推理。</p>\n<section id=\"definition\"><h2>同一个关系，两种说法</h2>\n<p class=\"relation\">只要 A 就 B</p>\n<p>A 是 B 的充分条件；B 是 A 的必要条件。</p>\n<p>“充分”表示 A 足以保证 B；“必要”表示没有 B，就没有 A。</p></section>\n<section id=\"example-one\"><h2>例子一：整数整除</h2>\n<p>A：整数能被 4 整除。B：它是偶数。</p>\n<p>能被 4 整除足以保证是偶数。例如 8 同时满足 A 和 B。</p>\n<p>反向不成立：6 是偶数，却不能被 4 整除。</p></section>\n<section id=\"example-two\"><h2>例子二：平面欧氏几何</h2>\n<p>A：一个四边形是正方形。B：它是矩形。</p>\n<p>正方形一定是矩形，因此成为矩形是成为正方形的必要条件。</p>\n<p>反向不成立：长 3、宽 2 的矩形不是正方形。</p></section>\n</main></body>\n</html>\n"
+    },
+    "entrypoint": "index.html",
+    "initial_state": {},
+    "readable_content": "必要条件与充分条件。A 是 B 的充分条件：只要 A 就 B。B 是 A 的必要条件：没有 B，就没有 A。A 成立能推出 B，不保证反向推理。例子一：整数能被 4 整除，则它是偶数；6 是偶数却不能被 4 整除。例子二：在平面欧氏几何中，正方形是矩形；长 3、宽 2 的矩形不是正方形。",
+    "source_bindings": [],
+    "state_contract": {},
+    "title": "必要条件与充分条件"
+  },
+  "created_by_turn_id": "turn_ad22d58e66ad4f70",
+  "owner": {
+    "book_id": "sample-book",
+    "session_id": "chat_2026-09-17T00:00:00Z_0"
+  },
+  "reference": {
+    "presentation_id": "presentation-1791457237623633400-0",
+    "revision": 1
+  }
+}

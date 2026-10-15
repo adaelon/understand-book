@@ -293,7 +293,7 @@ describe("ProfileMemoryPanel", () => {
     });
 
     expect(wrapper.get(".profile-fact-card").text()).toContain("详细解释");
-    const globalTab = wrapper.findAll(".scope-tabs button").find((button) => button.text().includes("全局"));
+    const globalTab = wrapper.findAll(".scope-tabs button").find((button) => button.text().includes("所有书籍"));
     expect(globalTab).toBeTruthy();
     await globalTab!.trigger("click");
     expect(wrapper.get(".profile-fact-card").text()).toContain("理解核心论证");
@@ -311,7 +311,7 @@ describe("ProfileMemoryPanel", () => {
       props: { state, backfill: backfillState() },
     });
 
-    expect(wrapper.get(".pending-fact small").text()).toContain("历史回填");
+    expect(wrapper.get(".pending-fact small").text()).toContain("历史对话");
     await wrapper.get(".backfill-session-field select").setValue("session-b");
     const rangeInputs = wrapper.findAll(".backfill-range input");
     await rangeInputs[0].setValue(2);

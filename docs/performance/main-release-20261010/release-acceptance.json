@@ -1,0 +1,24 @@
+{
+  "decision": "proceed-with-recorded-limitation",
+  "release_build": "passed",
+  "original_build_and_tests_exit": 101,
+  "memory_tests_passed": 143,
+  "session_recap_tests_passed": 5,
+  "pdf_service_tests_passed": 1,
+  "reading_resumption_tests_passed": 2,
+  "network_notes_tests_passed": 1,
+  "presentation_initial": {
+    "passed": 20,
+    "failed": 3,
+    "ignored": 5
+  },
+  "followup_failures": "Shared /tmp/learning.db plus fixed test session IDs caused fixture collisions. All three affected followup tests pass in separate TMPDIR directories.",
+  "known_limitation": {
+    "test": "presentation_state_save_failure_and_invalid_semantics_return_no_receipt",
+    "expected": "PRESENTATION_STORAGE_FAILED",
+    "actual": "PRESENTATION_PUBLIC_CONTENT_INVALID",
+    "cause": "route_with_restore reads the latest state before observation validation; save_state maps the storage read error to invalid public content.",
+    "impact": "When presentation state directory cannot be read, save is rejected and no receipt is emitted, but error category is misleading. Normal saves and followups pass.",
+    "decision": "Nonblocking for deployment of requested main; recorded without modifying source."
+  }
+}

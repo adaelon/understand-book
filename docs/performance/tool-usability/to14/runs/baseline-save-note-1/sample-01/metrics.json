@@ -1,0 +1,15 @@
+{
+  "completed": true,
+  "recovered_errors": [],
+  "usage": {
+    "input_tokens": 24946,
+    "cached_input_tokens": 0,
+    "output_tokens": 250
+  },
+  "total_tokens": 25196,
+  "actual_cost": null,
+  "final": "{\"text\":\"当前没有可用的笔记保存工具，尚未保存。\\n\\n笔记内容：平均速度＝总路程／总时间。\",\"tool_calls\":[]}",
+  "exit_code": 0,
+  "timed_out": false,
+  "elapsed_ms": 24078.5917
+}

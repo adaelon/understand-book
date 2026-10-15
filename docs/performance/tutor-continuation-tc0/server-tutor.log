@@ -1,0 +1,123 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.46s
+     Running unittests src\lib.rs (target\debug\deps\server-e6140f0c20c22aad.exe)
+
+running 41 tests
+test tests::tutor_loop_tests::tutor_assessment_browser_host ... ignored, bounded real Server host for tutor-assessment.spec.ts
+test tests::tutor_loop_tests::tutor_browser_host ... ignored, bounded real Server host for tutor-activities.spec.ts
+test tests::tutor_loop_tests::tutor_live_model_source_and_move_acceptance ... ignored, requires configured real model; bounded two-turn Tutor acceptance
+test tests::tutor_loop_tests::tutor_live_open_rubric_assessment ... ignored, configured provider; three independently specified source-grounded assessment cases
+test tests::tutor_loop_tests::tutor_first_question_becomes_starting_intent_when_enabled ... ok
+test tests::tutor_loop_tests::tutor_scoring_keys_stay_out_of_history_and_public_trace ... ok
+test tests::mu3_tests::tutor_t15_publication_preserves_admission_without_private_build_files ... ok
+test tests::tutor_loop_tests::mu1c_tutor_material_keeps_original_binding_after_workspace_replacement ... ok
+test tests::tutor_loop_tests::tutor_t16_context_keeps_confirmed_background_without_inventing_knowledge ... ok
+test tests::tutor_loop_tests::tutor_candidate_failed_and_unmounted_deliveries_are_distinct ... ok
+test tests::tutor_loop_tests::tutor_malformed_evaluator_output_keeps_response_unassessed ... ok
+test tests::tutor_loop_tests::tutor_t16_accepted_objects_without_materials_stay_frozen_and_deliver ... ok
+test tests::tutor_loop_tests::tutor_t18_browser_host ... ignored, bounded real Server host for tutor-continuity.spec.ts
+test tests::tutor_loop_tests::tutor_frozen_assessment_uses_original_key_and_retains_attempt_conditions ... ok
+test tests::tutor_loop_tests::tutor_t16_target_requires_exact_current_turn_source_and_object_identity ... ok
+test tests::tutor_loop_tests::tutor_old_activity_and_object_revision_remain_bound_after_new_map ... ok
+test tests::tutor_loop_tests::tutor_open_assessment_is_isolated_budgeted_and_contract_checked ... ok
+test tests::tutor_loop_tests::tutor_resident_reads_sources_then_adapts_next_turn_and_stops_when_disabled ... ok
+test tests::tutor_tests::tutor_api_is_global_across_chat_and_reopen_and_reports_storage_failure ... ok
+test tests::tutor_loop_tests::tutor_ordinary_chat_records_understanding_without_enabling_teaching ... ok
+test tests::tutor_tests::tutor_readiness_is_separate_from_control_and_rejects_stale_or_missing_publication ... ok
+test tests::tutor_tests::tutor_existing_artifacts_work_without_build_or_publication_receipts ... ok
+test tests::tutor_tests::tutor_t15_admission_needs_artifacts_but_no_build_receipts_optional_teaching_or_pass2 ... ok
+test tests::tutor_loop_tests::tutor_ungraded_discrimination_is_referenced_and_self_report_remains_subjective ... ok
+test tests::tutor_loop_tests::tutor_two_activities_keep_exact_scene_help_and_cross_chat_ownership ... ok
+test tests::tutor_tests::tutor_t15_ignores_build_history_but_rejects_wrong_publication_source ... ok
+test tests::tutor_loop_tests::tutor_t16_source_only_resident_delivers_and_continues_after_reopen ... ok
+test tests::tutor_loop_tests::tutor_understanding_correction_changes_next_context_without_changing_public_map ... ok
+test tests::tutor_tests::tutor_t15_optional_assets_do_not_change_admission_and_only_accepted_refs_are_offered ... ok
+test tests::tutor_loop_tests::tutor_t17c_source_only_assessments_keep_help_and_reopen ... ok
+test tests::tutor_tests::tutor_t15_paper_uses_public_artifacts_without_private_reconciliation ... ok
+test tests::tutor_loop_tests::tutor_ordinary_reply_keeps_help_facts_and_unready_never_exposes_formal_moves ... ok
+test tests::tutor_loop_tests::jl5_teaching_receipts_keep_original_revision_across_chats_and_restart ... ok
+test tests::tutor_loop_tests::tutor_t17a_usage_trace_reads_only_committed_presentations_and_exact_scene ... ok
+test tests::tutor_tests::tutor_t18_readiness_endpoint_uses_foundation_and_preserves_enabled_intent ... ok
+test tests::tutor_loop_tests::tutor_t17a_ordinary_messages_and_closed_reading_survive_reopen ... ok
+test tests::tutor_loop_tests::tutor_visible_rubric_feedback_is_help_for_the_next_attempt ... ok
+test tests::tutor_loop_tests::tutor_t18_publications_add_materials_without_rebinding_prior_activities ... ok
+test tests::mu5_tests::tutor_t18_published_readiness_requires_the_exact_reader_grant ... ok
+test tests::tutor_loop_tests::tutor_t17b_resident_revises_and_adopts_ordinary_understanding ... ok
+test tests::mu5_tests::mu5_tutor_shared_revision_and_old_teaching_control_are_enforced ... ok
+
+test result: ok. 36 passed; 0 failed; 5 ignored; 0 measured; 650 filtered out; finished in 9.21s
+

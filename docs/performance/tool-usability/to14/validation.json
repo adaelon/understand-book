@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-12",
+  "server_test_binaries_compiled": ["baseline", "candidate"],
+  "evaluator_tests": {"passed": 11, "failed": 0, "log": "evaluator-tests.log"},
+  "fixed_trials": {"planned": 16, "started": 16, "pass": 13, "fail": 2, "unresolved_invalid_harness": 1},
+  "source_and_client_verification": "input-verification.json",
+  "math_oracle": {"exact_cases": 4, "actual_delivery_reviews": 5, "persisted_move_reviews": 6, "record": "content-review.md"},
+  "new_document_links": {"checked": 57, "broken": 0},
+  "javascript_syntax_files": 10,
+  "python_syntax": "passed",
+  "temporary_fixture_connection_files_left": 0,
+  "targeted_diff_whitespace": "passed",
+  "checkpoint_lines": 46,
+  "model_cost_currency": null,
+  "performance_improvement_demonstrated": false,
+  "product_issue_fixed_in_this_slice": false,
+  "production_deployed": false
+}

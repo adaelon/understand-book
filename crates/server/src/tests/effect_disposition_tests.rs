@@ -31,6 +31,7 @@ pub(super) fn fixture(highlight: bool) -> (tempfile::TempDir, AppState, AgentTur
                 content: "original evidence".into(),
                 range: highlight.then_some(memory::TextRange { start: 0, end: 1 }),
                 selection_context: None,
+                note: None,
                 note_placement: None,
                 citations: None,
                 source_session_id: Some(reference.session_id.clone()),

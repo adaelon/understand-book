@@ -1,0 +1,5 @@
+{
+  "category": "permission",
+  "error_code": "CAPABILITY_FORBIDDEN",
+  "message": "Operation or request origin is not permitted"
+}

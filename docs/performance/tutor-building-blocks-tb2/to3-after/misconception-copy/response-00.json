@@ -1,0 +1,16 @@
+{
+  "text": "I'll locate the relevant source text first.",
+  "tool_calls": [
+    {
+      "arguments": "{\"query\": \"&foo\", \"page_size\": 20}",
+      "id": "call_00_snaJWJMCB01FdEUwbzi20962",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"query\": \"bar\", \"page_size\": 20}",
+      "id": "call_01_iyoDvgRjoH5QEnp4G7Sw5586",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 13879
+}

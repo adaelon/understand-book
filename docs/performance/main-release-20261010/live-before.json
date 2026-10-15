@@ -1,0 +1,78 @@
+{
+  "phase": "before",
+  "origin": "https://understandbook.top",
+  "tls_verified": true,
+  "checks": [
+    "Reader login, existing publications and Tutor readiness",
+    "Existing book opens and private notes read successfully",
+    "Reader refresh restores the workspace",
+    "Admin login, usage and invitation deep-link refresh"
+  ],
+  "publication_count": 10,
+  "note_count": 0,
+  "readiness": [
+    {
+      "book_id": "a-survey-of-agent-memory-in-the-secondhalf",
+      "publication_id": "01a0f587-8838-7cd0-85e4-a37c411584d2",
+      "is_default": true,
+      "status": "ready"
+    },
+    {
+      "book_id": "ai-agent-engineering",
+      "publication_id": "01a0f58a-2aea-7742-a392-296745511508",
+      "is_default": true,
+      "status": "preparing"
+    },
+    {
+      "book_id": "ai-infra-book-complete",
+      "publication_id": "01a0f58a-3382-7e03-890a-e3e36adfe89e",
+      "is_default": false,
+      "status": "preparing"
+    },
+    {
+      "book_id": "ai-infra-book-complete",
+      "publication_id": "01a100f5-e3c3-72f3-8bfb-eb8a08774ab5",
+      "is_default": true,
+      "status": "ready"
+    },
+    {
+      "book_id": "kimik3",
+      "publication_id": "01a0f58a-39d3-7360-9238-fc2a104e5d46",
+      "is_default": true,
+      "status": "preparing"
+    },
+    {
+      "book_id": "mastering-rust",
+      "publication_id": "01a0f58a-4df3-7822-8f5d-f712568fd50a",
+      "is_default": true,
+      "status": "preparing"
+    },
+    {
+      "book_id": "quantification-essence",
+      "publication_id": "01a0f58a-509b-7730-bfb5-6233a8aab536",
+      "is_default": true,
+      "status": "ready"
+    },
+    {
+      "book_id": "quickstart-demo",
+      "publication_id": "01a0f58a-517a-7e51-8d54-c824805b78d9",
+      "is_default": true,
+      "status": "preparing"
+    },
+    {
+      "book_id": "sample-book",
+      "publication_id": "01a0f58a-5191-7ed3-a7a1-56cbd32ebc8c",
+      "is_default": true,
+      "status": "preparing"
+    },
+    {
+      "book_id": "understanding-transformer-from-the-perspective-of-associative-memory",
+      "publication_id": "01a0f58a-53e1-7262-92cb-e90ffa4b054d",
+      "is_default": true,
+      "status": "preparing"
+    }
+  ],
+  "errors": [],
+  "apiFailures": [],
+  "model_requests": 0
+}

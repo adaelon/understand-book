@@ -1,0 +1,170 @@
+[
+  {
+    "path": "CONTEXT.md",
+    "last_write_utc": "2026-10-11T00:35:51.8395645Z",
+    "bytes": 174586,
+    "status": " M CONTEXT.md",
+    "diff_numstat": "4\t1\tCONTEXT.md"
+  },
+  {
+    "path": "SESSION_CHECKPOINT.md",
+    "last_write_utc": "2026-10-11T01:14:48.1185468Z",
+    "bytes": 5558,
+    "status": " M SESSION_CHECKPOINT.md",
+    "diff_numstat": "27\t27\tSESSION_CHECKPOINT.md"
+  },
+  {
+    "path": "crates/runtime/src/tutor.rs",
+    "last_write_utc": "2026-10-11T01:09:38.5866435Z",
+    "bytes": 16568,
+    "status": " M crates/runtime/src/tutor.rs",
+    "diff_numstat": "13\t0\tcrates/runtime/src/tutor.rs"
+  },
+  {
+    "path": "crates/server/src/lib.rs",
+    "last_write_utc": "2026-10-11T00:35:24.8940679Z",
+    "bytes": 974735,
+    "status": " M crates/server/src/lib.rs",
+    "diff_numstat": "7\t1\tcrates/server/src/lib.rs"
+  },
+  {
+    "path": "crates/server/src/teaching.rs",
+    "last_write_utc": "2026-10-10T10:53:06.1784854Z",
+    "bytes": 92037,
+    "status": "",
+    "diff_numstat": ""
+  },
+  {
+    "path": "crates/server/src/run_admission.rs",
+    "last_write_utc": "2026-10-10T10:53:06.1724859Z",
+    "bytes": 63613,
+    "status": "",
+    "diff_numstat": ""
+  },
+  {
+    "path": "crates/server/src/tests/tutor_tests.rs",
+    "last_write_utc": "2026-10-09T12:20:19.6002597Z",
+    "bytes": 20162,
+    "status": "",
+    "diff_numstat": ""
+  },
+  {
+    "path": "crates/server/src/tests/tutor_loop_tests.rs",
+    "last_write_utc": "2026-10-10T10:53:06.1991656Z",
+    "bytes": 92339,
+    "status": "",
+    "diff_numstat": ""
+  },
+  {
+    "path": "crates/server/src/tests/mu5_tests.rs",
+    "last_write_utc": "2026-10-10T09:48:59.3437593Z",
+    "bytes": 47544,
+    "status": "",
+    "diff_numstat": ""
+  },
+  {
+    "path": "crates/server/src/tests/mu10_tests.rs",
+    "last_write_utc": "2026-10-09T09:01:15.8920864Z",
+    "bytes": 35171,
+    "status": "",
+    "diff_numstat": ""
+  },
+  {
+    "path": "crates/memory/src/teaching.rs",
+    "last_write_utc": "2026-10-09T09:48:46.4762723Z",
+    "bytes": 15729,
+    "status": "",
+    "diff_numstat": ""
+  },
+  {
+    "path": "crates/memory/src/learning_evidence.rs",
+    "last_write_utc": "2026-10-10T10:53:06.1286838Z",
+    "bytes": 29134,
+    "status": "",
+    "diff_numstat": ""
+  },
+  {
+    "path": "packages/web/src/App.vue",
+    "last_write_utc": "2026-10-11T00:47:20.3483205Z",
+    "bytes": 243272,
+    "status": " M packages/web/src/App.vue",
+    "diff_numstat": "104\t133\tpackages/web/src/App.vue"
+  },
+  {
+    "path": "packages/web/src/api.ts",
+    "last_write_utc": "2026-10-11T00:34:19.4703220Z",
+    "bytes": 59651,
+    "status": " M packages/web/src/api.ts",
+    "diff_numstat": "1\t0\tpackages/web/src/api.ts"
+  },
+  {
+    "path": "packages/web/src/network-client.ts",
+    "last_write_utc": "2026-10-11T00:35:24.8750623Z",
+    "bytes": 15213,
+    "status": " M packages/web/src/network-client.ts",
+    "diff_numstat": "2\t2\tpackages/web/src/network-client.ts"
+  },
+  {
+    "path": "packages/web/src/components/RightRail.vue",
+    "last_write_utc": "2026-10-11T00:36:24.9557316Z",
+    "bytes": 111546,
+    "status": " M packages/web/src/components/RightRail.vue",
+    "diff_numstat": "19\t112\tpackages/web/src/components/RightRail.vue"
+  },
+  {
+    "path": "packages/web/src/components/TutorActivities.vue",
+    "last_write_utc": "2026-09-30T11:04:24.5300903Z",
+    "bytes": 9433,
+    "status": "",
+    "diff_numstat": ""
+  },
+  {
+    "path": "packages/web/src/useTutorControl.ts",
+    "last_write_utc": "2026-10-10T13:06:11.8980552Z",
+    "bytes": 3555,
+    "status": " M packages/web/src/useTutorControl.ts",
+    "diff_numstat": "11\t9\tpackages/web/src/useTutorControl.ts"
+  },
+  {
+    "path": "packages/web/src/App.startup.test.ts",
+    "last_write_utc": "2026-10-11T00:49:54.9741084Z",
+    "bytes": 63199,
+    "status": " M packages/web/src/App.startup.test.ts",
+    "diff_numstat": "69\t1\tpackages/web/src/App.startup.test.ts"
+  },
+  {
+    "path": "packages/web/src/network-client.test.ts",
+    "last_write_utc": "2026-10-10T10:53:06.3145148Z",
+    "bytes": 14722,
+    "status": "",
+    "diff_numstat": ""
+  },
+  {
+    "path": "packages/web/src/components/RightRail.test.ts",
+    "last_write_utc": "2026-10-10T23:46:59.3014316Z",
+    "bytes": 66281,
+    "status": " M packages/web/src/components/RightRail.test.ts",
+    "diff_numstat": "59\t33\tpackages/web/src/components/RightRail.test.ts"
+  },
+  {
+    "path": "docs/adr/0163-tutor-continuation-and-contextual-reading-entry.md",
+    "last_write_utc": "2026-10-11T01:09:20.4208132Z",
+    "bytes": 18926,
+    "status": "?? docs/adr/0163-tutor-continuation-and-contextual-reading-entry.md",
+    "diff_numstat": ""
+  },
+  {
+    "path": "docs/切片方案-Tutor下一步协商与低门槛阅读入口.md",
+    "last_write_utc": "2026-10-11T01:10:03.2184766Z",
+    "bytes": 51463,
+    "status": "?? docs/切片方案-Tutor下一步协商与低门槛阅读入口.md",
+    "diff_numstat": ""
+  },
+  {
+    "path": "docs/代码链路.md",
+    "last_write_utc": "2026-10-11T01:11:51.3453986Z",
+    "bytes": 1501953,
+    "status": " M docs/代码链路.md",
+    "diff_numstat": "119\t0\t\"docs/\\344\\273\\243\\347\\240\\201\\351\\223\\276\\350\\267\\257.md\""
+  }
+]

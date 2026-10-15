@@ -1,0 +1,3352 @@
+import { routeStructureOrganization, structureOrganizationContracts, structureOrganizationGeneration, type StructureOrganizationKind } from "./book-structure-organization";
+import { STRUCTURE_DISCOVERY_PROMPT, structureDiscoverySources, structureDiscoverySections, structureSourceOutline,
+  accumulateStructureDiscovery, isStructureBodyExcerpt, type BookStructureDiscoveryProgress } from "./book-structure-discovery";
+import { createCandidateTransportContract } from "./executor-transport";
+import { readStructureCandidateCatalog } from "./book-structure-generation";
+import { createHash } from "node:crypto";
+import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "./build-execution-profile";
+import { BookStructureContributionCoverageError, materializeBookStructureContributions } from "./book-structure-materialization";
+import { buildReproducibleProfileArtifactHeader } from "./profile-artifact";
+import { hasCommittedAutomaticBuildPublication } from "./automatic-build-publication";
+import { readAcceptedBookStructureClose } from "./automatic-build-close";
+import { applyBookStructureRelationDeltas, type AcceptedBookStructureRelationDelta, type BookStructureRelationDelta } from "./book-structure-relations";
+import { bookStructureRelationContracts, routeBookStructureRelationSelections, bookStructureSelectedPairs, bookStructureRelationPredecessors, routeBookStructureRelationDelta,
+  type BookStructureRelationRoutedWorkUnit, type BookStructureRelationSelection } from "./book-structure-relation-routing";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
+import { deriveBookId } from "./book-id";
+import {
+  canonicalBuildJson,
+  computeBuildPlanDigest,
+  validateBuildPlanV1,
+  type BuildPlanDigestSource,
+  type BuildPlanV1,
+} from "./build-intent";
+import { standardDeepStageClosure } from "./build-capability";
+import { BUILD_STAGE_DAG, type BuildStageId } from "./build-workbench";
+import { assertTrustedPaperProjectionSource } from "./paper-projection-chain";
+import { resolveContentProfile, type ContentProfileId } from "./content-profile";
+import { loadBookSource } from "./book-source";
+import type { segment } from "./segment";
+import { splitWindows } from "./window";
+import { computeBuildStatus, type Pass1Artifact, type Pass1ArtifactMeta } from "./build-resume";
+import { pass1ContentHash } from "./build-resume";
+import { buildPass1Input } from "./pass1-input";
+import { buildProfiledPass1Input } from "./pass1-profile-input";
+import { mergeAndGate } from "./merge";
+import { computePaperMetadataRoutingStatus, routePaperMetadataWorkUnits } from "./paper-metadata-router";
+import {
+  computePaperLexiconRoutingStatus,
+  inspectPaperLexiconCommittedArtifact,
+  routePaperLexiconWorkUnitsWithRecovery,
+  type PaperLexiconCommittedArtifactV1,
+  type PaperLexiconRoutingPlan,
+} from "./paper-lexicon-router";
+import type { PaperLexiconArtifact } from "./paper-lexicon";
+import {
+  PROFILE_SIDECAR_ROUTER_VERSION,
+  analyzeProfileSidecarSemanticUnits,
+  type ProfileSidecarSemanticPacketV2,
+} from "./profile-sidecar-router";
+import { buildPass2Candidates, buildPass2WorkPacket, computePass2Status, pass2PacketHash } from "./pass2-orchestrate";
+import type { Pass2WorkPacket } from "./pass2-build";
+import { buildInputFingerprintHash } from "./build-workbench";
+import type { BuildInputFingerprint } from "./source-reconciliation";
+import type { ReadOnlyBase } from "./generated/ReadOnlyBase";
+import type { FormulaSemantics } from "./generated/FormulaSemantics";
+import type { TechnicalLearningDiscourseIndex } from "./discourse-index";
+import {
+  BOOK_STRUCTURE_EXECUTION_PROMPTS_V2,
+  BOOK_STRUCTURE_ROUTER_VERSION_V2,
+  bookStructureStitchHash,
+  bookStructureUnitHash,
+  buildBookStructureStitchPacket,
+  buildBookStructureSidecar,
+  buildBookStructureUnitSources,
+  createBookStructureExecutionContractsV2,
+  createBookStructureStitchFragmentWorkUnit,
+  BOOK_STRUCTURE_EXECUTION_BUDGET_V2,
+  routeBookStructureReductionLevelV2,
+  routeBookStructureStitchWorkUnitsV2,
+  routeBookStructureUnitWorkUnitsV2,
+  type BookStructureCandidate,
+  type BookStructureSidecar,
+  type BookStructureFragmentObservationV1,
+  type BookStructureFragmentInputV1,
+  type BookStructureRoutingRecoveryV1,
+  type BookStructureReductionChildV1,
+  type BookStructureReductionRoutedWorkUnitV2,
+  type BookStructureRoutedWorkUnitV2,
+  type BookStructureStitchReductionChildV1,
+  type BookStructureStitchRoutedWorkUnitV2,
+  type BookStructureStitchArtifact,
+  type BookStructureUnitArtifact,
+  type BookStructureUnitSource,
+} from "./book-structure";
+import {
+  createBookStructureGenerationTask,
+  freezeBookStructureGenerationTask,
+  readBookStructureGenerationArtifact,
+  readBookStructureGenerationTask,
+  type BookStructureGenerationTaskV1,
+} from "./book-structure-generation";
+import {
+  automaticBuildExtractionPolicy,
+  automaticBuildGenerationArtifactPath,
+  extractionPolicyFromSemanticContract,
+  inspectSemanticArtifact,
+  isAutomaticBuildTaskPolicyBindingV2,
+  readAutomaticBuildStagePolicyLock,
+  semanticContractFromExtractionPolicy,
+  semanticArtifactMatches,
+  sameBuildContent,
+  type AutomaticBuildTaskPolicyBinding,
+  type AutomaticBuildTaskPolicyBindingV1,
+  type ExtractionQualityProfile,
+  type SemanticArtifactEnvelopeV3,
+  type SemanticArtifactExpectation,
+  type SemanticBuildStage,
+} from "./semantic-artifact";
+import {
+  buildWorkUnitCost,
+  buildWorkUnitCostFromBudgetProof,
+  createWorkUnitDescriptor,
+  createWorkUnitDescriptorV3,
+  isWorkUnitDescriptorV4,
+  routePass1WindowWorkUnits,
+  taskPolicyBindingForWorkUnit,
+  type WorkUnitDescriptor,
+  type WorkUnitDescriptorV2,
+  type WorkUnitDescriptorV3,
+  type WorkUnitDescriptorV4,
+  type WorkUnitKind,
+  type WorkUnitStage,
+} from "./stage-work-unit";
+import { estimateTokens } from "./window";
+import {
+  renderBookStructureModelInput,
+  renderPass1ModelInput,
+  renderProfileSidecarModelInput,
+  inspectRenderedModelInput,
+  type ModelInputRenderRequest,
+} from "./model-input-renderer";
+import { evaluateModelInputBudget } from "./model-input-budget";
+import {
+  blockedAutomaticBuildRoute,
+  createAutomaticBuildRecoveryEnvelope,
+  readyAutomaticBuildRoute,
+  type AutomaticBuildRecoveryEnvelopeV1,
+  type AutomaticBuildRouteResult,
+} from "./automatic-build-recovery";
+import {
+  automaticBuildTaskPolicyBindingFromLease,
+  inspectAutomaticBuildTaskClaim,
+} from "./automatic-build-lease";
+import { listActiveAutomaticBuildTaskLeases } from "./automatic-build-lease";
+import { automaticBuildLegacyStageArtifactPath } from "./automatic-build-legacy";
+import {
+  AutomaticBuildPolicyGenerationConflictError,
+  createAutomaticBuildStagePolicySet,
+  materializeAdoptedAutomaticBuildGenerationArtifact,
+  prepareAutomaticBuildPolicyMigrations,
+  inspectAutomaticBuildStagePolicySet,
+  readAutomaticBuildCurrentMigration,
+  recordAutomaticBuildPolicyMigration,
+  resolveAutomaticBuildStagePolicyMember,
+  type AutomaticBuildPolicyMigrationCurrent,
+  type AutomaticBuildPolicyMigrationPreviousV2,
+  type AutomaticBuildStagePolicySetV3,
+} from "./automatic-build-policy-generation";
+import {
+  createPass1ShadowTask,
+  freezePass1ShadowTask,
+  pass1LidStitchPolicy,
+  pass1ModelSlicePolicyMembers,
+  projectPass1AdoptedWholeArtifact,
+  pass1SourceFragmentPolicy,
+  routePass1ShadowWorkUnits,
+  routePass1StitchLevel,
+  verifyPass1ShadowArtifact,
+  type Pass1ShadowTaskV1,
+  type Pass1ShadowVerifiedChildV1,
+  type Pass1ShadowWorkUnitV1,
+} from "./pass1-reduction";
+import {
+  createProfileSidecarDiscourseShadowTask,
+  createProfileSidecarSemanticFastPathTask,
+  freezeProfileSidecarDiscourseShadowTask,
+  freezeProfileSidecarSemanticFastPathTask,
+  profileSidecarDiscourseFragmentPolicy,
+  profileSidecarDiscourseReducePolicy,
+  profileSidecarMapReducePolicyMembers,
+  routeProfileSidecarDiscourseFragmentWorkUnits,
+  routeProfileSidecarDiscourseReductionLevel,
+  verifyProfileSidecarDiscourseShadowArtifact,
+  type ProfileSidecarDiscourseShadowTaskV1,
+  type ProfileSidecarDiscourseShadowWorkUnitV1,
+  type ProfileSidecarDiscourseVerifiedChildV1,
+  type ProfileSidecarSemanticFastPathTaskV1,
+} from "./profile-sidecar-reduction";
+import type {
+  AutomaticBuildStageQualityReportV2,
+  AutomaticBuildStageQualityRoutingEvidenceV2,
+} from "./automatic-build-quality";
+import {
+  AUTOMATIC_BUILD_MODEL_INPUT_BUDGET_V1,
+  AUTOMATIC_BUILD_ROUTING_RELEASE,
+} from "./automatic-build-protocol";
+
+export type AutomaticBuildStage =
+  | "pass1"
+  | "paper_metadata"
+  | "paper_lexicon"
+  | "profile_sidecar"
+  | "pass2"
+  | "book_structure"
+  | "formal_objects"
+  | "cognitive_materials"
+  | "teaching_publish"
+  | "paper_reading_guide";
+
+import { routeTeachingBuildStages, type TeachingGenerationTask, type TeachingBuildInput } from "./teaching-build";
+import { prepareBuildRetrieval, readBuildRetrievalState, retrievalConfigurationMatches, type BuildRetrievalRuntime, type TeachingRetrievalRequest } from "./automatic-build-retrieval";
+import { readAutomaticBuildStageUsage } from "./automatic-build-metrics";
+import type { BuildRetrievalSelection } from "./build-intent";
+
+export type SemanticExtractor =
+  | "formal-objects-extractor"
+  | "cognitive-materials-extractor"
+  | "teaching-source-reviewer"
+  | "pass1-local-extractor"
+  | "pass1-source-fragment-extractor"
+  | "pass1-lid-stitcher"
+  | "paper-metadata-extractor"
+  | "paper-lexicon-extractor"
+  | "profile-sidecar-discourse-fragment-extractor"
+  | "profile-sidecar-discourse-reducer"
+  | "profile-sidecar-extractor"
+  | "pass2-longrange-linker"
+  | "book-structure-outline" | "book-structure-chapter" | "book-structure-chapter-selection" | "book-structure-themes"
+  | "book-structure-extractor"
+  | "book-structure-v2-extractor"
+  | "book-structure-fragment-extractor"
+  | "book-structure-discovery-extractor"
+  | "book-structure-reducer"
+  | "book-structure-stitch-fragment-extractor"
+  | "book-structure-stitch-reducer"
+  | "book-structure-relation-selector"
+  | "book-structure-relation-extractor";
+
+export interface AutomaticBuildTarget {
+  kind: "paper_workspace" | "source_file";
+  profile_id: ContentProfileId;
+  book_id: string;
+  root_dir: string;
+  workspace_dir: string;
+  source_path: string;
+  target_ref: BuildTargetRefV2;
+}
+
+export interface AutomaticBuildTargetResolutionOptions {
+  book_id?: string;
+}
+
+export interface BuildTargetRefV2 {
+  version: "build_target_ref.v2";
+  workspace_dir: string;
+  book_id: string;
+  profile_id: ContentProfileId;
+  input_fingerprint: string;
+}
+
+export type AutomaticBuildGenerationTaskV1 =
+  | { kind: "teaching"; task: TeachingGenerationTask }
+  | { kind: "pass1"; task: Pass1ShadowTaskV1 }
+  | { kind: "profile_sidecar_discourse"; task: ProfileSidecarDiscourseShadowTaskV1 }
+  | { kind: "profile_sidecar_fast_path"; task: ProfileSidecarSemanticFastPathTaskV1 }
+  | { kind: "book_structure"; task: BookStructureGenerationTaskV1 };
+
+export interface AutomaticBuildStageState {
+  object_alignment?: { total_objects: number; resolved_objects: number; remaining_objects: number };
+  published_freshness_digest?: string;
+  retrieval_preparation?: TeachingRetrievalRequest;
+  retrieval_remaining?: { records: number; documents: number; queries: number; calls: number | null };
+  teaching_blocked?: string;
+  teaching_preparation_violations?: Array<{ code: string; actual: number; limit: number }>;
+  structure_blocked?: string;
+  structure_budget_blocked?: ReturnType<typeof routeStructureOrganization>["budget_blocked"];
+  book_structure_materialized?: BookStructureStitchArtifact;
+  book_structure_progress?: { discovery?: BookStructureDiscoveryProgress; organization?: ReturnType<typeof routeStructureOrganization>["progress"]; local: { done: number; total: number }; selection: { done: number; total: number }; relation: { done: number; total: number }; publication: "pending" | "ready" | "published" };
+  stage: AutomaticBuildStage;
+  pending_tasks: string[];
+  closed: boolean;
+  task_bindings?: Record<string, AutomaticBuildTaskPolicyBinding>;
+  work_units?: WorkUnitDescriptor[];
+  pending_work_units?: WorkUnitDescriptor[];
+  policy_set?: AutomaticBuildStagePolicySetV3;
+  preparation_required?: boolean;
+  quality_routing?: AutomaticBuildStageQualityRoutingEvidenceV2;
+  generation_tasks?: Record<string, AutomaticBuildGenerationTaskV1>;
+}
+
+export interface AutomaticBuildSnapshot {
+  target: AutomaticBuildTarget;
+  stages: AutomaticBuildStageState[];
+}
+export interface AutomaticBuildSnapshotOptions {
+  /** The confirmed plan's stages; omitted for an unrestricted inspection. */
+  public_stage_closure?: BuildPlanV1["public_stage_closure"];
+  /** Accepted public dependencies selected by the plan, independent of producer upgrades. */
+  reuse?: BuildPlanV1["reuse"];
+  /** Observe one extraction stage from its public dependencies, without routing the whole build. */
+  stage?: Exclude<SemanticBuildStage, "formal_objects" | "cognitive_materials" | "teaching_publish">;
+  quality_profile?: ExtractionQualityProfile;
+  execution_profile?: BuildExecutionProfileV1;
+  retrieval?: BuildRetrievalSelection;
+}
+export interface AutomaticBuildRetrievalAuthorization {
+  plan: BuildPlanV1;
+  runtime: BuildRetrievalRuntime;
+  signal?: AbortSignal;
+}
+export type AutomaticBuildAsyncPreparationResult = AutomaticBuildRouteResult<AutomaticBuildSnapshot>
+  | { status: "needs_user"; action: Extract<AutomaticBuildAction, { kind: "needs_user" }> | AutomaticBuildPlanGateAction };
+
+export interface AutomaticBuildStageFreshnessInspectionV1 {
+  version: "automatic_build_stage_freshness.v1";
+  artifact: `public.${AutomaticBuildStage}`;
+  stage: AutomaticBuildStage;
+  fresh: boolean;
+  freshness_digest?: string;
+}
+
+export function inspectAutomaticBuildStageFreshness(
+  snapshot: AutomaticBuildSnapshot,
+  options: { quality_profile?: ExtractionQualityProfile } = {},
+): AutomaticBuildStageFreshnessInspectionV1[] {
+  const profile = resolveContentProfile(snapshot.target.profile_id);
+  const qualityProfile = options.quality_profile ?? "full";
+  return snapshot.stages.map((state) => {
+    const policyContracts = state.policy_set
+      ? state.policy_set.members.map((member) => ({
+          kind: member.kind,
+          policy_generation_id: member.policy_generation_id,
+          semantic_contract: member.semantic_contract,
+        }))
+      : state.stage === "paper_reading_guide"
+        ? [{ kind: "paper_reading_guide", verification_version: "paper_reading_guide_verification.v1" }]
+        : [{
+            kind: state.stage,
+            semantic_contract: semanticContractFromExtractionPolicy(
+              automaticBuildExtractionPolicy(state.stage, profile, qualityProfile),
+            ),
+          }];
+    const freshnessDigest = state.closed && state.published_freshness_digest ? state.published_freshness_digest : state.closed
+      ? createHash("sha256").update(canonicalBuildJson({
+          version: state.policy_set
+            ? "automatic_build_stage_freshness_identity.v3"
+            : "automatic_build_stage_freshness_identity.v1",
+          target: snapshot.target.target_ref,
+          stage: state.stage,
+          policy_contracts: policyContracts,
+        }), "utf8").digest("hex")
+      : undefined;
+    return {
+      version: "automatic_build_stage_freshness.v1",
+      artifact: `public.${state.stage}`,
+      stage: state.stage,
+      fresh: state.closed,
+      ...(freshnessDigest ? { freshness_digest: freshnessDigest } : {}),
+    };
+  });
+}
+
+interface LoadedAutomaticBook {
+  source: string;
+  lidNodes: ReturnType<typeof segment>;
+  byLid: Map<string, ReturnType<typeof segment>[number]>;
+  windows: ReturnType<typeof splitWindows>;
+}
+
+class AutomaticBuildSnapshotRecoverySignal extends Error {
+  readonly name = "AutomaticBuildSnapshotRecoverySignal";
+
+  constructor(readonly recovery: AutomaticBuildRecoveryEnvelopeV1) {
+    super(`automatic build snapshot blocked: ${recovery.code}`);
+  }
+}
+
+function assertNoActiveLegacyGenerationLease(
+  target: AutomaticBuildTarget,
+  stage: "pass1" | "profile_sidecar" | "book_structure",
+): void {
+  const affectedWorkUnits: Array<{ work_unit_id: string; evidence_lids: string[] }> = [];
+  for (const inspection of listActiveAutomaticBuildTaskLeases(target, stage)) {
+    const binding = automaticBuildTaskPolicyBindingFromLease(inspection.lease);
+    if (binding && isAutomaticBuildTaskPolicyBindingV2(binding)) continue;
+    affectedWorkUnits.push({ work_unit_id: inspection.lease.work_unit_id, evidence_lids: [] });
+  }
+  if (!affectedWorkUnits.length) return;
+  throw new AutomaticBuildSnapshotRecoverySignal(createAutomaticBuildRecoveryEnvelope({
+    phase: "migration",
+    code: "policy_generation_migration_required",
+    stage,
+    target_ref: target.target_ref,
+    affected_work_units: affectedWorkUnits,
+    retryable: true,
+    recovery_actions: ["retry_plan"],
+  }));
+}
+
+const AUTOMATIC_BUILD_SHADOW_STAGE_INPUT_LIMIT_TOKENS =
+  AUTOMATIC_BUILD_MODEL_INPUT_BUDGET_V1.stage_body_limit_tokens;
+const AUTOMATIC_BUILD_V3_MODEL_BUDGET = AUTOMATIC_BUILD_MODEL_INPUT_BUDGET_V1;
+
+function canonicalSourceFingerprint(source: string): string {
+  return createHash("sha256").update(source, "utf8").digest("hex");
+}
+
+function currentV3QualityReportPassed(
+  target: AutomaticBuildTarget,
+  stage: SemanticBuildStage,
+  policySet: AutomaticBuildStagePolicySetV3,
+  qualityProfile: ExtractionQualityProfile,
+): boolean {
+  const file = path.join(
+    target.workspace_dir,
+    ".build",
+    "automatic-build",
+    "v2",
+    "quality",
+    `${stage}.json`,
+  );
+  if (!existsSync(file)) return false;
+  try {
+    const report = readJson<AutomaticBuildStageQualityReportV2>(file);
+    const { digest, ...core } = report;
+    const reportDigest = createHash("sha256").update(JSON.stringify(core), "utf8").digest("hex");
+    const exactKeys = (value: object, expected: string[]): boolean => (
+      Object.keys(value).sort().join("\0") === [...expected].sort().join("\0")
+    );
+    const count = (value: number): boolean => Number.isSafeInteger(value) && value >= 0;
+    return report.version === "automatic_build_stage_quality_report.v2"
+      && exactKeys(report, [
+        "version",
+        "target_ref",
+        "stage",
+        "quality_profile",
+        "goldset",
+        "accounting",
+        "routing",
+        "coverage",
+        "reduction",
+        "integrity",
+        "quality",
+        "gate_status",
+        "digest",
+      ])
+      && sameBuildContent(report.target_ref, target.target_ref)
+      && report.stage === stage
+      && report.quality_profile === qualityProfile
+      && report.gate_status === "passed"
+      && canonicalBuildJson(report.routing.policy_generations) === canonicalBuildJson(
+        policySet.members.map((member) => ({
+          kind: member.kind,
+          policy_generation_id: member.policy_generation_id,
+          semantic_contract: member.semantic_contract,
+        })),
+      )
+      && count(report.routing.eligible_model_units)
+      && report.routing.proven_model_units === report.routing.eligible_model_units
+      && report.routing.invalid_or_missing_proofs === 0
+      && report.coverage.covered_core_utf16 === report.coverage.expected_core_utf16
+      && report.coverage.gap_utf16 === 0
+      && report.coverage.core_overlap_utf16 === 0
+      && report.reduction.missing_or_duplicate_parent_lids === 0
+      && report.integrity.status === "passed"
+      && report.integrity.missing_artifacts === 0
+      && report.integrity.stale_artifacts === 0
+      && report.integrity.legacy_artifacts === 0
+      && report.integrity.policy_generations >= 1
+      && report.integrity.policy_status === "v3_policy_generation_bound"
+      && report.integrity.violations.length === 0
+      && report.quality.status === "passed"
+      && report.quality.violations.length === 0
+      && /^[a-f0-9]{64}$/u.test(digest)
+      && digest === reportDigest;
+  } catch {
+    return false;
+  }
+}
+
+type AutomaticBuildProductionMigrationDecision =
+  | "unmanaged"
+  | "adopt_exact"
+  | "rebuild"
+  | "deterministic_skip";
+
+function productionMigrationRecoveryCode(
+  reason: string,
+): AutomaticBuildRecoveryEnvelopeV1["code"] {
+  if (reason === "budget_proof_invalid") return "budget_proof_invalid";
+  if (reason === "model_input_unsplittable") return "model_input_unsplittable";
+  if (reason === "policy_generation_conflict") return "policy_generation_conflict";
+  return "policy_generation_migration_required";
+}
+
+function productionMigrationRecoveryActions(
+  reason: string,
+): AutomaticBuildRecoveryEnvelopeV1["recovery_actions"] {
+  if (reason === "model_input_unsplittable") return ["upgrade_executor"];
+  if (reason === "budget_proof_invalid" || reason === "active_lease") return ["retry_plan"];
+  return ["migrate_policy"];
+}
+
+function productionMigrationContext(target: AutomaticBuildTarget, policySet: AutomaticBuildStagePolicySetV3, prepare = false) {
+  try {
+    if (prepare) return { required: false, writer: prepareAutomaticBuildPolicyMigrations(target, policySet) };
+    return { required: !inspectAutomaticBuildStagePolicySet(target, policySet), writer: undefined };
+  } catch (error) {
+    if (!(error instanceof AutomaticBuildPolicyGenerationConflictError)) throw error;
+    throw new AutomaticBuildSnapshotRecoverySignal(createAutomaticBuildRecoveryEnvelope({
+      phase: "migration", code: "policy_generation_conflict", stage: policySet.stage,
+      target_ref: target.target_ref, router_version: policySet.members[0].semantic_contract.router_version,
+      affected_work_units: [], retryable: false, recovery_actions: ["migrate_policy"],
+    }));
+  }
+}
+
+function applyAutomaticBuildProductionMigration(input: {
+  execution_profile?: BuildExecutionProfileV1;
+  target: AutomaticBuildTarget;
+  stage: SemanticBuildStage;
+  from_policy_generation_id: string;
+  policy_set: AutomaticBuildStagePolicySetV3;
+  current: AutomaticBuildPolicyMigrationCurrent;
+  previous?: AutomaticBuildPolicyMigrationPreviousV2;
+  migrations: ReturnType<typeof productionMigrationContext>;
+  project_adopted_payload?: (payload: unknown) => unknown;
+}): AutomaticBuildProductionMigrationDecision {
+  const current = input.current;
+  const descriptor = current.route === "model" ? current.descriptor : undefined;
+  const policy = current.route === "model"
+    ? current.descriptor.policy_fingerprint
+    : current.policy_fingerprint;
+  const affected = {
+    work_unit_id: current.route === "model" ? current.descriptor.work_unit_id : current.work_unit_id,
+    evidence_lids: current.route === "model" ? current.descriptor.evidence_lids : current.evidence_lids,
+    ...(descriptor ? {
+      estimated_tokens: isWorkUnitDescriptorV4(descriptor)
+        ? descriptor.execution_budget_proof.estimated_rendered_tokens
+        : descriptor.input_budget_proof.estimated_rendered_tokens,
+      limit_tokens: isWorkUnitDescriptorV4(descriptor)
+        ? descriptor.execution_budget_proof.effective_body_limit_tokens
+        : descriptor.input_budget_proof.effective_body_limit_tokens,
+    } : {}),
+  };
+  let migration: ReturnType<typeof recordAutomaticBuildPolicyMigration>;
+  try {
+    const existing = readAutomaticBuildCurrentMigration(input);
+    const currentArtifact = descriptor && automaticBuildGenerationArtifactPath(input.target, input.stage,
+      resolveAutomaticBuildStagePolicyMember(input.policy_set, descriptor.kind, descriptor.policy_fingerprint).policy_generation_id,
+      descriptor.work_unit_id);
+    if (currentArtifact && existsSync(currentArtifact)) return "rebuild";
+    if (existing && existing.decision !== "adopt_exact") return existing.decision;
+    input.migrations.required = true;
+    if (!input.migrations.writer) return current.route === "deterministic_skip" ? "deterministic_skip" : "rebuild";
+    const priorGeneration = current.route === "model" && !input.previous
+      ? input.migrations.writer.adopt({
+            target: input.target,
+          stage: input.stage,
+          policy_set: input.policy_set,
+          current,
+          now: AUTOMATIC_BUILD_ROUTING_RELEASE.activated_at,
+        })
+      : undefined;
+    migration = priorGeneration ?? input.migrations.writer.record({
+      execution_profile: input.execution_profile,
+      target: input.target,
+      stage: input.stage,
+      from_policy_generation_id: input.from_policy_generation_id,
+      policy_set: input.policy_set,
+      current,
+      ...(input.previous ? { previous: input.previous } : {}),
+      now: AUTOMATIC_BUILD_ROUTING_RELEASE.activated_at,
+    });
+  } catch (error) {
+    if (!(error instanceof AutomaticBuildPolicyGenerationConflictError)) throw error;
+    throw new AutomaticBuildSnapshotRecoverySignal(createAutomaticBuildRecoveryEnvelope({
+      phase: "migration",
+      code: "policy_generation_conflict",
+      stage: input.stage,
+      target_ref: input.target.target_ref,
+      router_version: policy.router_version,
+      affected_work_units: [affected],
+      retryable: false,
+      recovery_actions: ["migrate_policy"],
+    }));
+  }
+  if (migration.decision === "blocked") {
+    throw new AutomaticBuildSnapshotRecoverySignal(createAutomaticBuildRecoveryEnvelope({
+      phase: "migration",
+      code: productionMigrationRecoveryCode(migration.reason),
+      stage: input.stage,
+      target_ref: input.target.target_ref,
+      router_version: policy.router_version,
+      affected_work_units: [affected],
+      retryable: migration.retryable,
+      recovery_actions: productionMigrationRecoveryActions(migration.reason),
+    }));
+  }
+  if (migration.decision === "adopt_exact") {
+    if (current.route !== "model") {
+      throw new Error("only a model work unit can adopt an exact semantic artifact");
+    }
+    materializeAdoptedAutomaticBuildGenerationArtifact({
+      execution_profile: input.execution_profile,
+      target: input.target,
+      stage: input.stage,
+      policy_set: input.policy_set,
+      current,
+      receipt: migration,
+      ...(input.project_adopted_payload
+        ? { project_payload: input.project_adopted_payload }
+        : {}),
+    });
+  }
+  return migration.decision;
+}
+
+function pass1RoutingRecovery(input: {
+  target: AutomaticBuildTarget;
+  work_unit_id: string;
+  evidence_lids: string[];
+  router_version: string;
+  estimated_tokens: number;
+  limit_tokens: number;
+}): AutomaticBuildRecoveryEnvelopeV1 {
+  return createAutomaticBuildRecoveryEnvelope({
+    phase: "routing",
+    code: "model_input_unsplittable",
+    stage: "pass1",
+    target_ref: input.target.target_ref,
+    router_version: input.router_version,
+    affected_work_units: [{
+      work_unit_id: input.work_unit_id,
+      evidence_lids: input.evidence_lids,
+      estimated_tokens: input.estimated_tokens,
+      limit_tokens: input.limit_tokens,
+    }],
+    retryable: false,
+    recovery_actions: ["migrate_policy"],
+  });
+}
+
+function assertAutomaticBuildShadowInputRoutable(input: {
+  target: AutomaticBuildTarget;
+  stage: SemanticBuildStage;
+  work_unit_id: string;
+  evidence_lids: string[];
+  policy_fingerprint: ReturnType<typeof automaticBuildExtractionPolicy>;
+  render_request: ModelInputRenderRequest;
+  limit_tokens?: number;
+  on_over_limit?: "policy_generation_migration_required" | "model_input_unsplittable";
+}): void {
+  const limitTokens = input.limit_tokens ?? AUTOMATIC_BUILD_SHADOW_STAGE_INPUT_LIMIT_TOKENS;
+  const rendered = inspectRenderedModelInput(input.render_request);
+  if (rendered.estimated_tokens <= limitTokens) return;
+  const code = input.on_over_limit ?? "model_input_unsplittable";
+  throw new AutomaticBuildSnapshotRecoverySignal(createAutomaticBuildRecoveryEnvelope({
+    phase: "routing",
+    code,
+    stage: input.stage,
+    target_ref: input.target.target_ref,
+    router_version: input.policy_fingerprint.router_version,
+    affected_work_units: [{
+      work_unit_id: input.work_unit_id,
+      evidence_lids: input.evidence_lids,
+      estimated_tokens: rendered.estimated_tokens,
+      limit_tokens: limitTokens,
+    }],
+    retryable: false,
+    recovery_actions: code === "policy_generation_migration_required"
+      ? ["migrate_policy"]
+      : ["upgrade_executor"],
+  }));
+}
+
+export type AutomaticBuildAction =
+  | { kind: "needs_user"; reason: "preparation_required" | "retrieval_provider_failed" | "retrieval_cancelled" | "build_plan_budget_changed" | "build_plan_retrieval_drift"; stage: AutomaticBuildStage; message: string }
+  | { kind: "needs_user"; reason: "teaching_preparation_incomplete" | "structure_preparation_incomplete" | "structure_execution_budget_exceeded";
+      stage: AutomaticBuildStage; message: string; violations?: Array<{ code: string; actual: number; limit: number }> }
+  | {
+      kind: "extract";
+      stage: AutomaticBuildStage;
+      extractor: SemanticExtractor;
+      task_ids: string[];
+      max_attempts: 3;
+      task_bindings?: Record<string, AutomaticBuildTaskPolicyBinding>;
+      work_units?: WorkUnitDescriptor[];
+    }
+  | { kind: "close_stage"; stage: AutomaticBuildStage }
+  | { kind: "done"; book_id: string; workspace_dir: string };
+
+export type AutomaticBuildPlanGateReason =
+  | "build_plan_required"
+  | "build_plan_invalid"
+  | "build_plan_unconfirmed"
+  | "build_plan_digest_drift"
+  | "build_plan_book_drift"
+  | "build_plan_source_drift"
+  | "build_plan_profile_drift"
+  | "build_plan_policy_drift"
+  | "build_plan_closure_drift"
+  | "build_plan_freshness_drift";
+
+export interface AutomaticBuildPlanGateAction {
+  kind: "needs_user";
+  reason: AutomaticBuildPlanGateReason;
+  message: string;
+  plan_id?: string;
+  plan_digest?: string;
+  stage?: AutomaticBuildStage;
+}
+
+const EXTRACTORS: Partial<Record<AutomaticBuildStage, SemanticExtractor>> = {
+  formal_objects: "formal-objects-extractor",
+  cognitive_materials: "cognitive-materials-extractor",
+  teaching_publish: "teaching-source-reviewer",
+  pass1: "pass1-local-extractor",
+  paper_metadata: "paper-metadata-extractor",
+  paper_lexicon: "paper-lexicon-extractor",
+  profile_sidecar: "profile-sidecar-extractor",
+  pass2: "pass2-longrange-linker",
+  book_structure: "book-structure-extractor",
+};
+
+export function automaticBuildExtractorForStage(stage: SemanticBuildStage): SemanticExtractor {
+  const extractor = EXTRACTORS[stage];
+  if (!extractor) throw new Error(`semantic stage has no automatic build extractor: ${stage}`);
+  return extractor;
+}
+
+export function automaticBuildExtractorForWorkUnitKind(
+  stage: SemanticBuildStage,
+  kind: WorkUnitKind,
+  profile?: ContentProfileId,
+): SemanticExtractor {
+  if (stage === "book_structure" && kind === "structure_fragment" && profile === "technical_learning") return "book-structure-discovery-extractor";
+  if (kind === "pass1_source_slice") {
+    if (stage !== "pass1") throw new Error(`${kind} does not belong to stage ${stage}`);
+    return "pass1-source-fragment-extractor";
+  }
+  if (kind === "pass1_lid_stitch") {
+    if (stage !== "pass1") throw new Error(`${kind} does not belong to stage ${stage}`);
+    return "pass1-lid-stitcher";
+  }
+  if (kind === "profile_sidecar_discourse_fragment") {
+    if (stage !== "profile_sidecar") throw new Error(`${kind} does not belong to stage ${stage}`);
+    return "profile-sidecar-discourse-fragment-extractor";
+  }
+  if (kind === "profile_sidecar_discourse_reduce") {
+    if (stage !== "profile_sidecar") throw new Error(`${kind} does not belong to stage ${stage}`);
+    return "profile-sidecar-discourse-reducer";
+  }
+  if (kind === "structure_unit" || kind === "structure_stitch") {
+    if (stage !== "book_structure") throw new Error(`${kind} does not belong to stage ${stage}`);
+    return "book-structure-v2-extractor";
+  }
+  if (kind === "structure_fragment") {
+    if (stage !== "book_structure") throw new Error(`${kind} does not belong to stage ${stage}`);
+    return "book-structure-fragment-extractor";
+  }
+  if (kind === "structure_reduce") {
+    if (stage !== "book_structure") throw new Error(`${kind} does not belong to stage ${stage}`);
+    return "book-structure-reducer";
+  }
+  if (kind === "structure_stitch_fragment") {
+    if (stage !== "book_structure") throw new Error(`${kind} does not belong to stage ${stage}`);
+    return "book-structure-stitch-fragment-extractor";
+  }
+  if (kind === "structure_stitch_reduce") {
+    if (stage !== "book_structure") throw new Error(`${kind} does not belong to stage ${stage}`);
+    return "book-structure-stitch-reducer";
+  }
+  if (["structure_outline", "structure_chapter", "structure_chapter_selection", "structure_theme_plan", "structure_theme", "structure_theme_reconcile"].includes(kind)) {
+    if (stage !== "book_structure") throw new Error(`${kind} does not belong to stage ${stage}`);
+    return kind === "structure_outline" ? "book-structure-outline" : kind === "structure_chapter" ? "book-structure-chapter" : kind === "structure_chapter_selection" ? "book-structure-chapter-selection" : "book-structure-themes";
+  }
+  if (kind === "structure_relation_select" || kind === "structure_relation_delta") {
+    if (stage !== "book_structure") throw new Error(`${kind} does not belong to stage ${stage}`);
+    return kind === "structure_relation_select" ? "book-structure-relation-selector" : "book-structure-relation-extractor";
+  }
+  return automaticBuildExtractorForStage(stage);
+}
+
+interface WorkbenchInputManifestLike {
+  book_id?: string;
+  profile_id?: string;
+  fingerprint?: BuildInputFingerprint;
+  inputs?: {
+    paper_md?: { original_path?: string | null; path?: string; sha256?: string };
+    paper_pdf?: { original_path?: string | null; path?: string; sha256?: string };
+  };
+}
+
+interface WorkspaceProfileMetadataLike {
+  header?: {
+    book_id?: string;
+    profile_id?: string;
+  };
+}
+
+interface TechnicalLearningSourceManifestLike {
+  book_id?: string;
+  canonical_source?: {
+    kind?: string;
+    path?: string;
+    truth_file?: string;
+    snapshot_path?: string;
+  };
+}
+
+function readJson<T>(file: string): T {
+  return JSON.parse(readFileSync(file, "utf8")) as T;
+}
+
+function sha256File(file: string): string {
+  return createHash("sha256").update(readFileSync(file)).digest("hex");
+}
+
+function loadAutomaticBook(sourcePath: string): LoadedAutomaticBook {
+  const loaded = loadBookSource(sourcePath);
+  const lidNodes = loaded.lidNodes;
+  return {
+    source: loaded.source,
+    lidNodes,
+    byLid: new Map(lidNodes.map((node) => [node.lid, node])),
+    windows: splitWindows(lidNodes, loaded.source),
+  };
+}
+
+function semanticExpectation(
+  target: AutomaticBuildTarget,
+  stage: SemanticBuildStage,
+  workUnitId: string,
+  binding: AutomaticBuildTaskPolicyBinding,
+): SemanticArtifactExpectation {
+  return {
+    target: target.target_ref,
+    stage,
+    work_unit_id: workUnitId,
+    input_hash: binding.input_hash,
+    ...(isAutomaticBuildTaskPolicyBindingV2(binding)
+      ? {
+          policy_generation_id: binding.policy_generation_id,
+          semantic_contract: binding.semantic_contract,
+        }
+      : {
+          semantic_contract: semanticContractFromExtractionPolicy(binding.policy_fingerprint),
+        }),
+  };
+}
+
+function freshSemanticPayload<T>(
+  file: string,
+  expected: SemanticArtifactExpectation,
+): T | undefined {
+  const inspected = inspectSemanticArtifact<T>(readJson(file), expected);
+  return inspected.policy_fresh ? inspected.payload : undefined;
+}
+
+function artifactMetaByNumericTask(
+  dir: string,
+  taskIds: number[],
+  target: AutomaticBuildTarget,
+  stage: SemanticBuildStage,
+  bindings: Record<string, AutomaticBuildTaskPolicyBinding>,
+): Map<number, Pass1ArtifactMeta> {
+  const result = new Map<number, Pass1ArtifactMeta>();
+  for (const id of taskIds) {
+    const file = path.join(dir, `${id}.json`);
+    if (!existsSync(file)) continue;
+    const binding = bindings[String(id)];
+    if (!binding) continue;
+    const artifact = freshSemanticPayload<Pass1ArtifactMeta>(file, semanticExpectation(target, stage, String(id), binding));
+    if (artifact && typeof artifact.content_hash === "string") result.set(id, { content_hash: artifact.content_hash });
+  }
+  return result;
+}
+
+function artifactMetaByWorkUnit(
+  dir: string,
+  taskIds: string[],
+  target: AutomaticBuildTarget,
+  stage: SemanticBuildStage,
+  bindings: Record<string, AutomaticBuildTaskPolicyBinding>,
+): Map<string, Pass1ArtifactMeta> {
+  const result = new Map<string, Pass1ArtifactMeta>();
+  for (const id of taskIds) {
+    const file = path.join(dir, `${id}.json`);
+    if (!existsSync(file)) continue;
+    const binding = bindings[id];
+    if (!binding) continue;
+    const artifact = freshSemanticPayload<Pass1ArtifactMeta>(file, semanticExpectation(target, stage, id, binding));
+    if (artifact && typeof artifact.content_hash === "string") result.set(id, { content_hash: artifact.content_hash });
+  }
+  return result;
+}
+
+function paperLexiconCommittedArtifactsByWorkUnit(
+  dir: string,
+  plan: PaperLexiconRoutingPlan,
+  target: AutomaticBuildTarget,
+): Map<string, PaperLexiconCommittedArtifactV1> {
+  const result = new Map<string, PaperLexiconCommittedArtifactV1>();
+  const bindings = bindingsFromDescriptors(plan.work_units);
+  for (const packet of Object.values(plan.packets)) {
+    if (packet.route.role !== "fragment") continue;
+    const file = path.join(dir, `${packet.work_unit_id}.json`);
+    const binding = bindings[packet.work_unit_id];
+    if (!existsSync(file) || !binding) continue;
+    const artifact = freshSemanticPayload<PaperLexiconArtifact>(
+      file,
+      semanticExpectation(target, "paper_lexicon", packet.work_unit_id, binding),
+    );
+    const committed = artifact ? inspectPaperLexiconCommittedArtifact(artifact) : undefined;
+    if (committed) result.set(packet.work_unit_id, committed);
+  }
+  return result;
+}
+
+function pass1ArtifactsByNumericTask(
+  dir: string,
+  taskIds: number[],
+  target: AutomaticBuildTarget,
+  bindings: Record<string, AutomaticBuildTaskPolicyBinding>,
+): Map<number, Pass1Artifact> {
+  const result = new Map<number, Pass1Artifact>();
+  for (const id of taskIds) {
+    const file = path.join(dir, `${id}.json`);
+    if (!existsSync(file)) continue;
+    const binding = bindings[String(id)];
+    if (!binding) continue;
+    const artifact = freshSemanticPayload<Pass1Artifact>(file, semanticExpectation(target, "pass1", String(id), binding));
+    if (
+      artifact
+      && typeof artifact.content_hash === "string"
+      && Array.isArray(artifact.nodes)
+      && Array.isArray(artifact.edges)
+    ) {
+      result.set(id, artifact);
+    }
+  }
+  return result;
+}
+
+function pass1GraphMatchesClosedBase(
+  basePath: string,
+  doneTaskIds: number[],
+  artifacts: Map<number, Pass1Artifact>,
+  lidNodes: LoadedAutomaticBook["lidNodes"],
+): boolean {
+  if (!existsSync(basePath) || doneTaskIds.some((id) => !artifacts.has(id))) return false;
+  try {
+    const base = readJson<ReadOnlyBase>(basePath);
+    const expected = mergeAndGate(
+      doneTaskIds.map((id) => {
+        const artifact = artifacts.get(id)!;
+        return { nodes: artifact.nodes, edges: artifact.edges };
+      }),
+      lidNodes,
+    );
+    const closedLocalEdges = base.graph_edges.filter((edge) => edge.scope !== "long_range");
+    return JSON.stringify(base.graph_nodes) === JSON.stringify(expected.nodes)
+      && JSON.stringify(closedLocalEdges) === JSON.stringify(expected.edges);
+  } catch {
+    return false;
+  }
+}
+
+function profileArtifactMatches(file: string, target: AutomaticBuildTarget): boolean {
+  if (!existsSync(file)) return false;
+  const value = readJson<{ header?: { book_id?: string; profile_id?: string } }>(file);
+  return value.header?.book_id === target.book_id && value.header.profile_id === target.profile_id;
+}
+
+function paperGuideVerificationFresh(workspaceDir: string): boolean {
+  const verificationPath = path.join(workspaceDir, ".build", "paper-reading-guide", "verification.json");
+  if (!existsSync(verificationPath)) return false;
+  const verification = readJson<{ version?: string; available?: boolean; inputs?: Record<string, string> }>(verificationPath);
+  if (verification.version !== "paper_reading_guide_verification.v1" || verification.available !== true) return false;
+  const required = ["source.txt", "base.json", "paper_metadata.json", "paper_lexicon.json", "book_structure.json"];
+  return required.every((relative) => {
+    const file = path.join(workspaceDir, relative);
+    return existsSync(file) && verification.inputs?.[relative] === sha256File(file);
+  });
+}
+
+function stageState(
+  stage: AutomaticBuildStage,
+  pendingTasks: Array<string | number>,
+  closed: boolean,
+  workUnits?: WorkUnitDescriptorV2[],
+): AutomaticBuildStageState {
+  const pending = pendingTasks.map(String);
+  const pendingSet = new Set(pending);
+  const pendingWorkUnits = workUnits?.filter((unit) => pendingSet.has(unit.work_unit_id) && !unit.deterministic_skip) ?? [];
+  const pendingBindings = pendingWorkUnits.length
+    ? Object.fromEntries(pendingWorkUnits.map((unit) => [unit.work_unit_id, {
+        input_hash: unit.input_hash,
+        policy_fingerprint: unit.policy_fingerprint,
+      }]))
+    : {};
+  return {
+    stage,
+    pending_tasks: pending,
+    closed,
+    ...(Object.keys(pendingBindings).length ? { task_bindings: pendingBindings } : {}),
+    ...(workUnits ? { work_units: workUnits, pending_work_units: pendingWorkUnits } : {}),
+  };
+}
+
+function stageStateV3(input: {
+  stage: SemanticBuildStage;
+  closed: boolean;
+  work_units: Array<WorkUnitDescriptorV3 | WorkUnitDescriptorV4>;
+  pending_ids: string[];
+  policy_set: AutomaticBuildStagePolicySetV3;
+  quality_routing: AutomaticBuildStageQualityRoutingEvidenceV2;
+  generation_tasks: Record<string, AutomaticBuildGenerationTaskV1>;
+}): AutomaticBuildStageState {
+  const pendingSet = new Set(input.pending_ids);
+  const pendingWorkUnits = input.work_units.filter((unit) => pendingSet.has(unit.work_unit_id));
+  return {
+    stage: input.stage,
+    pending_tasks: input.pending_ids,
+    closed: input.closed,
+    task_bindings: Object.fromEntries(input.work_units.map((unit) => [
+      unit.work_unit_id,
+      taskPolicyBindingForWorkUnit(
+        unit,
+        resolveAutomaticBuildStagePolicyMember(
+          input.policy_set,
+          unit.kind,
+          unit.policy_fingerprint,
+        ).policy_generation_id,
+      ),
+    ])),
+    work_units: input.work_units,
+    pending_work_units: pendingWorkUnits,
+    policy_set: input.policy_set,
+    quality_routing: input.quality_routing,
+    generation_tasks: input.generation_tasks,
+  };
+}
+
+function pass1GenerationConflictRecovery(input: {
+  target: AutomaticBuildTarget;
+  descriptor: WorkUnitDescriptorV3;
+}): AutomaticBuildRecoveryEnvelopeV1 {
+  return createAutomaticBuildRecoveryEnvelope({
+    phase: "migration",
+    code: "policy_generation_conflict",
+    stage: "pass1",
+    target_ref: input.target.target_ref,
+    router_version: input.descriptor.policy_fingerprint.router_version,
+    affected_work_units: [{
+      work_unit_id: input.descriptor.work_unit_id,
+      evidence_lids: input.descriptor.evidence_lids,
+      estimated_tokens: input.descriptor.input_budget_proof.estimated_rendered_tokens,
+      limit_tokens: input.descriptor.input_budget_proof.effective_body_limit_tokens,
+    }],
+    retryable: false,
+    recovery_actions: ["migrate_policy"],
+  });
+}
+
+function readPass1GenerationArtifact(
+  target: AutomaticBuildTarget,
+  workUnit: Pass1ShadowWorkUnitV1,
+  policyGenerationId: string,
+): SemanticArtifactEnvelopeV3<unknown> | undefined {
+  const file = automaticBuildGenerationArtifactPath(
+    target,
+    "pass1",
+    policyGenerationId,
+    workUnit.descriptor.work_unit_id,
+  );
+  if (!existsSync(file)) return undefined;
+  try {
+    const artifact = readJson<SemanticArtifactEnvelopeV3<unknown>>(file);
+    if (!semanticArtifactMatches(artifact, {
+      target: workUnit.descriptor.target,
+      stage: "pass1",
+      work_unit_id: workUnit.descriptor.work_unit_id,
+      input_hash: workUnit.descriptor.input_hash,
+      policy_generation_id: policyGenerationId,
+      semantic_contract: semanticContractFromExtractionPolicy(workUnit.descriptor.policy_fingerprint),
+    })) {
+      throw new Error("pass1 generation artifact identity is stale");
+    }
+    return artifact;
+  } catch {
+    throw new AutomaticBuildSnapshotRecoverySignal(pass1GenerationConflictRecovery({
+      target,
+      descriptor: workUnit.descriptor,
+    }));
+  }
+}
+
+function routePass1ProductionStage(input: {
+  target: AutomaticBuildTarget;
+  loaded: LoadedAutomaticBook;
+  profile: ReturnType<typeof resolveContentProfile>;
+  quality_profile: ExtractionQualityProfile;
+  prepare?: boolean;
+}): AutomaticBuildStageState {
+  assertNoActiveLegacyGenerationLease(input.target, "pass1");
+  const sourceFingerprint = canonicalSourceFingerprint(input.loaded.source);
+  const wholePolicy = automaticBuildExtractionPolicy("pass1", input.profile, input.quality_profile);
+  const fragmentPolicy = pass1SourceFragmentPolicy(input.profile, input.quality_profile);
+  const stitchPolicy = pass1LidStitchPolicy(input.profile, input.quality_profile);
+  const policySet = createAutomaticBuildStagePolicySet({
+    target_ref: input.target.target_ref,
+    stage: "pass1",
+    members: pass1ModelSlicePolicyMembers(input.profile, input.quality_profile),
+    frozen_at: AUTOMATIC_BUILD_ROUTING_RELEASE.activated_at,
+  });
+  const migrations = productionMigrationContext(input.target, policySet, input.prepare);
+  const previousPolicyLock = readAutomaticBuildStagePolicyLock(input.target, "pass1");
+  const previousPolicy = previousPolicyLock
+    ? extractionPolicyFromSemanticContract(input.target.target_ref.profile_id, previousPolicyLock.semantic_contract)
+    : wholePolicy;
+  const fromPolicyGenerationId = previousPolicyLock?.policy_generation_id ?? "pass1-legacy.v2";
+  const previousDescriptors = new Map(routePass1WindowWorkUnits({
+    target: input.target.target_ref,
+    windows: input.loaded.windows,
+    byLid: input.loaded.byLid,
+    source: input.loaded.source,
+    policy_fingerprint: previousPolicy,
+    content_profile: input.profile,
+  }).map((descriptor) => [descriptor.work_unit_id, descriptor]));
+  const previousRenderedInputs = new Map(input.loaded.windows.map((window) => [
+    String(window.id),
+    renderPass1ModelInput(buildProfiledPass1Input(
+      window,
+      input.loaded.byLid,
+      input.loaded.source,
+      input.profile,
+    )),
+  ]));
+  const workUnits: WorkUnitDescriptorV3[] = [];
+  const pendingIds: string[] = [];
+  const generationTasks: Record<string, AutomaticBuildGenerationTaskV1> = {};
+  const coverages: AutomaticBuildStageQualityRoutingEvidenceV2["coverage"] = [];
+  const publicContributors: AutomaticBuildStageQualityRoutingEvidenceV2["public_contributors"] = [];
+  const reductionParents: AutomaticBuildStageQualityRoutingEvidenceV2["reduction_parents"] = [];
+  const seenWorkUnits = new Set<string>();
+  const addWorkUnit = (
+    workUnit: Pass1ShadowWorkUnitV1,
+    sourceUnitCount: number,
+  ): void => {
+    const id = workUnit.descriptor.work_unit_id;
+    if (seenWorkUnits.has(id)) throw new Error(`duplicate Pass1 v3 work-unit identity: ${id}`);
+    seenWorkUnits.add(id);
+    workUnits.push(workUnit.descriptor);
+    const member = resolveAutomaticBuildStagePolicyMember(
+      policySet,
+      workUnit.descriptor.kind,
+      workUnit.descriptor.policy_fingerprint,
+    );
+    const generationTask = createPass1ShadowTask({
+      work_unit: workUnit,
+      source_fingerprint: sourceFingerprint,
+      policy_generation_id: member.policy_generation_id,
+      source_unit_count: sourceUnitCount,
+    });
+    generationTasks[id] = {
+      kind: "pass1",
+      task: generationTask,
+    };
+    const previousDescriptor = previousDescriptors.get(id);
+    const previousArtifactPath = automaticBuildLegacyStageArtifactPath(input.target, "pass1", id);
+    const migration = applyAutomaticBuildProductionMigration({
+        migrations,
+      target: input.target,
+      stage: "pass1",
+      from_policy_generation_id: fromPolicyGenerationId,
+      policy_set: policySet,
+      current: { route: "model", descriptor: workUnit.descriptor, rendered_input: workUnit.rendered_input },
+      ...(previousDescriptor && previousRenderedInputs.has(id) && existsSync(previousArtifactPath) ? {
+        previous: {
+          descriptor: previousDescriptor,
+          rendered_input: previousRenderedInputs.get(id)!,
+          artifact_path: previousArtifactPath,
+        },
+      } : {}),
+      ...(workUnit.route.role === "whole" ? {
+        project_adopted_payload: (payload: unknown) => projectPass1AdoptedWholeArtifact({
+          target: input.target,
+          task: generationTask,
+          payload,
+        }),
+      } : {}),
+    });
+    if (migration === "adopt_exact") freezePass1ShadowTask(input.target, generationTask);
+  };
+
+  for (const window of input.loaded.windows) {
+    const initial = routePass1ShadowWorkUnits({
+      target: input.target.target_ref,
+      window,
+      by_lid: input.loaded.byLid,
+      source: input.loaded.source,
+      source_fingerprint: sourceFingerprint,
+      content_profile: input.profile,
+      whole_policy: wholePolicy,
+      fragment_policy: fragmentPolicy,
+      whole_budget: AUTOMATIC_BUILD_V3_MODEL_BUDGET,
+      fragment_budget: AUTOMATIC_BUILD_V3_MODEL_BUDGET,
+    });
+    if (initial.status === "blocked") {
+      throw new AutomaticBuildSnapshotRecoverySignal(pass1RoutingRecovery({
+        target: input.target,
+        work_unit_id: `pass1-window-${window.id}`,
+        evidence_lids: [initial.recovery.parent_lid],
+        router_version: fragmentPolicy.router_version,
+        estimated_tokens: initial.recovery.estimated_tokens,
+        limit_tokens: initial.recovery.limit_tokens,
+      }));
+    }
+    coverages.push(...initial.coverages);
+    const sourceUnitCount = initial.units.length;
+    const fragmentIdsByParent = new Map<string, string[]>();
+    let children: Pass1ShadowVerifiedChildV1[] = [];
+    let initialReady = true;
+    for (const workUnit of initial.units) {
+      addWorkUnit(workUnit, sourceUnitCount);
+      if (workUnit.route.role === "fragment") {
+        const current = fragmentIdsByParent.get(workUnit.route.parent_lid) ?? [];
+        current.push(workUnit.descriptor.work_unit_id);
+        fragmentIdsByParent.set(workUnit.route.parent_lid, current);
+      }
+      const member = resolveAutomaticBuildStagePolicyMember(
+        policySet,
+        workUnit.descriptor.kind,
+        workUnit.descriptor.policy_fingerprint,
+      );
+      const artifact = readPass1GenerationArtifact(input.target, workUnit, member.policy_generation_id);
+      if (!artifact) {
+        pendingIds.push(workUnit.descriptor.work_unit_id);
+        initialReady = false;
+        continue;
+      }
+      children.push(verifyPass1ShadowArtifact({
+        work_unit: workUnit,
+        artifact,
+        policy_generation_id: member.policy_generation_id,
+      }));
+    }
+    if (initial.mode === "whole") {
+      const wholeUnit = initial.units[0];
+      if (initial.units.length !== 1 || !wholeUnit || wholeUnit.route.role !== "whole") {
+        throw new Error("Pass1 whole route must contain exactly one whole-window work unit");
+      }
+      if (initialReady) {
+        publicContributors.push({
+          contributor_id: `pass1-window:${window.id}`,
+          work_unit_id: wholeUnit.descriptor.work_unit_id,
+          parent_lids: [...window.leafLids],
+        });
+      }
+      continue;
+    }
+    if (!initialReady) continue;
+
+    for (;;) {
+      const reduction = routePass1StitchLevel({
+        target: input.target.target_ref,
+        window_id: window.id,
+        source_unit_count: sourceUnitCount,
+        children,
+        policy: stitchPolicy,
+        budget: AUTOMATIC_BUILD_V3_MODEL_BUDGET,
+      });
+      if (reduction.status === "blocked") {
+        throw new AutomaticBuildSnapshotRecoverySignal(pass1RoutingRecovery({
+          target: input.target,
+          work_unit_id: `pass1-window-${window.id}-stitch`,
+          evidence_lids: [reduction.recovery.parent_lid],
+          router_version: stitchPolicy.router_version,
+          estimated_tokens: reduction.recovery.estimated_tokens,
+          limit_tokens: reduction.recovery.limit_tokens,
+        }));
+      }
+      const nextChildren: Pass1ShadowVerifiedChildV1[] = [];
+      let levelReady = true;
+      for (const workUnit of reduction.units) {
+        addWorkUnit(workUnit, sourceUnitCount);
+        const member = resolveAutomaticBuildStagePolicyMember(
+          policySet,
+          workUnit.descriptor.kind,
+          workUnit.descriptor.policy_fingerprint,
+        );
+        const artifact = readPass1GenerationArtifact(input.target, workUnit, member.policy_generation_id);
+        if (!artifact) {
+          pendingIds.push(workUnit.descriptor.work_unit_id);
+          levelReady = false;
+          continue;
+        }
+        if (workUnit.route.role !== "final") {
+          nextChildren.push(verifyPass1ShadowArtifact({
+            work_unit: workUnit,
+            artifact,
+            policy_generation_id: member.policy_generation_id,
+          }));
+        }
+      }
+      if (reduction.role === "final") {
+        const finalUnit = reduction.units[0];
+        if (reduction.units.length !== 1 || !finalUnit) {
+          throw new Error("Pass1 final reduction level must contain exactly one root");
+        }
+        publicContributors.push({
+          contributor_id: `pass1-window:${window.id}`,
+          work_unit_id: finalUnit.descriptor.work_unit_id,
+          parent_lids: [...window.leafLids],
+        });
+        for (const coverage of initial.coverages) {
+          reductionParents.push({
+            parent_lid: coverage.parent_lid,
+            fragment_work_unit_ids: fragmentIdsByParent.get(coverage.parent_lid) ?? [],
+            final_work_unit_ids: [finalUnit.descriptor.work_unit_id],
+          });
+        }
+        break;
+      }
+      if (!levelReady) break;
+      children = nextChildren;
+    }
+  }
+
+  const qualityRouting: AutomaticBuildStageQualityRoutingEvidenceV2 = {
+    policy_set: policySet,
+    coverage: coverages,
+    public_contributors: publicContributors,
+    reduction_parents: reductionParents,
+  };
+  const closed = pendingIds.length === 0
+    && currentV3QualityReportPassed(
+      input.target,
+      "pass1",
+      policySet,
+      input.quality_profile,
+    )
+    && profileArtifactMatches(path.join(input.target.workspace_dir, "profile_metadata.json"), input.target)
+    && existsSync(path.join(input.target.workspace_dir, "base.json"));
+  return { preparation_required: !input.prepare && migrations.required, ...stageStateV3({
+    stage: "pass1",
+    closed,
+    work_units: workUnits,
+    pending_ids: pendingIds,
+    policy_set: policySet,
+    quality_routing: qualityRouting,
+    generation_tasks: generationTasks,
+  }) };
+}
+
+function profileSidecarRoutingRecovery(input: {
+  target: AutomaticBuildTarget;
+  work_unit_id: string;
+  evidence_lids: string[];
+  router_version: string;
+  estimated_tokens: number;
+  limit_tokens: number;
+}): AutomaticBuildRecoveryEnvelopeV1 {
+  return createAutomaticBuildRecoveryEnvelope({
+    phase: "routing",
+    code: "model_input_unsplittable",
+    stage: "profile_sidecar",
+    target_ref: input.target.target_ref,
+    router_version: input.router_version,
+    affected_work_units: [{
+      work_unit_id: input.work_unit_id,
+      evidence_lids: input.evidence_lids,
+      estimated_tokens: input.estimated_tokens,
+      limit_tokens: input.limit_tokens,
+    }],
+    retryable: false,
+    recovery_actions: ["upgrade_executor"],
+  });
+}
+
+function profileSidecarFastPathWorkUnit(input: {
+  target: AutomaticBuildTarget;
+  loaded: LoadedAutomaticBook;
+  packet: ProfileSidecarSemanticPacketV2;
+  source_fingerprint: string;
+  policy: ReturnType<typeof automaticBuildExtractionPolicy>;
+  policy_generation_id: string;
+}): {
+  descriptor: WorkUnitDescriptorV3;
+  task: ProfileSidecarSemanticFastPathTaskV1;
+  rendered_input: string;
+} | undefined {
+  const renderedInput = renderProfileSidecarModelInput(input.packet);
+  const evaluated = evaluateModelInputBudget({
+    ...AUTOMATIC_BUILD_V3_MODEL_BUDGET,
+    rendered_input: renderedInput,
+    router_version: input.policy.router_version,
+    prompt_sha256: input.policy.prompt_sha256,
+  });
+  if (evaluated.status === "over_limit") return undefined;
+  const slices = input.packet.visible_lids.map((lid) => {
+    const node = input.loaded.byLid.get(lid);
+    if (!node) throw new Error(`profile sidecar fast-path LID does not exist: ${lid}`);
+    const sourceText = input.loaded.source.slice(node.span.start, node.span.end);
+    const sourceDigest = createHash("sha256").update(sourceText, "utf8").digest("hex");
+    return {
+      version: "model_input_slice.v1" as const,
+      source_fingerprint: input.source_fingerprint,
+      parent_lid: lid,
+      ordinal: 0,
+      core_span_utf16: { ...node.span },
+      context_span_utf16: { ...node.span },
+      boundary_kind: "whole_lid" as const,
+      core_sha256: sourceDigest,
+      context_sha256: sourceDigest,
+    };
+  });
+  const descriptor = createWorkUnitDescriptorV3({
+    target: input.target.target_ref,
+    stage: "profile_sidecar",
+    work_unit_id: input.packet.work_unit_id,
+    kind: input.packet.unit_kind,
+    input_basis: { kind: "source_slices", slices },
+    input_hash: evaluated.proof.rendered_input_sha256,
+    input_budget_proof: evaluated.proof,
+    policy_fingerprint: input.policy,
+    evidence_lids: input.packet.visible_lids,
+    cost: buildWorkUnitCostFromBudgetProof({
+      rendered_input: renderedInput,
+      proof: evaluated.proof,
+      visible_lids: input.packet.visible_lids.length,
+      formula_lids: input.packet.formula_lids.length,
+      candidate_count: input.packet.unit_kind === "profile_sidecar_formula"
+        ? 1
+        : input.packet.visible_lids.length,
+      expected_output_items: input.packet.unit_kind === "profile_sidecar_formula"
+        ? 1
+        : input.packet.visible_lids.length,
+    }),
+  });
+  return {
+    descriptor,
+    rendered_input: renderedInput,
+    task: createProfileSidecarSemanticFastPathTask({
+      descriptor,
+      packet: input.packet,
+      source_fingerprint: input.source_fingerprint,
+      policy_generation_id: input.policy_generation_id,
+    }),
+  };
+}
+
+function readProfileSidecarGenerationArtifact(
+  target: AutomaticBuildTarget,
+  descriptor: WorkUnitDescriptorV3,
+  policyGenerationId: string,
+): SemanticArtifactEnvelopeV3<unknown> | undefined {
+  const file = automaticBuildGenerationArtifactPath(
+    target,
+    "profile_sidecar",
+    policyGenerationId,
+    descriptor.work_unit_id,
+  );
+  if (!existsSync(file)) return undefined;
+  try {
+    const artifact = readJson<SemanticArtifactEnvelopeV3<unknown>>(file);
+    if (!semanticArtifactMatches(artifact, {
+      target: descriptor.target,
+      stage: "profile_sidecar",
+      work_unit_id: descriptor.work_unit_id,
+      input_hash: descriptor.input_hash,
+      policy_generation_id: policyGenerationId,
+      semantic_contract: semanticContractFromExtractionPolicy(descriptor.policy_fingerprint),
+    })) {
+      throw new Error("profile sidecar generation artifact identity is stale");
+    }
+    return artifact;
+  } catch {
+    throw new AutomaticBuildSnapshotRecoverySignal(createAutomaticBuildRecoveryEnvelope({
+      phase: "migration",
+      code: "policy_generation_conflict",
+      stage: "profile_sidecar",
+      target_ref: target.target_ref,
+      router_version: descriptor.policy_fingerprint.router_version,
+      affected_work_units: [{
+        work_unit_id: descriptor.work_unit_id,
+        evidence_lids: descriptor.evidence_lids,
+        estimated_tokens: descriptor.input_budget_proof.estimated_rendered_tokens,
+        limit_tokens: descriptor.input_budget_proof.effective_body_limit_tokens,
+      }],
+      retryable: false,
+      recovery_actions: ["migrate_policy"],
+    }));
+  }
+}
+
+function routeProfileSidecarProductionStage(input: {
+  target: AutomaticBuildTarget;
+  loaded: LoadedAutomaticBook;
+  profile: ReturnType<typeof resolveContentProfile>;
+  quality_profile: ExtractionQualityProfile;
+  prepare?: boolean;
+}): AutomaticBuildStageState {
+  assertNoActiveLegacyGenerationLease(input.target, "profile_sidecar");
+  const sourceFingerprint = canonicalSourceFingerprint(input.loaded.source);
+  const fastPolicy = automaticBuildExtractionPolicy("profile_sidecar", input.profile, input.quality_profile);
+  const fragmentPolicy = profileSidecarDiscourseFragmentPolicy(input.profile, input.quality_profile);
+  const reducePolicy = profileSidecarDiscourseReducePolicy(input.profile, input.quality_profile);
+  const policySet = createAutomaticBuildStagePolicySet({
+    target_ref: input.target.target_ref,
+    stage: "profile_sidecar",
+    members: profileSidecarMapReducePolicyMembers(input.profile, input.quality_profile),
+    frozen_at: AUTOMATIC_BUILD_ROUTING_RELEASE.activated_at,
+  });
+  const migrations = productionMigrationContext(input.target, policySet, input.prepare);
+  const analysis = analyzeProfileSidecarSemanticUnits({
+    windows: input.loaded.windows,
+    byLid: input.loaded.byLid,
+    source: input.loaded.source,
+    content_profile: input.profile,
+    max_discourse_input_tokens: AUTOMATIC_BUILD_V3_MODEL_BUDGET.stage_body_limit_tokens,
+    allow_over_limit_packets: true,
+  });
+  const previousPolicyLock = readAutomaticBuildStagePolicyLock(input.target, "profile_sidecar");
+  const previousPolicy = previousPolicyLock
+    ? extractionPolicyFromSemanticContract(input.target.target_ref.profile_id, previousPolicyLock.semantic_contract)
+    : fastPolicy;
+  const fromPolicyGenerationId = previousPolicyLock?.policy_generation_id ?? "profile-sidecar-legacy.v2";
+  const previousDescriptors = new Map<string, WorkUnitDescriptorV2>([
+    ...Object.values(analysis.packets).map((packet) => createWorkUnitDescriptor({
+      target: input.target.target_ref,
+      stage: "profile_sidecar",
+      work_unit_id: packet.work_unit_id,
+      kind: packet.unit_kind,
+      input_hash: packet.input_hash,
+      policy_fingerprint: previousPolicy,
+      evidence_lids: packet.visible_lids,
+      cost: buildWorkUnitCost({
+        estimated_input_tokens: packet.estimated_input_tokens,
+        visible_lids: packet.visible_lids.length,
+        formula_lids: packet.formula_lids.length,
+        candidate_count: packet.unit_kind === "profile_sidecar_formula"
+          ? 1
+          : packet.visible_lids.length,
+        expected_output_items: packet.unit_kind === "profile_sidecar_formula"
+          ? 1
+          : packet.visible_lids.length,
+      }),
+      legacy_artifact_ref: `.build/profile-sidecar/${packet.work_unit_id}.json`,
+    })),
+    ...Object.entries(analysis.skips).map(([workUnitId, skip]) => createWorkUnitDescriptor({
+      target: input.target.target_ref,
+      stage: "profile_sidecar",
+      work_unit_id: workUnitId,
+      kind: skip.kind === "formula" ? "profile_sidecar_formula" : "profile_sidecar_discourse",
+      input_hash: skip.input_hash,
+      policy_fingerprint: previousPolicy,
+      evidence_lids: skip.evidence,
+      cost: buildWorkUnitCost({ visible_lids: skip.evidence.length }),
+      deterministic_skip: { code: skip.code, evidence: skip.evidence },
+    })),
+  ].map((descriptor) => [descriptor.work_unit_id, descriptor] as const));
+  const previousRenderedInputs = new Map(Object.values(analysis.packets).map((packet) => [
+    packet.work_unit_id,
+    renderProfileSidecarModelInput(packet),
+  ]));
+  const workUnits: WorkUnitDescriptorV3[] = [];
+  const pendingIds: string[] = [];
+  const generationTasks: Record<string, AutomaticBuildGenerationTaskV1> = {};
+  const coverages: AutomaticBuildStageQualityRoutingEvidenceV2["coverage"] = [];
+  const publicContributors: AutomaticBuildStageQualityRoutingEvidenceV2["public_contributors"] = [];
+  const reductionParents: AutomaticBuildStageQualityRoutingEvidenceV2["reduction_parents"] = [];
+  const seenWorkUnits = new Set<string>();
+  const addWorkUnit = (
+    descriptor: WorkUnitDescriptorV3,
+    generationTask: AutomaticBuildGenerationTaskV1,
+    renderedInput: string,
+  ): void => {
+    if (seenWorkUnits.has(descriptor.work_unit_id)) {
+      throw new Error(`duplicate profile sidecar v3 work-unit identity: ${descriptor.work_unit_id}`);
+    }
+    seenWorkUnits.add(descriptor.work_unit_id);
+    workUnits.push(descriptor);
+    generationTasks[descriptor.work_unit_id] = generationTask;
+    const previousDescriptor = previousDescriptors.get(descriptor.work_unit_id);
+    const previousArtifactPath = automaticBuildLegacyStageArtifactPath(
+      input.target,
+      "profile_sidecar",
+      descriptor.work_unit_id,
+    );
+    const migration = applyAutomaticBuildProductionMigration({
+        migrations,
+      target: input.target,
+      stage: "profile_sidecar",
+      from_policy_generation_id: fromPolicyGenerationId,
+      policy_set: policySet,
+      current: { route: "model", descriptor, rendered_input: renderedInput },
+      ...(previousDescriptor && previousRenderedInputs.has(descriptor.work_unit_id)
+        && existsSync(previousArtifactPath) ? {
+          previous: {
+            descriptor: previousDescriptor,
+            rendered_input: previousRenderedInputs.get(descriptor.work_unit_id)!,
+            artifact_path: previousArtifactPath,
+          },
+        } : {}),
+    });
+    if (migration === "adopt_exact") {
+      if (generationTask.kind === "profile_sidecar_fast_path") {
+        freezeProfileSidecarSemanticFastPathTask(input.target, generationTask.task);
+      } else if (generationTask.kind === "profile_sidecar_discourse") {
+        freezeProfileSidecarDiscourseShadowTask(input.target, generationTask.task);
+      } else {
+        throw new Error("profile sidecar migration adopted an invalid generation task kind");
+      }
+    }
+  };
+
+  for (const [workUnitId, skip] of Object.entries(analysis.skips)) {
+    applyAutomaticBuildProductionMigration({
+      migrations,
+      target: input.target,
+      stage: "profile_sidecar",
+      from_policy_generation_id: fromPolicyGenerationId,
+      policy_set: policySet,
+      current: {
+        route: "deterministic_skip",
+        work_unit_id: workUnitId,
+        work_unit_kind: skip.kind === "formula"
+          ? "profile_sidecar_formula"
+          : "profile_sidecar_discourse",
+        policy_fingerprint: fastPolicy,
+        evidence_lids: skip.evidence,
+        skip_code: skip.code,
+      },
+    });
+  }
+
+  for (const packet of Object.values(analysis.packets)) {
+    const fastMember = resolveAutomaticBuildStagePolicyMember(
+      policySet,
+      packet.unit_kind,
+      fastPolicy,
+    );
+    const fastPath = profileSidecarFastPathWorkUnit({
+      target: input.target,
+      loaded: input.loaded,
+      packet,
+      source_fingerprint: sourceFingerprint,
+      policy: fastPolicy,
+      policy_generation_id: fastMember.policy_generation_id,
+    });
+    if (fastPath) {
+      addWorkUnit(
+        fastPath.descriptor,
+        { kind: "profile_sidecar_fast_path", task: fastPath.task },
+        fastPath.rendered_input,
+      );
+      const artifact = readProfileSidecarGenerationArtifact(
+        input.target,
+        fastPath.descriptor,
+        fastMember.policy_generation_id,
+      );
+      if (!artifact) pendingIds.push(fastPath.descriptor.work_unit_id);
+      publicContributors.push({
+        contributor_id: `profile-sidecar:${packet.work_unit_id}`,
+        work_unit_id: fastPath.descriptor.work_unit_id,
+        parent_lids: [...packet.visible_lids],
+      });
+      continue;
+    }
+
+    if (packet.unit_kind !== "profile_sidecar_discourse" || packet.visible_lids.length !== 1) {
+      throw new AutomaticBuildSnapshotRecoverySignal(profileSidecarRoutingRecovery({
+        target: input.target,
+        work_unit_id: packet.work_unit_id,
+        evidence_lids: packet.visible_lids,
+        router_version: PROFILE_SIDECAR_ROUTER_VERSION,
+        estimated_tokens: packet.estimated_rendered_tokens,
+        limit_tokens: AUTOMATIC_BUILD_V3_MODEL_BUDGET.stage_body_limit_tokens,
+      }));
+    }
+    const parentLid = packet.visible_lids[0];
+    const parent = input.loaded.byLid.get(parentLid);
+    if (!parent || parent.kind !== "paragraph") {
+      throw new AutomaticBuildSnapshotRecoverySignal(profileSidecarRoutingRecovery({
+        target: input.target,
+        work_unit_id: packet.work_unit_id,
+        evidence_lids: packet.visible_lids,
+        router_version: PROFILE_SIDECAR_ROUTER_VERSION,
+        estimated_tokens: packet.estimated_rendered_tokens,
+        limit_tokens: AUTOMATIC_BUILD_V3_MODEL_BUDGET.stage_body_limit_tokens,
+      }));
+    }
+    const fragments = routeProfileSidecarDiscourseFragmentWorkUnits({
+      target: input.target.target_ref,
+      source: input.loaded.source,
+      source_fingerprint: sourceFingerprint,
+      parent,
+      content_profile_id: input.profile.id,
+      policy: fragmentPolicy,
+      budget: AUTOMATIC_BUILD_V3_MODEL_BUDGET,
+    });
+    if (fragments.status === "blocked") {
+      throw new AutomaticBuildSnapshotRecoverySignal(profileSidecarRoutingRecovery({
+        target: input.target,
+        work_unit_id: packet.work_unit_id,
+        evidence_lids: packet.visible_lids,
+        router_version: fragmentPolicy.router_version,
+        estimated_tokens: fragments.recovery.estimated_tokens,
+        limit_tokens: fragments.recovery.limit_tokens,
+      }));
+    }
+    coverages.push(fragments.coverage);
+    const fragmentCount = fragments.units.length;
+    const fragmentMember = resolveAutomaticBuildStagePolicyMember(
+      policySet,
+      "profile_sidecar_discourse_fragment",
+      fragmentPolicy,
+    );
+    const reduceMember = resolveAutomaticBuildStagePolicyMember(
+      policySet,
+      "profile_sidecar_discourse_reduce",
+      reducePolicy,
+    );
+    const fragmentIds = fragments.units.map((unit) => unit.descriptor.work_unit_id);
+    let children: ProfileSidecarDiscourseVerifiedChildV1[] = [];
+    let fragmentsReady = true;
+    for (const workUnit of fragments.units) {
+      const task = createProfileSidecarDiscourseShadowTask({
+        work_unit: workUnit,
+        source_fingerprint: sourceFingerprint,
+        policy_generation_id: fragmentMember.policy_generation_id,
+        fragment_count: fragmentCount,
+      });
+      addWorkUnit(
+        workUnit.descriptor,
+        { kind: "profile_sidecar_discourse", task },
+        workUnit.rendered_input,
+      );
+      const artifact = readProfileSidecarGenerationArtifact(
+        input.target,
+        workUnit.descriptor,
+        fragmentMember.policy_generation_id,
+      );
+      if (!artifact) {
+        pendingIds.push(workUnit.descriptor.work_unit_id);
+        fragmentsReady = false;
+        continue;
+      }
+      children.push(verifyProfileSidecarDiscourseShadowArtifact({
+        work_unit: workUnit,
+        artifact,
+        policy_generation_id: fragmentMember.policy_generation_id,
+      }));
+    }
+    if (!fragmentsReady) continue;
+
+    for (;;) {
+      const reduction = routeProfileSidecarDiscourseReductionLevel({
+        target: input.target.target_ref,
+        parent_lid: parentLid,
+        fragment_count: fragmentCount,
+        children,
+        policy: reducePolicy,
+        budget: AUTOMATIC_BUILD_V3_MODEL_BUDGET,
+      });
+      if (reduction.status === "blocked") {
+        throw new AutomaticBuildSnapshotRecoverySignal(profileSidecarRoutingRecovery({
+          target: input.target,
+          work_unit_id: `${packet.work_unit_id}:reduce`,
+          evidence_lids: packet.visible_lids,
+          router_version: reducePolicy.router_version,
+          estimated_tokens: reduction.recovery.estimated_tokens,
+          limit_tokens: reduction.recovery.limit_tokens,
+        }));
+      }
+      const nextChildren: ProfileSidecarDiscourseVerifiedChildV1[] = [];
+      let levelReady = true;
+      for (const workUnit of reduction.units) {
+        const task = createProfileSidecarDiscourseShadowTask({
+          work_unit: workUnit,
+          source_fingerprint: sourceFingerprint,
+          policy_generation_id: reduceMember.policy_generation_id,
+          fragment_count: fragmentCount,
+        });
+        addWorkUnit(
+          workUnit.descriptor,
+          { kind: "profile_sidecar_discourse", task },
+          workUnit.rendered_input,
+        );
+        const artifact = readProfileSidecarGenerationArtifact(
+          input.target,
+          workUnit.descriptor,
+          reduceMember.policy_generation_id,
+        );
+        if (!artifact) {
+          pendingIds.push(workUnit.descriptor.work_unit_id);
+          levelReady = false;
+          continue;
+        }
+        if (workUnit.route.role !== "final") {
+          nextChildren.push(verifyProfileSidecarDiscourseShadowArtifact({
+            work_unit: workUnit,
+            artifact,
+            policy_generation_id: reduceMember.policy_generation_id,
+          }));
+        }
+      }
+      if (reduction.role === "final") {
+        const finalUnit = reduction.units[0];
+        if (reduction.units.length !== 1 || !finalUnit) {
+          throw new Error("profile sidecar final reduction level must contain exactly one root");
+        }
+        publicContributors.push({
+          contributor_id: `profile-sidecar-parent:${parentLid}`,
+          work_unit_id: finalUnit.descriptor.work_unit_id,
+          parent_lids: [parentLid],
+        });
+        reductionParents.push({
+          parent_lid: parentLid,
+          fragment_work_unit_ids: fragmentIds,
+          final_work_unit_ids: [finalUnit.descriptor.work_unit_id],
+        });
+        break;
+      }
+      if (!levelReady) break;
+      children = nextChildren;
+    }
+  }
+
+  const qualityRouting: AutomaticBuildStageQualityRoutingEvidenceV2 = {
+    policy_set: policySet,
+    coverage: coverages,
+    public_contributors: publicContributors,
+    reduction_parents: reductionParents,
+  };
+  const closed = pendingIds.length === 0
+    && currentV3QualityReportPassed(
+      input.target,
+      "profile_sidecar",
+      policySet,
+      input.quality_profile,
+    )
+    && profileArtifactMatches(path.join(input.target.workspace_dir, "discourse_index.json"), input.target)
+    && profileArtifactMatches(path.join(input.target.workspace_dir, "formula_semantics.json"), input.target);
+  return { preparation_required: !input.prepare && migrations.required, ...stageStateV3({
+    stage: "profile_sidecar",
+    closed,
+    work_units: workUnits,
+    pending_ids: pendingIds,
+    policy_set: policySet,
+    quality_routing: qualityRouting,
+    generation_tasks: generationTasks,
+  }) };
+}
+
+type BookStructureProductionRoutedWorkUnit =
+  | BookStructureRelationRoutedWorkUnit
+  | BookStructureRoutedWorkUnitV2
+  | BookStructureReductionRoutedWorkUnitV2
+  | BookStructureStitchRoutedWorkUnitV2;
+
+function bookStructureProductionRecovery(input: {
+  target: AutomaticBuildTarget;
+  recovery: BookStructureRoutingRecoveryV1;
+}): AutomaticBuildRecoveryEnvelopeV1 {
+  const recovery = input.recovery;
+  const workUnitId = recovery.parent_unit_lid === "stitch"
+    ? "stitch"
+    : `unit:${recovery.parent_unit_lid}`;
+  return createAutomaticBuildRecoveryEnvelope({
+    phase: "routing",
+    code: recovery.code === "evidence/dangling_input_item"
+      ? "source_slice_coverage_invalid"
+      : "model_input_unsplittable",
+    stage: "book_structure",
+    target_ref: input.target.target_ref,
+    router_version: BOOK_STRUCTURE_ROUTER_VERSION_V2,
+    affected_work_units: [{
+      work_unit_id: workUnitId,
+      evidence_lids: [recovery.parent_unit_lid],
+      ...(recovery.estimated_tokens !== undefined
+        ? { estimated_tokens: recovery.estimated_tokens }
+        : {}),
+      ...(recovery.limit_tokens !== undefined
+        ? { limit_tokens: recovery.limit_tokens }
+        : {}),
+    }],
+    retryable: false,
+    recovery_actions: recovery.code === "evidence/dangling_input_item"
+      ? ["retry_plan"]
+      : ["upgrade_executor"],
+  });
+}
+
+function routeBookStructureProductionStage(input: {
+  retrieval?: BuildRetrievalSelection;
+  execution_profile: BuildExecutionProfileV1;
+  target: AutomaticBuildTarget;
+  loaded: LoadedAutomaticBook;
+  profile: ReturnType<typeof resolveContentProfile>;
+  quality_profile: ExtractionQualityProfile;
+  unit_sources: BookStructureUnitSource[];
+  task_parent_lid?: string;
+  pass2_audit?: NonNullable<Parameters<typeof buildBookStructureUnitSources>[0]["pass2Audit"]>;
+  prepare?: boolean;
+}): AutomaticBuildStageState {
+  assertNoActiveLegacyGenerationLease(input.target, "book_structure");
+  const sourceFingerprint = canonicalSourceFingerprint(input.loaded.source);
+  const discovery = input.profile.id === "technical_learning";
+  const discoverySources = discovery ? structureDiscoverySources(input.unit_sources, input.loaded.lidNodes, input.loaded.source) : input.unit_sources;
+  const contracts = createBookStructureExecutionContractsV2({
+    profile: input.profile,
+    quality_profile: input.quality_profile,
+    prompts: discovery ? { ...BOOK_STRUCTURE_EXECUTION_PROMPTS_V2, fragment: STRUCTURE_DISCOVERY_PROMPT } : BOOK_STRUCTURE_EXECUTION_PROMPTS_V2,
+  });
+  const relationContracts = bookStructureRelationContracts(contracts.stitch_fragment);
+  const organizationContracts = structureOrganizationContracts(contracts.stitch_fragment);
+  const policyMembers: Parameters<typeof createAutomaticBuildStagePolicySet>[0]["members"] = ([
+    // Evidence packet and field-specific citation contracts supersede frozen v3 policies.
+    ["structure_unit", contracts.whole, `book-structure-unit.${input.quality_profile}.v4`],
+    ["structure_fragment", contracts.fragment, discovery ? `book-structure-discovery.${input.quality_profile}.v2` : `book-structure-fragment.${input.quality_profile}.v4`],
+    ["structure_reduce", contracts.reduce, `book-structure-reduce.${input.quality_profile}.v4`],
+    ["structure_stitch", contracts.stitch, `book-structure-stitch.${input.quality_profile}.v4`],
+    ["structure_stitch_fragment", contracts.stitch_fragment, `book-structure-stitch-fragment.${input.quality_profile}.v4`],
+    ["structure_relation_select", relationContracts.select, `book-structure-relation-select.${input.quality_profile}.v1`],
+    ["structure_relation_delta", relationContracts.delta, `book-structure-relation-delta.${input.quality_profile}.v1`],
+  ] as const).map(([kind, contract, policyGenerationId]) => ({
+    kind,
+    extractor: automaticBuildExtractorForWorkUnitKind("book_structure", kind, input.profile.id),
+    policy_generation_id: policyGenerationId,
+    policy_fingerprint: contract.policy_fingerprint,
+  }));
+  if (input.profile.id === "technical_learning") for (const kind of Object.keys(organizationContracts) as StructureOrganizationKind[]) {
+    policyMembers.push({ kind, extractor: automaticBuildExtractorForWorkUnitKind("book_structure", kind),
+      policy_generation_id: structureOrganizationGeneration(kind, input.quality_profile), policy_fingerprint: organizationContracts[kind].policy_fingerprint });
+  }
+  const policySet = createAutomaticBuildStagePolicySet({
+    target_ref: input.target.target_ref,
+    stage: "book_structure",
+    members: policyMembers,
+    frozen_at: AUTOMATIC_BUILD_ROUTING_RELEASE.activated_at,
+  });
+  const migrations = productionMigrationContext(input.target, policySet, input.prepare);
+  const previousPolicyLock = readAutomaticBuildStagePolicyLock(input.target, "book_structure");
+  const previousPolicy = previousPolicyLock
+    ? extractionPolicyFromSemanticContract(input.target.target_ref.profile_id, previousPolicyLock.semantic_contract)
+    : automaticBuildExtractionPolicy("book_structure", input.profile, input.quality_profile);
+  const fromPolicyGenerationId = previousPolicyLock?.policy_generation_id ?? "book-structure-legacy.v2";
+  const workUnits: WorkUnitDescriptorV4[] = [];
+  const pendingIds: string[] = [];
+  const generationTasks: Record<string, AutomaticBuildGenerationTaskV1> = {};
+  const publicContributors: AutomaticBuildStageQualityRoutingEvidenceV2["public_contributors"] = [];
+  const reductionParents: AutomaticBuildStageQualityRoutingEvidenceV2["reduction_parents"] = [];
+  const seenWorkUnits = new Set<string>();
+
+  const readFreshArtifact = (task: BookStructureGenerationTaskV1) => {
+    try {
+      return readBookStructureGenerationArtifact(input.target, task);
+    } catch {
+      return undefined;
+    }
+  };
+
+  const addWorkUnit = (taskInput: {
+    work_unit: BookStructureProductionRoutedWorkUnit;
+    parent_unit_lid: string;
+    parent_content_hash: string;
+    source_range: { start_ordinal: number; end_ordinal_exclusive: number };
+    output_role: BookStructureGenerationTaskV1["output_role"];
+    previous?: AutomaticBuildPolicyMigrationPreviousV2;
+    frozen_dependencies?: Map<string, string>;
+  }) => {
+    let descriptor = taskInput.work_unit.descriptor;
+    const id = descriptor.work_unit_id;
+    if (seenWorkUnits.has(id)) {
+      throw new Error(`duplicate BookStructure v4 work-unit identity: ${id}`);
+    }
+    seenWorkUnits.add(id);
+    const member = resolveAutomaticBuildStagePolicyMember(
+      policySet,
+      descriptor.kind,
+      descriptor.policy_fingerprint,
+    );
+    let task = createBookStructureGenerationTask({
+      execution_profile: input.execution_profile,
+      target_ref: input.target.target_ref,
+      policy_generation_id: member.policy_generation_id,
+      descriptor,
+      generation_input: taskInput.work_unit.input,
+      parent_unit_lid: taskInput.parent_unit_lid,
+      parent_content_hash: taskInput.parent_content_hash,
+      source_range: taskInput.source_range,
+      allowed_evidence_lids: descriptor.evidence_lids,
+      output_role: taskInput.output_role,
+    });
+    if (taskInput.frozen_dependencies) {
+      const frozen = readBookStructureGenerationTask(input.target, member.policy_generation_id, id);
+      // Keep already-issued serial tasks bound to their original dependency set
+      // when the current pair input is identical and every bound artifact is fresh.
+      if (frozen && frozen.parent_content_hash === task.parent_content_hash
+        && frozen.descriptor.input_hash === descriptor.input_hash
+        && canonicalBuildJson(frozen.descriptor.policy_fingerprint) === canonicalBuildJson(descriptor.policy_fingerprint)
+        && frozen.descriptor.dependencies.every(dependency => taskInput.frozen_dependencies!.get(dependency.artifact) === dependency.sha256)) {
+        task = frozen;
+        descriptor = frozen.descriptor;
+      }
+    }
+    workUnits.push(descriptor);
+    generationTasks[id] = { kind: "book_structure", task };
+
+    const generationArtifactPath = automaticBuildGenerationArtifactPath(
+      input.target,
+      "book_structure",
+      member.policy_generation_id,
+      id,
+    );
+    let artifact = readFreshArtifact(task);
+    if (!artifact && !existsSync(generationArtifactPath) && taskInput.previous) {
+      const migration = applyAutomaticBuildProductionMigration({
+        execution_profile: input.execution_profile,
+        migrations,
+        target: input.target,
+        stage: "book_structure",
+        from_policy_generation_id: fromPolicyGenerationId,
+        policy_set: policySet,
+        current: {
+          route: "model",
+          descriptor,
+          rendered_input: taskInput.work_unit.rendered_input,
+        },
+        previous: taskInput.previous,
+      });
+      if (migration === "adopt_exact") {
+        freezeBookStructureGenerationTask(input.target, task);
+        artifact = readFreshArtifact(task);
+      }
+    }
+    return artifact;
+  };
+
+  const legacyUnitPrevious = (
+    source: BookStructureUnitSource,
+  ): AutomaticBuildPolicyMigrationPreviousV2 | undefined => {
+    const artifactPath = path.join(
+      input.target.workspace_dir,
+      ".build",
+      "book-structure",
+      "units",
+      `${source.unit_lid}.json`,
+    );
+    if (!existsSync(artifactPath)) return undefined;
+    const renderedInput = renderBookStructureModelInput(source);
+    const binding: AutomaticBuildTaskPolicyBindingV1 = {
+      input_hash: bookStructureUnitHash(source),
+      policy_fingerprint: previousPolicy,
+    };
+    return {
+      descriptor: descriptorFromBinding({
+        target: input.target,
+        stage: "book_structure",
+        task_id: source.job_id,
+        kind: "structure_unit",
+        binding,
+        evidence_lids: source.leaf_lids,
+        estimated_input_tokens: estimateTokens(renderedInput),
+        formula_lids: source.formula_semantics.length,
+        candidate_count: source.pass2_edges.length,
+        expected_output_items: 1,
+        legacy_artifact_ref: `.build/book-structure/units/${source.unit_lid}.json`,
+      }),
+      rendered_input: renderedInput,
+      artifact_path: artifactPath,
+    };
+  };
+
+  const unitArtifacts = new Map<string, BookStructureUnitArtifact>();
+  const leafCoverage: NonNullable<AutomaticBuildStageQualityRoutingEvidenceV2["book_structure_coverage"]> = [];
+  const discoveryProgress: BookStructureDiscoveryProgress = { fragments: { done: 0, total: 0 },
+    core_leaves: { done: 0, total: discoverySources.reduce((n, s) => n + s.leaf_lids.length, 0) }, candidates: 0 };
+  const outlineInput = discovery ? structureSourceOutline(discoverySources, input.loaded.lidNodes, input.loaded.source) : undefined;
+  let organization = outlineInput ? routeStructureOrganization({ target: input.target, execution_profile: input.execution_profile,
+    contracts: organizationContracts, outline: outlineInput, context: { catalog: { version: "book_structure_candidates.v1", candidates: [] }, titles: {}, excerpts: [] },
+    retrieval: input.retrieval, stop_after_outline: true }) : undefined;
+  const frontSources = discovery && input.task_parent_lid
+    ? discoverySources.filter(s => s.unit_lid === input.task_parent_lid) : discoverySources;
+  for (const source of discovery && !organization?.outline_result ? [] : frontSources) {
+    const parentContentHash = bookStructureUnitHash(source);
+    const initial = routeBookStructureUnitWorkUnitsV2({
+      transport_profile: input.execution_profile.transport_profile,
+      target: input.target.target_ref,
+      source,
+      lid_nodes: input.loaded.lidNodes,
+      source_fingerprint: sourceFingerprint,
+      contracts,
+      ...(discovery ? { discovery: { outline: organization!.outline_result!, section_by_leaf: structureDiscoverySections(source, input.loaded.lidNodes, input.loaded.source) },
+        budget: { stage_body_limit_tokens: 6000, executor_context_floor_tokens: 16384, output_reserve_tokens: 3500,
+          max_candidate_tokens: Math.min(3500, createCandidateTransportContract(input.execution_profile.transport_profile).candidate_value_max_estimated_tokens), safety_margin_tokens: 512 } } : {}),
+    });
+    if (initial.status === "blocked") {
+      throw new AutomaticBuildSnapshotRecoverySignal(bookStructureProductionRecovery({
+        target: input.target,
+        recovery: initial.recovery,
+      }));
+    }
+    const fragmentIds = initial.mode === "fragmented"
+      ? initial.work_units.map((workUnit) => workUnit.descriptor.work_unit_id)
+      : [];
+    leafCoverage.push(initial.coverage);
+    if (discovery) discoveryProgress.fragments.total += initial.work_units.length;
+    let children: BookStructureReductionChildV1[] = [];
+    let initialReady = true;
+    let wholeArtifact: BookStructureUnitArtifact | undefined;
+    for (const workUnit of initial.work_units) {
+      const previous = workUnit.route.role === "whole"
+        ? legacyUnitPrevious(source)
+        : undefined;
+      const artifact = addWorkUnit({
+        work_unit: workUnit,
+        parent_unit_lid: source.unit_lid,
+        parent_content_hash: parentContentHash,
+        source_range: workUnit.route.role === "whole"
+          ? { start_ordinal: 0, end_ordinal_exclusive: source.leaf_lids.length }
+          : workUnit.route.source_leaf_range,
+        output_role: workUnit.route.role === "whole" ? "unit_artifact" : "unit_observation",
+        ...(previous ? { previous } : {}),
+      });
+      if (!artifact) {
+        pendingIds.push(workUnit.descriptor.work_unit_id);
+        initialReady = false;
+        continue;
+      }
+      if (discovery) {
+        discoveryProgress.fragments.done++;
+        discoveryProgress.core_leaves.done += (workUnit.input as BookStructureFragmentInputV1).core_leaf_lids.length;
+        discoveryProgress.candidates += (artifact.payload as BookStructureFragmentObservationV1).candidate_key_stops.length;
+      }
+      if (workUnit.route.role === "whole") {
+        wholeArtifact = artifact.payload as BookStructureUnitArtifact;
+      } else {
+        children.push({
+          work_unit_id: workUnit.descriptor.work_unit_id,
+          artifact_hash: artifact.artifact_hash,
+          source_leaf_range: workUnit.route.source_leaf_range,
+          payload: artifact.payload as BookStructureFragmentObservationV1,
+        });
+      }
+    }
+    if (initial.mode === "whole") {
+      const wholeUnit = initial.work_units[0];
+      if (initial.work_units.length !== 1 || !wholeUnit || wholeUnit.route.role !== "whole") {
+        throw new Error("BookStructure whole route must contain exactly one whole-unit work unit");
+      }
+      if (initialReady && wholeArtifact) {
+        unitArtifacts.set(source.job_id, wholeArtifact);
+        publicContributors.push({
+          contributor_id: `book-structure-unit:${source.unit_lid}`,
+          work_unit_id: wholeUnit.descriptor.work_unit_id,
+          parent_lids: [...source.leaf_lids],
+        });
+      }
+      continue;
+    }
+    if (!initialReady) continue;
+
+    if (discovery) {
+      unitArtifacts.set(source.job_id, accumulateStructureDiscovery(source, children.map(c => c.payload)));
+      for (const child of children) publicContributors.push({ contributor_id: `book-structure-discovery:${child.work_unit_id}`,
+        work_unit_id: child.work_unit_id, parent_lids: source.leaf_lids.slice(child.source_leaf_range.start_ordinal, child.source_leaf_range.end_ordinal_exclusive) });
+      continue;
+    }
+
+    let reducerLevel = 1;
+    for (;;) {
+      const reduction = routeBookStructureReductionLevelV2({
+      transport_profile: input.execution_profile.transport_profile,
+        target: input.target.target_ref,
+        parent_unit_lid: source.unit_lid,
+        source_leaf_count: source.leaf_lids.length,
+        children,
+        contracts,
+        reducer_level: reducerLevel,
+      });
+      if (reduction.status === "blocked") {
+        throw new AutomaticBuildSnapshotRecoverySignal(bookStructureProductionRecovery({
+          target: input.target,
+          recovery: reduction.recovery,
+        }));
+      }
+      const nextChildren: BookStructureReductionChildV1[] = [];
+      let levelReady = true;
+      let finalArtifact: BookStructureUnitArtifact | undefined;
+      for (const workUnit of reduction.work_units) {
+        const artifact = addWorkUnit({
+          work_unit: workUnit,
+          parent_unit_lid: source.unit_lid,
+          parent_content_hash: parentContentHash,
+          source_range: workUnit.route.source_leaf_range,
+          output_role: workUnit.route.role === "final"
+            ? "unit_artifact"
+            : "unit_observation",
+        });
+        if (!artifact) {
+          pendingIds.push(workUnit.descriptor.work_unit_id);
+          levelReady = false;
+          continue;
+        }
+        if (workUnit.route.role === "final") {
+          finalArtifact = artifact.payload as BookStructureUnitArtifact;
+        } else {
+          nextChildren.push({
+            work_unit_id: workUnit.descriptor.work_unit_id,
+            artifact_hash: artifact.artifact_hash,
+            source_leaf_range: workUnit.route.source_leaf_range,
+            payload: artifact.payload as BookStructureFragmentObservationV1,
+          });
+        }
+      }
+      if (reduction.role === "final") {
+        const finalUnit = reduction.work_units[0];
+        if (reduction.work_units.length !== 1 || !finalUnit) {
+          throw new Error("BookStructure final reduction level must contain exactly one root");
+        }
+        if (levelReady && finalArtifact) {
+          unitArtifacts.set(source.job_id, finalArtifact);
+          publicContributors.push({
+            contributor_id: `book-structure-unit:${source.unit_lid}`,
+            work_unit_id: finalUnit.descriptor.work_unit_id,
+            parent_lids: [...source.leaf_lids],
+          });
+          reductionParents.push({
+            parent_lid: source.unit_lid,
+            fragment_work_unit_ids: fragmentIds,
+            final_work_unit_ids: [finalUnit.descriptor.work_unit_id],
+          });
+        }
+        break;
+      }
+      if (!levelReady) break;
+      children = nextChildren;
+      reducerLevel += 1;
+    }
+  }
+
+  const assembly = { local_work_unit_ids: [] as string[], selection_work_unit_ids: [] as string[], relation_work_unit_ids: [] as string[] };
+  const progress = { local: { done: 0, total: 0 }, selection: { done: 0, total: 0 }, relation: { done: 0, total: 0 }, publication: "pending" as "pending" | "ready" | "published" };
+  let stitchArtifact: BookStructureStitchArtifact | undefined;
+  if (unitArtifacts.size === input.unit_sources.length && discovery) {
+    const currentTasks = Object.values(generationTasks).flatMap(g => g.kind === "book_structure"
+      && (g.task.output_role === "unit_artifact" || g.task.output_role === "unit_observation") ? [g.task] : []);
+    const catalog = readStructureCandidateCatalog(input.target, currentTasks, input.loaded.lidNodes.filter(n => n.kind === "section").map(n => n.lid));
+    const chapters = input.unit_sources.map(source => ({ unit_lid: source.unit_lid, title: source.title ?? "未命名单元",
+      overview: unitArtifacts.get(source.job_id)!.output.unit_card.summary }));
+    organization = routeStructureOrganization({ target: input.target, execution_profile: input.execution_profile, contracts: organizationContracts,
+      outline: outlineInput!, chapter_overviews: chapters,
+      context: { catalog, titles: Object.fromEntries(chapters.map(c => [c.unit_lid, c.title])),
+        excerpts: discoverySources.flatMap(source => source.excerpts.filter(e => isStructureBodyExcerpt(e.text)).map(e => ({ unit_lid: source.unit_lid, lids: [e.lid], text: e.text }))) },
+      retrieval: input.retrieval });
+    progress.local = organization.progress.chapters;
+    progress.selection = organization.progress.outline;
+    progress.relation = { done: organization.progress.themes.done, total: organization.progress.themes.total };
+    if (organization.candidate) stitchArtifact = { content_hash: bookStructureStitchHash(buildBookStructureStitchPacket(
+      [...unitArtifacts.values()], input.pass2_audit, input.profile, input.unit_sources)), output: organization.candidate };
+  } else if (!input.task_parent_lid && unitArtifacts.size === input.unit_sources.length) {
+    const stitchPacket = buildBookStructureStitchPacket(
+      input.unit_sources.map((source) => unitArtifacts.get(source.job_id)!),
+      input.pass2_audit,
+      input.profile,
+      input.unit_sources,
+    );
+    const parentContentHash = bookStructureStitchHash(stitchPacket);
+    const initial = routeBookStructureStitchWorkUnitsV2({
+      transport_profile: input.execution_profile.transport_profile,
+      target: input.target.target_ref,
+      packet: stitchPacket,
+      source_fingerprint: sourceFingerprint,
+      contracts,
+    });
+    if (initial.status === "blocked") {
+      throw new AutomaticBuildSnapshotRecoverySignal(bookStructureProductionRecovery({
+        target: input.target,
+        recovery: initial.recovery,
+      }));
+    }
+    const legacyStitchPrevious = (): AutomaticBuildPolicyMigrationPreviousV2 | undefined => {
+      const artifactPath = path.join(
+        input.target.workspace_dir,
+        ".build",
+        "book-structure",
+        "stitch.json",
+      );
+      if (!existsSync(artifactPath)) return undefined;
+      const renderedInput = renderBookStructureModelInput(stitchPacket);
+      const binding: AutomaticBuildTaskPolicyBindingV1 = {
+        input_hash: parentContentHash,
+        policy_fingerprint: previousPolicy,
+      };
+      return {
+        descriptor: descriptorFromBinding({
+          target: input.target,
+          stage: "book_structure",
+          task_id: "stitch",
+          kind: "structure_stitch",
+          binding,
+          evidence_lids: [...new Set(stitchPacket.unit_cards.flatMap((unit) => unit.evidence_lids))],
+          estimated_input_tokens: estimateTokens(renderedInput),
+          candidate_count: stitchPacket.unit_cards.length,
+          expected_output_items: stitchPacket.unit_cards.length,
+          legacy_artifact_ref: ".build/book-structure/stitch.json",
+        }),
+        rendered_input: renderedInput,
+        artifact_path: artifactPath,
+      };
+    };
+    let children: BookStructureStitchReductionChildV1[] = [];
+    progress.local.total = initial.work_units.length;
+    let initialReady = true;
+    let wholeArtifact: BookStructureStitchArtifact | undefined;
+    for (let workUnit of initial.work_units) {
+      const previous = workUnit.route.role === "whole" ? legacyStitchPrevious() : undefined;
+      let artifact = addWorkUnit({
+        work_unit: workUnit,
+        parent_unit_lid: "stitch",
+        parent_content_hash: parentContentHash,
+        source_range: workUnit.route.role === "whole"
+          ? { start_ordinal: 0, end_ordinal_exclusive: stitchPacket.unit_cards.length }
+          : workUnit.route.unit_card_range,
+        output_role: workUnit.route.role === "whole" ? "stitch_artifact" : "stitch_candidate",
+        ...(previous ? { previous } : {}),
+      });
+      if (artifact && workUnit.route.role === "fragment") {
+        const packet = workUnit.input as import("./book-structure").BookStructureStitchFragmentInputV1;
+        const payload = artifact.payload as BookStructureCandidate;
+        const missing = packet.unit_cards.filter(card => (payload.spine ?? []).filter(unit => unit.lid === card.unit_lid).length !== 1);
+        if (missing.length) {
+          // The accepted selective spine remains immutable. A distinct normal work
+          // unit replaces only this contribution after exact-core validation.
+          const repairs = packet.unit_cards.map((card, ordinal) => createBookStructureStitchFragmentWorkUnit({
+            target: input.target.target_ref, source_fingerprint: sourceFingerprint,
+            packet: { ...packet, work_unit_id: packet.work_unit_id + ":core-repair:" + String(ordinal).padStart(4, "0"),
+              unit_cards: [card], unit_card_range: { start_ordinal: packet.unit_card_range.start_ordinal + ordinal,
+                end_ordinal_exclusive: packet.unit_card_range.start_ordinal + ordinal + 1 },
+              core_coverage_requirement: "Include exactly one spine entry for every unit_cards unit_lid; context_unit_cards are context only." },
+            contract: contracts.stitch_fragment, transport_profile: input.execution_profile.transport_profile,
+            budget: BOOK_STRUCTURE_EXECUTION_BUDGET_V2,
+          }));
+          if (repairs.some(repair => repair.status === "blocked")) throw new AutomaticBuildSnapshotRecoverySignal(createAutomaticBuildRecoveryEnvelope({
+            phase: "routing", code: "source_slice_coverage_invalid", stage: "book_structure",
+            target_ref: input.target.target_ref, router_version: BOOK_STRUCTURE_ROUTER_VERSION_V2,
+            affected_work_units: [{ work_unit_id: packet.work_unit_id, evidence_lids: missing.map(card => card.unit_lid) }],
+            retryable: false, recovery_actions: ["retry_plan"],
+          }));
+          // Historical success is retained on disk, but is not a current eligible
+          // contributor. Only the replacement belongs to this production plan.
+          workUnits.splice(workUnits.findIndex(item => item.work_unit_id === packet.work_unit_id), 1);
+          delete generationTasks[packet.work_unit_id];
+          progress.local.total += repairs.length - 1;
+          for (const repair of repairs) {
+            if (repair.status !== "ready" || repair.work_unit.route.role !== "fragment") throw new Error("core repair must fit its execution budget");
+            const work = repair.work_unit;
+            const range = repair.work_unit.route.unit_card_range;
+            const repaired = addWorkUnit({ work_unit: work, parent_unit_lid: "stitch", parent_content_hash: parentContentHash,
+              source_range: range, output_role: "stitch_candidate" });
+            if (!repaired) { pendingIds.push(work.descriptor.work_unit_id); initialReady = false; continue; }
+            progress.local.done++;
+            assembly.local_work_unit_ids.push(work.descriptor.work_unit_id);
+            children.push({ work_unit_id: work.descriptor.work_unit_id, artifact_hash: repaired.artifact_hash,
+              unit_card_range: range, payload: repaired.payload as BookStructureCandidate });
+          }
+          continue;
+        }
+      }
+      if (!artifact) {
+        pendingIds.push(workUnit.descriptor.work_unit_id);
+        initialReady = false;
+        continue;
+      }
+      progress.local.done += 1;
+      assembly.local_work_unit_ids.push(workUnit.descriptor.work_unit_id);
+      if (workUnit.route.role === "whole") {
+        wholeArtifact = artifact.payload as BookStructureStitchArtifact;
+      } else {
+        children.push({
+          work_unit_id: workUnit.descriptor.work_unit_id,
+          artifact_hash: artifact.artifact_hash,
+          unit_card_range: workUnit.route.unit_card_range,
+          payload: artifact.payload as BookStructureCandidate,
+        });
+      }
+    }
+    if (initial.mode === "whole") {
+      const wholeUnit = initial.work_units[0];
+      if (initial.work_units.length !== 1 || !wholeUnit || wholeUnit.route.role !== "whole") {
+        throw new Error("BookStructure stitch whole route must contain exactly one work unit");
+      }
+      if (initialReady && wholeArtifact) {
+        stitchArtifact = wholeArtifact;
+        publicContributors.push({
+          contributor_id: "book-structure:stitch",
+          work_unit_id: wholeUnit.descriptor.work_unit_id,
+          parent_lids: input.unit_sources.map((source) => source.unit_lid),
+        });
+      }
+    } else if (initialReady) {
+      let local: ReturnType<typeof materializeBookStructureContributions>;
+      try {
+        local = materializeBookStructureContributions(children, stitchPacket.unit_cards.map(card => card.unit_lid));
+      } catch (error) {
+        if (!(error instanceof BookStructureContributionCoverageError)) throw error;
+        throw new AutomaticBuildSnapshotRecoverySignal(createAutomaticBuildRecoveryEnvelope({
+          phase: "routing", code: "source_slice_coverage_invalid", stage: "book_structure",
+          target_ref: input.target.target_ref, router_version: BOOK_STRUCTURE_ROUTER_VERSION_V2,
+          affected_work_units: error.affected_work_units, retryable: false, recovery_actions: ["retry_plan"],
+        }));
+      }
+      for (const child of children) publicContributors.push({
+        contributor_id: 'book-structure-local:' + child.work_unit_id, work_unit_id: child.work_unit_id,
+        parent_lids: stitchPacket.unit_cards.slice(child.unit_card_range.start_ordinal, child.unit_card_range.end_ordinal_exclusive).map(card => card.unit_lid),
+      });
+      const dependencies = children.map(child => ({ artifact: child.work_unit_id, sha256: child.artifact_hash }));
+      const selections = routeBookStructureRelationSelections({ transport_profile: input.execution_profile.transport_profile, target: input.target.target_ref, candidate: local.candidate, contract: relationContracts.select, dependencies });
+      progress.selection.total = selections.length;
+      const selected: BookStructureRelationSelection[] = [];
+      const relationDependencies = [...dependencies];
+      for (const work of selections) {
+        assembly.selection_work_unit_ids.push(work.descriptor.work_unit_id);
+        const artifact = addWorkUnit({ work_unit: work, parent_unit_lid: "stitch", parent_content_hash: parentContentHash,
+          source_range: { start_ordinal: 0, end_ordinal_exclusive: stitchPacket.unit_cards.length }, output_role: "relation_selection" });
+        if (!artifact) { pendingIds.push(work.descriptor.work_unit_id); continue; }
+        progress.selection.done++;
+        selected.push(artifact.payload as BookStructureRelationSelection);
+        relationDependencies.push({ artifact: work.descriptor.work_unit_id, sha256: artifact.artifact_hash });
+      }
+      if (progress.selection.done === progress.selection.total) {
+        const pairs = bookStructureSelectedPairs(selected);
+        progress.relation.total = pairs.length;
+        const predecessors = bookStructureRelationPredecessors(pairs);
+        const accepted: AcceptedBookStructureRelationDelta[] = [];
+        const acceptedByOrdinal = new Map<number, AcceptedBookStructureRelationDelta>();
+        const availableDependencies = new Map(relationDependencies.map(dependency => [dependency.artifact, dependency.sha256]));
+        for (const [ordinal, pair] of pairs.entries()) {
+          if (predecessors[ordinal].some(previous => !acceptedByOrdinal.has(previous))) continue;
+          const ancestors = predecessors[ordinal].map(previous => acceptedByOrdinal.get(previous)!);
+          const materialized = applyBookStructureRelationDeltas(local.candidate, ancestors);
+          const boundDependencies = [...relationDependencies, ...ancestors.map(item => ({ artifact: item.work_unit_id, sha256: availableDependencies.get(item.work_unit_id)! }))];
+          const work = routeBookStructureRelationDelta({ transport_profile: input.execution_profile.transport_profile, target: input.target.target_ref, candidate: materialized.candidate,
+            member_ids: pair, members: materialized.members, ordinal, contract: relationContracts.delta, dependencies: boundDependencies });
+          assembly.relation_work_unit_ids.push(work.descriptor.work_unit_id);
+          const artifact = addWorkUnit({ work_unit: work, parent_unit_lid: "stitch", parent_content_hash: parentContentHash,
+            source_range: { start_ordinal: 0, end_ordinal_exclusive: stitchPacket.unit_cards.length }, output_role: "relation_delta", frozen_dependencies: availableDependencies });
+          if (!artifact) { pendingIds.push(work.descriptor.work_unit_id); continue; }
+          const item = { work_unit_id: work.descriptor.work_unit_id, delta: artifact.payload as BookStructureRelationDelta };
+          accepted.push(item);
+          acceptedByOrdinal.set(ordinal, item);
+          publicContributors.push({ contributor_id: `book-structure-relation:${work.descriptor.work_unit_id}`,
+            work_unit_id: work.descriptor.work_unit_id, parent_lids: work.input.reference_scope.unit_lids });
+          availableDependencies.set(work.descriptor.work_unit_id, artifact.artifact_hash);
+          progress.relation.done++;
+        }
+        if (progress.relation.done === progress.relation.total) stitchArtifact = { content_hash: parentContentHash, output: applyBookStructureRelationDeltas(local.candidate, accepted).candidate };
+      }
+    }
+  }
+
+  if (organization) {
+    for (const task of organization.tasks) {
+      workUnits.push(task.descriptor); generationTasks[task.descriptor.work_unit_id] = { kind: "book_structure", task };
+      assembly.selection_work_unit_ids.push(task.descriptor.work_unit_id);
+    }
+    pendingIds.push(...organization.pending);
+  }
+  const qualityRouting: AutomaticBuildStageQualityRoutingEvidenceV2 = {
+    policy_set: policySet,
+    coverage: [],
+    book_structure_coverage: leafCoverage,
+    ...(discovery ? { book_structure_discovery: discoveryProgress } : {}),
+    public_contributors: publicContributors,
+    reduction_parents: reductionParents,
+    book_structure_assembly: assembly,
+    ...(organization ? { book_structure_organization: organization.progress } : {}),
+  };
+  const publicFile = path.join(input.target.workspace_dir, "book_structure.json");
+  let closed = false;
+  if (pendingIds.length === 0 && stitchArtifact) {
+    const spine = stitchArtifact.output.spine ?? [];
+    if (spine.length !== input.unit_sources.length
+      || input.unit_sources.some(source => spine.filter(unit => unit.lid === source.unit_lid).length !== 1)) {
+      throw new Error("BookStructure materialization does not cover the expected units exactly");
+    }
+    const result = buildBookStructureSidecar(buildReproducibleProfileArtifactHeader({
+      book_id: input.target.book_id, content_profile: input.profile.id,
+    }), stitchArtifact.output, input.loaded.lidNodes);
+    if (result.dropped.length) throw new Error(`BookStructure materialization contains invalid public references: ${result.dropped[0].id}`);
+    // An older public file with a matching profile header is not this materialization.
+    if (existsSync(publicFile)) {
+      const expected = JSON.stringify(result.sidecar, null, 2);
+      try { closed = readFileSync(publicFile, "utf8") === expected
+        && hasCommittedAutomaticBuildPublication({ workspace_dir: input.target.workspace_dir, stage: "book_structure", artifacts: { "book_structure.json": expected } }); }
+      catch { closed = false; }
+    }
+  }
+  progress.publication = closed ? "published" : stitchArtifact ? "ready" : "pending";
+  qualityRouting.book_structure_publication = progress.publication;
+  if (organization) Object.assign(progress, { organization: organization.progress });
+  if (discovery) Object.assign(progress, { discovery: discoveryProgress });
+  return { ...(organization?.preparation ? { retrieval_preparation: organization.preparation, retrieval_remaining: organization.remaining } : {}),
+    ...(organization?.blocked ? { structure_blocked: organization.blocked } : {}),
+    ...(organization?.budget_blocked ? { structure_budget_blocked: organization.budget_blocked } : {}),
+    book_structure_materialized: stitchArtifact, book_structure_progress: progress, preparation_required: !input.prepare && migrations.required, ...stageStateV3({
+    stage: "book_structure",
+    closed,
+    work_units: workUnits,
+    pending_ids: pendingIds,
+    policy_set: policySet,
+    quality_routing: qualityRouting,
+    generation_tasks: generationTasks,
+  }) };
+}
+
+function taskBindings(
+  stage: SemanticBuildStage,
+  profile: ReturnType<typeof resolveContentProfile>,
+  qualityProfile: ExtractionQualityProfile,
+  inputs: Array<{ task_id: string | number; input_hash: string }>,
+): Record<string, AutomaticBuildTaskPolicyBindingV1> {
+  const policy = automaticBuildExtractionPolicy(stage, profile, qualityProfile);
+  return Object.fromEntries(inputs.map((input) => [String(input.task_id), {
+    input_hash: input.input_hash,
+    policy_fingerprint: policy,
+  }]));
+}
+
+function descriptorFromBinding(input: {
+  target: AutomaticBuildTarget;
+  stage: WorkUnitStage;
+  task_id: string;
+  kind: WorkUnitKind;
+  binding: AutomaticBuildTaskPolicyBindingV1;
+  evidence_lids: string[];
+  estimated_input_tokens: number;
+  formula_lids?: number;
+  table_fragments?: number;
+  candidate_count?: number;
+  expected_output_items?: number;
+  legacy_artifact_ref?: string;
+}): WorkUnitDescriptorV2 {
+  return createWorkUnitDescriptor({
+    target: input.target.target_ref,
+    stage: input.stage,
+    work_unit_id: input.task_id,
+    kind: input.kind,
+    input_hash: input.binding.input_hash,
+    policy_fingerprint: input.binding.policy_fingerprint,
+    evidence_lids: input.evidence_lids,
+    cost: buildWorkUnitCost({
+      estimated_input_tokens: input.estimated_input_tokens,
+      visible_lids: input.evidence_lids.length,
+      formula_lids: input.formula_lids,
+      table_fragments: input.table_fragments,
+      candidate_count: input.candidate_count,
+      expected_output_items: input.expected_output_items,
+    }),
+    ...(input.legacy_artifact_ref ? { legacy_artifact_ref: input.legacy_artifact_ref } : {}),
+  });
+}
+
+function bindingsFromDescriptors(units: WorkUnitDescriptorV2[]): Record<string, AutomaticBuildTaskPolicyBindingV1> {
+  return Object.fromEntries(units.map((unit) => [unit.work_unit_id, {
+    input_hash: unit.input_hash,
+    policy_fingerprint: unit.policy_fingerprint,
+  }]));
+}
+
+function paperTargetFromWorkspace(workspaceInput: string): AutomaticBuildTarget {
+  const workspaceDir = path.resolve(workspaceInput);
+  const libraryDir = path.dirname(workspaceDir);
+  if (path.basename(libraryDir) !== ".understand-book") {
+    throw new Error(`paper workspace 必须位于 .understand-book/<book_id>: ${workspaceDir}`);
+  }
+  const inputManifestPath = path.join(workspaceDir, ".build", "input", "manifest.json");
+  if (!existsSync(inputManifestPath)) {
+    throw new Error(`paper workspace 缺少 Workbench input manifest: ${inputManifestPath}`);
+  }
+  const inputManifest = readJson<WorkbenchInputManifestLike>(inputManifestPath);
+  if (inputManifest.profile_id !== "paper") {
+    throw new Error(`workspace ${workspaceDir} 不是 paper profile`);
+  }
+  try {
+    if (!inputManifest.fingerprint) {
+      throw new Error(`paper workspace input manifest 缺少 fingerprint: ${inputManifestPath}`);
+    }
+    const trusted = assertTrustedPaperProjectionSource(workspaceDir);
+    if (inputManifest.book_id !== trusted.book_id) {
+      throw new Error(`paper workspace book identity 不一致: manifest=${inputManifest.book_id ?? "missing"}, trusted=${trusted.book_id}`);
+    }
+    const targetRef: BuildTargetRefV2 = {
+      version: "build_target_ref.v2",
+      workspace_dir: trusted.book_dir,
+      book_id: trusted.book_id,
+      profile_id: "paper",
+      input_fingerprint: buildInputFingerprintHash(inputManifest.fingerprint),
+    };
+    return {
+      kind: "paper_workspace",
+      profile_id: "paper",
+      book_id: trusted.book_id,
+      root_dir: path.dirname(libraryDir),
+      workspace_dir: trusted.book_dir,
+      source_path: trusted.trusted_source_path,
+      target_ref: targetRef,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`paper workspace 缺少可信混合阅读基座: ${message}`);
+  }
+}
+
+function workspaceLocation(workspaceInput: string): {
+  workspaceDir: string;
+  libraryDir: string;
+  rootDir: string;
+  bookId: string;
+} {
+  const workspaceDir = path.resolve(workspaceInput);
+  const libraryDir = path.dirname(workspaceDir);
+  if (path.basename(libraryDir) !== ".understand-book") {
+    throw new Error(`book workspace 必须位于 .understand-book/<book_id>: ${workspaceDir}`);
+  }
+  return {
+    workspaceDir,
+    libraryDir,
+    rootDir: path.dirname(libraryDir),
+    bookId: path.basename(workspaceDir),
+  };
+}
+
+function technicalLearningTargetFromWorkspace(workspaceInput: string): AutomaticBuildTarget {
+  const { workspaceDir, rootDir, bookId } = workspaceLocation(workspaceInput);
+  const profilePath = path.join(workspaceDir, "profile_metadata.json");
+  const sourceManifestPath = path.join(workspaceDir, "source_manifest.json");
+  const sourceTxtPath = path.join(workspaceDir, "source.txt");
+  const basePath = path.join(workspaceDir, "base.json");
+  for (const required of [profilePath, sourceManifestPath, sourceTxtPath, basePath]) {
+    if (!existsSync(required) || !statSync(required).isFile()) {
+      throw new Error(`technical_learning workspace 缺少立即可读基础文件: ${required}`);
+    }
+  }
+
+  const profile = readJson<WorkspaceProfileMetadataLike>(profilePath);
+  if (profile.header?.book_id !== bookId || profile.header.profile_id !== "technical_learning") {
+    throw new Error(`technical_learning workspace profile identity 不一致: ${profilePath}`);
+  }
+  const sourceManifest = readJson<TechnicalLearningSourceManifestLike>(sourceManifestPath);
+  if (
+    sourceManifest.book_id !== bookId
+    || !sourceManifest.canonical_source
+    || !(sourceManifest.canonical_source.kind === "markdown" || sourceManifest.canonical_source.kind === "epub")
+    || sourceManifest.canonical_source.truth_file !== "source.txt"
+  ) {
+    throw new Error(`technical_learning workspace source manifest 不合法: ${sourceManifestPath}`);
+  }
+
+  const epubSnapshot = sourceManifest.canonical_source.kind === "epub"
+    ? path.resolve(workspaceDir, sourceManifest.canonical_source.snapshot_path ?? "source.epub")
+    : undefined;
+  const sourcePath = epubSnapshot && existsSync(epubSnapshot) ? epubSnapshot : sourceTxtPath;
+  if (sourcePath !== sourceTxtPath) {
+    const declaredCanonicalSource = loadAutomaticBook(sourcePath).source;
+    const trustedCanonicalSource = readFileSync(sourceTxtPath, "utf8");
+    if (declaredCanonicalSource !== trustedCanonicalSource) {
+      throw new Error(`technical_learning workspace 内部快照与规范正文不一致: ${sourcePath}`);
+    }
+  }
+
+  return {
+    kind: "source_file",
+    profile_id: "technical_learning",
+    book_id: bookId,
+    root_dir: rootDir,
+    workspace_dir: workspaceDir,
+    source_path: sourcePath,
+    target_ref: {
+      version: "build_target_ref.v2",
+      workspace_dir: workspaceDir,
+      book_id: bookId,
+      profile_id: "technical_learning",
+      input_fingerprint: sha256File(sourcePath),
+    },
+  };
+}
+
+function targetFromWorkspace(workspaceInput: string): AutomaticBuildTarget {
+  const workspaceDir = path.resolve(workspaceInput);
+  const workbenchManifestPath = path.join(workspaceDir, ".build", "input", "manifest.json");
+  if (existsSync(workbenchManifestPath)) return paperTargetFromWorkspace(workspaceDir);
+
+  const profilePath = path.join(workspaceDir, "profile_metadata.json");
+  if (existsSync(profilePath)) {
+    const profile = readJson<WorkspaceProfileMetadataLike>(profilePath);
+    if (profile.header?.profile_id === "technical_learning") {
+      return technicalLearningTargetFromWorkspace(workspaceDir);
+    }
+    if (profile.header?.profile_id === "paper") return paperTargetFromWorkspace(workspaceDir);
+  }
+  throw new Error(`book workspace 缺少可验证的 content profile: ${workspaceDir}`);
+}
+
+function hasAutomaticBuildWorkspaceIdentity(workspaceDir: string): boolean {
+  return existsSync(path.join(workspaceDir, ".build", "input", "manifest.json"))
+    || existsSync(path.join(workspaceDir, "profile_metadata.json"));
+}
+
+function containingBuildWorkspaceSource(sourcePath: string): string | undefined {
+  if (!["source.txt", "source.epub"].includes(path.basename(sourcePath).toLowerCase())) return undefined;
+  const workspaceDir = path.dirname(sourcePath);
+  return path.basename(path.dirname(workspaceDir)) === ".understand-book" ? workspaceDir : undefined;
+}
+
+function paperWorkspaceCandidates(sourceFile: string, rootDir: string): string[] {
+  const libraryDir = path.join(rootDir, ".understand-book");
+  if (!existsSync(libraryDir)) return [];
+  const sourcePath = path.resolve(sourceFile);
+  const sourceHash = sha256File(sourcePath);
+  const sourceExt = path.extname(sourcePath).toLowerCase();
+  const inputKey = sourceExt === ".pdf" ? "paper_pdf" : "paper_md";
+  const matches: string[] = [];
+  for (const entry of readdirSync(libraryDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const workspaceDir = path.join(libraryDir, entry.name);
+    const manifestPath = path.join(workspaceDir, ".build", "input", "manifest.json");
+    if (!existsSync(manifestPath)) continue;
+    const manifest = readJson<WorkbenchInputManifestLike>(manifestPath);
+    if (manifest.profile_id !== "paper") continue;
+    const input = manifest.inputs?.[inputKey];
+    const originalPath = input?.original_path ? path.resolve(input.original_path) : null;
+    if (originalPath === sourcePath || input?.sha256 === sourceHash) matches.push(workspaceDir);
+  }
+  return matches;
+}
+
+export function resolveAutomaticBuildTarget(
+  targetInput: string,
+  rootDir = process.cwd(),
+  options: AutomaticBuildTargetResolutionOptions = {},
+): AutomaticBuildTarget {
+  const resolvedRoot = path.resolve(rootDir);
+  const stableBookId = options.book_id === undefined
+    ? undefined
+    : deriveBookId(targetInput, options.book_id);
+  const stableWorkspace = stableBookId
+    ? path.join(resolvedRoot, ".understand-book", stableBookId)
+    : undefined;
+  if (
+    stableWorkspace
+    && existsSync(stableWorkspace)
+    && statSync(stableWorkspace).isDirectory()
+    && hasAutomaticBuildWorkspaceIdentity(stableWorkspace)
+  ) {
+    return targetFromWorkspace(stableWorkspace);
+  }
+
+  const explicitWorkspace = path.join(resolvedRoot, ".understand-book", targetInput);
+  const targetPath = existsSync(explicitWorkspace) ? explicitWorkspace : path.resolve(rootDir, targetInput);
+  if (existsSync(targetPath) && statSync(targetPath).isDirectory()) {
+    const target = targetFromWorkspace(targetPath);
+    if (stableBookId && target.book_id !== stableBookId) {
+      throw new Error(`build target book_id ${target.book_id} does not match explicit book_id ${stableBookId}`);
+    }
+    return target;
+  }
+  if (!existsSync(targetPath) || !statSync(targetPath).isFile()) {
+    throw new Error(`build target 不存在: ${targetPath}`);
+  }
+
+  const containingWorkspace = containingBuildWorkspaceSource(targetPath);
+  if (containingWorkspace) {
+    const target = targetFromWorkspace(containingWorkspace);
+    if (stableBookId && target.book_id !== stableBookId) {
+      throw new Error(`build target book_id ${target.book_id} does not match explicit book_id ${stableBookId}`);
+    }
+    return target;
+  }
+
+  const matches = stableBookId ? [] : paperWorkspaceCandidates(targetPath, resolvedRoot);
+  if (matches.length > 1) {
+    throw new Error(`paper 输入匹配到多个 Workbench workspace，请显式指定 book id 或 workspace 路径: ${matches.join(", ")}`);
+  }
+  if (matches.length === 1) return paperTargetFromWorkspace(matches[0]);
+  if (path.extname(targetPath).toLowerCase() === ".pdf") {
+    throw new Error("paper PDF 未匹配到可信 Workbench workspace，请先在预构建工作台完成来源对齐与混合阅读基座");
+  }
+
+  const bookId = stableBookId ?? deriveBookId(targetPath);
+  const workspaceDir = path.join(resolvedRoot, ".understand-book", bookId);
+  if (hasAutomaticBuildWorkspaceIdentity(workspaceDir)) return targetFromWorkspace(workspaceDir);
+  return {
+    kind: "source_file",
+    profile_id: "technical_learning",
+    book_id: bookId,
+    root_dir: resolvedRoot,
+    workspace_dir: workspaceDir,
+    source_path: targetPath,
+    target_ref: {
+      version: "build_target_ref.v2",
+      workspace_dir: workspaceDir,
+      book_id: bookId,
+      profile_id: "technical_learning",
+      input_fingerprint: sha256File(targetPath),
+    },
+  };
+}
+
+function buildAutomaticBuildSnapshotInternal(
+  target: AutomaticBuildTarget,
+  options: AutomaticBuildSnapshotOptions = {},
+  prepareStage?: SemanticBuildStage,
+  focus?: { stage: SemanticBuildStage; work_unit_id?: string; parent_lid?: string },
+): AutomaticBuildSnapshot {
+  focus ??= options.stage ? { stage: options.stage } : undefined;
+  const loaded = loadAutomaticBook(target.source_path);
+  const stages: AutomaticBuildStageState[] = [];
+  const profile = resolveContentProfile(target.profile_id);
+  const qualityProfile = options.quality_profile ?? "full";
+  const buildRoot = path.join(target.workspace_dir, ".build");
+
+  if (!focus || focus.stage === "pass1") {
+    const pass1State = routePass1ProductionStage({
+      prepare: prepareStage === "pass1",
+      target,
+      loaded,
+      profile,
+      quality_profile: qualityProfile,
+    });
+    stages.push(pass1State);
+    if (focus || pass1State.pending_tasks.length || !pass1State.closed) return { target, stages };
+  }
+
+  if (target.profile_id === "paper" && (!focus || focus.stage === "paper_metadata" || focus.stage === "paper_lexicon")) {
+    if (!focus || focus.stage === "paper_metadata") {
+      const metadataPlan = routePaperMetadataWorkUnits({
+        target: target.target_ref,
+        windows: loaded.windows,
+        byLid: loaded.byLid,
+        source: loaded.source,
+        policy_fingerprint: automaticBuildExtractionPolicy("paper_metadata", profile, qualityProfile),
+      });
+      const metadataWorkUnits = metadataPlan.work_units;
+      const metadataBindings = bindingsFromDescriptors(metadataWorkUnits);
+      const eligibleMetadataIds = metadataWorkUnits
+        .filter((unit) => !unit.deterministic_skip)
+        .map((unit) => Number(unit.work_unit_id));
+      const metadataMeta = artifactMetaByNumericTask(
+        path.join(buildRoot, "paper-metadata"),
+        eligibleMetadataIds,
+        target,
+        "paper_metadata",
+        metadataBindings,
+      );
+      const metadata = computePaperMetadataRoutingStatus(metadataPlan, metadataMeta);
+      const metadataClosed = profileArtifactMatches(path.join(target.workspace_dir, "paper_metadata.json"), target);
+      stages.push(stageState("paper_metadata", metadata.pending_ids, metadataClosed, metadataWorkUnits));
+      if (focus || metadata.pending || !metadataClosed) return { target, stages };
+    }
+
+    const lexiconPolicy = automaticBuildExtractionPolicy("paper_lexicon", profile, qualityProfile);
+    const lexiconRouteInput = {
+      target: target.target_ref,
+      windows: loaded.windows,
+      byLid: loaded.byLid,
+      source: loaded.source,
+      policy_fingerprint: lexiconPolicy,
+    };
+    let lexiconRoute = routePaperLexiconWorkUnitsWithRecovery(lexiconRouteInput);
+    if (lexiconRoute.status === "blocked") {
+      throw new AutomaticBuildSnapshotRecoverySignal(lexiconRoute.recovery);
+    }
+    const lexiconArtifactDir = path.join(buildRoot, "paper-lexicon");
+    const committedFragments = paperLexiconCommittedArtifactsByWorkUnit(
+      lexiconArtifactDir,
+      lexiconRoute.value,
+      target,
+    );
+    if (committedFragments.size) {
+      lexiconRoute = routePaperLexiconWorkUnitsWithRecovery({
+        ...lexiconRouteInput,
+        existing_artifacts: committedFragments,
+      });
+      if (lexiconRoute.status === "blocked") {
+        throw new AutomaticBuildSnapshotRecoverySignal(lexiconRoute.recovery);
+      }
+    }
+    const lexiconPlan = lexiconRoute.value;
+    const lexiconWorkUnits = lexiconPlan.work_units;
+    const lexiconBindings = bindingsFromDescriptors(lexiconWorkUnits);
+    const eligibleLexiconIds = lexiconWorkUnits
+      .filter((unit) => !unit.deterministic_skip)
+      .map((unit) => unit.work_unit_id);
+    const lexiconMeta = artifactMetaByWorkUnit(
+      lexiconArtifactDir,
+      eligibleLexiconIds,
+      target,
+      "paper_lexicon",
+      lexiconBindings,
+    );
+    const lexicon = computePaperLexiconRoutingStatus(lexiconPlan, lexiconMeta);
+    const lexiconClosed = profileArtifactMatches(path.join(target.workspace_dir, "paper_lexicon.json"), target);
+    stages.push(stageState("paper_lexicon", lexicon.pending_ids, lexiconClosed, lexiconWorkUnits));
+    if (focus || lexicon.pending || !lexiconClosed) return { target, stages };
+  }
+
+  if (!focus || focus.stage === "profile_sidecar") {
+    const sidecarState = routeProfileSidecarProductionStage({
+      prepare: prepareStage === "profile_sidecar",
+      target,
+      loaded,
+      profile,
+      quality_profile: qualityProfile,
+    });
+    stages.push(sidecarState);
+    if (focus || sidecarState.pending_tasks.length || !sidecarState.closed) return { target, stages };
+  }
+
+  const base = readJson<ReadOnlyBase>(path.join(target.workspace_dir, "base.json"));
+  const discourseIndex = readJson<TechnicalLearningDiscourseIndex>(path.join(target.workspace_dir, "discourse_index.json"));
+  const formulaValue = readJson<{ items?: FormulaSemantics[] } | FormulaSemantics[]>(path.join(target.workspace_dir, "formula_semantics.json"));
+  const formulaSemantics = Array.isArray(formulaValue) ? formulaValue : formulaValue.items ?? [];
+  const pass2Closed = profileArtifactMatches(path.join(target.workspace_dir, "pass2_audit.json"), target);
+  if (focus?.stage === "pass2" || (!focus && (!options.public_stage_closure || options.public_stage_closure.includes("pass2")))) {
+    const candidateIndex = buildPass2Candidates({
+      graphNodes: base.graph_nodes,
+      windows: loaded.windows,
+      discourseIndex,
+      formulaSemantics,
+    });
+    const packets = new Map<number, Pass2WorkPacket>();
+    for (const window of loaded.windows.filter(window => !focus?.work_unit_id || String(window.id) === focus.work_unit_id)) {
+      packets.set(window.id, buildPass2WorkPacket({
+        window,
+        byLid: loaded.byLid,
+        source: loaded.source,
+        graphNodes: base.graph_nodes,
+        candidates: candidateIndex.candidates,
+        discourseIndex,
+        formulaSemantics,
+      }));
+    }
+    const pass2Bindings = taskBindings("pass2", profile, qualityProfile, [...packets.entries()].map(([id, packet]) => ({
+      task_id: id,
+      input_hash: pass2PacketHash(packet),
+    })));
+    const pass2WorkUnits = [...packets.entries()].map(([id, packet]) => descriptorFromBinding({
+      target,
+      stage: "pass2",
+      task_id: String(id),
+      kind: "pass2_candidate_batch",
+      binding: pass2Bindings[String(id)],
+      evidence_lids: packet.source_window.leaf_lids,
+      estimated_input_tokens: estimateTokens(JSON.stringify(packet)),
+      formula_lids: packet.source_formula_semantics.length,
+      candidate_count: packet.candidate_targets.length,
+      expected_output_items: packet.candidate_targets.length,
+      legacy_artifact_ref: `.build/pass2/${id}.json`,
+    }));
+    const pass2Meta = artifactMetaByNumericTask(
+      path.join(buildRoot, "pass2"),
+      loaded.windows.map((window) => window.id),
+      target,
+      "pass2",
+      pass2Bindings,
+    );
+    const pass2 = computePass2Status(packets, pass2Meta);
+
+    stages.push(stageState("pass2", pass2.pending, pass2Closed, pass2WorkUnits));
+    if (focus) return { target, stages };
+  }
+  const pass2Audit = pass2Closed
+    ? readJson<NonNullable<Parameters<typeof buildBookStructureUnitSources>[0]["pass2Audit"]>>(
+        path.join(target.workspace_dir, "pass2_audit.json"),
+      )
+    : undefined;
+  const unitSources = buildBookStructureUnitSources({
+    lidNodes: loaded.lidNodes,
+    source: loaded.source,
+    graphNodes: base.graph_nodes,
+    graphEdges: base.graph_edges,
+    discourseIndex,
+    formulaSemantics,
+    pass2Audit,
+    contentProfile: profile,
+  });
+  const selectedStructure = options.reuse?.find(item => item.artifact === "public.book_structure");
+  const acceptedStructure = selectedStructure && !focus
+    ? readAcceptedBookStructureClose(target, qualityProfile) : undefined;
+  const structureState: AutomaticBuildStageState = acceptedStructure
+    && acceptedStructure.publication.receipt_digest === selectedStructure!.freshness_digest
+    ? { stage: "book_structure", closed: true, pending_tasks: [],
+        published_freshness_digest: acceptedStructure.publication.receipt_digest }
+    : routeBookStructureProductionStage({
+    execution_profile: options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1,
+    prepare: prepareStage === "book_structure",
+    retrieval: options.retrieval,
+    target,
+    loaded,
+    profile,
+    quality_profile: qualityProfile,
+    task_parent_lid: focus?.parent_lid,
+    unit_sources: focus?.parent_lid && profile.id !== "technical_learning" ? unitSources.filter(source => source.unit_lid === focus.parent_lid) : unitSources,
+    ...(pass2Audit ? { pass2_audit: pass2Audit } : {}),
+  });
+  stages.push(structureState);
+  if (focus || structureState.pending_tasks.length || !structureState.closed) return { target, stages };
+
+  if (target.profile_id === "paper") {
+    stages.push(stageState("paper_reading_guide", [], paperGuideVerificationFresh(target.workspace_dir)));
+  }
+  stages.push(...routeTeachingBuildStages({ target, retrieval: options.retrieval, source: {
+    source_id: target.book_id, source_revision: canonicalSourceFingerprint(loaded.source),
+    passages: unitSources.flatMap(unit => unit.leaf_lids.map(lid => {
+      const node = loaded.byLid.get(lid)!;
+      return { lid, unit_lid: unit.unit_lid, kind: node.kind, text: loaded.source.slice(node.span.start, node.span.end) };
+    })),
+  }, units: unitSources, structure: readJson<BookStructureSidecar>(path.join(target.workspace_dir, "book_structure.json")) }));
+  return { target, stages };
+}
+
+/** Legacy stages and BookStructure projections read only their actual dependency stage. */
+export function readAutomaticBuildTaskStage(target: AutomaticBuildTarget,
+  focus: { stage: SemanticBuildStage; work_unit_id: string; parent_lid?: string },
+  quality_profile: ExtractionQualityProfile, options: AutomaticBuildSnapshotOptions = {}) {
+  if (["formal_objects", "cognitive_materials", "teaching_publish"].includes(focus.stage)) {
+    return routeTeachingBuildStages({ ...readTeachingBuildInput(target), retrieval: options.retrieval }).find(s => s.stage === focus.stage);
+  }
+  return buildAutomaticBuildSnapshotInternal(target, { ...options, quality_profile }, undefined, focus).stages
+    .find(stage => stage.stage === focus.stage);
+}
+
+export function readTeachingBuildInput(target: AutomaticBuildTarget): TeachingBuildInput {
+  const loaded = loadAutomaticBook(target.source_path);
+  const base = readJson<ReadOnlyBase>(path.join(target.workspace_dir, "base.json"));
+  const discourseIndex = readJson<TechnicalLearningDiscourseIndex>(path.join(target.workspace_dir, "discourse_index.json"));
+  const formulaValue = readJson<{ items?: FormulaSemantics[] } | FormulaSemantics[]>(path.join(target.workspace_dir, "formula_semantics.json"));
+  const pass2Audit = profileArtifactMatches(path.join(target.workspace_dir, "pass2_audit.json"), target)
+    ? readJson<NonNullable<Parameters<typeof buildBookStructureUnitSources>[0]["pass2Audit"]>>(path.join(target.workspace_dir, "pass2_audit.json")) : undefined;
+  const units = buildBookStructureUnitSources({ lidNodes: loaded.lidNodes, source: loaded.source,
+    graphNodes: base.graph_nodes, graphEdges: base.graph_edges, discourseIndex,
+    formulaSemantics: Array.isArray(formulaValue) ? formulaValue : formulaValue.items ?? [], pass2Audit,
+    contentProfile: resolveContentProfile(target.profile_id) });
+  return { target, units, structure: readJson<BookStructureSidecar>(path.join(target.workspace_dir, "book_structure.json")),
+    source: { source_id: target.book_id, source_revision: canonicalSourceFingerprint(loaded.source),
+      passages: units.flatMap(u => u.leaf_lids.map(lid => {
+        const node = loaded.byLid.get(lid)!;
+        return { lid, unit_lid: u.unit_lid, kind: node.kind, text: loaded.source.slice(node.span.start, node.span.end) };
+      })) } };
+}
+
+export function currentAutomaticBuildTaskPolicy(target: AutomaticBuildTarget, stage: SemanticBuildStage,
+  kind: WorkUnitKind, quality: ExtractionQualityProfile) {
+  const profile = resolveContentProfile(target.profile_id);
+  if (stage === "pass1" || stage === "profile_sidecar") {
+    const members = stage === "pass1" ? pass1ModelSlicePolicyMembers(profile, quality)
+      : profileSidecarMapReducePolicyMembers(profile, quality);
+    const member = members.find(member => member.kind === kind);
+    if (!member) throw new Error("policy_generation_conflict: current task policy is unavailable");
+    return member;
+  }
+  return undefined;
+}
+
+export function buildAutomaticBuildSnapshot(
+  target: AutomaticBuildTarget,
+  options: AutomaticBuildSnapshotOptions = {},
+): AutomaticBuildSnapshot {
+  return buildAutomaticBuildSnapshotInternal(target, options);
+}
+
+/** Authorized command boundary: prepare one reachable stage using existing durable formats. */
+export function prepareAutomaticBuildSnapshot(target: AutomaticBuildTarget, stage: SemanticBuildStage,
+  options: AutomaticBuildSnapshotOptions & { authorization: AutomaticBuildRetrievalAuthorization }): Promise<AutomaticBuildAsyncPreparationResult>;
+export function prepareAutomaticBuildSnapshot(target: AutomaticBuildTarget, stage: SemanticBuildStage,
+  options?: AutomaticBuildSnapshotOptions): AutomaticBuildRouteResult<AutomaticBuildSnapshot>;
+export function prepareAutomaticBuildSnapshot(target: AutomaticBuildTarget, stage: SemanticBuildStage,
+  options: AutomaticBuildSnapshotOptions & { authorization?: AutomaticBuildRetrievalAuthorization } = {}): AutomaticBuildRouteResult<AutomaticBuildSnapshot> | Promise<AutomaticBuildAsyncPreparationResult> {
+  if (options.authorization) return prepareAuthorizedSnapshot(target, stage, options as AutomaticBuildSnapshotOptions & { authorization: AutomaticBuildRetrievalAuthorization });
+  try { return readyAutomaticBuildRoute(buildAutomaticBuildSnapshotInternal(target, options, stage)); }
+  catch (error) {
+    if (!(error instanceof AutomaticBuildSnapshotRecoverySignal)) throw error;
+    return blockedAutomaticBuildRoute(error.recovery);
+  }
+}
+
+async function prepareAuthorizedSnapshot(target: AutomaticBuildTarget, stage: SemanticBuildStage,
+  options: AutomaticBuildSnapshotOptions & { authorization: AutomaticBuildRetrievalAuthorization }): Promise<AutomaticBuildAsyncPreparationResult> {
+  const { authorization, ...snapshotOptions } = options;
+  const routeOptions = { ...snapshotOptions, public_stage_closure: authorization.plan.public_stage_closure,
+    reuse: authorization.plan.reuse, retrieval: authorization.runtime.selection };
+  let routed = routeAutomaticBuildSnapshot(target, routeOptions);
+  if (routed.status === "blocked") return routed;
+  const gate = nextPlannedAutomaticBuildAction(routed.value, authorization.plan, 1, options);
+  if (gate.kind === "needs_user" && gate.reason !== "preparation_required") return { status: "needs_user", action: gate };
+  if (!retrievalConfigurationMatches(authorization.plan, authorization.runtime)) return { status: "needs_user", action: {
+    kind: "needs_user", reason: "build_plan_retrieval_drift", stage, message: "retrieval configuration differs from the confirmed BuildPlan" } };
+  if (!authorization.plan.public_stage_closure.includes(stage)) return { status: "needs_user", action:
+    planGateAction("build_plan_closure_drift", "preparation stage is outside the confirmed BuildPlan", authorization.plan, stage) };
+  if (!("stage" in gate) || gate.stage !== stage) return routed;
+  if (stage !== "formal_objects" && stage !== "book_structure") return prepareAutomaticBuildSnapshot(target, stage, routeOptions);
+  routed = prepareAutomaticBuildSnapshot(target, stage, routeOptions);
+  if (routed.status === "blocked") return routed;
+  for (;;) {
+    const state = routed.value.stages.find(s => s.stage === stage);
+    if (!state?.retrieval_preparation) return routed;
+    const failure = await prepareBuildRetrieval({ workspace: target.workspace_dir, plan: authorization.plan,
+      runtime: authorization.runtime, request: state.retrieval_preparation, signal: authorization.signal,
+      model_tokens: authorization.plan.public_stage_closure.reduce((sum, s) => {
+        const usage = readAutomaticBuildStageUsage(target, s as AutomaticBuildStage);
+        return sum + usage.input_tokens + usage.output_tokens;
+      }, 0) });
+    if (failure) return { status: "needs_user", action: { kind: "needs_user", stage,
+      reason: failure.reason === "build_plan_budget_changed" || failure.reason === "build_plan_retrieval_drift" ? failure.reason : failure.reason === "cancelled" ? "retrieval_cancelled" : "retrieval_provider_failed",
+      message: failure.message } };
+    routed = routeAutomaticBuildSnapshot(target, routeOptions);
+    if (routed.status === "blocked") return routed;
+  }
+}
+
+export function routeAutomaticBuildSnapshot(
+  target: AutomaticBuildTarget,
+  options: AutomaticBuildSnapshotOptions = {},
+): AutomaticBuildRouteResult<AutomaticBuildSnapshot> {
+  try {
+    return readyAutomaticBuildRoute(buildAutomaticBuildSnapshotInternal(target, options));
+  } catch (error) {
+    if (!(error instanceof AutomaticBuildSnapshotRecoverySignal)) throw error;
+    return blockedAutomaticBuildRoute(error.recovery);
+  }
+}
+
+function planGateAction(
+  reason: AutomaticBuildPlanGateReason,
+  message: string,
+  plan?: Partial<BuildPlanV1>,
+  stage?: AutomaticBuildStage,
+): AutomaticBuildPlanGateAction {
+  return {
+    kind: "needs_user",
+    reason,
+    message,
+    ...(typeof plan?.plan_id === "string" ? { plan_id: plan.plan_id } : {}),
+    ...(typeof plan?.plan_digest === "string" ? { plan_digest: plan.plan_digest } : {}),
+    ...(stage ? { stage } : {}),
+  };
+}
+
+function validatedExecutionPlan(input: unknown): BuildPlanV1 | AutomaticBuildPlanGateAction {
+  if (input === undefined || input === null) {
+    return planGateAction("build_plan_required", "confirm a BuildPlan before advancing automatic model work");
+  }
+  try {
+    return validateBuildPlanV1(input);
+  } catch {
+    const record = input && typeof input === "object" ? input as Partial<BuildPlanV1> : undefined;
+    if (record && typeof record.plan_digest === "string") {
+      try {
+        const expected = computeBuildPlanDigest(record as BuildPlanDigestSource);
+        if (expected !== record.plan_digest) {
+          return planGateAction(
+            "build_plan_digest_drift",
+            "the BuildPlan digest does not match its current identity",
+            record,
+          );
+        }
+      } catch {
+        // The structural validation error below is the actionable boundary.
+      }
+    }
+    return planGateAction("build_plan_invalid", "the BuildPlan contract is invalid", record);
+  }
+}
+
+function validateExecutionClosure(plan: BuildPlanV1): AutomaticBuildStage[] | AutomaticBuildPlanGateAction {
+  const expectedStandard = standardDeepStageClosure(plan.content_profile);
+  const selected = plan.public_stage_closure;
+  if (plan.recipe_id === "standard_deep") {
+    const expectedSelected = standardDeepStageClosure(plan.content_profile, {
+      pass2: selected.includes("pass2") ? "enabled" : "disabled",
+    });
+    if (canonicalBuildJson(selected) !== canonicalBuildJson(expectedSelected)) {
+      return planGateAction(
+        "build_plan_closure_drift",
+        "standard_deep must use an exact current profile stage closure with its confirmed Pass2 choice",
+        plan,
+      );
+    }
+  } else {
+    const selectedSet = new Set(selected);
+    const ordered = expectedStandard.filter((stage) => selectedSet.has(stage));
+    const knownAndOrdered = canonicalBuildJson(selected) === canonicalBuildJson(ordered);
+    const dependenciesClosed = selected.every((stage) => BUILD_STAGE_DAG[stage as BuildStageId]
+      && BUILD_STAGE_DAG[stage as BuildStageId].depends_on.every((dependency) => (
+        !expectedStandard.includes(dependency as AutomaticBuildStage) || selectedSet.has(dependency as AutomaticBuildStage)
+      )));
+    if (!knownAndOrdered || !dependenciesClosed) {
+      return planGateAction(
+        "build_plan_closure_drift",
+        "goal_directed public stages must be a stable dependency-closed subset of the current profile DAG",
+        plan,
+      );
+    }
+  }
+
+  const closureArtifacts = new Set(selected.map((stage) => `public.${stage}`));
+  const classified = [
+    ...plan.reuse.map((item) => item.artifact),
+    ...plan.create,
+  ];
+  const unexpectedPublic = classified.find((artifact) => (
+    artifact.startsWith("public.")
+    && artifact !== "public.foundation"
+    && !closureArtifacts.has(artifact)
+  ));
+  const missingClassification = [...closureArtifacts].find((artifact) => !classified.includes(artifact));
+  if (unexpectedPublic || missingClassification) {
+    return planGateAction(
+      "build_plan_closure_drift",
+      "BuildPlan public reuse/create buckets must exactly classify the declared stage closure",
+      plan,
+    );
+  }
+  return selected as AutomaticBuildStage[];
+}
+
+export function nextPlannedAutomaticBuildAction(
+  snapshot: AutomaticBuildSnapshot,
+  planInput: unknown,
+  maxParallel = 5,
+  options: { quality_profile?: ExtractionQualityProfile } = {},
+): AutomaticBuildAction | AutomaticBuildPlanGateAction {
+  const validated = validatedExecutionPlan(planInput);
+  if ("kind" in validated) return validated;
+  const plan = validated;
+  if (plan.status !== "confirmed") {
+    return planGateAction("build_plan_unconfirmed", "automatic build requires a confirmed BuildPlan", plan);
+  }
+  if (!plan.retrieval && snapshot.stages.some(s => s.stage === "formal_objects" || s.stage === "book_structure")
+    && readBuildRetrievalState(snapshot.target.workspace_dir).selection) {
+    return planGateAction("build_plan_policy_drift", "the prepared retrieval configuration requires a bound BuildPlan selection", plan, "formal_objects");
+  }
+  if (plan.book_id !== snapshot.target.book_id) {
+    return planGateAction("build_plan_book_drift", "BuildPlan book_id does not match the current target", plan);
+  }
+  if (plan.source_fingerprint !== snapshot.target.target_ref.input_fingerprint) {
+    return planGateAction("build_plan_source_drift", "BuildPlan source fingerprint is stale", plan);
+  }
+  const profile = resolveContentProfile(snapshot.target.profile_id);
+  if (plan.content_profile.id !== profile.id || plan.content_profile.version !== profile.profile_version) {
+    return planGateAction("build_plan_profile_drift", "BuildPlan content profile is stale", plan);
+  }
+  const qualityProfile = options.quality_profile ?? "full";
+  if (plan.public_stage_closure.length && qualityProfile !== "full") {
+    return planGateAction(
+      "build_plan_policy_drift",
+      "confirmed public BuildPlans execute the full quality policy",
+      plan,
+    );
+  }
+  const closure = validateExecutionClosure(plan);
+  if (!Array.isArray(closure)) return closure;
+
+  const freshness = new Map(inspectAutomaticBuildStageFreshness(snapshot, { quality_profile: qualityProfile })
+    .map((inspection) => [inspection.artifact, inspection]));
+  for (const reused of plan.reuse) {
+    if (!reused.artifact.startsWith("public.") || reused.artifact === "public.foundation") continue;
+    const inspection = freshness.get(reused.artifact as `public.${AutomaticBuildStage}`);
+    if (!inspection?.fresh || inspection.freshness_digest !== reused.freshness_digest) {
+      return planGateAction(
+        "build_plan_freshness_drift",
+        `declared reusable artifact is no longer fresh: ${reused.artifact}`,
+        plan,
+        inspection?.stage,
+      );
+    }
+  }
+  const allowed = new Set(closure);
+  return nextAutomaticBuildAction({
+    ...snapshot,
+    stages: snapshot.stages.filter((stage) => allowed.has(stage.stage)),
+  }, maxParallel);
+}
+
+export function nextAutomaticBuildAction(snapshot: AutomaticBuildSnapshot, maxParallel = 5): AutomaticBuildAction {
+  if (!Number.isInteger(maxParallel) || maxParallel < 1) throw new Error("maxParallel must be a positive integer");
+  for (const stage of snapshot.stages) {
+    if (stage.closed) continue;
+    if (stage.retrieval_preparation) return { kind: "needs_user", reason: "preparation_required", stage: stage.stage,
+      message: "candidate retrieval requires authorized preparation" };
+    if (stage.structure_blocked) return { kind: "needs_user",
+      reason: stage.structure_budget_blocked ? "structure_execution_budget_exceeded" : "structure_preparation_incomplete",
+      stage: stage.stage, message: stage.structure_blocked,
+      ...(stage.structure_budget_blocked?.reasons.some(code => code === "stage_limit" || code === "context_limit")
+        ? { violations: [{ code: "execution_body_limit", actual: stage.structure_budget_blocked.estimated_rendered_tokens,
+          limit: stage.structure_budget_blocked.effective_body_limit_tokens }] } : {}),
+    };
+    if (stage.teaching_blocked) return { kind: "needs_user", reason: "teaching_preparation_incomplete", stage: stage.stage, message: stage.teaching_blocked,
+      ...(stage.teaching_preparation_violations ? { violations: stage.teaching_preparation_violations } : {}) };
+    if (stage.pending_tasks.length) {
+      const firstWorkUnit = stage.pending_work_units?.[0];
+      const extractor = stage.stage === "paper_reading_guide"
+        ? undefined
+        : firstWorkUnit
+          ? automaticBuildExtractorForWorkUnitKind(stage.stage, firstWorkUnit.kind, snapshot.target.profile_id)
+          : automaticBuildExtractorForStage(stage.stage);
+      if (!extractor) throw new Error(`stage ${stage.stage} has pending semantic tasks but no extractor`);
+      const policyIdentity = (unit: WorkUnitDescriptor) => {
+        const binding = stage.task_bindings?.[unit.work_unit_id];
+        return binding && isAutomaticBuildTaskPolicyBindingV2(binding)
+          ? {
+              policy_generation_id: binding.policy_generation_id,
+              semantic_contract: binding.semantic_contract,
+            }
+          : { semantic_contract: semanticContractFromExtractionPolicy(unit.policy_fingerprint) };
+      };
+      const selectedPolicyIdentity = firstWorkUnit ? policyIdentity(firstWorkUnit) : undefined;
+      const selectedWorkUnits = (stage.pending_work_units ?? [])
+        .filter((unit) => !firstWorkUnit || (
+          unit.kind === firstWorkUnit.kind
+          && canonicalBuildJson(policyIdentity(unit)) === canonicalBuildJson(selectedPolicyIdentity)
+        ))
+        .slice(0, maxParallel);
+      const selectedTaskIds = selectedWorkUnits.length
+        ? selectedWorkUnits.map((unit) => unit.work_unit_id)
+        : stage.pending_tasks.slice(0, maxParallel);
+      return {
+        kind: "extract",
+        stage: stage.stage,
+        extractor,
+        task_ids: selectedTaskIds,
+        max_attempts: 3,
+        ...(selectedWorkUnits.length ? { work_units: selectedWorkUnits } : {}),
+        ...(stage.task_bindings ? {
+          task_bindings: Object.fromEntries(selectedTaskIds.map((taskId) => [
+            taskId,
+            stage.task_bindings![taskId],
+          ])),
+        } : {}),
+      };
+    }
+    return { kind: "close_stage", stage: stage.stage };
+  }
+  return { kind: "done", book_id: snapshot.target.book_id, workspace_dir: snapshot.target.workspace_dir };
+}

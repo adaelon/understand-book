@@ -1,0 +1,5184 @@
+{
+  "local_mcp": [
+    {
+      "description": "Return the read-only book manifest. Use when: Inspect public book identity and structure metadata. Do not treat manifest metadata as source-text evidence.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "book_manifest"
+    },
+    {
+      "description": "Read canonical source text by one LID or an inclusive LID range. Use when: Read source text after a LID has been located. Do not use for lexical discovery when no LID is known.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "end_lid": "1.2",
+            "lid": "1.1"
+          }
+        ],
+        "properties": {
+          "end_lid": {
+            "description": "Inclusive final LID in source reading order; for a search hit, use end_lid. Reads from lid's span start through end_lid's span end. Omit or null to read only lid's span.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lid": {
+            "description": "Known LID from this book's locating or structure results; for a search hit, use start_lid. Reads the node's canonical source span, including descendants.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lid"
+        ],
+        "type": "object"
+      },
+      "name": "book_text"
+    },
+    {
+      "description": "Enumerate the complete set of literal-text occurrences in canonical source, returning stable source UTF-16 ranges, the total count, and a pagination cursor. Use when: Locate the first, previous, or every lexical occurrence before interpreting it. Do not use lexical exhaustiveness as proof of semantic exhaustiveness.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "match_mode": "exact",
+            "order": "document",
+            "page_size": 1,
+            "query": "threshold"
+          },
+          {
+            "match_mode": "normalized",
+            "order": "reverse_document",
+            "page_size": 1,
+            "query": "THRESHOLD",
+            "scope": {
+              "relative_to": {
+                "direction": "before",
+                "lid": "1.3"
+              },
+              "within_lid": "1"
+            }
+          }
+        ],
+        "properties": {
+          "cursor": {
+            "description": "Opaque next_cursor from the preceding search result. Omit or null for the first page; preserve query, match_mode, scope, order and page_size on continuation. A changed source revision invalidates it.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "match_mode": {
+            "default": "exact",
+            "description": "exact (default) matches unchanged text; normalized applies NFKC, full non-Turkic case folding and whitespace collapsing. Both locate literal occurrences, not semantic equivalents; result ranges use original-source UTF-16 positions.",
+            "enum": [
+              "exact",
+              "normalized"
+            ],
+            "type": "string"
+          },
+          "order": {
+            "default": "document",
+            "description": "document (default) returns earliest occurrences first; reverse_document returns latest first. Uses canonical source order, not lexical LID sorting. Combine before with reverse_document for previous occurrences.",
+            "enum": [
+              "document",
+              "reverse_document"
+            ],
+            "type": "string"
+          },
+          "page_size": {
+            "default": 20,
+            "description": "Maximum literal occurrences per search page, 1..50, default 20. Does not change total_occurrences or exhaustive coverage of the requested literal scope; preserve it when using cursor.",
+            "format": "uint",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "type": "integer"
+          },
+          "query": {
+            "description": "Literal text to locate in canonical source, containing non-whitespace text and at most 4,096 Unicode scalar values. Exact mode preserves query whitespace; this is not a semantic question or regex. Read chosen hits using their start_lid/end_lid.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "relative_to": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "direction": {
+                            "description": "before keeps hits ending at or before the reference span's start; after keeps hits starting at or after its end. Direction filters scope independently of result order.",
+                            "enum": [
+                              "before",
+                              "after"
+                            ],
+                            "type": "string"
+                          },
+                          "lid": {
+                            "description": "Known reference LID in this book. The relative filter excludes this node's entire source span, including its descendants.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "direction",
+                          "lid"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Optional before/after filter around a known LID, excluding that node's span. Intersects with within_lid when both are supplied."
+                  },
+                  "within_lid": {
+                    "description": "Known LID whose source span, including descendants, must contain each whole hit. Omit or null for no subtree restriction.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional source scope using known LIDs from this book. Omit, null or {} searches the whole book; within_lid and relative_to intersect, and each whole hit must fit the resulting range."
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "book_search_text"
+    },
+    {
+      "description": "Return context pointers for a LID: near adds tree adjacency and local edges, mid adds other concept or entity occurrences, and far adds long-range edges. Pointers contain no source text; use book_text to read it. Use when: Expand around a verified LID through deterministic context links. Do not treat pointers as source text.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "granularity": "near",
+            "k": 3,
+            "lid": "1.2"
+          }
+        ],
+        "properties": {
+          "granularity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "near",
+                  "mid",
+                  "far"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "near",
+            "description": "Context reach: near includes tree adjacency and local relations; mid adds other concept/entity occurrences; far also adds long-range relations. Omit or null for near."
+          },
+          "k": {
+            "default": 10,
+            "description": "Maximum number of context pointers returned across all layers. Omit or null for 10; zero returns no items. Counts pointers, not characters or source passages.",
+            "format": "uint",
+            "minimum": 0.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "lid": {
+            "description": "Known LID in this book to expand around. Returned items are context pointers; read their LIDs through the source-text tool for evidence.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lid"
+        ],
+        "type": "object"
+      },
+      "name": "book_context"
+    },
+    {
+      "description": "Deterministically recall whole-book concept and entity candidates with match reasons, bounded previews, and complete occurrence LIDs. After choosing candidates, read their full evidence with book_text. Use when: Discover concept or entity candidates when the user may not know the graph display label. Do not treat previews as final evidence or silently select a candidate; read chosen occurrence LIDs with book_text.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "anchor_lid": "1.2",
+            "limit": 5,
+            "query": "threshold"
+          }
+        ],
+        "properties": {
+          "anchor_lid": {
+            "description": "Optional known LID in this book to rank nearby candidates and previews. Omit or null for unanchored ranking; this does not restrict recall to a subtree.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "default": 12,
+            "description": "Maximum concept/entity candidates, 1..50; omit or null for 12. Inspect matched_count and truncated for candidate coverage; this does not limit occurrences within a candidate.",
+            "format": "uint",
+            "maximum": 50,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "query": {
+            "description": "Nonblank concept/entity name, alias or descriptive terms for deterministic candidate recall from names and occurrence text. At most 4,096 Unicode scalar values, including surrounding whitespace; not literal occurrence enumeration.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "book_concept"
+    },
+    {
+      "description": "Project BookStructure to explain a LID's role in the whole-book spine, throughline, and key stops. Without at, return the whole-book overview; when the sidecar is absent, return explicit unavailable status. Use when: Inspect the structural role of a LID or the whole-book overview. Do not use as a source-text search surface.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "at": "1.2"
+          }
+        ],
+        "properties": {
+          "at": {
+            "description": "Optional known LID in this book to locate its structural role or current route segment. Omit or null for the whole-book view; this is a location, not a natural-language query.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "name": "book_structure"
+    },
+    {
+      "description": "Return a macro guided-reading route from BookStructure by expanding key stops along spine segments. It does not interpret natural language or read Reader or memory state; when the sidecar is absent, it returns explicit unavailable status. Use when: Choose macro reading stops from BookStructure. Do not use for semantic question answering.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "description": "Optional known LID in this book to locate its structural role or current route segment. Omit or null for the whole-book view; this is a location, not a natural-language query.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "name": "book_guide_path"
+    },
+    {
+      "description": "Return the current paper's metadata projection while preserving value, source, evidence_lids, and confidence. It returns explicit unavailable status without a sidecar and never creates cross-paper relationships. Use when: Read the current paper metadata projection. Do not infer cross-paper relations.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "book_paper_metadata"
+    },
+    {
+      "description": "Return the current paper's lexicon projection for aligning term, abbreviation, and dataset candidates. It returns explicit unavailable status when the sidecar is absent. Use when: Align paper terms, abbreviations, and dataset candidates. Do not treat candidates as verified definitions without source text.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "book_paper_lexicon"
+    },
+    {
+      "description": "Return the read-only PaperReadingGuide projection, combining paper metadata and lexicon, BookStructure, graph, discourse, and source text into ten paper questions, a codebook, and abstract-reading aids. It never creates or changes persistent truth. Use when: Read a deterministic paper-reading projection. Do not use it to mutate persistent truth.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "default": "skim",
+            "description": "Reading depth: skim, close or deep. Defaults to skim.",
+            "enum": [
+              "skim",
+              "close",
+              "deep"
+            ],
+            "type": "string"
+          },
+          "stage": {
+            "default": "passive",
+            "description": "Reading stage: passive, active, critical or creative. Defaults to passive.",
+            "enum": [
+              "passive",
+              "active",
+              "critical",
+              "creative"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "book_paper_reading_guide"
+    },
+    {
+      "description": "Answer a self-contained semantic question about explicit referents by resolving targets first and then reading source evidence around the frozen bindings. Use when: Answer definition, explanation, relation, or comparison obligations for explicit referents. Do not use for literal occurrence location.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "properties": {
+              "intent": {
+                "enum": [
+                  "definition",
+                  "explanation"
+                ]
+              }
+            }
+          },
+          {
+            "properties": {
+              "intent": {
+                "enum": [
+                  "relation",
+                  "comparison"
+                ]
+              },
+              "targets": {
+                "minItems": 2
+              }
+            }
+          }
+        ],
+        "examples": [
+          {
+            "anchor_lid": "1.1",
+            "intent": "comparison",
+            "obligations": [
+              {
+                "requirement": "State the activation condition at each location."
+              },
+              {
+                "requirement": "Compare whether equality activates each threshold, citing both passages."
+              }
+            ],
+            "query": "How do the activation conditions of the alpha threshold and beta threshold differ?",
+            "targets": [
+              "alpha threshold",
+              "beta threshold"
+            ]
+          }
+        ],
+        "properties": {
+          "anchor_lid": {
+            "description": "Required known LID in this book anchoring referent resolution. It provides local context without restricting evidence retrieval to this node.",
+            "type": "string"
+          },
+          "intent": {
+            "description": "Question kind: definition or explanation requires 1..3 targets; relation or comparison requires 2..3 separately named targets.",
+            "enum": [
+              "definition",
+              "explanation",
+              "relation",
+              "comparison"
+            ],
+            "type": "string"
+          },
+          "obligations": {
+            "description": "One to three answer requirements, each in its own requirement object; these guide evidence sufficiency for the requested answer.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "requirement": {
+                  "description": "One nonblank, independently checkable requirement the semantic answer must address.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "requirement"
+              ],
+              "type": "object"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "type": "array"
+          },
+          "query": {
+            "description": "Self-contained, nonblank semantic question about the named targets, with enough context to resolve referents. Use literal search for exact wording or first/previous occurrences.",
+            "type": "string"
+          },
+          "targets": {
+            "description": "Explicit referents to resolve before reading evidence. Each item is nonblank and unique after trimming and lowercasing; name comparison/relation targets separately, not as one combined phrase.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "anchor_lid",
+          "intent",
+          "obligations",
+          "query",
+          "targets"
+        ],
+        "type": "object"
+      },
+      "name": "book_query"
+    },
+    {
+      "description": "Synthesize a caller-supplied discrete LID set without expanding retrieval, returning an answer whose citations are a subset of the input LIDs. Use when: Synthesize a caller-supplied, frozen set of LIDs. Do not expand evidence beyond the supplied LIDs.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "lids": [
+              "1.1",
+              "1.2"
+            ],
+            "task": "Summarize these two threshold conditions using only these passages; state any evidence gaps."
+          }
+        ],
+        "properties": {
+          "lids": {
+            "description": "Nonempty list of known LIDs selected as the complete evidence scope. Synthesis reads only these nodes and returns citations drawn from this list, without expanding retrieval.",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "task": {
+            "description": "Synthesis instruction for the supplied LIDs; omit or null to synthesize their content without an additional task.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "lids"
+        ],
+        "type": "object"
+      },
+      "name": "book_synthesize"
+    },
+    {
+      "description": "Open, refine, or close an ephemeral visitor guide session. Use when: Maintain a visitor-only ephemeral guided-reading cursor. Do not read Resident reader or memory state.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "properties": {
+              "action": {
+                "enum": [
+                  "guide"
+                ]
+              },
+              "intent": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "intent"
+            ]
+          },
+          {
+            "properties": {
+              "action": {
+                "enum": [
+                  "close"
+                ]
+              },
+              "session_id": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "action",
+              "session_id"
+            ]
+          }
+        ],
+        "properties": {
+          "action": {
+            "default": "guide",
+            "description": "guide opens or refines an ephemeral visitor session and requires intent; close ends it and requires session_id. Defaults to guide.",
+            "enum": [
+              "guide",
+              "close"
+            ],
+            "type": "string"
+          },
+          "anchor_lid": {
+            "description": "Optional known LID in this book to anchor guided reading. Omit or null when no location is chosen; unused for close.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "feedback": {
+            "description": "Optional reader feedback to combine with intent when generating the next guide; unused for close.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "intent": {
+            "description": "Nonblank natural-language reading goal, required on every guide action, including session refinement; unused for close.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "session_id": {
+            "description": "Session identifier returned by an earlier guide call. For guide, omit or null to open a session, or supply it to refine that session; required for close.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "name": "book_guide"
+    },
+    {
+      "description": "List bounded Routing Cards for the current active accepted artifact overlay.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "format": "uint",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "name": "artifact_list"
+    },
+    {
+      "description": "Search current active accepted artifacts with deterministic bounded lexical ranking.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "anchor_lids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "artifact_refs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "format": "uint",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "query": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "artifact_search"
+    },
+    {
+      "description": "Read bounded records from a current active accepted artifact by opaque reference.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "limit": {
+                  "enum": [
+                    1
+                  ]
+                }
+              },
+              "required": [
+                "limit"
+              ]
+            },
+            "then": {
+              "properties": {
+                "record_refs": {
+                  "maxItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "limit": {
+                  "enum": [
+                    2
+                  ]
+                }
+              },
+              "required": [
+                "limit"
+              ]
+            },
+            "then": {
+              "properties": {
+                "record_refs": {
+                  "maxItems": 2
+                }
+              }
+            }
+          }
+        ],
+        "not": {
+          "properties": {
+            "cursor": {
+              "type": "string"
+            },
+            "record_refs": {
+              "type": "array"
+            }
+          },
+          "required": [
+            "record_refs",
+            "cursor"
+          ]
+        },
+        "properties": {
+          "artifact_ref": {
+            "type": "string"
+          },
+          "cursor": {
+            "description": "Read continuation; omit record_refs when using cursor.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "field_paths": {
+            "items": {
+              "description": "JSON Pointer such as /title or /meaning/text; escape ~ as ~0 and / in a key as ~1.",
+              "maxLength": 256,
+              "pattern": "^/(?:[^~]|~[01])*$",
+              "type": "string"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "include_relations": {
+            "default": false,
+            "type": "boolean"
+          },
+          "limit": {
+            "format": "uint",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "record_refs": {
+            "description": "Opaque refs returned by artifact.search; mutually exclusive with cursor. Their count must not exceed limit.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "artifact_ref"
+        ],
+        "type": "object"
+      },
+      "name": "artifact_read"
+    }
+  ],
+  "remote_mcp": [
+    {
+      "description": "Start here to select authorized immutable publications, or refresh after material_unavailable. Costs 0 calls, including every directory page, even when content credits are exhausted. items contains name, published_book_ref (book_id + publication_id), is_default and available_tools for each publication. Copy a selected reference into content arguments and choose an available tool. An empty directory means this account has no authorized materials; ask the user to contact the administrator. complete=false means more items exist: copy next_calls name and arguments for needed pages. Returns usage without a charge; directory entries are not evidence and have no source citations.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "additionalProperties": false,
+            "description": "Omit for the first page; copy the after reference from book_list next_calls for later pages.",
+            "properties": {
+              "book_id": {
+                "description": "Material identifier returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "publication_id": {
+                "description": "Exact publication version returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "book_id",
+              "publication_id"
+            ],
+            "type": "object"
+          },
+          "limit": {
+            "default": 20,
+            "description": "Maximum publications on this directory page.",
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "name": "book_list"
+    },
+    {
+      "description": "Read canonical source text by one LID or an inclusive LID range. Use when: Read source text after a LID has been located. Do not use for lexical discovery when no LID is known.  Returns data.text with at most 8,000 Unicode characters per page, data.source_range for this page and data.requested_range for the requested LIDs. Ranges are absolute canonical-source UTF-16 [start, end), not byte offsets. Preserve the publication and range when continuing. Copy published_book_ref from book_list and check its available_tools. Costs 1 call on success, including empty results, each continuation page and repeated successful requests; failures cost 0. complete=false means more pages exist; copy needed next_calls name and arguments unchanged. sources gives published_book_ref, start_lid/end_lid, source_range and source_url: cite only evidence actually read, retaining its version and exact range. An empty sources array provides no source citation. usage is the server's post-call balance with charged_units and charged_from; do not infer balance locally. On quota_exhausted stop content retries and report usage.free_resets_at plus top_up_url or top_up_instruction; book_list and mcp_usage remain free.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "end_lid": "1.2",
+            "lid": "1.1",
+            "published_book_ref": {
+              "book_id": "tool-example-book",
+              "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+            }
+          }
+        ],
+        "properties": {
+          "end_lid": {
+            "description": "Inclusive final LID in source reading order; for a search hit, use end_lid. Reads from lid's span start through end_lid's span end. Omit or null to read only lid's span.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lid": {
+            "description": "Known LID from this book's locating or structure results; for a search hit, use start_lid. Reads the node's canonical source span, including descendants.",
+            "type": "string"
+          },
+          "published_book_ref": {
+            "additionalProperties": false,
+            "description": "Copy the exact immutable publication reference from book_list; keep both identifiers on every content call and continuation.",
+            "properties": {
+              "book_id": {
+                "description": "Material identifier returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "publication_id": {
+                "description": "Exact publication version returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "book_id",
+              "publication_id"
+            ],
+            "type": "object"
+          },
+          "start_utf16": {
+            "description": "Absolute canonical-source UTF-16 position from next_calls; omit for the first page.",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "lid",
+          "published_book_ref"
+        ],
+        "type": "object"
+      },
+      "name": "book_text"
+    },
+    {
+      "description": "Enumerate the complete set of literal-text occurrences in canonical source, returning stable source UTF-16 ranges, the total count, and a pagination cursor. Use when: Locate the first, previous, or every lexical occurrence before interpreting it. Do not use lexical exhaustiveness as proof of semantic exhaustiveness. Hits are data.occurrences: pass a hit's start_lid as book_text.lid and end_lid as book_text.end_lid; source_range_utf16 is the exact whole-hit range and ranges gives per-LID positions. Returns a built projection in data, not a generated answer. Collections are paged: data_path identifies a continuation's collection in the original projection and total_items its size. next_calls may include multiple collection branches and search batches. Concept matched_count/truncated still describe bounded candidate recall. Read chosen evidence LIDs with book_text. Missing built capability returns material_unavailable. Copy published_book_ref from book_list and check its available_tools. Costs 1 call on success, including empty results, each continuation page and repeated successful requests; failures cost 0. complete=false means more pages exist; copy needed next_calls name and arguments unchanged. sources gives published_book_ref, start_lid/end_lid, source_range and source_url: cite only evidence actually read, retaining its version and exact range. An empty sources array provides no source citation. usage is the server's post-call balance with charged_units and charged_from; do not infer balance locally. On quota_exhausted stop content retries and report usage.free_resets_at plus top_up_url or top_up_instruction; book_list and mcp_usage remain free.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "match_mode": "exact",
+            "order": "document",
+            "page_size": 1,
+            "published_book_ref": {
+              "book_id": "tool-example-book",
+              "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+            },
+            "query": "threshold"
+          },
+          {
+            "match_mode": "normalized",
+            "order": "reverse_document",
+            "page_size": 1,
+            "published_book_ref": {
+              "book_id": "tool-example-book",
+              "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+            },
+            "query": "THRESHOLD",
+            "scope": {
+              "relative_to": {
+                "direction": "before",
+                "lid": "1.3"
+              },
+              "within_lid": "1"
+            }
+          }
+        ],
+        "properties": {
+          "cursor": {
+            "description": "Opaque next_cursor from the preceding search result. Omit or null for the first page; preserve query, match_mode, scope, order and page_size on continuation. A changed source revision invalidates it.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "match_mode": {
+            "default": "exact",
+            "description": "exact (default) matches unchanged text; normalized applies NFKC, full non-Turkic case folding and whitespace collapsing. Both locate literal occurrences, not semantic equivalents; result ranges use original-source UTF-16 positions.",
+            "enum": [
+              "exact",
+              "normalized"
+            ],
+            "type": "string"
+          },
+          "order": {
+            "default": "document",
+            "description": "document (default) returns earliest occurrences first; reverse_document returns latest first. Uses canonical source order, not lexical LID sorting. Combine before with reverse_document for previous occurrences.",
+            "enum": [
+              "document",
+              "reverse_document"
+            ],
+            "type": "string"
+          },
+          "page": {
+            "additionalProperties": false,
+            "description": "Copy a continuation from next_calls to read an omitted collection. data_path identifies its position in the full projection.",
+            "properties": {
+              "limit": {
+                "default": 20,
+                "maximum": 50,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "offset": {
+                "default": 0,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "type": "object"
+          },
+          "page_size": {
+            "default": 20,
+            "description": "Maximum literal occurrences per search page, 1..50, default 20. Does not change total_occurrences or exhaustive coverage of the requested literal scope; preserve it when using cursor.",
+            "format": "uint",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "type": "integer"
+          },
+          "published_book_ref": {
+            "additionalProperties": false,
+            "description": "Copy the exact immutable publication reference from book_list; keep both identifiers on every content call and continuation.",
+            "properties": {
+              "book_id": {
+                "description": "Material identifier returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "publication_id": {
+                "description": "Exact publication version returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "book_id",
+              "publication_id"
+            ],
+            "type": "object"
+          },
+          "query": {
+            "description": "Literal text to locate in canonical source, containing non-whitespace text and at most 4,096 Unicode scalar values. Exact mode preserves query whitespace; this is not a semantic question or regex. Read chosen hits using their start_lid/end_lid.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "relative_to": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "direction": {
+                            "description": "before keeps hits ending at or before the reference span's start; after keeps hits starting at or after its end. Direction filters scope independently of result order.",
+                            "enum": [
+                              "before",
+                              "after"
+                            ],
+                            "type": "string"
+                          },
+                          "lid": {
+                            "description": "Known reference LID in this book. The relative filter excludes this node's entire source span, including its descendants.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "direction",
+                          "lid"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Optional before/after filter around a known LID, excluding that node's span. Intersects with within_lid when both are supplied."
+                  },
+                  "within_lid": {
+                    "description": "Known LID whose source span, including descendants, must contain each whole hit. Omit or null for no subtree restriction.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional source scope using known LIDs from this book. Omit, null or {} searches the whole book; within_lid and relative_to intersect, and each whole hit must fit the resulting range."
+          }
+        },
+        "required": [
+          "query",
+          "published_book_ref"
+        ],
+        "type": "object"
+      },
+      "name": "book_search_text"
+    },
+    {
+      "description": "Return context pointers for a LID: near adds tree adjacency and local edges, mid adds other concept or entity occurrences, and far adds long-range edges. Pointers contain no source text; use book_text to read it. Use when: Expand around a verified LID through deterministic context links. Do not treat pointers as source text.  Returns a built projection in data, not a generated answer. Collections are paged: data_path identifies a continuation's collection in the original projection and total_items its size. next_calls may include multiple collection branches and search batches. Concept matched_count/truncated still describe bounded candidate recall. Read chosen evidence LIDs with book_text. Missing built capability returns material_unavailable. Copy published_book_ref from book_list and check its available_tools. Costs 1 call on success, including empty results, each continuation page and repeated successful requests; failures cost 0. complete=false means more pages exist; copy needed next_calls name and arguments unchanged. sources gives published_book_ref, start_lid/end_lid, source_range and source_url: cite only evidence actually read, retaining its version and exact range. An empty sources array provides no source citation. usage is the server's post-call balance with charged_units and charged_from; do not infer balance locally. On quota_exhausted stop content retries and report usage.free_resets_at plus top_up_url or top_up_instruction; book_list and mcp_usage remain free.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "granularity": "near",
+            "k": 3,
+            "lid": "1.2",
+            "published_book_ref": {
+              "book_id": "tool-example-book",
+              "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+            }
+          }
+        ],
+        "properties": {
+          "granularity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "near",
+                  "mid",
+                  "far"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "near",
+            "description": "Context reach: near includes tree adjacency and local relations; mid adds other concept/entity occurrences; far also adds long-range relations. Omit or null for near."
+          },
+          "k": {
+            "default": 10,
+            "description": "Maximum number of context pointers returned across all layers. Omit or null for 10; zero returns no items. Counts pointers, not characters or source passages.",
+            "format": "uint",
+            "minimum": 0.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "lid": {
+            "description": "Known LID in this book to expand around. Returned items are context pointers; read their LIDs through the source-text tool for evidence.",
+            "type": "string"
+          },
+          "page": {
+            "additionalProperties": false,
+            "description": "Copy a continuation from next_calls to read an omitted collection. data_path identifies its position in the full projection.",
+            "properties": {
+              "limit": {
+                "default": 20,
+                "maximum": 50,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "offset": {
+                "default": 0,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "type": "object"
+          },
+          "published_book_ref": {
+            "additionalProperties": false,
+            "description": "Copy the exact immutable publication reference from book_list; keep both identifiers on every content call and continuation.",
+            "properties": {
+              "book_id": {
+                "description": "Material identifier returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "publication_id": {
+                "description": "Exact publication version returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "book_id",
+              "publication_id"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "lid",
+          "published_book_ref"
+        ],
+        "type": "object"
+      },
+      "name": "book_context"
+    },
+    {
+      "description": "Deterministically recall whole-book concept and entity candidates with match reasons, bounded previews, and complete occurrence LIDs. After choosing candidates, read their full evidence with book_text. Use when: Discover concept or entity candidates when the user may not know the graph display label. Do not treat previews as final evidence or silently select a candidate; read chosen occurrence LIDs with book_text.  Returns a built projection in data, not a generated answer. Collections are paged: data_path identifies a continuation's collection in the original projection and total_items its size. next_calls may include multiple collection branches and search batches. Concept matched_count/truncated still describe bounded candidate recall. Read chosen evidence LIDs with book_text. Missing built capability returns material_unavailable. Copy published_book_ref from book_list and check its available_tools. Costs 1 call on success, including empty results, each continuation page and repeated successful requests; failures cost 0. complete=false means more pages exist; copy needed next_calls name and arguments unchanged. sources gives published_book_ref, start_lid/end_lid, source_range and source_url: cite only evidence actually read, retaining its version and exact range. An empty sources array provides no source citation. usage is the server's post-call balance with charged_units and charged_from; do not infer balance locally. On quota_exhausted stop content retries and report usage.free_resets_at plus top_up_url or top_up_instruction; book_list and mcp_usage remain free.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "anchor_lid": "1.2",
+            "limit": 5,
+            "published_book_ref": {
+              "book_id": "tool-example-book",
+              "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+            },
+            "query": "threshold"
+          }
+        ],
+        "properties": {
+          "anchor_lid": {
+            "description": "Optional known LID in this book to rank nearby candidates and previews. Omit or null for unanchored ranking; this does not restrict recall to a subtree.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "default": 12,
+            "description": "Maximum concept/entity candidates, 1..50; omit or null for 12. Inspect matched_count and truncated for candidate coverage; this does not limit occurrences within a candidate.",
+            "format": "uint",
+            "maximum": 50,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "page": {
+            "additionalProperties": false,
+            "description": "Copy a continuation from next_calls to read an omitted collection. data_path identifies its position in the full projection.",
+            "properties": {
+              "limit": {
+                "default": 20,
+                "maximum": 50,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "offset": {
+                "default": 0,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "type": "object"
+          },
+          "published_book_ref": {
+            "additionalProperties": false,
+            "description": "Copy the exact immutable publication reference from book_list; keep both identifiers on every content call and continuation.",
+            "properties": {
+              "book_id": {
+                "description": "Material identifier returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "publication_id": {
+                "description": "Exact publication version returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "book_id",
+              "publication_id"
+            ],
+            "type": "object"
+          },
+          "query": {
+            "description": "Nonblank concept/entity name, alias or descriptive terms for deterministic candidate recall from names and occurrence text. At most 4,096 Unicode scalar values, including surrounding whitespace; not literal occurrence enumeration.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "published_book_ref"
+        ],
+        "type": "object"
+      },
+      "name": "book_concept"
+    },
+    {
+      "description": "Project BookStructure to explain a LID's role in the whole-book spine, throughline, and key stops. Without at, return the whole-book overview; when the sidecar is absent, return explicit unavailable status. Use when: Inspect the structural role of a LID or the whole-book overview. Do not use as a source-text search surface.  Returns a built projection in data, not a generated answer. Collections are paged: data_path identifies a continuation's collection in the original projection and total_items its size. next_calls may include multiple collection branches and search batches. Concept matched_count/truncated still describe bounded candidate recall. Read chosen evidence LIDs with book_text. Missing built capability returns material_unavailable. Copy published_book_ref from book_list and check its available_tools. Costs 1 call on success, including empty results, each continuation page and repeated successful requests; failures cost 0. complete=false means more pages exist; copy needed next_calls name and arguments unchanged. sources gives published_book_ref, start_lid/end_lid, source_range and source_url: cite only evidence actually read, retaining its version and exact range. An empty sources array provides no source citation. usage is the server's post-call balance with charged_units and charged_from; do not infer balance locally. On quota_exhausted stop content retries and report usage.free_resets_at plus top_up_url or top_up_instruction; book_list and mcp_usage remain free.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "at": "1.2",
+            "published_book_ref": {
+              "book_id": "tool-example-book",
+              "publication_id": "01a12e56-390d-7003-b0dd-733f0fd292a3"
+            }
+          }
+        ],
+        "properties": {
+          "at": {
+            "description": "Optional known LID in this book to locate its structural role or current route segment. Omit or null for the whole-book view; this is a location, not a natural-language query.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page": {
+            "additionalProperties": false,
+            "description": "Copy a continuation from next_calls to read an omitted collection. data_path identifies its position in the full projection.",
+            "properties": {
+              "limit": {
+                "default": 20,
+                "maximum": 50,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "offset": {
+                "default": 0,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "type": "object"
+          },
+          "published_book_ref": {
+            "additionalProperties": false,
+            "description": "Copy the exact immutable publication reference from book_list; keep both identifiers on every content call and continuation.",
+            "properties": {
+              "book_id": {
+                "description": "Material identifier returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "publication_id": {
+                "description": "Exact publication version returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "book_id",
+              "publication_id"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "published_book_ref"
+        ],
+        "type": "object"
+      },
+      "name": "book_structure"
+    },
+    {
+      "description": "Return a macro guided-reading route from BookStructure by expanding key stops along spine segments. It does not interpret natural language or read Reader or memory state; when the sidecar is absent, it returns explicit unavailable status. Use when: Choose macro reading stops from BookStructure. Do not use for semantic question answering.  Returns a built projection in data, not a generated answer. Collections are paged: data_path identifies a continuation's collection in the original projection and total_items its size. next_calls may include multiple collection branches and search batches. Concept matched_count/truncated still describe bounded candidate recall. Read chosen evidence LIDs with book_text. Missing built capability returns material_unavailable. Copy published_book_ref from book_list and check its available_tools. Costs 1 call on success, including empty results, each continuation page and repeated successful requests; failures cost 0. complete=false means more pages exist; copy needed next_calls name and arguments unchanged. sources gives published_book_ref, start_lid/end_lid, source_range and source_url: cite only evidence actually read, retaining its version and exact range. An empty sources array provides no source citation. usage is the server's post-call balance with charged_units and charged_from; do not infer balance locally. On quota_exhausted stop content retries and report usage.free_resets_at plus top_up_url or top_up_instruction; book_list and mcp_usage remain free.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "description": "Optional known LID in this book to locate its structural role or current route segment. Omit or null for the whole-book view; this is a location, not a natural-language query.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page": {
+            "additionalProperties": false,
+            "description": "Copy a continuation from next_calls to read an omitted collection. data_path identifies its position in the full projection.",
+            "properties": {
+              "limit": {
+                "default": 20,
+                "maximum": 50,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "offset": {
+                "default": 0,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "type": "object"
+          },
+          "published_book_ref": {
+            "additionalProperties": false,
+            "description": "Copy the exact immutable publication reference from book_list; keep both identifiers on every content call and continuation.",
+            "properties": {
+              "book_id": {
+                "description": "Material identifier returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "publication_id": {
+                "description": "Exact publication version returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "book_id",
+              "publication_id"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "published_book_ref"
+        ],
+        "type": "object"
+      },
+      "name": "book_guide_path"
+    },
+    {
+      "description": "Return the current paper's metadata projection while preserving value, source, evidence_lids, and confidence. It returns explicit unavailable status without a sidecar and never creates cross-paper relationships. Use when: Read the current paper metadata projection. Do not infer cross-paper relations.  Returns a built projection in data, not a generated answer. Collections are paged: data_path identifies a continuation's collection in the original projection and total_items its size. next_calls may include multiple collection branches and search batches. Concept matched_count/truncated still describe bounded candidate recall. Read chosen evidence LIDs with book_text. Missing built capability returns material_unavailable. Copy published_book_ref from book_list and check its available_tools. Costs 1 call on success, including empty results, each continuation page and repeated successful requests; failures cost 0. complete=false means more pages exist; copy needed next_calls name and arguments unchanged. sources gives published_book_ref, start_lid/end_lid, source_range and source_url: cite only evidence actually read, retaining its version and exact range. An empty sources array provides no source citation. usage is the server's post-call balance with charged_units and charged_from; do not infer balance locally. On quota_exhausted stop content retries and report usage.free_resets_at plus top_up_url or top_up_instruction; book_list and mcp_usage remain free.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "page": {
+            "additionalProperties": false,
+            "description": "Copy a continuation from next_calls to read an omitted collection. data_path identifies its position in the full projection.",
+            "properties": {
+              "limit": {
+                "default": 20,
+                "maximum": 50,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "offset": {
+                "default": 0,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "type": "object"
+          },
+          "published_book_ref": {
+            "additionalProperties": false,
+            "description": "Copy the exact immutable publication reference from book_list; keep both identifiers on every content call and continuation.",
+            "properties": {
+              "book_id": {
+                "description": "Material identifier returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "publication_id": {
+                "description": "Exact publication version returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "book_id",
+              "publication_id"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "published_book_ref"
+        ],
+        "type": "object"
+      },
+      "name": "book_paper_metadata"
+    },
+    {
+      "description": "Return the current paper's lexicon projection for aligning term, abbreviation, and dataset candidates. It returns explicit unavailable status when the sidecar is absent. Use when: Align paper terms, abbreviations, and dataset candidates. Do not treat candidates as verified definitions without source text.  Returns a built projection in data, not a generated answer. Collections are paged: data_path identifies a continuation's collection in the original projection and total_items its size. next_calls may include multiple collection branches and search batches. Concept matched_count/truncated still describe bounded candidate recall. Read chosen evidence LIDs with book_text. Missing built capability returns material_unavailable. Copy published_book_ref from book_list and check its available_tools. Costs 1 call on success, including empty results, each continuation page and repeated successful requests; failures cost 0. complete=false means more pages exist; copy needed next_calls name and arguments unchanged. sources gives published_book_ref, start_lid/end_lid, source_range and source_url: cite only evidence actually read, retaining its version and exact range. An empty sources array provides no source citation. usage is the server's post-call balance with charged_units and charged_from; do not infer balance locally. On quota_exhausted stop content retries and report usage.free_resets_at plus top_up_url or top_up_instruction; book_list and mcp_usage remain free.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "page": {
+            "additionalProperties": false,
+            "description": "Copy a continuation from next_calls to read an omitted collection. data_path identifies its position in the full projection.",
+            "properties": {
+              "limit": {
+                "default": 20,
+                "maximum": 50,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "offset": {
+                "default": 0,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "type": "object"
+          },
+          "published_book_ref": {
+            "additionalProperties": false,
+            "description": "Copy the exact immutable publication reference from book_list; keep both identifiers on every content call and continuation.",
+            "properties": {
+              "book_id": {
+                "description": "Material identifier returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "publication_id": {
+                "description": "Exact publication version returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "book_id",
+              "publication_id"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "published_book_ref"
+        ],
+        "type": "object"
+      },
+      "name": "book_paper_lexicon"
+    },
+    {
+      "description": "Return the read-only PaperReadingGuide projection, combining paper metadata and lexicon, BookStructure, graph, discourse, and source text into ten paper questions, a codebook, and abstract-reading aids. It never creates or changes persistent truth. Use when: Read a deterministic paper-reading projection. Do not use it to mutate persistent truth.  Returns a built projection in data, not a generated answer. Collections are paged: data_path identifies a continuation's collection in the original projection and total_items its size. next_calls may include multiple collection branches and search batches. Concept matched_count/truncated still describe bounded candidate recall. Read chosen evidence LIDs with book_text. Missing built capability returns material_unavailable. Copy published_book_ref from book_list and check its available_tools. Costs 1 call on success, including empty results, each continuation page and repeated successful requests; failures cost 0. complete=false means more pages exist; copy needed next_calls name and arguments unchanged. sources gives published_book_ref, start_lid/end_lid, source_range and source_url: cite only evidence actually read, retaining its version and exact range. An empty sources array provides no source citation. usage is the server's post-call balance with charged_units and charged_from; do not infer balance locally. On quota_exhausted stop content retries and report usage.free_resets_at plus top_up_url or top_up_instruction; book_list and mcp_usage remain free.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "default": "skim",
+            "description": "Reading depth: skim, close or deep. Defaults to skim.",
+            "enum": [
+              "skim",
+              "close",
+              "deep"
+            ],
+            "type": "string"
+          },
+          "page": {
+            "additionalProperties": false,
+            "description": "Copy a continuation from next_calls to read an omitted collection. data_path identifies its position in the full projection.",
+            "properties": {
+              "limit": {
+                "default": 20,
+                "maximum": 50,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "offset": {
+                "default": 0,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "type": "object"
+          },
+          "published_book_ref": {
+            "additionalProperties": false,
+            "description": "Copy the exact immutable publication reference from book_list; keep both identifiers on every content call and continuation.",
+            "properties": {
+              "book_id": {
+                "description": "Material identifier returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "publication_id": {
+                "description": "Exact publication version returned by book_list.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "book_id",
+              "publication_id"
+            ],
+            "type": "object"
+          },
+          "stage": {
+            "default": "passive",
+            "description": "Reading stage: passive, active, critical or creative. Defaults to passive.",
+            "enum": [
+              "passive",
+              "active",
+              "critical",
+              "creative"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "published_book_ref"
+        ],
+        "type": "object"
+      },
+      "name": "book_paper_reading_guide"
+    },
+    {
+      "description": "Check this account's server-calculated call balance before planning more reads or after quota_exhausted. Costs 0 calls, even when exhausted. Takes no arguments. Returns usage: free_remaining, paid_remaining, free_resets_at (next Hong Kong month), paid_next_expires_at and call_packs with per-batch expiry and available_units. Free credits are spent first, then valid packs by earliest expiry; all clients share this account's balance. charged_units is 0 and charged_from is null for this query. If both balances are zero, stop content retries and tell the user the reset time and top_up_url, or top_up_instruction when the URL is null. The user arranges purchase; a purchase does not grant material access. No evidence sources or continuation pages are returned.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "mcp_usage"
+    }
+  ],
+  "resident": [
+    {
+      "description": "Create or revise rich answers. prepare replaces the complete run-local phase/framework/focus/needs; phase and needs are required. Omitted framework/focus clear previous values. Call prepare alone; selected guidance applies at the next sampling. It does not create or deliver content. read/search/patch require exactly one delivered reference or current-run candidate_id. read returns a file or offset/length range; search returns literal matches and character offsets. patch applies ordered edits, each old_text matching exactly once, atomically producing a new immutable candidate while preserving other content/resources; optional metadata replaces only supplied fields. write saves a complete candidate and requires title, html and readable_content; based_on selects an exact delivered version, never a candidate. render_plot returns a static SVG asset; render_animation returns a fixed movie asset. Include returned asset_refs and selected libraries on every write. preview executes actions and returns candidate/environment-bound DOM, errors and screenshots; width and viewport are mutually exclusive. deliver saves only a candidate meeting the preview and subsequent-observation contract; changed candidates need new previews.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "operation": {
+                  "enum": [
+                    "read",
+                    "search",
+                    "patch"
+                  ]
+                }
+              },
+              "required": [
+                "operation"
+              ]
+            },
+            "then": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "reference": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "reference"
+                  ]
+                },
+                {
+                  "properties": {
+                    "candidate_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "candidate_id"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "not": {
+              "properties": {
+                "viewport": {
+                  "type": "object"
+                },
+                "width": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "width",
+                "viewport"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "new_object": {
+                  "enum": [
+                    true
+                  ]
+                }
+              },
+              "required": [
+                "new_object"
+              ]
+            },
+            "then": {
+              "not": {
+                "properties": {
+                  "based_on": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "based_on"
+                ]
+              }
+            }
+          }
+        ],
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "focus": {},
+              "framework": {},
+              "needs": {},
+              "operation": {
+                "enum": [
+                  "prepare"
+                ]
+              },
+              "phase": {}
+            },
+            "required": [
+              "operation",
+              "phase",
+              "needs"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "code": {},
+              "data": {},
+              "operation": {
+                "enum": [
+                  "render_plot"
+                ]
+              },
+              "size": {}
+            },
+            "required": [
+              "operation",
+              "code"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "code": {},
+              "cues": {},
+              "data": {},
+              "operation": {
+                "enum": [
+                  "render_animation"
+                ]
+              },
+              "size": {}
+            },
+            "required": [
+              "operation",
+              "code"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "candidate_id": {},
+              "file": {},
+              "length": {},
+              "offset": {},
+              "operation": {
+                "enum": [
+                  "read"
+                ]
+              },
+              "reference": {}
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "candidate_id": {},
+              "file": {},
+              "max_matches": {},
+              "offset": {},
+              "operation": {
+                "enum": [
+                  "search"
+                ]
+              },
+              "query": {},
+              "reference": {}
+            },
+            "required": [
+              "operation",
+              "query"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "candidate_id": {},
+              "edits": {},
+              "initial_state": {},
+              "operation": {
+                "enum": [
+                  "patch"
+                ]
+              },
+              "readable_content": {},
+              "reference": {},
+              "state_contract": {},
+              "title": {}
+            },
+            "required": [
+              "operation",
+              "edits"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "asset_refs": {},
+              "assumptions": {},
+              "based_on": {},
+              "html": {},
+              "initial_state": {},
+              "libraries": {},
+              "new_object": {},
+              "operation": {
+                "enum": [
+                  "write"
+                ]
+              },
+              "readable_content": {
+                "type": "string"
+              },
+              "source_ref_ids": {},
+              "state_contract": {},
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "operation",
+              "title",
+              "html",
+              "readable_content"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "actions": {},
+              "candidate_id": {
+                "type": "string"
+              },
+              "operation": {
+                "enum": [
+                  "preview"
+                ]
+              },
+              "read_selector": {},
+              "viewport": {},
+              "width": {}
+            },
+            "required": [
+              "operation",
+              "candidate_id"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "candidate_id": {
+                "type": "string"
+              },
+              "operation": {
+                "enum": [
+                  "deliver"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "candidate_id"
+            ]
+          }
+        ],
+        "properties": {
+          "actions": {
+            "items": {
+              "additionalProperties": false,
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "click"
+                      ]
+                    },
+                    "selector": {
+                      "description": "Required click target; optional key target to focus before pressing. Without a key target, the current focus receives the key.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "selector"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "key": {},
+                    "kind": {
+                      "enum": [
+                        "key"
+                      ]
+                    },
+                    "selector": {}
+                  },
+                  "required": [
+                    "kind",
+                    "key"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "seek"
+                      ]
+                    },
+                    "semantic_state": {},
+                    "transition_progress": {}
+                  },
+                  "required": [
+                    "kind",
+                    "semantic_state",
+                    "transition_progress"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "scroll"
+                      ]
+                    },
+                    "y": {}
+                  },
+                  "required": [
+                    "kind",
+                    "y"
+                  ]
+                }
+              ],
+              "properties": {
+                "key": {
+                  "enum": [
+                    "ArrowLeft",
+                    "ArrowRight",
+                    "ArrowUp",
+                    "ArrowDown",
+                    "Home",
+                    "End",
+                    "Enter",
+                    "Tab"
+                  ],
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "click",
+                    "key",
+                    "seek",
+                    "scroll"
+                  ],
+                  "type": "string"
+                },
+                "selector": {
+                  "description": "Required click target; optional key target to focus before pressing. Without a key target, the current focus receives the key.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "semantic_state": {
+                  "description": "seek: completed semantic step",
+                  "maximum": 1000,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "transition_progress": {
+                  "description": "seek: visual progress toward the next step",
+                  "exclusiveMaximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "y": {
+                  "description": "Required for scroll: absolute document vertical position in CSS pixels, clamped at the page bottom. Changes reading position without focusing or activating controls. Observations report the action, actual scroll position, viewport and visible_text. Each preview starts with a fresh page.",
+                  "maximum": 4294967295,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            "maxItems": 4,
+            "type": "array"
+          },
+          "asset_refs": {
+            "description": "Refs returned by render_plot/render_animation or listed by read; include each asset used by html.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "based_on": {
+            "additionalProperties": false,
+            "description": "write: exact delivered revision to revise. With a presentation follow-up receipt, must match its reference. Omit only for a new object; a follow-up then requires new_object=true.",
+            "properties": {
+              "presentation_id": {
+                "type": "string"
+              },
+              "revision": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "presentation_id",
+              "revision"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "candidate_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "description": "render_plot: statements using plt/fig/ax/data. render_animation: define PresentationAnimation(Scene), with Manim symbols and JSON data available.",
+            "type": "string"
+          },
+          "cues": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "at_seconds": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "at_seconds"
+              ],
+              "type": "object"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "data": {
+            "description": "JSON data available as the Python variable data"
+          },
+          "edits": {
+            "description": "patch: ordered exact replacements in the entrypoint; every old_text must match once. All edits succeed or no candidate is saved. Unchanged bytes and version resources are preserved.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "new_text": {
+                  "type": "string"
+                },
+                "old_text": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "old_text",
+                "new_text"
+              ],
+              "type": "object"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "file": {
+            "description": "read/search: logical file name; defaults to entrypoint. Use readable_content for the version's explanatory prose with offset/length or query, without HTML. Omit file to read entrypoint source plus full readable_content metadata. Managed libraries return metadata only.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "focus": {
+            "description": "prepare: current local purpose and its relation to the whole. Omission clears the previous focus.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "framework": {
+            "description": "prepare: brief current whole-work design, as task data. Omission clears the previous framework.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "html": {
+            "type": "string"
+          },
+          "initial_state": {},
+          "length": {
+            "description": "read: maximum characters requested from offset; omitted reads to file end, within model output budget.",
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "libraries": {
+            "description": "Optional fixed host libraries. Explicitly select dependencies on every write, including based_on revisions; omitted means none.",
+            "items": {
+              "enum": [
+                "konva"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "max_matches": {
+            "description": "search: default 20. Follow next_offset to find subsequent occurrences.",
+            "maximum": 50,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "needs": {
+            "description": "Required for prepare, including []: technical guidance needed for the next sampling.",
+            "items": {
+              "enum": [
+                "editing",
+                "static_plot",
+                "state",
+                "continuous_scene",
+                "konva",
+                "manim"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "new_object": {
+            "description": "write: true explicitly creates a separate presentation, including from a follow-up. Use only when the user wants a new object. Cannot be true together with based_on. Defaults to false; without a follow-up or based_on, ordinary creation is unchanged.",
+            "type": "boolean"
+          },
+          "offset": {
+            "description": "read/search: zero-based Unicode character offset (not bytes or UTF-16). For truncated reads follow next_offset and remaining length until null.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "operation": {
+            "enum": [
+              "prepare",
+              "render_plot",
+              "render_animation",
+              "read",
+              "search",
+              "patch",
+              "write",
+              "preview",
+              "deliver"
+            ],
+            "type": "string"
+          },
+          "phase": {
+            "description": "Required for prepare: current design responsibility.",
+            "enum": [
+              "global",
+              "local",
+              "review"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "description": "search: literal case-sensitive source text, not a regular expression.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "read_selector": {
+            "description": "preview: CSS selector matching one visible result region. After the final action, returns its complete rendered text together with live page state, input values and scene position as reading. Use this page-computed reading for numerical claims; keep each value with its parameters and semantic step. action_step counts preview actions, not mathematical iterations. For another state, run another preview with the required actions. A playing scene must be paused/seeked first. Narrow the selected region if its full context exceeds the result budget.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "readable_content": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference": {
+            "additionalProperties": false,
+            "properties": {
+              "presentation_id": {
+                "type": "string"
+              },
+              "revision": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "presentation_id",
+              "revision"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "size": {
+            "additionalProperties": false,
+            "properties": {
+              "height": {
+                "maximum": 1200,
+                "minimum": 240,
+                "type": "integer"
+              },
+              "width": {
+                "maximum": 1600,
+                "minimum": 320,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "width",
+              "height"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "source_ref_ids": {
+            "description": "write: list every source ref used in HTML or readable_content. patch preserves existing source bindings; use write to change them.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "state_contract": {
+            "description": "Parameter name -> semantic definition string, including units and allowed range. Preserve a definition only when old values retain exactly the same meaning and domain. Saved page parameters with identical definitions and JSON types replace matching initial_state fields; all others keep new defaults.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "viewport": {
+            "additionalProperties": false,
+            "description": "Explicit content-container environment. Do not provide width at the same time.",
+            "properties": {
+              "height": {
+                "maximum": 2160,
+                "minimum": 160,
+                "type": "integer"
+              },
+              "input": {
+                "enum": [
+                  "mouse",
+                  "touch"
+                ],
+                "type": "string"
+              },
+              "width": {
+                "maximum": 1920,
+                "minimum": 240,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "width",
+              "height",
+              "input"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "width": {
+            "description": "Legacy preview width in CSS pixels; defaults to 960. Mutually exclusive with viewport.",
+            "maximum": 1920,
+            "minimum": 240,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "type": "object"
+      },
+      "name": "presentation.author"
+    },
+    {
+      "description": "Select one source-grounded move after reading original text this turn with book tools. Supply target with learning_focus, expected_performance, capability, exact source_bindings (start_lid, end_lid; omit source_id/source_revision to use the runtime-bound current source), and optional object_refs. object_ids may be empty when no applicable formal objects exist. If using available objects, read them with material and include their exact revisions in target.object_refs; missing cognitive material does not block teaching. trace rereads private delivered facts. Explicit direct explanation overrides guided inquiry. Select with operation=select and a move; final delivery presents it. Optional presentation must already be delivered in this turn. Optional assessment freezes private criteria before delivery. assess evaluates an existing formal response in one isolated model call; understanding reads evidence; evidence proposes a sourced ungraded interpretation. Page calculations never assess correctness. Private keys and help must not enter public text. No direct mastery updates. Examples use an average-speed teaching fixture, not learner facts. Replace its content, locations and references with actual material and events from this turn; read the source before selecting or interpreting.",
+      "inputSchema": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "after": {},
+              "object_id": {},
+              "operation": {
+                "enum": [
+                  "material"
+                ]
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "after": {},
+              "event_id": {},
+              "operation": {
+                "enum": [
+                  "trace"
+                ]
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "move": {},
+              "operation": {
+                "enum": [
+                  "select"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "move"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "operation": {
+                "enum": [
+                  "outside"
+                ]
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "action_ref": {},
+              "operation": {
+                "enum": [
+                  "assess"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "action_ref"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "after": {},
+              "evidence_ref": {},
+              "object_id": {},
+              "operation": {
+                "enum": [
+                  "understanding"
+                ]
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "action_ref": {},
+              "interpretation": {},
+              "object_id": {},
+              "operation": {
+                "enum": [
+                  "evidence"
+                ]
+              },
+              "operation_id": {},
+              "response_quote": {},
+              "sources": {},
+              "supersedes": {}
+            },
+            "required": [
+              "operation",
+              "action_ref",
+              "object_id",
+              "operation_id",
+              "response_quote",
+              "sources",
+              "interpretation"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "fact_refs": {},
+              "interpretation": {},
+              "nature": {
+                "enum": [
+                  "hypothesis"
+                ]
+              },
+              "operation": {
+                "enum": [
+                  "evidence"
+                ]
+              },
+              "operation_id": {},
+              "supersedes": {},
+              "target": {},
+              "teaching_implication": {}
+            },
+            "required": [
+              "operation",
+              "nature",
+              "operation_id",
+              "target",
+              "fact_refs",
+              "interpretation",
+              "teaching_implication"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "operation": "material"
+          },
+          {
+            "after": 0,
+            "operation": "trace"
+          },
+          {
+            "move": {
+              "capability": "explanation",
+              "intent_origin": "neutral",
+              "interaction_intent": "neutral",
+              "kind": "explain",
+              "move_id": "explain-speed",
+              "object_ids": [],
+              "prompt": "Explain average speed using total distance and total time.",
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Explain why total time is the denominator",
+                "learning_focus": "Average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            },
+            "operation": "select"
+          },
+          {
+            "move": {
+              "actions": [
+                "request_hint",
+                "reveal"
+              ],
+              "capability": "explanation",
+              "explanation": "At different positive speeds, equal distances take different times.",
+              "hint": "Time equals distance divided by speed.",
+              "intent_origin": "neutral",
+              "interaction_intent": "neutral",
+              "kind": "compare",
+              "move_id": "compare-times",
+              "object_ids": [],
+              "prompt": "Compare the travel times for two equal distances at different speeds.",
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Explain why total time is the denominator",
+                "learning_focus": "Average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            },
+            "operation": "select"
+          },
+          {
+            "move": {
+              "actions": [
+                "submit"
+              ],
+              "assessment": {
+                "feedback": "after_submit",
+                "rule": {
+                  "items": [
+                    {
+                      "criterion": "Uses the total time of the journey; equivalent wording is accepted.",
+                      "id": "total-time",
+                      "source_lids": [
+                        "1.1"
+                      ]
+                    }
+                  ],
+                  "kind": "open"
+                },
+                "source_lids": [
+                  "1.1"
+                ],
+                "source_sufficient": true
+              },
+              "capability": "explanation",
+              "intent_origin": "neutral",
+              "interaction_intent": "neutral",
+              "kind": "question",
+              "move_id": "explain-denominator",
+              "object_ids": [],
+              "prompt": "Explain which time belongs in the denominator of average speed.",
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Explain why total time is the denominator",
+                "learning_focus": "Average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            },
+            "operation": "select"
+          },
+          {
+            "operation": "outside"
+          },
+          {
+            "action_ref": "action:to3-open",
+            "operation": "assess"
+          },
+          {
+            "operation": "understanding"
+          },
+          {
+            "action_ref": "action:to3-discrimination",
+            "interpretation": "The response distinguishes a source-supported quantity from an unsupported property.",
+            "object_id": "speed",
+            "operation": "evidence",
+            "operation_id": "to3-discrimination-evidence",
+            "response_quote": "The source supports total distance",
+            "sources": [
+              {
+                "lid": "1.1",
+                "quote": "total distance"
+              }
+            ]
+          },
+          {
+            "fact_refs": [
+              "action:to3-discrimination"
+            ],
+            "interpretation": "The response names total distance but leaves the role of total time unknown.",
+            "nature": "hypothesis",
+            "operation": "evidence",
+            "operation_id": "to3-hypothesis",
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Explain why total time is the denominator",
+              "learning_focus": "Average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            "teaching_implication": "Ask the learner to connect total time to the denominator."
+          }
+        ],
+        "properties": {
+          "action_ref": {
+            "description": "An actual response event_id from context or trace. assess requires an unassessed formal submit/revise with a frozen open rubric; it runs one isolated, budgeted evaluator. Ungraded evidence requires a response to an evaluation activity with a formal object and no scoring contract.",
+            "type": "string"
+          },
+          "after": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_id": {
+            "description": "Read one exact trace event in bounded JSON text chunks; after is its character offset. Without event_id, after is the trace cursor.",
+            "type": "string"
+          },
+          "evidence_ref": {
+            "description": "Read one evidence interpretation with operation=understanding; after is the character offset.",
+            "type": "string"
+          },
+          "fact_refs": {
+            "description": "Actual learner-expression event_ids from the current context or trace. UI clicks and assistant deliveries cannot support a hypothesis.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "interpretation": {
+            "description": "A brief, checkable interpretation of cited usage facts. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces the earlier interpretation.",
+            "type": "string"
+          },
+          "move": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "actions": {
+                      "contains": {
+                        "enum": [
+                          "request_hint"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "actions"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "hint": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "hint"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "actions": {
+                      "contains": {
+                        "enum": [
+                          "reveal"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "actions"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "explanation": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "explanation"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "assessment": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "assessment"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "actions": {
+                      "contains": {
+                        "enum": [
+                          "submit"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "actions"
+                  ]
+                }
+              }
+            ],
+            "properties": {
+              "actions": {
+                "items": {
+                  "enum": [
+                    "submit",
+                    "revise",
+                    "request_hint",
+                    "reveal",
+                    "skip",
+                    "self_report"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "assessment": {
+                "additionalProperties": false,
+                "description": "Optional private frozen scoring contract. {rule:{kind:choice_set,choices:[tokens],correct:[tokens]} OR rule:{kind:open,items:[{id,criterion,source_lids:[LID]}]},source_lids:[LID],source_sufficient:boolean,feedback:after_submit|on_reveal}. Open criterion states necessary conditions, equivalent expressions and acceptable omissions. Use only source text read this turn. Never copy the private key/rubric into page files or final text. Choice tokens belong in the public prompt; responses are a token or JSON array. Help and revised attempts are retained separately.",
+                "properties": {
+                  "feedback": {
+                    "description": "Criterion-level feedback is private until the learner explicitly reveals it.",
+                    "enum": [
+                      "after_submit",
+                      "on_reveal"
+                    ],
+                    "type": "string"
+                  },
+                  "rule": {
+                    "oneOf": [
+                      {
+                        "additionalProperties": false,
+                        "description": "Canonical choice tokens, submitted as a JSON array (or a single token).",
+                        "properties": {
+                          "choices": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "correct": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "kind": {
+                            "enum": [
+                              "choice_set"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "choices",
+                          "correct",
+                          "kind"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "items": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "criterion": {
+                                  "description": "Includes necessary conditions, accepted equivalents and permitted omissions.",
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                },
+                                "source_lids": {
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                }
+                              },
+                              "required": [
+                                "criterion",
+                                "id",
+                                "source_lids"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "kind": {
+                            "enum": [
+                              "open"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "items",
+                          "kind"
+                        ],
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "source_lids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "source_sufficient": {
+                    "description": "An explicitly incomplete source cannot justify a correctness judgment.",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "feedback",
+                  "rule",
+                  "source_lids",
+                  "source_sufficient"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "capability": {
+                "type": "string"
+              },
+              "continuation": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "description": "Optional future help AFTER this answer. Draft the full current explanation first; then prefer one genuinely distinct next step. Omit continuation entirely when no new in-scope insight remains. An alternative is useful only when it offers a different learning choice.",
+                    "properties": {
+                      "options": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "label": {
+                              "description": "A concrete request the reader can choose, phrased as the reader's action. Offer a new comparison, changed condition or observation within the parent target, not an explanation or worked example already in move.prompt.",
+                              "maxLength": 240,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "move_kind": {
+                              "enum": [
+                                "explain",
+                                "compare",
+                                "observe"
+                              ],
+                              "type": "string"
+                            },
+                            "option_id": {
+                              "maxLength": 64,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "purpose": {
+                              "description": "State the specific NEW insight beyond this turn's completed explanation. If this benefit is already delivered by move.prompt, remove the option. Repeating the same calculation with different numbers is not a new insight.",
+                              "maxLength": 240,
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "option_id",
+                            "label",
+                            "purpose",
+                            "move_kind"
+                          ],
+                          "type": "object"
+                        },
+                        "maxItems": 2,
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      "recommended_option_id": {
+                        "maxLength": 64,
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommended_option_id",
+                      "options"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "explanation": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "hint": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "intent_origin": {
+                "description": "current_action requires the frozen current_action snapshot. Its accepted_request is a public UI action, not user-authored text; omit intent_quote. For explain_selection use direct_explanation with kind=explain; for continue_answer use neutral even when kind=explain. current_request quotes only the real user_supplement, which takes priority over the UI action.",
+                "enum": [
+                  "current_request",
+                  "current_action",
+                  "session_default",
+                  "confirmed_preference",
+                  "neutral"
+                ],
+                "type": "string"
+              },
+              "intent_quote": {
+                "description": "Exact quote from current request when resolving an explicit interaction intent.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "interaction_intent": {
+                "enum": [
+                  "direct_explanation",
+                  "guided_inquiry",
+                  "neutral"
+                ],
+                "type": "string"
+              },
+              "interpretation_refs": {
+                "description": "Current evidence references actually adopted for this move; superseded interpretations cannot be adopted.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "enum": [
+                  "explain",
+                  "observe",
+                  "compare",
+                  "question",
+                  "source_focus"
+                ],
+                "type": "string"
+              },
+              "move_id": {
+                "type": "string"
+              },
+              "object_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "preference_ref": {
+                "description": "Confirmed preference fact_id from frozen context; only a weak default after current request and session mode.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "presentation": {
+                "properties": {
+                  "presentation_id": {
+                    "type": "string"
+                  },
+                  "revision": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "presentation_id",
+                  "revision"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "description": "A source-grounded focus; formal object identity is optional.",
+                    "properties": {
+                      "capability": {
+                        "type": "string"
+                      },
+                      "expected_performance": {
+                        "type": "string"
+                      },
+                      "learning_focus": {
+                        "type": "string"
+                      },
+                      "object_refs": {
+                        "default": [],
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "object_id": {
+                              "type": "string"
+                            },
+                            "object_revision": {
+                              "format": "uint64",
+                              "minimum": 0.0,
+                              "type": "integer"
+                            },
+                            "source_id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "object_id",
+                            "object_revision",
+                            "source_id"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      "source_bindings": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "end_lid": {
+                              "type": "string"
+                            },
+                            "source_id": {
+                              "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                              "type": "string"
+                            },
+                            "source_revision": {
+                              "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                              "type": "string"
+                            },
+                            "start_lid": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "end_lid",
+                            "start_lid"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "required": [
+                      "capability",
+                      "expected_performance",
+                      "learning_focus",
+                      "source_bindings"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "move_id",
+              "object_ids",
+              "capability",
+              "kind",
+              "prompt",
+              "interaction_intent",
+              "intent_origin"
+            ],
+            "type": "object"
+          },
+          "nature": {
+            "enum": [
+              "hypothesis"
+            ],
+            "type": "string"
+          },
+          "object_id": {
+            "type": "string"
+          },
+          "operation": {
+            "enum": [
+              "material",
+              "trace",
+              "select",
+              "outside",
+              "assess",
+              "understanding",
+              "evidence"
+            ],
+            "type": "string"
+          },
+          "operation_id": {
+            "description": "A new identity for this interpretation; retry the same input with the same identity.",
+            "type": "string"
+          },
+          "response_quote": {
+            "description": "Exact learner words from the referenced ungraded source-discrimination response.",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "properties": {
+                "lid": {
+                  "type": "string"
+                },
+                "quote": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "lid",
+                "quote"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "supersedes": {
+            "description": "An existing evidence_ref being revised, obtained from understanding.",
+            "type": "string"
+          },
+          "target": {
+            "additionalProperties": false,
+            "description": "A source-grounded focus; formal object identity is optional.",
+            "properties": {
+              "capability": {
+                "type": "string"
+              },
+              "expected_performance": {
+                "type": "string"
+              },
+              "learning_focus": {
+                "type": "string"
+              },
+              "object_refs": {
+                "default": [],
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "object_id": {
+                      "type": "string"
+                    },
+                    "object_revision": {
+                      "format": "uint64",
+                      "minimum": 0.0,
+                      "type": "integer"
+                    },
+                    "source_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "object_id",
+                    "object_revision",
+                    "source_id"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "source_bindings": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "end_lid": {
+                      "type": "string"
+                    },
+                    "source_id": {
+                      "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                      "type": "string"
+                    },
+                    "source_revision": {
+                      "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                      "type": "string"
+                    },
+                    "start_lid": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "end_lid",
+                    "start_lid"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "capability",
+              "expected_performance",
+              "learning_focus",
+              "source_bindings"
+            ],
+            "type": "object"
+          },
+          "teaching_implication": {
+            "description": "Concrete change to starting point, depth, example or next step supported by these facts.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "type": "object"
+      },
+      "name": "tutor.step"
+    },
+    {
+      "description": "Answer a self-contained semantic question about explicit referents by resolving targets first and then reading source evidence around the frozen bindings.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "properties": {
+              "intent": {
+                "enum": [
+                  "definition",
+                  "explanation"
+                ]
+              }
+            }
+          },
+          {
+            "properties": {
+              "intent": {
+                "enum": [
+                  "relation",
+                  "comparison"
+                ]
+              },
+              "targets": {
+                "minItems": 2
+              }
+            }
+          }
+        ],
+        "examples": [
+          {
+            "anchor_lid": "1.1",
+            "intent": "comparison",
+            "obligations": [
+              {
+                "requirement": "State the activation condition at each location."
+              },
+              {
+                "requirement": "Compare whether equality activates each threshold, citing both passages."
+              }
+            ],
+            "query": "How do the activation conditions of the alpha threshold and beta threshold differ?",
+            "targets": [
+              "alpha threshold",
+              "beta threshold"
+            ]
+          }
+        ],
+        "properties": {
+          "anchor_lid": {
+            "description": "Required known LID in this book anchoring referent resolution. It provides local context without restricting evidence retrieval to this node.",
+            "type": "string"
+          },
+          "intent": {
+            "description": "Question kind: definition or explanation requires 1..3 targets; relation or comparison requires 2..3 separately named targets.",
+            "enum": [
+              "definition",
+              "explanation",
+              "relation",
+              "comparison"
+            ],
+            "type": "string"
+          },
+          "obligations": {
+            "description": "One to three answer requirements, each in its own requirement object; these guide evidence sufficiency for the requested answer.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "requirement": {
+                  "description": "One nonblank, independently checkable requirement the semantic answer must address.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "requirement"
+              ],
+              "type": "object"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "type": "array"
+          },
+          "query": {
+            "description": "Self-contained, nonblank semantic question about the named targets, with enough context to resolve referents. Use literal search for exact wording or first/previous occurrences.",
+            "type": "string"
+          },
+          "targets": {
+            "description": "Explicit referents to resolve before reading evidence. Each item is nonblank and unique after trimming and lowercasing; name comparison/relation targets separately, not as one combined phrase.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "anchor_lid",
+          "intent",
+          "obligations",
+          "query",
+          "targets"
+        ],
+        "type": "object"
+      },
+      "name": "book.query"
+    },
+    {
+      "description": "Synthesize a caller-supplied discrete LID set without expanding retrieval, returning an answer whose citations are a subset of the input LIDs.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "lids": [
+              "1.1",
+              "1.2"
+            ],
+            "task": "Summarize these two threshold conditions using only these passages; state any evidence gaps."
+          }
+        ],
+        "properties": {
+          "lids": {
+            "description": "Nonempty list of known LIDs selected as the complete evidence scope. Synthesis reads only these nodes and returns citations drawn from this list, without expanding retrieval.",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "task": {
+            "description": "Synthesis instruction for the supplied LIDs; omit or null to synthesize their content without an additional task.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "lids"
+        ],
+        "type": "object"
+      },
+      "name": "book.synthesize"
+    },
+    {
+      "description": "Enumerate the complete set of literal-text occurrences in canonical source, returning stable source UTF-16 ranges, the total count, and a pagination cursor.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "match_mode": "exact",
+            "order": "document",
+            "page_size": 1,
+            "query": "threshold"
+          },
+          {
+            "match_mode": "normalized",
+            "order": "reverse_document",
+            "page_size": 1,
+            "query": "THRESHOLD",
+            "scope": {
+              "relative_to": {
+                "direction": "before",
+                "lid": "1.3"
+              },
+              "within_lid": "1"
+            }
+          }
+        ],
+        "properties": {
+          "cursor": {
+            "description": "Opaque next_cursor from the preceding search result. Omit or null for the first page; preserve query, match_mode, scope, order and page_size on continuation. A changed source revision invalidates it.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "match_mode": {
+            "default": "exact",
+            "description": "exact (default) matches unchanged text; normalized applies NFKC, full non-Turkic case folding and whitespace collapsing. Both locate literal occurrences, not semantic equivalents; result ranges use original-source UTF-16 positions.",
+            "enum": [
+              "exact",
+              "normalized"
+            ],
+            "type": "string"
+          },
+          "order": {
+            "default": "document",
+            "description": "document (default) returns earliest occurrences first; reverse_document returns latest first. Uses canonical source order, not lexical LID sorting. Combine before with reverse_document for previous occurrences.",
+            "enum": [
+              "document",
+              "reverse_document"
+            ],
+            "type": "string"
+          },
+          "page_size": {
+            "default": 20,
+            "description": "Maximum literal occurrences per search page, 1..50, default 20. Does not change total_occurrences or exhaustive coverage of the requested literal scope; preserve it when using cursor.",
+            "format": "uint",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "type": "integer"
+          },
+          "query": {
+            "description": "Literal text to locate in canonical source, containing non-whitespace text and at most 4,096 Unicode scalar values. Exact mode preserves query whitespace; this is not a semantic question or regex. Read chosen hits using their start_lid/end_lid.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "relative_to": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "direction": {
+                            "description": "before keeps hits ending at or before the reference span's start; after keeps hits starting at or after its end. Direction filters scope independently of result order.",
+                            "enum": [
+                              "before",
+                              "after"
+                            ],
+                            "type": "string"
+                          },
+                          "lid": {
+                            "description": "Known reference LID in this book. The relative filter excludes this node's entire source span, including its descendants.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "direction",
+                          "lid"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Optional before/after filter around a known LID, excluding that node's span. Intersects with within_lid when both are supplied."
+                  },
+                  "within_lid": {
+                    "description": "Known LID whose source span, including descendants, must contain each whole hit. Omit or null for no subtree restriction.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional source scope using known LIDs from this book. Omit, null or {} searches the whole book; within_lid and relative_to intersect, and each whole hit must fit the resulting range."
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "book.search_text"
+    },
+    {
+      "description": "Read canonical source text by one LID or an inclusive LID range.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "end_lid": "1.2",
+            "lid": "1.1"
+          }
+        ],
+        "properties": {
+          "end_lid": {
+            "description": "Inclusive final LID in source reading order; for a search hit, use end_lid. Reads from lid's span start through end_lid's span end. Omit or null to read only lid's span.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lid": {
+            "description": "Known LID from this book's locating or structure results; for a search hit, use start_lid. Reads the node's canonical source span, including descendants.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lid"
+        ],
+        "type": "object"
+      },
+      "name": "book.text"
+    },
+    {
+      "description": "Find Resident tools by required capabilities, scope, operation, and authorized effect mode. Natural-language task text ranks only candidates that pass Runtime gates; matches never execute a target tool, and newly activated deferred tools become visible in the next sampling.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "effect_mode": {
+            "enum": [
+              "read_only",
+              "reader_mutation_explicitly_requested"
+            ],
+            "type": "string"
+          },
+          "max_results": {
+            "maximum": 6,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "operation": {
+            "enum": [
+              "locate_literal",
+              "read_source",
+              "explain",
+              "compare",
+              "summarize",
+              "navigate",
+              "mutate_reader"
+            ],
+            "type": "string"
+          },
+          "required_capabilities": {
+            "items": {
+              "enum": [
+                "discovery",
+                "source_read",
+                "lexical_locate",
+                "semantic_evidence",
+                "structural_index",
+                "synthesis",
+                "navigation_plan",
+                "artifact_read",
+                "source_presentation",
+                "presentation_authoring",
+                "profile_read",
+                "profile_trace",
+                "memory_read",
+                "memory_write",
+                "reader_read",
+                "reader_write",
+                "goal_management"
+              ],
+              "type": "string"
+            },
+            "maxItems": 17,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "scope": {
+            "enum": [
+              "selection",
+              "passage",
+              "section",
+              "document",
+              "corpus"
+            ],
+            "type": "string"
+          },
+          "task": {
+            "description": "Natural-language task used only to rank already-authorized candidates",
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "task",
+          "required_capabilities",
+          "scope",
+          "operation",
+          "effect_mode",
+          "max_results"
+        ],
+        "type": "object"
+      },
+      "name": "tool.search"
+    },
+    {
+      "description": "Update the active Resident task only when interpretation, requirements or working state changes. Refine the origin request before complex work; revise requirements only with an exact quote from the current user message. Working items record a revisable plan, not user requirements. Keep the plan consistent with actual results and remaining content gaps before finishing. This tool cannot mark delivery or Goal completion; completed items do not prove either. Short direct answers need no update or plan. Use working in a separate call to save focus, next_move or plan items; refine/revise do not accept these fields.",
+      "inputSchema": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "focus": {},
+              "items": {},
+              "next_move": {},
+              "open_questions": {},
+              "operation": {
+                "enum": [
+                  "working"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "focus",
+              "next_move"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "interpretation": {},
+              "operation": {
+                "enum": [
+                  "refine"
+                ]
+              },
+              "requirements": {}
+            },
+            "required": [
+              "operation",
+              "interpretation",
+              "requirements"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "basis_quote": {},
+              "basis_turn_id": {},
+              "interpretation": {},
+              "operation": {
+                "enum": [
+                  "revise"
+                ]
+              },
+              "requirements": {}
+            },
+            "required": [
+              "operation",
+              "basis_turn_id",
+              "basis_quote",
+              "interpretation",
+              "requirements"
+            ]
+          }
+        ],
+        "properties": {
+          "basis_quote": {
+            "type": "string"
+          },
+          "basis_turn_id": {
+            "type": "string"
+          },
+          "focus": {
+            "type": "string"
+          },
+          "interpretation": {
+            "type": "string"
+          },
+          "items": {
+            "description": "For operation=working: replace the whole ordered work plan atomically. Omit to retain it; [] clears it. Use non-empty unique IDs and non-empty descriptions. Reorder, split, merge, remove abandoned steps or reopen completed items as observations require; this does not change requirements.",
+            "items": {
+              "properties": {
+                "description": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "pending",
+                    "in_progress",
+                    "completed"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "description",
+                "status"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "next_move": {
+            "type": "string"
+          },
+          "open_questions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "operation": {
+            "enum": [
+              "working",
+              "refine",
+              "revise"
+            ],
+            "type": "string"
+          },
+          "requirements": {
+            "items": {
+              "properties": {
+                "basis_turn_id": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "verification": {
+                  "description": "content: explanation correctness and features inside the authored page, including page controls, dragging, playback, pause, seeking and saved scene restoration. presentation_delivery: actually save and deliver the requested page. reader_action: an explicitly requested host Reader operation such as navigating the book or changing its panels; requires an actual Reader effect. Page interactions and preview actions are content requirements, not reader_action. Keep the user's required behavior in description; choose verification by what must actually be delivered.",
+                  "enum": [
+                    "content",
+                    "presentation_delivery",
+                    "reader_action"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "description",
+                "basis_turn_id",
+                "verification"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "type": "object"
+      },
+      "name": "goal.update"
+    },
+    {
+      "description": "List bounded Routing Cards for the turn-frozen current active accepted artifact overlay. Routing Cards are discovery metadata, not book evidence.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "format": "uint",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "name": "artifact.list"
+    },
+    {
+      "description": "Search the turn-frozen current active accepted artifacts with deterministic bounded lexical ranking. Call at most once initially per user turn; a zero-hit result must not be retried with rewritten guesses.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "anchor_lids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "artifact_refs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "format": "uint",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "query": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "artifact.search"
+    },
+    {
+      "description": "Read at most three bounded records from a turn-frozen artifact using opaque refs returned by artifact.search or a read continuation. Artifact data is not canonical Book evidence.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "limit": {
+                  "enum": [
+                    1
+                  ]
+                }
+              },
+              "required": [
+                "limit"
+              ]
+            },
+            "then": {
+              "properties": {
+                "record_refs": {
+                  "maxItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "limit": {
+                  "enum": [
+                    2
+                  ]
+                }
+              },
+              "required": [
+                "limit"
+              ]
+            },
+            "then": {
+              "properties": {
+                "record_refs": {
+                  "maxItems": 2
+                }
+              }
+            }
+          }
+        ],
+        "not": {
+          "properties": {
+            "cursor": {
+              "type": "string"
+            },
+            "record_refs": {
+              "type": "array"
+            }
+          },
+          "required": [
+            "record_refs",
+            "cursor"
+          ]
+        },
+        "properties": {
+          "artifact_ref": {
+            "type": "string"
+          },
+          "cursor": {
+            "description": "Read continuation; omit record_refs when using cursor.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "field_paths": {
+            "items": {
+              "description": "JSON Pointer such as /title or /meaning/text; escape ~ as ~0 and / in a key as ~1.",
+              "maxLength": 256,
+              "pattern": "^/(?:[^~]|~[01])*$",
+              "type": "string"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "include_relations": {
+            "default": false,
+            "type": "boolean"
+          },
+          "limit": {
+            "format": "uint",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "record_refs": {
+            "description": "Opaque refs returned by artifact.search; mutually exclusive with cursor. Their count must not exceed limit.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "artifact_ref"
+        ],
+        "type": "object"
+      },
+      "name": "artifact.read"
+    },
+    {
+      "description": "Convert contiguous in-book evidence already observed in this turn into a user-visible source reference. Pass only quote: copy the original text exactly, including punctuation, whitespace and formulas. The tool prefers exact text, but also accepts whitespace changes immediately inside paired $ or $$ formula delimiters; formula contents and prose remain exact. It locates the quote within observed source and computes original LIDs and character ranges; do not supply LIDs. Select enough text to support the complete claim, including necessary conditions, negation and qualifications; cite non-adjacent premises separately. Keywords and headings locate evidence; read the body before explaining a mechanism or inference. SOURCE_AMBIGUOUS means the text occurs at multiple observed positions: extend quote with distinctive observed context. SOURCE_NOT_OBSERVED means no supported match: correct the copy or read the missing source. Returns an opaque source_ref_id, label and preview. Inspect the preview: if it is only a word or heading but the claim needs a passage, submit the supporting passage. The preview may be truncated; missing text in the preview alone does not mean the binding failed.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "quote": "The alpha threshold activates only when the value is greater than 10."
+          }
+        ],
+        "properties": {
+          "quote": {
+            "description": "Continuous verbatim text already observed this turn; include enough context to support the claim and uniquely identify the passage. The tool computes LIDs and exact offsets.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "quote"
+        ],
+        "type": "object"
+      },
+      "name": "source.present"
+    },
+    {
+      "description": "Return context pointers for a LID: near adds tree adjacency and local edges, mid adds other concept or entity occurrences, and far adds long-range edges. Pointers contain no source text; use book.text to read it.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "granularity": "near",
+            "k": 3,
+            "lid": "1.2"
+          }
+        ],
+        "properties": {
+          "granularity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "near",
+                  "mid",
+                  "far"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "near",
+            "description": "Context reach: near includes tree adjacency and local relations; mid adds other concept/entity occurrences; far also adds long-range relations. Omit or null for near."
+          },
+          "k": {
+            "default": 10,
+            "description": "Maximum number of context pointers returned across all layers. Omit or null for 10; zero returns no items. Counts pointers, not characters or source passages.",
+            "format": "uint",
+            "minimum": 0.0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "lid": {
+            "description": "Known LID in this book to expand around. Returned items are context pointers; read their LIDs through the source-text tool for evidence.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lid"
+        ],
+        "type": "object"
+      },
+      "name": "book.context"
+    },
+    {
+      "description": "Deterministically recall whole-book concept and entity candidates with match reasons, bounded previews, and complete occurrence LIDs. After choosing candidates, read their full evidence with book.text.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "anchor_lid": "1.2",
+            "limit": 5,
+            "query": "threshold"
+          }
+        ],
+        "properties": {
+          "anchor_lid": {
+            "description": "Optional known LID in this book to rank nearby candidates and previews. Omit or null for unanchored ranking; this does not restrict recall to a subtree.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "default": 12,
+            "description": "Maximum concept/entity candidates, 1..50; omit or null for 12. Inspect matched_count and truncated for candidate coverage; this does not limit occurrences within a candidate.",
+            "format": "uint",
+            "maximum": 50,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "query": {
+            "description": "Nonblank concept/entity name, alias or descriptive terms for deterministic candidate recall from names and occurrence text. At most 4,096 Unicode scalar values, including surrounding whitespace; not literal occurrence enumeration.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "book.concept"
+    },
+    {
+      "description": "Project BookStructure to explain a LID's role in the whole-book spine, throughline, and key stops. Without at, return the whole-book overview; when the sidecar is absent, return explicit unavailable status.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "examples": [
+          {
+            "at": "1.2"
+          }
+        ],
+        "properties": {
+          "at": {
+            "description": "Optional known LID in this book to locate its structural role or current route segment. Omit or null for the whole-book view; this is a location, not a natural-language query.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "name": "book.structure"
+    },
+    {
+      "description": "Return a macro guided-reading route from BookStructure by expanding key stops along spine segments. It does not interpret natural language or read Reader or memory state; when the sidecar is absent, it returns explicit unavailable status.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "description": "Optional known LID in this book to locate its structural role or current route segment. Omit or null for the whole-book view; this is a location, not a natural-language query.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "name": "book.guide_path"
+    },
+    {
+      "description": "Return the read-only PaperReadingGuide projection, combining paper metadata and lexicon, BookStructure, graph, discourse, and source text into ten paper questions, a codebook, and abstract-reading aids. It never creates or changes persistent truth.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "default": "skim",
+            "description": "Reading depth: skim, close or deep. Defaults to skim.",
+            "enum": [
+              "skim",
+              "close",
+              "deep"
+            ],
+            "type": "string"
+          },
+          "stage": {
+            "default": "passive",
+            "description": "Reading stage: passive, active, critical or creative. Defaults to passive.",
+            "enum": [
+              "passive",
+              "active",
+              "critical",
+              "creative"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "book.paper_reading_guide"
+    },
+    {
+      "description": "Return the current paper's metadata projection while preserving value, source, evidence_lids, and confidence. It returns explicit unavailable status without a sidecar and never creates cross-paper relationships.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "book.paper_metadata"
+    },
+    {
+      "description": "Return the current paper's lexicon projection for aligning term, abbreviation, and dataset candidates. It returns explicit unavailable status when the sidecar is absent.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "book.paper_lexicon"
+    },
+    {
+      "description": "Return the current book's ProfileManifest. Optionally set profile_id to technical_learning or paper to read that explicit registry manifest.",
+      "inputSchema": {
+        "properties": {
+          "profile_id": {
+            "description": "Optional; defaults to the current book profile",
+            "enum": [
+              "technical_learning",
+              "paper"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "profile.manifest"
+    },
+    {
+      "description": "Optionally declare read-only profile use. Report only fact IDs from this turn's snapshot that actually affected the answer, together with their influence dimensions. This tool neither reads nor changes memory.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "fact_ids": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "influences": {
+            "items": {
+              "enum": [
+                "retrieval_plan",
+                "explanation_depth",
+                "terminology",
+                "example_choice",
+                "navigation"
+              ],
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "fact_ids",
+          "influences"
+        ],
+        "type": "object"
+      },
+      "name": "profile.mark_used"
+    },
+    {
+      "description": "Return a deterministic navigation frontier from a LID in five semantic groups: back prerequisites, forward depth, concretize examples, cross relationships, and continue reading order. Every step contains a real LID and real edge. This zero-LLM tool decides where to go next.",
+      "inputSchema": {
+        "properties": {
+          "at": {
+            "description": "Starting LID",
+            "type": "string"
+          },
+          "k": {
+            "description": "Optional top-K frontier size per group",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "at"
+        ],
+        "type": "object"
+      },
+      "name": "book.route_from"
+    },
+    {
+      "description": "Return a teaching-shaped navigation frontier from a LID: route_from plus technical_learning ordering, with the five groups reordered by teaching priority and empty groups removed. Returns ordered [{category, steps}] groups. Prefer this zero-LLM tool for resident guided reading; raw route_from is for lower-level or visitor use. All LIDs and edges are real.",
+      "inputSchema": {
+        "properties": {
+          "at": {
+            "description": "Starting LID",
+            "type": "string"
+          },
+          "k": {
+            "description": "Optional top-K frontier size per group",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "at"
+        ],
+        "type": "object"
+      },
+      "name": "book.guided_route_from"
+    },
+    {
+      "description": "Structural fallback for an unspecific statement of non-understanding: return unread prerequisites at the current LID, defined as the deterministic intersection of route_from(at).back and unread locations. Use it only when the user gives no locus, example request, relationship target, or requested prerequisite. A nonempty result starts with the best prerequisite to revisit; an empty result means to re-explain in place. Zero LLM; every LID is real.",
+      "inputSchema": {
+        "properties": {
+          "at": {
+            "description": "Current LID",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at"
+        ],
+        "type": "object"
+      },
+      "name": "book.unvisited_back"
+    },
+    {
+      "description": "Find a deterministic from-to path in the navigation graph using BFS, returning navigation steps with only real LIDs and edges. target must already be a resolved LID located through book.concept or book.context.",
+      "inputSchema": {
+        "properties": {
+          "from": {
+            "description": "Starting LID",
+            "type": "string"
+          },
+          "k": {
+            "description": "Optional hop budget",
+            "type": "integer"
+          },
+          "target": {
+            "description": "Resolved target LID",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "target"
+        ],
+        "type": "object"
+      },
+      "name": "book.route_to"
+    },
+    {
+      "description": "Save highlight or position memory; qa records the user's original question after answering with book.query; context records sourced reader background, preferences, interests or sticking points. Use reader.note for every note: note is not a memory.save type. anchor_lid is the question or memory location. context may cite real LIDs supporting it.",
+      "inputSchema": {
+        "properties": {
+          "anchor_lid": {
+            "type": "string"
+          },
+          "citations": {
+            "description": "Optional real LIDs supporting this memory, primarily for context; invalid LIDs are dropped and the list may be empty",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "content": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "highlight",
+              "position",
+              "qa",
+              "context"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "anchor_lid",
+          "content"
+        ],
+        "type": "object"
+      },
+      "name": "memory.save"
+    },
+    {
+      "description": "Recall memory relevant to this book, optionally filtered by LID, type, layer, or text substring. Each returned item carries verifiable LID citations.",
+      "inputSchema": {
+        "properties": {
+          "layer": {
+            "type": "string"
+          },
+          "lid": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "memory.recall"
+    },
+    {
+      "description": "Jump to a LID. A leaf anchors to itself; a container anchors to the first leaf in its subtree. Returns the updated viewport {anchor_lid, visible_lids}.",
+      "inputSchema": {
+        "properties": {
+          "lid": {
+            "description": "Target LID",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lid"
+        ],
+        "type": "object"
+      },
+      "name": "reader.gotoLid"
+    },
+    {
+      "description": "Move the anchor along leaf order. Positive delta moves forward, negative delta moves backward, and out-of-range movement is clamped. Returns the updated viewport.",
+      "inputSchema": {
+        "properties": {
+          "delta": {
+            "description": "Number of leaves to move along leaf order; may be negative",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "delta"
+        ],
+        "type": "object"
+      },
+      "name": "reader.scroll"
+    },
+    {
+      "description": "Highlight source text at a LID. When the user specifies a sentence or quote, provide that exact quote; only its unique original occurrence is saved. Omit quote only when the user requests the whole passage. Persistence is delegated to memory; returns highlight_id.",
+      "inputSchema": {
+        "properties": {
+          "lid": {
+            "type": "string"
+          },
+          "quote": {
+            "description": "Exact requested original text within this LID; must match once",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lid"
+        ],
+        "type": "object"
+      },
+      "name": "reader.highlight"
+    },
+    {
+      "description": "Attach a note to a LID through a thin entry point whose persistence is delegated to memory. Returns note_id, which is the memory-layer ID.",
+      "inputSchema": {
+        "properties": {
+          "lid": {
+            "type": "string"
+          },
+          "text": {
+            "description": "Note content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lid",
+          "text"
+        ],
+        "type": "object"
+      },
+      "name": "reader.note"
+    },
+    {
+      "description": "Apply typed ReaderLayoutAction[] values through the backend reducer. Low-risk actions execute directly and return a layout effect; high-risk close, reorder, preset, and reset actions return a proposal and await user confirmation.",
+      "inputSchema": {
+        "properties": {
+          "actions": {
+            "items": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "open_slot"
+                      ],
+                      "type": "string"
+                    },
+                    "region": {
+                      "anyOf": [
+                        {
+                          "enum": [
+                            "left",
+                            "center",
+                            "right",
+                            "bottom",
+                            "overlay"
+                          ],
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "slot_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "slot_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "close_slot"
+                      ],
+                      "type": "string"
+                    },
+                    "slot_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "slot_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "focus_slot"
+                      ],
+                      "type": "string"
+                    },
+                    "slot_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "slot_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "set_active_tab"
+                      ],
+                      "type": "string"
+                    },
+                    "slot_id": {
+                      "type": "string"
+                    },
+                    "tab_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "slot_id",
+                    "tab_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "pin_evidence"
+                      ],
+                      "type": "string"
+                    },
+                    "lid": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "slot_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "lid",
+                    "slot_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "unpin_evidence"
+                      ],
+                      "type": "string"
+                    },
+                    "lid": {
+                      "type": "string"
+                    },
+                    "slot_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "lid",
+                    "slot_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "set_panel_size"
+                      ],
+                      "type": "string"
+                    },
+                    "size": {
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "px",
+                            "fr",
+                            "percent"
+                          ],
+                          "type": "string"
+                        },
+                        "value": {
+                          "format": "float",
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "value"
+                      ],
+                      "type": "object"
+                    },
+                    "slot_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "size",
+                    "slot_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "reorder_slot"
+                      ],
+                      "type": "string"
+                    },
+                    "region": {
+                      "enum": [
+                        "left",
+                        "center",
+                        "right",
+                        "bottom",
+                        "overlay"
+                      ],
+                      "type": "string"
+                    },
+                    "slot_ids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "region",
+                    "slot_ids"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "set_layout_preset"
+                      ],
+                      "type": "string"
+                    },
+                    "preset_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "preset_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "reset_layout"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "actions"
+        ],
+        "type": "object"
+      },
+      "name": "reader.layout.apply"
+    },
+    {
+      "description": "Apply typed commands through the reducer under the paper_minimap_agent_context policy. Orientation, interest, confusion, and density may directly change session focus, emphasis, local projection, or layers; mode, correction, and persistence must return a proposal. Never expand nodes, navigate source text, or write viewport or selection state.",
+      "inputSchema": {
+        "properties": {
+          "base_state_rev": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "commands": {
+            "items": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "action": {
+                      "oneOf": [
+                        {
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "focus_region"
+                              ],
+                              "type": "string"
+                            },
+                            "region_id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "region_id"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "focus_landmark"
+                              ],
+                              "type": "string"
+                            },
+                            "landmark_id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "landmark_id"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "emphasize_landmarks"
+                              ],
+                              "type": "string"
+                            },
+                            "landmark_ids": {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "reason": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "landmark_ids",
+                            "reason"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "focus_slots": {
+                              "items": {
+                                "enum": [
+                                  "background",
+                                  "research_gap",
+                                  "research_question",
+                                  "hypothesis",
+                                  "input",
+                                  "object",
+                                  "method_step",
+                                  "method",
+                                  "output",
+                                  "assumption",
+                                  "experiment",
+                                  "evidence",
+                                  "result",
+                                  "claim",
+                                  "contribution",
+                                  "interpretation",
+                                  "limitation",
+                                  "future_work"
+                                ],
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "grammar": {
+                              "enum": [
+                                "abstract",
+                                "introduction",
+                                "related_work",
+                                "method",
+                                "results",
+                                "discussion",
+                                "conclusion",
+                                "references",
+                                "unknown"
+                              ],
+                              "type": "string"
+                            },
+                            "kind": {
+                              "enum": [
+                                "select_local_projection"
+                              ],
+                              "type": "string"
+                            },
+                            "region_id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "focus_slots",
+                            "grammar",
+                            "kind",
+                            "region_id"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "set_layer_visibility"
+                              ],
+                              "type": "string"
+                            },
+                            "layer": {
+                              "type": "string"
+                            },
+                            "visible": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "layer",
+                            "visible"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "pin_landmark"
+                              ],
+                              "type": "string"
+                            },
+                            "landmark_id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "landmark_id"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "unpin_landmark"
+                              ],
+                              "type": "string"
+                            },
+                            "landmark_id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "landmark_id"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "set_mode_lens"
+                              ],
+                              "type": "string"
+                            },
+                            "mode": {
+                              "enum": [
+                                "skim",
+                                "abstract",
+                                "deep"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "mode"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "clear_session_overlay"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "scope": {
+                      "enum": [
+                        "session"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "scope"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "action": {
+                      "oneOf": [
+                        {
+                          "properties": {
+                            "anchor_lid": {
+                              "type": "string"
+                            },
+                            "kind": {
+                              "enum": [
+                                "save_user_landmark"
+                              ],
+                              "type": "string"
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "note": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "user_kind": {
+                              "enum": [
+                                "important",
+                                "question",
+                                "confusing",
+                                "follow_up"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "anchor_lid",
+                            "kind",
+                            "label",
+                            "user_kind"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "remove_user_landmark"
+                              ],
+                              "type": "string"
+                            },
+                            "landmark_id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "landmark_id"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "set_landmark_override"
+                              ],
+                              "type": "string"
+                            },
+                            "label": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "operation": {
+                              "enum": [
+                                "hide",
+                                "deemphasize",
+                                "rename"
+                              ],
+                              "type": "string"
+                            },
+                            "target_landmark_id": {
+                              "type": "string"
+                            },
+                            "user_reason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "operation",
+                            "target_landmark_id"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "remove_landmark_override"
+                              ],
+                              "type": "string"
+                            },
+                            "target_landmark_id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "target_landmark_id"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "save_mode_preference"
+                              ],
+                              "type": "string"
+                            },
+                            "mode": {
+                              "enum": [
+                                "skim",
+                                "abstract",
+                                "deep"
+                              ],
+                              "type": "string"
+                            },
+                            "visible_layers": {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "mode",
+                            "visible_layers"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "clear_saved_overlay"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "scope": {
+                      "enum": [
+                        "saved"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "scope"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "evidence_lids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "base_state_rev",
+          "commands",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "name": "reader.paper_minimap.apply"
+    },
+    {
+      "description": "Return current Reader session state {viewport, open_panels, selection, layout, profile, paper_minimap, paper_minimap_agent_context} for mid-session entry or resynchronization after manual actions.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "reader.state"
+    }
+  ]
+}

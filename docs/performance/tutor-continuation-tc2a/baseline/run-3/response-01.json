@@ -1,0 +1,11 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"lid\": \"1.2\"}",
+      "id": "call_00_glqc1q088T7D3T79rRPP6205",
+      "name": "book.text"
+    }
+  ],
+  "usage_total_tokens": 19357
+}

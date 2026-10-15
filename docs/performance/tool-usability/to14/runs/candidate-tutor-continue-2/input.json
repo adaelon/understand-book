@@ -1,0 +1,104 @@
+{
+  "base": {
+    "book_id": "tc0-average-speed",
+    "graph_edges": [],
+    "graph_nodes": [],
+    "lid_nodes": [
+      {
+        "children": [
+          "1.1",
+          "1.2"
+        ],
+        "kind": "chapter",
+        "lid": "1",
+        "path": [
+          1
+        ],
+        "span": {
+          "end": 189,
+          "start": 0
+        }
+      },
+      {
+        "children": [],
+        "kind": "paragraph",
+        "lid": "1.1",
+        "path": [
+          1,
+          1
+        ],
+        "span": {
+          "end": 147,
+          "start": 0
+        }
+      },
+      {
+        "children": [],
+        "kind": "paragraph",
+        "lid": "1.2",
+        "path": [
+          1,
+          2
+        ],
+        "span": {
+          "end": 188,
+          "start": 149
+        }
+      }
+    ]
+  },
+  "case": "tutor-continue",
+  "input": {
+    "answer_ref": {
+      "turn_id": "turn_3bbabe4c9f907f75"
+    },
+    "client_request_id": "fixed-next",
+    "entry_action": "continue_answer",
+    "expected_chat_head": "turn_3bbabe4c9f907f75",
+    "message": "",
+    "session_id": "chat-01a13013-14b6-7bf0-8a22-cad9b4ed24d2"
+  },
+  "reader_before": {
+    "layout": {
+      "active_preset": "technical_read",
+      "focused_slot": "technical.agent",
+      "open_slots": [
+        "technical.structure_map",
+        "technical.agent"
+      ],
+      "panel_sizes": {
+        "technical.agent": {
+          "kind": "percent",
+          "value": 30.0
+        },
+        "technical.structure_map": {
+          "kind": "percent",
+          "value": 24.0
+        }
+      },
+      "pinned_evidence": [],
+      "rev": 0,
+      "slot_order": {
+        "left": [
+          "technical.structure_map"
+        ],
+        "right": [
+          "technical.agent"
+        ]
+      }
+    },
+    "open_panels": [],
+    "selection": null,
+    "viewport": {
+      "anchor_lid": "1.1",
+      "bottom_lid": "1.2",
+      "top_lid": "1.1",
+      "visible_lids": [
+        "1.1",
+        "1.2"
+      ],
+      "width": 20
+    }
+  },
+  "source": "# Average speed\n\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\n\nA blue bicycle travels along the river.\n"
+}

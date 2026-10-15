@@ -1,0 +1,1005 @@
+{
+  "deliveries": [
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_358cc79bd30d24f9",
+        "tutor_session_id": "tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd"
+      },
+      "causal_refs": [
+        "move:turn_358cc79bd30d24f9:continue-need-not-equal-time"
+      ],
+      "event_id": "delivery:turn_358cc79bd30d24f9:continue-need-not-equal-time",
+      "kind": "message_delivered",
+      "occurred_at": "t0",
+      "payload": {
+        "answer": "「继续理解这段」——这一步接着上一段的结论往前走一格。\n\n先看原文的三句(这次我把之前一带而过的一个词挑出来):\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n上一段我用了第二句的前半段,说明「两段路程相等时,直接把两个速度平均是错的」。但第二句里有个词我之前没强调:**need not**——「不一定」,不是「一定不」。所以这句话并没有宣布「直接平均速度永远是错的」,它只是提醒你别默认「路程一样、时间就一样」。真正决定能不能直接把速度平均的,是**相等的是路程还是时间**。\n\n下面是按第一句定义推出来的两个情形(数字例子是我自己编的,不是原文的例子):\n\n**情形 A —— 路程相等**\n两段各 60 km,速度分别 60 km/h 和 30 km/h。\n总路程 = 120 km;总时间 = 60/60 + 60/30 = 1 + 2 = 3 h;平均速度 = 120 ÷ 3 = **40 km/h**。\n而直接平均速度是 (60+30)/2 = 45 km/h,和定义算出来的不符。\n\n**情形 B —— 时间相等**(只换这一个条件)\n两段各走 1 小时,速度分别 60 km/h 和 30 km/h。\n总路程 = 60×1 + 30×1 = 90 km;总时间 = 1 + 1 = 2 h;平均速度 = 90 ÷ 2 = **45 km/h**。\n这时直接平均 (60+30)/2 = 45 km/h,和定义算出来的一模一样。\n\n两个情形的两个速度相同、用的定义也相同,只是一个把**路程**定成相等,一个把**时间**定成相等,做法就反过来了。原因还是第一句的那个除法:\n\n平均速度 = (v₁·t₁ + v₂·t₂) ÷ (t₁ + t₂)\n\n把它读成「两段速度在投票」:每段速度的票数就是它占用的时间 t。时间一样多 → 票数一样 → 结果正好是普通平均(情形 B)。路程一样多时,慢的那段花的时间更长 → 票数更多 → 把结果往下拉(情形 A 里,45 被拉到 40)。这也顺带解释了第二句为什么用 \"need not\":路程相等时,时间是各段速度决定出来的结果,除非两段速度相同,否则它本来就会不等。\n\n所以第二句真正的用途是一个**判据**,不是一句禁令。看到「两段速度求平均」,先问一句「相等的是什么」:\n\n- 相等的是**时间** → 可以直接平均,结果正确;\n- 相等的是**路程**(题目里更常见) → 不能直接平均,回到定义:总路程 ÷ 总时间。\n\n一个小小的确认(不是考试,只看你这边的感觉):如果题目说「一半路程用 20 km/h,另一半路程用 60 km/h」,要判断能不能把 20 和 60 直接平均成 40,你依据的是这两个量里的哪一个相等?",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "「继续理解这段」——这一步接着上一段的结论往前走一格。\n\n先看原文的三句(这次我把之前一带而过的一个词挑出来):\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. "
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_46f9d90684b10a00"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n上一段我用了第二句的前半段,说明「两段路程相等时,直接把两个速度平均是错的」。但第二句里有个词我之前没强调:**need not**——「不一定」,不是「一定不」。所以这句话并没有宣布「直接平均速度永远是错的」,它只是提醒你别默认「路程一样、时间就一样」。真正决定能不能直接把速度平均的,是**相等的是路程还是时间**。\n\n下面是按第一句定义推出来的两个情形(数字例子是我自己编的,不是原文的例子):\n\n**情形 A —— 路程相等**\n两段各 60 km,速度分别 60 km/h 和 30 km/h。\n总路程 = 120 km;总时间 = 60/60 + 60/30 = 1 + 2 = 3 h;平均速度 = 120 ÷ 3 = **40 km/h**。\n而直接平均速度是 (60+30)/2 = 45 km/h,和定义算出来的不符。\n\n**情形 B —— 时间相等**(只换这一个条件)\n两段各走 1 小时,速度分别 60 km/h 和 30 km/h。\n总路程 = 60×1 + 30×1 = 90 km;总时间 = 1 + 1 = 2 h;平均速度 = 90 ÷ 2 = **45 km/h**。\n这时直接平均 (60+30)/2 = 45 km/h,和定义算出来的一模一样。\n\n两个情形的两个速度相同、用的定义也相同,只是一个把**路程**定成相等,一个把**时间**定成相等,做法就反过来了。原因还是第一句的那个除法:\n\n平均速度 = (v₁·t₁ + v₂·t₂) ÷ (t₁ + t₂)\n\n把它读成「两段速度在投票」:每段速度的票数就是它占用的时间 t。时间一样多 → 票数一样 → 结果正好是普通平均(情形 B)。路程一样多时,慢的那段花的时间更长 → 票数更多 → 把结果往下拉(情形 A 里,45 被拉到 40)。这也顺带解释了第二句为什么用 \"need not\":路程相等时,时间是各段速度决定出来的结果,除非两段速度相同,否则它本来就会不等。\n\n所以第二句真正的用途是一个**判据**,不是一句禁令。看到「两段速度求平均」,先问一句「相等的是什么」:\n\n- 相等的是**时间** → 可以直接平均,结果正确;\n- 相等的是**路程**(题目里更常见) → 不能直接平均,回到定义:总路程 ÷ 总时间。\n\n一个小小的确认(不是考试,只看你这边的感觉):如果题目说「一半路程用 20 km/h,另一半路程用 60 km/h」,要判断能不能把 20 和 60 直接平均成 40,你依据的是这两个量里的哪一个相等?"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文 · Average speed",
+              "source_ref_id": "source_ref_46f9d90684b10a00"
+            }
+          ]
+        },
+        "assessment_contract_ref": null,
+        "move": {
+          "actions": [],
+          "capability": "explanation",
+          "continuation": {
+            "options": [
+              {
+                "label": "把\"路程相等、速度不同\"的平均速度写成一个只用两段速度的公式",
+                "move_kind": "explain",
+                "option_id": "harmonic-form",
+                "purpose": "把 60/30→40 这个数字例子升级为一般结论:路程相等时平均速度是调和平均,它总是不高于两段速度的普通平均,并说明为什么差总是朝着变小的方向"
+              }
+            ],
+            "recommended_option_id": "harmonic-form"
+          },
+          "intent_origin": "current_action",
+          "intent_quote": null,
+          "interaction_intent": "neutral",
+          "interpretation_refs": [],
+          "kind": "compare",
+          "move_id": "continue-need-not-equal-time",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "「继续理解这段」——这一步接着上一段的结论往前走一格。\n\n原文三句里,上一段重点用了第二句的前半段:\"相等的路程不一定花相等的时间\",并说明了为什么在「两段路程相等」时直接平均两个速度是错的。这次我要指出第二句里之前一带而过的一个词:need not。\n\n「Equal distances need not take equal times」说的是**不一定**,不是**一定不**。所以这句话并没有宣布\"直接平均速度永远错\",它只是让你别默认\"路程一样、时间就一样\"。真正决定能不能直接平均的,是相等的是**路程**还是**时间**。\n\n下面两个情形都是按第一句的定义推出来的(数字例子是我自己编的,不是原文的例子):\n\n**情形 A —— 路程相等**(上一段用过的那组)\n两段各 60 km,速度分别是 60 km/h 和 30 km/h。\n总路程 = 120 km;总时间 = 60/60 + 60/30 = 1 + 2 = 3 h;平均速度 = 120 ÷ 3 = **40 km/h**。\n直接平均两个速度 → (60+30)/2 = 45 km/h,与定义算出的结果不符。\n\n**情形 B —— 时间相等**(只换这一个条件)\n两段各走 1 小时,速度分别是 60 km/h 和 30 km/h。\n总路程 = 60×1 + 30×1 = 90 km;总时间 = 1 + 1 = 2 h;平均速度 = 90 ÷ 2 = **45 km/h**。\n这时直接平均 (60+30)/2 = 45 km/h,恰好和定义算出来的一样。\n\n两个情形的两个速度完全相同、定义也完全相同,只是一个把**路程**定成相等,一个把**时间**定成相等,做法就反过来了。原因还是第一句的那个除法:\n\n平均速度 = (v₁·t₁ + v₂·t₂) ÷ (t₁ + t₂)\n\n把它读成\"两段速度在投票\":每段速度的票数就是它占用的时间 t。时间一样多 → 票数一样 → 结果就是普通平均(情形 B)。路程一样多时,慢的那段花的时间更长 → 票数更多 → 把结果往下拉(情形 A:45 被拉到 40)。这也正好说明第二句为什么用 \"need not\":路程相等时时间是被速度决定的结果,它会不等——除非两段速度刚好相同。\n\n所以第二句的实用价值是一个判据,不是一句禁令:看到\"两段速度求平均\",先问\"相等的是什么\"——\n- 相等的是**时间** → 直接平均,结果正确;\n- 相等的是**路程**(更常见) → 不能直接平均,回到定义:总路程 ÷ 总时间。\n\n小小的确认(不是考试,只是看你这边的感觉):如果题目说\"一半路程用 20 km/h,另一半路程用 60 km/h\",要判断能不能把 20 和 60 直接平均成 40,你依据的是这两个量里的哪一个相等?",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "Explain that the definition (total distance ÷ total time) makes the time each speed occupies the weight, so directly averaging two speeds is valid exactly when the times are equal and fails when the distances are equal; and state which quantity's equality is the criterion.",
+            "learning_focus": "平均速度中\"相等的是路程还是时间\"决定能否直接平均速度",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "presentation": null,
+        "source_bindings": [
+          {
+            "book_id": "tc0-average-speed",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 147,
+                    "start": 17
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-16e3ce8bb6bde7b1",
+            "label_snapshot": "正文 · Average speed",
+            "preview_snapshot": "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.",
+            "source_ref_id": "source_ref_46f9d90684b10a00"
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_358cc79bd30d24f9",
+        "tutor_session_id": "tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd"
+      },
+      "causal_refs": [],
+      "event_id": "assets:turn_358cc79bd30d24f9",
+      "kind": "turn_bound",
+      "occurred_at": "t0",
+      "payload": {}
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_358cc79bd30d24f9",
+        "tutor_session_id": "tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd"
+      },
+      "causal_refs": [
+        "usage:tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd:assistant:turn_358cc49bd30d1fe0"
+      ],
+      "event_id": "usage:tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd:user:turn_358cc79bd30d24f9",
+      "kind": "usage_observed",
+      "occurred_at": "t0",
+      "payload": {
+        "interaction": {
+          "accepted_request": "继续理解这段",
+          "action": {
+            "entry_action": "continue_answer",
+            "origin": "ui_entry"
+          },
+          "answer_ref": {
+            "turn_id": "turn_358cc49bd30d1fe0"
+          },
+          "answer_text": "这段其实是「平均速度」的定义，一共三句话，每句各管一件事。原文是：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 第一句：定义本身\n\n平均速度 = 总路程 ÷ 总时间。\n\n关键在这个「总」字上：分子是把整段行程走过的所有路程加起来，分母是把整段行程花掉的所有时间加起来。它描述的是**整段行程的一个整体结果**，不是某一时刻你跑多快。所以哪怕中途快慢变来变去，只要有这两个总量，就能算出这趟的平均速度。\n\n## 第二句：这句才是真正的提醒\n\n「Equal distances need not take equal times」——相等的路程不一定花相等的时间。它是在拦住一个非常自然的错误做法:把两段的**速度数值**拿来平均。\n\n举一个我自己的例子来说明(这是按上面定义推出来的，不是原文的例子)：你开车走两段各 60 公里的路，第一段速度 60 km/h，第二段 30 km/h。如果直接把速度平均，(60+30)/2 = 45 km/h，这是错的。按定义算：\n\n- 总路程 = 60 + 60 = 120 km\n- 总时间 = 60/60 + 60/30 = 1 + 2 = 3 小时\n- 平均速度 = 120 ÷ 3 = 40 km/h\n\n差出来的原因正是第二句说的：路程一样(都是 60 km)，但时间不一样(1 小时 vs 2 小时)，而定义里做分母的是**时间**。走得慢的那段占用了更多时间，所以在时间上「权重」更大，把平均速度往下拉。可见平均速度的天平是按时间倾斜的，不是按路程均分的。\n\n## 第三句：为什么必须要求总时间大于 0\n\n因为它在分母上。定义本身就是一次除法,除数不能为零，所以整趟行程的总时间必须是正数。反过来说，如果总时间是 0(比如既没动、也没花时间)，这个式子根本没有意义，平均速度无从谈起。反过来看，分子(总路程)没有这个限制——路程可以是 0，那平均速度就是 0。\n\n## 一句话抓手\n\n分母是**时间**、并且是**总量**，所以「平均速度」是被时间加权的结果：谁占的时间多，谁的快慢就更有发言权。\n\n想确认一下你现在的感觉：上面那个 60/30 的例子，你觉得答案是 45 还是 40？说说你的理由，我再针对你的思路补一段。",
+          "expected_chat_head": "turn_358cc49bd30d1fe0",
+          "presentation_follow_up": null,
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "start_lid": "1.1"
+            }
+          ],
+          "source_excerpt": "Average speed is total distance divided by total time.",
+          "target": null,
+          "user_supplement": ""
+        },
+        "original_ref": {
+          "book_id": "tc0-average-speed",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+          "turn_id": "turn_358cc79bd30d24f9"
+        },
+        "presentation_follow_up": null,
+        "question_anchor_lid": null,
+        "response": "",
+        "teaching_ref": null,
+        "usage": {
+          "kind": "reading_action"
+        }
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_358cc79bd30d24f9",
+        "tutor_session_id": "tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd"
+      },
+      "causal_refs": [],
+      "event_id": "binding:turn_358cc79bd30d24f9",
+      "kind": "turn_bound",
+      "occurred_at": "t0",
+      "payload": {
+        "binding": {
+          "chat_session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_358cc79bd30d24f9",
+          "tutor_session_id": "tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd"
+        },
+        "confirmed_preferences": [],
+        "constraints": [],
+        "current_action": {
+          "accepted_request": "继续理解这段",
+          "action": {
+            "entry_action": "continue_answer",
+            "origin": "ui_entry"
+          },
+          "answer_ref": {
+            "turn_id": "turn_358cc49bd30d1fe0"
+          },
+          "answer_text": "这段其实是「平均速度」的定义，一共三句话，每句各管一件事。原文是：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 第一句：定义本身\n\n平均速度 = 总路程 ÷ 总时间。\n\n关键在这个「总」字上：分子是把整段行程走过的所有路程加起来，分母是把整段行程花掉的所有时间加起来。它描述的是**整段行程的一个整体结果**，不是某一时刻你跑多快。所以哪怕中途快慢变来变去，只要有这两个总量，就能算出这趟的平均速度。\n\n## 第二句：这句才是真正的提醒\n\n「Equal distances need not take equal times」——相等的路程不一定花相等的时间。它是在拦住一个非常自然的错误做法:把两段的**速度数值**拿来平均。\n\n举一个我自己的例子来说明(这是按上面定义推出来的，不是原文的例子)：你开车走两段各 60 公里的路，第一段速度 60 km/h，第二段 30 km/h。如果直接把速度平均，(60+30)/2 = 45 km/h，这是错的。按定义算：\n\n- 总路程 = 60 + 60 = 120 km\n- 总时间 = 60/60 + 60/30 = 1 + 2 = 3 小时\n- 平均速度 = 120 ÷ 3 = 40 km/h\n\n差出来的原因正是第二句说的：路程一样(都是 60 km)，但时间不一样(1 小时 vs 2 小时)，而定义里做分母的是**时间**。走得慢的那段占用了更多时间，所以在时间上「权重」更大，把平均速度往下拉。可见平均速度的天平是按时间倾斜的，不是按路程均分的。\n\n## 第三句：为什么必须要求总时间大于 0\n\n因为它在分母上。定义本身就是一次除法,除数不能为零，所以整趟行程的总时间必须是正数。反过来说，如果总时间是 0(比如既没动、也没花时间)，这个式子根本没有意义，平均速度无从谈起。反过来看，分子(总路程)没有这个限制——路程可以是 0，那平均速度就是 0。\n\n## 一句话抓手\n\n分母是**时间**、并且是**总量**，所以「平均速度」是被时间加权的结果：谁占的时间多，谁的快慢就更有发言权。\n\n想确认一下你现在的感觉：上面那个 60/30 的例子，你觉得答案是 45 还是 40？说说你的理由，我再针对你的思路补一段。",
+          "expected_chat_head": "turn_358cc49bd30d1fe0",
+          "presentation_follow_up": null,
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "start_lid": "1.1"
+            }
+          ],
+          "source_excerpt": "Average speed is total distance divided by total time.",
+          "target": null,
+          "user_supplement": ""
+        },
+        "current_request": "",
+        "default_teaching_intent": null,
+        "learner_context": {
+          "confirmed_background": [],
+          "confirmed_preferences": [],
+          "constraints": [],
+          "current_action": {
+            "accepted_request": "继续理解这段",
+            "action": {
+              "entry_action": "continue_answer",
+              "origin": "ui_entry"
+            },
+            "answer_ref": {
+              "turn_id": "turn_358cc49bd30d1fe0"
+            },
+            "answer_text": "这段其实是「平均速度」的定义，一共三句话，每句各管一件事。原文是：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 第一句：定义本身\n\n平均速度 = 总路程 ÷ 总时间。\n\n关键在这个「总」字上：分子是把整段行程走过的所有路程加起来，分母是把整段行程花掉的所有时间加起来。它描述的是**整段行程的一个整体结果**，不是某一时刻你跑多快。所以哪怕中途快慢变来变去，只要有这两个总量，就能算出这趟的平均速度。\n\n## 第二句：这句才是真正的提醒\n\n「Equal distances need not take equal times」——相等的路程不一定花相等的时间。它是在拦住一个非常自然的错误做法:把两段的**速度数值**拿来平均。\n\n举一个我自己的例子来说明(这是按上面定义推出来的，不是原文的例子)：你开车走两段各 60 公里的路，第一段速度 60 km/h，第二段 30 km/h。如果直接把速度平均，(60+30)/2 = 45 km/h，这是错的。按定义算：\n\n- 总路程 = 60 + 60 = 120 km\n- 总时间 = 60/60 + 60/30 = 1 + 2 = 3 小时\n- 平均速度 = 120 ÷ 3 = 40 km/h\n\n差出来的原因正是第二句说的：路程一样(都是 60 km)，但时间不一样(1 小时 vs 2 小时)，而定义里做分母的是**时间**。走得慢的那段占用了更多时间，所以在时间上「权重」更大，把平均速度往下拉。可见平均速度的天平是按时间倾斜的，不是按路程均分的。\n\n## 第三句：为什么必须要求总时间大于 0\n\n因为它在分母上。定义本身就是一次除法,除数不能为零，所以整趟行程的总时间必须是正数。反过来说，如果总时间是 0(比如既没动、也没花时间)，这个式子根本没有意义，平均速度无从谈起。反过来看，分子(总路程)没有这个限制——路程可以是 0，那平均速度就是 0。\n\n## 一句话抓手\n\n分母是**时间**、并且是**总量**，所以「平均速度」是被时间加权的结果：谁占的时间多，谁的快慢就更有发言权。\n\n想确认一下你现在的感觉：上面那个 60/30 的例子，你觉得答案是 45 还是 40？说说你的理由，我再针对你的思路补一段。",
+            "expected_chat_head": "turn_358cc49bd30d1fe0",
+            "presentation_follow_up": null,
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ],
+            "source_excerpt": "Average speed is total distance divided by total time.",
+            "target": null,
+            "user_supplement": ""
+          },
+          "current_request": "",
+          "current_target": null,
+          "details": "tutor.step understanding with object_id and after",
+          "entries": [],
+          "evidence_watermark": 0,
+          "interpretations": [],
+          "path_progress": [],
+          "pending_activity": null,
+          "pending_assessment_refs": [],
+          "projection_watermark": 0,
+          "recent_facts": [
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_358cc79bd30d24f9",
+                "tutor_session_id": "tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd"
+              },
+              "causal_refs": [
+                "usage:tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd:assistant:turn_358cc49bd30d1fe0"
+              ],
+              "continuation": null,
+              "event_id": "usage:tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd:user:turn_358cc79bd30d24f9",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "interaction": {
+                "accepted_request": {
+                  "text": "继续理解这段",
+                  "truncated": false
+                },
+                "action": {
+                  "entry_action": "continue_answer",
+                  "origin": "ui_entry"
+                },
+                "answer_origin": "assistant",
+                "answer_preview": {
+                  "text": "这段其实是「平均速度」的定义，一共三句话，每句各管一件事。原文是：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 第一句：定义本身\n\n平均速度 = 总路程 ÷ 总时间。\n\n关键在这个「总」字上：分子是把整段行程走过的所有路程加起来，分母是把整段行程花掉的所有时间加起来。它描述的是**整段行程的一个整体结果**，不是某一时刻你跑多快。所以哪怕中途快慢变来变去，只要有这两个总量，就能算出这趟的平均速度。\n\n## 第二句：这句才是真正的提醒\n\n「Equal distances need not take equal times」——相等的路程不一定花相等的时间。它是在拦住一个非常自然的错误做法:把两段的**速度数值**拿来平均。\n\n举一个我自己的例子来说明(这是按上面定义推出来的，不是原文的例子)：你开车走两段各 60 公里的路，第一段速度 60 km/h，第二段 30 km/h。如果直接把速度平均，(60+30)/2 = 45 km/h，这是错的。按定义算：\n\n- 总路程 = 60 + 60 = 120 km\n- 总时间 = 60/60 + 60/30 = ",
+                  "truncated": true
+                },
+                "answer_ref": {
+                  "turn_id": "turn_358cc49bd30d1fe0"
+                },
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "start_lid": "1.1"
+                  }
+                ]
+              },
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "t0",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+                "turn_id": "turn_358cc79bd30d24f9"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "reading_action"
+              }
+            },
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "这段其实是「平均速度」的定义，一共三句话，每句各管一件事。原文是：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 第一句：定义本身\n\n平均速度 = 总路程 ÷ 总时间。\n\n关键在这个「总」字上：分子是把整段行程走过的所有路程加起来，分母是把整段行程花掉的所有时间加起来。它描述的是**整段行程的一个整体结果**，不是某一时刻你跑多快。所以哪怕中途快慢变来变去，只要有这两个总量，就能算出这趟的平均速度。\n\n## 第二句：这句才是真正的提醒\n\n「Equal distances need not take equal times」——相等的路程不一定花相等的时间。它是在拦住一个非常自然的错误做法:把两段的**速度数值**拿来平均。\n\n举一个我自己的例子来说明(这是按上面定义推出来的，不是原文的例子)：你开车走两段各 60 公里的路，第一段速度 60 km/h，第二段 30 km/h。如果直接把速度平均，(60+30)/2 = 45 km/h，这是错的。按定义算：\n\n- 总路程 = 60 + 60 = 120 km\n- 总时间 = 60/60 + 60/30 = 1 + 2 = 3 小时\n- 平均速度 = 120 ÷ 3 = 40 km/h\n\n差出来的原因正是第二句说的：路程一样(都是 60 km)，但时间不一样(1 小时 vs 2 小时)，而定义里做分母的是**时间**。走得慢的那段占用了更多时间，所以在时间上「权重」更大，把平均速度往下拉。可见平均速度的天平是按时间倾斜的，不是按路程均分的。\n\n## 第三句：为什么必须要求总时间大于 0\n\n因为它在分母上。定义本身就是一次除法,除数不能为零，所以整趟行程的总时间必须是正数。反过来说，如果总时间是 0(比如既没动、也没花时间)，这个式子根本没有意义，平均速度无从谈起。反过来看，分子(总路程)没有这个限制——路程可以是 0，那平均速度就是 0。\n\n## 一句话抓手\n\n分母是**时间**、并且是**总量**，所以「平均速度」是被时间加权的结果：谁占的时间多，谁的快慢就更有发言权。\n\n想确认一下你现在的感觉：上面那个 60/30 的例子，你觉得答案是 45 还是 40？说说你的理由，我再针对你的思路补一段。",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_358cc49bd30d1fe0",
+                "tutor_session_id": "tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd"
+              },
+              "causal_refs": [
+                "usage:tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd:user:turn_358cc49bd30d1fe0"
+              ],
+              "continuation": null,
+              "event_id": "usage:tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd:assistant:turn_358cc49bd30d1fe0",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "interaction": null,
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "t0",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+                "turn_id": "turn_358cc49bd30d1fe0"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "assistant_delivery"
+              }
+            },
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_358cc49bd30d1fe0",
+                "tutor_session_id": "tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd"
+              },
+              "causal_refs": [],
+              "continuation": null,
+              "event_id": "usage:tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd:user:turn_358cc49bd30d1fe0",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "interaction": {
+                "accepted_request": {
+                  "text": "帮我弄懂这段",
+                  "truncated": false
+                },
+                "action": {
+                  "entry_action": "explain_selection",
+                  "origin": "ui_entry"
+                },
+                "answer_origin": "assistant",
+                "answer_preview": {
+                  "text": "null",
+                  "truncated": false
+                },
+                "answer_ref": null,
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "tc0-average-speed",
+                    "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                    "start_lid": "1.1"
+                  }
+                ]
+              },
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "t0",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+                "turn_id": "turn_358cc49bd30d1fe0"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "reading_action"
+              }
+            }
+          ],
+          "session_focus": {
+            "capability_targets": [],
+            "interpretation": "",
+            "target_object_refs": []
+          },
+          "stale": false,
+          "uninterpreted_fact_refs": [],
+          "unknown_when_absent": true,
+          "user_intent": "继续理解这段：Average speed is total distance divided by total time."
+        },
+        "limitations": [],
+        "object_count": 0,
+        "objects": [],
+        "recent_facts": [
+          {
+            "action": null,
+            "answer_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "assistance_count": 0,
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_358cc79bd30d24f9",
+              "tutor_session_id": "tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd"
+            },
+            "causal_refs": [
+              "usage:tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd:assistant:turn_358cc49bd30d1fe0"
+            ],
+            "continuation": null,
+            "event_id": "usage:tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd:user:turn_358cc79bd30d24f9",
+            "help_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "interaction": {
+              "accepted_request": {
+                "text": "继续理解这段",
+                "truncated": false
+              },
+              "action": {
+                "entry_action": "continue_answer",
+                "origin": "ui_entry"
+              },
+              "answer_origin": "assistant",
+              "answer_preview": {
+                "text": "这段其实是「平均速度」的定义，一共三句话，每句各管一件事。原文是：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 第一句：定义本身\n\n平均速度 = 总路程 ÷ 总时间。\n\n关键在这个「总」字上：分子是把整段行程走过的所有路程加起来，分母是把整段行程花掉的所有时间加起来。它描述的是**整段行程的一个整体结果**，不是某一时刻你跑多快。所以哪怕中途快慢变来变去，只要有这两个总量，就能算出这趟的平均速度。\n\n## 第二句：这句才是真正的提醒\n\n「Equal distances need not take equal times」——相等的路程不一定花相等的时间。它是在拦住一个非常自然的错误做法:把两段的**速度数值**拿来平均。\n\n举一个我自己的例子来说明(这是按上面定义推出来的，不是原文的例子)：你开车走两段各 60 公里的路，第一段速度 60 km/h，第二段 30 km/h。如果直接把速度平均，(60+30)/2 = 45 km/h，这是错的。按定义算：\n\n- 总路程 = 60 + 60 = 120 km\n- 总时间 = 60/60 + 60/30 = ",
+                "truncated": true
+              },
+              "answer_ref": {
+                "turn_id": "turn_358cc49bd30d1fe0"
+              },
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            "kind": "usage_observed",
+            "move_id": null,
+            "occurred_at": "t0",
+            "original_ref": {
+              "book_id": "tc0-average-speed",
+              "kind": "chat_turn",
+              "session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+              "turn_id": "turn_358cc79bd30d24f9"
+            },
+            "prompt_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "response_preview": {
+              "text": "",
+              "truncated": false
+            },
+            "target": null,
+            "usage": {
+              "kind": "reading_action"
+            }
+          },
+          {
+            "action": null,
+            "answer_preview": {
+              "text": "这段其实是「平均速度」的定义，一共三句话，每句各管一件事。原文是：\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n## 第一句：定义本身\n\n平均速度 = 总路程 ÷ 总时间。\n\n关键在这个「总」字上：分子是把整段行程走过的所有路程加起来，分母是把整段行程花掉的所有时间加起来。它描述的是**整段行程的一个整体结果**，不是某一时刻你跑多快。所以哪怕中途快慢变来变去，只要有这两个总量，就能算出这趟的平均速度。\n\n## 第二句：这句才是真正的提醒\n\n「Equal distances need not take equal times」——相等的路程不一定花相等的时间。它是在拦住一个非常自然的错误做法:把两段的**速度数值**拿来平均。\n\n举一个我自己的例子来说明(这是按上面定义推出来的，不是原文的例子)：你开车走两段各 60 公里的路，第一段速度 60 km/h，第二段 30 km/h。如果直接把速度平均，(60+30)/2 = 45 km/h，这是错的。按定义算：\n\n- 总路程 = 60 + 60 = 120 km\n- 总时间 = 60/60 + 60/30 = 1 + 2 = 3 小时\n- 平均速度 = 120 ÷ 3 = 40 km/h\n\n差出来的原因正是第二句说的：路程一样(都是 60 km)，但时间不一样(1 小时 vs 2 小时)，而定义里做分母的是**时间**。走得慢的那段占用了更多时间，所以在时间上「权重」更大，把平均速度往下拉。可见平均速度的天平是按时间倾斜的，不是按路程均分的。\n\n## 第三句：为什么必须要求总时间大于 0\n\n因为它在分母上。定义本身就是一次除法,除数不能为零，所以整趟行程的总时间必须是正数。反过来说，如果总时间是 0(比如既没动、也没花时间)，这个式子根本没有意义，平均速度无从谈起。反过来看，分子(总路程)没有这个限制——路程可以是 0，那平均速度就是 0。\n\n## 一句话抓手\n\n分母是**时间**、并且是**总量**，所以「平均速度」是被时间加权的结果：谁占的时间多，谁的快慢就更有发言权。\n\n想确认一下你现在的感觉：上面那个 60/30 的例子，你觉得答案是 45 还是 40？说说你的理由，我再针对你的思路补一段。",
+              "truncated": false
+            },
+            "assistance_count": 0,
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_358cc49bd30d1fe0",
+              "tutor_session_id": "tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd"
+            },
+            "causal_refs": [
+              "usage:tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd:user:turn_358cc49bd30d1fe0"
+            ],
+            "continuation": null,
+            "event_id": "usage:tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd:assistant:turn_358cc49bd30d1fe0",
+            "help_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "interaction": null,
+            "kind": "usage_observed",
+            "move_id": null,
+            "occurred_at": "t0",
+            "original_ref": {
+              "book_id": "tc0-average-speed",
+              "kind": "chat_turn",
+              "session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+              "turn_id": "turn_358cc49bd30d1fe0"
+            },
+            "prompt_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "response_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "target": null,
+            "usage": {
+              "kind": "assistant_delivery"
+            }
+          },
+          {
+            "action": null,
+            "answer_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "assistance_count": 0,
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_358cc49bd30d1fe0",
+              "tutor_session_id": "tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd"
+            },
+            "causal_refs": [],
+            "continuation": null,
+            "event_id": "usage:tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd:user:turn_358cc49bd30d1fe0",
+            "help_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "interaction": {
+              "accepted_request": {
+                "text": "帮我弄懂这段",
+                "truncated": false
+              },
+              "action": {
+                "entry_action": "explain_selection",
+                "origin": "ui_entry"
+              },
+              "answer_origin": "assistant",
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "answer_ref": null,
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "tc0-average-speed",
+                  "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            "kind": "usage_observed",
+            "move_id": null,
+            "occurred_at": "t0",
+            "original_ref": {
+              "book_id": "tc0-average-speed",
+              "kind": "chat_turn",
+              "session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+              "turn_id": "turn_358cc49bd30d1fe0"
+            },
+            "prompt_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "response_preview": {
+              "text": "",
+              "truncated": false
+            },
+            "target": null,
+            "usage": {
+              "kind": "reading_action"
+            }
+          }
+        ],
+        "status": "active",
+        "teaching_assets": {
+          "cognitive_materials": {
+            "status": "missing"
+          },
+          "formal_objects": {
+            "status": "missing"
+          },
+          "limitations": [],
+          "reason": "正式教学素材尚未发布",
+          "source_id": "tc0-average-speed",
+          "status": "preparing",
+          "teaching_map_revision": null
+        },
+        "user_intent": "继续理解这段：Average speed is total distance divided by total time."
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_358cc79bd30d24f9",
+        "tutor_session_id": "tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd"
+      },
+      "causal_refs": [
+        "binding:turn_358cc79bd30d24f9"
+      ],
+      "event_id": "move:turn_358cc79bd30d24f9:continue-need-not-equal-time",
+      "kind": "move_selected",
+      "occurred_at": "2026-10-12T05:15:56.6234189Z",
+      "payload": {
+        "help_policy": "preserve_exposure",
+        "move": {
+          "actions": [],
+          "assessment": null,
+          "capability": "explanation",
+          "continuation": {
+            "options": [
+              {
+                "label": "把\"路程相等、速度不同\"的平均速度写成一个只用两段速度的公式",
+                "move_kind": "explain",
+                "option_id": "harmonic-form",
+                "purpose": "把 60/30→40 这个数字例子升级为一般结论:路程相等时平均速度是调和平均,它总是不高于两段速度的普通平均,并说明为什么差总是朝着变小的方向"
+              }
+            ],
+            "recommended_option_id": "harmonic-form"
+          },
+          "explanation": null,
+          "hint": null,
+          "intent_origin": "current_action",
+          "intent_quote": null,
+          "interaction_intent": "neutral",
+          "interpretation_refs": [],
+          "kind": "compare",
+          "move_id": "continue-need-not-equal-time",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "「继续理解这段」——这一步接着上一段的结论往前走一格。\n\n原文三句里,上一段重点用了第二句的前半段:\"相等的路程不一定花相等的时间\",并说明了为什么在「两段路程相等」时直接平均两个速度是错的。这次我要指出第二句里之前一带而过的一个词:need not。\n\n「Equal distances need not take equal times」说的是**不一定**,不是**一定不**。所以这句话并没有宣布\"直接平均速度永远错\",它只是让你别默认\"路程一样、时间就一样\"。真正决定能不能直接平均的,是相等的是**路程**还是**时间**。\n\n下面两个情形都是按第一句的定义推出来的(数字例子是我自己编的,不是原文的例子):\n\n**情形 A —— 路程相等**(上一段用过的那组)\n两段各 60 km,速度分别是 60 km/h 和 30 km/h。\n总路程 = 120 km;总时间 = 60/60 + 60/30 = 1 + 2 = 3 h;平均速度 = 120 ÷ 3 = **40 km/h**。\n直接平均两个速度 → (60+30)/2 = 45 km/h,与定义算出的结果不符。\n\n**情形 B —— 时间相等**(只换这一个条件)\n两段各走 1 小时,速度分别是 60 km/h 和 30 km/h。\n总路程 = 60×1 + 30×1 = 90 km;总时间 = 1 + 1 = 2 h;平均速度 = 90 ÷ 2 = **45 km/h**。\n这时直接平均 (60+30)/2 = 45 km/h,恰好和定义算出来的一样。\n\n两个情形的两个速度完全相同、定义也完全相同,只是一个把**路程**定成相等,一个把**时间**定成相等,做法就反过来了。原因还是第一句的那个除法:\n\n平均速度 = (v₁·t₁ + v₂·t₂) ÷ (t₁ + t₂)\n\n把它读成\"两段速度在投票\":每段速度的票数就是它占用的时间 t。时间一样多 → 票数一样 → 结果就是普通平均(情形 B)。路程一样多时,慢的那段花的时间更长 → 票数更多 → 把结果往下拉(情形 A:45 被拉到 40)。这也正好说明第二句为什么用 \"need not\":路程相等时时间是被速度决定的结果,它会不等——除非两段速度刚好相同。\n\n所以第二句的实用价值是一个判据,不是一句禁令:看到\"两段速度求平均\",先问\"相等的是什么\"——\n- 相等的是**时间** → 直接平均,结果正确;\n- 相等的是**路程**(更常见) → 不能直接平均,回到定义:总路程 ÷ 总时间。\n\n小小的确认(不是考试,只是看你这边的感觉):如果题目说\"一半路程用 20 km/h,另一半路程用 60 km/h\",要判断能不能把 20 和 60 直接平均成 40,你依据的是这两个量里的哪一个相等?",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "Explain that the definition (total distance ÷ total time) makes the time each speed occupies the weight, so directly averaging two speeds is valid exactly when the times are equal and fails when the distances are equal; and state which quantity's equality is the criterion.",
+            "learning_focus": "平均速度中\"相等的是路程还是时间\"决定能否直接平均速度",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "retry_policy": "append_attempt",
+        "scorer_version": "assessment.v1",
+        "scoring_sources": {}
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_358cc79bd30d24f9",
+        "tutor_session_id": "tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd"
+      },
+      "causal_refs": [
+        "usage:tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd:user:turn_358cc79bd30d24f9"
+      ],
+      "event_id": "usage:tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd:assistant:turn_358cc79bd30d24f9",
+      "kind": "usage_observed",
+      "occurred_at": "t0",
+      "payload": {
+        "answer": "「继续理解这段」——这一步接着上一段的结论往前走一格。\n\n先看原文的三句(这次我把之前一带而过的一个词挑出来):\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n上一段我用了第二句的前半段,说明「两段路程相等时,直接把两个速度平均是错的」。但第二句里有个词我之前没强调:**need not**——「不一定」,不是「一定不」。所以这句话并没有宣布「直接平均速度永远是错的」,它只是提醒你别默认「路程一样、时间就一样」。真正决定能不能直接把速度平均的,是**相等的是路程还是时间**。\n\n下面是按第一句定义推出来的两个情形(数字例子是我自己编的,不是原文的例子):\n\n**情形 A —— 路程相等**\n两段各 60 km,速度分别 60 km/h 和 30 km/h。\n总路程 = 120 km;总时间 = 60/60 + 60/30 = 1 + 2 = 3 h;平均速度 = 120 ÷ 3 = **40 km/h**。\n而直接平均速度是 (60+30)/2 = 45 km/h,和定义算出来的不符。\n\n**情形 B —— 时间相等**(只换这一个条件)\n两段各走 1 小时,速度分别 60 km/h 和 30 km/h。\n总路程 = 60×1 + 30×1 = 90 km;总时间 = 1 + 1 = 2 h;平均速度 = 90 ÷ 2 = **45 km/h**。\n这时直接平均 (60+30)/2 = 45 km/h,和定义算出来的一模一样。\n\n两个情形的两个速度相同、用的定义也相同,只是一个把**路程**定成相等,一个把**时间**定成相等,做法就反过来了。原因还是第一句的那个除法:\n\n平均速度 = (v₁·t₁ + v₂·t₂) ÷ (t₁ + t₂)\n\n把它读成「两段速度在投票」:每段速度的票数就是它占用的时间 t。时间一样多 → 票数一样 → 结果正好是普通平均(情形 B)。路程一样多时,慢的那段花的时间更长 → 票数更多 → 把结果往下拉(情形 A 里,45 被拉到 40)。这也顺带解释了第二句为什么用 \"need not\":路程相等时,时间是各段速度决定出来的结果,除非两段速度相同,否则它本来就会不等。\n\n所以第二句真正的用途是一个**判据**,不是一句禁令。看到「两段速度求平均」,先问一句「相等的是什么」:\n\n- 相等的是**时间** → 可以直接平均,结果正确;\n- 相等的是**路程**(题目里更常见) → 不能直接平均,回到定义:总路程 ÷ 总时间。\n\n一个小小的确认(不是考试,只看你这边的感觉):如果题目说「一半路程用 20 km/h,另一半路程用 60 km/h」,要判断能不能把 20 和 60 直接平均成 40,你依据的是这两个量里的哪一个相等?",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "「继续理解这段」——这一步接着上一段的结论往前走一格。\n\n先看原文的三句(这次我把之前一带而过的一个词挑出来):\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. "
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_46f9d90684b10a00"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n上一段我用了第二句的前半段,说明「两段路程相等时,直接把两个速度平均是错的」。但第二句里有个词我之前没强调:**need not**——「不一定」,不是「一定不」。所以这句话并没有宣布「直接平均速度永远是错的」,它只是提醒你别默认「路程一样、时间就一样」。真正决定能不能直接把速度平均的,是**相等的是路程还是时间**。\n\n下面是按第一句定义推出来的两个情形(数字例子是我自己编的,不是原文的例子):\n\n**情形 A —— 路程相等**\n两段各 60 km,速度分别 60 km/h 和 30 km/h。\n总路程 = 120 km;总时间 = 60/60 + 60/30 = 1 + 2 = 3 h;平均速度 = 120 ÷ 3 = **40 km/h**。\n而直接平均速度是 (60+30)/2 = 45 km/h,和定义算出来的不符。\n\n**情形 B —— 时间相等**(只换这一个条件)\n两段各走 1 小时,速度分别 60 km/h 和 30 km/h。\n总路程 = 60×1 + 30×1 = 90 km;总时间 = 1 + 1 = 2 h;平均速度 = 90 ÷ 2 = **45 km/h**。\n这时直接平均 (60+30)/2 = 45 km/h,和定义算出来的一模一样。\n\n两个情形的两个速度相同、用的定义也相同,只是一个把**路程**定成相等,一个把**时间**定成相等,做法就反过来了。原因还是第一句的那个除法:\n\n平均速度 = (v₁·t₁ + v₂·t₂) ÷ (t₁ + t₂)\n\n把它读成「两段速度在投票」:每段速度的票数就是它占用的时间 t。时间一样多 → 票数一样 → 结果正好是普通平均(情形 B)。路程一样多时,慢的那段花的时间更长 → 票数更多 → 把结果往下拉(情形 A 里,45 被拉到 40)。这也顺带解释了第二句为什么用 \"need not\":路程相等时,时间是各段速度决定出来的结果,除非两段速度相同,否则它本来就会不等。\n\n所以第二句真正的用途是一个**判据**,不是一句禁令。看到「两段速度求平均」,先问一句「相等的是什么」:\n\n- 相等的是**时间** → 可以直接平均,结果正确;\n- 相等的是**路程**(题目里更常见) → 不能直接平均,回到定义:总路程 ÷ 总时间。\n\n一个小小的确认(不是考试,只看你这边的感觉):如果题目说「一半路程用 20 km/h,另一半路程用 60 km/h」,要判断能不能把 20 和 60 直接平均成 40,你依据的是这两个量里的哪一个相等?"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文 · Average speed",
+              "source_ref_id": "source_ref_46f9d90684b10a00"
+            }
+          ]
+        },
+        "original_ref": {
+          "book_id": "tc0-average-speed",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+          "turn_id": "turn_358cc79bd30d24f9"
+        },
+        "source_bindings": [
+          {
+            "book_id": "tc0-average-speed",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 147,
+                    "start": 17
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-16e3ce8bb6bde7b1",
+            "label_snapshot": "正文 · Average speed",
+            "preview_snapshot": "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.",
+            "source_ref_id": "source_ref_46f9d90684b10a00"
+          }
+        ],
+        "usage": {
+          "kind": "assistant_delivery"
+        }
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12e89-7e4a-7242-8433-d22c95667fcd",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_358cc79bd30d24f9",
+        "tutor_session_id": "tutor-first-question:chat-01a12e89-7e4a-7242-8433-d22c95667fcd"
+      },
+      "causal_refs": [
+        "move:turn_358cc79bd30d24f9:continue-need-not-equal-time"
+      ],
+      "event_id": "delivery:turn_358cc79bd30d24f9:continue-need-not-equal-time",
+      "kind": "message_delivered",
+      "occurred_at": "t0",
+      "payload": {
+        "answer": "「继续理解这段」——这一步接着上一段的结论往前走一格。\n\n先看原文的三句(这次我把之前一带而过的一个词挑出来):\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n上一段我用了第二句的前半段,说明「两段路程相等时,直接把两个速度平均是错的」。但第二句里有个词我之前没强调:**need not**——「不一定」,不是「一定不」。所以这句话并没有宣布「直接平均速度永远是错的」,它只是提醒你别默认「路程一样、时间就一样」。真正决定能不能直接把速度平均的,是**相等的是路程还是时间**。\n\n下面是按第一句定义推出来的两个情形(数字例子是我自己编的,不是原文的例子):\n\n**情形 A —— 路程相等**\n两段各 60 km,速度分别 60 km/h 和 30 km/h。\n总路程 = 120 km;总时间 = 60/60 + 60/30 = 1 + 2 = 3 h;平均速度 = 120 ÷ 3 = **40 km/h**。\n而直接平均速度是 (60+30)/2 = 45 km/h,和定义算出来的不符。\n\n**情形 B —— 时间相等**(只换这一个条件)\n两段各走 1 小时,速度分别 60 km/h 和 30 km/h。\n总路程 = 60×1 + 30×1 = 90 km;总时间 = 1 + 1 = 2 h;平均速度 = 90 ÷ 2 = **45 km/h**。\n这时直接平均 (60+30)/2 = 45 km/h,和定义算出来的一模一样。\n\n两个情形的两个速度相同、用的定义也相同,只是一个把**路程**定成相等,一个把**时间**定成相等,做法就反过来了。原因还是第一句的那个除法:\n\n平均速度 = (v₁·t₁ + v₂·t₂) ÷ (t₁ + t₂)\n\n把它读成「两段速度在投票」:每段速度的票数就是它占用的时间 t。时间一样多 → 票数一样 → 结果正好是普通平均(情形 B)。路程一样多时,慢的那段花的时间更长 → 票数更多 → 把结果往下拉(情形 A 里,45 被拉到 40)。这也顺带解释了第二句为什么用 \"need not\":路程相等时,时间是各段速度决定出来的结果,除非两段速度相同,否则它本来就会不等。\n\n所以第二句真正的用途是一个**判据**,不是一句禁令。看到「两段速度求平均」,先问一句「相等的是什么」:\n\n- 相等的是**时间** → 可以直接平均,结果正确;\n- 相等的是**路程**(题目里更常见) → 不能直接平均,回到定义:总路程 ÷ 总时间。\n\n一个小小的确认(不是考试,只看你这边的感觉):如果题目说「一半路程用 20 km/h,另一半路程用 60 km/h」,要判断能不能把 20 和 60 直接平均成 40,你依据的是这两个量里的哪一个相等?",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "「继续理解这段」——这一步接着上一段的结论往前走一格。\n\n先看原文的三句(这次我把之前一带而过的一个词挑出来):\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. "
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_46f9d90684b10a00"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n上一段我用了第二句的前半段,说明「两段路程相等时,直接把两个速度平均是错的」。但第二句里有个词我之前没强调:**need not**——「不一定」,不是「一定不」。所以这句话并没有宣布「直接平均速度永远是错的」,它只是提醒你别默认「路程一样、时间就一样」。真正决定能不能直接把速度平均的,是**相等的是路程还是时间**。\n\n下面是按第一句定义推出来的两个情形(数字例子是我自己编的,不是原文的例子):\n\n**情形 A —— 路程相等**\n两段各 60 km,速度分别 60 km/h 和 30 km/h。\n总路程 = 120 km;总时间 = 60/60 + 60/30 = 1 + 2 = 3 h;平均速度 = 120 ÷ 3 = **40 km/h**。\n而直接平均速度是 (60+30)/2 = 45 km/h,和定义算出来的不符。\n\n**情形 B —— 时间相等**(只换这一个条件)\n两段各走 1 小时,速度分别 60 km/h 和 30 km/h。\n总路程 = 60×1 + 30×1 = 90 km;总时间 = 1 + 1 = 2 h;平均速度 = 90 ÷ 2 = **45 km/h**。\n这时直接平均 (60+30)/2 = 45 km/h,和定义算出来的一模一样。\n\n两个情形的两个速度相同、用的定义也相同,只是一个把**路程**定成相等,一个把**时间**定成相等,做法就反过来了。原因还是第一句的那个除法:\n\n平均速度 = (v₁·t₁ + v₂·t₂) ÷ (t₁ + t₂)\n\n把它读成「两段速度在投票」:每段速度的票数就是它占用的时间 t。时间一样多 → 票数一样 → 结果正好是普通平均(情形 B)。路程一样多时,慢的那段花的时间更长 → 票数更多 → 把结果往下拉(情形 A 里,45 被拉到 40)。这也顺带解释了第二句为什么用 \"need not\":路程相等时,时间是各段速度决定出来的结果,除非两段速度相同,否则它本来就会不等。\n\n所以第二句真正的用途是一个**判据**,不是一句禁令。看到「两段速度求平均」,先问一句「相等的是什么」:\n\n- 相等的是**时间** → 可以直接平均,结果正确;\n- 相等的是**路程**(题目里更常见) → 不能直接平均,回到定义:总路程 ÷ 总时间。\n\n一个小小的确认(不是考试,只看你这边的感觉):如果题目说「一半路程用 20 km/h,另一半路程用 60 km/h」,要判断能不能把 20 和 60 直接平均成 40,你依据的是这两个量里的哪一个相等?"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文 · Average speed",
+              "source_ref_id": "source_ref_46f9d90684b10a00"
+            }
+          ]
+        },
+        "assessment_contract_ref": null,
+        "move": {
+          "actions": [],
+          "capability": "explanation",
+          "continuation": {
+            "options": [
+              {
+                "label": "把\"路程相等、速度不同\"的平均速度写成一个只用两段速度的公式",
+                "move_kind": "explain",
+                "option_id": "harmonic-form",
+                "purpose": "把 60/30→40 这个数字例子升级为一般结论:路程相等时平均速度是调和平均,它总是不高于两段速度的普通平均,并说明为什么差总是朝着变小的方向"
+              }
+            ],
+            "recommended_option_id": "harmonic-form"
+          },
+          "intent_origin": "current_action",
+          "intent_quote": null,
+          "interaction_intent": "neutral",
+          "interpretation_refs": [],
+          "kind": "compare",
+          "move_id": "continue-need-not-equal-time",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "「继续理解这段」——这一步接着上一段的结论往前走一格。\n\n原文三句里,上一段重点用了第二句的前半段:\"相等的路程不一定花相等的时间\",并说明了为什么在「两段路程相等」时直接平均两个速度是错的。这次我要指出第二句里之前一带而过的一个词:need not。\n\n「Equal distances need not take equal times」说的是**不一定**,不是**一定不**。所以这句话并没有宣布\"直接平均速度永远错\",它只是让你别默认\"路程一样、时间就一样\"。真正决定能不能直接平均的,是相等的是**路程**还是**时间**。\n\n下面两个情形都是按第一句的定义推出来的(数字例子是我自己编的,不是原文的例子):\n\n**情形 A —— 路程相等**(上一段用过的那组)\n两段各 60 km,速度分别是 60 km/h 和 30 km/h。\n总路程 = 120 km;总时间 = 60/60 + 60/30 = 1 + 2 = 3 h;平均速度 = 120 ÷ 3 = **40 km/h**。\n直接平均两个速度 → (60+30)/2 = 45 km/h,与定义算出的结果不符。\n\n**情形 B —— 时间相等**(只换这一个条件)\n两段各走 1 小时,速度分别是 60 km/h 和 30 km/h。\n总路程 = 60×1 + 30×1 = 90 km;总时间 = 1 + 1 = 2 h;平均速度 = 90 ÷ 2 = **45 km/h**。\n这时直接平均 (60+30)/2 = 45 km/h,恰好和定义算出来的一样。\n\n两个情形的两个速度完全相同、定义也完全相同,只是一个把**路程**定成相等,一个把**时间**定成相等,做法就反过来了。原因还是第一句的那个除法:\n\n平均速度 = (v₁·t₁ + v₂·t₂) ÷ (t₁ + t₂)\n\n把它读成\"两段速度在投票\":每段速度的票数就是它占用的时间 t。时间一样多 → 票数一样 → 结果就是普通平均(情形 B)。路程一样多时,慢的那段花的时间更长 → 票数更多 → 把结果往下拉(情形 A:45 被拉到 40)。这也正好说明第二句为什么用 \"need not\":路程相等时时间是被速度决定的结果,它会不等——除非两段速度刚好相同。\n\n所以第二句的实用价值是一个判据,不是一句禁令:看到\"两段速度求平均\",先问\"相等的是什么\"——\n- 相等的是**时间** → 直接平均,结果正确;\n- 相等的是**路程**(更常见) → 不能直接平均,回到定义:总路程 ÷ 总时间。\n\n小小的确认(不是考试,只是看你这边的感觉):如果题目说\"一半路程用 20 km/h,另一半路程用 60 km/h\",要判断能不能把 20 和 60 直接平均成 40,你依据的是这两个量里的哪一个相等?",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "Explain that the definition (total distance ÷ total time) makes the time each speed occupies the weight, so directly averaging two speeds is valid exactly when the times are equal and fails when the distances are equal; and state which quantity's equality is the criterion.",
+            "learning_focus": "平均速度中\"相等的是路程还是时间\"决定能否直接平均速度",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "presentation": null,
+        "source_bindings": [
+          {
+            "book_id": "tc0-average-speed",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 147,
+                    "start": 17
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-16e3ce8bb6bde7b1",
+            "label_snapshot": "正文 · Average speed",
+            "preview_snapshot": "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.",
+            "source_ref_id": "source_ref_46f9d90684b10a00"
+          }
+        ]
+      }
+    }
+  ],
+  "http_status": 200,
+  "reply": {
+    "answer": "「继续理解这段」——这一步接着上一段的结论往前走一格。\n\n先看原文的三句(这次我把之前一带而过的一个词挑出来):\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. \n\n上一段我用了第二句的前半段,说明「两段路程相等时,直接把两个速度平均是错的」。但第二句里有个词我之前没强调:**need not**——「不一定」,不是「一定不」。所以这句话并没有宣布「直接平均速度永远是错的」,它只是提醒你别默认「路程一样、时间就一样」。真正决定能不能直接把速度平均的,是**相等的是路程还是时间**。\n\n下面是按第一句定义推出来的两个情形(数字例子是我自己编的,不是原文的例子):\n\n**情形 A —— 路程相等**\n两段各 60 km,速度分别 60 km/h 和 30 km/h。\n总路程 = 120 km;总时间 = 60/60 + 60/30 = 1 + 2 = 3 h;平均速度 = 120 ÷ 3 = **40 km/h**。\n而直接平均速度是 (60+30)/2 = 45 km/h,和定义算出来的不符。\n\n**情形 B —— 时间相等**(只换这一个条件)\n两段各走 1 小时,速度分别 60 km/h 和 30 km/h。\n总路程 = 60×1 + 30×1 = 90 km;总时间 = 1 + 1 = 2 h;平均速度 = 90 ÷ 2 = **45 km/h**。\n这时直接平均 (60+30)/2 = 45 km/h,和定义算出来的一模一样。\n\n两个情形的两个速度相同、用的定义也相同,只是一个把**路程**定成相等,一个把**时间**定成相等,做法就反过来了。原因还是第一句的那个除法:\n\n平均速度 = (v₁·t₁ + v₂·t₂) ÷ (t₁ + t₂)\n\n把它读成「两段速度在投票」:每段速度的票数就是它占用的时间 t。时间一样多 → 票数一样 → 结果正好是普通平均(情形 B)。路程一样多时,慢的那段花的时间更长 → 票数更多 → 把结果往下拉(情形 A 里,45 被拉到 40)。这也顺带解释了第二句为什么用 \"need not\":路程相等时,时间是各段速度决定出来的结果,除非两段速度相同,否则它本来就会不等。\n\n所以第二句真正的用途是一个**判据**,不是一句禁令。看到「两段速度求平均」,先问一句「相等的是什么」:\n\n- 相等的是**时间** → 可以直接平均,结果正确;\n- 相等的是**路程**(题目里更常见) → 不能直接平均,回到定义:总路程 ÷ 总时间。\n\n一个小小的确认(不是考试,只看你这边的感觉):如果题目说「一半路程用 20 km/h,另一半路程用 60 km/h」,要判断能不能把 20 和 60 直接平均成 40,你依据的是这两个量里的哪一个相等?",
+    "answer_view": {
+      "parts": [
+        {
+          "kind": "markdown",
+          "text": "「继续理解这段」——这一步接着上一段的结论往前走一格。\n\n先看原文的三句(这次我把之前一带而过的一个词挑出来):\n\n> Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. "
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_46f9d90684b10a00"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": "\n\n上一段我用了第二句的前半段,说明「两段路程相等时,直接把两个速度平均是错的」。但第二句里有个词我之前没强调:**need not**——「不一定」,不是「一定不」。所以这句话并没有宣布「直接平均速度永远是错的」,它只是提醒你别默认「路程一样、时间就一样」。真正决定能不能直接把速度平均的,是**相等的是路程还是时间**。\n\n下面是按第一句定义推出来的两个情形(数字例子是我自己编的,不是原文的例子):\n\n**情形 A —— 路程相等**\n两段各 60 km,速度分别 60 km/h 和 30 km/h。\n总路程 = 120 km;总时间 = 60/60 + 60/30 = 1 + 2 = 3 h;平均速度 = 120 ÷ 3 = **40 km/h**。\n而直接平均速度是 (60+30)/2 = 45 km/h,和定义算出来的不符。\n\n**情形 B —— 时间相等**(只换这一个条件)\n两段各走 1 小时,速度分别 60 km/h 和 30 km/h。\n总路程 = 60×1 + 30×1 = 90 km;总时间 = 1 + 1 = 2 h;平均速度 = 90 ÷ 2 = **45 km/h**。\n这时直接平均 (60+30)/2 = 45 km/h,和定义算出来的一模一样。\n\n两个情形的两个速度相同、用的定义也相同,只是一个把**路程**定成相等,一个把**时间**定成相等,做法就反过来了。原因还是第一句的那个除法:\n\n平均速度 = (v₁·t₁ + v₂·t₂) ÷ (t₁ + t₂)\n\n把它读成「两段速度在投票」:每段速度的票数就是它占用的时间 t。时间一样多 → 票数一样 → 结果正好是普通平均(情形 B)。路程一样多时,慢的那段花的时间更长 → 票数更多 → 把结果往下拉(情形 A 里,45 被拉到 40)。这也顺带解释了第二句为什么用 \"need not\":路程相等时,时间是各段速度决定出来的结果,除非两段速度相同,否则它本来就会不等。\n\n所以第二句真正的用途是一个**判据**,不是一句禁令。看到「两段速度求平均」,先问一句「相等的是什么」:\n\n- 相等的是**时间** → 可以直接平均,结果正确;\n- 相等的是**路程**(题目里更常见) → 不能直接平均,回到定义:总路程 ÷ 总时间。\n\n一个小小的确认(不是考试,只看你这边的感觉):如果题目说「一半路程用 20 km/h,另一半路程用 60 km/h」,要判断能不能把 20 和 60 直接平均成 40,你依据的是这两个量里的哪一个相等?"
+        }
+      ],
+      "sources": [
+        {
+          "label": "正文 · Average speed",
+          "source_ref_id": "source_ref_46f9d90684b10a00"
+        }
+      ]
+    },
+    "effects": [],
+    "incomplete": false,
+    "memory_updates": [],
+    "profile_usage": {
+      "claimed_used_fact_ids": [],
+      "influences": [],
+      "injected_fact_ids": [],
+      "snapshot_revision": 0
+    },
+    "tokens_spent": 66322,
+    "trace": [
+      {
+        "args": "{\"lid\": \"1.1\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"lid\":\"1.1\",\"text\":\"# Average speed\\n\\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"source_ref_id\":\"source_ref_46f9d90684b10a00\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time ",
+        "tool": "source.present"
+      },
+      {
+        "args": "{\"move\":{\"actions\":[],\"kind\":\"compare\",\"move_id\":\"continue-need-not-equal-time\",\"object_ids\":[],\"prompt\":\"「继续理解这段」——这一步接着上一段的结论往前走一格。\\n\\n原文三句里,上一段重点用了第二句的前半段:\\\"相等的路程不一定花相等的时间\\\",并说明了为什么在「两段路程相等」时直接平均两个速度是错的。这次我要指出第二句里之前一带而过的一个词:need not。\\n\\n「Equal distances need not take equal times」说的是**不一定**,不是**一定不**。所以这句话并没有宣布\\\"直接平均速度永远错\\\",它只是让你别默认\\\"路程一样、时间就一样\\\"。真正决定能不能直接平均的,是相等的是**路程**还是**时间**。\\n\\n下面两个情形都是按第一句的定义推出来的(数字例子是我自己编的,不是原文的例子):\\n\\n**情形 A —— 路程相等**(上一段用过的那组)\\n两段各 60 km,速度分别是 60 km/h 和 30 km/h。\\n总路程 = 120 km;总时间 = 60/60 + 60/30 = 1 + 2 = 3 h;平均速度 = 120 ÷ 3 = **40 km/h**。\\n直接平均两个速度 → (60+30)/2 = 45 km/h,与定义算出的结果不符。\\n\\n**情形 B —— 时间相等**(只换这一个条件)\\n两段各走 1 小时,速度分别是 60 km/h 和 30 km/h。\\n总路程 = 60×1 + 30×1 = 90 km;总时间 = 1 + 1 = 2 h;平均速度 = 90 ÷ 2 = **45 km/h**。\\n这时直接平均 (60+30)/2 = 45 km/h,恰好和定义算出来的一样。\\n\\n两个情形的两个速度完全相同、定义也完全相同,只是一个把**路程**定成相等,一个把**时间**定成相等,做法就反过来了。原因还是第一句的那个除法:\\n\\n平均速度 = (v₁·t₁ + v₂·t₂) ÷ (t₁ + t₂)\\n\\n把它读成\\\"两段速度在投票\\\":每段速度的票数就是它占用的时间 t。时间一样多 → 票数一样 → 结果就是普通平均(情形 B)。路程一样多时,慢的那段花的时间更长 → 票数更多 → 把结果往下拉(情形 A:45 被拉到 40)。这也正好说明第二句为什么用 \\\"need not\\\":路程相等时时间是被速度决定的结果,它会不等——除非两段速度刚好相同。\\n\\n所以第二句的实用价值是一个判据,不是一句禁令:看到\\\"两段速度求平均\\\",先问\\\"相等的是什么\\\"——\\n- 相等的是**时间** → 直接平均,结果正确;\\n- 相等的是**路程**(更常见) → 不能直接平均,回到定义:总路程 ÷ 总时间。\\n\\n小小的确认(不是考试,只是看你这边的感觉):如果题目说\\\"一半路程用 20 km/h,另一半路程用 60 km/h\\\",要判断能不能把 20 和 60 直接平均成 40,你依据的是这两个量里的哪一个相等?\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"Explain that the definition (total distance ÷ total time) makes the time each speed occupies the weight, so directly averaging two speeds is valid exactly when the times are equal and fails when the distances are equal; and state which quantity's equality is the criterion.\",\"learning_focus\":\"平均速度中\\\"相等的是路程还是时间\\\"决定能否直接平均速度\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"instruction\":\"Deliver the selected explanation fully. Leave the optional continuation work for the reader's choice; do not execute those options or duplicate their menu in the final answer. Saved ca",
+        "tool": "tutor.step"
+      }
+    ],
+    "turns": 3
+  },
+  "turn_status": "completed"
+}

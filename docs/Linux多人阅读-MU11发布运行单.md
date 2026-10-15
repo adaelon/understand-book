@@ -59,6 +59,8 @@ Nginx 只公开网络 Web 静态目录，所有 `/api/` 原样转发到同一后
 
 制作部署同时安装 `scripts/linux/presentation-sandbox.json.example` 与 `49-understand-book-render.rules`：前者填入同 release 的 worker、独立只读运行时及浏览器路径后放入服务根，后者由 root 安装到 `/etc/polkit-1/rules.d/`，权限 0644。专用服务账号获得 `org.freedesktop.systemd1.manage-units`；这项管理权限属于受信任宿主，不授予读者或生成任务。systemd 252 的 `StartTransientUnit` 不提供 unit 详情，不能把按单元名过滤的规则当作可用部署方案，见 [systemd 252 实现](https://github.com/systemd/systemd/blob/v252/src/core/dbus-manager.c#L947)。不授予 `manage-unit-files`。生成任务继续以 nobody、原有命名空间与资源限额运行，不能访问宿主 D-Bus。权限和配置就绪后先以实际服务账号完成 MU7 验证，再重启服务，核对 `reason=ready`。
 
+每个运行中的数据根必须使用独立的 sandbox `instance`，包括备份恢复演练和 `MU7_SANDBOX_ROOT` 测试配置；不得直接把生产配置复制给另一个进程启动。实例名同时决定临时目录、systemd slice 与启动清理范围。启用制作的站点发布必须核对 authoring／plot／animation／preview 全部为 true，不能以匿名 401 或登录成功代替。生产实例应由实际服务账户创建临时目录；若历史 root 演练占用了生产目录，先确认无在途任务、无执行器子任务且目录为空，再修正归属并重启服务。
+
 交付记录保留：源码及构建收据、实际 unit / Nginx 路径、系统依赖、SQLite 实际版本与 WAL/FULL/schema、资源预算、迁移 operation / 恢复点、授权目录与账号测试结果、Provider 请求数及实际 usage、SIGTERM / 强杀 / 恢复 / 旧程序回滚结果。证据只记录状态与数量，不保存密码、Cookie、Provider Key 或个人正文。
 
 实体 iPhone 单独记录机型、系统、证书信任、竖横屏、中文输入、选区、来源返回、后台恢复和退出。Playwright Chromium / WebKit 用例另列。MU0 指定硬件与完整混合压力仍按原门槛判定。

@@ -1,25 +1,49 @@
 # CONTEXT —— 术语表
 
+## 产品首页（Product home）
+面向自主学习者及希望孩子保留独立思考能力的家长，说明持续阅读与理解的价值、展示尝试和验证如何参与学习并提供开始使用入口的公开介绍页面。页面中的情境示意用于解释产品思路，不构成读者的实际学习记录。状态：EXISTING，定位与互动示例本地改版已实现（2026-10-12）。
+
+## 页页（Yeye）
+陪伴读者持续阅读与理解的品牌角色，以猫的形象承载欢迎、阅读引导和真实操作反馈。阅读接续、回答交付、任务完成与学习理解仍由各自已有事实表达，页页沿这些事实呈现适当神态。状态：EXISTING，首页情境、书架阅读接续、助手空态与紧凑身份、受控待机、长等待和真实任务的一次完成反馈已接入（2026-10-13，见 [ADR-0165](docs/adr/0165-yeye-reading-companion-and-brand-integration.md)）。
+
+## 主标识（Brand mark）
+产品身份使用焙橙书本与歪头页页负形，品牌色 `#B65A17`。纯色 SVG、透明图及浏览器图标来自用户确认造型；首页、账号、书架与阅读器统一接入，角色形象继续承担陪伴和反馈。状态：EXISTING，见[标识母版与导出](assets/brand/logo/v1/README.md)。
+
+## 内测 Book MCP
+面向已获准内测用户、供其外部 Agent 检索与读取已构建材料的远程访问能力。调用资格归属内测账号，可访问内容受该账号的材料授权约束；由调用方 Agent 完成推理与回答。状态：EXISTING，MCP1–MCP8 接入凭证、材料读取、免费／付费次数、远程协议、Agent 使用信息、读者接入／来源打开与后台次数管理已实现（2026-10-11，见 [ADR-0162](docs/adr/0162-beta-remote-mcp-and-prepaid-call-credits.md)）。
+
+## MCP 免费使用额度
+内测用户按月获得的 Book MCP 检索与读取次数权益，当月未使用次数不累计。它与用于承担托管模型调用成本的账号使用额度分别计量，获得其中一种权益不意味着获得另一种。状态：EXISTING，MCP3 月度免费次数与当月赠送已实现（2026-10-11，见 [ADR-0162](docs/adr/0162-beta-remote-mcp-and-prepaid-call-credits.md)）。
+
+## MCP 付费调用包
+内测用户购买的一批有期限的 Book MCP 检索与读取次数，剩余次数在有效期内跨月保留，并在当月免费次数用尽后使用。购买只增加调用次数，不改变内测资格或材料授权。状态：EXISTING，MCP4 已实现（2026-10-11，见 [ADR-0162](docs/adr/0162-beta-remote-mcp-and-prepaid-call-credits.md)）。
+
+## MCP 调用记次
+一次成功完成的 MCP 内容调用所消耗一个使用次数的事实，归属于调用者账号和实际扣除的免费月份或付费调用包。它与人工收款事实、托管模型费用分别记录。状态：EXISTING，MCP3 免费来源与 MCP4 付费来源记次已实现，远程调用已由 MCP5 接通（2026-10-11，见 [ADR-0162](docs/adr/0162-beta-remote-mcp-and-prepaid-call-credits.md)）。
+
+## MCP 接入凭证
+内测用户为外部 Agent 开通、可撤销的 Book MCP 访问授权凭据，访问能力受该账号当前资格和材料授权约束。它不授予账户管理、私人阅读记录或托管模型调用权限。状态：EXISTING，MCP1 凭证管理与身份验证、MCP5 远程读取接入已实现（2026-10-11，见 [内测 MCP 切片方案](docs/切片方案-内测MCP与调用额度.md)）。
+
 ## 阅读笔记（Reading note）
-读者主动保存的想法与所选阅读内容，以及促成这段记录的原文、助手回答或演示现场的关联。自己的文字、原文摘录和助手解释分别保留内容身份；正文批注是阅读笔记的一种呈现方式。旧记录继续按已有事实显示“阅读笔记”。状态：BOUNDARY_CHANGE，设计已接受、RN1–RN4 待实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+读者主动保存的想法与所选阅读内容，以及促成这段记录的原文、助手回答或演示现场的关联。自己的文字、原文摘录和助手解释分别保留内容身份；正文批注是阅读笔记的一种呈现方式。旧记录继续按已有事实显示“阅读笔记”。状态：BOUNDARY_CHANGE，RN1 存储合同、RN2 演示保存／返回与 RN3 统一编辑已实现，RN4 检索与回看已实现、Web 验收通过，实体平台待验（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 笔记关联（Note association）
-一条笔记指向记录时的原文选区、已交付回答或已保存演示现场的明确关系，用于说明记录背景和返回原对象。它与读者写下的文字、笔记在正文中的显示位置分别表达；首版每条笔记保留一个主要关联。状态：NEW，设计已接受、待实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+一条笔记指向记录时的原文选区、已交付回答、已保存演示现场或首次明确正文放置的关系，用于说明记录背景和返回原对象。它与读者写下的文字、笔记在正文中的显示位置分别表达；首版每条笔记保留一个主要关联。状态：EXISTING，RN1 存储与接口已实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 笔记编辑草稿（Note editing draft）
-读者正在填写或修改、尚未保存为笔记的文字与所选关联，归属创建时的读者和材料。收起编辑区仍可继续填写，保存与明确放弃分别结束草稿。它不同于选择正文落点的 Note 放置草稿，也不同于只编辑分享表达的分享草稿。状态：NEW，设计已接受、待实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+读者正在填写或修改、尚未保存为笔记的文字与所选关联，归属创建时的读者和材料。收起编辑区仍可继续填写，保存与明确放弃分别结束草稿。它不同于选择正文落点的 Note 放置草稿，也不同于只编辑分享表达的分享草稿。状态：EXISTING，RN3 四类入口统一草稿已实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 笔记保留的演示现场（Note-retained presentation scene）
-读者保存笔记时明确关联的演示版本与当时参数、步骤和可见结果，随笔记保留，供以后打开或显式恢复。删除原聊天不结束这份保留关系；删除笔记只解除该笔记的关联，其他仍在使用同一演示的记录继续有效。状态：NEW，设计已接受、待实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+读者保存笔记时明确关联的演示版本与当时参数、步骤和可见结果，随笔记保留，供以后打开或显式恢复。删除原聊天不结束这份保留关系；删除笔记只解除该笔记的关联，其他仍在使用同一演示的记录继续有效。状态：EXISTING，RN2 已实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 阅读分享图（Reading share image）
-读者将明确选取的原文、阅读笔记、回答或图解整理成的静态图片，保留内容身份、必要上下文与来源，供个人保存和分享。它表达选取时的内容，不代表材料已公开或读者已掌握；状态：NEW，已确认设计、待实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+读者将明确选取的原文、阅读笔记、阅读回顾、回答或图解整理成的静态图片，保留内容身份、必要上下文与来源，供个人保存和分享。它表达选取时的内容，不代表材料已公开或读者已掌握；状态：EXISTING，RS1–RS7 笔记、原文选区、高亮、回顾条目、已交付回答与当前／笔记记录时的图解分享已实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 分享草稿（Share draft）
-读者为生成阅读分享图而准备的内容选择、标题、补充感想与版式组合；草稿中的编辑只影响本次分享表达，原文、已保存笔记及回答仍保有各自内容身份。状态：NEW，已确认设计、待实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+读者为生成阅读分享图而准备的内容选择、标题、补充感想与版式组合；草稿中的编辑只影响本次分享表达，原文、已保存笔记、回顾事实及回答仍保有各自内容身份。状态：EXISTING，RS1–RS7 页面内笔记／摘录／回顾／已交付回答／图解分享草稿已实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 阅读接续卡（Reading resumption card）
-围绕读者已有可恢复阅读现场呈现材料、读位和相关问题或明确待继续事项的入口，帮助读者重新接上思路。它是私人阅读状态的呈现，区别于用于分享的静态图片和记录同次来源往返的阅读返回点；状态：NEW，已确认设计、待实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+围绕读者已有可恢复阅读现场呈现材料、读位和相关问题或明确待继续事项的入口，帮助读者重新接上思路。它是私人阅读状态的呈现，区别于用于分享的静态图片和记录同次来源往返的阅读返回点；状态：EXISTING，RS5 已实现（2026-10-10，[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 运营管理员（ReaderAdmin）
 获准管理受邀账号、材料授权、收款登记、使用额度和内测码的应用身份。管理员权限与普通读者对私人内容的访问范围分别表达；状态：EXISTING，原管理能力与 INV2 内测码管理已实现（[ADR-0156](docs/adr/0156-reader-admin-and-account-allowance.md)、[ADR-0159](docs/adr/0159-email-accounts-and-single-use-beta-invites.md)）。
@@ -294,13 +318,13 @@ E 的记忆所在。**独立于只读基座、用户私有、可变、跨书**�
 选区创建的 Note 可选携带的结构化来源上下文:保存 `resolved/partial` 状态、用户实际选择的 `raw_quote`、可验证的 `resolved_quote` 与按阅读顺序排列的完整 LID ranges。用户内容可保留 raw quote,但 citations 与精确投影只能使用 resolved quote/ranges。Note 的 `anchor.lid` 仍取首个 resolved LID用于语义定位和排序,PDF 行内标记取末 range 作为显示锚,citations 由 ranges 中的 LID 去重派生;普通旧 Note 无此字段且保持兼容。状态:BOUNDARY_CHANGE。
 
 ## Memory replace
-Note 内容编辑使用的原子替换命令:验证旧 `mem_id` 后只更新 content,默认继承 anchor、selection context、note placement、citations 与 layer;写入失败时旧记录保持不变。带 quote source 的重新定位必须走显式“重新选择”并提交新的 selection context;无引用来源 Note 的正文迁移走独立 Note 原子重锚,两者都不得伪装成内容编辑。RN1 将继承范围扩展到笔记关联、保留片段及其内容身份，编辑文字保持原演示现场。状态:BOUNDARY_CHANGE，原命令已实现，RN 扩展待实现（见 [docs/adr/0074]、[docs/adr/0083]、[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+Note 内容编辑使用的原子替换命令:验证旧 `mem_id` 后只更新 content,默认继承 anchor、selection context、note placement、citations 与 layer;写入失败时旧记录保持不变。带 quote source 的重新定位必须走显式“重新选择”并提交新的 selection context;无引用来源 Note 的正文迁移走独立 Note 原子重锚,两者都不得伪装成内容编辑。RN1 已扩展继承范围到笔记关联、保留片段及其内容身份，编辑文字保持原演示现场和首次保存时间。状态:EXISTING，RN1 已实现（见 [docs/adr/0074]、[docs/adr/0083]、[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## 无引用来源 Note (unquoted-source Note)
-不带结构化 `selection_context` 的 Note;正文中的 blockquote (`>`) 只是内容展示,不证明引用来源也不决定记录类型。当前实现要求新记录带显式 Note 正文放置，二者皆无只允许作为未知旧类型兼容读取。已接受的 RN 扩展允许以确切助手回答或演示现场建立笔记关联，正文放置由读者另行选择。状态:BOUNDARY_CHANGE，原规则已实现，RN 扩展待实现（见 [docs/adr/0083]、[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+不带结构化 `selection_context` 的 Note;正文中的 blockquote (`>`) 只是内容展示,不证明引用来源也不决定记录类型。没有明确回答／演示关联的新记录需带显式 Note 正文放置；缺少结构依据的既有记录按未知旧类型读取。RN1 允许以确切助手回答或演示现场建立笔记关联，正文放置由读者另行选择。状态:EXISTING，RN1 存储与接口已实现（见 [docs/adr/0083]、[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## Note 放置草稿 (NotePlacementDraft)
-用户从 Agent 回答截取无引用来源内容后形成、尚未写入 memory 的单个短生命周期草稿,绑定当前书、阅读表面与来源指纹。有效目标提交成功后转成 Note;取消、新草稿、切书或关闭 Reader 时丢弃,写入失败或结果待确认时暂留。RN 扩展后，该草稿继续服务显式正文放置；回答和演示的普通记录入口使用笔记编辑草稿。状态:BOUNDARY_CHANGE，原交互已实现，RN 扩展待实现（见 [docs/adr/0083]、[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
+用户从 Agent 回答截取无引用来源内容后形成、尚未写入 memory 的单个短生命周期草稿,绑定当前书、阅读表面与来源指纹。有效目标提交成功后转成 Note;取消、新草稿、切书或关闭 Reader 时丢弃,写入失败或结果待确认时暂留。RN 扩展后，该草稿继续服务显式正文放置；回答和演示的普通记录入口使用笔记编辑草稿。状态:BOUNDARY_CHANGE，原交互与 RN3 回答直接记录已实现（见 [docs/adr/0083]、[ADR-0160](docs/adr/0160-reading-share-images-and-calm-surfaces.md)）。
 
 ## Note 放置会话 (Note placement session)
 用户把 Note 放置草稿首次绑定或把已有无引用来源 Note 移到正文目标的单一临时交互控制器。首版仅由 Pointer Events 点选真实目标;Markdown 与 PDF 会话严格隔离,提交前最新操作可抢占,提交后不可取消或替换。状态:BOUNDARY_CHANGE(见 [docs/adr/0083])。
@@ -413,7 +437,7 @@ LID 的字符串编码 = 各级序号点分串(如 `3.2.5.2`)。比较用**逐�
 读时 localhost 服务把**冻结命令面**(V3 §4)投影成 HTTP 的形式 `[ADR-0028]`:`book.*` 只读 → `GET`、`reader.*`/`memory.*` 可变 → `POST`,**端点名 = 命令名**,错误**原样透传** §4.4 分类信封。是命令面的网络面、非另立的第二套 API;前端 / agent / 人看同一张面([docs/adr/0007] 人机同命令面无特供)。状态:NEW(详见 [docs/adr/0028])。
 
 ## 连续正文渲染 / LID 隐形 (continuous prose rendering)
-前端把视口 `visible_lids`(叶序滑动窗口)渲染成**一整列连续流动的正文**:不画每段框/分隔/LID 标号,阅读单位是连续文章而非 LID 片段。**LID 是隐形接缝**,只在 citation、跳转或高亮锚等需要时显形。状态:BOUNDARY_CHANGE(基础见 [ADR-0028](docs/adr/0028-前端切片架构-vue-localhost-server-crate-tinyhttp同步-rest命令面1对1投影-不引epub框架-连续正文lid隐形-无页码寻址.md),实现基线恢复见 [ADR-0112](docs/adr/0112-pre-phr-reader-body-path-rollback.md))。
+普通阅读把视口 `visible_lids`(叶序滑动窗口)渲染成**一整列连续流动的正文**:不画每段框/分隔/LID 标号,阅读单位是连续文章而非 LID 片段。**LID 是隐形接缝**,只在 citation、跳转或高亮锚等需要时显形；专注分页延续同一原文读序与引用身份。状态:BOUNDARY_CHANGE(基础见 [ADR-0028](docs/adr/0028-前端切片架构-vue-localhost-server-crate-tinyhttp同步-rest命令面1对1投影-不引epub框架-连续正文lid隐形-无页码寻址.md),实现基线见 [ADR-0112](docs/adr/0112-pre-phr-reader-body-path-rollback.md)，专注分页见 [ADR-0166](docs/adr/0166-focus-reading-pagination-and-performance.md)，正文呈现与交互已于 FP4 落地)。
 
 ## 区间视口 (interval viewport)
 阅读器连续滚动模型中的后端视口:`top_lid` 是当前阅读区间起点,`bottom_lid` 是区间终点,`visible_lids` 是 `[top..top+width)` 叶序区间,`width` 是区间宽度。`anchor_lid` 表示区间中段叶,用于 agent/state 共享；`scroll(delta)` 移动 `top_lid`,`goto(lid)` 让目标叶成为 `top_lid`。状态:EXISTING(见 [ADR-0043](docs/adr/0043-reader连续滚动视口-后端区间窗口-前端虚拟流-note-overlay.md))。
@@ -422,7 +446,16 @@ LID 的字符串编码 = 各级序号点分串(如 `3.2.5.2`)。比较用**逐�
 ## note overlay
 note 卡片的展示层 `[ADR-0043]`:note 内容仍来自 memory,overlay 只负责按当前可见 LID 过滤、定位和展示,避免 note 卡嵌入正文段落循环后污染虚拟列表的段高估算。highlight 仍是段内 `<mark>`。状态:NEW(详见 [docs/adr/0043])。
 ## 读位感 (reading position sense)
-替代"页码"的位置参照:**章节定位**(从当前 anchor 上溯容器 LID)+ **进度%**(`anchor_idx` / 叶总数)。它只做导航与显示,**不做引用锚**。本项目无一等页码；印刷版 page-list 仅在源携带时作 LID 展示标签,citation 恒为 LID。状态:EXISTING(见 [ADR-0028](docs/adr/0028-前端切片架构-vue-localhost-server-crate-tinyhttp同步-rest命令面1对1投影-不引epub框架-连续正文lid隐形-无页码寻址.md))。
+替代固定页码的位置参照:**章节定位**(从当前 anchor 上溯容器 LID)+ **进度%**(`anchor_idx` / 叶总数)，只做导航与显示,**不做引用锚**。本项目无一等显示页码；印刷版 page-list 仅在源携带时作 LID 展示标签，专注模式的页序属于当前设备排版，citation 恒为 LID。状态:BOUNDARY_CHANGE(基础见 [ADR-0028](docs/adr/0028-前端切片架构-vue-localhost-server-crate-tinyhttp同步-rest命令面1对1投影-不引epub框架-连续正文lid隐形-无页码寻址.md)，专注页序见 [ADR-0166](docs/adr/0166-focus-reading-pagination-and-performance.md)，规范游标与就绪基础已落地，公开交互已于 FP4 落地，持久读位已于 FP5 落地)。
+
+## 专注分页阅读（focus paginated reading）
+以当前原文书页为主体、辅助工具按需呼出的阅读呈现，宽窗口采用双页展开，手机与窄窗口采用单页翻页。它沿用同一书籍、读位、引用和工作区现场，扩展原有收起侧栏的专注阅读行为。状态：BOUNDARY_CHANGE（[ADR-0166](docs/adr/0166-focus-reading-pagination-and-performance.md)，2026-10-14，FP2 分页及 FP3 就绪基础已落地，公开交互已于 FP4 落地）。
+
+## 显示书页（display page）
+在当前字体、版心和可用空间下容纳的一段连续原文，其边界随排版条件变化；原版 PDF 阅读使用来源本身的页面。显示书页及其页序是阅读呈现单位，引用和持久读位仍以原文位置为依据。状态：NEW（[ADR-0166](docs/adr/0166-focus-reading-pagination-and-performance.md)，2026-10-14，FP2 正文书页与 FP3 冻结就绪已落地，PDF 原版页及整屏就绪已于 FP6 落地）。
+
+## 双页展开（two-page spread）
+同一阅读屏同时呈现相邻两页，读序由左页接到右页，翻页进入前一屏或后一屏。状态：NEW（[ADR-0166](docs/adr/0166-focus-reading-pagination-and-performance.md)，2026-10-14，FP2 双页布局与 FP3 整屏准备已落地，公开交互已于 FP4 落地，FP6 PDF 双页含画布、文字与批注整体就绪）。
 
 ## MemoryDocument
 本地单用户、跨书的读者私人内容记录与稳定画像事实账本,统一容纳其审核和治理状态,与只读书基座物理隔离。它是 `LearningMemory` 内稳定用户上下文的权威来源,不拥有绑定 `LearningObjectRef` 的学习证据或对象级知识状态。旧的裸记录数组是其待迁移前身,不是并列真相源。状态:BOUNDARY_CHANGE(详见 [docs/adr/0075]、`grill.md` Q81)。
@@ -491,7 +524,7 @@ runtime 在读者回合开始前从 `GlobalReaderProfile`、当前 `BookReadingS
 读者在某 LID 留下的不同 qa 记录数,只证明发生过提问并构成私人关注信号,不单独证明困惑、难度或掌握程度。`technical_learning` 可将其用于回看排序,`paper` 等其他 MemoryPolicy 按自己的语义解释;`puzzle_heat` 仅是旧实现字段名。状态:BOUNDARY_CHANGE(详见 [docs/adr/0041], [docs/adr/0075])。
 
 ## agent 可撤销提议 (agent reversible proposal)
-读时 E agent 在阅读器中对视图/标注的修改**是可撤销的提议、用户终裁** `[ADR-0030]`。agent **真执行**命令(守人机对称 [docs/adr/0007],命令面无特供),可撤销落**前端交互层**:用 effect 返回([docs/adr/0015])的反向命令 undo(goto 回原 anchor / `memory.delete(id)`)。**提议单元 = 一次对话回合**(`/agent/chat` 一次调用的全部副作用)= 事务性 undo。**agent 提议态 = 标注落 `layer=session`(临时),用户「保留」才升 `long_term`**(复用 memory 两层,零新字段;未处置走人则不污染长期记忆)。`orchestrator` 的 `OuterOutcome` 加 `effects[]`(副作用清单)+ `trace[]`(查询踪迹,对用户可见)承载之。状态:NEW(详见 [docs/adr/0030])。
+读时 E agent 在阅读器中对视图/标注的修改**是可撤销的提议、用户终裁** `[ADR-0030]`。agent **真执行**命令(守人机对称 [docs/adr/0007],命令面无特供),可撤销落**前端交互层**:用 effect 返回([docs/adr/0015])的反向命令 undo(goto 回原 anchor / `memory.delete(id)`)。**提议单元 = 一次对话回合**(`/agent/chat` 一次调用的全部副作用)= 事务性 undo。**agent 提议态 = 标注落 `layer=session`(临时),用户「保留」才升 `long_term`**(复用 memory 两层,零新字段;未处置走人则不污染长期记忆)。`orchestrator` 的 `OuterOutcome` 加 `effects[]`(副作用清单)+ `trace[]`(查询踪迹,保留作开发诊断；阅读器呈现见 [ADR-0160 §11](docs/adr/0160-reading-share-images-and-calm-surfaces.md#11-回答轨迹的展示边界))承载之。状态:NEW(详见 [docs/adr/0030])。
 
 ## 读时会话边界 (reading session boundary)
 对话会话的切分仍由用户显式控制 `[ADR-0030]`;idle 只触发 ReviewJob,不自动创建新对话。新对话、切书和 context compression 是记忆审核边界,新回合以自动 `ReaderProfileSnapshot` 冷启动而非依赖 agent 主动 recall。状态:BOUNDARY_CHANGE(详见 [docs/adr/0030], [docs/adr/0075])。
@@ -833,11 +866,25 @@ Agent 可理解、可观察、可行动并获得真实反馈的学习现场，�
 ## 理解假设
 根据相关使用事实，对用户当前如何理解、可能卡在哪里及何种教学支持值得采用形成的可修正解释，保留依据、适用范围和修订关系。它由 LearningMemory 持有并通过用户理解空间参与教学，保持暂定判断身份，不等同已确认画像事实、题目评分或对象级能力证明。状态:NEW（[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)，T17 已实现）。
 
+普通阅读对话同样可以形成和修订理解假设，不以开启主动教学或创建教学会话为前提；主动教学控制仍决定系统是否选择连续教学动作。状态：BOUNDARY_CHANGE，2026-10-10，见 [ADR-0161](docs/adr/0161-conversation-first-learning-and-multi-user-memory.md)。
+
 ## LearnerContext
 `TutorLoop` 在读者回合开始时冻结的有界私人上下文，组合相关稳定画像、有效 TutorSession 的意图与约束、当前焦点与教法、实际使用事实、已提供的帮助及当前适用的理解假设，并按可用性补充进度、正式对象证据与新鲜度状态。它供同一回合分析新增事实并选择教学动作，不写入对话历史或形成独立持久真相；未知保持未知，阅读位置、内容展示、画像偏好和交互意图不构成理解证明。状态:BOUNDARY_CHANGE（[ADR-0143](docs/adr/0143-teaching-trace-assessment-and-learning-evidence.md)、[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)，T16 来源教学与 T17 持续观察、理解修订和反馈适配已实现）。
 
 ## ResolvedInteractionIntent
 `TutorLoop` 对当前回合实际采用的有界交互意图，按“本回合显式需求 → 用户显式建立的 `TutorSessionMode` → 已确认 `ExplanationPreference` → 中性兜底”解析，并保留生效来源及有效教学会话的 revision 引用。它只支配本回合 `TeachingMove` 选择，可临时覆盖教法而不改写会话默认，不是 `TaskNeed`、长期偏好、会话合同或能力证据。状态:BOUNDARY_CHANGE(见 `grill.md` Q86/Q87)。
+
+## 下一步建议（TeachingContinuation）
+围绕本轮教学焦点提出的未来帮助选项，包含一个推荐项及至多一个备选项。它表达可以请求的解释、对比或观察方向，与本轮实际完成的教学动作、实际交付和学习表现分别表达。状态：EXISTING，设计已确认（[ADR-0163 §3](docs/adr/0163-tutor-continuation-and-contextual-reading-entry.md)）。
+
+## 建议选择（TeachingChoice）
+读者接受某次已交付建议中一个选项的明确请求。选择只表达本次希望获得的帮助，不代表已经执行、完成作答、掌握知识或确认长期偏好。状态：EXISTING，设计已确认（[ADR-0163 §4/§6](docs/adr/0163-tutor-continuation-and-contextual-reading-entry.md)）。
+
+## 回答接续与纠偏
+读者指向原聊天内已交付回答及可选连续片段，明确要求继续帮助或表示这一步仍没跟上。所引内容保持助手回答身份；纠偏本身不构成具体知识缺陷的诊断。状态：EXISTING，设计已确认（[ADR-0163 §2/§4](docs/adr/0163-tutor-continuation-and-contextual-reading-entry.md)）。
+
+## 已解析交互（ResolvedInteraction）
+本次请求采用的真实输入来源、读者补充、已接受的公开行动及所指阅读内容的固定解释。区分用户原话、界面操作和建议选择，为本回合交互意图提供依据；它不是新的学习目标、权限授予或能力证据。状态：EXISTING，设计已确认（[ADR-0163 §4](docs/adr/0163-tutor-continuation-and-contextual-reading-entry.md)）。
 
 ## ResidentGoal（住户任务目标）
 用户在当前 Resident 聊天内要求完成的一项任务，保留用户意图、范围、明确交付要求以及可修订的工作判断，并关联实际成果与尚未完成的义务；一次运行停止不等于任务完成。它与长期读者目标、构建目标及教学会话学习意图分别表达，完成交付不等于读者掌握。状态:BOUNDARY_CHANGE（任务保存、调整、投影和实际交付检查已实现，见 [ADR-0136](docs/adr/0136-resident-goal-lifecycle-and-delivery-completion.md)；工作计划扩展已实现，见 [ADR-0155](docs/adr/0155-goal-work-plan-and-version-centered-presentation-context.md)）。
@@ -851,6 +898,8 @@ ResidentGoal 内由 Agent 维护、随实际观察修订的工作安排，用工
 ## 会话学习意图
 用户希望在 TutorSession 中完成的事及其明确约束，允许最初表达模糊，与 Agent 当前采用的暂定学习目标及参考材料范围分别表达。改变最终目标、要求达到的能力深度或新增持续学习任务，由用户表达或接受方向变更；局部教学焦点与参考材料调整不覆写它，也不等同于支配本回合交互方式的 `ResolvedInteractionIntent`。状态:NEW(见 `grill.md` Q93)。
 
+主动教学已开启而尚无当前会话时，用户的首个问题即可作为初始学习意图；目标在对话中可见、可调整，无须先进入会话管理。暂停和结束仍由用户明确恢复。状态：BOUNDARY_CHANGE，2026-10-10，见 [ADR-0161](docs/adr/0161-conversation-first-learning-and-multi-user-memory.md)。
+
 ## 暂定学习目标
 Agent 基于当前材料、相关历史与会话学习意图采用的当前学习焦点，可随实际回应细化，用于组织起步及接下来的教学动作。它保留 Agent 解释的身份，不覆写用户已表达的会话学习意图，不是已确认的长期目标或能力证据，完整画像与细化目标不成为开始学习的前置条件。状态:NEW(见 `grill.md` Q92/Q93)。
 
@@ -860,8 +909,13 @@ Agent 基于当前材料、相关历史与会话学习意图采用的当前学�
 ## TutorLoop
 Agent 在原生学习环境中持续观察使用过程、修订理解判断、选择教学动作并利用反馈的读时循环，以全局 Tutor 开启、有效教学会话与 Tutor 可用就绪为前提。它从当前请求、会话教法及已确认偏好解析交互意图，结合普通对话与教学活动的实际事实、适用理解假设、可信原文和可用素材选择有界 TeachingMove；系统维护真实状态与证据，Agent 的具体教学选择随反馈调整，PathPlanner、ContextBuilder 与 Estimator 继续是其内部职责。状态:BOUNDARY_CHANGE（[ADR-0143](docs/adr/0143-teaching-trace-assessment-and-learning-evidence.md)、[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)，T16 Server 准入与 T17 持续观察已实现）。
 
+## 认知积木
+学习者能够从已有理解出发理解、操作和组合，用于建立新理解的知识关系、模型、方法或表征；其范围、表达方式与提供时机取决于当前目标、实际表现和所需帮助。同一内容可以形成适合不同学习起点的认知积木，价值体现为学习者能够借它完成具体判断、解释或运用。状态：NEW，设计已接受；TB2 文字教学、TB3 回应与记忆接续、TB4 操作教具及现场接续通过工程与子代理内容验收（2026-10-12，[ADR-0164](docs/adr/0164-tutor-mission-and-cognitive-building-blocks.md)）。
+
 ## TeachingMove
 `TutorLoop` 围绕当前交互意图、暂定学习目标、目标能力、Learner 状态与可信原文选择或合成的一个有界认知动作，适用正式对象可通过 `LearningObjectRef` 关联。它可以是问题、检索线索、例子/反例、对比、来源聚焦、关系支架、程序动作或局部解释，不以问句为本体、不默认要求判题，也不允许用完整答案或连续题目替代 Learner 本应执行的目标认知活动；来源推论未闭合时可围绕证据缺口推进理解，补充解释保留假设身份。状态:BOUNDARY_CHANGE（见 `grill.md` Q85/Q88、[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)，T16 来源教学与 T17 反馈扩展已实现）。
+
+教学使命补充：围绕学习者当前能够借助什么完成什么，提供或复用认知积木，保留学习者亲自完成的认知活动，并依据实际回应调整帮助。状态：BOUNDARY_CHANGE，设计已接受；TB2–TB4 通过工程与子代理内容验收，已覆盖帮助条件、修订后接续及教具操作后的实际现场（2026-10-12，[ADR-0164](docs/adr/0164-tutor-mission-and-cognitive-building-blocks.md)）。
 
 ## GuidedInquiryPolicy
 `TutorLoop` 在 `ResolvedInteractionIntent` 为引导学习且当前对象、能力目标与 Learner 前置状态适合主动生成、辨析、预测或重建时，优先让 Learner 先执行目标认知活动的 `TeachingMove` 选择策略。它不是全局“全程提问”流程、content profile 或评分模式；本回合明确要求直接答案、总结、翻译或完整解释时不得启用。状态:BOUNDARY_CHANGE(见 `grill.md` Q85/Q86)。

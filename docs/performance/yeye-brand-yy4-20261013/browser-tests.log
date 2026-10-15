@@ -1,0 +1,116 @@
+
+> @understand-book/web@0.0.0 test:e2e E:\allwork\download\agent\understand-book\packages\web
+> playwright test "playwright/conversation-learning-entry.spec.ts" "playwright/conversation-learning-design.spec.ts" "playwright/mobile-chat-interactions.spec.ts" "playwright/mobile-learning-preview.spec.ts" "playwright/agent-presentation.spec.ts" "--grep" "YY4|long teaching|touch selection|selection menu|goal and teaching|selection actions|mobile reading|response editor|compact mobile toolbar" "--workers=2" "--output=../../docs/performance/yeye-brand-yy4-20261013/browser-results"
+
+
+Running 16 tests using 2 workers
+
+(node:10012) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27924) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x   1 playwright\agent-presentation.spec.ts:117:1 › compact mobile toolbar remains reachable when switching to discussion (494ms)
+(node:37752) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  2 playwright\conversation-learning-design.spec.ts:43:154 › long teaching keeps help and the real answer reachable at 1907px (2.9s)
+  ok  3 playwright\conversation-learning-entry.spec.ts:218:3 › YY4 welcome becomes a compact identity after the first question at 1440px (2.0s)
+  ok  4 playwright\conversation-learning-design.spec.ts:43:154 › long teaching keeps help and the real answer reachable at 1526px (2.2s)
+  ok  6 playwright\conversation-learning-design.spec.ts:43:154 › long teaching keeps help and the real answer reachable at 1440px (2.1s)
+  ok  7 playwright\conversation-learning-design.spec.ts:43:154 › long teaching keeps help and the real answer reachable at 390px (1.6s)
+  ok  8 playwright\mobile-chat-interactions.spec.ts:21:1 › touch selection offers notes beside the selected answer and taps save the excerpt (755ms)
+  ok  9 playwright\mobile-chat-interactions.spec.ts:37:1 › selection menu follows scrolling and clears on collapse or leaving the conversation (757ms)
+  x   5 playwright\conversation-learning-entry.spec.ts:218:3 › YY4 welcome becomes a compact identity after the first question at 390px (6.2s)
+(node:5464) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 10 playwright\mobile-chat-interactions.spec.ts:53:1 › goal and teaching controls leave most of the mobile screen for answers with direct entries (1.2s)
+  ok 11 playwright\mobile-chat-interactions.spec.ts:82:1 › selection actions fit a narrow viewport and also work with the keyboard (739ms)
+  ok 13 playwright\mobile-learning-preview.spec.ts:4:3 › mobile reading, drafts and response at 390x669 (1.7s)
+  ok 14 playwright\mobile-learning-preview.spec.ts:4:3 › mobile reading, drafts and response at 390x844 (1.5s)
+  ok 15 playwright\mobile-learning-preview.spec.ts:4:3 › mobile reading, drafts and response at 320x568 (1.4s)
+  ok 16 playwright\mobile-learning-preview.spec.ts:67:1 › response editor and submit follow the visible viewport when the keyboard opens (577ms)
+  x  12 playwright\conversation-learning-entry.spec.ts:218:3 › YY4 welcome becomes a compact identity after the first question at 320px (6.3s)
+
+
+  1) playwright\agent-presentation.spec.ts:117:1 › compact mobile toolbar remains reachable when switching to discussion 
+
+    Error: apiRequestContext.post: connect ECONNREFUSED 127.0.0.1:4175
+    Call log:
+      - → POST http://127.0.0.1:4175/reset-scene
+        - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/149.0.7827.55 Safari/537.36
+        - accept: */*
+        - accept-encoding: gzip,deflate,br
+
+
+      2 |
+      3 | test.beforeEach(async ({ page }) => {
+    > 4 |   await page.request.post("http://127.0.0.1:4175/reset-scene");
+        |                      ^
+      5 |   // Real Rust acceptance host owns persistence, semantics and source navigation.
+      6 |   await page.route("**/api/**", async route => {
+      7 |     const url = route.request().url().replace(/^.*\/api/, "http://127.0.0.1:4175");
+        at E:\allwork\download\agent\understand-book\packages\web\playwright\agent-presentation.spec.ts:4:22
+
+    Error Context: ..\..\docs\performance\yeye-brand-yy4-20261013\browser-results\agent-presentation-compact-815de-hen-switching-to-discussion\error-context.md
+
+  2) playwright\conversation-learning-entry.spec.ts:218:3 › YY4 welcome becomes a compact identity after the first question at 390px 
+
+    Error: expect(locator).toBeFocused() failed
+
+    Locator:  locator('.agent-input textarea')
+    Expected: focused
+    Received: inactive
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeFocused" with timeout 5000ms
+      - waiting for locator('.agent-input textarea')
+        14 × locator resolved to <textarea rows="1" value="" data-v-1eec1374="" aria-label="围绕当前阅读内容提问" placeholder="说说你的想法，或继续提问…" data-workspace-input="agent"></textarea>
+           - unexpected value "inactive"
+
+
+      248 |     await expect(page.locator('.a-msg')).toBeVisible();
+      249 |     expect(fixture.questions).toEqual(['帮我梳理当前这一节的核心概念。']);
+    > 250 |     await expect(input).toBeFocused();
+          |                         ^
+      251 |     await input.fill('下一条问题先留在这里');
+      252 |     await expect(input).toBeInViewport();
+      253 |     await expect(page.locator('.transcript .yeye-mascot')).toHaveCount(0);
+        at E:\allwork\download\agent\understand-book\packages\web\playwright\conversation-learning-entry.spec.ts:250:25
+
+    Error Context: ..\..\docs\performance\yeye-brand-yy4-20261013\browser-results\conversation-learning-entr-ea670-the-first-question-at-390px\error-context.md
+
+  3) playwright\conversation-learning-entry.spec.ts:218:3 › YY4 welcome becomes a compact identity after the first question at 320px 
+
+    Error: expect(locator).toBeFocused() failed
+
+    Locator:  locator('.agent-input textarea')
+    Expected: focused
+    Received: inactive
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeFocused" with timeout 5000ms
+      - waiting for locator('.agent-input textarea')
+        14 × locator resolved to <textarea rows="1" value="" data-v-1eec1374="" aria-label="围绕当前阅读内容提问" placeholder="说说你的想法，或继续提问…" data-workspace-input="agent"></textarea>
+           - unexpected value "inactive"
+
+
+      248 |     await expect(page.locator('.a-msg')).toBeVisible();
+      249 |     expect(fixture.questions).toEqual(['帮我梳理当前这一节的核心概念。']);
+    > 250 |     await expect(input).toBeFocused();
+          |                         ^
+      251 |     await input.fill('下一条问题先留在这里');
+      252 |     await expect(input).toBeInViewport();
+      253 |     await expect(page.locator('.transcript .yeye-mascot')).toHaveCount(0);
+        at E:\allwork\download\agent\understand-book\packages\web\playwright\conversation-learning-entry.spec.ts:250:25
+
+    Error Context: ..\..\docs\performance\yeye-brand-yy4-20261013\browser-results\conversation-learning-entr-93201-the-first-question-at-320px\error-context.md
+
+  3 failed
+    playwright\agent-presentation.spec.ts:117:1 › compact mobile toolbar remains reachable when switching to discussion 
+    playwright\conversation-learning-entry.spec.ts:218:3 › YY4 welcome becomes a compact identity after the first question at 390px 
+    playwright\conversation-learning-entry.spec.ts:218:3 › YY4 welcome becomes a compact identity after the first question at 320px 
+  13 passed (21.1s)
+E:\allwork\download\agent\understand-book\packages\web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @understand-book/web@0.0.0 test:e2e: `playwright test "playwright/conversation-learning-entry.spec.ts" "playwright/conversation-learning-design.spec.ts" "playwright/mobile-chat-interactions.spec.ts" "playwright/mobile-learning-preview.spec.ts" "playwright/agent-presentation.spec.ts" "--grep" "YY4|long teaching|touch selection|selection menu|goal and teaching|selection actions|mobile reading|response editor|compact mobile toolbar" "--workers=2" "--output=../../docs/performance/yeye-brand-yy4-20261013/browser-results"`
+Exit status 1

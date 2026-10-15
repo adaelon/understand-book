@@ -1,0 +1,44 @@
+{
+  "validated_inputs": {
+    "resident": 7,
+    "local_mcp": 1,
+    "remote_mcp": 10
+  },
+  "native_search_sample_unchanged": true,
+  "resident_text_pages": 4,
+  "resident_utf16_units": 24022,
+  "http_text_pages": 2,
+  "http_charged_calls": 2,
+  "remote_search_calls": 8,
+  "samples": [
+    {
+      "label": "single_leaf",
+      "before_body_bytes": 994,
+      "after_body_bytes": 1795,
+      "before_continuation": "refine_call",
+      "after_continuation": "next_call"
+    },
+    {
+      "label": "cross_leaf",
+      "before_body_bytes": 32,
+      "after_body_bytes": 128,
+      "before_continuation": "next_call",
+      "after_continuation": "next_call"
+    },
+    {
+      "label": "native_search",
+      "before_body_bytes": 1159,
+      "after_body_bytes": 1159,
+      "before_continuation": "tool_cursor",
+      "after_continuation": "tool_cursor"
+    },
+    {
+      "label": "budget_search",
+      "before_body_bytes": 1030,
+      "after_body_bytes": 1785,
+      "before_continuation": "next_call",
+      "after_continuation": "next_call"
+    }
+  ],
+  "real_model_sampling": false
+}

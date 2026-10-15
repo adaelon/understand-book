@@ -1,0 +1,93 @@
+{
+  "status": "passed",
+  "origin": "https://understandbook.top",
+  "published_book_ref": {
+    "book_id": "mastering-rust",
+    "publication_id": "01a0f58a-4df3-7822-8f5d-f712568fd50a"
+  },
+  "characters_per_page": 8000,
+  "source_range_utf16": {
+    "end": 8000,
+    "start": 0
+  },
+  "concurrency": [
+    {
+      "concurrent_reads": 1,
+      "successful": 1,
+      "reads": [
+        {
+          "latency_ms": 3.413,
+          "response_bytes": 38570
+        }
+      ]
+    },
+    {
+      "concurrent_reads": 4,
+      "successful": 4,
+      "reads": [
+        {
+          "latency_ms": 3.085,
+          "response_bytes": 38570
+        },
+        {
+          "latency_ms": 5.168,
+          "response_bytes": 38570
+        },
+        {
+          "latency_ms": 6.192,
+          "response_bytes": 38570
+        },
+        {
+          "latency_ms": 8.844,
+          "response_bytes": 38570
+        }
+      ]
+    },
+    {
+      "concurrent_reads": 8,
+      "successful": 8,
+      "reads": [
+        {
+          "latency_ms": 4.321,
+          "response_bytes": 38570
+        },
+        {
+          "latency_ms": 16.147,
+          "response_bytes": 38570
+        },
+        {
+          "latency_ms": 13.683,
+          "response_bytes": 38570
+        },
+        {
+          "latency_ms": 17.822,
+          "response_bytes": 38570
+        },
+        {
+          "latency_ms": 10.333,
+          "response_bytes": 38570
+        },
+        {
+          "latency_ms": 3.274,
+          "response_bytes": 38570
+        },
+        {
+          "latency_ms": 6.206,
+          "response_bytes": 38570
+        },
+        {
+          "latency_ms": 21.477,
+          "response_bytes": 38570
+        }
+      ]
+    }
+  ],
+  "gifted_calls": 13,
+  "charged_calls": 13,
+  "paid_calls": 0,
+  "model_requests": 0,
+  "free_remaining_before": 1000,
+  "free_remaining_after": 1000,
+  "test_credential_revoked": true,
+  "test_sessions_logged_out": true
+}

@@ -20,7 +20,7 @@ export function resolveMarkdownNotePlacementTarget(
   validLids: ReadonlySet<string>,
 ): MarkdownNotePlacementTarget | null {
   const element = eventElement(event);
-  if (!element || !root.contains(element) || isIgnoredPlacementTarget(element)) return null;
+  if (!element || !root.contains(element) || element.closest('.focus-screen[hidden], .focus-screen[inert]') || isIgnoredPlacementTarget(element)) return null;
   const body = element.closest<HTMLElement>("[data-lid]");
   if (!body || !root.contains(body)) return null;
   const lid = body.dataset.lid?.trim() ?? "";

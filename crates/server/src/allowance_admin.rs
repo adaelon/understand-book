@@ -187,24 +187,12 @@ impl Mutation {
                 }
                 revision(db, owner, &c.period_id, c.revision)?;
                 // The correction remains attached to the original grant's period.
-                let original: Option<(i64,String)> = db.query_row("SELECT r.amount_fen,a.period_id FROM manual_receipts r JOIN allowance_adjustments a ON a.actor=r.actor AND a.operation_id=r.operation_id WHERE r.receipt_id=? AND r.user_id=?",params![c.receipt_id,owner],|r|Ok((r.get(0)?,r.get(1)?))).optional().map_err(storage)?;
-                let (original, period) = original.ok_or_else(crate::authorization::missing)?;
+                let original: Option<String> = db.query_row("SELECT a.period_id FROM manual_receipts r JOIN allowance_adjustments a ON a.actor=r.actor AND a.operation_id=r.operation_id WHERE r.receipt_id=? AND r.user_id=?",params![c.receipt_id,owner],|r|r.get(0)).optional().map_err(storage)?;
+                let period = original.ok_or_else(crate::authorization::missing)?;
                 if period != c.period_id {
                     return Err(invalid());
                 }
-                let corrections: i64 = db.query_row("SELECT COALESCE(sum(delta_fen),0) FROM receipt_corrections WHERE receipt_id=?", [&c.receipt_id], |r|r.get(0)).map_err(storage)?;
-                let effective = original
-                    .checked_add(corrections)
-                    .and_then(|v| v.checked_add(c.delta_fen))
-                    .ok_or_else(invalid)?;
-                if effective < 0 {
-                    return Err(conflict("RECEIPT_CORRECTION_EXCEEDS_AMOUNT"));
-                }
-                db.execute(
-                    "INSERT INTO receipt_corrections VALUES(?,?,?,?,?,?,?)",
-                    params![actor, op, owner, c.receipt_id, c.delta_fen, c.reason, now],
-                )
-                .map_err(storage)?;
+                correct_receipt(db, actor, op, owner, &c.receipt_id, c.delta_fen, &c.reason, now)?;
                 if c.delta_micro_cny != MicroCny::ZERO {
                     adjust(
                         db,
@@ -224,6 +212,15 @@ impl Mutation {
         };
         Ok(json!({"allowance_period": period(db,owner,&period_id)?, "receipt_id":receipt_id}))
     }
+}
+/// Shared cash correction; the caller checks the corresponding entitlement first.
+pub(crate) fn correct_receipt(db: &Connection, actor: &str, op: &str, owner: &str, receipt: &str, delta: i64, reason: &str, now: i64) -> Result<(), ToolError> {
+    let original: i64 = db.query_row("SELECT amount_fen FROM manual_receipts WHERE receipt_id=? AND user_id=?", params![receipt,owner], |r|r.get(0)).optional().map_err(storage)?.ok_or_else(crate::authorization::missing)?;
+    let corrections: i64 = db.query_row("SELECT COALESCE(sum(delta_fen),0) FROM receipt_corrections WHERE receipt_id=?", [receipt], |r|r.get(0)).map_err(storage)?;
+    let effective = original.checked_add(corrections).and_then(|v|v.checked_add(delta)).ok_or_else(invalid)?;
+    if effective < 0 { return Err(conflict("RECEIPT_CORRECTION_EXCEEDS_AMOUNT")); }
+    db.execute("INSERT INTO receipt_corrections VALUES(?,?,?,?,?,?,?)", params![actor,op,owner,receipt,delta,reason,now]).map_err(storage)?;
+    Ok(())
 }
 fn valid_dates(start: i64, end: i64) -> Result<(), ToolError> {
     if start >= end {
@@ -334,13 +331,13 @@ pub(crate) fn list(
         let (sql, count) = if kind == "allowance-adjustments" {
             ("SELECT actor,operation_id,period_id,delta_micro_cny,reason,receipt_id,created_at FROM allowance_adjustments WHERE user_id=? ORDER BY created_at DESC,actor,operation_id LIMIT ? OFFSET ?", "SELECT count(*) FROM allowance_adjustments WHERE user_id=?")
         } else {
-            ("SELECT actor,operation_id,receipt_id,delta_fen,reason,created_at FROM receipt_corrections WHERE user_id=? ORDER BY created_at DESC,actor,operation_id LIMIT ? OFFSET ?", "SELECT count(*) FROM receipt_corrections WHERE user_id=?")
+            ("SELECT c.actor,c.operation_id,c.receipt_id,c.delta_fen,c.reason,c.created_at,(SELECT pack_id FROM mcp_call_packs p WHERE p.receipt_id=c.receipt_id) FROM receipt_corrections c WHERE c.user_id=? ORDER BY c.created_at DESC,c.actor,c.operation_id LIMIT ? OFFSET ?", "SELECT count(*) FROM receipt_corrections WHERE user_id=?")
         };
         let mut stmt = db.prepare(sql).map_err(storage)?;
         let items=stmt.query_map(params![owner,limit,offset],|r|Ok(if kind=="allowance-adjustments" {
             json!({"actor":r.get::<_,String>(0)?,"operation_id":r.get::<_,String>(1)?,"period_id":r.get::<_,String>(2)?,"delta_micro_cny":r.get::<_,i64>(3)?,"reason":r.get::<_,String>(4)?,"receipt_id":r.get::<_,Option<String>>(5)?,"created_at":r.get::<_,i64>(6)?})
         } else {
-            json!({"actor":r.get::<_,String>(0)?,"operation_id":r.get::<_,String>(1)?,"receipt_id":r.get::<_,String>(2)?,"delta_fen":r.get::<_,i64>(3)?,"reason":r.get::<_,String>(4)?,"created_at":r.get::<_,i64>(5)?})
+            json!({"actor":r.get::<_,String>(0)?,"operation_id":r.get::<_,String>(1)?,"receipt_id":r.get::<_,String>(2)?,"delta_fen":r.get::<_,i64>(3)?,"reason":r.get::<_,String>(4)?,"created_at":r.get::<_,i64>(5)?,"pack_id":r.get::<_,Option<String>>(6)?,"entitlement_kind":if r.get::<_,Option<String>>(6)?.is_some(){"mcp_call_pack"}else{"model_allowance"}})
         })).map_err(storage)?.collect::<Result<Vec<_>,_>>().map_err(storage)?;
         let total: i64 = db
             .query_row(count, [owner], |r| r.get(0))
@@ -359,7 +356,7 @@ pub(crate) fn list(
         .collect::<Result<Vec<_>, _>>()
         .map_err(storage)?;
     let items = ids.iter().map(|id| if kind == "allowance-periods" { period(db,owner,id) } else {
-        db.query_row("SELECT r.receipt_id,r.amount_fen,r.paid_at,r.channel,r.external_ref,r.note,r.amount_fen+COALESCE((SELECT sum(delta_fen) FROM receipt_corrections c WHERE c.receipt_id=r.receipt_id),0),(SELECT a.period_id FROM allowance_adjustments a WHERE a.receipt_id=r.receipt_id LIMIT 1) FROM manual_receipts r WHERE r.receipt_id=?",[id],|r|Ok(json!({"receipt_id":r.get::<_,String>(0)?,"amount_fen":r.get::<_,i64>(1)?,"paid_at":r.get::<_,i64>(2)?,"channel":r.get::<_,String>(3)?,"external_ref":r.get::<_,Option<String>>(4)?,"note":r.get::<_,String>(5)?,"effective_amount_fen":r.get::<_,i64>(6)?,"period_id":r.get::<_,String>(7)?}))).map_err(storage)
+        db.query_row("SELECT r.receipt_id,r.amount_fen,r.paid_at,r.channel,r.external_ref,r.note,r.amount_fen+COALESCE((SELECT sum(delta_fen) FROM receipt_corrections c WHERE c.receipt_id=r.receipt_id),0),(SELECT a.period_id FROM allowance_adjustments a WHERE a.actor=r.actor AND a.operation_id=r.operation_id),(SELECT p.pack_id FROM mcp_call_packs p WHERE p.receipt_id=r.receipt_id) FROM manual_receipts r WHERE r.receipt_id=?",[id],|r|Ok(json!({"receipt_id":r.get::<_,String>(0)?,"amount_fen":r.get::<_,i64>(1)?,"paid_at":r.get::<_,i64>(2)?,"channel":r.get::<_,String>(3)?,"external_ref":r.get::<_,Option<String>>(4)?,"note":r.get::<_,String>(5)?,"effective_amount_fen":r.get::<_,i64>(6)?,"period_id":r.get::<_,Option<String>>(7)?,"pack_id":r.get::<_,Option<String>>(8)?,"entitlement_kind":if r.get::<_,Option<String>>(8)?.is_some(){"mcp_call_pack"}else{"model_allowance"}}))).map_err(storage)
     }).collect::<Result<Vec<_>,_>>()?;
     let total: i64 = db
         .query_row(count, [owner], |r| r.get(0))

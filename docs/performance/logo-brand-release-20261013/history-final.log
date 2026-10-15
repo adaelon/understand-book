@@ -1,0 +1,17 @@
+
+> @understand-book/web@0.0.0 test:e2e E:\allwork\download\agent\understand-book\packages\web
+> playwright test "--config" "../../docs/performance/logo-brand-release-20261013/playwright.config.ts" "--grep" "changing chats|late saved read"
+
+[WebServer] (node:44256) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:42632) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+(node:28468) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 playwright\yeye-integration.spec.ts:283:1 › YY7 changing chats, returning to completed history and reloading never replay the nod (2.7s)
+  ok 2 playwright\yeye-integration.spec.ts:295:1 › YY7 a late saved read cannot deliver feedback into another chat (1.3s)
+
+  2 passed (9.7s)

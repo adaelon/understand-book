@@ -1,0 +1,33 @@
+[
+  {
+    "actions": [],
+    "assessment": null,
+    "capability": "explanation_derivation",
+    "explanation": null,
+    "hint": null,
+    "intent_origin": "current_action",
+    "intent_quote": null,
+    "interaction_intent": "neutral",
+    "interpretation_refs": [],
+    "kind": "explain",
+    "move_id": "m-cont-weights-1",
+    "object_ids": [],
+    "preference_ref": null,
+    "presentation": null,
+    "prompt": "两段各 60 公里、速度分别 60 km/h 和 30 km/h，为什么答案只能是 40 km/h？请用「谁占的时间多，谁的权重大」这条线索说一句理由。再想一个对照情形：如果两段各走 1 小时（一段 60 km/h、一段 30 km/h），这时直接取速度的平均值 45 km/h 还成立吗？",
+    "target": {
+      "capability": "explanation_derivation",
+      "expected_performance": "能用「时间占比＝权重」重述平均速度，并用同一机制判断什么情况下直接平均速度数值才成立",
+      "learning_focus": "为什么平均速度是被时间加权的量：把 Δ 定义展开成分段时间占比的加权平均，从而在机制层面解释「相等的路程不一定花相等的时间」为何重要",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "end_lid": "1.1",
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "start_lid": "1.1"
+        }
+      ]
+    }
+  }
+]

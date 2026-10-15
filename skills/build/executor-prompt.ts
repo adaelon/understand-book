@@ -3,6 +3,19 @@ export const AUTOMATIC_BUILD_EXECUTOR_PROMPT_MODES = ["dispatch", "task"] as con
 export type AutomaticBuildExecutorPromptMode =
   (typeof AUTOMATIC_BUILD_EXECUTOR_PROMPT_MODES)[number];
 
+/** Assets already linked into the current sidecar; source callers can still use its CLI. */
+export interface PackagedBuildAssets {
+  prompts: Record<string, string>;
+  protocol_wrapper: string;
+  agent_template: string;
+  mcp_config: string;
+  mcp_launcher: string;
+}
+export let packagedBuildAssets: PackagedBuildAssets | undefined;
+export function registerPackagedBuildAssets(assets: PackagedBuildAssets | undefined): void {
+  packagedBuildAssets = assets;
+}
+
 export interface AutomaticBuildExecutorPromptInput {
   mode: AutomaticBuildExecutorPromptMode;
   extractor_name: string;

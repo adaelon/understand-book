@@ -1,0 +1,534 @@
+{
+  "version": 1,
+  "source": {
+    "id": "cs336-2026-p2-pytorch-vq27",
+    "revision": "vq27-local-20261008",
+    "path": "E:/allwork/cs336/videos/（中英字幕完结）斯坦福CS336：从零开始构建大模型 _ 2026年春季/[P2]斯坦福 CS336：PyTorch.mp4",
+    "title": "CS336 2026 P2 PyTorch — VQ27 用户本地文件",
+    "size_bytes": 225917024,
+    "duration_ms": 4641376.145,
+    "width": 1920,
+    "height": 1080,
+    "identity_note": "人工指定样本 ID/修订；字节数与规格仅防止误用已知 480P/其他讲次，不证明内容等同。替换原片须新样本修订。"
+  },
+  "supplement": {
+    "id": "vi0a-controlled-dtype-v1",
+    "origin": "本仓库 media.mjs:makeSupplement；教学代码逐字依据 V01 的原片 555.123s 与 650s 帧",
+    "kind": "controlled_teaching_fixture",
+    "duration_ms": 6000,
+    "source_timeline": "independent; no lecture offset"
+  },
+  "localization_contract": {
+    "intervals": "milliseconds, start inclusive / end exclusive",
+    "frames": "first decoded frame at or after requested_ms, retain source PTS/time_base",
+    "frame_tolerance_ms": 34,
+    "clip_tolerance_ms": 50,
+    "annotations": "可接受范围限定为已观察的采样帧附近或明确给定的短片段；不是字幕句段强制对齐真值。"
+  },
+  "coverage_gaps": [
+    {
+      "category": "native_live_code_edit",
+      "status": "not_observed_in_selected_primary_samples",
+      "supplement": "V08",
+      "note": "原片已观察的是两个 dtype 示例与渐进高亮；未穷尽整片。"
+    },
+    {
+      "category": "page_leave_and_return",
+      "status": "not_observed_in_selected_primary_samples",
+      "supplement": "V08",
+      "note": "V03 为连续停留，不冒称离开再返回。"
+    },
+    {
+      "category": "verified_spoken_words_and_silence",
+      "status": "pending_listening",
+      "samples": [
+        "V04",
+        "V05",
+        "V07"
+      ],
+      "note": "2026-10-08 用户授权先完成可验证部分；不使用烧录字幕冒充原声真值。"
+    }
+  ],
+  "frames": [
+    {
+      "id": "f555123",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "requested_ms": 555123
+    },
+    {
+      "id": "f570000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "requested_ms": 570000
+    },
+    {
+      "id": "f585000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "requested_ms": 585000
+    },
+    {
+      "id": "f600000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "requested_ms": 600000
+    },
+    {
+      "id": "f615000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "requested_ms": 615000
+    },
+    {
+      "id": "f630000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "requested_ms": 630000
+    },
+    {
+      "id": "f650000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "requested_ms": 650000
+    },
+    {
+      "id": "f1180000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "requested_ms": 1180000
+    },
+    {
+      "id": "f1200000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "requested_ms": 1200000
+    },
+    {
+      "id": "f1210000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "requested_ms": 1210000
+    },
+    {
+      "id": "f1220000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "requested_ms": 1220000
+    },
+    {
+      "id": "s1000",
+      "source_id": "vi0a-controlled-dtype-v1",
+      "requested_ms": 1000
+    },
+    {
+      "id": "s3000",
+      "source_id": "vi0a-controlled-dtype-v1",
+      "requested_ms": 3000
+    },
+    {
+      "id": "s5000",
+      "source_id": "vi0a-controlled-dtype-v1",
+      "requested_ms": 5000
+    }
+  ],
+  "clips": [
+    {
+      "id": "fp16",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "start_ms": 550000,
+      "end_ms": 586000
+    },
+    {
+      "id": "bf16",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "start_ms": 595000,
+      "end_ms": 655000
+    },
+    {
+      "id": "einsum",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "start_ms": 1180000,
+      "end_ms": 1225000
+    },
+    {
+      "id": "pause-candidate",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "start_ms": 648000,
+      "end_ms": 656000
+    },
+    {
+      "id": "controlled",
+      "source_id": "vi0a-controlled-dtype-v1",
+      "start_ms": 0,
+      "end_ms": 6000
+    }
+  ],
+  "samples": [
+    {
+      "id": "V01",
+      "title": "float16 / bfloat16 的代码差异",
+      "categories": [
+        "code_variant",
+        "small_symbols"
+      ],
+      "frame_ids": [
+        "f555123",
+        "f650000"
+      ],
+      "clip_ids": [
+        "fp16",
+        "bf16"
+      ],
+      "question": "同为 1e-8，两个例子中的 dtype、断言和显示结果有什么变化？",
+      "expected": {
+        "answer": "float16 对应 assert x == 0、0.000e+0；bfloat16 对应 assert x != 0、1.001e-8。能支持该例的下溢差异。",
+        "support": "visual_supported"
+      },
+      "acceptable_locations": [
+        {
+          "source_id": "cs336-2026-p2-pytorch-vq27",
+          "start_ms": 555100,
+          "end_ms": 555200
+        },
+        {
+          "source_id": "cs336-2026-p2-pytorch-vq27",
+          "start_ms": 650000,
+          "end_ms": 650040
+        }
+      ],
+      "visual_truth": [
+        "f555123：x = torch.tensor([1e-8], dtype=torch.float16)；assert x == 0 # Underflow!；弹窗 0.000e+0。",
+        "f650000：x = torch.tensor([1e-8], dtype=torch.bfloat16)；assert x != 0 # No underflow!；弹窗 1.001e-8。",
+        "原片展示两个代码实例，未据此声称讲者现场逐字编辑。"
+      ],
+      "visual_review": {
+        "status": "reviewed_original_resolution",
+        "reviewer": "Codex image observation",
+        "date": "2026-10-08"
+      }
+    },
+    {
+      "id": "V02",
+      "title": "逐行展开 bfloat16 的解释",
+      "categories": [
+        "progressive_visual"
+      ],
+      "frame_ids": [
+        "f600000",
+        "f615000",
+        "f630000",
+        "f650000"
+      ],
+      "clip_ids": [
+        "bf16"
+      ],
+      "question": "四帧依次新增的当前讲解重点是什么？",
+      "expected": {
+        "answer": "600s 高亮 Google Brain 的说明；615s 高亮内存同 float16、动态范围同 float32；630s 高亮 resolution 更差的限制；650s 展示 bfloat16 的非零结果。",
+        "support": "visual_supported"
+      },
+      "acceptable_locations": [
+        {
+          "source_id": "cs336-2026-p2-pytorch-vq27",
+          "start_ms": 600000,
+          "end_ms": 600040
+        },
+        {
+          "source_id": "cs336-2026-p2-pytorch-vq27",
+          "start_ms": 615000,
+          "end_ms": 615040
+        },
+        {
+          "source_id": "cs336-2026-p2-pytorch-vq27",
+          "start_ms": 630000,
+          "end_ms": 630040
+        },
+        {
+          "source_id": "cs336-2026-p2-pytorch-vq27",
+          "start_ms": 650000,
+          "end_ms": 650040
+        }
+      ],
+      "visual_truth": [
+        "位图标注 exponent (8 bit)、fraction (7 bit)。",
+        "高亮逐行改变，后面的内容从淡色转为可读正文。",
+        "650s 图示上叠加结果弹窗，不应把弹窗挡住的位图当作清晰观察。"
+      ],
+      "visual_review": {
+        "status": "reviewed_original_resolution",
+        "reviewer": "Codex image observation",
+        "date": "2026-10-08"
+      }
+    },
+    {
+      "id": "V03",
+      "title": "相同 einsum 画面在不同讲解时刻停留",
+      "categories": [
+        "repeated_visual",
+        "held_page"
+      ],
+      "frame_ids": [
+        "f1180000",
+        "f1200000",
+        "f1210000",
+        "f1220000"
+      ],
+      "clip_ids": [
+        "einsum"
+      ],
+      "question": "这些时刻能复用代码描述吗？引用时能否合成同一个时间？",
+      "expected": {
+        "answer": "主体代码与 z 的 3×3 全 4 结果重复出现，可复用主体描述；每帧仍保留独立时刻，字幕和指针不相同。",
+        "support": "visual_supported"
+      },
+      "acceptable_locations": [
+        {
+          "source_id": "cs336-2026-p2-pytorch-vq27",
+          "start_ms": 1180000,
+          "end_ms": 1180040
+        },
+        {
+          "source_id": "cs336-2026-p2-pytorch-vq27",
+          "start_ms": 1200000,
+          "end_ms": 1200040
+        },
+        {
+          "source_id": "cs336-2026-p2-pytorch-vq27",
+          "start_ms": 1210000,
+          "end_ms": 1210040
+        },
+        {
+          "source_id": "cs336-2026-p2-pytorch-vq27",
+          "start_ms": 1220000,
+          "end_ms": 1220040
+        }
+      ],
+      "visual_truth": [
+        "重复的是讲解主体，不是整帧像素完全相同。",
+        "高亮 einsum(x, y, \"seq1 hidden, hidden seq2 -> seq1 seq2\")。",
+        "这是页面持续停留；离开再返回由 V08 补充。"
+      ],
+      "visual_review": {
+        "status": "reviewed_original_resolution",
+        "reviewer": "Codex image observation",
+        "date": "2026-10-08"
+      }
+    },
+    {
+      "id": "V04",
+      "title": "einsum 的输出维度与求和维度",
+      "categories": [
+        "joint_text_visual",
+        "formula"
+      ],
+      "frame_ids": [
+        "f1200000",
+        "f1210000"
+      ],
+      "clip_ids": [
+        "einsum"
+      ],
+      "question": "为什么输出是 3×3，hidden 到哪里去了？",
+      "expected": {
+        "answer": "画面代码 x 为 3×4、y 为 4×3，einsum 输出只保留 seq1 seq2，hidden 被求和；结果格为 3×3，每项 4。1210s 烧录字幕也提示未出现在输出中的维度被求和。",
+        "support": "visual_and_burned_text_supported_audio_pending"
+      },
+      "acceptable_locations": [
+        {
+          "source_id": "cs336-2026-p2-pytorch-vq27",
+          "start_ms": 1200000,
+          "end_ms": 1200040
+        },
+        {
+          "source_id": "cs336-2026-p2-pytorch-vq27",
+          "start_ms": 1210000,
+          "end_ms": 1210040
+        }
+      ],
+      "visual_truth": [
+        "代码给出维度及输出签名，弹窗给出具体矩阵结果。",
+        "1210s 英文字幕：And anything that is not mentioned here, the hidden gets summed out.",
+        "字幕属于视频画面文字，独立音频转写尚未建立。"
+      ],
+      "visual_review": {
+        "status": "reviewed_original_resolution",
+        "reviewer": "Codex image observation",
+        "date": "2026-10-08"
+      },
+      "audio_truth": {
+        "status": "pending_listening",
+        "correct_words": null,
+        "candidates_from_burned_subtitles": [
+          {
+            "frame_id": "f1210000",
+            "text": "And anything that is not mentioned here, the hidden gets summed out."
+          }
+        ],
+        "review_focus": "听核 hidden 与 summed out；标注句段起止。通过后才能用于音频+画面联合评测。",
+        "approval": "2026-10-08 用户允许保留待听核项，先完成可验证部分。"
+      }
+    },
+    {
+      "id": "V05",
+      "title": "underflow / overflow 的音频疑点",
+      "categories": [
+        "audio_uncertainty"
+      ],
+      "frame_ids": [
+        "f570000",
+        "f585000"
+      ],
+      "clip_ids": [
+        "fp16"
+      ],
+      "question": "讲者在这一段说的是 underflow 还是 overflow？能用画面直接替他说话吗？",
+      "expected": {
+        "answer": "画面有 Underflow! 注释；585s 字幕却是 You'll get overflow. 这只是待复核疑点，不能据此判定字幕错，也不能把代码注释当成讲者原话。",
+        "support": "unresolved_audio"
+      },
+      "acceptable_locations": [
+        {
+          "source_id": "cs336-2026-p2-pytorch-vq27",
+          "start_ms": 550000,
+          "end_ms": 586000
+        }
+      ],
+      "visual_truth": [
+        "570s：assert x == 0 # Underflow!。",
+        "585s：高亮 If this happens when you train, you can get instability.；烧录英文字幕 You'll get overflow."
+      ],
+      "visual_review": {
+        "status": "reviewed_original_resolution",
+        "reviewer": "Codex image observation",
+        "date": "2026-10-08"
+      },
+      "audio_truth": {
+        "status": "pending_listening",
+        "correct_words": null,
+        "candidates_from_burned_subtitles": [
+          {
+            "frame_id": "f585000",
+            "text": "You'll get overflow."
+          }
+        ],
+        "review_focus": "回听完整 36 秒，区分讲者转换讨论 overflow、字幕误写、或听不清；不要预设是转写错误。",
+        "approval": "2026-10-08 用户允许保留待听核项，先完成可验证部分。"
+      }
+    },
+    {
+      "id": "V06",
+      "title": "给定片段没有答案",
+      "categories": [
+        "unanswerable"
+      ],
+      "frame_ids": [
+        "f600000",
+        "f615000",
+        "f630000"
+      ],
+      "clip_ids": [
+        "bf16"
+      ],
+      "question": "仅根据 595–655 秒这段材料，讲者使用的 GPU 序列号是什么？",
+      "expected": {
+        "answer": "这组可见材料没有提供 GPU 序列号，不能从浮点格式代码推断。原声尚待听核，因此负例结论严格限于已核对画面，不能宣称整讲没有提到。",
+        "support": "unsupported_in_observed_frames"
+      },
+      "acceptable_locations": [
+        {
+          "source_id": "cs336-2026-p2-pytorch-vq27",
+          "start_ms": 595000,
+          "end_ms": 655000
+        }
+      ],
+      "visual_truth": [
+        "画面包含浮点格式、动态范围及精度解释，没有 GPU 序列号字段。"
+      ],
+      "visual_review": {
+        "status": "reviewed_original_resolution",
+        "reviewer": "Codex image observation",
+        "date": "2026-10-08"
+      }
+    },
+    {
+      "id": "V07",
+      "title": "无字幕窗口的停顿候选",
+      "categories": [
+        "pause_candidate",
+        "terminology"
+      ],
+      "frame_ids": [
+        "f650000"
+      ],
+      "clip_ids": [
+        "pause-candidate"
+      ],
+      "question": "648–656 秒是否静音？具体讲者原话是什么？",
+      "expected": {
+        "answer": "当前只能确认 650s 抽帧无烧录字幕；这不能证明静音。保存短音频供 VI0b 或人工听核。",
+        "support": "pending_listening"
+      },
+      "acceptable_locations": [
+        {
+          "source_id": "cs336-2026-p2-pytorch-vq27",
+          "start_ms": 648000,
+          "end_ms": 656000
+        }
+      ],
+      "visual_truth": [
+        "650s 画面下方无字幕条，代码与结果可读。"
+      ],
+      "visual_review": {
+        "status": "reviewed_original_resolution",
+        "reviewer": "Codex image observation",
+        "date": "2026-10-08"
+      },
+      "audio_truth": {
+        "status": "pending_listening",
+        "correct_words": null,
+        "candidates_from_burned_subtitles": [],
+        "review_focus": "标记实际语音/停顿区间；若有语音填正确原话，不能以无字幕代替静音标注。",
+        "approval": "2026-10-08 用户允许保留待听核项，先完成可验证部分。"
+      }
+    },
+    {
+      "id": "V08",
+      "title": "固定位置微改与 A→B→A 重现（补充教学夹具）",
+      "categories": [
+        "code_microchange",
+        "repeated_return",
+        "supplement"
+      ],
+      "frame_ids": [
+        "s1000",
+        "s3000",
+        "s5000"
+      ],
+      "clip_ids": [
+        "controlled"
+      ],
+      "question": "2 秒和 4 秒各发生什么？相同代码再次出现应落在哪些时刻？",
+      "expected": {
+        "answer": "0–2s 是 float16 / ==；2–4s 是 bfloat16 / !=；4–6s 返回 float16 / ==。A 的两次出现位置分别为 [0,2) 与 [4,6)，不能丢失后一次。",
+        "support": "controlled_visual_supported"
+      },
+      "acceptable_locations": [
+        {
+          "source_id": "vi0a-controlled-dtype-v1",
+          "start_ms": 0,
+          "end_ms": 2000
+        },
+        {
+          "source_id": "vi0a-controlled-dtype-v1",
+          "start_ms": 2000,
+          "end_ms": 4000
+        },
+        {
+          "source_id": "vi0a-controlled-dtype-v1",
+          "start_ms": 4000,
+          "end_ms": 6000
+        }
+      ],
+      "visual_truth": [
+        "源自 V01 核对的两组教学代码，使用 FFmpeg drawtext 在固定坐标绘制。",
+        "顶部明确标注 controlled teaching supplement - NOT lecture footage。",
+        "夹具独立无音轨，局部时刻不映射成原片时间。"
+      ],
+      "visual_review": {
+        "status": "reviewed_original_resolution",
+        "reviewer": "Codex image observation",
+        "date": "2026-10-08"
+      }
+    }
+  ]
+}

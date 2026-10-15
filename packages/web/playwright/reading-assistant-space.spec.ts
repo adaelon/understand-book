@@ -9,6 +9,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 760 
     if (viewport.width < 1024) await page.locator('.workspace-mobile-nav').getByRole('button', { name: '问答', exact: true }).click();
     const rail = page.locator('.right-rail');
     const transcript = rail.locator('.transcript');
+    const taskToggle = rail.locator(viewport.width < 1024 ? '.mobile-task-toggle' : '.task-summary-toggle');
     const input = rail.locator('textarea[data-workspace-input="agent"]');
     const height = (await rail.boundingBox())!.height;
     expect((await transcript.boundingBox())!.height / height).toBeGreaterThan(.7);
@@ -19,7 +20,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 760 
     await expect(rail.locator('.task-summary-toggle')).toContainText('正在执行');
     await transcript.evaluate(el => { el.scrollTop = 120; el.dispatchEvent(new Event('scroll')); });
     const before = await transcript.boundingBox();
-    await rail.locator('.task-summary-toggle').click();
+    await taskToggle.click();
     await expect(rail.locator('.goal-card')).toContainText('交付全书主线演示');
     await expect(rail.locator('.goal-card')).not.toContainText('等待继续');
     await expect(rail.locator('.goal-card')).not.toContainText('页面交付待确认');
@@ -39,16 +40,16 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 760 
     await rail.locator('.stop-agent').click();
     await expect(rail.locator('.task-summary-toggle')).toContainText('本次生成已停止');
     await expect(rail.locator('.agent-compose-row > button')).toHaveText('发送');
-    await rail.locator('.task-summary-toggle').click();
+    await taskToggle.click();
     await rail.getByRole('button', { name: '继续任务', exact: true }).click();
     await expect(rail.locator('.task-summary-toggle')).toContainText('正在执行');
     await rail.locator('.stop-agent').click();
-    await rail.locator('.task-summary-toggle').click();
+    await taskToggle.click();
     await rail.getByRole('button', { name: '补充要求', exact: true }).click();
     await expect(rail.locator('.goal-target')).toContainText('全书的主线');
     await rail.getByRole('button', { name: '取消补充任务', exact: true }).click();
     await input.press('Escape');
-    await rail.locator('.task-summary-toggle').click();
+    await taskToggle.click();
     await rail.getByRole('button', { name: '结束任务', exact: true }).click();
     await expect(rail.locator('.task-summary-toggle')).toHaveCount(0);
     await expect(input).toHaveValue('第一行\n第二行\n第三行\n第四行\n第五行\n第六行');

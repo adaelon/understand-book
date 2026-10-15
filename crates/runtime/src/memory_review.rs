@@ -37,6 +37,7 @@ Schema:
 Rules:
 - Evidence quotes must be exact, non-empty substrings of the cited user text.
 - Assistant text may clarify context but is never evidence and must never create a candidate by itself.
+- user contains only authored words or the real supplement to input_action. Empty user means a UI-only request: keep its turn position, but infer no profile trait or permanent preference from that action, repeated choices, or assistant text.
 - Use user_stated only for a trait the cited user text directly states. Otherwise use agent_inferred.
 - Ambiguous reading-context traits use book scope. Global requires an explicit across-books/always statement.
 - Use confidence only for agent_inferred candidates.
@@ -57,6 +58,8 @@ pub struct ReviewTurnInput {
     pub turn_id: String,
     pub user_turn_ordinal: u64,
     pub user: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_action: Option<crate::tutor_continuation::InteractionAction>,
     pub assistant_status: ReviewTurnStatus,
     pub assistant_answer: Option<String>,
 }
@@ -153,8 +156,13 @@ struct ProviderReviewExecutor {
 
 impl ReviewExecutor for ProviderReviewExecutor {
     fn execute(&mut self, input: &ReviewInput) -> Result<ReviewExecutionOutput, AdapterError> {
+        execute_review(self.adapter.as_ref(), input)
+    }
+}
+
+pub fn execute_review(adapter: &dyn ModelAdapter, input: &ReviewInput) -> Result<ReviewExecutionOutput, AdapterError> {
         validate_input(input)?;
-        let value = self.adapter.complete_structured(CompletionRequest {
+        let value = adapter.complete_structured(CompletionRequest {
             output_token_limit: None,
             reasoning_effort: None,
             system: REVIEW_EXTRACTOR_SYSTEM.into(),
@@ -166,7 +174,6 @@ impl ReviewExecutor for ProviderReviewExecutor {
             )?,
         })?;
         parse_review_output(value, input)
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -364,7 +371,9 @@ fn validate_input(input: &ReviewInput) -> Result<(), AdapterError> {
         || u64::try_from(input.turns.len()).ok() != Some(expected_len)
         || input.turns.iter().enumerate().any(|(index, turn)| {
             turn.turn_id.trim().is_empty()
-                || turn.user.trim().is_empty()
+                || (turn.user.trim().is_empty() && !matches!(turn.input_action,
+                    Some(crate::tutor_continuation::InteractionAction::UiEntry { .. }
+                        | crate::tutor_continuation::InteractionAction::UiChoice { .. })))
                 || u64::try_from(index)
                     .ok()
                     .and_then(|index| input.from_turn_exclusive.checked_add(index + 1))
@@ -502,6 +511,7 @@ mod tests {
                 turn_id: "turn-a".into(),
                 user_turn_ordinal: 1,
                 user: user.into(),
+                input_action: None,
                 assistant_status: ReviewTurnStatus::Completed,
                 assistant_answer: Some("The assistant claims you prefer diagrams.".into()),
             }],
@@ -525,6 +535,18 @@ mod tests {
             }],
             "intent_observations": []
         })
+    }
+
+    #[test]
+    fn tc6_action_only_turns_keep_review_sequence_without_profile_evidence() {
+        let mut input = input("");
+        input.turns[0].input_action = Some(crate::tutor_continuation::InteractionAction::UiEntry {
+            entry_action: crate::tutor_continuation::EntryAction::ClarifyAnswer,
+        });
+        assert!(parse_review_output(serde_json::json!({"candidate_facts":[],"intent_observations":[]}), &input).is_ok());
+        assert!(parse_review_output(candidate("user_stated","global","这一步没跟上"), &input).is_err());
+        input.turns[0].user = "Across books I prefer concise explanations.".into();
+        assert!(parse_review_output(candidate("user_stated","global","I prefer concise explanations"), &input).is_ok());
     }
 
     #[test]

@@ -1,0 +1,8 @@
+
+running 1 test
+test tests::tutor_continuation_tests::continuation_tc5_live_correction ... TC5_LIVE clarify: status=200 samples=4
+TC5_LIVE redirect: status=200 samples=6
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 753 filtered out; finished in 88.92s
+

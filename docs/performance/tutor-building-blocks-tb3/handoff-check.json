@@ -1,0 +1,7 @@
+{
+  "local_document_links": 80,
+  "ledger_tb3_link": true,
+  "checkpoint_lines": 47,
+  "next_slice": "TB4",
+  "status_consistent": true
+}

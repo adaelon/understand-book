@@ -7,7 +7,7 @@ import { renderBookStructureRelationInput, validateBookStructureRelationSelectio
 import { validateBookStructureRelationDelta, type BookStructureRelationInput, type BookStructureRelationDelta } from "./book-structure-relations";
 import { bookStructureReferenceScope } from "./book-structure-evidence";
 import { collectStructureCandidates, type StructureCandidateContribution, type StructureCandidateCatalog } from "./book-structure-candidates";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { AutomaticBuildTarget, BuildTargetRefV2 } from "./build-orchestrator";
 import {
@@ -303,13 +303,26 @@ export function freezeBookStructureGenerationTask(
   }
   const bytes = JSON.stringify(task, null, 2) + "\n";
   mkdirSync(path.dirname(file), { recursive: true });
+  let descriptor: number;
   try {
-    writeFileSync(file, bytes, { encoding: "utf8", flag: "wx" });
+    descriptor = openSync(file, "wx");
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error
       ? String(error.code)
       : "";
     if (code !== "EEXIST" || JSON.stringify(readBookStructureGenerationTask(target, task.policy_generation_id, task.descriptor.work_unit_id), null, 2) + "\n" !== bytes) throw error;
+    return file;
+  }
+  try {
+    try {
+      writeFileSync(descriptor, bytes, { encoding: "utf8" });
+    } finally {
+      closeSync(descriptor);
+    }
+  } catch (error) {
+    // Remove only the file created by this failed write so freezing can be retried.
+    unlinkSync(file);
+    throw error;
   }
   return file;
 }

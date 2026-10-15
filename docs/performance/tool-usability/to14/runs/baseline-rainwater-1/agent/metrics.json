@@ -1,0 +1,14 @@
+{
+  "completed": true,
+  "usage": {
+    "input_tokens": 136252,
+    "cached_input_tokens": 90112,
+    "output_tokens": 564
+  },
+  "total_tokens": 136816,
+  "actual_cost": null,
+  "final": "北池从实验开始到结束减少了 **18 升水**（37 − 19）；**南池没有参与本次实验**。\n\n先检索“北池”，再读取命中 LID `1.1` 的原文及续页，核实如下：\n\n- [起始记录](https://reader.example/?book_id=rainwater-notes&publication_id=01a1300b-c918-7970-8c1c-4031787582de&start_lid=1.1&end_lid=1.1&start_utf16=0&end_utf16=8001)：“北池起始有 37 升水。”\n- [结束及南池记录](https://reader.example/?book_id=rainwater-notes&publication_id=01a1300b-c918-7970-8c1c-4031787582de&start_lid=1.1&end_lid=1.1&start_utf16=8001&end_utf16=8960)：“实验结束时，北池有 19 升水。南池没有参与本次实验。”\n\n两处来源均为 rainwater-notes 的同一版本 `01a1300b-c918-7970-8c1c-4031787582de`。",
+  "exit_code": 0,
+  "timed_out": false,
+  "elapsed_ms": 46871.5522
+}

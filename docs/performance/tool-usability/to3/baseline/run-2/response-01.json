@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+      "id": "call_00_vkEsjYXAM2nk1Gs42sIM2234",
+      "name": "source.present"
+    },
+    {
+      "arguments": "{\"operation\": \"select\", \"move\": {\"move_id\": \"ms_time_weighted_mean\", \"object_ids\": [], \"kind\": \"explain\", \"prompt\": \"上一段说的是「天平按时间倾斜」。这一步把它变成一个能用的式子，你就能分清什么时候可以「直接平均」、什么时候一定不能。\\n\\n## 1. 把定义写成加权平均\\n\\n把整趟行程切成若干小段，每段里速度恒定；第 i 段的速度记为 v_i，花的时间记为 t_i。定义里的两个总量分别是：\\n\\n- 总路程 = 各段路程之和 = Σ v_i·t_i（每段路程就是「速度 × 该段时间」）\\n- 总时间 = 各段时间之和 = Σ t_i\\n\\n代进定义：\\n\\n**平均速度 = Σ(v_i·t_i) / Σ t_i**\\n\\n右边正好是**加权平均**的形式：被平均的对象是各个速度 v_i，而每一段速度的权重是它花掉的时间 t_i。所以平均速度不是「速度们的平均值」，而是「你真正保持过的那些速度，按保持时长加权后的结果」。\\n\\n## 2. 从式子直接读出两个结论\\n\\n**结论一：只有各段时间相等时，直接取算术平均才对。** 若 t_1 = t_2 = … ，权重全部相同，式子退化成 (v_1 + v_2 + …) / n。时间一不等，权重就不等，直接平均就失真。\\n\\n**结论二：平均速度一定夹在最慢段和最快段之间。** 权重都是正的，加权平均跑不出被平均对象的最小值与最大值之外。它不可能比全程最快的那一段还快。\\n\\n## 3. 回到 60 / 30 那个例子 (我按定义算的例，不是原文的例子)\\n\\n两段各 60 km，速度 60 km/h 和 30 km/h，用时 1 小时和 2 小时。用加权式子：\\n\\n- 平均速度 = (60×1 + 30×2) / (1 + 2) = (60 + 60) / 3 = **40 km/h**\\n\\n权重是 1 和 2：慢的那段权重是快的两倍，所以结果被拉到 30 那一侧，比 (60+30)/2 = 45 小。这个 45 之所以错，就是因为它默认了两段权重相同——那是「相等时间」的权重，不是「相等路程」的权重。\\n\\n顺带把等路程这条说完整：两段路程相等时，直接平均的结果**一定不小于**真实的平均速度，而且只有两段速度恰好相等时两者才相等。所以拿等路程问题去平均速度数值，你只会把结果算高，不会算低。\\n\\n## 一句话抓手\\n\\n把定义写成 a̅ = Σ(v·t) / Σt：速度是被**时间**加权的，时间才是分母上的「记分员」。想省事直接取算术平均，前提是各段时间相等；等路程的情形不满足这个前提，所以它总是个高估。\", \"target\": {\"capability\": \"applying the definitional formula to see which averaging operation is legitimate\", \"expected_performance\": \"把「总路程 ÷ 总时间」改写成按时间加权的平均，并用它判断直接算术平均何时成立、偏高的方向如何\", \"learning_focus\": \"平均速度作为按时间加权的平均量：权重的来源，以及「何时能直接平均」的判据\", \"source_bindings\": [{\"start_lid\": \"1.1\", \"end_lid\": \"1.1\"}]}, \"continuation\": {\"recommended_option_id\": \"opt_time_budget\", \"options\": [{\"option_id\": \"opt_time_budget\", \"label\": \"往返同一条路，去程 30 km/h，返程要多快才能让全程平均速度达到 60 km/h？\", \"purpose\": \"把加权式子用到「时间预算」上：去程已经把总时间用掉至少 D/30，看出发点上 60 这个目标为什么不可达\", \"move_kind\": \"observe\"}, {\"option_id\": \"opt_underestimate\", \"label\": \"有没有情形直接平均反而算低了？用同一个式子找出条件并验证。\", \"purpose\": \"补上误差的反方向：误差正负取决于哪个速度占的时间更多，而不是取决于「平均」本身\", \"move_kind\": \"compare\"}]}}}",
+      "id": "call_01_cJGeMQWddFdivCQN69Cu1850",
+      "name": "tutor.step"
+    }
+  ],
+  "usage_total_tokens": 24827
+}

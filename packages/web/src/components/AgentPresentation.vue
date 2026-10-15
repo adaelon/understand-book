@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { api as sharedApi } from "../api";
 import { bindSceneApi, network } from "../network-context";
 import { openLinkedPresentation } from "../network-presentation";
 const api = bindSceneApi(sharedApi);
+import { sharePresentationKey, type ShareSource } from '../reading-share';
+import { capturePresentation, presentationShareSource } from '../presentation-share';
+import ShareImagePanel from './ShareImagePanel.vue';
 import TutorActivities from "./TutorActivities.vue";
+import TutorContinuation from './TutorContinuation.vue';
+import type { TutorContinuationView } from '../generated/TutorContinuationView';
 import type { PresentationRef } from "../generated/PresentationRef";
 import type { PresentationView } from "../generated/PresentationView";
 import type { PresentationState } from "../generated/PresentationState";
@@ -14,13 +19,36 @@ import { acceptsPresentationMessage, resolvePresentationEditingMessage } from ".
 import { renderMarkdown } from "../md";
 import { sourceChipLabel } from "../source-chip.js";
 
-const props = defineProps<{ sessionId: string; turnId: string; reference: PresentationRef; busy?: boolean; teaching?: boolean; workspace?: boolean; sharedQuestion?: string; toolbarTarget?: HTMLElement }>();
+const props = defineProps<{ sessionId: string; turnId: string; reference: PresentationRef; busy?: boolean; teaching?: boolean; workspace?: boolean; sharedQuestion?: string; toolbarTarget?: HTMLElement; teachingTarget?: HTMLElement; noteMemId?: string; noteReceipt?: PresentationFollowUp; continuationEnabled?: boolean; chatHead?: string | null; answerAvailable?: boolean }>();
 const emit = defineEmits<{
+  (e: "record-note", receipt: PresentationFollowUp, title: string, summary: string): void;
   (e: "source", id: string, anchor: HTMLElement): void;
   (e: "follow-up", message: string, receipt: PresentationFollowUp): void;
   (e: "expand", expanded: boolean): void;
   (e: "update:sharedQuestion", question: string): void;
+  (e: 'choose-continuation', view: TutorContinuationView, optionId: string, receipt?: PresentationFollowUp): void;
+  (e: 'clarify-answer', receipt: PresentationFollowUp): void;
+  (e: 'locate-turn', turnId: string): void;
+  (e: 'edit-question'): void;
+  (e: 'return-reading'): void;
+  (e: 'continuation-available', available: boolean): void;
 }>();
+const sharePresentation = inject(sharePresentationKey, null);
+const localShare = ref<ShareSource | null>(null);
+const exporting = ref(false);
+async function exportCurrent() {
+  if (!ready.value || !view.value || !frame.value || exporting.value) return;
+  const current = generation, selectedView = view.value, selectedFrame = frame.value, channel = frameChannel;
+  const turnId = props.turnId, memId = props.noteMemId;
+  exporting.value = true; saveNotice.value = '';
+  const load = async () => presentationShareSource(selectedView, await capturePresentation(selectedFrame, channel), id => api.agentSourceResolve(turnId, id, memId));
+  try {
+    if (sharePresentation) await sharePresentation(load);
+    else { const source = await load(); if (current === generation) localShare.value = source; }
+  } catch (failure) { if (current === generation) saveNotice.value = `图解未导出：${failure instanceof Error ? failure.message : String(failure)}`; }
+  finally { if (current === generation) exporting.value = false; }
+}
+watch(() => [network.value.epoch, network.value.workspace?.generation], () => { localShare.value = null; });
 const teachingHost = ref<InstanceType<typeof TutorActivities>>();
 const frame = ref<HTMLIFrameElement>();
 const root = ref<HTMLElement>();
@@ -54,7 +82,6 @@ let requestId = 0;
 let pendingSnapshot: { id: number; resolve: (state: PresentationState) => void; reject: (error: Error) => void } | undefined;
 let generation = 0;
 let frameChannel = crypto.randomUUID();
-let observedRevision = 0;
 let themeObserver: MutationObserver | undefined;
 let visibilityObserver: IntersectionObserver | undefined;
 let hostVisible = true;
@@ -63,12 +90,13 @@ const readableText = computed(() => view.value?.readable_view.parts.map(part => 
 watch([() => props.sessionId, () => props.turnId, () => props.reference.presentation_id, () => props.reference.revision], async () => {
   setFrameEditing(false);
   const current = ++generation;
+  localShare.value = null; exporting.value = false;
   frameChannel = crypto.randomUUID();
   pendingSnapshot?.reject(new Error("内容已切换，请重新追问。")); pendingSnapshot = undefined;
   saveNotice.value = "";
-  view.value = undefined; documentText.value = ""; error.value = ""; ready.value = false; observedRevision = 0;
+  view.value = undefined; documentText.value = ""; error.value = ""; ready.value = false;
   try {
-    const result = await api.presentationRead(props.sessionId, props.turnId, props.reference);
+    const result = props.noteMemId ? await api.notePresentationRead(props.noteMemId) : await api.presentationRead(props.sessionId, props.turnId, props.reference);
     if (current !== generation) return;
     const doc = presentationDocument(result, frameChannel);
     view.value = result; documentText.value = doc;
@@ -103,7 +131,7 @@ function onFrameLoad() {
 }
 async function retry() {
   if (!view.value) return;
-  generation++; frameChannel = crypto.randomUUID(); observedRevision = 0; ready.value = false; error.value = "";
+  generation++; frameChannel = crypto.randomUUID(); ready.value = false; error.value = "";
   documentText.value = "";
   await nextTick();
   documentText.value = presentationDocument(view.value, frameChannel);
@@ -130,7 +158,7 @@ async function receive(event: MessageEvent) {
   if (message.kind === "state") {
     if (message.request_id !== undefined) {
       if (pendingSnapshot && pendingSnapshot.id === message.request_id) { pendingSnapshot.resolve(message.state); pendingSnapshot = undefined; }
-    } else { void saveState(message.state).catch(() => {}); }
+    } else if (!props.noteMemId) { void saveState(message.state).catch(() => {}); }
     return;
   }
   if (message.kind === "error") {
@@ -141,19 +169,11 @@ async function receive(event: MessageEvent) {
   if (message.kind === "source" && view.value?.sources.some(source => source.source_ref_id === message.source_ref_id) && root.value && ready.value) {
     emit("source", message.source_ref_id, root.value); return;
   }
-  if (message.kind !== "observe" || !Number.isInteger(message.revision) || message.revision <= observedRevision
-      || typeof message.text !== "string" || !Array.isArray(message.source_ref_ids)) return;
-  const current = generation;
-  observedRevision = message.revision;
-  try {
-    const result = await api.presentationObserve(props.sessionId, props.turnId, props.reference, message.text, message.source_ref_ids);
-    if (current !== generation || observedRevision !== message.revision || error.value) return;
-    if (!result.accepted) throw new Error("rejected");
+  if (message.kind === "ready") {
     ready.value = true;
-    frame.value?.contentWindow?.postMessage({ channel: frameChannel, kind: "accepted", revision: message.revision }, "*");
     theme();
     sendZoom();
-  } catch { if (current === generation && observedRevision === message.revision) error.value = "此内容的文字或来源无法显示，请重新生成。"; }
+  }
 }
 function saveState(state: PresentationState) {
   const current = generation;
@@ -171,7 +191,7 @@ function saveState(state: PresentationState) {
     throw failure;
   });
 }
-async function teachingSnapshot(): Promise<PresentationFollowUp> {
+async function snapshotScene(): Promise<{ receipt: PresentationFollowUp; state: PresentationState }> {
   if (!ready.value || error.value || pendingSnapshot) throw new Error("页面尚未准备好，请稍后重试");
   let timer: ReturnType<typeof setTimeout>;
   const snapshot = await new Promise<PresentationState>((resolve, reject) => {
@@ -180,10 +200,36 @@ async function teachingSnapshot(): Promise<PresentationFollowUp> {
     timer = setTimeout(() => { pendingSnapshot = undefined; reject(new Error("未收到页面现场")); }, 10000);
     frame.value?.contentWindow?.postMessage({ channel: frameChannel, kind: "snapshot", request_id: id }, "*");
   });
-  return saveState(snapshot);
+  return { receipt: await saveState(snapshot), state: snapshot };
+}
+async function teachingSnapshot(): Promise<PresentationFollowUp> { return (await snapshotScene()).receipt; }
+async function clarifyAnswer() {
+  if (saving.value || props.busy) return;
+  saving.value = true;
+  const current = generation;
+  try {
+    const receipt = await teachingSnapshot();
+    if (current === generation && !props.busy) emit('clarify-answer', receipt);
+  } catch (failure) { saveNotice.value = `现场未保存：${String(failure)}`; }
+  finally { saving.value = false; }
+}
+async function recordNote() {
+  if (!ready.value || saving.value || props.noteMemId) return;
+  saving.value = true;
+  const current = generation;
+  try {
+    const { receipt, state } = await snapshotScene();
+    if (current === generation) emit("record-note", receipt, view.value?.title ?? "演示", [state.visible_step, state.observed_result].filter(Boolean).join(" · ").slice(0, 240));
+  } catch (failure) { if (current === generation) saveNotice.value = `记录未开始：${failure instanceof Error ? failure.message : String(failure)}`; }
+  finally { saving.value = false; }
 }
 async function followUp() {
   if (!ready.value || error.value || saving.value || props.busy) return;
+  if (props.noteMemId && props.noteReceipt) {
+    emit("follow-up", question.value.trim() || "解释记录时的结果", props.noteReceipt);
+    question.value = "";
+    return;
+  }
   saving.value = true;
   const current = generation;
   const draft = question.value;
@@ -215,6 +261,7 @@ function toggleExpanded() {
   if (!expanded.value) void nextTick(() => expandButton.value?.focus({ preventScroll: true }));
 }
 function keydown(event: KeyboardEvent) {
+  if (event.key === "Escape" && document.querySelector(".share-image-panel[open]")) return;
   if (event.key === "Escape" && readableOpen.value) { readableOpen.value = false; return; }
   if (event.key !== "Escape" || !expanded.value) return;
   expanded.value = false;
@@ -238,19 +285,12 @@ async function restore(receipt: PresentationFollowUp) {
       });
     }
     if (current !== generation) return;
-    const snapshot = await new Promise<PresentationState>((resolve, reject) => {
-      const id = ++requestId;
-      pendingSnapshot = { id, resolve, reject };
-      timer = setTimeout(() => { pendingSnapshot = undefined; reject(new Error("未收到页面现场")); }, 10000);
-      frame.value?.contentWindow?.postMessage({ channel: frameChannel, kind: "snapshot", request_id: id }, "*");
-    });
-    clearTimeout(timer);
-    await saveState(snapshot);
-    const restored = await api.presentationRead(props.sessionId, props.turnId, props.reference, receipt);
+    if (!props.noteMemId) await teachingSnapshot();
+    const restored = props.noteMemId ? await api.notePresentationRead(props.noteMemId, true) : await api.presentationRead(props.sessionId, props.turnId, props.reference, receipt);
     if (current !== generation) return;
     view.value = restored;
     await retry();
-    saveNotice.value = "已回到提问时的现场";
+    saveNotice.value = props.noteMemId ? "已回到记录时的现场" : "已回到提问时的现场";
   } catch (failure) { if (current === generation) saveNotice.value = `恢复失败：${failure instanceof Error ? failure.message : String(failure)}`; }
   finally { clearTimeout(timer); saving.value = false; }
 }
@@ -293,9 +333,11 @@ onBeforeUnmount(() => {
           <button type="button" aria-label="恢复演示原始大小" @click="setZoom(100)">{{ zoomPercent }}%</button>
           <button type="button" aria-label="放大演示" :disabled="zoomPercent >= 150" @click="setZoom(zoomPercent + 10)">＋</button>
         </span>
+        <button v-if="view && !noteMemId && !network.linked" type="button" :disabled="!ready || saving" @click="recordNote">记一下</button>
+        <button v-if="view" type="button" :disabled="!ready || saving || exporting" @click="exportCurrent">{{ exporting ? "正在取图…" : "导出长图" }}</button>
         <button v-if="view" type="button" aria-label="文字说明与来源" :aria-expanded="readableOpen" @click="readableOpen = !readableOpen">说明与来源</button>
         <button v-if="view && network.linked" type="button" :aria-expanded="questionOpen" @click="questionOpen = !questionOpen">追问</button>
-        <button v-if="view && network.enabled && !network.linked" title="在附属窗口打开" @click="openAttached">新窗口</button>
+        <button v-if="view && network.enabled && !network.linked && !noteMemId" title="在附属窗口打开" @click="openAttached">新窗口</button>
         <button v-if="view && !network.linked" ref="expandButton" type="button" class="presentation-expand" @click="toggleExpanded" :aria-expanded="expanded">{{ expanded ? '收起' : '展开' }}</button>
         <small v-if="saveNotice" class="presentation-save-notice" role="status" :title="saveNotice">{{ saveNotice }}</small>
       </header>
@@ -313,7 +355,14 @@ onBeforeUnmount(() => {
         referrerpolicy="no-referrer"
         @load="onFrameLoad"
       />
-      <TutorActivities ref="teachingHost" v-if="view && ready && teaching" :session-id="sessionId" :turn-id="turnId" :reference="reference" :snapshot="teachingSnapshot" :ready="ready" />
+      <Teleport :to="teachingTarget || 'body'" :disabled="!teachingTarget">
+        <TutorActivities ref="teachingHost" v-if="view && ready && teaching" :session-id="sessionId" :turn-id="turnId" :reference="reference" :snapshot="teachingSnapshot" :ready="ready" :sources="view.sources" @source="(id, anchor) => emit('source', id, anchor)" />
+        <TutorContinuation v-if="view && ready && teaching && !noteMemId && chatHead !== undefined"
+          :session-id="sessionId" :turn-id="turnId" :reference="reference" :snapshot="teachingSnapshot" :head="chatHead ?? null" :enabled="!!continuationEnabled" :busy="busy || saving"
+          @available="emit('continuation-available', $event)"
+          @choose="(original, option, receipt) => emit('choose-continuation', original, option, receipt)" @locate="emit('locate-turn', $event)" @edit="emit('edit-question')" @read="emit('return-reading')" />
+        <button v-if="workspace && ready && answerAvailable" class="presentation-clarify" :disabled="busy || saving" @click="clarifyAnswer">这一步没跟上</button>
+      </Teleport>
       <form v-if="view && !workspace && (!network.linked || questionOpen)" class="presentation-follow-up" @submit.prevent="followUp">
         <input v-model="question" aria-label="针对当前现场追问" placeholder="解释当前结果，或描述要修改的内容…" :disabled="saving || busy" />
         <button type="submit" :disabled="!ready || saving || busy">{{ saving ? '正在保存现场…' : question.trim() ? '发送追问' : '解释现在的结果' }}</button>
@@ -325,12 +374,13 @@ onBeforeUnmount(() => {
       <p v-for="assumption in view.assumptions" :key="assumption">{{ assumption }}</p>
       <button v-for="source in view.sources" :key="source.source_ref_id" type="button" :title="source.label" @click="emit('source', source.source_ref_id, $event.currentTarget as HTMLElement)">{{ sourceChipLabel(view.sources, source.source_ref_id) }}</button>
     </section>
+    <ShareImagePanel v-if="localShare" :source="localShare" @close="localShare = null" />
   </section>
 </template>
 
 <style scoped>
-.agent-presentation { position: relative; container-type: inline-size; border: 1px solid var(--line, #e6dfd8); border-radius: 12px; background: var(--canvas, #faf9f5); color: var(--ink, #252523); overflow: hidden; margin: 12px 0; min-width: 0; }
-.presentation-toolbar { flex: 1 1 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 6px 10px; min-width: 0; color: var(--ink); font-size: 13px; }
+.agent-presentation { position: relative; container-type: inline-size; border: 1px solid var(--line, #e6dfd8); border-radius: 24px; background: var(--canvas, #faf9f5); color: var(--ink, #252523); overflow: hidden; margin: 12px 0; min-width: 0; }
+.presentation-toolbar { flex: 1 1 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 12px 16px; min-width: 0; color: var(--ink); font-size: 13px; }
 .presentation-toolbar strong { flex: 1 1 100px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 button { min-height: 30px; font: inherit; color: var(--accent, #a9583e); border: 1px solid var(--line, #e6dfd8); border-radius: 6px; background: var(--surface, #efe9de); padding: 3px 7px; cursor: pointer; }
 .presentation-zoom { display: inline-flex; flex: none; gap: 2px; }

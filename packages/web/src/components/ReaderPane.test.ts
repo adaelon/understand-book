@@ -50,6 +50,8 @@ describe("ReaderPane Note rendering", () => {
     expect(wrapper.get('[data-lid="1.2"]').element.closest("p")).toBeNull();
     expect(wrapper.find('[data-lid="1.2"] .katex-display').exists()).toBe(true);
     expect(wrapper.findAll(".seg")).toHaveLength(3);
+    await wrapper.get('[data-lid="1.2"] button').trigger('click');
+    expect(wrapper.emitted('open-formula')?.at(-1)?.[0]).toMatchObject({ lid: '1.2', formula: null });
     await wrapper.get('[data-lid="1.2"]').trigger("click");
     expect(wrapper.emitted("select")?.at(-1)).toEqual(["1.2"]);
 
@@ -102,7 +104,8 @@ describe("ReaderPane Note rendering", () => {
     expect(wrapper.findAll('.annotation-marker')[0].text()).toContain('2');
     await wrapper.findAll('.annotation-marker')[0].trigger('click');
     let preview = document.querySelector('.annotation-preview')!;
-    expect(preview.textContent).toContain('Short **body**');
+    expect(preview.textContent).toContain('Short body');
+    expect(preview.querySelector('.note-detail strong')?.textContent).toBe('body');
     expect(document.querySelectorAll('.annotation-preview')).toHaveLength(1);
     (preview.querySelector('footer button') as HTMLButtonElement).click();
     expect(wrapper.emitted('edit-note')?.at(-1)).toEqual([short]);
@@ -308,4 +311,25 @@ describe("ReaderPane Note rendering", () => {
     expect(table.text).toBe("| 状态 | 归属 |\n| 笔记 | 读者 |");
     wrapper.unmount();
   });
+});
+
+
+it('MCP7 scrolls to the exact source mark inside a long paragraph', async () => {
+  const wrapper = mount(ReaderPane, { props: {
+    segments: [segment('1.1', 'paragraph')], viewportAnchor: null, selectedLid: null,
+    renderSeg: () => 'before <mark class="source-focus-mark">evidence</mark> after',
+    renderMarkdown: source => source, markdownHeadingLevel: () => null,
+    isAsset: () => false, isHighlighted: () => false, highlightsOf: () => [],
+    highlightCardsOf: () => [], visibleNotes: [], hlExcerpt: () => '', imageMeta: () => null, imageAsset: () => null,
+  } });
+  try {
+    const pane = wrapper.get('.reader-pane').element as HTMLElement;
+    pane.scrollTop = 0;
+    vi.spyOn(pane, 'getBoundingClientRect').mockReturnValue({ top: 0 } as DOMRect);
+    vi.spyOn(wrapper.get('[data-lid="1.1"]').element, 'getBoundingClientRect').mockReturnValue({ top: 0 } as DOMRect);
+    vi.spyOn(wrapper.get('mark').element, 'getBoundingClientRect').mockReturnValue({ top: 400 } as DOMRect);
+    expect(await wrapper.vm.scrollSourceIntoView('1.1')).toBe(true);
+    expect(pane.scrollTop).toBe(400);
+    expect(await wrapper.vm.scrollSourceIntoView('missing')).toBe(false);
+  } finally { wrapper.unmount(); }
 });

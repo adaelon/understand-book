@@ -1,0 +1,1 @@
+{"extends":"../tsconfig.json","compilerOptions":{"types":["vite/client","node"]},"include":["focus-pdf.spec.ts","focus-app-backend.ts","fixtures/focus-pdf.ts","../vite.focus-pdf.config.ts","../playwright.focus-pdf.config.ts"]}

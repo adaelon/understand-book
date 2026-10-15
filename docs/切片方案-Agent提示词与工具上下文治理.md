@@ -2,6 +2,8 @@
 
 状态:方案冻结;AP0-AP10 全部完成;发布硬门禁通过。
 
+后续优化：[工具契约与 Agent 可用性优化](切片方案-工具契约与Agent可用性优化.md)，继续完善状态有效的工具示例、可执行续取、结果预算下的语义保留与真实 Agent 对照。
+
 冻结决策:[ADR-0091](adr/0091-model-aware-agent-request-tool-exposure-and-active-context-budget.md)。修订关系:[ADR-0026](adr/0026-外层E编排loop-原生toolcalling-adapter扩chat-双重停机usage口径-memory独立json落盘.md)、[ADR-0087](adr/0087-provenance-aware-answer-delivery-and-compact-provider-history.md)。
 
 ## 0. 对齐确认单

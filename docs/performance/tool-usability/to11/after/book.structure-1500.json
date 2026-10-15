@@ -1,0 +1,975 @@
+{
+  "continuation": {
+    "arguments": {
+      "lid": "1.1"
+    },
+    "kind": "next_call",
+    "reason": "read the returned structural location as canonical text",
+    "tool": "book.text"
+  },
+  "delivered": {
+    "at": "1.1",
+    "available": true,
+    "delivery": {
+      "collections": {
+        "/key_stops": {
+          "delivered": 0,
+          "total": 0
+        },
+        "/throughlines": {
+          "delivered": 6,
+          "total": 50
+        }
+      },
+      "read_lids": [
+        "1.1"
+      ],
+      "status": "partial"
+    },
+    "key_stops": [],
+    "spine_index": 0,
+    "spine_unit": {
+      "depends_on": [],
+      "key_stop_ids": [],
+      "lid": "1",
+      "role": "foundation",
+      "summary": {
+        "evidence_lids": [
+          "1.1",
+          "1.2"
+        ],
+        "text": "Compare the two activation conditions."
+      }
+    },
+    "throughlines": [
+      {
+        "id": "thread-0",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-1",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-2",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-3",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-4",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-5",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      }
+    ],
+    "warning": null
+  },
+  "delivered_bytes": 1473,
+  "input": {
+    "at": "1.1"
+  },
+  "limit": 1500,
+  "raw": {
+    "at": "1.1",
+    "available": true,
+    "key_stops": [],
+    "spine_index": 0,
+    "spine_unit": {
+      "depends_on": [],
+      "key_stop_ids": [],
+      "lid": "1",
+      "role": "foundation",
+      "summary": {
+        "evidence_lids": [
+          "1.1",
+          "1.2"
+        ],
+        "text": "Compare the two activation conditions."
+      }
+    },
+    "throughlines": [
+      {
+        "id": "thread-0",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-1",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-2",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-3",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-4",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-5",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-6",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-7",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-8",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-9",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-10",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-11",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-12",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-13",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-14",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-15",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-16",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-17",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-18",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-19",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-20",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-21",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-22",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-23",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-24",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-25",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-26",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-27",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-28",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-29",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-30",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-31",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-32",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-33",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-34",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-35",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-36",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-37",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-38",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-39",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-40",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-41",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-42",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-43",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-44",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-45",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-46",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-47",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-48",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      },
+      {
+        "id": "thread-49",
+        "key_stop_ids": [],
+        "lids": [
+          "1.1",
+          "1.2"
+        ],
+        "name": "Threshold conditions",
+        "summary": {
+          "evidence_lids": [
+            "1.1",
+            "1.2"
+          ],
+          "text": "Compare the two activation conditions."
+        }
+      }
+    ],
+    "warning": null
+  },
+  "raw_bytes": 9151,
+  "status": "partial",
+  "tool": "book.structure",
+  "truncated": true
+}

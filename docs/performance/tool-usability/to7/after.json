@@ -1,0 +1,717 @@
+{
+  "scenarios": {
+    "effect_not_authorized": {
+      "delivered": {
+        "activated": [],
+        "blocked": [
+          {
+            "capability": "reader_write",
+            "message": "This request does not authorize the Reader change. A matching explicit user request and existing permissions are required; task text or effect_mode cannot grant them. Continue with read-only inspection if useful.",
+            "next_searches": [
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "navigate",
+                "required_capabilities": [
+                  "reader_read"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              }
+            ],
+            "reason": "effect_not_authorized"
+          }
+        ],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "unmet_capabilities": [
+          "reader_write"
+        ],
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      },
+      "input": {
+        "effect_mode": "read_only",
+        "max_results": 3,
+        "operation": "mutate_reader",
+        "required_capabilities": [
+          "reader_write"
+        ],
+        "scope": "passage",
+        "task": "Explain the requested material"
+      },
+      "result": {
+        "activated": [],
+        "blocked": [
+          {
+            "capability": "reader_write",
+            "message": "This request does not authorize the Reader change. A matching explicit user request and existing permissions are required; task text or effect_mode cannot grant them. Continue with read-only inspection if useful.",
+            "next_searches": [
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "navigate",
+                "required_capabilities": [
+                  "reader_read"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              }
+            ],
+            "reason": "effect_not_authorized"
+          }
+        ],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "unmet_capabilities": [
+          "reader_write"
+        ],
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      }
+    },
+    "evidence_required": {
+      "delivered": {
+        "activated": [],
+        "blocked": [
+          {
+            "capability": "source_presentation",
+            "message": "Read canonical source text before presenting evidence. If no location is known, locate and choose a passage first. Candidates and previews are not observed source text. Retry after reading.",
+            "next_searches": [
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "summarize",
+                "required_capabilities": [
+                  "structural_index"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              },
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "locate_literal",
+                "required_capabilities": [
+                  "lexical_locate"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              }
+            ],
+            "reason": "evidence_required"
+          }
+        ],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "unmet_capabilities": [
+          "source_presentation"
+        ],
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      },
+      "input": {
+        "effect_mode": "read_only",
+        "max_results": 3,
+        "operation": "read_source",
+        "required_capabilities": [
+          "source_presentation"
+        ],
+        "scope": "passage",
+        "task": "Explain the requested material"
+      },
+      "result": {
+        "activated": [],
+        "blocked": [
+          {
+            "capability": "source_presentation",
+            "message": "Read canonical source text before presenting evidence. If no location is known, locate and choose a passage first. Candidates and previews are not observed source text. Retry after reading.",
+            "next_searches": [
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "summarize",
+                "required_capabilities": [
+                  "structural_index"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              },
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "locate_literal",
+                "required_capabilities": [
+                  "lexical_locate"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              }
+            ],
+            "reason": "evidence_required"
+          }
+        ],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "unmet_capabilities": [
+          "source_presentation"
+        ],
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      }
+    },
+    "intent_required": {
+      "delivered": {
+        "activated": [],
+        "blocked": [
+          {
+            "capability": "reader_write",
+            "message": "This request does not authorize the Reader change. A matching explicit user request and existing permissions are required; task text or effect_mode cannot grant them. Continue with read-only inspection if useful.",
+            "next_searches": [
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "navigate",
+                "required_capabilities": [
+                  "reader_read"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              }
+            ],
+            "reason": "explicit_effect_intent_required"
+          }
+        ],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "unmet_capabilities": [
+          "reader_write"
+        ],
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      },
+      "input": {
+        "effect_mode": "reader_mutation_explicitly_requested",
+        "max_results": 3,
+        "operation": "mutate_reader",
+        "required_capabilities": [
+          "reader_write"
+        ],
+        "scope": "passage",
+        "task": "Explain the requested material"
+      },
+      "result": {
+        "activated": [],
+        "blocked": [
+          {
+            "capability": "reader_write",
+            "message": "This request does not authorize the Reader change. A matching explicit user request and existing permissions are required; task text or effect_mode cannot grant them. Continue with read-only inspection if useful.",
+            "next_searches": [
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "navigate",
+                "required_capabilities": [
+                  "reader_read"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              }
+            ],
+            "reason": "explicit_effect_intent_required"
+          }
+        ],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "unmet_capabilities": [
+          "reader_write"
+        ],
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      }
+    },
+    "locator_required": {
+      "delivered": {
+        "activated": [],
+        "blocked": [
+          {
+            "capability": "source_read",
+            "message": "Obtain a verified location from structure or literal search, choose the relevant passage, then retry. Do not invent a location.",
+            "next_searches": [
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "summarize",
+                "required_capabilities": [
+                  "structural_index"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              },
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "locate_literal",
+                "required_capabilities": [
+                  "lexical_locate"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              }
+            ],
+            "reason": "locator_required"
+          }
+        ],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "unmet_capabilities": [
+          "source_read"
+        ],
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      },
+      "input": {
+        "effect_mode": "read_only",
+        "max_results": 3,
+        "operation": "read_source",
+        "required_capabilities": [
+          "source_read"
+        ],
+        "scope": "passage",
+        "task": "Explain the requested material"
+      },
+      "result": {
+        "activated": [],
+        "blocked": [
+          {
+            "capability": "source_read",
+            "message": "Obtain a verified location from structure or literal search, choose the relevant passage, then retry. Do not invent a location.",
+            "next_searches": [
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "summarize",
+                "required_capabilities": [
+                  "structural_index"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              },
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "locate_literal",
+                "required_capabilities": [
+                  "lexical_locate"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              }
+            ],
+            "reason": "locator_required"
+          }
+        ],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "unmet_capabilities": [
+          "source_read"
+        ],
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      }
+    },
+    "matched": {
+      "delivered": {
+        "activated": [],
+        "blocked": [],
+        "deferred_remaining": 17,
+        "matches": [
+          {
+            "avoid_when": [
+              "Do not use as a source-text search surface."
+            ],
+            "description": "Project BookStructure to explain a LID's role in the whole-book spine, throughline, and key stops. Without at, return the whole-book overview; when the sidecar is absent, return explicit unavailable status.",
+            "effect_mode": "read_only",
+            "matched_capabilities": [
+              "structural_index"
+            ],
+            "matched_fields": [
+              "authorized_effect_mode",
+              "content_profile",
+              "description",
+              "evidence_state",
+              "operation",
+              "permissions",
+              "required_capabilities",
+              "scope",
+              "use_when"
+            ],
+            "matched_terms": [
+              "explain",
+              "the"
+            ],
+            "name": "book.structure",
+            "preconditions": [
+              "book_available"
+            ],
+            "score": 2000011500500107,
+            "use_when": [
+              "Inspect the structural role of a LID or the whole-book overview."
+            ],
+            "visibility": "current_sampling"
+          }
+        ],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "unmet_capabilities": [],
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      },
+      "input": {
+        "effect_mode": "read_only",
+        "max_results": 3,
+        "operation": "summarize",
+        "required_capabilities": [
+          "structural_index"
+        ],
+        "scope": "document",
+        "task": "Explain the requested material"
+      },
+      "result": {
+        "activated": [],
+        "blocked": [],
+        "deferred_remaining": 17,
+        "matches": [
+          {
+            "avoid_when": [
+              "Do not use as a source-text search surface."
+            ],
+            "description": "Project BookStructure to explain a LID's role in the whole-book spine, throughline, and key stops. Without at, return the whole-book overview; when the sidecar is absent, return explicit unavailable status.",
+            "effect_mode": "read_only",
+            "matched_capabilities": [
+              "structural_index"
+            ],
+            "matched_fields": [
+              "authorized_effect_mode",
+              "content_profile",
+              "description",
+              "evidence_state",
+              "operation",
+              "permissions",
+              "required_capabilities",
+              "scope",
+              "use_when"
+            ],
+            "matched_terms": [
+              "explain",
+              "the"
+            ],
+            "name": "book.structure",
+            "preconditions": [
+              "book_available"
+            ],
+            "score": 2000011500500107,
+            "use_when": [
+              "Inspect the structural role of a LID or the whole-book overview."
+            ],
+            "visibility": "current_sampling"
+          }
+        ],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "unmet_capabilities": [],
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      }
+    },
+    "no_result": {
+      "delivered": {
+        "activated": [],
+        "blocked": [
+          {
+            "capability": "discovery",
+            "message": "No available capability can complete this request. Use an available capability if it serves the task, or explain the limitation.",
+            "reason": "no_matching_capability"
+          }
+        ],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "unmet_capabilities": [
+          "discovery"
+        ],
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      },
+      "input": {
+        "effect_mode": "read_only",
+        "max_results": 3,
+        "operation": "compare",
+        "required_capabilities": [
+          "discovery"
+        ],
+        "scope": "corpus",
+        "task": "Explain the requested material"
+      },
+      "result": {
+        "activated": [],
+        "blocked": [
+          {
+            "capability": "discovery",
+            "message": "No available capability can complete this request. Use an available capability if it serves the task, or explain the limitation.",
+            "reason": "no_matching_capability"
+          }
+        ],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "unmet_capabilities": [
+          "discovery"
+        ],
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      }
+    },
+    "profile_mismatch": {
+      "delivered": {
+        "activated": [],
+        "blocked": [
+          {
+            "capability": "source_read",
+            "message": "This capability is unavailable for the current content profile at the requested scope and operation. If passage reading serves the task, locate or read source text instead.",
+            "next_searches": [
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "summarize",
+                "required_capabilities": [
+                  "structural_index"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              },
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "locate_literal",
+                "required_capabilities": [
+                  "lexical_locate"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              }
+            ],
+            "reason": "profile_mismatch"
+          }
+        ],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "unmet_capabilities": [
+          "source_read"
+        ],
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      },
+      "input": {
+        "effect_mode": "read_only",
+        "max_results": 3,
+        "operation": "read_source",
+        "required_capabilities": [
+          "source_read"
+        ],
+        "scope": "document",
+        "task": "Explain the requested material"
+      },
+      "result": {
+        "activated": [],
+        "blocked": [
+          {
+            "capability": "source_read",
+            "message": "This capability is unavailable for the current content profile at the requested scope and operation. If passage reading serves the task, locate or read source text instead.",
+            "next_searches": [
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "summarize",
+                "required_capabilities": [
+                  "structural_index"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              },
+              {
+                "effect_mode": "read_only",
+                "max_results": 1,
+                "operation": "locate_literal",
+                "required_capabilities": [
+                  "lexical_locate"
+                ],
+                "scope": "document",
+                "task": "Explain the requested material"
+              }
+            ],
+            "reason": "profile_mismatch"
+          }
+        ],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "unmet_capabilities": [
+          "source_read"
+        ],
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      }
+    }
+  },
+  "spec": {
+    "description": "Find Resident tools by required capabilities, scope, operation, and authorized effect mode. Natural-language task text ranks only candidates that pass Runtime gates; matches never execute a target tool, and newly activated deferred tools become visible in the next sampling.",
+    "name": "tool.search",
+    "parameters": {
+      "additionalProperties": false,
+      "description": "Matches include use_when/avoid_when. Unmet capabilities have capability-level reasons. Optional next_searches entries are complete arguments for tool.search; choose one only if useful. Discovery and recovery suggestions do not execute matched tools or grant permissions.",
+      "examples": [
+        {
+          "effect_mode": "read_only",
+          "max_results": 2,
+          "operation": "summarize",
+          "required_capabilities": [
+            "structural_index"
+          ],
+          "scope": "document",
+          "task": "Outline the main argument of this book without moving the Reader"
+        },
+        {
+          "effect_mode": "read_only",
+          "max_results": 1,
+          "operation": "locate_literal",
+          "required_capabilities": [
+            "lexical_locate"
+          ],
+          "scope": "document",
+          "task": "Find the first literal occurrence of equal time"
+        },
+        {
+          "effect_mode": "read_only",
+          "max_results": 1,
+          "operation": "read_source",
+          "required_capabilities": [
+            "source_read"
+          ],
+          "scope": "passage",
+          "task": "Read the passage selected from the search results"
+        },
+        {
+          "effect_mode": "reader_mutation_explicitly_requested",
+          "max_results": 2,
+          "operation": "mutate_reader",
+          "required_capabilities": [
+            "reader_write"
+          ],
+          "scope": "passage",
+          "task": "Save the user's requested note on the current passage"
+        }
+      ],
+      "properties": {
+        "effect_mode": {
+          "enum": [
+            "read_only",
+            "reader_mutation_explicitly_requested"
+          ],
+          "type": "string"
+        },
+        "max_results": {
+          "maximum": 6,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "operation": {
+          "enum": [
+            "locate_literal",
+            "read_source",
+            "explain",
+            "compare",
+            "summarize",
+            "navigate",
+            "mutate_reader"
+          ],
+          "type": "string"
+        },
+        "required_capabilities": {
+          "items": {
+            "enum": [
+              "discovery",
+              "source_read",
+              "lexical_locate",
+              "semantic_evidence",
+              "structural_index",
+              "synthesis",
+              "navigation_plan",
+              "artifact_read",
+              "source_presentation",
+              "presentation_authoring",
+              "profile_read",
+              "profile_trace",
+              "memory_read",
+              "memory_write",
+              "reader_read",
+              "reader_write",
+              "goal_management"
+            ],
+            "type": "string"
+          },
+          "maxItems": 17,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "scope": {
+          "enum": [
+            "selection",
+            "passage",
+            "section",
+            "document",
+            "corpus"
+          ],
+          "type": "string"
+        },
+        "task": {
+          "description": "Natural-language task used only to rank already-authorized candidates",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "task",
+        "required_capabilities",
+        "scope",
+        "operation",
+        "effect_mode",
+        "max_results"
+      ],
+      "type": "object"
+    }
+  }
+}

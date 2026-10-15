@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "phase": "after",
+  "checks": [
+    "/ and referenced assets readable and match release",
+    "/?account=mcp and referenced assets readable and match release",
+    "/admin/users/reader and referenced assets readable and match release",
+    "Existing reader, authorized books, literal search, manifest, Tutor readiness and PDF Range readable",
+    "Catalog and model allowance equal to pre-deployment response"
+  ],
+  "publication_count": 10,
+  "model_requests": 0,
+  "test_session_logged_out": true
+}

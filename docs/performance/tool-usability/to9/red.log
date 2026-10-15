@@ -1,0 +1,43 @@
+   Compiling read-tools v0.0.0 (E:\allwork\download\agent\understand-book\crates\read-tools)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Finished `test` profile [unoptimized] target(s) in 14.36s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\read_tools-c7e341cde690a4ec.exe)
+
+running 2 tests
+test tests::context_to9_counts_deduplicated_relations_across_layers ... FAILED
+test tests::context_to9_counts_known_candidates_before_k_and_preserves_availability ... FAILED
+
+failures:
+
+---- tests::context_to9_counts_deduplicated_relations_across_layers stdout ----
+
+thread 'tests::context_to9_counts_deduplicated_relations_across_layers' (35668) panicked at crates\read-tools\src\lib.rs:9195:13:
+assertion `left == right` failed
+  left: Null
+ right: 3
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- tests::context_to9_counts_known_candidates_before_k_and_preserves_availability stdout ----
+
+thread 'tests::context_to9_counts_known_candidates_before_k_and_preserves_availability' (4528) panicked at crates\read-tools\src\lib.rs:9175:13:
+assertion `left == right` failed: "above_k"
+  left: Null
+ right: Number(12)
+
+
+failures:
+    tests::context_to9_counts_deduplicated_relations_across_layers
+    tests::context_to9_counts_known_candidates_before_k_and_preserves_availability
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 173 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p read-tools --lib`

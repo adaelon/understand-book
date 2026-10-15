@@ -1,0 +1,7 @@
+
+running 1 test
+TC6_LIVE status=200 samples=6 superseded=true
+test tests::tutor_continuation_tests::continuation_tc6_live_correction_trajectory ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 761 filtered out; finished in 57.35s
+

@@ -1,0 +1,250 @@
+{
+  "case": "save-note",
+  "deliveries": [],
+  "elapsed_ms": 44407,
+  "events": [],
+  "http_status": 200,
+  "reader_after": {
+    "layout": {
+      "active_preset": "technical_read",
+      "focused_slot": "technical.agent",
+      "open_slots": [
+        "technical.structure_map",
+        "technical.agent"
+      ],
+      "panel_sizes": {
+        "technical.agent": {
+          "kind": "percent",
+          "value": 30.0
+        },
+        "technical.structure_map": {
+          "kind": "percent",
+          "value": 24.0
+        }
+      },
+      "pinned_evidence": [],
+      "rev": 0,
+      "slot_order": {
+        "left": [
+          "technical.structure_map"
+        ],
+        "right": [
+          "technical.agent"
+        ]
+      }
+    },
+    "open_panels": [],
+    "selection": null,
+    "viewport": {
+      "anchor_lid": "1.1",
+      "bottom_lid": "1.2",
+      "top_lid": "1.1",
+      "visible_lids": [
+        "1.1",
+        "1.2"
+      ],
+      "width": 20
+    }
+  },
+  "reopened_records": [],
+  "reply": {
+    "answer": "当前没有可用的笔记保存工具，尚未保存。\n\n笔记内容：平均速度＝总路程／总时间。",
+    "answer_view": {
+      "parts": [
+        {
+          "kind": "markdown",
+          "text": "当前没有可用的笔记保存工具，尚未保存。\n\n笔记内容：平均速度＝总路程／总时间。"
+        }
+      ],
+      "sources": []
+    },
+    "effects": [],
+    "incomplete": false,
+    "memory_updates": [],
+    "profile_usage": {
+      "claimed_used_fact_ids": [],
+      "influences": [],
+      "injected_fact_ids": [],
+      "snapshot_revision": 0
+    },
+    "tokens_spent": 49568,
+    "trace": [
+      {
+        "args": "{\"effect_mode\":\"reader_mutation_explicitly_requested\",\"max_results\":1,\"operation\":\"mutate_reader\",\"required_capabilities\":[\"memory_write\"],\"scope\":\"passage\"}",
+        "model_tool_loop": 1,
+        "result_digest": "tool-result-fnv1a64-d50a2d147d5d2f91-bytes-326",
+        "tool": "tool.search"
+      }
+    ],
+    "turns": 2
+  },
+  "turn": {
+    "domain": {
+      "effects": [],
+      "scene": {
+        "anchor_lid": "1.1",
+        "generation": 1,
+        "selection": null,
+        "workspace_id": "local"
+      },
+      "teaching": [
+        {
+          "receipt_ids": [
+            "assets:turn_c21058a5744852ec",
+            "usage:observation:tc0-average-speed:user:turn_c21058a5744852ec",
+            "binding:turn_c21058a5744852ec"
+          ],
+          "revision": 0,
+          "session_id": "observation:tc0-average-speed"
+        },
+        {
+          "receipt_ids": [
+            "usage:observation:tc0-average-speed:assistant:turn_c21058a5744852ec"
+          ],
+          "revision": 0,
+          "session_id": "observation:tc0-average-speed"
+        }
+      ]
+    },
+    "goal_ref": {
+      "id": "goal_turn_c21058a5744852ec",
+      "revision": 2
+    },
+    "outcome": {
+      "answer": "当前没有可用的笔记保存工具，尚未保存。\n\n笔记内容：平均速度＝总路程／总时间。",
+      "answer_view": {
+        "parts": [
+          {
+            "kind": "markdown",
+            "text": "当前没有可用的笔记保存工具，尚未保存。\n\n笔记内容：平均速度＝总路程／总时间。"
+          }
+        ],
+        "sources": []
+      },
+      "effects": [],
+      "incomplete": false,
+      "memory_updates": [],
+      "profile_usage": {
+        "claimed_used_fact_ids": [],
+        "influences": [],
+        "injected_fact_ids": [],
+        "snapshot_revision": 0
+      },
+      "tokens_spent": 49568,
+      "trace": [
+        {
+          "args": "{\"effect_mode\":\"reader_mutation_explicitly_requested\",\"max_results\":1,\"operation\":\"mutate_reader\",\"required_capabilities\":[\"memory_write\"],\"scope\":\"passage\"}",
+          "model_tool_loop": 1,
+          "result_digest": "tool-result-fnv1a64-d50a2d147d5d2f91-bytes-326",
+          "tool": "tool.search"
+        }
+      ],
+      "turns": 2
+    },
+    "question_anchor_lid": null,
+    "question_quote": {
+      "lid": "1.1",
+      "quote": "Average speed is total distance divided by total time.",
+      "ranges": [
+        {
+          "lid": "1.1",
+          "range": {
+            "end": 71,
+            "start": 17
+          }
+        }
+      ],
+      "raw_quote": "Average speed is total distance divided by total time.",
+      "resolution_basis": "exact",
+      "resolved_quote": "Average speed is total distance divided by total time.",
+      "status": "resolved"
+    },
+    "run_summary": {
+      "activities": [
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 19654.418599999997,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "gpt-6.1-sol",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 36.379000000000005,
+          "status": "succeeded",
+          "step_id": 1,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": null,
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": 24372
+          },
+          "usage_total_tokens": 24372
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 10.83940000000075,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "查找可用工具",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "tool.search",
+          "parent_step_id": null,
+          "result_count": 0,
+          "started_ms": 19716.2365,
+          "status": "no_result",
+          "step_id": 2,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 24408.393999999997,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "gpt-6.1-sol",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 19759.8801,
+          "status": "succeeded",
+          "step_id": 3,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": null,
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": 25196
+          },
+          "usage_total_tokens": 25196
+        }
+      ],
+      "effects": [],
+      "last_seq": null,
+      "trace": [
+        {
+          "args": "{\"effect_mode\":\"reader_mutation_explicitly_requested\",\"max_results\":1,\"operation\":\"mutate_reader\",\"required_capabilities\":[\"memory_write\"],\"scope\":\"passage\"}",
+          "model_tool_loop": 1,
+          "result_digest": "tool-result-fnv1a64-d50a2d147d5d2f91-bytes-326",
+          "tool": "tool.search"
+        }
+      ]
+    },
+    "status": "completed",
+    "turn_id": "turn_c21058a5744852ec",
+    "user": "把‘平均速度＝总路程／总时间’记为这一段的笔记。",
+    "user_turn_ordinal": 1
+  }
+}

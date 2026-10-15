@@ -35,6 +35,7 @@ import { AUTOMATIC_BUILD_RELEASE_POLICY_MEMBERS_V1 } from "../../packages/core/s
 import {
   AUTOMATIC_BUILD_EXECUTOR_PROMPT_MODES,
   composeAutomaticBuildExecutorPrompt,
+  registerPackagedBuildAssets,
   type AutomaticBuildExecutorPromptMode,
 } from "./executor-prompt";
 
@@ -93,6 +94,11 @@ function forwardedArgs(offset: number): string[] {
 
 function prepare(scriptName: string, args: string[]): void {
   process.env.UNDERSTAND_BOOK_SIDECAR_SELF = process.execPath;
+  registerPackagedBuildAssets({
+    prompts: Object.fromEntries(Object.entries(PROMPTS).map(([name, prompt]) => [name, releaseValidatedPrompt(name, prompt)])),
+    protocol_wrapper: dispatchExecutorPrompt, agent_template: executorAgentTemplate,
+    mcp_config: JSON.stringify(executorMcpConfig), mcp_launcher: executorMcpLauncher,
+  });
   const pluginRootIndex = args.indexOf("--plugin-root");
   if (pluginRootIndex >= 0 && args[pluginRootIndex + 1]) {
     process.env.UNDERSTAND_BOOK_PLUGIN_ROOT = args[pluginRootIndex + 1];

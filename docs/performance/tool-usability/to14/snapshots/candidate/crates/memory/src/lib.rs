@@ -1,0 +1,2982 @@
+//! 最小 memory 层 `[ADR-0026/0015/0006]`:用户私有 · 跨书 · 与只读基座**物理隔离**。
+//! 单一 versioned `MemoryDocument` JSON 落盘;`save`=内容寻址 upsert;`recall`=线性过滤。
+//! 切片0 type=note/highlight/position;consolidation / 跨书 concept recall 留议题7 `[ADR-0018]`。
+//! 时间戳与落盘路径由调用方注入(确定性可测,守 A2)。
+//! S7a 从 runtime 抽成独立 crate(拆 runtime↔reader 循环依赖,reader/runtime 共同依赖它)`[ADR-0027]`。
+mod backfill;
+mod document;
+mod note;
+#[cfg(test)]
+mod note_tests;
+pub use note::*;
+mod global_consolidation;
+mod governance;
+mod markdown;
+mod operation;
+mod privacy;
+mod private_storage;
+mod profile;
+mod projection;
+mod reading_state;
+mod review;
+pub mod learning;
+pub mod teaching;
+pub mod assessment;
+pub mod learning_evidence;
+
+pub use backfill::{
+    HistoricalBackfillClearOutcome, HistoricalBackfillCommitOutcome, HistoricalBackfillJob,
+    HistoricalBackfillJobStatus, HistoricalBackfillRange,
+};
+pub use document::{MemoryDocument, MEMORY_SCHEMA_VERSION};
+use document::StoredMemory;
+#[cfg(test)]
+use document::PREVIOUS_MEMORY_SCHEMA_VERSION;
+pub use global_consolidation::GlobalPromotionState;
+pub use governance::{
+    CollectionRule, CollectionRuleMatcher, ProfileGovernanceAction, ProfileGovernanceMutation,
+    ProfileGovernanceOutcome, ProfileGovernanceOutcomeKind, ProfileGovernanceState,
+    ProfilePayloadKind,
+};
+pub use markdown::{ProfileMarkdownFileState, ProfileMarkdownProjectionStatus};
+pub use operation::{ExplicitProfileFact, MemoryOp, MemoryOpOutcome};
+pub use privacy::{classify_profile_fact_privacy, classify_profile_privacy, ProfilePrivacyClass};
+pub use private_storage::{
+    ReaderPrivateStorageDiagnostic, ReaderPrivateStorageGate, READER_PRIVATE_STORAGE_UNAVAILABLE,
+};
+pub use profile::{
+    Applicability, BackgroundClaim, CapabilityClaim, Confidence, ConstraintClaim,
+    CreateProfileFact, EvidenceExclusion, EvidenceRef, ExclusionReason, FactSource, FactStatus,
+    ForgetProfileFactOutcome, GoalClaim, PreferenceClaim, ProfileFact, ProfileFactCapture,
+    ProfilePayload, ProfileResolutionContext, ProfileScope, Sensitivity,
+};
+pub use projection::{
+    estimate_snapshot_tokens, PendingTurnRef, ProfileStatus, ReaderProfileSnapshot,
+    SnapshotBudgets, SnapshotCandidate, SnapshotContext, SnapshotItem, SnapshotRequest,
+};
+use read_tools::ToolError;
+pub use reading_state::{BookReadingState, EngagementSignals, LegacyReaderProfileProjection};
+pub use review::{
+    GlobalConsolidationJob, IntentObservation, IntentObservationCandidate, ReviewCommitOutcome,
+    ReviewErrorState, ReviewFactCandidate, ReviewJob, ReviewJobStatus, ReviewReconciliation,
+    ReviewSessionCursor, ReviewState,
+};
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
+
+/// 记忆记录(符 V3 §4.3 / `[ADR-0015]`)。`type` 是 Rust 保留词 ⇒ serde rename。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Record {
+    pub mem_id: String,
+    #[serde(rename = "type")]
+    pub mem_type: String,
+    pub layer: String,
+    pub book_id: String,
+    pub anchor: Anchor,
+    pub content: String,
+    /// 高亮的段内字符区间(UTF-16,相对 LID 文本)`[ADR-0031]`;note/整段高亮为 None。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<TextRange>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selection_context: Option<SelectionContext>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note_placement: Option<NoteBodyPlacement>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<NoteData>,
+    #[serde(default)]
+    pub citations: Vec<MemCitation>,
+    pub usage: Usage,
+    pub generated_at: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_session_id: Option<String>,
+}
+
+/// 锚:`{lid?}` | `{concept?}`(切片0 主用 lid)。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct Anchor {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lid: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub concept: Option<String>,
+}
+
+/// 高亮的段内字符区间 `[start, end)` `[ADR-0031]`:**UTF-16 code unit 偏移,相对该 LID 自身文本**
+/// (非全书 source 绝对偏移)。与 DOM 选区偏移 / JS `string.slice` / Rust `encode_utf16` 同口径(承 [ADR-0024]),
+/// 前端捕获↔后端切片↔前端重绘零换算。整段高亮(agent / 无选区)= range 缺省 None。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TextRange {
+    pub start: u32,
+    pub end: u32,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SelectionResolution {
+    Resolved,
+    Partial,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SelectionResolutionBasis {
+    Exact,
+    Recovered,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SelectedRange {
+    pub lid: String,
+    pub range: TextRange,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SelectionContext {
+    pub status: SelectionResolution,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolution_basis: Option<SelectionResolutionBasis>,
+    pub raw_quote: String,
+    pub resolved_quote: String,
+    pub ranges: Vec<SelectedRange>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub enum PdfSourceMapVersion {
+    #[serde(rename = "pdf_source_map.v1")]
+    V1,
+    #[serde(rename = "pdf_source_map.v2")]
+    V2,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub enum NoteBodyPlacement {
+    LidBlock {
+        source_fingerprint: String,
+        lid: String,
+    },
+    PdfRegion {
+        source_fingerprint: String,
+        lid: String,
+        source_map_version: PdfSourceMapVersion,
+        source_map_config_hash: String,
+        page_index: u32,
+        region_id: String,
+    },
+}
+
+impl NoteBodyPlacement {
+    pub fn source_fingerprint(&self) -> &str {
+        match self {
+            Self::LidBlock {
+                source_fingerprint, ..
+            }
+            | Self::PdfRegion {
+                source_fingerprint, ..
+            } => source_fingerprint,
+        }
+    }
+
+    pub fn lid(&self) -> &str {
+        match self {
+            Self::LidBlock { lid, .. } | Self::PdfRegion { lid, .. } => lid,
+        }
+    }
+}
+
+/// 记忆引用锚定(`[ADR-0015]`,引用红线延伸 `[ADR-0004]`):recall 可验证、可跳原文。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MemCitation {
+    pub lid: String,
+    pub book_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct Usage {
+    pub count: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_used: Option<String>,
+}
+
+/// 调用方提供的 save 入参:mem_id / citations 可缺(系统派生)。
+#[derive(Debug, Clone)]
+pub struct SaveInput {
+    pub mem_id: Option<String>,
+    pub mem_type: String,
+    pub layer: String,
+    pub book_id: String,
+    pub anchor: Anchor,
+    pub content: String,
+    /// 段内字符区间(高亮选区)`[ADR-0031]`;缺省 None = 整段/note。
+    pub range: Option<TextRange>,
+    pub selection_context: Option<SelectionContext>,
+    pub note_placement: Option<NoteBodyPlacement>,
+    pub note: Option<NoteData>,
+    pub citations: Option<Vec<MemCitation>>,
+    pub source_session_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum NoteSaveStatus {
+    Created,
+    Existing,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NoteSaveOutcome {
+    pub status: NoteSaveStatus,
+    pub record: Record,
+}
+
+#[derive(Debug, Clone)]
+pub struct ReanchorInput {
+    pub mem_id: String,
+    pub note_placement: NoteBodyPlacement,
+}
+
+#[derive(Debug, Clone)]
+pub struct PromoteInput {
+    pub mem_id: String,
+    pub from_layer: String,
+    pub to_layer: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ReplaceInput {
+    pub mem_id: String,
+    pub content: String,
+    /// None = 继承旧 selection context;Some = 显式重新选择并移动锚。
+    pub selection_context: Option<SelectionContext>,
+}
+
+/// recall 查询(切片0 维度;concept 维度留切片1+)`[ADR-0026]`。
+#[derive(Debug, Clone, Default)]
+pub struct RecallQuery {
+    pub book_id: Option<String>,
+    pub lid: Option<String>,
+    pub mem_type: Option<String>,
+    pub layer: Option<String>,
+    pub text: Option<String>,
+}
+
+/// FNV-1a 64-bit:稳定确定性哈希(跨平台/版本恒定,内容寻址 mem_id 用,非 std DefaultHasher)。
+pub(crate) fn fnv1a(s: &str) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for b in s.bytes() {
+        h ^= b as u64;
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    h
+}
+
+/// 内容寻址 mem_id `[ADR-0026]`:同 (book_id|type|anchor|content[|range]) 两存 = 同 id = 幂等去重。
+/// range 段**仅当 Some 时追加** `[ADR-0031]`:None 时哈希与旧版逐字节相同 ⇒ 老 note 的 mem_id 不变;
+/// 同段同子串不同位置(两个「the」)靠 range 入址区分成两条高亮。
+fn content_mem_id(
+    book_id: &str,
+    mem_type: &str,
+    anchor: &Anchor,
+    content: &str,
+    range: Option<&TextRange>,
+    selection_context: Option<&SelectionContext>,
+    note_placement: Option<&NoteBodyPlacement>,
+    note: Option<&NoteData>,
+) -> String {
+    let a = anchor
+        .lid
+        .as_deref()
+        .or(anchor.concept.as_deref())
+        .unwrap_or("");
+    let base = format!("{book_id}|{mem_type}|{a}|{content}");
+    let mut key = match range {
+        Some(r) => format!("{base}|{}:{}", r.start, r.end),
+        None => base,
+    };
+    if let Some(context) = selection_context {
+        let canonical = serde_json::to_string(context)
+            .expect("serializing SelectionContext with fixed fields cannot fail");
+        key.push_str("|selection:");
+        key.push_str(&canonical);
+    }
+    if let Some(placement) = note_placement {
+        let canonical = serde_json::to_string(placement)
+            .expect("serializing NoteBodyPlacement with fixed fields cannot fail");
+        key.push_str("|placement:");
+        key.push_str(&canonical);
+    }
+    if let Some(note) = note {
+        key.push_str("|note:");
+        key.push_str(&serde_json::to_string(note).expect("serializable note"));
+    }
+    format!("mem_{:016x}", fnv1a(&key))
+}
+
+fn validate_selection_context(input: &SaveInput) -> Result<(), ToolError> {
+    let Some(context) = &input.selection_context else {
+        return Ok(());
+    };
+    if input.mem_type != "note" {
+        return Err(invalid_selection_context(
+            "selection_context 只允许用于 note".into(),
+        ));
+    }
+    if context.status != SelectionResolution::Resolved && context.resolution_basis.is_some() {
+        return Err(invalid_selection_context(
+            "selection_context.resolution_basis 只允许用于 resolved 选区".into(),
+        ));
+    }
+    let Some(first) = context.ranges.first() else {
+        return Err(invalid_selection_context(
+            "selection_context.ranges 不得为空".into(),
+        ));
+    };
+    if input.anchor.lid.as_deref() != Some(first.lid.as_str()) {
+        return Err(invalid_selection_context(
+            "anchor.lid 必须等于 selection_context 首个 LID".into(),
+        ));
+    }
+    if context
+        .ranges
+        .iter()
+        .any(|selected| selected.lid.is_empty() || selected.range.start >= selected.range.end)
+    {
+        return Err(invalid_selection_context(
+            "selection_context range 需非空 LID 且 start < end".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_note_placement(placement: &NoteBodyPlacement) -> Result<(), ToolError> {
+    if placement.source_fingerprint().trim().is_empty() || placement.lid().trim().is_empty() {
+        return Err(invalid_note_placement(
+            "note_placement source_fingerprint/lid 不得为空".into(),
+        ));
+    }
+    if let NoteBodyPlacement::PdfRegion {
+        source_map_config_hash,
+        region_id,
+        ..
+    } = placement
+    {
+        if source_map_config_hash.trim().is_empty() || region_id.trim().is_empty() {
+            return Err(invalid_note_placement(
+                "pdf_region source_map_config_hash/region_id 不得为空".into(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_note_source(input: &SaveInput, require_source: bool) -> Result<(), ToolError> {
+    note::validate(input)?;
+    validate_selection_context(input)?;
+    if input.mem_type != "note" {
+        if input.note_placement.is_some() {
+            return Err(invalid_note_placement(
+                "note_placement 只允许用于 note".into(),
+            ));
+        }
+        return Ok(());
+    }
+
+    match (&input.selection_context, &input.note_placement) {
+        (Some(_), Some(_)) => Err(invalid_note_placement(
+            "selection_context 与 note_placement 必须互斥".into(),
+        )),
+        (None, None) if require_source && input.note.is_none() => Err(note_placement_required()),
+        (None, Some(placement)) => {
+            validate_note_placement(placement)?;
+            if input.anchor.lid.as_deref() != Some(placement.lid())
+                || input.anchor.concept.is_some()
+            {
+                return Err(invalid_note_placement(
+                    "anchor 必须由 note_placement 的 LID 派生".into(),
+                ));
+            }
+            let expected = vec![MemCitation {
+                lid: placement.lid().to_string(),
+                book_id: input.book_id.clone(),
+                note: None,
+            }];
+            if input
+                .citations
+                .as_ref()
+                .is_some_and(|citations| citations != &expected)
+            {
+                return Err(invalid_note_placement(
+                    "citations 必须由 note_placement 派生".into(),
+                ));
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
+fn note_citations(input: &SaveInput) -> Vec<MemCitation> {
+    if let Some(context) = &input.selection_context {
+        selection_citations(context, &input.book_id)
+    } else if let Some(placement) = &input.note_placement {
+        vec![MemCitation {
+            lid: placement.lid().to_string(),
+            book_id: input.book_id.clone(),
+            note: None,
+        }]
+    } else {
+        Vec::new()
+    }
+}
+
+fn selection_citations(context: &SelectionContext, book_id: &str) -> Vec<MemCitation> {
+    let mut seen = BTreeSet::new();
+    context
+        .ranges
+        .iter()
+        .filter(|selected| seen.insert(selected.lid.as_str()))
+        .map(|selected| MemCitation {
+            lid: selected.lid.clone(),
+            book_id: book_id.to_string(),
+            note: None,
+        })
+        .collect()
+}
+
+fn atomic_temporary_path(path: &Path) -> PathBuf {
+    path.with_extension("replace.tmp")
+}
+
+fn atomic_backup_path(path: &Path) -> PathBuf {
+    path.with_extension("replace.bak")
+}
+
+fn recover_interrupted_commit(path: &Path) -> Result<(), ToolError> {
+    let backup = atomic_backup_path(path);
+    if !path.exists() && backup.exists() {
+        std::fs::rename(&backup, path)
+            .map_err(|e| internal(format!("恢复 memory 备份失败: {e}")))?;
+    }
+    Ok(())
+}
+
+fn persist_document_atomically(
+    path: &Path,
+    document: &MemoryDocument,
+    private: bool,
+) -> Result<(), ToolError> {
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    ReaderPrivateStorageGate::create_dir_all(parent).map_err(|e| internal(format!("建 memory 目录失败: {e}")))?;
+    let serialized = serde_json::to_string_pretty(document)
+        .map_err(|e| internal(format!("序列化 memory 失败: {e}")))?;
+    let temporary = atomic_temporary_path(path);
+    let backup = atomic_backup_path(path);
+    if temporary.exists() {
+        std::fs::remove_file(&temporary)
+            .map_err(|e| internal(format!("清理 memory 临时文件失败: {e}")))?;
+    }
+    if backup.exists() {
+        std::fs::remove_file(&backup)
+            .map_err(|e| internal(format!("清理 memory 备份失败: {e}")))?;
+    }
+
+    let write_result = (|| -> Result<(), std::io::Error> {
+        let mut file = std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&temporary)?;
+        file.write_all(serialized.as_bytes())?;
+        file.sync_all()
+    })();
+    if let Err(error) = write_result {
+        let _ = std::fs::remove_file(&temporary);
+        return Err(internal(format!("写 memory 临时文件失败: {error}")));
+    }
+    if private {
+        if let Err(error) = private_storage::secure_private_file(&temporary) {
+            let _ = std::fs::remove_file(&temporary);
+            return Err(error);
+        }
+    }
+
+    let had_original = path.exists();
+    if had_original {
+        if let Err(error) = std::fs::rename(path, &backup) {
+            let _ = std::fs::remove_file(&temporary);
+            return Err(internal(format!("备份旧 memory 失败: {error}")));
+        }
+    }
+    ReaderPrivateStorageGate::sync_parent(path).map_err(|e| internal(e.to_string()))?;
+    if let Err(error) = std::fs::rename(&temporary, path) {
+        if had_original {
+            let _ = std::fs::rename(&backup, path);
+        }
+        let _ = std::fs::remove_file(&temporary);
+        return Err(internal(format!("切换 memory 快照失败: {error}")));
+    }
+    ReaderPrivateStorageGate::sync_parent(path).map_err(|e| internal(e.to_string()))?;
+    if had_original {
+        let _ = std::fs::remove_file(backup);
+    }
+    Ok(())
+}
+
+/// 用户私有 memory 库:与只读基座物理隔离的独立 JSON 文件 `[ADR-0006/0026]`。
+#[derive(Debug, Clone)]
+struct PendingReadTouch {
+    book_id: String,
+    lid: String,
+    touch_count: u32,
+    last_seen: String,
+}
+
+pub struct MemoryStore {
+    path: PathBuf,
+    learning_path: PathBuf,
+    writer_lease: Option<std::sync::Arc<dyn Send + Sync>>,
+    document: MemoryDocument,
+    storage: MemoryStorage,
+    pending_reads: BTreeMap<(String, String), PendingReadTouch>,
+    pending_reads_last_activity: Option<Instant>,
+}
+
+enum MemoryStorage {
+    Available { private: bool },
+    Unavailable(ReaderPrivateStorageDiagnostic),
+}
+
+impl MemoryStore {
+    /// Resolve navigation only. Mutations still require the actual current mem_id.
+    pub fn current_note_record(&self, previous: &str) -> Option<&Record> {
+        self.document.records.iter().find(|record| record.mem_id == previous && record.mem_type == "note")
+            .or_else(|| {
+                let current = self.document.note_replacements.get(previous)?;
+                self.document.records.iter().find(|record| &record.mem_id == current && record.mem_type == "note")
+            })
+    }
+
+    /// 默认库路径:`UNDERSTAND_BOOK_MEMORY_DIR` env 覆盖,否则 `<home>/.understand-book/memory/memory.json`。
+    /// **绝不**落进 `.understand-book/<book_id>/`(只读基座),守物理隔离 `[ADR-0006]`。
+    pub fn default_path() -> PathBuf {
+        if let Ok(dir) = std::env::var("UNDERSTAND_BOOK_MEMORY_DIR") {
+            return PathBuf::from(dir).join("memory.json");
+        }
+        let home = std::env::var("USERPROFILE")
+            .or_else(|_| std::env::var("HOME"))
+            .unwrap_or_else(|_| ".".into());
+        PathBuf::from(home)
+            .join(".understand-book")
+            .join("memory")
+            .join("memory.json")
+    }
+
+    /// 打开(或初始化)库;文件不存在 = 空库。
+    pub fn open(path: impl Into<PathBuf>) -> Result<MemoryStore, ToolError> {
+        let path = path.into();
+        recover_interrupted_commit(&path)?;
+        let document = if path.exists() {
+            let s = std::fs::read_to_string(&path)
+                .map_err(|e| internal(format!("读 memory 失败: {e}")))?;
+            match serde_json::from_str::<StoredMemory>(&s)
+                .map_err(|e| internal(format!("解析 memory 失败: {e}")))?
+            {
+                StoredMemory::Document(document) => {
+                    let document = *document;
+                    if matches!(document.schema_version, 2 | 3) {
+                        let document = document.migrate_previous().map_err(internal)?;
+                        persist_document_atomically(&path, &document, false)?;
+                        document
+                    } else {
+                        document.validate().map_err(internal)?;
+                        document
+                    }
+                }
+                StoredMemory::Legacy(records) => {
+                    let document = MemoryDocument::from_legacy(records);
+                    persist_document_atomically(&path, &document, false)?;
+                    document
+                }
+            }
+        } else {
+            MemoryDocument::empty()
+        };
+        Ok(MemoryStore {
+            learning_path: path.with_file_name("learning.db"),
+            writer_lease: None,
+            path,
+            document,
+            storage: MemoryStorage::Available { private: false },
+            pending_reads: BTreeMap::new(),
+            pending_reads_last_activity: None,
+        })
+    }
+
+    /// Production entry point for the local plaintext reader store.
+    pub fn open_private(path: impl Into<PathBuf>) -> Result<MemoryStore, ToolError> {
+        let path = path.into();
+        ReaderPrivateStorageGate::enforce(&path)?;
+        let mut store = Self::open(&path)?;
+        if path.exists() {
+            private_storage::secure_private_file(&path)?;
+        }
+        store.storage = MemoryStorage::Available { private: true };
+        Ok(store)
+    }
+
+    pub fn open_private_with_learning(path: PathBuf, learning_path: PathBuf) -> Result<Self, ToolError> {
+        let mut store = Self::open_private(path)?;
+        store.learning_path = learning_path;
+        Ok(store)
+    }
+
+    /// Keep the host's write-root lock alive through all private database connections.
+    pub fn retain_writer_lease(&mut self, lease: std::sync::Arc<dyn Send + Sync>) {
+        self.writer_lease = Some(lease);
+    }
+
+    /// Fail-closed empty projection used when the production permission gate cannot open safely.
+    pub fn unavailable(
+        path: impl Into<PathBuf>,
+        error: ToolError,
+        occurred_at: impl Into<String>,
+    ) -> MemoryStore {
+        let path = path.into();
+        MemoryStore {
+            learning_path: path.with_file_name("learning.db"),
+            writer_lease: None,
+            path,
+            document: MemoryDocument::empty(),
+            storage: MemoryStorage::Unavailable(ReaderPrivateStorageDiagnostic {
+                error_code: error.error_code,
+                message: error.message,
+                occurred_at: occurred_at.into(),
+            }),
+            pending_reads: BTreeMap::new(),
+            pending_reads_last_activity: None,
+        }
+    }
+
+    pub fn private_storage_diagnostic(&self) -> Option<&ReaderPrivateStorageDiagnostic> {
+        match &self.storage {
+            MemoryStorage::Available { .. } => None,
+            MemoryStorage::Unavailable(diagnostic) => Some(diagnostic),
+        }
+    }
+
+    pub fn private_storage_available(&self) -> bool {
+        self.private_storage_diagnostic().is_none()
+    }
+
+    pub(crate) fn private_storage_enabled(&self) -> bool {
+        matches!(self.storage, MemoryStorage::Available { private: true })
+    }
+
+    pub fn ensure_storage_available(&self) -> Result<(), ToolError> {
+        match &self.storage {
+            MemoryStorage::Available { .. } => Ok(()),
+            MemoryStorage::Unavailable(diagnostic) => Err(diagnostic.tool_error()),
+        }
+    }
+
+    pub fn learning_store(&self) -> Result<learning::LearningStore, ToolError> {
+        self.ensure_storage_available()?;
+        let mut learning = learning::LearningStore::open(&self.learning_path, self.private_storage_enabled())?;
+        learning.writer_lease = self.writer_lease.clone();
+        Ok(learning)
+    }
+
+    pub fn document_revision(&self) -> u64 {
+        self.document.document_revision
+    }
+
+    pub fn projection_revision(&self) -> u64 {
+        self.document.projection_revision
+    }
+
+    fn document_mutation_candidate(&self) -> Result<MemoryDocument, ToolError> {
+        self.ensure_storage_available()?;
+        let mut candidate = self.document.clone();
+        candidate.document_revision = candidate
+            .document_revision
+            .checked_add(1)
+            .ok_or_else(|| internal("memory document_revision 溢出".into()))?;
+        Ok(candidate)
+    }
+
+    fn projection_mutation_candidate(&self) -> Result<MemoryDocument, ToolError> {
+        let mut candidate = self.document_mutation_candidate()?;
+        candidate.projection_revision = candidate
+            .projection_revision
+            .checked_add(1)
+            .ok_or_else(|| internal("memory projection_revision 溢出".into()))?;
+        Ok(candidate)
+    }
+
+    fn commit_document(&mut self, candidate: MemoryDocument) -> Result<(), ToolError> {
+        self.ensure_storage_available()?;
+        candidate.validate().map_err(internal)?;
+        persist_document_atomically(&self.path, &candidate, self.private_storage_enabled())?;
+        self.document = candidate;
+        Ok(())
+    }
+
+    /// `memory.save`:内容寻址 upsert + note/highlight citation 自动派生 `[ADR-0026]`。
+    /// `now` = generated_at/last_used 时间戳(调用方注入,不进 mem_id ⇒ id 时间无关)。
+    pub fn save(&mut self, input: SaveInput, now: &str) -> Result<Record, ToolError> {
+        if input.mem_type == operation::PROFILE_EVIDENCE_RECORD_TYPE {
+            return Err(profile_evidence_protected());
+        }
+        validate_note_source(&input, false)?;
+        let mem_id = input.mem_id.clone().unwrap_or_else(|| {
+            content_mem_id(
+                &input.book_id,
+                &input.mem_type,
+                &input.anchor,
+                &input.content,
+                input.range.as_ref(),
+                input.selection_context.as_ref(),
+                input.note_placement.as_ref(),
+                input.note.as_ref(),
+            )
+        });
+        // citation 自动派生:note/highlight 未给 citations 且 anchor 有 lid → 锚回自身 LID。
+        let citations = match input.citations {
+            Some(c) => c,
+            None => {
+                if let Some(context) = &input.selection_context {
+                    selection_citations(context, &input.book_id)
+                } else if let Some(placement) = &input.note_placement {
+                    vec![MemCitation {
+                        lid: placement.lid().to_string(),
+                        book_id: input.book_id.clone(),
+                        note: None,
+                    }]
+                } else if matches!(input.mem_type.as_str(), "note" | "highlight") {
+                    if let Some(lid) = &input.anchor.lid {
+                        vec![MemCitation {
+                            lid: lid.clone(),
+                            book_id: input.book_id.clone(),
+                            note: None,
+                        }]
+                    } else {
+                        Vec::new()
+                    }
+                } else {
+                    Vec::new()
+                }
+            }
+        };
+        let prev_count = self
+            .document
+            .records
+            .iter()
+            .find(|r| r.mem_id == mem_id)
+            .map(|r| r.usage.count)
+            .unwrap_or(0);
+        let record = Record {
+            mem_id: mem_id.clone(),
+            mem_type: input.mem_type,
+            layer: input.layer,
+            book_id: input.book_id,
+            anchor: input.anchor,
+            content: input.content,
+            range: input.range,
+            selection_context: input.selection_context,
+            note_placement: input.note_placement,
+            note: input.note,
+            citations,
+            usage: Usage {
+                count: prev_count + 1,
+                last_used: Some(now.to_string()),
+            },
+            generated_at: now.to_string(),
+            source_session_id: input.source_session_id,
+        };
+        // upsert:同 mem_id 替换,否则追加。
+        let mut candidate = self.projection_mutation_candidate()?;
+        match candidate.records.iter_mut().find(|r| r.mem_id == mem_id) {
+            Some(slot) => *slot = record.clone(),
+            None => candidate.records.push(record.clone()),
+        }
+        self.commit_document(candidate)?;
+        // P4-4:账本变更后重派生只读 .md 视图(best-effort,不阻断真相源)`[ADR-0040]`。
+        let _ = self.write_profile_files();
+        Ok(record)
+    }
+
+    /// Note create-only mutation. Existing content identity is a zero-mutation result.
+    pub fn save_note(&mut self, input: SaveInput, now: &str) -> Result<NoteSaveOutcome, ToolError> {
+        if input.mem_type != "note" {
+            return Err(invalid_note_placement(
+                "memory.save_note 只接受 note".into(),
+            ));
+        }
+        validate_note_source(&input, true)?;
+        let mem_id = content_mem_id(
+            &input.book_id,
+            &input.mem_type,
+            &input.anchor,
+            &input.content,
+            input.range.as_ref(),
+            input.selection_context.as_ref(),
+            input.note_placement.as_ref(),
+            input.note.as_ref(),
+        );
+        if input
+            .mem_id
+            .as_ref()
+            .is_some_and(|provided| provided != &mem_id)
+        {
+            return Err(invalid_note_placement(
+                "Note mem_id 必须由规范内容与来源派生".into(),
+            ));
+        }
+        if let Some(existing) = self
+            .document
+            .records
+            .iter()
+            .find(|record| record.mem_id == mem_id)
+        {
+            return Ok(NoteSaveOutcome {
+                status: NoteSaveStatus::Existing,
+                record: existing.clone(),
+            });
+        }
+
+        let citations = note_citations(&input);
+        let record = Record {
+            mem_id,
+            mem_type: input.mem_type,
+            layer: input.layer,
+            book_id: input.book_id,
+            anchor: input.anchor,
+            content: input.content,
+            range: input.range,
+            selection_context: input.selection_context,
+            note_placement: input.note_placement,
+            note: input.note,
+            citations,
+            usage: Usage {
+                count: 1,
+                last_used: Some(now.to_string()),
+            },
+            generated_at: now.to_string(),
+            source_session_id: input.source_session_id,
+        };
+        let mut candidate = self.projection_mutation_candidate()?;
+        candidate.records.push(record.clone());
+        self.commit_document(candidate)?;
+        let _ = self.write_profile_files();
+        Ok(NoteSaveOutcome {
+            status: NoteSaveStatus::Created,
+            record,
+        })
+    }
+
+    /// Atomically move a body-placed or legacy Note to a new body placement.
+    pub fn reanchor(&mut self, input: ReanchorInput) -> Result<Record, ToolError> {
+        validate_note_placement(&input.note_placement)?;
+        let Some(index) = self
+            .document
+            .records
+            .iter()
+            .position(|record| record.mem_id == input.mem_id)
+        else {
+            return Err(memory_not_found(&input.mem_id));
+        };
+        let old = self.document.records[index].clone();
+        if old.mem_type != "note" || old.selection_context.is_some() {
+            return Err(note_reanchor_not_allowed());
+        }
+
+        let anchor = Anchor {
+            lid: Some(input.note_placement.lid().to_string()),
+            concept: None,
+        };
+        let citations = vec![MemCitation {
+            lid: input.note_placement.lid().to_string(),
+            book_id: old.book_id.clone(),
+            note: None,
+        }];
+        let mem_id = content_mem_id(
+            &old.book_id,
+            &old.mem_type,
+            &anchor,
+            &old.content,
+            old.range.as_ref(),
+            None,
+            Some(&input.note_placement),
+            old.note.as_ref(),
+        );
+        if mem_id == old.mem_id {
+            return Ok(old);
+        }
+        if self
+            .document
+            .records
+            .iter()
+            .enumerate()
+            .any(|(candidate_index, record)| candidate_index != index && record.mem_id == mem_id)
+        {
+            return Err(note_reanchor_conflict(&mem_id));
+        }
+
+        let replacement = Record {
+            mem_id,
+            mem_type: old.mem_type,
+            layer: old.layer,
+            book_id: old.book_id,
+            anchor,
+            content: old.content,
+            range: old.range,
+            selection_context: None,
+            note: old.note,
+            note_placement: Some(input.note_placement),
+            citations,
+            usage: old.usage,
+            generated_at: old.generated_at,
+            source_session_id: old.source_session_id,
+        };
+        let mut candidate = self.projection_mutation_candidate()?;
+        candidate.records[index] = replacement.clone();
+        if replacement.mem_type == "note" {
+            candidate.replace_note_identity(&input.mem_id, &replacement.mem_id);
+        }
+        self.commit_document(candidate)?;
+        let _ = self.write_profile_files();
+        Ok(replacement)
+    }
+
+    /// Atomically promote the current record version without changing its content identity.
+    pub fn promote(&mut self, input: PromoteInput) -> Result<Record, ToolError> {
+        let Some(index) = self
+            .document
+            .records
+            .iter()
+            .position(|record| record.mem_id == input.mem_id)
+        else {
+            return Err(memory_not_found(&input.mem_id));
+        };
+        let current = self.document.records[index].clone();
+        if !matches!(current.mem_type.as_str(), "note" | "highlight") {
+            return Err(ToolError {
+                error_code: "MEMORY_PROMOTE_NOT_ALLOWED".into(),
+                category: "validation".into(),
+                message: "memory.promote 只接受 Note 或 Highlight".into(),
+            });
+        }
+        if current.layer == input.to_layer {
+            return Ok(current);
+        }
+        if current.layer != input.from_layer {
+            return Err(ToolError {
+                error_code: "MEMORY_LAYER_CONFLICT".into(),
+                category: "conflict".into(),
+                message: format!(
+                    "memory.promote 预期 layer {},当前为 {}",
+                    input.from_layer, current.layer
+                ),
+            });
+        }
+
+        let mut promoted = current;
+        promoted.layer = input.to_layer;
+        let mut candidate = self.projection_mutation_candidate()?;
+        candidate.records[index] = promoted.clone();
+        self.commit_document(candidate)?;
+        let _ = self.write_profile_files();
+        Ok(promoted)
+    }
+
+    /// 原子替换一条 memory:候选快照落盘成功后才切换内存状态。
+    pub fn replace(&mut self, input: ReplaceInput, now: &str) -> Result<Record, ToolError> {
+        let Some(index) = self
+            .document
+            .records
+            .iter()
+            .position(|record| record.mem_id == input.mem_id)
+        else {
+            return Err(memory_not_found(&input.mem_id));
+        };
+        if self.document.records[index].mem_type == operation::PROFILE_EVIDENCE_RECORD_TYPE {
+            return Err(profile_evidence_protected());
+        }
+        if input.content.trim().is_empty() && self.document.records[index].note.as_ref().and_then(|n| n.retained_excerpt.as_ref()).is_none() {
+            return Err(ToolError {
+                error_code: "INVALID_MEMORY_CONTENT".into(),
+                category: "validation".into(),
+                message: "memory.replace content 不得为空".into(),
+            });
+        }
+
+        let old = self.document.records[index].clone();
+        if old.note_placement.is_some() && input.selection_context.is_some() {
+            return Err(invalid_note_placement(
+                "正文放置型 Note 不得通过 memory.replace 转为引用型".into(),
+            ));
+        }
+        let explicitly_reanchored = input.selection_context.is_some();
+        let selection_context = input
+            .selection_context
+            .or_else(|| old.selection_context.clone());
+        let anchor = if explicitly_reanchored {
+            Anchor {
+                lid: selection_context
+                    .as_ref()
+                    .and_then(|context| context.ranges.first())
+                    .map(|selected| selected.lid.clone()),
+                concept: None,
+            }
+        } else {
+            old.anchor.clone()
+        };
+        let citations = if explicitly_reanchored {
+            selection_context
+                .as_ref()
+                .map(|context| selection_citations(context, &old.book_id))
+                .unwrap_or_default()
+        } else {
+            old.citations.clone()
+        };
+        let mut validation_input = SaveInput {
+            mem_id: None,
+            mem_type: old.mem_type.clone(),
+            layer: old.layer.clone(),
+            book_id: old.book_id.clone(),
+            anchor: anchor.clone(),
+            content: input.content.clone(),
+            range: old.range.clone(),
+            selection_context: selection_context.clone(),
+            note_placement: if explicitly_reanchored {
+                None
+            } else {
+                old.note_placement.clone()
+            },
+            note: old.note.clone(),
+            citations: Some(citations.clone()),
+            source_session_id: old.source_session_id.clone(),
+        };
+        if explicitly_reanchored {
+            if let Some(note) = &mut validation_input.note {
+                if !matches!(note.association, NoteAssociation::Selection) {
+                    return Err(invalid_note_placement("Content editing cannot replace a note association".into()));
+                }
+                if note.retained_excerpt.is_some() {
+                    note.retained_excerpt = selection_context.as_ref().map(|s| NoteExcerpt::Original { text: s.raw_quote.clone() });
+                }
+            }
+        }
+        validate_note_source(&validation_input, false)?;
+        let mem_id = content_mem_id(
+            &old.book_id,
+            &old.mem_type,
+            &anchor,
+            &input.content,
+            old.range.as_ref(),
+            selection_context.as_ref(),
+            old.note_placement.as_ref(),
+            validation_input.note.as_ref(),
+        );
+        if self
+            .document
+            .records
+            .iter()
+            .enumerate()
+            .any(|(candidate_index, record)| candidate_index != index && record.mem_id == mem_id)
+        {
+            return Err(ToolError {
+                error_code: "MEMORY_REPLACE_CONFLICT".into(),
+                category: "conflict".into(),
+                message: format!("memory.replace 目标记录已存在: {mem_id}"),
+            });
+        }
+
+        let replacement = Record {
+            mem_id,
+            mem_type: old.mem_type,
+            layer: old.layer,
+            book_id: old.book_id,
+            anchor,
+            content: input.content,
+            range: old.range,
+            selection_context,
+            note_placement: old.note_placement,
+            note: validation_input.note,
+            citations,
+            usage: Usage {
+                count: old.usage.count,
+                last_used: Some(now.to_string()),
+            },
+            generated_at: if validation_input.mem_type == "note" { old.generated_at } else { now.to_string() },
+            source_session_id: old.source_session_id,
+        };
+        let mut candidate = self.projection_mutation_candidate()?;
+        candidate.records[index] = replacement.clone();
+        if replacement.mem_type == "note" {
+            candidate.replace_note_identity(&input.mem_id, &replacement.mem_id);
+        }
+        self.commit_document(candidate)?;
+        let _ = self.write_profile_files();
+        Ok(replacement)
+    }
+
+    /// `memory.delete(mem_id)`:用户**显式删**一条(区别于议题7 后台 usage 遗忘 `[ADR-0018]`)`[V3 §4.3]`。
+    /// 找不到 → `MEMORY_NOT_FOUND`(禁静默降级,守 `[ADR-0015]`)。S10g:agent 提议「撤销」走它。
+    pub fn delete(&mut self, mem_id: &str) -> Result<(), ToolError> {
+        if self.document.records.iter().any(|record| {
+            record.mem_id == mem_id && record.mem_type == operation::PROFILE_EVIDENCE_RECORD_TYPE
+        }) {
+            return Err(profile_evidence_protected());
+        }
+        let mut candidate = self.projection_mutation_candidate()?;
+        let before = candidate.records.len();
+        candidate.records.retain(|r| r.mem_id != mem_id);
+        candidate.note_replacements.retain(|previous, current| previous != mem_id && current != mem_id);
+        if candidate.records.len() == before {
+            return Err(ToolError {
+                error_code: "MEMORY_NOT_FOUND".into(),
+                category: "not_found".into(),
+                message: format!("memory 记录不存在: {mem_id}"),
+            });
+        }
+        self.commit_document(candidate)?;
+        // P4-4:删后重派生只读 .md 视图,旧条目从文件消失(单向覆写)`[ADR-0040]`。
+        let _ = self.write_profile_files();
+        Ok(())
+    }
+
+    /// `memory.recall`:线性过滤(每 Some 维度合取;lid 比 anchor.lid;text 子串)`[ADR-0026]`。
+    /// 切片0 不实现 concept 维度(跨书概念对齐留切片1+)。结果按 mem_id 排序(确定性)。
+    pub fn recall(&self, q: &RecallQuery) -> Vec<Record> {
+        let mut out: Vec<Record> = self
+            .document
+            .records
+            .iter()
+            .filter(|record| record.mem_type != operation::PROFILE_EVIDENCE_RECORD_TYPE)
+            .filter(|r| q.book_id.as_ref().is_none_or(|b| &r.book_id == b))
+            .filter(|r| q.mem_type.as_ref().is_none_or(|t| &r.mem_type == t))
+            .filter(|r| q.layer.as_ref().is_none_or(|l| &r.layer == l))
+            .filter(|r| {
+                q.lid
+                    .as_ref()
+                    .is_none_or(|l| r.anchor.lid.as_deref() == Some(l.as_str()))
+            })
+            .filter(|r| {
+                q.text
+                    .as_ref()
+                    .is_none_or(|t| r.content.contains(t.as_str()))
+            })
+            .cloned()
+            .collect();
+        out.sort_by(|a, b| a.mem_id.cmp(&b.mem_id));
+        out
+    }
+
+    /// 确定性已读账本记账 `[ADR-0038]`(① 确定性账本,无 LLM):reader 翻到的 anchor LID
+    /// 记入「真读过的 LID 历史」。复用 Record(`type="read"`,内容寻址天然去重)——同 LID 重复触达
+    /// = 同 mem_id = upsert(`usage.count` 记触达次数,`generated_at` 刷新为最近触达)。
+    /// **区别于 `type="position"`**(③ 会话临时·当前位置,不持久):`read` 是 ① 持久账本。
+    /// content 空(已读 = 存在性,无散文);非 note/highlight ⇒ 不自动派生 citation(anchor.lid 本身即位置事实)。
+    pub fn mark_read(&mut self, book_id: &str, lid: &str, now: &str) -> Result<Record, ToolError> {
+        self.save(
+            SaveInput {
+                mem_id: None,
+                mem_type: "read".into(),
+                layer: "long_term".into(),
+                book_id: book_id.into(),
+                anchor: Anchor {
+                    lid: Some(lid.into()),
+                    concept: None,
+                },
+                content: String::new(),
+                range: None,
+                selection_context: None,
+                note: None,
+                note_placement: None,
+                citations: None,
+                source_session_id: None,
+            },
+            now,
+        )
+    }
+
+    /// ADR-0106:登记导航产生的已读触达，不在导航请求内执行磁盘 I/O。
+    /// 同一 `(book_id,lid)` 在静默批次内合并计数并保留最近触达时间。
+    pub fn enqueue_read(&mut self, book_id: &str, lid: &str, now: &str) -> Result<(), ToolError> {
+        self.ensure_storage_available()?;
+        let key = (book_id.to_string(), lid.to_string());
+        match self.pending_reads.get_mut(&key) {
+            Some(touch) => {
+                touch.touch_count = touch
+                    .touch_count
+                    .checked_add(1)
+                    .ok_or_else(|| internal("read usage count 溢出".into()))?;
+                touch.last_seen = now.to_string();
+            }
+            None => {
+                self.pending_reads.insert(
+                    key,
+                    PendingReadTouch {
+                        book_id: book_id.to_string(),
+                        lid: lid.to_string(),
+                        touch_count: 1,
+                        last_seen: now.to_string(),
+                    },
+                );
+            }
+        }
+        self.pending_reads_last_activity = Some(Instant::now());
+        Ok(())
+    }
+
+    pub fn pending_read_count(&self) -> usize {
+        self.pending_reads.len()
+    }
+
+    /// Host 只在最后一次导航触达静默一段时间后抢占 AppState 锁执行批量冲刷。
+    pub fn pending_reads_ready(&self, idle_for: Duration) -> bool {
+        !self.pending_reads.is_empty()
+            && self
+                .pending_reads_last_activity
+                .is_some_and(|last_activity| last_activity.elapsed() >= idle_for)
+    }
+
+    /// 把当前待持久集合合并进一个 MemoryDocument candidate，仅执行一次原子提交与投影刷新。
+    /// 失败时集合保持不变，并重置重试退避起点。
+    pub fn flush_pending_reads(&mut self) -> Result<usize, ToolError> {
+        if self.pending_reads.is_empty() {
+            return Ok(0);
+        }
+        self.ensure_storage_available()?;
+        let touches = self.pending_reads.values().cloned().collect::<Vec<_>>();
+        let result = (|| {
+            let mut candidate = self.projection_mutation_candidate()?;
+            for touch in &touches {
+                let anchor = Anchor {
+                    lid: Some(touch.lid.clone()),
+                    concept: None,
+                };
+                let mem_id = content_mem_id(&touch.book_id, "read", &anchor, "", None, None, None, None);
+                let previous_count = candidate
+                    .records
+                    .iter()
+                    .find(|record| record.mem_id == mem_id)
+                    .map(|record| record.usage.count)
+                    .unwrap_or(0);
+                let count = previous_count
+                    .checked_add(touch.touch_count)
+                    .ok_or_else(|| internal("read usage count 溢出".into()))?;
+                let record = Record {
+                    mem_id: mem_id.clone(),
+                    mem_type: "read".into(),
+                    layer: "long_term".into(),
+                    book_id: touch.book_id.clone(),
+                    anchor,
+                    content: String::new(),
+                    range: None,
+                    selection_context: None,
+                    note: None,
+                    note_placement: None,
+                    citations: Vec::new(),
+                    usage: Usage {
+                        count,
+                        last_used: Some(touch.last_seen.clone()),
+                    },
+                    generated_at: touch.last_seen.clone(),
+                    source_session_id: None,
+                };
+                match candidate
+                    .records
+                    .iter_mut()
+                    .find(|current| current.mem_id == mem_id)
+                {
+                    Some(slot) => *slot = record,
+                    None => candidate.records.push(record),
+                }
+            }
+            self.commit_document(candidate)?;
+            let _ = self.write_profile_files();
+            Ok(touches.len())
+        })();
+
+        match result {
+            Ok(flushed) => {
+                self.pending_reads.clear();
+                self.pending_reads_last_activity = None;
+                Ok(flushed)
+            }
+            Err(error) => {
+                self.pending_reads_last_activity = Some(Instant::now());
+                Err(error)
+            }
+        }
+    }
+
+    /// 已读集 / reading journey `[ADR-0038]`:某书真读过的 LID 历史,按 `generated_at` 触达序
+    /// (tie-break `mem_id`)确定性排序、内容寻址去重。**解锁 P3-2 裸兜底真历史源**——
+    /// `未读前置 = back ∩ (全集 \ 已读集)`(消费方在 P3-2,本刀不写)。
+    pub fn read_lids(&self, book_id: &str) -> Vec<String> {
+        let mut recs = self.recall(&RecallQuery {
+            book_id: Some(book_id.into()),
+            mem_type: Some("read".into()),
+            ..Default::default()
+        });
+        recs.sort_by(|a, b| {
+            a.generated_at
+                .cmp(&b.generated_at)
+                .then(a.mem_id.cmp(&b.mem_id))
+        });
+        recs.into_iter().filter_map(|r| r.anchor.lid).collect()
+    }
+
+    /// 单本阅读状态确定性派生 `[ADR-0075]`:保留已读顺序,其余只归约 qa/note/highlight 原始活动。
+    /// 行为信号不直接表达困惑、掌握或能力;旧 reader profile 字段由显式兼容投影提供。
+    pub fn derive_book_reading_state(&self, book_id: &str) -> BookReadingState {
+        BookReadingState::from_records(book_id, self.read_lids(book_id), &self.document.records)
+    }
+
+    /// 某书某 LID 的 qa 提问文本 `[ADR-0041]`,按 `generated_at` 序(tie `mem_id`),供透明展示。
+    /// 区别于 legacy `puzzle_heat` 兼容投影(只数条数):此处取真实问题文本供 Markdown 展示。
+    fn qa_questions(&self, book_id: &str, lid: &str) -> Vec<&str> {
+        let mut recs: Vec<&Record> = self
+            .document
+            .records
+            .iter()
+            .filter(|r| {
+                r.book_id == book_id && r.mem_type == "qa" && r.anchor.lid.as_deref() == Some(lid)
+            })
+            .collect();
+        recs.sort_by(|a, b| {
+            a.generated_at
+                .cmp(&b.generated_at)
+                .then(a.mem_id.cmp(&b.mem_id))
+        });
+        recs.into_iter().map(|r| r.content.as_str()).collect()
+    }
+
+    // ===== P4-4 四层产物物化(只读派生 .md · 单向覆写 · 真相源唯一 memory.json)`[ADR-0040]` =====
+
+    /// 某书 context 记忆按成长时间线序(`generated_at`,tie `mem_id`)`[ADR-0039/0040]`。
+    fn context_timeline(&self, book_id: &str) -> Vec<&Record> {
+        let mut recs: Vec<&Record> = self
+            .document
+            .records
+            .iter()
+            .filter(|r| r.book_id == book_id && r.mem_type == "context")
+            .collect();
+        recs.sort_by(|a, b| {
+            a.generated_at
+                .cmp(&b.generated_at)
+                .then(a.mem_id.cmp(&b.mem_id))
+        });
+        recs
+    }
+}
+
+fn internal(message: String) -> ToolError {
+    ToolError {
+        error_code: "INTERNAL_ERROR".into(),
+        category: "internal".into(),
+        message,
+    }
+}
+
+fn invalid_selection_context(message: String) -> ToolError {
+    ToolError {
+        error_code: "INVALID_SELECTION_CONTEXT".into(),
+        category: "validation".into(),
+        message,
+    }
+}
+
+fn note_placement_required() -> ToolError {
+    ToolError {
+        error_code: "NOTE_PLACEMENT_REQUIRED".into(),
+        category: "validation".into(),
+        message: "新 Note 必须恰有 selection_context 或 note_placement".into(),
+    }
+}
+
+fn invalid_note_placement(message: String) -> ToolError {
+    ToolError {
+        error_code: "INVALID_NOTE_PLACEMENT".into(),
+        category: "validation".into(),
+        message,
+    }
+}
+
+fn note_reanchor_not_allowed() -> ToolError {
+    ToolError {
+        error_code: "NOTE_REANCHOR_NOT_ALLOWED".into(),
+        category: "validation".into(),
+        message: "只有正文放置型或 legacy Note 可显式重锚".into(),
+    }
+}
+
+fn note_reanchor_conflict(mem_id: &str) -> ToolError {
+    ToolError {
+        error_code: "NOTE_REANCHOR_CONFLICT".into(),
+        category: "conflict".into(),
+        message: format!("Note 重锚目标记录已存在: {mem_id}"),
+    }
+}
+
+fn memory_not_found(mem_id: &str) -> ToolError {
+    ToolError {
+        error_code: "MEMORY_NOT_FOUND".into(),
+        category: "not_found".into(),
+        message: format!("memory 记录不存在: {mem_id}"),
+    }
+}
+
+fn profile_evidence_protected() -> ToolError {
+    ToolError {
+        error_code: "PROFILE_EVIDENCE_PROTECTED".into(),
+        category: "conflict".into(),
+        message: "profile evidence can only be changed through MemoryOp".into(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeMap;
+
+    const LEGACY_MEMORY_V1: &str = include_str!("../tests/fixtures/legacy-memory-v1.json");
+    const LEGACY_READER_PROFILE: &str = include_str!("../tests/fixtures/legacy-reader-profile.md");
+    const LEGACY_READING_HANDBOOK: &str =
+        include_str!("../tests/fixtures/legacy-reading-handbook.md");
+
+    fn tmp(name: &str) -> PathBuf {
+        let p = std::env::temp_dir().join(format!("ub-mem-test-{name}.json"));
+        let _ = std::fs::remove_file(&p);
+        p
+    }
+
+    fn write_legacy_fixture(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("ub-mem-legacy-{name}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("memory.json");
+        std::fs::write(&path, LEGACY_MEMORY_V1).unwrap();
+        path
+    }
+
+    fn legacy_store(name: &str) -> (PathBuf, MemoryStore) {
+        let path = write_legacy_fixture(name);
+        let store = MemoryStore::open(&path).unwrap();
+        (path, store)
+    }
+
+    fn normalize_newlines(value: &str) -> String {
+        value.replace("\r\n", "\n")
+    }
+
+    fn note_input(book: &str, lid: &str, content: &str) -> SaveInput {
+        SaveInput {
+            mem_id: None,
+            mem_type: "note".into(),
+            layer: "long_term".into(),
+            book_id: book.into(),
+            anchor: Anchor {
+                lid: Some(lid.into()),
+                concept: None,
+            },
+            content: content.into(),
+            range: None,
+            selection_context: None,
+            note: None,
+            note_placement: None,
+            citations: None,
+            source_session_id: None,
+        }
+    }
+
+    fn hl_input(book: &str, lid: &str, content: &str, start: u32, end: u32) -> SaveInput {
+        SaveInput {
+            mem_id: None,
+            mem_type: "highlight".into(),
+            layer: "long_term".into(),
+            book_id: book.into(),
+            anchor: Anchor {
+                lid: Some(lid.into()),
+                concept: None,
+            },
+            content: content.into(),
+            range: Some(TextRange { start, end }),
+            selection_context: None,
+            note: None,
+            note_placement: None,
+            citations: None,
+            source_session_id: None,
+        }
+    }
+
+    fn selection_context() -> SelectionContext {
+        SelectionContext {
+            status: SelectionResolution::Resolved,
+            resolution_basis: None,
+            raw_quote: "raw PDF quote".into(),
+            resolved_quote: "resolved quote".into(),
+            ranges: vec![
+                SelectedRange {
+                    lid: "1.1".into(),
+                    range: TextRange { start: 1, end: 4 },
+                },
+                SelectedRange {
+                    lid: "1.2".into(),
+                    range: TextRange { start: 0, end: 3 },
+                },
+                SelectedRange {
+                    lid: "1.1".into(),
+                    range: TextRange { start: 8, end: 10 },
+                },
+            ],
+        }
+    }
+
+    fn lid_placement(source_fingerprint: &str, lid: &str) -> NoteBodyPlacement {
+        NoteBodyPlacement::LidBlock {
+            source_fingerprint: source_fingerprint.into(),
+            lid: lid.into(),
+        }
+    }
+
+    fn pdf_placement(source_fingerprint: &str, lid: &str) -> NoteBodyPlacement {
+        NoteBodyPlacement::PdfRegion {
+            source_fingerprint: source_fingerprint.into(),
+            lid: lid.into(),
+            source_map_version: PdfSourceMapVersion::V2,
+            source_map_config_hash: "sha256:map-a".into(),
+            page_index: 2,
+            region_id: "region-7".into(),
+        }
+    }
+
+    fn placed_note_input(
+        book: &str,
+        lid: &str,
+        content: &str,
+        source_fingerprint: &str,
+        layer: &str,
+    ) -> SaveInput {
+        let mut input = note_input(book, lid, content);
+        input.layer = layer.into();
+        input.note_placement = Some(lid_placement(source_fingerprint, lid));
+        input
+    }
+
+    #[test]
+    fn legacy_vec_fixture_opens_and_derives_current_views() {
+        let raw: serde_json::Value = serde_json::from_str(LEGACY_MEMORY_V1).unwrap();
+        assert!(
+            raw.is_array(),
+            "legacy memory must remain a bare JSON array"
+        );
+
+        let (_path, store) = legacy_store("open-and-derive");
+        let records = store.recall(&RecallQuery::default());
+        assert_eq!(records.len(), 8);
+        assert!(records
+            .windows(2)
+            .all(|pair| pair[0].mem_id < pair[1].mem_id));
+
+        let selected = records
+            .iter()
+            .find(|record| record.mem_id == "mem_a4acdf2b6f3df284")
+            .unwrap();
+        assert_eq!(selected.anchor.lid.as_deref(), Some("3.1"));
+        assert_eq!(
+            selected
+                .selection_context
+                .as_ref()
+                .unwrap()
+                .ranges
+                .iter()
+                .map(|range| range.lid.as_str())
+                .collect::<Vec<_>>(),
+            vec!["3.1", "3.2"]
+        );
+        assert_eq!(
+            selected
+                .citations
+                .iter()
+                .map(|citation| citation.lid.as_str())
+                .collect::<Vec<_>>(),
+            vec!["3.1", "3.2"]
+        );
+
+        let reading_state = store.derive_book_reading_state("book-a");
+        assert_eq!(
+            reading_state.legacy_reader_profile(),
+            LegacyReaderProfileProjection {
+                book_id: "book-a".into(),
+                read_lids: vec!["1.2".into()],
+                focus_lids: vec!["1.1".into(), "2.1".into(), "3.1".into()],
+                puzzle_heat: BTreeMap::from([("4.1".into(), 2)]),
+            }
+        );
+        assert_eq!(
+            serde_json::to_value(&reading_state).unwrap(),
+            serde_json::json!({
+                "book_id": "book-a",
+                "read_lids": ["1.2"],
+                "focus_lids": ["1.1", "2.1", "3.1"],
+                "puzzle_heat": {"4.1": 2}
+            })
+        );
+        assert_eq!(reading_state.engagement_by_lid["4.1"].qa_count, 2);
+        assert_eq!(
+            reading_state.engagement_by_lid["4.1"]
+                .last_seen_at
+                .as_deref(),
+            Some("2026-01-06T00:00:00Z")
+        );
+        let legacy_profile = normalize_newlines(LEGACY_READER_PROFILE);
+        let legacy_handbook = normalize_newlines(LEGACY_READING_HANDBOOK);
+        assert!(!legacy_profile.contains("profile-markdown.v2"));
+        assert!(!legacy_handbook.contains("profile-markdown.v2"));
+
+        let profile_v2 = store.render_reader_profile_md();
+        let handbook_v2 = store.render_handbook_md();
+        assert_ne!(profile_v2, legacy_profile);
+        assert_ne!(handbook_v2, legacy_handbook);
+        assert!(profile_v2.starts_with("<!-- profile-markdown.v2 projection_revision=1 -->"));
+        assert!(profile_v2.contains("1.2"));
+        assert!(profile_v2.contains("4.1 (×2)"));
+        assert!(profile_v2.contains("prefers examples [cite: 5.1]"));
+        assert!(handbook_v2.starts_with("<!-- profile-markdown.v2 projection_revision=1 -->"));
+        assert!(handbook_v2.contains("**book-a**"));
+        assert!(handbook_v2.contains("读过的书:book-a, book-b"));
+    }
+
+    #[test]
+    fn legacy_vec_fixture_preserves_save_replace_delete_and_reopen() {
+        let (path, mut store) = legacy_store("mutations");
+
+        let saved = store
+            .save(
+                note_input("book-a", "1.1", "legacy note"),
+                "2026-02-01T00:00:00Z",
+            )
+            .unwrap();
+        assert_eq!(saved.mem_id, "mem_620ddff409de9979");
+        assert_eq!(saved.usage.count, 3);
+        assert_eq!(saved.citations.len(), 1);
+        assert_eq!(saved.citations[0].lid, "1.1");
+
+        let replaced = store
+            .replace(
+                ReplaceInput {
+                    mem_id: "mem_a4acdf2b6f3df284".into(),
+                    content: "updated selected note".into(),
+                    selection_context: None,
+                },
+                "2026-02-02T00:00:00Z",
+            )
+            .unwrap();
+        assert_eq!(replaced.mem_id, "mem_350f3ef2974c5419");
+        assert_eq!(replaced.anchor.lid.as_deref(), Some("3.1"));
+        assert_eq!(
+            replaced
+                .selection_context
+                .as_ref()
+                .unwrap()
+                .ranges
+                .iter()
+                .map(|range| range.lid.as_str())
+                .collect::<Vec<_>>(),
+            vec!["3.1", "3.2"]
+        );
+        assert_eq!(
+            replaced
+                .citations
+                .iter()
+                .map(|citation| citation.lid.as_str())
+                .collect::<Vec<_>>(),
+            vec!["3.1", "3.2"]
+        );
+
+        store.delete("mem_0dcc7e3a8f87d6c4").unwrap();
+        let reopened = MemoryStore::open(path).unwrap();
+        let records = reopened.recall(&RecallQuery::default());
+        assert_eq!(records.len(), 7);
+        assert!(records
+            .iter()
+            .any(|record| { record.mem_id == "mem_620ddff409de9979" && record.usage.count == 3 }));
+        assert!(records
+            .iter()
+            .any(|record| record.mem_id == "mem_350f3ef2974c5419"));
+        assert!(!records.iter().any(|record| {
+            matches!(
+                record.mem_id.as_str(),
+                "mem_a4acdf2b6f3df284" | "mem_0dcc7e3a8f87d6c4"
+            )
+        }));
+    }
+
+    #[test]
+    fn legacy_open_migrates_losslessly_once_to_v3_document() {
+        let path = write_legacy_fixture("migration");
+        let legacy: Vec<Record> = serde_json::from_str(LEGACY_MEMORY_V1).unwrap();
+
+        let store = MemoryStore::open(&path).unwrap();
+        assert_eq!(store.document_revision(), 1);
+        assert_eq!(store.projection_revision(), 1);
+
+        let migrated = std::fs::read_to_string(&path).unwrap();
+        let document: MemoryDocument = serde_json::from_str(&migrated).unwrap();
+        assert_eq!(document.schema_version, MEMORY_SCHEMA_VERSION);
+        assert_eq!(document.document_revision, 1);
+        assert_eq!(document.projection_revision, 1);
+        assert_eq!(document.records, legacy);
+        assert!(document.profile_facts.is_empty());
+        assert!(document.review_state.is_empty());
+        assert!(document.exclusions.is_empty());
+
+        let temporary = atomic_temporary_path(&path);
+        std::fs::create_dir_all(&temporary).unwrap();
+        let reopened = MemoryStore::open(&path).unwrap();
+        assert_eq!(reopened.document_revision(), 1);
+        assert_eq!(reopened.projection_revision(), 1);
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), migrated);
+        std::fs::remove_dir_all(temporary).unwrap();
+    }
+
+    #[test]
+    fn v2_document_with_profile_review_and_governance_migrates_losslessly_once() {
+        let seed_path = tmp("v2-full-seed");
+        let mut seed = MemoryStore::open(&seed_path).unwrap();
+        seed.save(note_input("book-a", "1.1", "legacy note"), "t0")
+            .unwrap();
+        seed.create_profile_fact(
+            CreateProfileFact {
+                scope: ProfileScope::Global,
+                applicability: Applicability::Any,
+                payload: ProfilePayload::Background(BackgroundClaim {
+                    key: "role".into(),
+                    value: "researcher".into(),
+                }),
+                source: FactSource::UserStated,
+                evidence: vec![EvidenceRef::Turn {
+                    session_id: "session-a".into(),
+                    turn_id: "turn-a".into(),
+                }],
+                confidence: None,
+                sensitivity: Sensitivity::Normal,
+                valid_until: None,
+            },
+            "t1",
+        )
+        .unwrap();
+        seed.apply_profile_governance_mutation(
+            ProfileGovernanceMutation {
+                expected_document_revision: seed.document_revision(),
+                action: ProfileGovernanceAction::AddCollectionRule {
+                    operation_id: "migration-rule".into(),
+                    matcher: CollectionRuleMatcher {
+                        payload_kind: ProfilePayloadKind::Background,
+                        semantic_key: None,
+                        scope: None,
+                        applicability: None,
+                    },
+                },
+            },
+            "t2",
+        )
+        .unwrap();
+        seed.document.review_state.historical_baseline_initialized = true;
+
+        for version in [2, 3] {
+        let path = tmp(&format!("v{version}-full-migration"));
+        let mut v2 = seed.document.clone();
+        v2.schema_version = version;
+        std::fs::write(&path, serde_json::to_string_pretty(&v2).unwrap()).unwrap();
+
+        let mut expected = v2.clone();
+        expected.schema_version = MEMORY_SCHEMA_VERSION;
+        let opened = MemoryStore::open(&path).unwrap();
+        assert_eq!(opened.document, expected);
+        assert!(opened
+            .document
+            .records
+            .iter()
+            .all(|record| record.note_placement.is_none()));
+        assert!(!opened.document.profile_facts.is_empty());
+        assert!(!opened.document.governance_state.is_empty());
+        assert!(opened.document.review_state.historical_baseline_initialized);
+
+        let migrated = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(
+            serde_json::from_str::<MemoryDocument>(&migrated).unwrap(),
+            expected
+        );
+        MemoryStore::open(&path).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), migrated);
+        }
+    }
+
+    #[test]
+    fn v2_migration_write_failure_preserves_original_document() {
+        let path = tmp("v2-migration-write-failure");
+        let mut v2 = MemoryDocument::empty();
+        v2.schema_version = PREVIOUS_MEMORY_SCHEMA_VERSION;
+        v2.document_revision = 4;
+        v2.projection_revision = 3;
+        let original = serde_json::to_string_pretty(&v2).unwrap();
+        std::fs::write(&path, &original).unwrap();
+        std::fs::create_dir_all(atomic_temporary_path(&path)).unwrap();
+
+        let error = MemoryStore::open(&path).err().unwrap();
+        assert_eq!(error.category, "internal");
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
+    }
+
+    #[test]
+    fn legacy_migration_write_failure_preserves_original_file() {
+        let path = write_legacy_fixture("migration-write-failure");
+        let original = std::fs::read_to_string(&path).unwrap();
+        std::fs::create_dir_all(atomic_temporary_path(&path)).unwrap();
+
+        let error = MemoryStore::open(&path).err().unwrap();
+        assert_eq!(error.category, "internal");
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
+        let persisted: serde_json::Value = serde_json::from_str(&original).unwrap();
+        assert!(persisted.is_array());
+    }
+
+    #[test]
+    fn record_mutations_increment_both_revisions_and_persist_document() {
+        let (path, mut store) = legacy_store("revision-commit");
+
+        let saved = store
+            .save(
+                note_input("book-a", "6.1", "revision note"),
+                "2026-02-03T00:00:00Z",
+            )
+            .unwrap();
+        assert_eq!(
+            (store.document_revision(), store.projection_revision()),
+            (2, 2)
+        );
+
+        let replaced = store
+            .replace(
+                ReplaceInput {
+                    mem_id: saved.mem_id,
+                    content: "revised note".into(),
+                    selection_context: None,
+                },
+                "2026-02-04T00:00:00Z",
+            )
+            .unwrap();
+        assert_eq!(
+            (store.document_revision(), store.projection_revision()),
+            (3, 3)
+        );
+
+        store.delete(&replaced.mem_id).unwrap();
+        assert_eq!(
+            (store.document_revision(), store.projection_revision()),
+            (4, 4)
+        );
+
+        let persisted: MemoryDocument =
+            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        assert_eq!(persisted.document_revision, 4);
+        assert_eq!(persisted.projection_revision, 4);
+        assert_eq!(persisted.records, store.document.records);
+    }
+
+    #[test]
+    fn failed_save_and_delete_preserve_memory_and_disk_document() {
+        let (path, mut store) = legacy_store("failed-record-mutations");
+        let before_document = store.document.clone();
+        let before_disk = std::fs::read_to_string(&path).unwrap();
+
+        let blocker = tmp("record-mutation-parent-blocker");
+        std::fs::write(&blocker, "not a directory").unwrap();
+        store.path = blocker.join("memory.json");
+
+        let save_error = store
+            .save(
+                note_input("book-a", "7.1", "must not commit"),
+                "2026-02-05T00:00:00Z",
+            )
+            .unwrap_err();
+        assert_eq!(save_error.category, "internal");
+        assert_eq!(store.document, before_document);
+
+        let delete_error = store.delete("mem_620ddff409de9979").unwrap_err();
+        assert_eq!(delete_error.category, "internal");
+        assert_eq!(store.document, before_document);
+        assert_eq!(std::fs::read_to_string(path).unwrap(), before_disk);
+    }
+
+    #[test]
+    fn v3_open_rejects_unknown_schema_and_invalid_revision_order() {
+        let unknown_path = tmp("unknown-memory-schema");
+        let mut unknown = MemoryDocument::empty();
+        unknown.schema_version = MEMORY_SCHEMA_VERSION + 1;
+        std::fs::write(
+            &unknown_path,
+            serde_json::to_string_pretty(&unknown).unwrap(),
+        )
+        .unwrap();
+        assert!(MemoryStore::open(&unknown_path)
+            .err()
+            .unwrap()
+            .message
+            .contains("schema_version"));
+
+        let invalid_path = tmp("invalid-memory-revisions");
+        let mut invalid = MemoryDocument::empty();
+        invalid.projection_revision = 1;
+        std::fs::write(
+            &invalid_path,
+            serde_json::to_string_pretty(&invalid).unwrap(),
+        )
+        .unwrap();
+        assert!(MemoryStore::open(&invalid_path)
+            .err()
+            .unwrap()
+            .message
+            .contains("projection_revision"));
+    }
+
+    #[test]
+    fn legacy_record_roundtrip_omits_selection_context_and_keeps_mem_id() {
+        let legacy = r#"{
+          "mem_id":"mem_6802d90a28719aac","type":"note","layer":"long_term",
+          "book_id":"bookA","anchor":{"lid":"1.1"},"content":"笔记",
+          "citations":[{"lid":"1.1","book_id":"bookA"}],
+          "usage":{"count":1,"last_used":"t0"},"generated_at":"t0"
+        }"#;
+        let record: Record = serde_json::from_str(legacy).unwrap();
+        assert!(record.selection_context.is_none());
+        assert!(record.note_placement.is_none());
+        let encoded = serde_json::to_value(&record).unwrap();
+        assert!(encoded.get("selection_context").is_none());
+        assert!(encoded.get("note_placement").is_none());
+
+        let path = tmp("legacy-selection-context");
+        let mut store = MemoryStore::open(&path).unwrap();
+        let saved = store
+            .save(note_input("bookA", "1.1", "笔记"), "t0")
+            .unwrap();
+        assert_eq!(saved.mem_id, "mem_6802d90a28719aac");
+    }
+
+    #[test]
+    fn note_body_placement_roundtrips_both_variants() {
+        let lid = lid_placement("sha256:source-a", "1.1");
+        assert_eq!(
+            serde_json::to_value(&lid).unwrap(),
+            serde_json::json!({
+                "kind": "lid_block",
+                "source_fingerprint": "sha256:source-a",
+                "lid": "1.1"
+            })
+        );
+        assert_eq!(
+            serde_json::from_value::<NoteBodyPlacement>(serde_json::to_value(&lid).unwrap())
+                .unwrap(),
+            lid
+        );
+
+        let pdf = pdf_placement("sha256:source-a", "1.1");
+        assert_eq!(
+            serde_json::to_value(&pdf).unwrap(),
+            serde_json::json!({
+                "kind": "pdf_region",
+                "source_fingerprint": "sha256:source-a",
+                "lid": "1.1",
+                "source_map_version": "pdf_source_map.v2",
+                "source_map_config_hash": "sha256:map-a",
+                "page_index": 2,
+                "region_id": "region-7"
+            })
+        );
+        assert_eq!(
+            serde_json::from_value::<NoteBodyPlacement>(serde_json::to_value(&pdf).unwrap())
+                .unwrap(),
+            pdf
+        );
+    }
+
+    #[test]
+    fn placement_canonical_hash_is_stable_and_absence_keeps_legacy_identity() {
+        let anchor = Anchor {
+            lid: Some("1.1".into()),
+            concept: None,
+        };
+        let legacy = content_mem_id("bookA", "note", &anchor, "笔记", None, None, None, None);
+        assert_eq!(legacy, "mem_6802d90a28719aac");
+
+        let lid = lid_placement("sha256:source-a", "1.1");
+        let lid_id = content_mem_id("bookA", "note", &anchor, "笔记", None, None, Some(&lid), None);
+        assert_eq!(lid_id, "mem_3398ea97fa93ddbf");
+        assert_eq!(
+            content_mem_id("bookA", "note", &anchor, "笔记", None, None, Some(&lid), None),
+            lid_id
+        );
+        assert_ne!(
+            content_mem_id(
+                "bookA",
+                "note",
+                &anchor,
+                "笔记",
+                None,
+                None,
+                Some(&lid_placement("sha256:source-b", "1.1")),
+                None,
+            ),
+            lid_id
+        );
+
+        let pdf = pdf_placement("sha256:source-a", "1.1");
+        assert_eq!(
+            content_mem_id("bookA", "note", &anchor, "笔记", None, None, Some(&pdf), None),
+            "mem_0377128976f36f88"
+        );
+    }
+
+    #[test]
+    fn note_create_only_returns_existing_without_any_mutation() {
+        let path = tmp("note-create-only");
+        let mut store = MemoryStore::open(&path).unwrap();
+        let input = placed_note_input("bookA", "1.1", "same note", "sha256:source-a", "session");
+        let created = store.save_note(input.clone(), "t0").unwrap();
+        assert_eq!(created.status, NoteSaveStatus::Created);
+        assert_eq!(created.record.layer, "session");
+
+        let before_document = store.document.clone();
+        let before_disk = std::fs::read_to_string(&path).unwrap();
+        let mut duplicate = input;
+        duplicate.layer = "long_term".into();
+        duplicate.source_session_id = Some("later-session".into());
+        let existing = store.save_note(duplicate, "t1").unwrap();
+
+        assert_eq!(existing.status, NoteSaveStatus::Existing);
+        assert_eq!(existing.record, created.record);
+        assert_eq!(store.document, before_document);
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), before_disk);
+    }
+
+    #[test]
+    fn strict_note_create_requires_exactly_one_structural_source() {
+        let path = tmp("note-source-matrix");
+        let mut store = MemoryStore::open(&path).unwrap();
+        let legacy = note_input("bookA", "1.1", "legacy");
+        assert_eq!(
+            store.save_note(legacy, "t0").unwrap_err().error_code,
+            "NOTE_PLACEMENT_REQUIRED"
+        );
+
+        let mut both = placed_note_input(
+            "bookA",
+            "1.1",
+            "two sources",
+            "sha256:source-a",
+            "long_term",
+        );
+        both.selection_context = Some(selection_context());
+        assert_eq!(
+            store.save_note(both, "t0").unwrap_err().error_code,
+            "INVALID_NOTE_PLACEMENT"
+        );
+
+        let mut forged = placed_note_input(
+            "bookA",
+            "1.1",
+            "forged anchor",
+            "sha256:source-a",
+            "long_term",
+        );
+        forged.anchor.lid = Some("9.9".into());
+        assert_eq!(
+            store.save_note(forged, "t0").unwrap_err().error_code,
+            "INVALID_NOTE_PLACEMENT"
+        );
+        assert!(store.recall(&RecallQuery::default()).is_empty());
+    }
+
+    #[test]
+    fn promote_changes_only_layer_keeps_mem_id_and_is_idempotent() {
+        let path = tmp("note-promote");
+        let mut store = MemoryStore::open(&path).unwrap();
+        let created = store
+            .save_note(
+                placed_note_input("bookA", "1.1", "agent note", "sha256:source-a", "session"),
+                "t0",
+            )
+            .unwrap()
+            .record;
+
+        let promoted = store
+            .promote(PromoteInput {
+                mem_id: created.mem_id.clone(),
+                from_layer: "session".into(),
+                to_layer: "long_term".into(),
+            })
+            .unwrap();
+        let mut expected = created;
+        expected.layer = "long_term".into();
+        assert_eq!(promoted, expected);
+
+        let before_document = store.document.clone();
+        let before_disk = std::fs::read_to_string(&path).unwrap();
+        let replay = store
+            .promote(PromoteInput {
+                mem_id: promoted.mem_id.clone(),
+                from_layer: "session".into(),
+                to_layer: "long_term".into(),
+            })
+            .unwrap();
+        assert_eq!(replay, promoted);
+        assert_eq!(store.document, before_document);
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), before_disk);
+    }
+
+    #[test]
+    fn reanchor_atomically_replaces_identity_and_preserves_note_envelope() {
+        let path = tmp("note-reanchor");
+        let mut store = MemoryStore::open(&path).unwrap();
+        let old = store
+            .save_note(
+                placed_note_input("bookA", "1.1", "move me", "sha256:source-a", "session"),
+                "t0",
+            )
+            .unwrap()
+            .record;
+        let moved = store
+            .reanchor(ReanchorInput {
+                mem_id: old.mem_id.clone(),
+                note_placement: lid_placement("sha256:source-a", "2.2"),
+            })
+            .unwrap();
+
+        assert_ne!(moved.mem_id, old.mem_id);
+        assert_eq!(moved.anchor.lid.as_deref(), Some("2.2"));
+        assert_eq!(
+            moved
+                .citations
+                .iter()
+                .map(|item| item.lid.as_str())
+                .collect::<Vec<_>>(),
+            vec!["2.2"]
+        );
+        assert_eq!(moved.content, old.content);
+        assert_eq!(moved.layer, old.layer);
+        assert_eq!(moved.generated_at, old.generated_at);
+        assert_eq!(moved.usage, old.usage);
+        assert_eq!(moved.source_session_id, old.source_session_id);
+        assert_eq!(store.recall(&RecallQuery::default()), vec![moved.clone()]);
+
+        assert_eq!(
+            store
+                .promote(PromoteInput {
+                    mem_id: old.mem_id,
+                    from_layer: "session".into(),
+                    to_layer: "long_term".into(),
+                })
+                .unwrap_err()
+                .error_code,
+            "MEMORY_NOT_FOUND"
+        );
+    }
+
+    #[test]
+    fn reanchor_conflict_and_persistence_failure_preserve_authoritative_records() {
+        let path = tmp("note-reanchor-conflict");
+        let mut store = MemoryStore::open(&path).unwrap();
+        let first = store
+            .save_note(
+                placed_note_input("bookA", "1.1", "same body", "sha256:source-a", "long_term"),
+                "t0",
+            )
+            .unwrap()
+            .record;
+        store
+            .save_note(
+                placed_note_input("bookA", "2.2", "same body", "sha256:source-a", "long_term"),
+                "t1",
+            )
+            .unwrap();
+        let before_conflict = store.document.clone();
+        assert_eq!(
+            store
+                .reanchor(ReanchorInput {
+                    mem_id: first.mem_id.clone(),
+                    note_placement: lid_placement("sha256:source-a", "2.2"),
+                })
+                .unwrap_err()
+                .error_code,
+            "NOTE_REANCHOR_CONFLICT"
+        );
+        assert_eq!(store.document, before_conflict);
+
+        let before_disk = std::fs::read_to_string(&path).unwrap();
+        let blocker = tmp("note-reanchor-parent-blocker");
+        std::fs::write(&blocker, "not a directory").unwrap();
+        store.path = blocker.join("memory.json");
+        let error = store
+            .reanchor(ReanchorInput {
+                mem_id: first.mem_id,
+                note_placement: lid_placement("sha256:source-a", "3.3"),
+            })
+            .unwrap_err();
+        assert_eq!(error.category, "internal");
+        assert_eq!(store.document, before_conflict);
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), before_disk);
+    }
+
+    #[test]
+    fn reanchor_rejects_selection_note_but_allows_explicit_legacy_upgrade() {
+        let path = tmp("note-reanchor-kinds");
+        let mut store = MemoryStore::open(&path).unwrap();
+        let mut selected = note_input("bookA", "1.1", "quoted");
+        selected.selection_context = Some(selection_context());
+        let selected = store.save_note(selected, "t0").unwrap().record;
+        assert_eq!(
+            store
+                .reanchor(ReanchorInput {
+                    mem_id: selected.mem_id,
+                    note_placement: lid_placement("sha256:source-a", "2.2"),
+                })
+                .unwrap_err()
+                .error_code,
+            "NOTE_REANCHOR_NOT_ALLOWED"
+        );
+
+        let legacy = store
+            .save(note_input("bookA", "3.3", "legacy"), "t1")
+            .unwrap();
+        let upgraded = store
+            .reanchor(ReanchorInput {
+                mem_id: legacy.mem_id,
+                note_placement: lid_placement("sha256:source-a", "4.4"),
+            })
+            .unwrap();
+        assert_eq!(upgraded.anchor.lid.as_deref(), Some("4.4"));
+        assert!(upgraded.note_placement.is_some());
+    }
+
+    #[test]
+    fn replace_content_inherits_body_placement_without_refreshing_position() {
+        let path = tmp("replace-body-placement");
+        let mut store = MemoryStore::open(&path).unwrap();
+        let old = store
+            .save_note(
+                placed_note_input(
+                    "bookA",
+                    "1.1",
+                    "old content",
+                    "sha256:source-a",
+                    "long_term",
+                ),
+                "t0",
+            )
+            .unwrap()
+            .record;
+        let replaced = store
+            .replace(
+                ReplaceInput {
+                    mem_id: old.mem_id,
+                    content: "new content".into(),
+                    selection_context: None,
+                },
+                "t1",
+            )
+            .unwrap();
+        assert_eq!(replaced.note_placement, old.note_placement);
+        assert_eq!(replaced.anchor, old.anchor);
+        assert_eq!(replaced.citations, old.citations);
+    }
+
+    #[test]
+    fn selection_context_derives_ordered_unique_citations_and_enters_mem_id() {
+        let path = tmp("selection-context");
+        let mut store = MemoryStore::open(&path).unwrap();
+        let mut input = note_input("bookA", "1.1", "跨段笔记");
+        input.selection_context = Some(selection_context());
+        let saved = store.save(input, "t0").unwrap();
+
+        assert_eq!(saved.selection_context, Some(selection_context()));
+        assert_eq!(
+            saved
+                .citations
+                .iter()
+                .map(|c| c.lid.as_str())
+                .collect::<Vec<_>>(),
+            vec!["1.1", "1.2"]
+        );
+
+        let mut same = note_input("bookA", "1.1", "跨段笔记");
+        same.selection_context = Some(selection_context());
+        assert_eq!(store.save(same, "t1").unwrap().mem_id, saved.mem_id);
+
+        let mut changed_context = selection_context();
+        changed_context.raw_quote.push('!');
+        let mut changed = note_input("bookA", "1.1", "跨段笔记");
+        changed.selection_context = Some(changed_context);
+        assert_ne!(store.save(changed, "t2").unwrap().mem_id, saved.mem_id);
+    }
+
+    #[test]
+    fn selection_context_resolution_basis_is_backward_compatible_and_fail_closed() {
+        let legacy: SelectionContext = serde_json::from_value(serde_json::json!({
+            "status": "resolved",
+            "raw_quote": "legacy raw",
+            "resolved_quote": "legacy resolved",
+            "ranges": [{ "lid": "1.1", "range": { "start": 0, "end": 6 } }]
+        }))
+        .unwrap();
+        assert_eq!(legacy.resolution_basis, None);
+
+        let recovered: SelectionContext = serde_json::from_value(serde_json::json!({
+            "status": "resolved",
+            "resolution_basis": "recovered",
+            "raw_quote": "feed-forward",
+            "resolved_quote": "feed-forward",
+            "ranges": [{ "lid": "1.1", "range": { "start": 0, "end": 12 } }]
+        }))
+        .unwrap();
+        assert_eq!(
+            recovered.resolution_basis,
+            Some(SelectionResolutionBasis::Recovered)
+        );
+
+        let path = tmp("partial-selection-context-basis");
+        let mut store = MemoryStore::open(&path).unwrap();
+        let mut input = note_input("bookA", "1.1", "partial note");
+        input.selection_context = Some(SelectionContext {
+            status: SelectionResolution::Partial,
+            resolution_basis: Some(SelectionResolutionBasis::Recovered),
+            raw_quote: "raw".into(),
+            resolved_quote: "source".into(),
+            ranges: vec![SelectedRange {
+                lid: "1.1".into(),
+                range: TextRange { start: 0, end: 3 },
+            }],
+        });
+        assert_eq!(
+            store.save(input, "t0").unwrap_err().error_code,
+            "INVALID_SELECTION_CONTEXT"
+        );
+    }
+
+    #[test]
+    fn selection_context_rejects_non_note_empty_ranges_invalid_ranges_and_anchor_mismatch() {
+        let path = tmp("invalid-selection-context");
+        let mut store = MemoryStore::open(&path).unwrap();
+
+        let mut non_note = hl_input("bookA", "1.1", "raw", 0, 3);
+        non_note.selection_context = Some(selection_context());
+        assert_eq!(
+            store.save(non_note, "t0").unwrap_err().error_code,
+            "INVALID_SELECTION_CONTEXT"
+        );
+
+        let mut empty = note_input("bookA", "1.1", "note");
+        let mut empty_context = selection_context();
+        empty_context.ranges.clear();
+        empty.selection_context = Some(empty_context);
+        assert_eq!(
+            store.save(empty, "t0").unwrap_err().error_code,
+            "INVALID_SELECTION_CONTEXT"
+        );
+
+        let mut invalid_range = note_input("bookA", "1.1", "note");
+        let mut invalid_context = selection_context();
+        invalid_context.ranges[0].range.end = invalid_context.ranges[0].range.start;
+        invalid_range.selection_context = Some(invalid_context);
+        assert_eq!(
+            store.save(invalid_range, "t0").unwrap_err().error_code,
+            "INVALID_SELECTION_CONTEXT"
+        );
+
+        let mut mismatch = note_input("bookA", "9.9", "note");
+        mismatch.selection_context = Some(selection_context());
+        assert_eq!(
+            store.save(mismatch, "t0").unwrap_err().error_code,
+            "INVALID_SELECTION_CONTEXT"
+        );
+        assert!(store.recall(&RecallQuery::default()).is_empty());
+    }
+
+    #[test]
+    fn replace_content_inherits_selection_context_anchor_citations_and_envelope() {
+        let path = tmp("replace-inherit");
+        let mut store = MemoryStore::open(&path).unwrap();
+        let mut input = note_input("bookA", "1.1", "旧内容");
+        input.selection_context = Some(selection_context());
+        input.source_session_id = Some("session-a".into());
+        let old = store.save(input, "t0").unwrap();
+
+        let replaced = store
+            .replace(
+                ReplaceInput {
+                    mem_id: old.mem_id.clone(),
+                    content: "新内容".into(),
+                    selection_context: None,
+                },
+                "t1",
+            )
+            .unwrap();
+
+        assert_ne!(replaced.mem_id, old.mem_id);
+        assert_eq!(replaced.content, "新内容");
+        assert_eq!(replaced.anchor, old.anchor);
+        assert_eq!(replaced.selection_context, old.selection_context);
+        assert_eq!(replaced.citations, old.citations);
+        assert_eq!(replaced.layer, old.layer);
+        assert_eq!(replaced.mem_type, old.mem_type);
+        assert_eq!(replaced.book_id, old.book_id);
+        assert_eq!(replaced.source_session_id, old.source_session_id);
+        assert_eq!(
+            store.recall(&RecallQuery::default()),
+            vec![replaced.clone()]
+        );
+
+        let reopened = MemoryStore::open(&path).unwrap();
+        assert_eq!(reopened.recall(&RecallQuery::default()), vec![replaced]);
+    }
+
+    #[test]
+    fn replace_with_explicit_selection_context_reanchors_and_rederives_citations() {
+        let path = tmp("replace-reanchor");
+        let mut store = MemoryStore::open(&path).unwrap();
+        let old = store
+            .save(note_input("bookA", "1.1", "旧内容"), "t0")
+            .unwrap();
+        let context = SelectionContext {
+            status: SelectionResolution::Partial,
+            resolution_basis: None,
+            raw_quote: "new raw".into(),
+            resolved_quote: "new resolved".into(),
+            ranges: vec![
+                SelectedRange {
+                    lid: "2.1".into(),
+                    range: TextRange { start: 2, end: 5 },
+                },
+                SelectedRange {
+                    lid: "2.2".into(),
+                    range: TextRange { start: 0, end: 4 },
+                },
+            ],
+        };
+
+        let replaced = store
+            .replace(
+                ReplaceInput {
+                    mem_id: old.mem_id,
+                    content: "新内容".into(),
+                    selection_context: Some(context.clone()),
+                },
+                "t1",
+            )
+            .unwrap();
+
+        assert_eq!(replaced.anchor.lid.as_deref(), Some("2.1"));
+        assert_eq!(replaced.selection_context, Some(context));
+        assert_eq!(
+            replaced
+                .citations
+                .iter()
+                .map(|citation| citation.lid.as_str())
+                .collect::<Vec<_>>(),
+            vec!["2.1", "2.2"]
+        );
+    }
+
+    #[test]
+    fn replace_rejects_missing_empty_and_target_id_conflict_without_mutation() {
+        let path = tmp("replace-validation");
+        let mut store = MemoryStore::open(&path).unwrap();
+        let first = store
+            .save(note_input("bookA", "1.1", "first"), "t0")
+            .unwrap();
+        let second = store
+            .save(note_input("bookA", "1.1", "second"), "t0")
+            .unwrap();
+        let before = store.recall(&RecallQuery::default());
+
+        let missing = store
+            .replace(
+                ReplaceInput {
+                    mem_id: "mem_missing".into(),
+                    content: "new".into(),
+                    selection_context: None,
+                },
+                "t1",
+            )
+            .unwrap_err();
+        assert_eq!(missing.error_code, "MEMORY_NOT_FOUND");
+
+        let empty = store
+            .replace(
+                ReplaceInput {
+                    mem_id: first.mem_id.clone(),
+                    content: "  ".into(),
+                    selection_context: None,
+                },
+                "t1",
+            )
+            .unwrap_err();
+        assert_eq!(empty.error_code, "INVALID_MEMORY_CONTENT");
+
+        let conflict = store
+            .replace(
+                ReplaceInput {
+                    mem_id: first.mem_id,
+                    content: second.content,
+                    selection_context: None,
+                },
+                "t1",
+            )
+            .unwrap_err();
+        assert_eq!(conflict.error_code, "MEMORY_REPLACE_CONFLICT");
+        assert_eq!(store.recall(&RecallQuery::default()), before);
+    }
+
+    #[test]
+    fn replace_persistence_failure_preserves_memory_and_disk_record() {
+        let path = tmp("replace-persist-old");
+        let mut store = MemoryStore::open(&path).unwrap();
+        let old = store
+            .save(note_input("bookA", "1.1", "旧内容"), "t0")
+            .unwrap();
+
+        let blocker = tmp("replace-parent-blocker");
+        std::fs::write(&blocker, "not a directory").unwrap();
+        store.path = blocker.join("memory.json");
+        let error = store
+            .replace(
+                ReplaceInput {
+                    mem_id: old.mem_id.clone(),
+                    content: "不能落盘的新内容".into(),
+                    selection_context: None,
+                },
+                "t1",
+            )
+            .unwrap_err();
+        assert_eq!(error.category, "internal");
+        assert_eq!(store.recall(&RecallQuery::default()), vec![old.clone()]);
+
+        let reopened = MemoryStore::open(&path).unwrap();
+        assert_eq!(reopened.recall(&RecallQuery::default()), vec![old]);
+    }
+
+    // save → recall 往返:存的记录能按 book_id 取回,字段完整。
+    #[test]
+    fn save_recall_roundtrip() {
+        let path = tmp("roundtrip");
+        let mut s = MemoryStore::open(&path).unwrap();
+        let saved = s
+            .save(note_input("bookA", "1.1", "命令模式即闭包"), "t0")
+            .unwrap();
+        let got = s.recall(&RecallQuery {
+            book_id: Some("bookA".into()),
+            ..Default::default()
+        });
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0], saved);
+        assert_eq!(got[0].content, "命令模式即闭包");
+    }
+
+    // citation 自动派生:note 未给 citations → 锚回 anchor.lid(兑现 recall 带可验证 LID citation)。
+    #[test]
+    fn note_auto_derives_lid_citation() {
+        let path = tmp("autocite");
+        let mut s = MemoryStore::open(&path).unwrap();
+        let r = s
+            .save(note_input("bookA", "11.18.4", "命令封装请求"), "t0")
+            .unwrap();
+        assert_eq!(r.citations.len(), 1);
+        assert_eq!(r.citations[0].lid, "11.18.4");
+        assert_eq!(r.citations[0].book_id, "bookA");
+    }
+
+    // position 类型不自动派生 citation(只 note/highlight 派生)。
+    #[test]
+    fn position_no_auto_citation() {
+        let path = tmp("position");
+        let mut s = MemoryStore::open(&path).unwrap();
+        let mut inp = note_input("bookA", "3.2", "");
+        inp.mem_type = "position".into();
+        inp.layer = "session".into();
+        let r = s.save(inp, "t0").unwrap();
+        assert!(r.citations.is_empty());
+    }
+
+    // 内容寻址 upsert 幂等:同 (book|type|anchor|content) 两存 = 同 mem_id = 不增条目,count 累加。
+    #[test]
+    fn content_addressed_upsert_is_idempotent() {
+        let path = tmp("upsert");
+        let mut s = MemoryStore::open(&path).unwrap();
+        let r1 = s.save(note_input("bookA", "1.1", "同一条"), "t0").unwrap();
+        let r2 = s.save(note_input("bookA", "1.1", "同一条"), "t1").unwrap();
+        assert_eq!(r1.mem_id, r2.mem_id);
+        assert_eq!(r2.usage.count, 2); // 第二次 upsert,count 累加
+        let all = s.recall(&RecallQuery::default());
+        assert_eq!(all.len(), 1); // 不重复
+    }
+
+    // recall 维度过滤:book_id/type/lid/text 各自精确/子串过滤,合取。
+    #[test]
+    fn recall_dimensions_filter() {
+        let path = tmp("dims");
+        let mut s = MemoryStore::open(&path).unwrap();
+        s.save(note_input("bookA", "1.1", "alpha 内容"), "t0")
+            .unwrap();
+        s.save(note_input("bookA", "2.2", "beta 内容"), "t0")
+            .unwrap();
+        s.save(note_input("bookB", "1.1", "gamma 内容"), "t0")
+            .unwrap();
+        assert_eq!(
+            s.recall(&RecallQuery {
+                book_id: Some("bookA".into()),
+                ..Default::default()
+            })
+            .len(),
+            2
+        );
+        assert_eq!(
+            s.recall(&RecallQuery {
+                lid: Some("1.1".into()),
+                ..Default::default()
+            })
+            .len(),
+            2
+        );
+        assert_eq!(
+            s.recall(&RecallQuery {
+                book_id: Some("bookA".into()),
+                lid: Some("1.1".into()),
+                ..Default::default()
+            })
+            .len(),
+            1
+        );
+        assert_eq!(
+            s.recall(&RecallQuery {
+                text: Some("beta".into()),
+                ..Default::default()
+            })
+            .len(),
+            1
+        );
+        assert_eq!(
+            s.recall(&RecallQuery {
+                mem_type: Some("highlight".into()),
+                ..Default::default()
+            })
+            .len(),
+            0
+        );
+    }
+
+    // delete:显式删一条后 recall 不再返;删不存在的 mem_id → MEMORY_NOT_FOUND(不静默)。
+    #[test]
+    fn delete_removes_and_missing_errors() {
+        let path = tmp("delete");
+        let mut s = MemoryStore::open(&path).unwrap();
+        let r = s.save(note_input("bookA", "1.1", "待删"), "t0").unwrap();
+        assert_eq!(s.recall(&RecallQuery::default()).len(), 1);
+        s.delete(&r.mem_id).unwrap();
+        assert_eq!(s.recall(&RecallQuery::default()).len(), 0);
+        // 删后落盘:重开同路径已无该条。
+        let s2 = MemoryStore::open(&path).unwrap();
+        assert_eq!(s2.recall(&RecallQuery::default()).len(), 0);
+        // 删不存在 → MEMORY_NOT_FOUND,禁静默。
+        let e = s.delete("mem_nope").unwrap_err();
+        assert_eq!(e.error_code, "MEMORY_NOT_FOUND");
+        assert_eq!(e.category, "not_found");
+    }
+
+    // 高亮 range:save 存 range + 同段同子串不同 range = 两条不同 mem_id`[ADR-0031]`;range=None 的 note 哈希不变(向后兼容)。
+    #[test]
+    fn highlight_range_persists_and_distinguishes_by_position() {
+        let path = tmp("hlrange");
+        let mut s = MemoryStore::open(&path).unwrap();
+        let a = s.save(hl_input("bookA", "1.1", "the", 0, 3), "t0").unwrap();
+        let b = s
+            .save(hl_input("bookA", "1.1", "the", 20, 23), "t0")
+            .unwrap();
+        // 同 book|type|lid|content="the" 但 range 不同 ⇒ 两条不同高亮(range 入址)。
+        assert_ne!(a.mem_id, b.mem_id);
+        assert_eq!(a.range, Some(TextRange { start: 0, end: 3 }));
+        assert_eq!(b.range, Some(TextRange { start: 20, end: 23 }));
+        assert_eq!(s.recall(&RecallQuery::default()).len(), 2);
+        // range=None 的 note 内容寻址与扩 range 字段前一致(向后兼容:不破老 note 幂等)。
+        let n1 = s.save(note_input("bookA", "1.1", "笔记"), "t0").unwrap();
+        let n2 = s.save(note_input("bookA", "1.1", "笔记"), "t1").unwrap();
+        assert_eq!(n1.mem_id, n2.mem_id);
+        assert!(n1.range.is_none());
+    }
+
+    // 落盘隔离 + 持久化:写入后重开同路径,记录仍在(独立文件,不碰只读基座)。
+    #[test]
+    fn persists_to_isolated_file_and_reloads() {
+        let path = tmp("persist");
+        {
+            let mut s = MemoryStore::open(&path).unwrap();
+            s.save(note_input("bookA", "1.1", "持久"), "t0").unwrap();
+        }
+        assert!(path.exists());
+        let s2 = MemoryStore::open(&path).unwrap();
+        assert_eq!(s2.recall(&RecallQuery::default()).len(), 1);
+    }
+
+    // 已读账本 `[ADR-0038]`:mark_read 后 read_lids 含该 LID(读过 vs 没读过确定性可分);
+    // 重读同 LID 去重 + count 累加;按 generated_at 触达序;跨书隔离;read 不派生 citation。
+    #[test]
+    fn read_ledger_marks_and_lists_deterministically() {
+        let path = tmp("readledger");
+        let mut s = MemoryStore::open(&path).unwrap();
+        // 没读过:空。
+        assert!(s.read_lids("bookA").is_empty());
+        // 读三处(触达序 1.3 → 1.1 → 1.2),再重读 1.1。
+        let r = s.mark_read("bookA", "1.3", "t0").unwrap();
+        assert_eq!(r.mem_type, "read");
+        assert!(r.citations.is_empty()); // read 不派生 citation
+        s.mark_read("bookA", "1.1", "t1").unwrap();
+        s.mark_read("bookA", "1.2", "t2").unwrap();
+        let again = s.mark_read("bookA", "1.1", "t3").unwrap();
+        assert_eq!(again.usage.count, 2); // 重读 = 同 mem_id upsert,count 累加
+        assert_eq!(
+            s.derive_book_reading_state("bookA").engagement_by_lid["1.1"].read_count,
+            2
+        );
+        // 已读集去重 + 按 generated_at 序(1.1 刷新到 t3 ⇒ 排末):[1.3(t0), 1.2(t2), 1.1(t3)]。
+        assert_eq!(s.read_lids("bookA"), vec!["1.3", "1.2", "1.1"]);
+        // 跨书隔离:bookB 未读。
+        assert!(s.read_lids("bookB").is_empty());
+    }
+
+    // 已读账本落盘持久(跨会话累积,区别于 ephemeral viewport):重开同库 read_lids 仍在。
+    #[test]
+    fn read_ledger_persists_across_reopen() {
+        let path = tmp("readpersist");
+        {
+            let mut s = MemoryStore::open(&path).unwrap();
+            s.mark_read("bookA", "1.1", "t0").unwrap();
+            s.mark_read("bookA", "1.2", "t1").unwrap();
+        }
+        let s2 = MemoryStore::open(&path).unwrap();
+        assert_eq!(s2.read_lids("bookA"), vec!["1.1", "1.2"]);
+    }
+
+    // ADR-0106:导航只登记已读触达；同一静默批次合并为一次 document revision/原子提交。
+    #[test]
+    fn deferred_read_ledger_coalesces_touches_and_flushes_once() {
+        let path = tmp("read-deferred");
+        let mut s = MemoryStore::open(&path).unwrap();
+
+        s.enqueue_read("bookA", "1.1", "t0").unwrap();
+        s.enqueue_read("bookA", "1.2", "t1").unwrap();
+        s.enqueue_read("bookA", "1.1", "t2").unwrap();
+
+        assert_eq!(s.pending_read_count(), 2);
+        assert!(s.read_lids("bookA").is_empty());
+        assert!(
+            !path.exists(),
+            "enqueue must not synchronously persist memory"
+        );
+
+        assert_eq!(s.flush_pending_reads().unwrap(), 2);
+        assert_eq!(s.pending_read_count(), 0);
+        assert_eq!(s.document_revision(), 1);
+        assert_eq!(s.read_lids("bookA"), vec!["1.2", "1.1"]);
+        assert_eq!(
+            s.derive_book_reading_state("bookA").engagement_by_lid["1.1"].read_count,
+            2
+        );
+
+        let reopened = MemoryStore::open(&path).unwrap();
+        assert_eq!(reopened.read_lids("bookA"), vec!["1.2", "1.1"]);
+        assert_eq!(
+            reopened
+                .derive_book_reading_state("bookA")
+                .engagement_by_lid["1.1"]
+                .read_count,
+            2
+        );
+    }
+
+    // 后台写失败不得丢待持久触达；解除故障后同一批可以重试成功。
+    #[test]
+    fn deferred_read_ledger_retains_batch_after_flush_failure() {
+        let path = tmp("read-deferred-retry");
+        let temporary = atomic_temporary_path(&path);
+        let mut s = MemoryStore::open(&path).unwrap();
+        s.enqueue_read("bookA", "1.1", "t0").unwrap();
+        std::fs::create_dir_all(&temporary).unwrap();
+
+        assert!(s.flush_pending_reads().is_err());
+        assert_eq!(s.pending_read_count(), 1);
+        assert!(s.read_lids("bookA").is_empty());
+
+        std::fs::remove_dir_all(&temporary).unwrap();
+        assert_eq!(s.flush_pending_reads().unwrap(), 1);
+        assert_eq!(s.pending_read_count(), 0);
+        assert_eq!(s.read_lids("bookA"), vec!["1.1"]);
+    }
+
+    // BookReadingState 派生 `[ADR-0075]`:已读集(触达序)+ note/highlight 原始活动;跨书隔离。
+    #[test]
+    fn derive_book_reading_state_aggregates_deterministically() {
+        let path = tmp("profile");
+        let mut s = MemoryStore::open(&path).unwrap();
+        s.mark_read("bookA", "1.1", "t0").unwrap();
+        s.mark_read("bookA", "1.2", "t1").unwrap();
+        s.save(note_input("bookA", "2.1", "笔记"), "t2").unwrap();
+        s.save(hl_input("bookA", "2.1", "X", 0, 1), "t3").unwrap(); // 同 LID 关注点去重
+        s.save(hl_input("bookA", "2.3", "Y", 0, 1), "t4").unwrap();
+        s.mark_read("bookB", "9.9", "t5").unwrap(); // 别书噪声
+        let state = s.derive_book_reading_state("bookA");
+        assert_eq!(state.book_id, "bookA");
+        assert_eq!(state.read_lids, vec!["1.1", "1.2"]); // 触达序
+        assert_eq!(state.engagement_by_lid["1.1"].read_count, 1);
+        assert_eq!(state.engagement_by_lid["2.1"].note_count, 1);
+        assert_eq!(state.engagement_by_lid["2.1"].highlight_count, 1);
+        assert_eq!(state.engagement_by_lid["2.3"].highlight_count, 1);
+        assert_eq!(state.legacy_reader_profile().focus_lids, vec!["2.1", "2.3"]);
+        assert!(state.legacy_reader_profile().puzzle_heat.is_empty());
+    }
+
+    // qa 原始活动派生 `[ADR-0041/0075]`:不同 qa record 计数;read/note/highlight 各自独立。
+    #[test]
+    fn derive_book_reading_state_keeps_engagement_dimensions_separate() {
+        let path = tmp("qaheat");
+        let mut s = MemoryStore::open(&path).unwrap();
+        let qa = |lid: &str, q: &str| SaveInput {
+            mem_id: None,
+            mem_type: "qa".into(),
+            layer: "long_term".into(),
+            book_id: "bookA".into(),
+            anchor: Anchor {
+                lid: Some(lid.into()),
+                concept: None,
+            },
+            content: q.into(),
+            range: None,
+            selection_context: None,
+            note: None,
+            note_placement: None,
+            citations: None,
+            source_session_id: None,
+        };
+        s.save(qa("3.2", "所有权怎么传递"), "t0").unwrap();
+        s.save(qa("3.2", "借用和所有权区别"), "t1").unwrap();
+        s.save(qa("3.2", "move 语义"), "t2").unwrap();
+        s.save(qa("3.2", "所有权怎么传递"), "t3").unwrap(); // 重复同问题 = upsert,不增条数
+        s.save(qa("1.1", "这章讲啥"), "t4").unwrap();
+        s.mark_read("bookA", "3.2", "t5").unwrap();
+        s.save(note_input("bookA", "3.2", "笔记"), "t6").unwrap(); // note 不计入
+        let mut qb = qa("5.5", "B书问题");
+        qb.book_id = "bookB".into();
+        s.save(qb, "t7").unwrap(); // 跨书
+
+        let state = s.derive_book_reading_state("bookA");
+        assert_eq!(state.engagement_by_lid["3.2"].qa_count, 3);
+        assert_eq!(state.engagement_by_lid["3.2"].note_count, 1);
+        assert_eq!(state.engagement_by_lid["3.2"].highlight_count, 0);
+        assert_eq!(state.engagement_by_lid["1.1"].qa_count, 1);
+        assert!(!state.engagement_by_lid.contains_key("5.5"));
+        assert_eq!(state.read_lids, vec!["3.2"]);
+        let legacy = state.legacy_reader_profile();
+        assert_eq!(legacy.puzzle_heat.get("3.2"), Some(&3));
+        assert_eq!(legacy.focus_lids, vec!["3.2"]);
+    }
+
+    // qa-2 透明展示 `[ADR-0041]`:reader-profile.md 卡点段渲染 `lid (×count)` + 嵌套真实问题文本(generated_at 序)。
+    #[test]
+    fn reader_profile_md_renders_qa_questions() {
+        let path = tmp("qa-render");
+        let mut s = MemoryStore::open(&path).unwrap();
+        let qa = |lid: &str, q: &str| SaveInput {
+            mem_id: None,
+            mem_type: "qa".into(),
+            layer: "long_term".into(),
+            book_id: "bookA".into(),
+            anchor: Anchor {
+                lid: Some(lid.into()),
+                concept: None,
+            },
+            content: q.into(),
+            range: None,
+            selection_context: None,
+            note: None,
+            note_placement: None,
+            citations: None,
+            source_session_id: None,
+        };
+        s.save(qa("3.2", "所有权怎么传递"), "t0").unwrap();
+        s.save(qa("3.2", "move 语义"), "t1").unwrap();
+        let md = s.render_reader_profile_md();
+        assert!(md.contains("3.2 (×2)")); // lid + 提问热度
+        assert!(md.contains("- 所有权怎么传递")); // 真实问题文本(嵌套渲染)
+        assert!(md.contains("- move 语义"));
+    }
+
+    // P4-4 四层产物物化 `[ADR-0040]`:save/delete 后确定性派生 reader-profile.md + reading-handbook.md
+    // 落 memory.json 同目录;含已读/关注/context 时间线+cite/qa 暂空/cross-book;delete 后单向覆写不再含旧条目。
+    #[test]
+    fn profile_files_materialize_and_overwrite_on_delete() {
+        // 专属子目录隔离(parent 唯一,避与其他测试共享 temp_dir 根踩 .md)。
+        let dir = std::env::temp_dir().join("ub-mem-p4-4-test");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("memory.json");
+        let mut s = MemoryStore::open(&path).unwrap();
+
+        s.mark_read("bookA", "1.1", "t0").unwrap();
+        s.mark_read("bookA", "1.2", "t1").unwrap();
+        s.save(note_input("bookA", "2.1", "命令封装请求"), "t2")
+            .unwrap();
+        // context 记忆带 citation + 时间线。
+        let mut ctx = note_input("bookA", "3.2", "读者反复追问所有权,像卡在这");
+        ctx.mem_type = "context".into();
+        ctx.citations = Some(vec![MemCitation {
+            lid: "3.2".into(),
+            book_id: "bookA".into(),
+            note: None,
+        }]);
+        s.save(ctx, "t3").unwrap();
+
+        let profile = std::fs::read_to_string(dir.join("reader-profile.md")).unwrap();
+        let handbook = std::fs::read_to_string(dir.join("reading-handbook.md")).unwrap();
+        // reader-profile:已读/关注/context 时间线+cite/qa 诚实空/只读快照标注。
+        assert!(profile.contains("已读 (2 叶)") && profile.contains("1.1 1.2"));
+        assert!(profile.contains("2.1")); // 关注点
+        assert!(profile.contains("读者反复追问所有权") && profile.contains("[cite: 3.2]")); // context + cite
+        assert!(profile.contains("ADR-0040")); // 只读快照护栏标注
+        assert!(profile.contains("(暂空)")); // qa 诚实空
+                                             // 阅读手册:per-book + cross-book。
+        assert!(handbook.contains("**bookA**") && handbook.contains("context 1"));
+        assert!(handbook.contains("cross-book") && handbook.contains("读过的书:bookA"));
+
+        // 单向覆写:delete context 后重派生,文件不再含该 context。
+        let recs = s.recall(&RecallQuery {
+            book_id: Some("bookA".into()),
+            mem_type: Some("context".into()),
+            ..Default::default()
+        });
+        assert_eq!(recs.len(), 1);
+        s.delete(&recs[0].mem_id).unwrap();
+        let profile2 = std::fs::read_to_string(dir.join("reader-profile.md")).unwrap();
+        assert!(!profile2.contains("读者反复追问所有权")); // 覆写后旧 context 消失
+        assert!(profile2.contains("已读 (2 叶)")); // 已读账本仍在
+    }
+}

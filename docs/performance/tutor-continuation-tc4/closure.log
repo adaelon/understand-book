@@ -1,0 +1,351 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+   Compiling server v0.0.0 (E:\allwork\download\agent\understand-book\crates\server)
+    Finished `test` profile [unoptimized] target(s) in 1m 07s
+     Running unittests src\lib.rs (D:/codex-build/understand-book-no-progress-195\debug\deps\server-d6ca67c640d9d740.exe)
+
+running 20 tests
+test session_event::tests::session_event_failed_suffix_and_result_are_one_record ... ok
+test session_event::tests::session_event_preserves_teaching_presentation_and_review_watermarks ... ok
+test session_event::tests::session_event_question_tool_result_and_terminal_match_legacy_view ... ok
+test session_store::tests::jl7_startup_ignores_old_snapshot_and_recovers_only_jsonl_selection ... ok
+test session_store::tests::session_store_colon_identity_selection_restart_and_delete ... ok
+test session_store::tests::session_store_missing_or_stale_selection_uses_existing_recent_chat ... ok
+test session_store::tests::session_store_selection_write_failure_preserves_previous_selection_and_log ... ok
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+test session_store::tests::session_store_two_users_same_id_eviction_and_original_presentation_root ... ok
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+test tests::mu6_tests::session_event_queued_claimed_keep_original_frozen_input ... ok
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+test tests::mu6_tests::session_event_real_note_result_survives_reopen_without_reexecution ... ok
+test tests::tutor_continuation_tests::continuation_tc4_both_hosts_execute_chosen_action_to_delivery ... TC4_EVIDENCE {"accepted_turn":"turn_125cde2a47a7541c","action":"choice","chosen_event":{"binding":{"chat_session_id":"chat-01a12b1f-154d-7da2-a3d0-efcfb28852f4","control_revision":2,"session_revision":1,"source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e","turn_id":"turn_125cde2a47a7541c","tutor_session_id":"tutor-first-question:chat-01a12b1f-154d-7da2-a3d0-efcfb28852f4"},"causal_refs":["delivery:turn_125ce12a47a75935:explain"],"event_id":"chosen:turn_125cde2a47a7541c","kind":"continuation_chosen","occurred_at":"t0","payload":{"accepted_turn_id":"turn_125cde2a47a7541c","delivery_ref":"delivery:turn_125ce12a47a75935:explain","option_id":"compare"}},"execution_starts":1,"host":"local","incomplete":false,"provider_calls":3,"request":{"client_request_id":"choice","expected_chat_head":"turn_125ce12a47a75935","message":"","session_id":"chat-01a12b1f-154d-7da2-a3d0-efcfb28852f4","teaching_choice":{"delivery_ref":"delivery:turn_125ce12a47a75935:explain","option_id":"compare"}},"terminal":"completed"}
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+TC4_EVIDENCE {"accepted_turn":"turn_01a12b1f-27b1-7161-9747-ee2a157cbafb","action":"choice","chosen_event":{"binding":{"chat_session_id":"chat-01a12b1f-25b2-75d1-a0f6-64b6f210ad1a","control_revision":2,"session_revision":1,"source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e","turn_id":"turn_01a12b1f-27b1-7161-9747-ee2a157cbafb","tutor_session_id":"tutor-first-question:chat-01a12b1f-25b2-75d1-a0f6-64b6f210ad1a"},"causal_refs":["delivery:turn_01a12b1f-25e4-7430-b309-a834cfb9180f:explain"],"event_id":"chosen:turn_01a12b1f-27b1-7161-9747-ee2a157cbafb","kind":"continuation_chosen","occurred_at":"1791724824","payload":{"accepted_turn_id":"turn_01a12b1f-27b1-7161-9747-ee2a157cbafb","delivery_ref":"delivery:turn_01a12b1f-25e4-7430-b309-a834cfb9180f:explain","option_id":"compare"}},"execution_starts":1,"host":"network","incomplete":false,"provider_calls":3,"request":{"attachment_id":"tc0-page","client_request_id":"choice","expected_chat_head":"turn_01a12b1f-25e4-7430-b309-a834cfb9180f","expected_revision":2,"generation":2,"message":"","session_id":"chat-01a12b1f-25b2-75d1-a0f6-64b6f210ad1a","teaching_choice":{"delivery_ref":"delivery:turn_01a12b1f-25e4-7430-b309-a834cfb9180f:explain","option_id":"compare"}},"terminal":"completed"}
+ok
+test tests::tutor_continuation_tests::continuation_tc4_local_answer_identity_and_open_goal ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_choice_boundaries_and_historical_answer ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_choice_is_consumed_once_and_keeps_goal ... ok
+test tests::tutor_continuation_tests::continuation_tc4_local_restarts_repair_facts_without_execution ... TC4_EVIDENCE {"accepted_turn":"turn_c48ddef1eb8f7a76","action":"choice","chosen_events":[{"binding":{"chat_session_id":"chat-01a12b1f-4a06-7ab1-8203-b6dbd6d74f0e","control_revision":2,"session_revision":1,"source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e","turn_id":"turn_c48ddef1eb8f7a76","tutor_session_id":"tutor-first-question:chat-01a12b1f-4a06-7ab1-8203-b6dbd6d74f0e"},"causal_refs":["delivery:turn_c48dddf1eb8f78c3:explain"],"event_id":"chosen:turn_c48ddef1eb8f7a76","kind":"continuation_chosen","occurred_at":"1000","payload":{"accepted_turn_id":"turn_c48ddef1eb8f7a76","delivery_ref":"delivery:turn_c48dddf1eb8f78c3:explain","option_id":"compare"}}],"execution_starts":0,"fault":"accepted","host":"local","provider_calls":0,"request":{"client_request_id":"choice","expected_chat_head":"turn_c48dddf1eb8f78c3","message":"","session_id":"chat-01a12b1f-4a06-7ab1-8203-b6dbd6d74f0e","teaching_choice":{"delivery_ref":"delivery:turn_c48dddf1eb8f78c3:explain","option_id":"compare"}},"terminal":"INTERRUPTED"}
+TC4_EVIDENCE {"accepted_turn":"turn_07316063fd8882ae","action":"choice","chosen_events":[{"binding":{"chat_session_id":"chat-01a12b1f-4c83-7342-b86b-3cdcec434913","control_revision":2,"session_revision":1,"source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e","turn_id":"turn_07316063fd8882ae","tutor_session_id":"tutor-first-question:chat-01a12b1f-4c83-7342-b86b-3cdcec434913"},"causal_refs":["delivery:turn_07315f63fd8880fb:explain"],"event_id":"chosen:turn_07316063fd8882ae","kind":"continuation_chosen","occurred_at":"1000","payload":{"accepted_turn_id":"turn_07316063fd8882ae","delivery_ref":"delivery:turn_07315f63fd8880fb:explain","option_id":"compare"}}],"execution_starts":0,"fault":"snapshot","host":"local","provider_calls":0,"request":{"client_request_id":"choice","expected_chat_head":"turn_07315f63fd8880fb","message":"","session_id":"chat-01a12b1f-4c83-7342-b86b-3cdcec434913","teaching_choice":{"delivery_ref":"delivery:turn_07315f63fd8880fb:explain","option_id":"compare"}},"terminal":"INTERRUPTED"}
+TC4_EVIDENCE {"accepted_turn":"turn_23477dca0e2b4b1f","action":"choice","chosen_events":[{"binding":{"chat_session_id":"chat-01a12b1f-4fb7-7660-9db7-e0d098aa9654","control_revision":2,"session_revision":1,"source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e","turn_id":"turn_23477dca0e2b4b1f","tutor_session_id":"tutor-first-question:chat-01a12b1f-4fb7-7660-9db7-e0d098aa9654"},"causal_refs":["delivery:turn_23477eca0e2b4cd2:explain"],"event_id":"chosen:turn_23477dca0e2b4b1f","kind":"continuation_chosen","occurred_at":"1000","payload":{"accepted_turn_id":"turn_23477dca0e2b4b1f","delivery_ref":"delivery:turn_23477eca0e2b4cd2:explain","option_id":"compare"}}],"execution_starts":0,"fault":"teaching_receipt","host":"local","provider_calls":0,"request":{"client_request_id":"choice","expected_chat_head":"turn_23477eca0e2b4cd2","message":"","session_id":"chat-01a12b1f-4fb7-7660-9db7-e0d098aa9654","teaching_choice":{"delivery_ref":"delivery:turn_23477eca0e2b4cd2:explain","option_id":"compare"}},"terminal":"INTERRUPTED"}
+TC4_EVIDENCE {"accepted_turn":"turn_9a5c93e95e6da12d","action":"choice","chosen_events":[{"binding":{"chat_session_id":"chat-01a12b1f-5320-7490-9f63-7d086264bd7d","control_revision":2,"session_revision":1,"source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e","turn_id":"turn_9a5c93e95e6da12d","tutor_session_id":"tutor-first-question:chat-01a12b1f-5320-7490-9f63-7d086264bd7d"},"causal_refs":["delivery:turn_9a5c90e95e6d9c14:explain"],"event_id":"chosen:turn_9a5c93e95e6da12d","kind":"continuation_chosen","occurred_at":"1000","payload":{"accepted_turn_id":"turn_9a5c93e95e6da12d","delivery_ref":"delivery:turn_9a5c90e95e6d9c14:explain","option_id":"compare"}}],"execution_starts":0,"fault":"prepared","host":"local","provider_calls":0,"request":{"client_request_id":"choice","expected_chat_head":"turn_9a5c90e95e6d9c14","message":"","session_id":"chat-01a12b1f-5320-7490-9f63-7d086264bd7d","teaching_choice":{"delivery_ref":"delivery:turn_9a5c90e95e6d9c14:explain","option_id":"compare"}},"terminal":"INTERRUPTED"}
+TC4_EVIDENCE {"accepted_turn":"turn_d8cfda856f0c8f09","action":"explain_selection","chosen_events":[],"execution_starts":0,"fault":"accepted","host":"local","provider_calls":0,"request":{"client_request_id":"action","entry_action":"explain_selection","expected_chat_head":"turn_d8cfd7856f0c89f0","message":"","question_quote":{"lid":"1.1","quote":"Average speed is total distance divided by total time.","ranges":[{"lid":"1.1","range":{"end":71,"start":17}}],"raw_quote":"Average speed is total distance divided by total time.","resolution_basis":"exact","resolved_quote":"Average speed is total distance divided by total time.","status":"resolved"},"session_id":"chat-01a12b1f-56a4-7fb1-ad4c-02f475020d7e","source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e"},"terminal":"INTERRUPTED"}
+TC4_EVIDENCE {"accepted_turn":"turn_dcbb4e92e658b37d","action":"explain_selection","chosen_events":[],"execution_starts":0,"fault":"snapshot","host":"local","provider_calls":0,"request":{"client_request_id":"action","entry_action":"explain_selection","expected_chat_head":"turn_dcbb4b92e658ae64","message":"","question_quote":{"lid":"1.1","quote":"Average speed is total distance divided by total time.","ranges":[{"lid":"1.1","range":{"end":71,"start":17}}],"raw_quote":"Average speed is total distance divided by total time.","resolution_basis":"exact","resolved_quote":"Average speed is total distance divided by total time.","status":"resolved"},"session_id":"chat-01a12b1f-58ec-7990-b6df-e9f7b7b44581","source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e"},"terminal":"INTERRUPTED"}
+TC4_EVIDENCE {"accepted_turn":"turn_7afe7306b22c75b7","action":"explain_selection","chosen_events":[],"execution_starts":0,"fault":"teaching_receipt","host":"local","provider_calls":0,"request":{"client_request_id":"action","entry_action":"explain_selection","expected_chat_head":"turn_7afe7406b22c776a","message":"","question_quote":{"lid":"1.1","quote":"Average speed is total distance divided by total time.","ranges":[{"lid":"1.1","range":{"end":71,"start":17}}],"raw_quote":"Average speed is total distance divided by total time.","resolution_basis":"exact","resolved_quote":"Average speed is total distance divided by total time.","status":"resolved"},"session_id":"chat-01a12b1f-5c98-76d1-a432-55c90e2245cf","source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e"},"terminal":"INTERRUPTED"}
+TC4_EVIDENCE {"accepted_turn":"turn_c4a8db4ae9e91e48","action":"explain_selection","chosen_events":[],"execution_starts":0,"fault":"prepared","host":"local","provider_calls":0,"request":{"client_request_id":"action","entry_action":"explain_selection","expected_chat_head":"turn_c4a8de4ae9e92361","message":"","question_quote":{"lid":"1.1","quote":"Average speed is total distance divided by total time.","ranges":[{"lid":"1.1","range":{"end":71,"start":17}}],"raw_quote":"Average speed is total distance divided by total time.","resolution_basis":"exact","resolved_quote":"Average speed is total distance divided by total time.","status":"resolved"},"session_id":"chat-01a12b1f-5fa3-7ee3-a2b7-bb42d3f6abca","source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e"},"terminal":"INTERRUPTED"}
+TC4_EVIDENCE {"accepted_turn":"turn_5d18881e3cfcb0d3","action":"continue_answer","chosen_events":[],"execution_starts":0,"fault":"accepted","host":"local","provider_calls":0,"request":{"answer_ref":{"turn_id":"turn_5d18891e3cfcb286"},"client_request_id":"choice","entry_action":"continue_answer","expected_chat_head":"turn_5d18891e3cfcb286","message":"","session_id":"chat-01a12b1f-628f-73e0-a831-686b8ad502ff"},"terminal":"INTERRUPTED"}
+TC4_EVIDENCE {"accepted_turn":"turn_893f6f0eeee2e759","action":"continue_answer","chosen_events":[],"execution_starts":0,"fault":"snapshot","host":"local","provider_calls":0,"request":{"answer_ref":{"turn_id":"turn_893f6c0eeee2e240"},"client_request_id":"choice","entry_action":"continue_answer","expected_chat_head":"turn_893f6c0eeee2e240","message":"","session_id":"chat-01a12b1f-64d8-7702-8f5a-149f28d4651b"},"terminal":"INTERRUPTED"}
+TC4_EVIDENCE {"accepted_turn":"turn_b8aac554ea47711e","action":"continue_answer","chosen_events":[],"execution_starts":0,"fault":"teaching_receipt","host":"local","provider_calls":0,"request":{"answer_ref":{"turn_id":"turn_b8aac454ea476f6b"},"client_request_id":"choice","entry_action":"continue_answer","expected_chat_head":"turn_b8aac454ea476f6b","message":"","session_id":"chat-01a12b1f-6853-7c40-969e-a3df0f755b12"},"terminal":"INTERRUPTED"}
+TC4_EVIDENCE {"accepted_turn":"turn_ef9f7f8846ead14c","action":"continue_answer","chosen_events":[],"execution_starts":0,"fault":"prepared","host":"local","provider_calls":0,"request":{"answer_ref":{"turn_id":"turn_ef9f828846ead665"},"client_request_id":"choice","entry_action":"continue_answer","expected_chat_head":"turn_ef9f828846ead665","message":"","session_id":"chat-01a12b1f-6b78-71b3-b0ca-fd43e84cfa81"},"terminal":"INTERRUPTED"}
+TC4_EVIDENCE {"accepted_turn":"turn_bd35f6ed9bd6e942","action":"clarify_answer","chosen_events":[],"execution_starts":0,"fault":"accepted","host":"local","provider_calls":0,"request":{"answer_ref":{"turn_id":"turn_bd35f5ed9bd6e78f"},"client_request_id":"choice","entry_action":"clarify_answer","expected_chat_head":"turn_bd35f5ed9bd6e78f","message":"","session_id":"chat-01a12b1f-6e93-7991-a883-87458e1508fa"},"terminal":"INTERRUPTED"}
+TC4_EVIDENCE {"accepted_turn":"turn_1c3ee619133ac0be","action":"clarify_answer","chosen_events":[],"execution_starts":0,"fault":"snapshot","host":"local","provider_calls":0,"request":{"answer_ref":{"turn_id":"turn_1c3ee519133abf0b"},"client_request_id":"choice","entry_action":"clarify_answer","expected_chat_head":"turn_1c3ee519133abf0b","message":"","session_id":"chat-01a12b1f-7145-7f40-b174-376aabfeeea5"},"terminal":"INTERRUPTED"}
+TC4_EVIDENCE {"accepted_turn":"turn_00ac242a0bf3c57b","action":"clarify_answer","chosen_events":[],"execution_starts":0,"fault":"teaching_receipt","host":"local","provider_calls":0,"request":{"answer_ref":{"turn_id":"turn_00ac252a0bf3c72e"},"client_request_id":"choice","entry_action":"clarify_answer","expected_chat_head":"turn_00ac252a0bf3c72e","message":"","session_id":"chat-01a12b1f-745e-75b0-9fe1-81c0bb3f04a0"},"terminal":"INTERRUPTED"}
+TC4_EVIDENCE {"accepted_turn":"turn_6d35de47d0a62b73","action":"clarify_answer","chosen_events":[],"execution_starts":0,"fault":"prepared","host":"local","provider_calls":0,"request":{"answer_ref":{"turn_id":"turn_6d35df47d0a62d26"},"client_request_id":"choice","entry_action":"clarify_answer","expected_chat_head":"turn_6d35df47d0a62d26","message":"","session_id":"chat-01a12b1f-7764-7421-974f-3cf19beed1bc"},"terminal":"INTERRUPTED"}
+ok
+
+thread 'tests::tutor_continuation_tests::continuation_tc4_local_started_execution_is_not_replayed' (15004) panicked at crates\server\src\tests\tutor_continuation_tests.rs:313:9:
+TC4 host disappears after provider started
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test tests::tutor_continuation_tests::continuation_tc4_local_started_execution_is_not_replayed ... TC4_EVIDENCE {"accepted_turn":"turn_2ce220e1963cae5e","action":"choice","execution_starts":1,"fault":"provider_started","host":"local","provider_calls":1,"terminal":"INTERRUPTED"}
+
+thread 'tests::tutor_continuation_tests::continuation_tc4_local_started_execution_is_not_replayed' (15004) panicked at crates\server\src\tests\tutor_continuation_tests.rs:313:9:
+TC4 host disappears after provider started
+TC4_EVIDENCE {"accepted_turn":"turn_c8f569ba2bf2d654","action":"explain_selection","execution_starts":1,"fault":"provider_started","host":"local","provider_calls":1,"terminal":"INTERRUPTED"}
+
+thread 'tests::tutor_continuation_tests::continuation_tc4_local_started_execution_is_not_replayed' (15004) panicked at crates\server\src\tests\tutor_continuation_tests.rs:313:9:
+TC4 host disappears after provider started
+TC4_EVIDENCE {"accepted_turn":"turn_68b3577681e7780c","action":"continue_answer","execution_starts":1,"fault":"provider_started","host":"local","provider_calls":1,"terminal":"INTERRUPTED"}
+
+thread 'tests::tutor_continuation_tests::continuation_tc4_local_started_execution_is_not_replayed' (15004) panicked at crates\server\src\tests\tutor_continuation_tests.rs:313:9:
+TC4 host disappears after provider started
+TC4_EVIDENCE {"accepted_turn":"turn_cc130bb102b80868","action":"clarify_answer","execution_starts":1,"fault":"provider_started","host":"local","provider_calls":1,"terminal":"INTERRUPTED"}
+ok
+test tests::tutor_continuation_tests::continuation_tc4_local_two_tabs_accept_only_one_choice ... ok
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+test tests::tutor_continuation_tests::continuation_tc4_network_choice_recovers_preparation_boundaries ... TC4_EVIDENCE {"accepted_turn":"turn_01a12b1f-a973-7402-add7-ada383b898f8","action":"choice","chosen_event":{"binding":{"chat_session_id":"chat-01a12b1f-a799-7cd2-b605-669065f44f77","control_revision":2,"session_revision":1,"source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e","turn_id":"turn_01a12b1f-a973-7402-add7-ada383b898f8","tutor_session_id":"tutor-first-question:chat-01a12b1f-a799-7cd2-b605-669065f44f77"},"causal_refs":["delivery:turn_01a12b1f-a7c2-7c60-a543-43e5892676ee:explain"],"event_id":"chosen:turn_01a12b1f-a973-7402-add7-ada383b898f8","kind":"continuation_chosen","occurred_at":"1791724857","payload":{"accepted_turn_id":"turn_01a12b1f-a973-7402-add7-ada383b898f8","delivery_ref":"delivery:turn_01a12b1f-a7c2-7c60-a543-43e5892676ee:explain","option_id":"compare"}},"execution_starts":1,"fault":"pending","host":"network","provider_calls":2,"request":{"attachment_id":"tc0-page","client_request_id":"choice","expected_chat_head":"turn_01a12b1f-a7c2-7c60-a543-43e5892676ee","expected_revision":2,"generation":2,"message":"","session_id":"chat-01a12b1f-a799-7cd2-b605-669065f44f77","teaching_choice":{"delivery_ref":"delivery:turn_01a12b1f-a7c2-7c60-a543-43e5892676ee:explain","option_id":"compare"}},"terminal":"failed"}
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+TC4_EVIDENCE {"accepted_turn":"turn_01a12b1f-b88f-7291-b8cd-adce195243ae","action":"choice","chosen_event":{"binding":{"chat_session_id":"chat-01a12b1f-b6cc-75b0-9d3e-63b037da4295","control_revision":2,"session_revision":1,"source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e","turn_id":"turn_01a12b1f-b88f-7291-b8cd-adce195243ae","tutor_session_id":"tutor-first-question:chat-01a12b1f-b6cc-75b0-9d3e-63b037da4295"},"causal_refs":["delivery:turn_01a12b1f-b6f7-72b0-b550-9af4c6505015:explain"],"event_id":"chosen:turn_01a12b1f-b88f-7291-b8cd-adce195243ae","kind":"continuation_chosen","occurred_at":"1791724861","payload":{"accepted_turn_id":"turn_01a12b1f-b88f-7291-b8cd-adce195243ae","delivery_ref":"delivery:turn_01a12b1f-b6f7-72b0-b550-9af4c6505015:explain","option_id":"compare"}},"execution_starts":1,"fault":"chosen_receipt","host":"network","provider_calls":2,"request":{"attachment_id":"tc0-page","client_request_id":"choice","expected_chat_head":"turn_01a12b1f-b6f7-72b0-b550-9af4c6505015","expected_revision":2,"generation":2,"message":"","session_id":"chat-01a12b1f-b6cc-75b0-9d3e-63b037da4295","teaching_choice":{"delivery_ref":"delivery:turn_01a12b1f-b6f7-72b0-b550-9af4c6505015:explain","option_id":"compare"}},"terminal":"failed"}
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+TC4_EVIDENCE {"accepted_turn":"turn_01a12b1f-c7d0-7173-9fa8-0d1f064f2a71","action":"choice","chosen_event":{"binding":{"chat_session_id":"chat-01a12b1f-c5eb-7e23-81b6-777816a68cab","control_revision":2,"session_revision":1,"source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e","turn_id":"turn_01a12b1f-c7d0-7173-9fa8-0d1f064f2a71","tutor_session_id":"tutor-first-question:chat-01a12b1f-c5eb-7e23-81b6-777816a68cab"},"causal_refs":["delivery:turn_01a12b1f-c614-78e3-967b-63f9fd35217b:explain"],"event_id":"chosen:turn_01a12b1f-c7d0-7173-9fa8-0d1f064f2a71","kind":"continuation_chosen","occurred_at":"1791724865","payload":{"accepted_turn_id":"turn_01a12b1f-c7d0-7173-9fa8-0d1f064f2a71","delivery_ref":"delivery:turn_01a12b1f-c614-78e3-967b-63f9fd35217b:explain","option_id":"compare"}},"execution_starts":1,"fault":"teaching_receipt","host":"network","provider_calls":2,"request":{"attachment_id":"tc0-page","client_request_id":"choice","expected_chat_head":"turn_01a12b1f-c614-78e3-967b-63f9fd35217b","expected_revision":2,"generation":2,"message":"","session_id":"chat-01a12b1f-c5eb-7e23-81b6-777816a68cab","teaching_choice":{"delivery_ref":"delivery:turn_01a12b1f-c614-78e3-967b-63f9fd35217b:explain","option_id":"compare"}},"terminal":"failed"}
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+TC4_EVIDENCE {"accepted_turn":"turn_01a12b1f-d601-7cb2-8fcb-7ee0e9a761ae","action":"choice","chosen_event":{"binding":{"chat_session_id":"chat-01a12b1f-d413-7be0-b4ae-196762d94405","control_revision":2,"session_revision":1,"source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e","turn_id":"turn_01a12b1f-d601-7cb2-8fcb-7ee0e9a761ae","tutor_session_id":"tutor-first-question:chat-01a12b1f-d413-7be0-b4ae-196762d94405"},"causal_refs":["delivery:turn_01a12b1f-d440-74d2-beba-8a06d3339de5:explain"],"event_id":"chosen:turn_01a12b1f-d601-7cb2-8fcb-7ee0e9a761ae","kind":"continuation_chosen","occurred_at":"1791724869","payload":{"accepted_turn_id":"turn_01a12b1f-d601-7cb2-8fcb-7ee0e9a761ae","delivery_ref":"delivery:turn_01a12b1f-d440-74d2-beba-8a06d3339de5:explain","option_id":"compare"}},"execution_starts":1,"fault":"prepared","host":"network","provider_calls":2,"request":{"attachment_id":"tc0-page","client_request_id":"choice","expected_chat_head":"turn_01a12b1f-d440-74d2-beba-8a06d3339de5","expected_revision":2,"generation":2,"message":"","session_id":"chat-01a12b1f-d413-7be0-b4ae-196762d94405","teaching_choice":{"delivery_ref":"delivery:turn_01a12b1f-d440-74d2-beba-8a06d3339de5:explain","option_id":"compare"}},"terminal":"failed"}
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+TC4_EVIDENCE {"accepted_turn":"turn_01a12b1f-e516-7ed0-a2ed-7b66f23d1edf","action":"choice","chosen_event":{"binding":{"chat_session_id":"chat-01a12b1f-e354-7780-ba17-f7c8767ba1f6","control_revision":2,"session_revision":1,"source_id":"tc0-average-speed","source_revision":"b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e","turn_id":"turn_01a12b1f-e516-7ed0-a2ed-7b66f23d1edf","tutor_session_id":"tutor-first-question:chat-01a12b1f-e354-7780-ba17-f7c8767ba1f6"},"causal_refs":["delivery:turn_01a12b1f-e37e-7680-814a-72cbfde0c4de:explain"],"event_id":"chosen:turn_01a12b1f-e516-7ed0-a2ed-7b66f23d1edf","kind":"continuation_chosen","occurred_at":"1791724872","payload":{"accepted_turn_id":"turn_01a12b1f-e516-7ed0-a2ed-7b66f23d1edf","delivery_ref":"delivery:turn_01a12b1f-e37e-7680-814a-72cbfde0c4de:explain","option_id":"compare"}},"execution_starts":1,"fault":"queued","host":"network","provider_calls":2,"request":{"attachment_id":"tc0-page","client_request_id":"choice","expected_chat_head":"turn_01a12b1f-e37e-7680-814a-72cbfde0c4de","expected_revision":2,"generation":2,"message":"","session_id":"chat-01a12b1f-e354-7780-ba17-f7c8767ba1f6","teaching_choice":{"delivery_ref":"delivery:turn_01a12b1f-e37e-7680-814a-72cbfde0c4de:explain","option_id":"compare"}},"terminal":"failed"}
+ok
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+test tests::tutor_continuation_tests::continuation_tc4_network_restart_keeps_choice_snapshot_and_authorization ... ok
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+test tests::tutor_continuation_tests::continuation_tc4_network_two_choices_conflicts_and_unknown_execution ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 729 filtered out; finished in 71.03s
+

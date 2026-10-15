@@ -1,0 +1,41 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book-reading-share/packages/web
+
+stderr | src/session-recap.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/session-recap.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ❯ src/session-recap.test.ts (2 tests | 1 failed) 71ms
+   × formats native millisecond recap cutoffs consistently with Unix seconds and ISO history 54ms
+     → expected '58743/5/11 00:00:00' to be '2026/10/10 09:00:00' // Object.is equality
+   ✓ RS4 copies only selected facts, keeps source/unavailable/status text and excludes private navigation fields 15ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/session-recap.test.ts > formats native millisecond recap cutoffs consistently with Unix seconds and ISO history
+AssertionError: expected '58743/5/11 00:00:00' to be '2026/10/10 09:00:00' // Object.is equality
+
+Expected: "2026/10/10 09:00:00"
+Received: "58743/5/11 00:00:00"
+
+ ❯ src/session-recap.test.ts:8:37
+      6| it('formats native millisecond recap cutoffs consistently with Unix se…
+      7|   const iso = '2026-10-10T09:00:00+08:00', millis = Date.parse(iso);
+      8|   expect(recapTime(String(millis))).toBe(recapTime(iso));
+       |                                     ^
+      9|   expect(recapTime(String(millis / 1000))).toBe(recapTime(iso));
+     10|   expect(recapTime('unknown')).toBe('unknown');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  16:06:16
+   Duration  7.68s (transform 275ms, setup 0ms, collect 829ms, tests 71ms, environment 4.86s, prepare 743ms)
+
+undefined
+E:\allwork\download\agent\understand-book-reading-share\packages\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/session-recap.test.ts --maxWorkers=1

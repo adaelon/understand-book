@@ -1,0 +1,10 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "name": "tool.search",
+      "arguments": "{\"task\":\"保存当前段落的阅读笔记：平均速度＝总路程／总时间\",\"required_capabilities\":[\"memory_write\"],\"scope\":\"document\",\"operation\":\"explain\",\"effect_mode\":\"read_only\",\"max_results\":1}"
+    }
+  ],
+  "usage_total_tokens": 28800
+}

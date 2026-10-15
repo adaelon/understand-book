@@ -1,0 +1,13 @@
+{
+  "origin": "root agent deterministic repair; no additional model experiment",
+  "failure": "content-original.json state_restore.passed=false",
+  "changed_field": "write.html",
+  "old_text": "if(typeof saved.values?.[k]==='boolean')s[k]=saved.values[k]",
+  "new_text": "if(typeof saved.values?.page?.[k]==='boolean')s[k]=saved.values.page[k]",
+  "style_repair": {
+    "failure": "browser-before-source-color-fix/followup-desktop.png: authored button background equals host source-label foreground",
+    "old_text": "button{background:var(--accent);color:white}",
+    "new_text": "button:not([data-source-ref]){background:var(--accent);color:white}"
+  },
+  "teaching_text_changed": false
+}

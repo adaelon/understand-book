@@ -1,0 +1,11 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"task\": \"定位书中平均速度定义所在段落并读取原文\", \"required_capabilities\": [\"structural_index\", \"source_read\", \"navigation_plan\", \"lexical_locate\"], \"scope\": \"document\", \"operation\": \"navigate\", \"effect_mode\": \"read_only\", \"max_results\": 6}",
+      "id": "call_00_Bfy0XpUYcChpXafjXNEt0692",
+      "name": "tool.search"
+    }
+  ],
+  "usage_total_tokens": 12812
+}

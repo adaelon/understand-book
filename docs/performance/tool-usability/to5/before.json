@@ -1,0 +1,531 @@
+{
+  "native": {
+    "messages": [
+      {
+        "content": "把‘先核对前提再下结论’记为这一段的笔记",
+        "role": "user"
+      }
+    ],
+    "model": "test",
+    "parallel_tool_calls": false,
+    "temperature": 0,
+    "tool_choice": "auto",
+    "tools": [
+      {
+        "function": {
+          "description": "Update the active Resident task only when interpretation, requirements or working state changes. Refine the origin request before complex work; revise requirements only with an exact quote from the current user message. Working items record a revisable plan, not user requirements. Keep the plan consistent with actual results and remaining content gaps before finishing. This tool cannot mark delivery or Goal completion; completed items do not prove either. Short direct answers need no update or plan. Use working in a separate call to save focus, next_move or plan items; refine/revise do not accept these fields.",
+          "name": "goal_update",
+          "parameters": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "focus": {},
+                  "items": {},
+                  "next_move": {},
+                  "open_questions": {},
+                  "operation": {
+                    "enum": [
+                      "working"
+                    ]
+                  }
+                },
+                "required": [
+                  "operation",
+                  "focus",
+                  "next_move"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "interpretation": {},
+                  "operation": {
+                    "enum": [
+                      "refine"
+                    ]
+                  },
+                  "requirements": {}
+                },
+                "required": [
+                  "operation",
+                  "interpretation",
+                  "requirements"
+                ]
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "basis_quote": {},
+                  "basis_turn_id": {},
+                  "interpretation": {},
+                  "operation": {
+                    "enum": [
+                      "revise"
+                    ]
+                  },
+                  "requirements": {}
+                },
+                "required": [
+                  "operation",
+                  "basis_turn_id",
+                  "basis_quote",
+                  "interpretation",
+                  "requirements"
+                ]
+              }
+            ],
+            "properties": {
+              "basis_quote": {
+                "type": "string"
+              },
+              "basis_turn_id": {
+                "type": "string"
+              },
+              "focus": {
+                "type": "string"
+              },
+              "interpretation": {
+                "type": "string"
+              },
+              "items": {
+                "description": "For operation=working: replace the whole ordered work plan atomically. Omit to retain it; [] clears it. Use non-empty unique IDs and non-empty descriptions. Reorder, split, merge, remove abandoned steps or reopen completed items as observations require; this does not change requirements.",
+                "items": {
+                  "properties": {
+                    "description": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "id": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "in_progress",
+                        "completed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "description",
+                    "status"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "array",
+                  "null"
+                ]
+              },
+              "next_move": {
+                "type": "string"
+              },
+              "open_questions": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "operation": {
+                "enum": [
+                  "working",
+                  "refine",
+                  "revise"
+                ],
+                "type": "string"
+              },
+              "requirements": {
+                "items": {
+                  "properties": {
+                    "basis_turn_id": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "verification": {
+                      "description": "content: explanation correctness and features inside the authored page, including page controls, dragging, playback, pause, seeking and saved scene restoration. presentation_delivery: actually save and deliver the requested page. reader_action: an explicitly requested host Reader operation such as navigating the book or changing its panels; requires an actual Reader effect. Page interactions and preview actions are content requirements, not reader_action. Keep the user's required behavior in description; choose verification by what must actually be delivered.",
+                      "enum": [
+                        "content",
+                        "presentation_delivery",
+                        "reader_action"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "description",
+                    "basis_turn_id",
+                    "verification"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "operation"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "description": "Attach a note to a LID through a thin entry point whose persistence is delegated to memory. Returns note_id, which is the memory-layer ID.",
+          "name": "reader_note",
+          "parameters": {
+            "properties": {
+              "lid": {
+                "type": "string"
+              },
+              "text": {
+                "description": "Note content",
+                "type": "string"
+              }
+            },
+            "required": [
+              "lid",
+              "text"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "description": "Highlight source text at a LID. When the user specifies a sentence or quote, provide that exact quote; only its unique original occurrence is saved. Omit quote only when the user requests the whole passage. Persistence is delegated to memory; returns highlight_id.",
+          "name": "reader_highlight",
+          "parameters": {
+            "properties": {
+              "lid": {
+                "type": "string"
+              },
+              "quote": {
+                "description": "Exact requested original text within this LID; must match once",
+                "type": "string"
+              }
+            },
+            "required": [
+              "lid"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "description": "Save highlight or position memory; qa records the user's original question after answering with book.query; context records sourced reader background, preferences, interests or sticking points. Use reader.note for every note: note is not a memory.save type. anchor_lid is the question or memory location. context may cite real LIDs supporting it.",
+          "name": "memory_save",
+          "parameters": {
+            "properties": {
+              "anchor_lid": {
+                "type": "string"
+              },
+              "citations": {
+                "description": "Optional real LIDs supporting this memory, primarily for context; invalid LIDs are dropped and the list may be empty",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "content": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "highlight",
+                  "position",
+                  "qa",
+                  "context"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "anchor_lid",
+              "content"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      }
+    ]
+  },
+  "react": {
+    "messages": [
+      {
+        "content": "Your provider has no native tool calling. tool_choice=auto;parallel_tool_calls=false. You must output exactly one JSON object per turn and no Markdown.\nTo call a tool, output only an exact name from this turn's list. Shape example; replace values for the current task: {\"tool_calls\":[{\"arguments\":\"1.1\",\"name\":\"goal.update\"}]}\nFor a final answer, output: {\"final\":\"answer text\"}\nSelect tools only from the following list. arguments must satisfy the corresponding JSON Schema:\n[\n  {\n    \"description\": \"Update the active Resident task only when interpretation, requirements or working state changes. Refine the origin request before complex work; revise requirements only with an exact quote from the current user message. Working items record a revisable plan, not user requirements. Keep the plan consistent with actual results and remaining content gaps before finishing. This tool cannot mark delivery or Goal completion; completed items do not prove either. Short direct answers need no update or plan. Use working in a separate call to save focus, next_move or plan items; refine/revise do not accept these fields.\",\n    \"name\": \"goal.update\",\n    \"parameters\": {\n      \"anyOf\": [\n        {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"focus\": {},\n            \"items\": {},\n            \"next_move\": {},\n            \"open_questions\": {},\n            \"operation\": {\n              \"enum\": [\n                \"working\"\n              ]\n            }\n          },\n          \"required\": [\n            \"operation\",\n            \"focus\",\n            \"next_move\"\n          ]\n        },\n        {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"interpretation\": {},\n            \"operation\": {\n              \"enum\": [\n                \"refine\"\n              ]\n            },\n            \"requirements\": {}\n          },\n          \"required\": [\n            \"operation\",\n            \"interpretation\",\n            \"requirements\"\n          ]\n        },\n        {\n          \"additionalProperties\": false,\n          \"properties\": {\n            \"basis_quote\": {},\n            \"basis_turn_id\": {},\n            \"interpretation\": {},\n            \"operation\": {\n              \"enum\": [\n                \"revise\"\n              ]\n            },\n            \"requirements\": {}\n          },\n          \"required\": [\n            \"operation\",\n            \"basis_turn_id\",\n            \"basis_quote\",\n            \"interpretation\",\n            \"requirements\"\n          ]\n        }\n      ],\n      \"properties\": {\n        \"basis_quote\": {\n          \"type\": \"string\"\n        },\n        \"basis_turn_id\": {\n          \"type\": \"string\"\n        },\n        \"focus\": {\n          \"type\": \"string\"\n        },\n        \"interpretation\": {\n          \"type\": \"string\"\n        },\n        \"items\": {\n          \"description\": \"For operation=working: replace the whole ordered work plan atomically. Omit to retain it; [] clears it. Use non-empty unique IDs and non-empty descriptions. Reorder, split, merge, remove abandoned steps or reopen completed items as observations require; this does not change requirements.\",\n          \"items\": {\n            \"properties\": {\n              \"description\": {\n                \"minLength\": 1,\n                \"type\": \"string\"\n              },\n              \"id\": {\n                \"minLength\": 1,\n                \"type\": \"string\"\n              },\n              \"status\": {\n                \"enum\": [\n                  \"pending\",\n                  \"in_progress\",\n                  \"completed\"\n                ],\n                \"type\": \"string\"\n              }\n            },\n            \"required\": [\n              \"id\",\n              \"description\",\n              \"status\"\n            ],\n            \"type\": \"object\"\n          },\n          \"type\": [\n            \"array\",\n            \"null\"\n          ]\n        },\n        \"next_move\": {\n          \"type\": \"string\"\n        },\n        \"open_questions\": {\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"type\": \"array\"\n        },\n        \"operation\": {\n          \"enum\": [\n            \"working\",\n            \"refine\",\n            \"revise\"\n          ],\n          \"type\": \"string\"\n        },\n        \"requirements\": {\n          \"items\": {\n            \"properties\": {\n              \"basis_turn_id\": {\n                \"type\": \"string\"\n              },\n              \"description\": {\n                \"type\": \"string\"\n              },\n              \"id\": {\n                \"type\": \"string\"\n              },\n              \"verification\": {\n                \"description\": \"content: explanation correctness and features inside the authored page, including page controls, dragging, playback, pause, seeking and saved scene restoration. presentation_delivery: actually save and deliver the requested page. reader_action: an explicitly requested host Reader operation such as navigating the book or changing its panels; requires an actual Reader effect. Page interactions and preview actions are content requirements, not reader_action. Keep the user's required behavior in description; choose verification by what must actually be delivered.\",\n                \"enum\": [\n                  \"content\",\n                  \"presentation_delivery\",\n                  \"reader_action\"\n                ],\n                \"type\": \"string\"\n              }\n            },\n            \"required\": [\n              \"id\",\n              \"description\",\n              \"basis_turn_id\",\n              \"verification\"\n            ],\n            \"type\": \"object\"\n          },\n          \"type\": \"array\"\n        }\n      },\n      \"required\": [\n        \"operation\"\n      ],\n      \"type\": \"object\"\n    }\n  },\n  {\n    \"description\": \"Attach a note to a LID through a thin entry point whose persistence is delegated to memory. Returns note_id, which is the memory-layer ID.\",\n    \"name\": \"reader.note\",\n    \"parameters\": {\n      \"properties\": {\n        \"lid\": {\n          \"type\": \"string\"\n        },\n        \"text\": {\n          \"description\": \"Note content\",\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"lid\",\n        \"text\"\n      ],\n      \"type\": \"object\"\n    }\n  },\n  {\n    \"description\": \"Highlight source text at a LID. When the user specifies a sentence or quote, provide that exact quote; only its unique original occurrence is saved. Omit quote only when the user requests the whole passage. Persistence is delegated to memory; returns highlight_id.\",\n    \"name\": \"reader.highlight\",\n    \"parameters\": {\n      \"properties\": {\n        \"lid\": {\n          \"type\": \"string\"\n        },\n        \"quote\": {\n          \"description\": \"Exact requested original text within this LID; must match once\",\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"lid\"\n      ],\n      \"type\": \"object\"\n    }\n  },\n  {\n    \"description\": \"Save highlight or position memory; qa records the user's original question after answering with book.query; context records sourced reader background, preferences, interests or sticking points. Use reader.note for every note: note is not a memory.save type. anchor_lid is the question or memory location. context may cite real LIDs supporting it.\",\n    \"name\": \"memory.save\",\n    \"parameters\": {\n      \"properties\": {\n        \"anchor_lid\": {\n          \"type\": \"string\"\n        },\n        \"citations\": {\n          \"description\": \"Optional real LIDs supporting this memory, primarily for context; invalid LIDs are dropped and the list may be empty\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"type\": \"array\"\n        },\n        \"content\": {\n          \"type\": \"string\"\n        },\n        \"type\": {\n          \"enum\": [\n            \"highlight\",\n            \"position\",\n            \"qa\",\n            \"context\"\n          ],\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"type\",\n        \"anchor_lid\",\n        \"content\"\n      ],\n      \"type\": \"object\"\n    }\n  }\n]",
+        "role": "system"
+      },
+      {
+        "content": "把‘先核对前提再下结论’记为这一段的笔记",
+        "role": "user"
+      }
+    ],
+    "model": "test",
+    "temperature": 0
+  },
+  "specs": [
+    {
+      "description": "Update the active Resident task only when interpretation, requirements or working state changes. Refine the origin request before complex work; revise requirements only with an exact quote from the current user message. Working items record a revisable plan, not user requirements. Keep the plan consistent with actual results and remaining content gaps before finishing. This tool cannot mark delivery or Goal completion; completed items do not prove either. Short direct answers need no update or plan. Use working in a separate call to save focus, next_move or plan items; refine/revise do not accept these fields.",
+      "name": "goal.update",
+      "parameters": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "focus": {},
+              "items": {},
+              "next_move": {},
+              "open_questions": {},
+              "operation": {
+                "enum": [
+                  "working"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "focus",
+              "next_move"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "interpretation": {},
+              "operation": {
+                "enum": [
+                  "refine"
+                ]
+              },
+              "requirements": {}
+            },
+            "required": [
+              "operation",
+              "interpretation",
+              "requirements"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "basis_quote": {},
+              "basis_turn_id": {},
+              "interpretation": {},
+              "operation": {
+                "enum": [
+                  "revise"
+                ]
+              },
+              "requirements": {}
+            },
+            "required": [
+              "operation",
+              "basis_turn_id",
+              "basis_quote",
+              "interpretation",
+              "requirements"
+            ]
+          }
+        ],
+        "properties": {
+          "basis_quote": {
+            "type": "string"
+          },
+          "basis_turn_id": {
+            "type": "string"
+          },
+          "focus": {
+            "type": "string"
+          },
+          "interpretation": {
+            "type": "string"
+          },
+          "items": {
+            "description": "For operation=working: replace the whole ordered work plan atomically. Omit to retain it; [] clears it. Use non-empty unique IDs and non-empty descriptions. Reorder, split, merge, remove abandoned steps or reopen completed items as observations require; this does not change requirements.",
+            "items": {
+              "properties": {
+                "description": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "pending",
+                    "in_progress",
+                    "completed"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "description",
+                "status"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "next_move": {
+            "type": "string"
+          },
+          "open_questions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "operation": {
+            "enum": [
+              "working",
+              "refine",
+              "revise"
+            ],
+            "type": "string"
+          },
+          "requirements": {
+            "items": {
+              "properties": {
+                "basis_turn_id": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "verification": {
+                  "description": "content: explanation correctness and features inside the authored page, including page controls, dragging, playback, pause, seeking and saved scene restoration. presentation_delivery: actually save and deliver the requested page. reader_action: an explicitly requested host Reader operation such as navigating the book or changing its panels; requires an actual Reader effect. Page interactions and preview actions are content requirements, not reader_action. Keep the user's required behavior in description; choose verification by what must actually be delivered.",
+                  "enum": [
+                    "content",
+                    "presentation_delivery",
+                    "reader_action"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "description",
+                "basis_turn_id",
+                "verification"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Attach a note to a LID through a thin entry point whose persistence is delegated to memory. Returns note_id, which is the memory-layer ID.",
+      "name": "reader.note",
+      "parameters": {
+        "properties": {
+          "lid": {
+            "type": "string"
+          },
+          "text": {
+            "description": "Note content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lid",
+          "text"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Highlight source text at a LID. When the user specifies a sentence or quote, provide that exact quote; only its unique original occurrence is saved. Omit quote only when the user requests the whole passage. Persistence is delegated to memory; returns highlight_id.",
+      "name": "reader.highlight",
+      "parameters": {
+        "properties": {
+          "lid": {
+            "type": "string"
+          },
+          "quote": {
+            "description": "Exact requested original text within this LID; must match once",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lid"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Save highlight or position memory; qa records the user's original question after answering with book.query; context records sourced reader background, preferences, interests or sticking points. Use reader.note for every note: note is not a memory.save type. anchor_lid is the question or memory location. context may cite real LIDs supporting it.",
+      "name": "memory.save",
+      "parameters": {
+        "properties": {
+          "anchor_lid": {
+            "type": "string"
+          },
+          "citations": {
+            "description": "Optional real LIDs supporting this memory, primarily for context; invalid LIDs are dropped and the list may be empty",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "content": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "highlight",
+              "position",
+              "qa",
+              "context"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "anchor_lid",
+          "content"
+        ],
+        "type": "object"
+      }
+    }
+  ],
+  "tasks": {
+    "context": "我有 Rust 基础，读这一段时请先给例子",
+    "explain": "只解释选中的原文，不保存笔记、高亮或记忆",
+    "note": "把‘先核对前提再下结论’记为这一段的笔记",
+    "origin": "解释这一段并保存一条笔记",
+    "revision": "改成只解释，不要保存笔记"
+  }
+}

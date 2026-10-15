@@ -1,0 +1,16 @@
+{
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments": "{\"page_size\": 30, \"query\": \"let bar\"}",
+      "id": "call_00_X6CGuwJEn4aNnDPDOaMT1934",
+      "name": "book.search_text"
+    },
+    {
+      "arguments": "{\"page_size\": 30, \"query\": \"移动\"}",
+      "id": "call_01_QF7JS0gpNYFML55YQVFZ8220",
+      "name": "book.search_text"
+    }
+  ],
+  "usage_total_tokens": 19859
+}

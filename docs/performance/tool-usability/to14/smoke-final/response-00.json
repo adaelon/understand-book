@@ -1,0 +1,1 @@
+{"text":null,"tool_calls":[{"name":"tool.search","arguments":"{\"task\":\"Save the requested note on this passage\",\"required_capabilities\":[\"reader_write\"],\"scope\":\"passage\",\"operation\":\"mutate_reader\",\"effect_mode\":\"reader_mutation_explicitly_requested\",\"max_results\":2}"}],"usage_total_tokens":0}

@@ -1,0 +1,24 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/web
+
+ ✓ src/components/TutorActivities.test.ts (4 tests) 65ms
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/components/RightRail.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+stderr | src/App.startup.test.ts
+Warning: KaTeX doesn't work in quirks mode. Make sure your website has a suitable doctype.
+
+ ✓ src/components/RightRail.test.ts (52 tests) 2217ms
+ ✓ src/App.startup.test.ts (67 tests) 2071ms
+
+ Test Files  3 passed (3)
+      Tests  123 passed (123)
+   Start at  22:00:43
+   Duration  13.94s (transform 5.32s, setup 0ms, collect 12.64s, tests 4.35s, environment 9.39s, prepare 2.16s)
+

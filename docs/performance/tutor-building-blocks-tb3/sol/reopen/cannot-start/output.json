@@ -1,0 +1,31 @@
+{
+  "evidence": null,
+  "select": {
+    "move": {
+      "interpretation_refs": [
+        "interpretation:cannot-start-smaller-link"
+      ],
+      "object_ids": [],
+      "intent_origin": "user_request",
+      "capability": "explanation",
+      "move_id": "reopen-ownership-read-link",
+      "target": {
+        "expected_performance": "沿用已示范的拥有关系到读取许可的连接，补完原文去掉 & 后第一条打印的判断及理由。",
+        "capability": "explanation",
+        "object_refs": [],
+        "learning_focus": "把非 Copy 值的拥有关系变化连接到后续读取是否允许",
+        "source_bindings": [
+          {
+            "end_lid": "1.1",
+            "start_lid": "1.1"
+          }
+        ]
+      },
+      "kind": "explain",
+      "prompt": "接续上次已经示范的 Parcel 赋值到打印连接，只短提醒非 Copy 赋值与 println 合法读取规则，不重复整段借用讲解，不把未回答当作掌握。保留原文去掉 & 后第一条打印的填句判断给学习者。",
+      "interaction_intent": "guided_inquiry"
+    },
+    "operation": "select"
+  },
+  "answer": "接着上次留下的那一步：**先看赋值后谁拥有值，再看打印要读取哪个变量。**\n\n上次的 `Parcel` 示例里，`let b = a;` 把没有 `Copy` 能力的值交给 `b`，于是 `a` 不能再读取它，打印 `a` 就不能通过编译。这是我们已经示范过的连接，你现在可以照着用。\n\n这里沿用两条补充规则：没有 `Copy` 能力的值直接赋给另一个变量，会转移所有权；`println!` 用 `{:?}` 显示时虽然只是借用，也必须能够合法读取要显示的变量。原文的 `Foo` 只派生了 `Debug`；按这份定义，它没有 `Copy` 能力。[[source:source_ref_4c3de5a75d5bc2f7]]\n\n原文第二行是 `let bar = &foo;`，创建的是共享引用，借用不会拿走值的所有权。[[source:source_ref_b7cdf804a5f27a0d]] 现在只把这一行的 `&` 去掉，其他代码沿用原文：[[source:source_ref_e2f1f69dfb7b32e3]]\n\n```rust\nlet foo = Foo(0);\nlet bar = foo;\nprintln!(\"Foo is {:?}\", foo); // 这次只判断这一行\n```\n\n请补完这句话：**“`let bar = foo;` 之后，值由 ___ 拥有；第一条打印要读取 `foo`，所以它 ___（能／不能）通过编译，因为 ___。”**"
+}

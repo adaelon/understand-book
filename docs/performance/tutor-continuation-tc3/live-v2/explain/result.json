@@ -1,0 +1,707 @@
+{
+  "events": [
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_91d156344eb35fb3",
+        "tutor_session_id": "tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af"
+      },
+      "causal_refs": [],
+      "event_id": "assets:turn_91d156344eb35fb3",
+      "kind": "turn_bound",
+      "occurred_at": "t0",
+      "payload": {}
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_91d156344eb35fb3",
+        "tutor_session_id": "tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af"
+      },
+      "causal_refs": [],
+      "event_id": "usage:tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af:user:turn_91d156344eb35fb3",
+      "kind": "usage_observed",
+      "occurred_at": "t0",
+      "payload": {
+        "interaction": null,
+        "original_ref": {
+          "book_id": "tc0-average-speed",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af",
+          "turn_id": "turn_91d156344eb35fb3"
+        },
+        "presentation_follow_up": null,
+        "question_anchor_lid": null,
+        "response": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+        "teaching_ref": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_91d156344eb35fb3",
+        "tutor_session_id": "tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af"
+      },
+      "causal_refs": [],
+      "event_id": "binding:turn_91d156344eb35fb3",
+      "kind": "turn_bound",
+      "occurred_at": "t0",
+      "payload": {
+        "binding": {
+          "chat_session_id": "chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "tc0-average-speed",
+          "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+          "turn_id": "turn_91d156344eb35fb3",
+          "tutor_session_id": "tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af"
+        },
+        "confirmed_preferences": [],
+        "constraints": [],
+        "current_request": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+        "default_teaching_intent": null,
+        "learner_context": {
+          "confirmed_background": [],
+          "confirmed_preferences": [],
+          "constraints": [],
+          "current_request": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+          "current_target": null,
+          "details": "tutor.step understanding with object_id and after",
+          "entries": [],
+          "evidence_watermark": 0,
+          "interpretations": [],
+          "path_progress": [],
+          "pending_activity": null,
+          "pending_assessment_refs": [],
+          "projection_watermark": 0,
+          "recent_facts": [
+            {
+              "action": null,
+              "answer_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "assistance_count": 0,
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "turn_id": "turn_91d156344eb35fb3",
+                "tutor_session_id": "tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af"
+              },
+              "causal_refs": [],
+              "event_id": "usage:tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af:user:turn_91d156344eb35fb3",
+              "help_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "kind": "usage_observed",
+              "move_id": null,
+              "occurred_at": "t0",
+              "original_ref": {
+                "book_id": "tc0-average-speed",
+                "kind": "chat_turn",
+                "session_id": "chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af",
+                "turn_id": "turn_91d156344eb35fb3"
+              },
+              "prompt_preview": {
+                "text": "null",
+                "truncated": false
+              },
+              "response_preview": {
+                "text": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+                "truncated": false
+              },
+              "target": null,
+              "usage": {
+                "kind": "user_message"
+              }
+            }
+          ],
+          "session_focus": {
+            "capability_targets": [],
+            "interpretation": "",
+            "target_object_refs": []
+          },
+          "stale": false,
+          "uninterpreted_fact_refs": [
+            "usage:tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af:user:turn_91d156344eb35fb3"
+          ],
+          "unknown_when_absent": true,
+          "user_intent": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。"
+        },
+        "limitations": [],
+        "object_count": 0,
+        "objects": [],
+        "recent_facts": [
+          {
+            "action": null,
+            "answer_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "assistance_count": 0,
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "tc0-average-speed",
+              "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+              "turn_id": "turn_91d156344eb35fb3",
+              "tutor_session_id": "tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af"
+            },
+            "causal_refs": [],
+            "event_id": "usage:tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af:user:turn_91d156344eb35fb3",
+            "help_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "kind": "usage_observed",
+            "move_id": null,
+            "occurred_at": "t0",
+            "original_ref": {
+              "book_id": "tc0-average-speed",
+              "kind": "chat_turn",
+              "session_id": "chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af",
+              "turn_id": "turn_91d156344eb35fb3"
+            },
+            "prompt_preview": {
+              "text": "null",
+              "truncated": false
+            },
+            "response_preview": {
+              "text": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+              "truncated": false
+            },
+            "target": null,
+            "usage": {
+              "kind": "user_message"
+            }
+          }
+        ],
+        "status": "active",
+        "teaching_assets": {
+          "cognitive_materials": {
+            "status": "missing"
+          },
+          "formal_objects": {
+            "status": "missing"
+          },
+          "limitations": [],
+          "reason": "正式教学素材尚未发布",
+          "source_id": "tc0-average-speed",
+          "status": "preparing",
+          "teaching_map_revision": null
+        },
+        "user_intent": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。"
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_91d156344eb35fb3",
+        "tutor_session_id": "tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af"
+      },
+      "causal_refs": [
+        "binding:turn_91d156344eb35fb3"
+      ],
+      "event_id": "move:turn_91d156344eb35fb3:avg-speed-denominator",
+      "kind": "move_selected",
+      "occurred_at": "2026-10-11T12:27:11.6220769Z",
+      "payload": {
+        "help_policy": "preserve_exposure",
+        "move": {
+          "actions": [],
+          "assessment": null,
+          "capability": "explanation",
+          "continuation": {
+            "options": [
+              {
+                "label": "我用两段行程的具体数字算一遍,让你看清分段速度为什么不能简单平均",
+                "move_kind": "compare",
+                "option_id": "apply-numbers",
+                "purpose": "把\"分母是总时间\"套到一段真实行程上,与分段速度的算术平均直接对照"
+              },
+              {
+                "label": "解释\"总时间必须为正\"这条限制意味着什么",
+                "move_kind": "explain",
+                "option_id": "positivity",
+                "purpose": "说明分母为零时定义为何失效,以及这条条件在什么情况下起作用"
+              }
+            ],
+            "recommended_option_id": "apply-numbers"
+          },
+          "explanation": null,
+          "hint": null,
+          "intent_origin": "current_request",
+          "intent_quote": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+          "interaction_intent": "direct_explanation",
+          "interpretation_refs": [
+            "interpretation:op-avg-speed-denominator-1"
+          ],
+          "kind": "explain",
+          "move_id": "avg-speed-denominator",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "这段定义说的是:\n\n**平均速度 = 总路程 ÷ 总时间**[\n它不是某一瞬间的快慢,而是用\"一个\"速率代表整段行程:如果全程都用同一个速度走完,那个速度是多少。\n\n**为什么分母是总时间**\n\n1. 速度本身就是\"每单位时间走多远\"(如 km/h)。分子总路程回答\"走了多远\",只有除以这段路程实际消耗掉的时间,单位才回到\"距离/时间\";换成别的分母(路段数、平均段速)量纲都不对。\n2. 与总关系式自洽:把整段行程当作以平均速度匀速通过,就有 总路程 = 平均速度 × 总时间,反解得 平均速度 = 总路程 ÷ 总时间。总时间是唯一能让整段关系式成立的分母。\n3. 总时间起\"加权\"作用:各段速度持续了多久并不相同,以总时间作分母,等于让每段按它实际持续的时间长度影响结果——耗时长的慢速段把结果拉低。\n\n定义紧接着的两句正是在防住这里最容易犯的错:\"Equal distances need not take equal times.\" 把行程切成等距离的几段,各段用时并不相等,所以此时把几段速度直接取算术平均会错——算术平均暗中给每段相同权重(等价于假设每段用时相同)。\n\n假设的例子(便于看清机制,不是书中数据):全程 120 km,前 60 km 以 60 km/h 走 1 h,后 60 km 以 20 km/h 走 3 h。按定义 120 ÷ 4 = **30 km/h**;若把两段速度简单平均得 (60+20) ÷ 2 = 40 km/h,偏高,因为它给只走 1 h 的那段和走 3 h 的那段同样权重。校验:30 × 4 = 120 km,与总路程一致。\n\n最后一句 \"The total time must be positive.\" 提示分母的限制:总时间为 0 时这个比值不构成一个数——除以 0 没有定义,而平均速度本该描述走完这段路程所花掉的时间。",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "能用\"整段行程的单一速率\"说明分母为何是总时间,并能说出等距离分段的用时不等会使分段速度的简单平均失效",
+            "learning_focus": "平均速度定义中分母为总时间的理由",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "retry_policy": "append_attempt",
+        "scorer_version": "assessment.v1",
+        "scoring_sources": {}
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_91d156344eb35fb3",
+        "tutor_session_id": "tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af"
+      },
+      "causal_refs": [
+        "usage:tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af:user:turn_91d156344eb35fb3"
+      ],
+      "event_id": "usage:tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af:assistant:turn_91d156344eb35fb3",
+      "kind": "usage_observed",
+      "occurred_at": "t0",
+      "payload": {
+        "answer": "这段定义给出的是一个\"整段行程的单一速率\":\n\n**平均速度 = 总路程 ÷ 总时间** —— 它不是某一瞬间的快慢,而是问:如果全程都用同一个速度走完,那个速度是多少。\n\n## 为什么分母是总时间\n\n**1. 速度本身的含义就要求分母是\"时间\"**\n速度是\"每单位时间走多远\"(km/h)。分子总路程回答\"走了多远\",只有除以这段路程**实际消耗掉的时间**,量纲才回到\"距离/时间\"。换成路段段数或平均段速之类的分母,得到的量根本不是速率。\n\n**2. 与总关系式自洽**\n如果把整段行程看成以平均速度匀速通过,那么\n\n    总路程 = 平均速度 × 总时间\n\n反解就得到 平均速度 = 总路程 ÷ 总时间。总时间是唯一能让\"整段行程\"这条关系式成立的分母;换成别的分母,这个等式立刻不成立。\n\n**3. 总时间扮演\"权重\"的角色**\n行程中各段速度持续了多久并不相同。以总时间作分母,等于让每一段按它**实际持续的时间长度**去影响结果——耗时长的那一段(往往是慢的那一段)对平均速度的拉扯更强。这是\"除以总时间\"和\"把几个速度加起来平均\"的根本区别。\n\n## 定义紧接着的两句正好防住这个坑\n\n\"Equal distances need not take equal times.\"\n\n也就是说:把行程切成**等距离**的几段,各段的用时并不相等。所以此时把几段速度直接取算术平均是错的——算术平均暗中给每段相同的权重,等于假设每段用时相同,而这恰恰是定义提醒你\"未必成立\"的事。\n\n**假设的例子**(为看清机制而设,不是书中数据):全程 120 km,前 60 km 以 60 km/h 走,用 1 h;后 60 km 以 20 km/h 走,用 3 h。\n- 按定义:120 ÷ 4 = **30 km/h**\n- 若把两段速度简单平均:(60 + 20) ÷ 2 = 40 km/h —— 偏高了,因为它给只走了 1 h 的快段和走了 3 h 的慢段同样的权重。\n- 校验:30 × 4 = 120 km,与总路程吻合。\n\n## 最后一句的条件\n\n\"The total time must be positive.\"\n\n这直接点出分母的限制:分母是总时间,而总时间为 0 时这个比值不构成一个数——除以 0 没有定义;而且平均速度本来描述的就是\"走完这段路程所花掉的那些时间\"里的快慢。所以\"总时间为正\"不是附加的礼貌条件,而是定义能成立的前提。\n\n一句话记住:分子回答**有多远**,分母回答**花了多久**,相除才是\"平均每单位时间走了多远\";而分母之所以是全程时间,是因为时间才是各段速度真正被加权的尺度。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "这段定义给出的是一个\"整段行程的单一速率\":\n\n**平均速度 = 总路程 ÷ 总时间** —— 它不是某一瞬间的快慢,而是问:如果全程都用同一个速度走完,那个速度是多少。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_46f9d90684b10a00"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n## 为什么分母是总时间\n\n**1. 速度本身的含义就要求分母是\"时间\"**\n速度是\"每单位时间走多远\"(km/h)。分子总路程回答\"走了多远\",只有除以这段路程**实际消耗掉的时间**,量纲才回到\"距离/时间\"。换成路段段数或平均段速之类的分母,得到的量根本不是速率。\n\n**2. 与总关系式自洽**\n如果把整段行程看成以平均速度匀速通过,那么\n\n    总路程 = 平均速度 × 总时间\n\n反解就得到 平均速度 = 总路程 ÷ 总时间。总时间是唯一能让\"整段行程\"这条关系式成立的分母;换成别的分母,这个等式立刻不成立。\n\n**3. 总时间扮演\"权重\"的角色**\n行程中各段速度持续了多久并不相同。以总时间作分母,等于让每一段按它**实际持续的时间长度**去影响结果——耗时长的那一段(往往是慢的那一段)对平均速度的拉扯更强。这是\"除以总时间\"和\"把几个速度加起来平均\"的根本区别。\n\n## 定义紧接着的两句正好防住这个坑\n\n\"Equal distances need not take equal times.\""
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_46f9d90684b10a00"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n也就是说:把行程切成**等距离**的几段,各段的用时并不相等。所以此时把几段速度直接取算术平均是错的——算术平均暗中给每段相同的权重,等于假设每段用时相同,而这恰恰是定义提醒你\"未必成立\"的事。\n\n**假设的例子**(为看清机制而设,不是书中数据):全程 120 km,前 60 km 以 60 km/h 走,用 1 h;后 60 km 以 20 km/h 走,用 3 h。\n- 按定义:120 ÷ 4 = **30 km/h**\n- 若把两段速度简单平均:(60 + 20) ÷ 2 = 40 km/h —— 偏高了,因为它给只走了 1 h 的快段和走了 3 h 的慢段同样的权重。\n- 校验:30 × 4 = 120 km,与总路程吻合。\n\n## 最后一句的条件\n\n\"The total time must be positive.\""
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_46f9d90684b10a00"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n这直接点出分母的限制:分母是总时间,而总时间为 0 时这个比值不构成一个数——除以 0 没有定义;而且平均速度本来描述的就是\"走完这段路程所花掉的那些时间\"里的快慢。所以\"总时间为正\"不是附加的礼貌条件,而是定义能成立的前提。\n\n一句话记住:分子回答**有多远**,分母回答**花了多久**,相除才是\"平均每单位时间走了多远\";而分母之所以是全程时间,是因为时间才是各段速度真正被加权的尺度。"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文 · Average speed",
+              "source_ref_id": "source_ref_46f9d90684b10a00"
+            }
+          ]
+        },
+        "original_ref": {
+          "book_id": "tc0-average-speed",
+          "kind": "chat_turn",
+          "session_id": "chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af",
+          "turn_id": "turn_91d156344eb35fb3"
+        },
+        "source_bindings": [
+          {
+            "book_id": "tc0-average-speed",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 147,
+                    "start": 17
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-16e3ce8bb6bde7b1",
+            "label_snapshot": "正文 · Average speed",
+            "preview_snapshot": "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.",
+            "source_ref_id": "source_ref_46f9d90684b10a00"
+          }
+        ],
+        "usage": {
+          "kind": "assistant_delivery"
+        }
+      }
+    },
+    {
+      "binding": {
+        "chat_session_id": "chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "tc0-average-speed",
+        "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+        "turn_id": "turn_91d156344eb35fb3",
+        "tutor_session_id": "tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af"
+      },
+      "causal_refs": [
+        "move:turn_91d156344eb35fb3:avg-speed-denominator"
+      ],
+      "event_id": "delivery:turn_91d156344eb35fb3:avg-speed-denominator",
+      "kind": "message_delivered",
+      "occurred_at": "t0",
+      "payload": {
+        "answer": "这段定义给出的是一个\"整段行程的单一速率\":\n\n**平均速度 = 总路程 ÷ 总时间** —— 它不是某一瞬间的快慢,而是问:如果全程都用同一个速度走完,那个速度是多少。\n\n## 为什么分母是总时间\n\n**1. 速度本身的含义就要求分母是\"时间\"**\n速度是\"每单位时间走多远\"(km/h)。分子总路程回答\"走了多远\",只有除以这段路程**实际消耗掉的时间**,量纲才回到\"距离/时间\"。换成路段段数或平均段速之类的分母,得到的量根本不是速率。\n\n**2. 与总关系式自洽**\n如果把整段行程看成以平均速度匀速通过,那么\n\n    总路程 = 平均速度 × 总时间\n\n反解就得到 平均速度 = 总路程 ÷ 总时间。总时间是唯一能让\"整段行程\"这条关系式成立的分母;换成别的分母,这个等式立刻不成立。\n\n**3. 总时间扮演\"权重\"的角色**\n行程中各段速度持续了多久并不相同。以总时间作分母,等于让每一段按它**实际持续的时间长度**去影响结果——耗时长的那一段(往往是慢的那一段)对平均速度的拉扯更强。这是\"除以总时间\"和\"把几个速度加起来平均\"的根本区别。\n\n## 定义紧接着的两句正好防住这个坑\n\n\"Equal distances need not take equal times.\"\n\n也就是说:把行程切成**等距离**的几段,各段的用时并不相等。所以此时把几段速度直接取算术平均是错的——算术平均暗中给每段相同的权重,等于假设每段用时相同,而这恰恰是定义提醒你\"未必成立\"的事。\n\n**假设的例子**(为看清机制而设,不是书中数据):全程 120 km,前 60 km 以 60 km/h 走,用 1 h;后 60 km 以 20 km/h 走,用 3 h。\n- 按定义:120 ÷ 4 = **30 km/h**\n- 若把两段速度简单平均:(60 + 20) ÷ 2 = 40 km/h —— 偏高了,因为它给只走了 1 h 的快段和走了 3 h 的慢段同样的权重。\n- 校验:30 × 4 = 120 km,与总路程吻合。\n\n## 最后一句的条件\n\n\"The total time must be positive.\"\n\n这直接点出分母的限制:分母是总时间,而总时间为 0 时这个比值不构成一个数——除以 0 没有定义;而且平均速度本来描述的就是\"走完这段路程所花掉的那些时间\"里的快慢。所以\"总时间为正\"不是附加的礼貌条件,而是定义能成立的前提。\n\n一句话记住:分子回答**有多远**,分母回答**花了多久**,相除才是\"平均每单位时间走了多远\";而分母之所以是全程时间,是因为时间才是各段速度真正被加权的尺度。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "这段定义给出的是一个\"整段行程的单一速率\":\n\n**平均速度 = 总路程 ÷ 总时间** —— 它不是某一瞬间的快慢,而是问:如果全程都用同一个速度走完,那个速度是多少。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_46f9d90684b10a00"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n## 为什么分母是总时间\n\n**1. 速度本身的含义就要求分母是\"时间\"**\n速度是\"每单位时间走多远\"(km/h)。分子总路程回答\"走了多远\",只有除以这段路程**实际消耗掉的时间**,量纲才回到\"距离/时间\"。换成路段段数或平均段速之类的分母,得到的量根本不是速率。\n\n**2. 与总关系式自洽**\n如果把整段行程看成以平均速度匀速通过,那么\n\n    总路程 = 平均速度 × 总时间\n\n反解就得到 平均速度 = 总路程 ÷ 总时间。总时间是唯一能让\"整段行程\"这条关系式成立的分母;换成别的分母,这个等式立刻不成立。\n\n**3. 总时间扮演\"权重\"的角色**\n行程中各段速度持续了多久并不相同。以总时间作分母,等于让每一段按它**实际持续的时间长度**去影响结果——耗时长的那一段(往往是慢的那一段)对平均速度的拉扯更强。这是\"除以总时间\"和\"把几个速度加起来平均\"的根本区别。\n\n## 定义紧接着的两句正好防住这个坑\n\n\"Equal distances need not take equal times.\""
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_46f9d90684b10a00"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n也就是说:把行程切成**等距离**的几段,各段的用时并不相等。所以此时把几段速度直接取算术平均是错的——算术平均暗中给每段相同的权重,等于假设每段用时相同,而这恰恰是定义提醒你\"未必成立\"的事。\n\n**假设的例子**(为看清机制而设,不是书中数据):全程 120 km,前 60 km 以 60 km/h 走,用 1 h;后 60 km 以 20 km/h 走,用 3 h。\n- 按定义:120 ÷ 4 = **30 km/h**\n- 若把两段速度简单平均:(60 + 20) ÷ 2 = 40 km/h —— 偏高了,因为它给只走了 1 h 的快段和走了 3 h 的慢段同样的权重。\n- 校验:30 × 4 = 120 km,与总路程吻合。\n\n## 最后一句的条件\n\n\"The total time must be positive.\""
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_46f9d90684b10a00"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n这直接点出分母的限制:分母是总时间,而总时间为 0 时这个比值不构成一个数——除以 0 没有定义;而且平均速度本来描述的就是\"走完这段路程所花掉的那些时间\"里的快慢。所以\"总时间为正\"不是附加的礼貌条件,而是定义能成立的前提。\n\n一句话记住:分子回答**有多远**,分母回答**花了多久**,相除才是\"平均每单位时间走了多远\";而分母之所以是全程时间,是因为时间才是各段速度真正被加权的尺度。"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文 · Average speed",
+              "source_ref_id": "source_ref_46f9d90684b10a00"
+            }
+          ]
+        },
+        "assessment_contract_ref": null,
+        "move": {
+          "actions": [],
+          "capability": "explanation",
+          "continuation": {
+            "options": [
+              {
+                "label": "我用两段行程的具体数字算一遍,让你看清分段速度为什么不能简单平均",
+                "move_kind": "compare",
+                "option_id": "apply-numbers",
+                "purpose": "把\"分母是总时间\"套到一段真实行程上,与分段速度的算术平均直接对照"
+              },
+              {
+                "label": "解释\"总时间必须为正\"这条限制意味着什么",
+                "move_kind": "explain",
+                "option_id": "positivity",
+                "purpose": "说明分母为零时定义为何失效,以及这条条件在什么情况下起作用"
+              }
+            ],
+            "recommended_option_id": "apply-numbers"
+          },
+          "intent_origin": "current_request",
+          "intent_quote": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+          "interaction_intent": "direct_explanation",
+          "interpretation_refs": [
+            "interpretation:op-avg-speed-denominator-1"
+          ],
+          "kind": "explain",
+          "move_id": "avg-speed-denominator",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "这段定义说的是:\n\n**平均速度 = 总路程 ÷ 总时间**[\n它不是某一瞬间的快慢,而是用\"一个\"速率代表整段行程:如果全程都用同一个速度走完,那个速度是多少。\n\n**为什么分母是总时间**\n\n1. 速度本身就是\"每单位时间走多远\"(如 km/h)。分子总路程回答\"走了多远\",只有除以这段路程实际消耗掉的时间,单位才回到\"距离/时间\";换成别的分母(路段数、平均段速)量纲都不对。\n2. 与总关系式自洽:把整段行程当作以平均速度匀速通过,就有 总路程 = 平均速度 × 总时间,反解得 平均速度 = 总路程 ÷ 总时间。总时间是唯一能让整段关系式成立的分母。\n3. 总时间起\"加权\"作用:各段速度持续了多久并不相同,以总时间作分母,等于让每段按它实际持续的时间长度影响结果——耗时长的慢速段把结果拉低。\n\n定义紧接着的两句正是在防住这里最容易犯的错:\"Equal distances need not take equal times.\" 把行程切成等距离的几段,各段用时并不相等,所以此时把几段速度直接取算术平均会错——算术平均暗中给每段相同权重(等价于假设每段用时相同)。\n\n假设的例子(便于看清机制,不是书中数据):全程 120 km,前 60 km 以 60 km/h 走 1 h,后 60 km 以 20 km/h 走 3 h。按定义 120 ÷ 4 = **30 km/h**;若把两段速度简单平均得 (60+20) ÷ 2 = 40 km/h,偏高,因为它给只走 1 h 的那段和走 3 h 的那段同样权重。校验:30 × 4 = 120 km,与总路程一致。\n\n最后一句 \"The total time must be positive.\" 提示分母的限制:总时间为 0 时这个比值不构成一个数——除以 0 没有定义,而平均速度本该描述走完这段路程所花掉的时间。",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "能用\"整段行程的单一速率\"说明分母为何是总时间,并能说出等距离分段的用时不等会使分段速度的简单平均失效",
+            "learning_focus": "平均速度定义中分母为总时间的理由",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "object_versions": [],
+        "presentation": null,
+        "source_bindings": [
+          {
+            "book_id": "tc0-average-speed",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 147,
+                    "start": 17
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-16e3ce8bb6bde7b1",
+            "label_snapshot": "正文 · Average speed",
+            "preview_snapshot": "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.",
+            "source_ref_id": "source_ref_46f9d90684b10a00"
+          }
+        ]
+      }
+    }
+  ],
+  "http_status": 200,
+  "provider_calls": 5,
+  "public_projection": {
+    "activities": [
+      {
+        "assessment": null,
+        "attempted": false,
+        "continuation": {
+          "availability": {
+            "status": "offered"
+          },
+          "continuation": {
+            "options": [
+              {
+                "label": "我用两段行程的具体数字算一遍,让你看清分段速度为什么不能简单平均",
+                "move_kind": "compare",
+                "option_id": "apply-numbers",
+                "purpose": "把\"分母是总时间\"套到一段真实行程上,与分段速度的算术平均直接对照"
+              },
+              {
+                "label": "解释\"总时间必须为正\"这条限制意味着什么",
+                "move_kind": "explain",
+                "option_id": "positivity",
+                "purpose": "说明分母为零时定义为何失效,以及这条条件在什么情况下起作用"
+              }
+            ],
+            "recommended_option_id": "apply-numbers"
+          },
+          "delivery_ref": "delivery:turn_91d156344eb35fb3:avg-speed-denominator",
+          "expected_chat_head": "turn_91d156344eb35fb3",
+          "origin_turn_id": "turn_91d156344eb35fb3",
+          "target_summary": "平均速度定义中分母为总时间的理由"
+        },
+        "delivery_ref": "delivery:turn_91d156344eb35fb3:avg-speed-denominator",
+        "help_seen": [],
+        "move": {
+          "actions": [],
+          "capability": "explanation",
+          "continuation": {
+            "options": [
+              {
+                "label": "我用两段行程的具体数字算一遍,让你看清分段速度为什么不能简单平均",
+                "move_kind": "compare",
+                "option_id": "apply-numbers",
+                "purpose": "把\"分母是总时间\"套到一段真实行程上,与分段速度的算术平均直接对照"
+              },
+              {
+                "label": "解释\"总时间必须为正\"这条限制意味着什么",
+                "move_kind": "explain",
+                "option_id": "positivity",
+                "purpose": "说明分母为零时定义为何失效,以及这条条件在什么情况下起作用"
+              }
+            ],
+            "recommended_option_id": "apply-numbers"
+          },
+          "intent_origin": "current_request",
+          "intent_quote": "请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。",
+          "interaction_intent": "direct_explanation",
+          "interpretation_refs": [
+            "interpretation:op-avg-speed-denominator-1"
+          ],
+          "kind": "explain",
+          "move_id": "avg-speed-denominator",
+          "object_ids": [],
+          "preference_ref": null,
+          "presentation": null,
+          "prompt": "这段定义说的是:\n\n**平均速度 = 总路程 ÷ 总时间**[\n它不是某一瞬间的快慢,而是用\"一个\"速率代表整段行程:如果全程都用同一个速度走完,那个速度是多少。\n\n**为什么分母是总时间**\n\n1. 速度本身就是\"每单位时间走多远\"(如 km/h)。分子总路程回答\"走了多远\",只有除以这段路程实际消耗掉的时间,单位才回到\"距离/时间\";换成别的分母(路段数、平均段速)量纲都不对。\n2. 与总关系式自洽:把整段行程当作以平均速度匀速通过,就有 总路程 = 平均速度 × 总时间,反解得 平均速度 = 总路程 ÷ 总时间。总时间是唯一能让整段关系式成立的分母。\n3. 总时间起\"加权\"作用:各段速度持续了多久并不相同,以总时间作分母,等于让每段按它实际持续的时间长度影响结果——耗时长的慢速段把结果拉低。\n\n定义紧接着的两句正是在防住这里最容易犯的错:\"Equal distances need not take equal times.\" 把行程切成等距离的几段,各段用时并不相等,所以此时把几段速度直接取算术平均会错——算术平均暗中给每段相同权重(等价于假设每段用时相同)。\n\n假设的例子(便于看清机制,不是书中数据):全程 120 km,前 60 km 以 60 km/h 走 1 h,后 60 km 以 20 km/h 走 3 h。按定义 120 ÷ 4 = **30 km/h**;若把两段速度简单平均得 (60+20) ÷ 2 = 40 km/h,偏高,因为它给只走 1 h 的那段和走 3 h 的那段同样权重。校验:30 × 4 = 120 km,与总路程一致。\n\n最后一句 \"The total time must be positive.\" 提示分母的限制:总时间为 0 时这个比值不构成一个数——除以 0 没有定义,而平均速度本该描述走完这段路程所花掉的时间。",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "能用\"整段行程的单一速率\"说明分母为何是总时间,并能说出等距离分段的用时不等会使分段速度的简单平均失效",
+            "learning_focus": "平均速度定义中分母为总时间的理由",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "tc0-average-speed",
+                "source_revision": "b175f6bbaa963f9c26f2c0c9323324b67878a684850626d5f35ddfa5dd4d0c0e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "status": "active"
+      }
+    ]
+  },
+  "read_provider_calls": 0,
+  "reply": {
+    "answer": "这段定义给出的是一个\"整段行程的单一速率\":\n\n**平均速度 = 总路程 ÷ 总时间** —— 它不是某一瞬间的快慢,而是问:如果全程都用同一个速度走完,那个速度是多少。\n\n## 为什么分母是总时间\n\n**1. 速度本身的含义就要求分母是\"时间\"**\n速度是\"每单位时间走多远\"(km/h)。分子总路程回答\"走了多远\",只有除以这段路程**实际消耗掉的时间**,量纲才回到\"距离/时间\"。换成路段段数或平均段速之类的分母,得到的量根本不是速率。\n\n**2. 与总关系式自洽**\n如果把整段行程看成以平均速度匀速通过,那么\n\n    总路程 = 平均速度 × 总时间\n\n反解就得到 平均速度 = 总路程 ÷ 总时间。总时间是唯一能让\"整段行程\"这条关系式成立的分母;换成别的分母,这个等式立刻不成立。\n\n**3. 总时间扮演\"权重\"的角色**\n行程中各段速度持续了多久并不相同。以总时间作分母,等于让每一段按它**实际持续的时间长度**去影响结果——耗时长的那一段(往往是慢的那一段)对平均速度的拉扯更强。这是\"除以总时间\"和\"把几个速度加起来平均\"的根本区别。\n\n## 定义紧接着的两句正好防住这个坑\n\n\"Equal distances need not take equal times.\"\n\n也就是说:把行程切成**等距离**的几段,各段的用时并不相等。所以此时把几段速度直接取算术平均是错的——算术平均暗中给每段相同的权重,等于假设每段用时相同,而这恰恰是定义提醒你\"未必成立\"的事。\n\n**假设的例子**(为看清机制而设,不是书中数据):全程 120 km,前 60 km 以 60 km/h 走,用 1 h;后 60 km 以 20 km/h 走,用 3 h。\n- 按定义:120 ÷ 4 = **30 km/h**\n- 若把两段速度简单平均:(60 + 20) ÷ 2 = 40 km/h —— 偏高了,因为它给只走了 1 h 的快段和走了 3 h 的慢段同样的权重。\n- 校验:30 × 4 = 120 km,与总路程吻合。\n\n## 最后一句的条件\n\n\"The total time must be positive.\"\n\n这直接点出分母的限制:分母是总时间,而总时间为 0 时这个比值不构成一个数——除以 0 没有定义;而且平均速度本来描述的就是\"走完这段路程所花掉的那些时间\"里的快慢。所以\"总时间为正\"不是附加的礼貌条件,而是定义能成立的前提。\n\n一句话记住:分子回答**有多远**,分母回答**花了多久**,相除才是\"平均每单位时间走了多远\";而分母之所以是全程时间,是因为时间才是各段速度真正被加权的尺度。",
+    "answer_view": {
+      "parts": [
+        {
+          "kind": "markdown",
+          "text": "这段定义给出的是一个\"整段行程的单一速率\":\n\n**平均速度 = 总路程 ÷ 总时间** —— 它不是某一瞬间的快慢,而是问:如果全程都用同一个速度走完,那个速度是多少。"
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_46f9d90684b10a00"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": "\n\n## 为什么分母是总时间\n\n**1. 速度本身的含义就要求分母是\"时间\"**\n速度是\"每单位时间走多远\"(km/h)。分子总路程回答\"走了多远\",只有除以这段路程**实际消耗掉的时间**,量纲才回到\"距离/时间\"。换成路段段数或平均段速之类的分母,得到的量根本不是速率。\n\n**2. 与总关系式自洽**\n如果把整段行程看成以平均速度匀速通过,那么\n\n    总路程 = 平均速度 × 总时间\n\n反解就得到 平均速度 = 总路程 ÷ 总时间。总时间是唯一能让\"整段行程\"这条关系式成立的分母;换成别的分母,这个等式立刻不成立。\n\n**3. 总时间扮演\"权重\"的角色**\n行程中各段速度持续了多久并不相同。以总时间作分母,等于让每一段按它**实际持续的时间长度**去影响结果——耗时长的那一段(往往是慢的那一段)对平均速度的拉扯更强。这是\"除以总时间\"和\"把几个速度加起来平均\"的根本区别。\n\n## 定义紧接着的两句正好防住这个坑\n\n\"Equal distances need not take equal times.\""
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_46f9d90684b10a00"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": "\n\n也就是说:把行程切成**等距离**的几段,各段的用时并不相等。所以此时把几段速度直接取算术平均是错的——算术平均暗中给每段相同的权重,等于假设每段用时相同,而这恰恰是定义提醒你\"未必成立\"的事。\n\n**假设的例子**(为看清机制而设,不是书中数据):全程 120 km,前 60 km 以 60 km/h 走,用 1 h;后 60 km 以 20 km/h 走,用 3 h。\n- 按定义:120 ÷ 4 = **30 km/h**\n- 若把两段速度简单平均:(60 + 20) ÷ 2 = 40 km/h —— 偏高了,因为它给只走了 1 h 的快段和走了 3 h 的慢段同样的权重。\n- 校验:30 × 4 = 120 km,与总路程吻合。\n\n## 最后一句的条件\n\n\"The total time must be positive.\""
+        },
+        {
+          "kind": "sources",
+          "source_ref_ids": [
+            "source_ref_46f9d90684b10a00"
+          ]
+        },
+        {
+          "kind": "markdown",
+          "text": "\n\n这直接点出分母的限制:分母是总时间,而总时间为 0 时这个比值不构成一个数——除以 0 没有定义;而且平均速度本来描述的就是\"走完这段路程所花掉的那些时间\"里的快慢。所以\"总时间为正\"不是附加的礼貌条件,而是定义能成立的前提。\n\n一句话记住:分子回答**有多远**,分母回答**花了多久**,相除才是\"平均每单位时间走了多远\";而分母之所以是全程时间,是因为时间才是各段速度真正被加权的尺度。"
+        }
+      ],
+      "sources": [
+        {
+          "label": "正文 · Average speed",
+          "source_ref_id": "source_ref_46f9d90684b10a00"
+        }
+      ]
+    },
+    "effects": [],
+    "incomplete": false,
+    "memory_updates": [],
+    "profile_usage": {
+      "claimed_used_fact_ids": [],
+      "influences": [],
+      "injected_fact_ids": [],
+      "snapshot_revision": 0
+    },
+    "tokens_spent": 82933,
+    "trace": [
+      {
+        "args": "{\"lid\": \"1.1\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"lid\":\"1.1\",\"text\":\"# Average speed\\n\\nAverage speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"lid\": \"1.1\", \"granularity\": \"near\"}",
+        "model_tool_loop": 1,
+        "result_digest": "{\"anchor\":\"1.1\",\"items\":[{\"lid\":\"1\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"parent\"}},{\"lid\":\"1.2\",\"layer\":\"near\",\"via\":{\"kind\":\"tree\",\"rel\":\"next_sibling\"}}]}",
+        "tool": "book.context"
+      },
+      {
+        "args": "{\"lid\": \"1.2\"}",
+        "model_tool_loop": 2,
+        "result_digest": "{\"lid\":\"1.2\",\"text\":\"A blue bicycle travels along the river.\"}",
+        "tool": "book.text"
+      },
+      {
+        "args": "{\"quote\": \"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive.\"}",
+        "model_tool_loop": 3,
+        "result_digest": "{\"source_ref_id\":\"source_ref_46f9d90684b10a00\",\"label\":\"正文 · Average speed\",\"preview\":\"Average speed is total distance divided by total time. Equal distances need not take equal times. The total time ",
+        "tool": "source.present"
+      },
+      {
+        "args": "{\"fact_refs\":[\"usage:tutor-first-question:chat-01a12aed-f6e5-7f51-b2a9-6232ac1ad9af:user:turn_91d156344eb35fb3\"],\"interpretation\":\"学习者这一轮只提出概念性问题(\\\\\\\"请讲清楚这段平均速度定义\\\\\\\"),并把关注点主动放在分母的合理性上,而不是要求练习或检验答案。可支持的解释是:他目前把平均速度当作待记忆的公式,需要先建立\\\\\\\"整段行程的单一速率\\\\\\\"这一含义,才会接受分母是全程经过的时间;对加权机制尚无可见证据(既不能认定他已有,也不能认定他缺)。\",\"nature\":\"hypothesis\",\"operation\":\"evidence\",\"operation_id\":\"op-avg-speed-denominator-1\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"能用\\\"整段行程的单一速率\\\"说明分母为何是总时间,并说出等距分段的用时不等会使简单算术平均失效\",\"learning_focus\":\"平均速度定义中分母为总时间的理由\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},\"teaching_implication\":\"起点设在定义本身而非练习:先用\\\\\\\"距离÷时间\\\\\\\"的单位一致性说明分母必须是全程经过的时间,再用等距离、不等用时的对比说明为什么不能用分段速度的简单平均替代,然后才谈时间加权的含义。\"}",
+        "model_tool_loop": 3,
+        "result_digest": "{\"evidence_ref\":\"interpretation:op-avg-speed-denominator-1\",\"instruction\":\"Use this current interpretation when relevant to the move; record its reference in move.interpretation_refs. The frozen input",
+        "tool": "tutor.step"
+      },
+      {
+        "args": "{\"move\":{\"capability\":\"explanation\",\"intent_origin\":\"current_request\",\"intent_quote\":\"请讲清楚这段平均速度定义，先帮助我理解总时间为什么在分母。\",\"interaction_intent\":\"direct_explanation\",\"interpretation_refs\":[\"interpretation:op-avg-speed-denominator-1\"],\"kind\":\"explain\",\"move_id\":\"avg-speed-denominator\",\"object_ids\":[],\"prompt\":\"这段定义说的是:\\n\\n**平均速度 = 总路程 ÷ 总时间**[\\n它不是某一瞬间的快慢,而是用\\\"一个\\\"速率代表整段行程:如果全程都用同一个速度走完,那个速度是多少。\\n\\n**为什么分母是总时间**\\n\\n1. 速度本身就是\\\"每单位时间走多远\\\"(如 km/h)。分子总路程回答\\\"走了多远\\\",只有除以这段路程实际消耗掉的时间,单位才回到\\\"距离/时间\\\";换成别的分母(路段数、平均段速)量纲都不对。\\n2. 与总关系式自洽:把整段行程当作以平均速度匀速通过,就有 总路程 = 平均速度 × 总时间,反解得 平均速度 = 总路程 ÷ 总时间。总时间是唯一能让整段关系式成立的分母。\\n3. 总时间起\\\"加权\\\"作用:各段速度持续了多久并不相同,以总时间作分母,等于让每段按它实际持续的时间长度影响结果——耗时长的慢速段把结果拉低。\\n\\n定义紧接着的两句正是在防住这里最容易犯的错:\\\"Equal distances need not take equal times.\\\" 把行程切成等距离的几段,各段用时并不相等,所以此时把几段速度直接取算术平均会错——算术平均暗中给每段相同权重(等价于假设每段用时相同)。\\n\\n假设的例子(便于看清机制,不是书中数据):全程 120 km,前 60 km 以 60 km/h 走 1 h,后 60 km 以 20 km/h 走 3 h。按定义 120 ÷ 4 = **30 km/h**;若把两段速度简单平均得 (60+20) ÷ 2 = 40 km/h,偏高,因为它给只走 1 h 的那段和走 3 h 的那段同样权重。校验:30 × 4 = 120 km,与总路程一致。\\n\\n最后一句 \\\"The total time must be positive.\\\" 提示分母的限制:总时间为 0 时这个比值不构成一个数——除以 0 没有定义,而平均速度本该描述走完这段路程所花掉的时间。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"能用\\\"整段行程的单一速率\\\"说明分母为何是总时间,并能说出等距离分段的用时不等会使分段速度的简单平均失效\",\"learning_focus\":\"平均速度定义中分母为总时间的理由\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"select\"}",
+        "model_tool_loop": 4,
+        "result_digest": "{\"instruction\":\"Deliver the selected explanation fully. Leave the optional continuation work for the reader's choice; do not execute those options or duplicate their menu in the final answer. Saved ca",
+        "tool": "tutor.step"
+      }
+    ],
+    "turns": 5
+  }
+}

@@ -1,0 +1,246 @@
+    Checking cfg-if v1.0.4
+    Checking zerofrom v0.1.8
+    Checking stable_deref_trait v1.2.1
+    Checking yoke v0.8.3
+    Checking zerovec v0.11.6
+    Checking itoa v1.0.18
+    Checking serde_core v1.0.228
+    Checking typenum v1.20.1
+    Checking subtle v2.6.1
+    Checking generic-array v0.14.7
+    Checking zmij v1.0.21
+    Checking memchr v2.8.2
+    Checking serde_json v1.0.150
+    Checking serde v1.0.228
+    Checking tinystr v0.8.3
+    Checking writeable v0.6.3
+    Checking litemap v0.8.2
+    Checking smallvec v1.15.2
+    Checking icu_locale_core v2.2.0
+    Checking thiserror v2.0.18
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking zerotrie v0.2.4
+    Checking potential_utf v0.1.5
+    Checking getrandom v0.2.17
+    Checking utf8_iter v1.0.4
+    Checking dyn-clone v1.0.20
+    Checking schemars v0.8.22
+    Checking icu_collections v2.2.0
+    Checking icu_provider v2.2.0
+    Checking digest v0.10.7
+    Checking lazy_static v1.5.0
+    Checking tinyvec_macros v0.1.1
+    Checking zeroize v1.9.0
+    Checking rustls-pki-types v1.14.1
+    Checking tinyvec v1.12.0
+    Checking ts-rs v10.1.0
+    Checking icu_normalizer_data v2.2.0
+    Checking icu_properties_data v2.2.0
+    Checking cpufeatures v0.2.17
+    Checking foldhash v0.2.0
+    Checking hashbrown v0.17.1
+    Checking icu_properties v2.2.0
+    Checking icu_normalizer v2.2.0
+    Checking unicode-normalization v0.1.25
+    Checking unicode-casefold v0.2.0
+    Checking untrusted v0.9.0
+    Checking log v0.4.33
+    Checking windows-link v0.2.1
+    Checking windows-sys v0.61.2
+    Checking ring v0.17.14
+    Checking libsqlite3-sys v0.38.2
+    Checking idna_adapter v1.2.2
+    Checking hashlink v0.12.2
+    Checking zerocopy v0.8.57
+    Checking getrandom v0.3.4
+    Checking base-schema v0.0.0 (E:\allwork\download\agent\understand-book\crates\base-schema)
+    Checking book-tool-contracts v0.0.0 (E:\allwork\download\agent\understand-book\crates\book-tool-contracts)
+    Checking bitflags v2.13.0
+    Checking simd-adler32 v0.3.9
+    Checking adler2 v2.0.1
+    Checking once_cell v1.21.4
+    Checking fallible-streaming-iterator v0.1.9
+    Checking percent-encoding v2.3.2
+    Checking fallible-iterator v0.3.0
+    Checking rusqlite v0.40.2
+    Checking form_urlencoded v1.2.2
+    Checking miniz_oxide v0.8.9
+    Checking read-tools v0.0.0 (E:\allwork\download\agent\understand-book\crates\read-tools)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Checking rand_core v0.9.5
+    Checking ppv-lite86 v0.2.21
+    Checking idna v1.1.0
+    Checking crc32fast v1.5.0
+    Checking rustls-webpki v0.103.13
+    Checking getrandom v0.4.3
+    Checking webpki-roots v1.0.8
+    Checking base64 v0.22.1
+    Checking webpki-roots v0.26.11
+    Checking rustls v0.23.41
+    Checking flate2 v1.1.9
+    Checking url v2.5.8
+    Checking rand_chacha v0.9.0
+    Checking memory v0.0.0 (E:\allwork\download\agent\understand-book\crates\memory)
+    Checking sha2 v0.10.9
+    Checking rand_core v0.6.4
+    Checking base64ct v1.8.3
+    Checking bytes v1.12.1
+    Checking http v1.4.2
+    Checking password-hash v0.5.0
+    Checking artifact-tools v0.0.0 (E:\allwork\download\agent\understand-book\crates\artifact-tools)
+    Checking reader v0.0.0 (E:\allwork\download\agent\understand-book\crates\reader)
+    Checking rand v0.9.5
+    Checking ureq v2.12.1
+    Checking httparse v1.10.1
+    Checking uuid v1.23.4
+    Checking sha1 v0.10.7
+    Checking blake2 v0.10.6
+    Checking dotenvy v0.15.7
+    Checking powerfmt v0.2.0
+    Checking time-core v0.1.9
+    Checking httpdate v1.0.3
+    Checking deranged v0.5.8
+    Checking fastrand v2.4.1
+    Checking chunked_transfer v1.5.0
+    Checking ascii v1.1.0
+    Checking data-encoding v2.11.1
+    Checking utf-8 v0.7.6
+    Checking num-conv v0.2.2
+    Checking time v0.3.53
+    Checking tungstenite v0.28.0
+    Checking tiny_http v0.12.0
+    Checking tempfile v3.27.0
+    Checking runtime v0.0.0 (E:\allwork\download\agent\understand-book\crates\runtime)
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "origin", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_cue_seconds")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deny_unknown_fields)]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(default, skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(skip_serializing_if = "Option::is_none")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+    Checking argon2 v0.5.3
+    Checking server v0.0.0 (E:\allwork\download\agent\understand-book\crates\server)
+warning: function `profile_snapshot_request` is never used
+     --> crates\server\src\lib.rs:12279:4
+      |
+12279 | fn profile_snapshot_request(state: &AppState, book: &Book, book_id: &str, content_profile: &str, now: &str) -> SnapshotRequest {
+      |    ^^^^^^^^^^^^^^^^^^^^^^^^
+      |
+      = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: associated items `capture` and `restore_presentation` are never used
+    --> crates\server\src\workspace_registry.rs:1009:19
+     |
+1008 | impl NetworkRunPort {
+     | ------------------- associated items in this implementation
+1009 |     pub(crate) fn capture(
+     |                   ^^^^^^^
+...
+1128 |     pub(crate) fn restore_presentation(
+     |                   ^^^^^^^^^^^^^^^^^^^^
+
+warning: `server` (lib) generated 2 warnings
+    Finished `dev` profile [unoptimized] target(s) in 1m 28s

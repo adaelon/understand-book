@@ -1,0 +1,266 @@
+{
+  "scenarios": {
+    "effect_not_authorized": {
+      "input": {
+        "effect_mode": "read_only",
+        "max_results": 3,
+        "operation": "mutate_reader",
+        "required_capabilities": [
+          "reader_write"
+        ],
+        "scope": "passage",
+        "task": "Explain the requested material"
+      },
+      "result": {
+        "activated": [],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      }
+    },
+    "evidence_required": {
+      "input": {
+        "effect_mode": "read_only",
+        "max_results": 3,
+        "operation": "read_source",
+        "required_capabilities": [
+          "source_presentation"
+        ],
+        "scope": "passage",
+        "task": "Explain the requested material"
+      },
+      "result": {
+        "activated": [],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      }
+    },
+    "intent_required": {
+      "input": {
+        "effect_mode": "reader_mutation_explicitly_requested",
+        "max_results": 3,
+        "operation": "mutate_reader",
+        "required_capabilities": [
+          "reader_write"
+        ],
+        "scope": "passage",
+        "task": "Explain the requested material"
+      },
+      "result": {
+        "activated": [],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      }
+    },
+    "locator_required": {
+      "input": {
+        "effect_mode": "read_only",
+        "max_results": 3,
+        "operation": "read_source",
+        "required_capabilities": [
+          "source_read"
+        ],
+        "scope": "passage",
+        "task": "Explain the requested material"
+      },
+      "result": {
+        "activated": [],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      }
+    },
+    "matched": {
+      "input": {
+        "effect_mode": "read_only",
+        "max_results": 3,
+        "operation": "summarize",
+        "required_capabilities": [
+          "structural_index"
+        ],
+        "scope": "document",
+        "task": "Explain the requested material"
+      },
+      "result": {
+        "activated": [],
+        "deferred_remaining": 17,
+        "matches": [
+          {
+            "description": "Project BookStructure to explain a LID's role in the whole-book spine, throughline, and key stops. Without at, return the whole-book overview; when the sidecar is absent, return explicit unavailable status.",
+            "effect_mode": "read_only",
+            "matched_capabilities": [
+              "structural_index"
+            ],
+            "matched_fields": [
+              "authorized_effect_mode",
+              "content_profile",
+              "description",
+              "evidence_state",
+              "operation",
+              "permissions",
+              "required_capabilities",
+              "scope",
+              "use_when"
+            ],
+            "matched_terms": [
+              "explain",
+              "the"
+            ],
+            "name": "book.structure",
+            "preconditions": [
+              "book_available"
+            ],
+            "score": 2000011500500107,
+            "visibility": "current_sampling"
+          }
+        ],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      }
+    },
+    "no_result": {
+      "input": {
+        "effect_mode": "read_only",
+        "max_results": 3,
+        "operation": "compare",
+        "required_capabilities": [
+          "discovery"
+        ],
+        "scope": "corpus",
+        "task": "Explain the requested material"
+      },
+      "result": {
+        "activated": [],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      }
+    },
+    "profile_mismatch": {
+      "input": {
+        "effect_mode": "read_only",
+        "max_results": 3,
+        "operation": "read_source",
+        "required_capabilities": [
+          "source_read"
+        ],
+        "scope": "document",
+        "task": "Explain the requested material"
+      },
+      "result": {
+        "activated": [],
+        "deferred_remaining": 17,
+        "matches": [],
+        "normalization": "nfkc_unicode-normalization-0.1.25__full-casefold_unicode-casefold-0.2.0__whitespace-v1",
+        "task": "Explain the requested material",
+        "version": "tool_search_result.v2",
+        "visible_from": "current_sampling"
+      }
+    }
+  },
+  "spec": {
+    "description": "Find Resident tools by required capabilities, scope, operation, and authorized effect mode. Natural-language task text ranks only candidates that pass Runtime gates; matches never execute a target tool, and newly activated deferred tools become visible in the next sampling.",
+    "name": "tool.search",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "effect_mode": {
+          "enum": [
+            "read_only",
+            "reader_mutation_explicitly_requested"
+          ],
+          "type": "string"
+        },
+        "max_results": {
+          "maximum": 6,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "operation": {
+          "enum": [
+            "locate_literal",
+            "read_source",
+            "explain",
+            "compare",
+            "summarize",
+            "navigate",
+            "mutate_reader"
+          ],
+          "type": "string"
+        },
+        "required_capabilities": {
+          "items": {
+            "enum": [
+              "discovery",
+              "source_read",
+              "lexical_locate",
+              "semantic_evidence",
+              "structural_index",
+              "synthesis",
+              "navigation_plan",
+              "artifact_read",
+              "source_presentation",
+              "presentation_authoring",
+              "profile_read",
+              "profile_trace",
+              "memory_read",
+              "memory_write",
+              "reader_read",
+              "reader_write",
+              "goal_management"
+            ],
+            "type": "string"
+          },
+          "maxItems": 17,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "scope": {
+          "enum": [
+            "selection",
+            "passage",
+            "section",
+            "document",
+            "corpus"
+          ],
+          "type": "string"
+        },
+        "task": {
+          "description": "Natural-language task used only to rank already-authorized candidates",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "task",
+        "required_capabilities",
+        "scope",
+        "operation",
+        "effect_mode",
+        "max_results"
+      ],
+      "type": "object"
+    }
+  }
+}

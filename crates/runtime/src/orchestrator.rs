@@ -582,7 +582,7 @@ pub struct PaperMinimapAgentContext {
     pub allowed_actions: Vec<String>,
 }
 
-/// 查询踪迹一步 `[ADR-0030 决策5]`:tool_calls 序列摘要,对用户可见(book.query 的检索范围 + citations 链在 `result_digest` 里)。
+/// 查询踪迹一步：保留 tool_calls 序列摘要用于开发诊断；阅读器展示边界见 `[ADR-0160 §11]`。
 /// `model_tool_loop` 是 1-based 模型—工具循环序号；同一采样批次的并行调用共享该值。
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
@@ -695,6 +695,8 @@ struct ObservedCitationEnvelope {
 struct ObservedBookText {
     lid: String,
     text: String,
+    #[serde(default)]
+    source_range: Option<base_schema::Span>,
 }
 
 #[derive(Debug, Clone)]
@@ -939,6 +941,21 @@ impl TurnLocatorLedger {
                 self.lid_not_found_observed = true;
             }
             return;
+        }
+        // The bounded projection can deliver source identities without their
+        // quote text. These explicit recovery locations authorize reads only.
+        let recovery_origin = match tool {
+            "book.query" | "book.synthesize" => Some(LocatorOrigin::SemanticQueryResult),
+            "book.structure" | "book.guide_path" => Some(LocatorOrigin::StructuralIndexResult),
+            _ => None,
+        };
+        if let (Some(origin), Ok(value)) = (
+            recovery_origin,
+            serde_json::from_str::<serde_json::Value>(result),
+        ) {
+            if let Some(delivery) = value.get("delivery") {
+                self.observe_value_array(delivery, "read_lids", origin, book);
+            }
         }
         match tool {
             "book.structure" => {
@@ -1315,6 +1332,14 @@ fn authorize_book_text(
     Err(locator_gate_error("book.text", locator_ledger))
 }
 
+fn authorize_book_text_batch(arguments: &str, locators: &TurnLocatorLedger) -> Result<(), RuntimeGateError> {
+    let Ok(input) = crate::book_text_batch::parse(arguments) else { return Ok(()); };
+    for range in input.ranges {
+        authorize_book_text(&to_json(&range), locators)?;
+    }
+    Ok(())
+}
+
 fn authorize_book_synthesize(
     arguments: &str,
     evidence_state: EvidenceState,
@@ -1380,6 +1405,8 @@ fn legacy_book_text_would_succeed(arguments: &str, book: &Book) -> bool {
 struct ObservedTurnEvidence {
     range: EvidenceRange,
     claim_kind: EvidenceClaimKind,
+    /// Exact canonical interval for a verified text page, including leaf gaps.
+    source_range: Option<(usize, usize)>,
 }
 
 #[derive(Debug, Default)]
@@ -1404,14 +1431,19 @@ impl TurnEvidenceLedger {
     }
 
     fn observe(&mut self, evidence: EvidenceRange) {
-        self.observe_with_claim(evidence, EvidenceClaimKind::SourceText);
+        self.observe_with_claim(evidence, EvidenceClaimKind::SourceText, None);
     }
 
     fn observe_literal_occurrence(&mut self, evidence: EvidenceRange) {
-        self.observe_with_claim(evidence, EvidenceClaimKind::LiteralOccurrence);
+        self.observe_with_claim(evidence, EvidenceClaimKind::LiteralOccurrence, None);
     }
 
-    fn observe_with_claim(&mut self, range: EvidenceRange, claim_kind: EvidenceClaimKind) {
+    fn observe_with_claim(
+        &mut self,
+        range: EvidenceRange,
+        claim_kind: EvidenceClaimKind,
+        source_range: Option<(usize, usize)>,
+    ) {
         if let Some(existing) = self
             .evidence
             .iter_mut()
@@ -1420,10 +1452,16 @@ impl TurnEvidenceLedger {
             if claim_kind == EvidenceClaimKind::SourceText {
                 existing.claim_kind = EvidenceClaimKind::SourceText;
             }
+            if source_range.is_some() {
+                existing.source_range = source_range;
+            }
             return;
         }
-        self.evidence
-            .push(ObservedTurnEvidence { range, claim_kind });
+        self.evidence.push(ObservedTurnEvidence {
+            range,
+            claim_kind,
+            source_range,
+        });
         if self.evidence_state != EvidenceState::UserProvided {
             self.evidence_state = EvidenceState::KnownLids;
         }
@@ -1577,7 +1615,13 @@ impl TurnEvidenceLedger {
         let mut observed: Vec<_> = self
             .evidence
             .iter()
-            .filter_map(|evidence| evidence_intervals(book, &evidence.range))
+            .filter_map(|evidence| {
+                evidence
+                    .source_range
+                    .as_ref()
+                    .map(|range| vec![*range])
+                    .or_else(|| evidence_intervals(book, &evidence.range))
+            })
             .flatten()
             .collect();
         observed.sort_unstable();
@@ -1713,6 +1757,15 @@ fn observe_tool_evidence(
     book: &Book,
 ) {
     match name {
+        "book.text_batch" => {
+            let (Ok(input), Ok(body)) = (crate::book_text_batch::parse(arguments), serde_json::from_str::<serde_json::Value>(result)) else { return; };
+            for item in body["items"].as_array().into_iter().flatten() {
+                let Ok(range) = serde_json::from_value::<book_tool_contracts::TextInput>(item["arguments"].clone()) else { continue; };
+                if input.ranges.contains(&range) {
+                    observe_tool_evidence(ledger, "book.text", &to_json(&range), &item["result"].to_string(), book);
+                }
+            }
+        }
         "book.query" => {
             let Ok(outcome) = serde_json::from_str::<QueryOutcome>(result) else {
                 return;
@@ -1763,6 +1816,66 @@ fn observe_tool_evidence(
                 .get("end_lid")
                 .and_then(|value| value.as_str())
                 .unwrap_or(lid);
+            if let Some(range) = observed.source_range {
+                let Some(first) = book.base.lid_nodes.iter().find(|node| node.lid == lid) else {
+                    return;
+                };
+                let Some(last) = book.base.lid_nodes.iter().find(|node| node.lid == end_lid) else {
+                    return;
+                };
+                let expected_start = args
+                    .get("start_utf16")
+                    .and_then(|v| v.as_u64())
+                    .map_or(first.span.start, |at| at as usize);
+                if observed.lid != lid
+                    || range.start != expected_start
+                    || range.end > last.span.end
+                    || book.text_in_source_range(&range).ok().as_deref()
+                        != Some(observed.text.as_str())
+                {
+                    return;
+                }
+                // Bind by coordinates, never by searching for repeated text.
+                let mut leaves: Vec<_> = book
+                    .base
+                    .lid_nodes
+                    .iter()
+                    .filter(|node| {
+                        node.children.is_empty()
+                            && node.span.start < range.end
+                            && node.span.end > range.start
+                    })
+                    .collect();
+                leaves.sort_by_key(|node| (node.span.start, node.span.end));
+                let ranges: Vec<_> = leaves
+                    .into_iter()
+                    .map(|node| SourceSelectedRange {
+                        lid: node.lid.clone(),
+                        range: SourceTextRange {
+                            start: (range.start.max(node.span.start) - node.span.start) as u32,
+                            end: (range.end.min(node.span.end) - node.span.start) as u32,
+                        },
+                    })
+                    .collect();
+                if let (Some(first), Some(last)) = (ranges.first(), ranges.last()) {
+                    let evidence = EvidenceRange {
+                        start_lid: first.lid.clone(),
+                        end_lid: last.lid.clone(),
+                        ranges,
+                    };
+                    if book
+                        .resolve_source(&evidence, SOURCE_PRESENTATION_LOCALE, None)
+                        .is_ok()
+                    {
+                        ledger.observe_with_claim(
+                            evidence,
+                            EvidenceClaimKind::SourceText,
+                            Some((range.start, range.end)),
+                        );
+                    }
+                }
+                return;
+            }
             if observed.lid != lid
                 || book
                     .text(lid, (end_lid != lid).then_some(end_lid))
@@ -2113,6 +2226,12 @@ impl AnswerProvenanceLedger {
         let Ok(value) = serde_json::from_str::<serde_json::Value>(arguments) else {
             return;
         };
+        if tool == "book.text_batch" {
+            for range in value["ranges"].as_array().into_iter().flatten() {
+                self.observe_tool_arguments("book.text", &range.to_string());
+            }
+            return;
+        }
         let scalar_fields: &[&str] = match tool {
             "book.text" => &["lid", "end_lid"],
             "book.context" => &["lid"],
@@ -2187,6 +2306,12 @@ impl AnswerProvenanceLedger {
 
     fn observe_tool_result(&mut self, tool: &str, result: &str) {
         match tool {
+            "book.text_batch" => {
+                let Ok(body) = serde_json::from_str::<serde_json::Value>(result) else { return; };
+                for item in body["items"].as_array().into_iter().flatten() {
+                    self.observe_tool_result("book.text", &item["result"].to_string());
+                }
+            }
             "book.text" => {
                 let Ok(observed) = serde_json::from_str::<ObservedBookText>(result) else {
                     return;
@@ -2629,6 +2754,37 @@ struct AnswerDelivery {
 const SOURCE_MARKER_PREFIX: &str = "[[source:";
 const SOURCE_PRESENTATION_FAILURE_MESSAGE: &str = "这次回答生成失败，请重试。";
 
+fn source_suffix_is_literal(prefix: &str) -> bool {
+    let mut quote = None;
+    let mut code_ticks = 0;
+    let mut chars = prefix.chars().peekable();
+    while let Some(character) = chars.next() {
+        if character == '`' {
+            let mut count = 1;
+            while chars.peek() == Some(&'`') { chars.next(); count += 1; }
+            if code_ticks == count { code_ticks = 0; }
+            else if code_ticks == 0 && quote.is_none() { code_ticks = count; }
+        } else if code_ticks == 0 {
+            if character == '\\' { chars.next(); }
+            else if quote == Some(character) { quote = None; }
+            else if quote.is_none() {
+                quote = match character { '“' => Some('”'), '‘' => Some('’'), '"' => Some('"'), _ => None };
+            }
+        }
+    }
+    code_ticks != 0 || quote.is_some()
+}
+
+fn source_marker_is_suffix(prefix: &str, suffix: &str) -> bool {
+    suffix.is_empty()
+        || (prefix.trim_end().ends_with(['。', '.', '!', '！', '?', '？', ';', '；'])
+            && !suffix.starts_with('('))
+        || suffix.starts_with(['。', '，', '；', '：', '.', ',', ';', ':', '!', '！', '?', '？'])
+        || suffix.starts_with("[[source")
+        || suffix.starts_with("[source:")
+        || suffix.starts_with("[source_ref_")
+}
+
 fn normalize_bound_source_suffixes(raw: &str, bindings: &[SourceBinding]) -> String {
     let mut result = String::new();
     let mut fence: Option<char> = None;
@@ -2644,17 +2800,38 @@ fn normalize_bound_source_suffixes(raw: &str, bindings: &[SourceBinding]) -> Str
             result.push_str(line);
             continue;
         }
-        // Restrict to ordinary prose suffixes; code, quotations and indented blocks
-        // are left intact. Ambiguous placements remain the Agent's responsibility.
+        // Keep literal blocks intact. Inline literals are checked at the marker,
+        // so a claim containing code or a quotation can still cite its source.
         if fence.is_some()
             || trimmed.starts_with('>')
             || line.starts_with("    ")
-            || line.contains(['`', '“', '”', '‘', '’', '"'])
         {
             result.push_str(line);
             continue;
         }
         let mut normalized = line.to_string();
+        // A single-bracket source: suffix is an attempted citation, including
+        // unknown or malformed IDs. Canonicalize its syntax so the ordinary
+        // compiler validates it instead of silently delivering plain text.
+        let mut from = 0;
+        while let Some(index) = normalized[from..].find("[source:").map(|offset| from + offset) {
+            let closing = normalized[index..].find(']').map(|offset| index + offset + 1);
+            let end = closing.unwrap_or(normalized.len());
+            let prefix = &normalized[..index];
+            let suffix = normalized[end..].trim_start();
+            if !prefix.ends_with(['[', '\\']) && !source_suffix_is_literal(prefix)
+                && source_marker_is_suffix(prefix, suffix) {
+                let standard = if closing.is_some() {
+                    format!("[{}]", &normalized[index..end])
+                } else {
+                    format!("[{}", &normalized[index..end])
+                };
+                normalized.replace_range(index..end, &standard);
+                from = index + standard.len();
+            } else {
+                from = end;
+            }
+        }
         for binding in bindings {
             for (open, close) in [("[[", "]]"), ("[", "]"), ("（", "）"), ("(", ")")] {
                 let marker = format!("{open}{}{close}", binding.source_ref_id);
@@ -2665,13 +2842,9 @@ fn normalize_bound_source_suffixes(raw: &str, bindings: &[SourceBinding]) -> Str
                     let prefix = &normalized[..index];
                     let suffix = normalized[end..].trim_start();
                     let has_claim = !prefix.trim().is_empty() || !result.trim().is_empty();
-                    let is_suffix = suffix.is_empty()
-                        || suffix.starts_with([
-                            '。', '，', '；', '：', '.', ',', ';', ':', '!', '！', '?', '？',
-                        ])
-                        || suffix.starts_with("[[source")
-                        || suffix.starts_with("[source_ref_");
-                    if has_claim && is_suffix && !prefix.ends_with(['[', ']', '\\']) {
+                    let is_suffix = source_marker_is_suffix(prefix, suffix);
+                    if has_claim && is_suffix && !prefix.ends_with(['[', ']', '\\'])
+                        && !source_suffix_is_literal(prefix) {
                         let standard = format!("[[source:{}]]", binding.source_ref_id);
                         normalized.replace_range(index..end, &standard);
                         from = index + standard.len();
@@ -3181,6 +3354,7 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
         book_s(BookToolId::Synthesize),
         book_s(BookToolId::SearchText),
         book_s(BookToolId::Text),
+        crate::book_text_batch::spec(),
         s(
             "tool.search",
             "Find Resident tools by required capabilities, scope, operation, and authorized effect mode. Natural-language task text ranks only candidates that pass Runtime gates; matches never execute a target tool, and newly activated deferred tools become visible in the next sampling.",
@@ -3188,14 +3362,18 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
         ),
         s(
             "goal.update",
-            "Update the active Resident task only when interpretation, requirements or working state changes. Refine the origin request before complex work; revise requirements only with an exact quote from the current user message. Working items record a revisable plan, not user requirements. Keep the plan consistent with actual results and remaining content gaps before finishing. This tool cannot mark delivery or Goal completion; completed items do not prove either. Short direct answers need no update or plan.",
+            "Update the active Resident task only when interpretation, requirements or working state changes. working saves focus/next_move and optionally replaces the plan; refine sets interpretation/requirements only in the goal's origin turn; revise changes requirements using the current user turn ID and an exact quote from that message. Replace example turn IDs with actual IDs from the active Goal; each requirement must cite the origin or current user turn. Working items record a revisable plan, not user requirements. Keep the plan consistent with actual results and remaining content gaps before finishing. Success returns {goal_id, revision, changed}; changed=false means no state change. This tool cannot mark delivery or Goal completion; completed items do not prove either. Short direct answers need no update or plan.",
             json!({"type":"object","properties":{
                 "operation":{"type":"string","enum":["working","refine","revise"]},
                 "focus":{"type":"string"},"open_questions":{"type":"array","items":{"type":"string"}},"next_move":{"type":"string"},
                 "items":{"type":"array","description":"For operation=working: replace the whole ordered work plan atomically. Omit to retain it; [] clears it. Use non-empty unique IDs and non-empty descriptions. Reorder, split, merge, remove abandoned steps or reopen completed items as observations require; this does not change requirements.","items":{"type":"object","properties":{"id":{"type":"string","minLength":1},"description":{"type":"string","minLength":1},"status":{"type":"string","enum":["pending","in_progress","completed"]}},"required":["id","description","status"]}},
                 "interpretation":{"type":"string"},"requirements":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"description":{"type":"string"},"basis_turn_id":{"type":"string"},"verification":{"type":"string","enum":["content","presentation_delivery","reader_action"],"description":"content: explanation correctness and features inside the authored page, including page controls, dragging, playback, pause, seeking and saved scene restoration. presentation_delivery: actually save and deliver the requested page. reader_action: an explicitly requested host Reader operation such as navigating the book or changing its panels; requires an actual Reader effect. Page interactions and preview actions are content requirements, not reader_action. Keep the user's required behavior in description; choose verification by what must actually be delivered."}},"required":["id","description","basis_turn_id","verification"]}},
                 "basis_turn_id":{"type":"string"},"basis_quote":{"type":"string"}
-            },"required":["operation"]}),
+            },"required":["operation"],"examples":[
+                {"operation":"working","focus":"核对当前段落的解释依据","next_move":"解释后保存用户要求的笔记","items":[{"id":"explain","description":"核对原文并解释","status":"in_progress"},{"id":"note","description":"保存用户要求的笔记并核对回执","status":"pending"}]},
+                {"operation":"refine","interpretation":"解释当前段落并保存用户要求的笔记","requirements":[{"id":"explain","description":"解释当前段落","basis_turn_id":"origin-user-turn-id","verification":"content"},{"id":"note","description":"在当前段落保存笔记","basis_turn_id":"origin-user-turn-id","verification":"reader_action"}]},
+                {"operation":"revise","basis_turn_id":"current-user-turn-id","basis_quote":"只解释，不要保存笔记","interpretation":"只解释当前段落","requirements":[{"id":"explain","description":"只解释当前段落，不保存笔记","basis_turn_id":"current-user-turn-id","verification":"content"}]}
+            ]}),
         ),
         artifact_s(
             ArtifactToolId::List,
@@ -3305,7 +3483,7 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
         ),
         s(
             "memory.save",
-            "Save highlight or position memory; qa records the user's original question after answering with book.query; context records sourced reader background, preferences, interests or sticking points. Use reader.note for every note: note is not a memory.save type. anchor_lid is the question or memory location. context may cite real LIDs supporting it.",
+            "Save an existing reader fact at a verified anchor_lid. type=highlight stores supplied content as long_term memory without resolving a source range or selecting it in Reader; use reader.highlight for a requested source highlight. position stores a session reading-position memory, without navigating. qa stores the user's original substantive question after answering with book.query, not the generated answer or routine chat history. context stores sourced reader background, preferences, interests or sticking points; retain what the user actually said and distinguish inference. Use reader.note for every note. context needs no book citation for a user-stated preference; citations may contain real supporting LIDs, and invalid LIDs are dropped. Success returns the saved record {mem_id,type,layer,anchor,content,citations,...}; it is not a note_id or proof of learning. Replace example locations and content with observed facts; do not write merely to explain selected text.",
             json!({
                 "type": "object",
                 "properties": {
@@ -3318,7 +3496,13 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
                         "description": "Optional real LIDs supporting this memory, primarily for context; invalid LIDs are dropped and the list may be empty"
                     }
                 },
-                "required": ["type", "anchor_lid", "content"]
+                "required": ["type", "anchor_lid", "content"],
+                "examples": [
+                    {"type":"highlight","anchor_lid":"1.1","content":"先核对前提，再下结论"},
+                    {"type":"position","anchor_lid":"1.1","content":"读到当前段落，稍后从这里继续"},
+                    {"type":"qa","anchor_lid":"1.1","content":"为什么要先核对前提？"},
+                    {"type":"context","anchor_lid":"1.1","content":"用户说：我有 Rust 基础，读这一段时请先给例子","citations":[]}
+                ]
             }),
         ),
         s(
@@ -3354,23 +3538,28 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
         ),
         s(
             "reader.highlight",
-            "Highlight source text at a LID. When the user specifies a sentence or quote, provide that exact quote; only its unique original occurrence is saved. Omit quote only when the user requests the whole passage. Persistence is delegated to memory; returns highlight_id.",
+            "Save a user-requested source highlight at a verified LID. For a sentence, pass the exact unique quote within that LID; omit quote only for the whole passage. This interface accepts one lid and an optional quote, not offsets, an end_lid or note text. Use reader.note for commentary. Success returns {ok:true,highlight_id}, the saved session memory ID. If reader_effect.status=not_applied, persistence succeeded but the Reader selection did not apply. Replace example locations and quotes with observed source text; an explanation alone needs no highlight.",
             json!({
                 "type": "object",
                 "properties": {"lid": {"type": "string"}, "quote": {"type": "string", "description": "Exact requested original text within this LID; must match once"}},
-                "required": ["lid"]
+                "required": ["lid"],
+                "examples": [
+                    {"lid":"1.1","quote":"先核对前提"},
+                    {"lid":"1.1"}
+                ]
             }),
         ),
         s(
             "reader.note",
-            "Attach a note to a LID through a thin entry point whose persistence is delegated to memory. Returns note_id, which is the memory-layer ID.",
+            "Save the user's requested note text at a verified source lid. The lid is the note's body placement; text is the content to retain, not a highlight quote. Use this tool for notes, including requested summaries of an explanation; memory.save cannot create notes. Success returns {ok:true,note_id,status:CREATED|EXISTING}; note_id is the persisted memory ID. EXISTING reuses the same note rather than creating another. New Agent notes are saved in the session layer. If reader_effect.status=not_applied, the note is saved but Reader selection did not apply. Replace the example lid with the actual requested location. Do not create a note for an explanation-only request or claim success before the receipt.",
             json!({
                 "type": "object",
                 "properties": {
                     "lid": {"type": "string"},
                     "text": {"type": "string", "description": "Note content"}
                 },
-                "required": ["lid", "text"]
+                "required": ["lid", "text"],
+                "examples": [{"lid":"1.1","text":"先核对前提再下结论"}]
             }),
         ),
         s(
@@ -3704,8 +3893,8 @@ fn dispatch_resident_book_tool(
             }
         }
         (BookToolId::Text, BookToolInput::Text(input)) => {
-            match book.text(&input.lid, input.end_lid.as_deref()) {
-                Ok(text) => to_json(&serde_json::json!({ "lid": input.lid, "text": text })),
+            match book.read_text(&input) {
+                Ok(result) => to_json(&result),
                 Err(error) => to_json(&error),
             }
         }
@@ -3798,6 +3987,9 @@ fn dispatch_registered(
     adapter: &dyn ModelAdapter,
     now: &str,
 ) -> (String, Option<AgentEffect>) {
+    if handler == ToolHandlerId::BookTextBatch {
+        return (crate::book_text_batch::read(arguments, book), None);
+    }
     if let ToolHandlerId::Book(id) = handler {
         let args = match serde_json::from_str(arguments) {
             Ok(args) => args,
@@ -3973,6 +4165,7 @@ fn dispatch_state_tool(
                 content: content.into(),
                 range: None,
                 selection_context: None,
+                note: None,
                 note_placement: None,
                 citations,
                 source_session_id: None,
@@ -4215,6 +4408,7 @@ fn dispatch_state_tool(
         }).unwrap_or_else(reader_not_applied),
         ToolHandlerId::ReaderState => state.read_live_reader(|reader| (to_json(&reader_state_value(book, reader)), None)).unwrap_or_else(|error| (to_json(&error), None)),
         ToolHandlerId::Book(_)
+        | ToolHandlerId::BookTextBatch
         | ToolHandlerId::Artifact(_)
         | ToolHandlerId::ToolSearch
         | ToolHandlerId::TutorStep
@@ -4291,6 +4485,11 @@ fn private_artifact_trace_digest(result: &str) -> String {
 }
 
 fn compact_tool_locator_arguments(tool: &str, arguments: &str) -> serde_json::Value {
+    if tool == "book.text_batch" {
+        return crate::book_text_batch::parse(arguments)
+            .map(|input| serde_json::json!({"ranges": input.ranges}))
+            .unwrap_or_else(|_| serde_json::json!({}));
+    }
     let Ok(value) = serde_json::from_str::<serde_json::Value>(arguments) else {
         return serde_json::json!({});
     };
@@ -4439,6 +4638,7 @@ fn tool_progress_signature(
     port: &mut impl ResidentStatePort,
     effect_count: usize,
     authoring: Option<&crate::presentation_author::PresentationAuthoringContext>,
+    tutor_resolved: bool,
 ) -> String {
     let reader_view = port.read_live_reader(|reader| reader_state_value(book, reader)).unwrap_or_else(|error| serde_json::json!({"error_code":error.error_code}));
     let projection_revision = port.submit_private(|store| store.projection_revision()).ok();
@@ -4457,6 +4657,7 @@ fn tool_progress_signature(
         "reader": reader_view,
         "effect_count": effect_count,
         "presentation_authoring": authoring,
+        "tutor_resolved": tutor_resolved,
     });
     opaque_tool_result_digest(&serde_json::to_string(&state).unwrap_or_default())
 }
@@ -4469,6 +4670,7 @@ struct ProgressPhaseGuard {
     consecutive_stalled_batches: usize,
     recovery_pending: bool,
     recovery_used: bool,
+    teaching_correction_pending: bool,
 }
 
 impl ProgressPhaseGuard {
@@ -4476,12 +4678,18 @@ impl ProgressPhaseGuard {
         self.recovery_pending && !self.recovery_used
     }
 
-    fn observe_error(&mut self, result: &str) {
+    fn observe_error(&mut self, tool: &str, result: &str) {
         if matches!(
             tool_result_error_code(result).as_deref(),
             Some("LID_NOT_FOUND" | "LID_PROVENANCE_REQUIRED" | "LID_RECOVERY_REQUIRED")
         ) {
             self.recovery_pending = true;
+        }
+        if tool == "tutor.step" && matches!(tool_result_error_code(result).as_deref(),
+            Some("TEACHING_INVALID" | "TOOL_ARGUMENTS_INVALID"))
+        {
+            self.recovery_pending = true;
+            self.teaching_correction_pending = true;
         }
     }
     fn blocks(&self, progress_signature: &str) -> bool {
@@ -4495,6 +4703,7 @@ impl ProgressPhaseGuard {
             self.consecutive_stalled_batches = 0;
             self.recovery_pending = false;
             self.recovery_used = false;
+            self.teaching_correction_pending = false;
             return;
         }
         if self.stalled_signature.as_deref() == Some(after_signature) {
@@ -4574,6 +4783,7 @@ fn record_query_observation(
             content: question.into(),
             range: None,
             selection_context: None,
+            note: None,
             note_placement: None,
             citations: None,
             source_session_id: None,
@@ -4814,6 +5024,7 @@ fn build_sample_request(
     excluded_tools: &[&str],
     authoring: Option<&crate::presentation_author::PresentationAuthoringContext>,
     authoring_finished: bool,
+    tutor: Option<&serde_json::Value>,
 ) -> Result<(ToolExposurePlan, AgentRequestPlan), ToolError> {
     let mut tool_exposure_plan = ToolExposurePlan::build(
         tool_registry,
@@ -4847,6 +5058,9 @@ fn build_sample_request(
         .partition(crate::agent_prompt::presentation::is_sampling_module);
     if guidance.is_none() {
         selected.clear();
+    }
+    if let Some(tutor) = tutor {
+        selected.extend(crate::tutor::instruction_modules(tutor, messages, guidance.as_ref()));
     }
     let mut current_messages = Vec::new();
     if author_visible || authoring.is_some() || authoring_finished {
@@ -4959,6 +5173,8 @@ fn maybe_auto_compact(
     effects: &[AgentEffect],
     active_checkpoint: &mut Option<CompactionCheckpoint>,
     sink: &mut dyn CompactionCheckpointSink,
+    attempted_boundary: &mut Option<String>,
+    candidate_budget: impl Fn(&[Message], &CompactionCheckpoint) -> Result<ActiveContextBudget, ToolError>,
 ) -> Result<bool, ToolError> {
     if !budget.over_high_watermark {
         return Ok(false);
@@ -5003,6 +5219,13 @@ fn maybe_auto_compact(
         };
     }
 
+    let boundary = prepared.request().eligible_items.last().map(|item| item.source_item_id.clone());
+    let wrapper = runtime_profile.compaction.consumption_wrapper_asset.resolve(COMPACTION_CONSUMPTION_WRAPPER);
+    if *attempted_boundary == boundary || !prepared.can_reduce(runtime_profile, &wrapper).map_err(compaction_error)? {
+        return if budget.fits { Ok(false) } else { Err(active_context_exhausted(budget)) };
+    }
+    *attempted_boundary = boundary;
+
     let generation_input_limit_tokens = runtime_profile
         .context_window_tokens
         .saturating_sub(crate::compaction::compaction_output_token_limit(runtime_profile))
@@ -5022,6 +5245,10 @@ fn maybe_auto_compact(
         .map(crate::model_spend::SpendStop::tool_error).unwrap_or(ToolError {
             error_code: COMPACTION_FAILED.into(), category: "provider".into(), message: error.message,
         }))?;
+    let replacement = candidate_budget(&persisted_messages, &checkpoint)?;
+    if replacement.estimated_input_tokens >= budget.estimated_input_tokens || !replacement.fits {
+        return if budget.fits { Ok(false) } else { Err(active_context_exhausted(budget)) };
+    }
     sink.install(&checkpoint, &persisted_messages)
         .map_err(|error| ToolError {
             error_code: COMPACTION_FAILED.into(),
@@ -5155,6 +5382,25 @@ This run is stopping. Produce the final answer now from the current conversation
 Tools are disabled for this sampling. Do not request, describe, simulate, or emit tool calls or tool-call syntax. \
 Answer the user's request directly; if the available evidence is insufficient, state the remaining gap honestly.";
 const PRESENTATION_DELIVERY_GRACE_FRAGMENT_KEY: &str = "agent.presentation_delivery_grace";
+
+fn presentation_availability_fragment(reason: &str) -> ContextFragment {
+    ContextFragment::new(
+        "agent.presentation_availability", FragmentScope::Dynamic, Role::System,
+        format!("presentation_availability.v1\nThe host presentation execution environment is unavailable ({reason}). Do not attempt page authoring while it is unavailable. Repeating discovery or changing authored content cannot restore the host. If the task requires a page that has not been delivered, explain the failure and remaining delivery gap honestly; a source-grounded text explanation may still be useful, but must not be claimed as page delivery. Text-only tasks and already delivered pages are unaffected."),
+        FragmentSensitivity::Private,
+    )
+}
+
+fn presentation_delivery_unavailable(
+    goal: Option<&crate::goal::ResidentGoal>,
+    delivered: usize,
+    reason: Option<&str>,
+) -> bool {
+    reason.is_some() && delivered == 0 && goal.is_some_and(|goal| {
+        goal.status == crate::goal::GoalStatus::Open && goal.requirements.iter().any(|r|
+            r.verification == crate::goal::GoalVerification::PresentationDelivery)
+    })
+}
 
 fn tool_loop_budget_instructions(
     turns_completed: usize,
@@ -5487,18 +5733,18 @@ fn historical_guided_read_locators(
     for message in &history[start + 1..] {
         if message.role == Role::Assistant {
             for call in &message.tool_calls {
-                if call.name == "book.text" {
-                    reads.insert(call.id.as_str(), call.arguments.as_str());
+                if matches!(call.name.as_str(), "book.text" | "book.text_batch") {
+                    reads.insert(call.id.as_str(), (call.name.as_str(), call.arguments.as_str()));
                 }
             }
         } else if message.role == Role::Tool {
-            if let Some((arguments, result)) = message
+            if let Some(((name, arguments), result)) = message
                 .tool_call_id
                 .as_deref()
                 .and_then(|id| reads.get(id).copied())
                 .zip(message.content.as_deref())
             {
-                observe_tool_evidence(&mut observed, "book.text", arguments, result, book);
+                observe_tool_evidence(&mut observed, name, arguments, result, book);
             }
         }
     }
@@ -5578,7 +5824,7 @@ fn run_context_inner(
     let messages = &mut context.messages;
     context.cancellation.check()?;
     let mut tool_registry = crate::experiment::registry(book, resident_tool_registry());
-    if context.tutor.is_none() { tool_registry = tool_registry.without_tutor(); }
+    tool_registry = tool_registry.with_tutor_context(context.tutor.as_ref());
     if context.goal.is_none() {
         tool_registry = tool_registry.without_goal_update();
     }
@@ -5589,7 +5835,8 @@ fn run_context_inner(
         .resolve(COMPACTION_CONSUMPTION_WRAPPER);
     let tool_permissions = ToolPermissions::default();
     context.tool_exposure_state = ToolExposureState::default();
-    if context.tutor.as_ref().is_some_and(|t| t["status"] == "active" || t["status"] == "reference") { context.tool_exposure_state.activate_tutor(); }
+    context.tool_exposure_state.presentation_unavailable_reason = state.presentation_unavailable_reason();
+    if context.tutor.as_ref().is_some_and(|t| t["status"] == "active" || t["status"] == "reference" || t["status"] == "observing") { context.tool_exposure_state.activate_tutor(); }
     let experimental = book.experimental_read_access().is_some();
     let mut artifact_tools = ArtifactToolSession::new(
         if experimental {
@@ -5600,6 +5847,12 @@ fn run_context_inner(
         question,
     );
     let mut context_fragments = ContextFragmentLedger::default();
+    if let Some(tutor) = &context.tutor {
+        context_fragments.upsert(ContextFragment::new(
+            "agent.tutor_context", FragmentScope::TurnFrozen, Role::System,
+            crate::tutor::instructions(tutor), FragmentSensitivity::Private,
+        )).map_err(context_fragment_error)?;
+    }
     context_fragments
         .upsert(ContextFragment::new(
             READER_PROFILE_FRAGMENT_KEY,
@@ -5661,7 +5914,9 @@ fn run_context_inner(
     context.evidence_plan_ledger =
         TurnEvidencePlanLedger::from_evidence_state(context.evidence_ledger.evidence_state());
     let guided_origin = guided_read_origin(question, messages).map(str::to_string);
-    let mut turn_intent_hints = classify_turn_intent(question);
+    // Selection provenance JSON-quotes user text; intent belongs to the original request.
+    let mut turn_intent_hints =
+        classify_turn_intent(context.current_user_message.as_deref().unwrap_or(question));
     if let Some(origin) = &guided_origin {
         turn_intent_hints.insert(TurnIntentHint::ExplicitGuidedRead);
         let selected_lid = reader_input.state.selection.clone();
@@ -5700,6 +5955,7 @@ fn run_context_inner(
     let mut presentation_delivery_grace: Option<String> = None;
     let mut presentation_delivery_grace_used = false;
     let mut tutor_selection_retry = false;
+    let mut compaction_attempted_boundary = None;
     let mut goal_completion_retry: Option<&'static str> = None;
 
     // Pre-turn pressure includes the new user message, but the compactable source
@@ -5723,7 +5979,7 @@ fn run_context_inner(
         context.evidence_ledger.evidence_state(),
         &[],
         context.presentation_authoring.as_ref(),
-        context.presentation_authoring_finished,
+        context.presentation_authoring_finished, context.tutor.as_ref(),
     )?;
     let planned_budget = ActiveContextBudget::from_plan(&planned_request);
     let compacted = maybe_auto_compact(
@@ -5737,8 +5993,24 @@ fn run_context_inner(
         &effects,
         &mut active_checkpoint,
         checkpoint_sink,
+        &mut compaction_attempted_boundary,
+        &|persisted: &[Message], checkpoint: &CompactionCheckpoint| {
+                let mut projected_messages = persisted.to_vec();
+                projected_messages.push(Message::user(question));
+                let mut fragments = planned_context_fragments.clone();
+                let (_, plan) = build_sample_request(
+                    &projected_messages, &mut fragments, book, &context.active_tool_results,
+                    Some(checkpoint), &consumption_wrapper, &tool_registry, &runtime_profile,
+                    tool_permissions, &context.tool_exposure_state, artifact_tools.exposure(),
+                    context.evidence_ledger.evidence_state(), &[],
+                    context.presentation_authoring.as_ref(), context.presentation_authoring_finished, context.tutor.as_ref(),
+                )?;
+                Ok(ActiveContextBudget::from_plan(&plan))
+        },
     )?;
     if compacted {
+        planned_messages = messages.clone();
+        planned_messages.push(Message::user(question));
         let (_, compacted_request) = build_sample_request(
             &planned_messages,
             &mut planned_context_fragments,
@@ -5754,7 +6026,7 @@ fn run_context_inner(
             context.evidence_ledger.evidence_state(),
             &[],
             context.presentation_authoring.as_ref(),
-            context.presentation_authoring_finished,
+            context.presentation_authoring_finished, context.tutor.as_ref(),
         )?;
         let compacted_budget = ActiveContextBudget::from_plan(&compacted_request);
         if !compacted_budget.fits {
@@ -5790,14 +6062,22 @@ fn run_context_inner(
 
     loop {
         context.cancellation.check()?;
+        context.tool_exposure_state.presentation_unavailable_reason = state.presentation_unavailable_reason();
         if context.tutor.as_ref().is_some_and(|t| t["status"] == "active") && !state.tutor_active()? {
             context.tutor = Some(serde_json::json!({"status":"paused"}));
             tool_registry = tool_registry.without_tutor();
+        } else if context.tutor.is_some() {
+            // Accepted assessments change the pending references between samples.
+            tool_registry = tool_registry.with_tutor_context(context.tutor.as_ref());
         }
         let mut sampling_context_fragments = context_fragments.clone();
+        if let Some(reason) = context.tool_exposure_state.presentation_unavailable_reason {
+            sampling_context_fragments.upsert(presentation_availability_fragment(reason))
+                .map_err(context_fragment_error)?;
+        }
         if let Some(tutor) = &context.tutor {
             sampling_context_fragments.upsert(ContextFragment::new("agent.tutor", FragmentScope::Dynamic,
-                Role::System, crate::tutor::instructions(tutor), FragmentSensitivity::Private)).map_err(context_fragment_error)?;
+                Role::System, crate::tutor::control_instructions(tutor), FragmentSensitivity::Private)).map_err(context_fragment_error)?;
         }
         if let Some(goal) = &context.goal {
             sampling_context_fragments.upsert(ContextFragment::new(
@@ -5844,6 +6124,9 @@ fn run_context_inner(
             Vec::new()
         };
         let sampled_excluded_tools: &[&str] = &delivery_grace_excluded_tools;
+        if context.locator_ledger.entries.len() >= 2 {
+            context.tool_exposure_state.activate("book.text_batch");
+        }
         let (mut tool_exposure_plan, mut request_plan) = build_sample_request(
             messages,
             &mut sampling_context_fragments,
@@ -5859,7 +6142,7 @@ fn run_context_inner(
             context.evidence_ledger.evidence_state(),
             sampled_excluded_tools,
             context.presentation_authoring.as_ref(),
-            context.presentation_authoring_finished,
+            context.presentation_authoring_finished, context.tutor.as_ref(),
         )?;
         let request_budget = ActiveContextBudget::from_plan(&request_plan);
         if maybe_auto_compact(
@@ -5873,6 +6156,18 @@ fn run_context_inner(
             &effects,
             &mut active_checkpoint,
             checkpoint_sink,
+            &mut compaction_attempted_boundary,
+            &|persisted: &[Message], checkpoint: &CompactionCheckpoint| {
+                let mut fragments = sampling_context_fragments.clone();
+                let (_, plan) = build_sample_request(
+                    persisted, &mut fragments, book, &context.active_tool_results,
+                    Some(checkpoint), &consumption_wrapper, &tool_registry, &runtime_profile,
+                    tool_permissions, &context.tool_exposure_state, artifact_tools.exposure(),
+                    context.evidence_ledger.evidence_state(), sampled_excluded_tools,
+                    context.presentation_authoring.as_ref(), context.presentation_authoring_finished, context.tutor.as_ref(),
+                )?;
+                Ok(ActiveContextBudget::from_plan(&plan))
+            },
         )? {
             (tool_exposure_plan, request_plan) = build_sample_request(
                 messages,
@@ -5889,7 +6184,7 @@ fn run_context_inner(
                 context.evidence_ledger.evidence_state(),
                 sampled_excluded_tools,
                 context.presentation_authoring.as_ref(),
-                context.presentation_authoring_finished,
+                context.presentation_authoring_finished, context.tutor.as_ref(),
             )?;
         }
         context_fragments.retain_sampling_history(&sampling_context_fragments);
@@ -6049,6 +6344,8 @@ fn run_context_inner(
             }
             let objective_gap = context.goal.as_ref().and_then(|goal|
                 goal.objective_gap(context.delivered_presentations.len(), run_effects(effects.clone(), &context.navigation).len()));
+            let presentation_blocked = presentation_delivery_unavailable(context.goal.as_ref(),
+                context.delivered_presentations.len(), context.tool_exposure_state.presentation_unavailable_reason);
             if let Some(gap) = objective_gap {
                 // A prose-only completion claim cannot advance an unmet delivery.
                 // Count it in the same streak as unchanged tool batches; real tool
@@ -6065,9 +6362,11 @@ fn run_context_inner(
                     state,
                     effects.len(),
                     context.presentation_authoring.as_ref(),
+                    context.tutor_resolved,
                 );
                 phase_progress_guard.observe_batch(&progress, &progress);
                 if !cfg.turn_limit_reached(turns)
+                    && !presentation_blocked
                     && !(experimental && spent >= 100_000)
                     && !phase_progress_guard.blocks(&progress)
                 {
@@ -6081,7 +6380,7 @@ fn run_context_inner(
             let registered_bindings = context.evidence_ledger.bindings();
             let delivery = turn.text.as_deref().map(|raw| {
                 deliver_agent_answer(
-                    if objective_gap.is_some() { "所请求的演示或阅读操作尚未完成；可以继续此任务。" } else { raw },
+                    if objective_gap.is_some() && !presentation_blocked { "所请求的演示或阅读操作尚未完成；可以继续此任务。" } else { raw },
                     &registered_bindings,
                     &context.answer_provenance,
                     adapter,
@@ -6122,7 +6421,9 @@ fn run_context_inner(
                 incomplete: objective_gap.is_some() || delivery
                     .as_ref()
                     .is_some_and(|delivery| delivery.incomplete),
-                warning: objective_gap.map(|_| if experimental && spent >= 100_000 {
+                warning: objective_gap.map(|_| if presentation_blocked {
+                    "PRESENTATION_SANDBOX_UNAVAILABLE"
+                } else if experimental && spent >= 100_000 {
                     "EXPERIMENT_TOKEN_BUDGET"
                 } else if cfg.turn_limit_reached(turns) {
                     TURN_LIMIT_EXCEEDED
@@ -6177,6 +6478,7 @@ fn run_context_inner(
                 state,
                 effects.len(),
                 context.presentation_authoring.as_ref(),
+                context.tutor_resolved,
             );
         let phase_stalled = phase_progress_guard.blocks(&batch_progress_before);
         let recovery_batch = phase_stalled && phase_progress_guard.recovery_available();
@@ -6211,11 +6513,15 @@ fn run_context_inner(
                     state,
                     effects.len(),
                     context.presentation_authoring.as_ref(),
+                    context.tutor_resolved,
                 );
             let repeated_without_progress = handler.is_some()
                 && tool_call_progress.is_repeat(&tc.name, &tc.arguments, &progress_before);
-            let text_authorization = matches!(handler, Some(ToolHandlerId::Book(BookToolId::Text)))
-                .then(|| authorize_book_text(&tc.arguments, &locator_batch_snapshot));
+            let text_authorization = match handler {
+                Some(ToolHandlerId::Book(BookToolId::Text)) => Some(authorize_book_text(&tc.arguments, &locator_batch_snapshot)),
+                Some(ToolHandlerId::BookTextBatch) => Some(authorize_book_text_batch(&tc.arguments, &locator_batch_snapshot)),
+                _ => None,
+            };
             let synthesize_authorization =
                 matches!(handler, Some(ToolHandlerId::Book(BookToolId::Synthesize))).then(|| {
                     authorize_book_synthesize(
@@ -6230,11 +6536,11 @@ fn run_context_inner(
                     Some(ToolHandlerId::Book(
                         BookToolId::SearchText | BookToolId::Structure | BookToolId::Context,
                     )) => true,
-                    Some(ToolHandlerId::Book(BookToolId::Text)) => text_authorization
+                    Some(ToolHandlerId::Book(BookToolId::Text) | ToolHandlerId::BookTextBatch) => text_authorization
                         .as_ref()
                         .is_some_and(|result| result.is_ok()),
                     Some(ToolHandlerId::ToolSearch) => true,
-                    _ => false,
+                    _ => matches!(handler, Some(ToolHandlerId::TutorStep)) && phase_progress_guard.teaching_correction_pending,
                 };
             let phase_blocked = phase_stalled && !recovery_call;
             let blocked_without_progress = phase_blocked || repeated_without_progress;
@@ -6353,6 +6659,8 @@ fn run_context_inner(
                 }
                 Some(ToolHandlerId::TutorStep) => {
                     let request: Result<serde_json::Value, _> = serde_json::from_str(&tc.arguments);
+                    let assessing = request.as_ref().ok().filter(|r| r["operation"] == "assess")
+                        .and_then(|r| r["action_ref"].as_str()).map(str::to_owned);
                     let resolving = request.as_ref().ok().is_some_and(|r| matches!(r["operation"].as_str(), Some("select" | "outside")));
                     let result = request.map_err(|e| memory::teaching::invalid(format!("{e}"))).and_then(|request| {
                         if request["operation"] != "assess" { return state.tutor_step(request, &context.evidence_ledger.bindings(), &context.evidence_ledger.teaching_source_ranges()); }
@@ -6370,6 +6678,13 @@ fn run_context_inner(
                         state.tutor_assessment_accept(id,parsed["items"].clone())
                     });
                     if result.is_ok() && resolving { context.tutor_resolved = true; goal_completion_retry = None; }
+                    if result.is_ok() {
+                        if let (Some(id), Some(tutor)) = (assessing, context.tutor.as_mut()) {
+                            if let Some(pending) = tutor["learner_context"]["pending_assessment_refs"].as_array_mut() {
+                                pending.retain(|value| value.as_str() != Some(id.as_str()));
+                            }
+                        }
+                    }
                     (result.map(|value| value.to_string()).unwrap_or_else(|error| to_json(&error)), None, None)
                 }
                 Some(ToolHandlerId::GoalUpdate) => {
@@ -6605,7 +6920,7 @@ fn run_context_inner(
                     };
                     (result, None, None)
                 }
-                Some(text_handler @ ToolHandlerId::Book(BookToolId::Text)) => {
+                Some(text_handler @ (ToolHandlerId::Book(BookToolId::Text) | ToolHandlerId::BookTextBatch)) => {
                     let result = match text_authorization.expect("text handler prepared authorization") {
                         Ok(()) => {
                             dispatch_registered(
@@ -6692,7 +7007,7 @@ fn run_context_inner(
                 batch_synthesis_observed = true;
             }
             let result = attach_lid_recovery_requirement(result);
-            phase_progress_guard.observe_error(&result);
+            phase_progress_guard.observe_error(&tc.name, &result);
             let output_policy = registered
                 .map(|registration| registration.output_policy)
                 .unwrap_or_else(crate::tool_registry::ToolOutputPolicy::bounded_error);
@@ -6700,18 +7015,7 @@ fn run_context_inner(
                 &tc.name, &tc.arguments, &result, output_policy, book,
             );
             if experimental {
-                let body = experimental_body_budget.admit(
-                    &tc.name,
-                    &projection.evidence_arguments,
-                    projection.model_body_json(),
-                    book,
-                );
-                projection.model_body =
-                    serde_json::from_str(&body).unwrap_or(serde_json::Value::Null);
-                if tool_result_error_code(&body).is_some() {
-                    projection.status = crate::tool_result::ToolResultStatus::Error;
-                    projection.continuation = None;
-                }
+                experimental_body_budget.admit_projection(&tc.name, &mut projection, book);
             }
             let model_body = projection.model_body_json();
             let evidence_before = context.evidence_ledger.evidence_ranges();
@@ -6772,6 +7076,7 @@ fn run_context_inner(
                         state,
                         effects.len() + usize::from(effect.is_some()),
                         context.presentation_authoring.as_ref(),
+                        context.tutor_resolved,
                     );
                 tool_call_progress.observe(
                     &tc.name,
@@ -6836,6 +7141,7 @@ fn run_context_inner(
                 .progress_ledger
                 .observe(RuntimeProgressEvent::Synthesis);
         }
+        context.tool_exposure_state.presentation_unavailable_reason = state.presentation_unavailable_reason();
         completed_capabilities.extend(capability_batch_observations);
         let batch_progress_after = tool_progress_signature(
                 &context.evidence_ledger,
@@ -6849,6 +7155,7 @@ fn run_context_inner(
                 state,
                 effects.len(),
                 context.presentation_authoring.as_ref(),
+                context.tutor_resolved,
             );
         phase_progress_guard.observe_batch(&batch_progress_before, &batch_progress_after);
         for (tool, arguments) in batch_progress_calls {
@@ -6873,7 +7180,11 @@ fn run_context_inner(
             }
         }
         if cfg.turn_limit_reached(turns) || stalled || experimental_budget_stop {
-            let stop_reason = if experimental_budget_stop {
+            let presentation_blocked = presentation_delivery_unavailable(context.goal.as_ref(),
+                context.delivered_presentations.len(), context.tool_exposure_state.presentation_unavailable_reason);
+            let stop_reason = if presentation_blocked {
+                "PRESENTATION_SANDBOX_UNAVAILABLE"
+            } else if experimental_budget_stop {
                 "EXPERIMENT_TOKEN_BUDGET"
             } else if cfg.turn_limit_reached(turns) {
                 TURN_LIMIT_EXCEEDED
@@ -6881,8 +7192,12 @@ fn run_context_inner(
                 "AGENT_NO_PROGRESS"
             };
             let mut finalization_context_fragments = context_fragments.clone();
+            if let Some(reason) = context.tool_exposure_state.presentation_unavailable_reason {
+                finalization_context_fragments.upsert(presentation_availability_fragment(reason))
+                    .map_err(context_fragment_error)?;
+            }
             if let Some(tutor) = &context.tutor {
-                finalization_context_fragments.upsert(ContextFragment::new("agent.tutor", FragmentScope::Dynamic, Role::System, crate::tutor::instructions(tutor), FragmentSensitivity::Private)).map_err(context_fragment_error)?;
+                finalization_context_fragments.upsert(ContextFragment::new("agent.tutor", FragmentScope::Dynamic, Role::System, crate::tutor::control_instructions(tutor), FragmentSensitivity::Private)).map_err(context_fragment_error)?;
             }
             if let Some(goal) = &context.goal {
                 finalization_context_fragments.upsert(ContextFragment::new(
@@ -6920,7 +7235,7 @@ fn run_context_inner(
                 context.evidence_ledger.evidence_state(),
                 &excluded_tools,
                 context.presentation_authoring.as_ref(),
-                context.presentation_authoring_finished,
+                context.presentation_authoring_finished, context.tutor.as_ref(),
             )?;
             let finalization_budget = ActiveContextBudget::from_plan(&finalization_plan);
             if maybe_auto_compact(
@@ -6934,6 +7249,18 @@ fn run_context_inner(
                 &effects,
                 &mut active_checkpoint,
                 checkpoint_sink,
+                &mut compaction_attempted_boundary,
+                &|persisted: &[Message], checkpoint: &CompactionCheckpoint| {
+                let mut fragments = finalization_context_fragments.clone();
+                let (_, plan) = build_sample_request(
+                    persisted, &mut fragments, book, &context.active_tool_results,
+                    Some(checkpoint), &consumption_wrapper, &tool_registry, &runtime_profile,
+                    tool_permissions, &context.tool_exposure_state, artifact_tools.exposure(),
+                    context.evidence_ledger.evidence_state(), &excluded_tools,
+                    context.presentation_authoring.as_ref(), context.presentation_authoring_finished, context.tutor.as_ref(),
+                )?;
+                Ok(ActiveContextBudget::from_plan(&plan))
+                },
             )? {
                 (_, finalization_plan) = build_sample_request(
                     messages,
@@ -6950,7 +7277,7 @@ fn run_context_inner(
                     context.evidence_ledger.evidence_state(),
                     &excluded_tools,
                     context.presentation_authoring.as_ref(),
-                    context.presentation_authoring_finished,
+                    context.presentation_authoring_finished, context.tutor.as_ref(),
                 )?;
             }
             crate::video::attach(&mut finalization_plan, std::mem::take(&mut context.pending_video));
@@ -7030,7 +7357,7 @@ fn run_context_inner(
                 .observe(RuntimeProgressEvent::FinalAnswer);
             let registered_bindings = context.evidence_ledger.bindings();
             let delivery = deliver_agent_answer(
-                if objective_gap.is_some() {
+                if objective_gap.is_some() && !(presentation_blocked && raw_answer.is_some() && !invoked_disabled_tool) {
                     "所请求的演示或阅读操作尚未完成；可以继续此任务。"
                 } else { raw_answer.expect("validated finalization answer") },
                 &registered_bindings,
@@ -7091,7 +7418,16 @@ fn run_context_inner(
 mod tests {
     include!("video_orchestrator_tests.rs");
     include!("video_source_tests.rs");
+    mod book_examples { include!("book_example_tests.rs"); }
+    mod book_handoff { include!("book_handoff_tests.rs"); }
+    mod book_continuation { include!("book_continuation_tests.rs"); }
+    mod text_batch { include!("book_text_batch_tests.rs"); }
+    mod source_marker_regressions { include!("source_marker_regression_tests.rs"); }
+    mod book_outputs { include!("book_output_tests.rs"); }
+    mod tool_discovery { include!("tool_discovery_integration_tests.rs"); }
+    mod write_examples { include!("write_example_tests.rs"); }
     mod adm6 { include!("adm6_tests.rs"); }
+    mod turn_failures { include!("turn_failure_tests.rs"); }
     use super::*;
 
     mod presentation_authoring {
@@ -8610,7 +8946,7 @@ mod tests {
             EvidenceState::Unlocated,
             &[],
             None,
-            false,
+            false, None,
         )
         .unwrap();
         let pressure = ActiveContextBudget::from_plan(&plan).pressure_tokens;
@@ -9678,7 +10014,7 @@ user_question=\"explain normalization and create a rich presentation\"";
                     turn_calls(vec![call(
                         "unobserved-source",
                         "source.present",
-                        &serde_json::json!({"quote": "X".repeat(100)}).to_string(),
+                        &serde_json::json!({"quote": "TAIL_SECRET"}).to_string(),
                     )]),
                     turn_final("正文过长，未把未读尾部当作证据。"),
                 ]
@@ -9727,7 +10063,7 @@ user_question=\"explain normalization and create a rich presentation\"";
             .find(|message| message.tool_call_id.as_deref() == Some("unobserved-source"))
             .and_then(|message| message.content.as_deref())
             .unwrap();
-        assert!(source_result.contains("TOOL_NOT_EXPOSED"));
+        assert!(source_result.contains("SOURCE_NOT_OBSERVED"));
     }
 
     #[test]
@@ -12340,9 +12676,12 @@ user_question=\"explain normalization and create a rich presentation\"";
         for text in [
             "普通正文。下一句。",
             "解释。[[source:ref1]]\n",
+            "解释。[source:ref1]\n",
+            "解释。[source:ref1][[source:ref1]]\n",
             "1. 列表\n版本 v2.0。\n```rust\nlet n = 2;\n```\n",
             "安全正文。请看第1.19节。",
             "正文。[[source:unknown]]\n",
+            "正文。[source:unknown]\n",
         ] {
             for size in [1, 2, 7, 999] {
                 let sink = std::sync::Arc::new(Sink(Default::default()));
@@ -12363,6 +12702,7 @@ user_question=\"explain normalization and create a rich presentation\"";
                     if let Some(view) = &patch.view {
                         let serialized = serde_json::to_string(view).unwrap();
                         assert!(!serialized.contains("[[source"));
+                        assert!(!serialized.contains("[source:"));
                         assert!(!serialized.contains("1.19"));
                         let public = view
                             .parts
@@ -13462,6 +13802,21 @@ user_question=\"这段怎么理解？\"",
     }
 
     #[test]
+    fn source_presentation_tb2_borrowing_suffixes_preserve_clickable_sources() {
+        let raw = include_str!("../../../docs/performance/tutor-building-blocks-tb2/to3-after/starting-ownership/answer.md");
+        let bindings = [
+            "source_ref_b7cdf804a5f27a0d", "source_ref_9af277d1d3d785d4",
+            "source_ref_1a3ec5f7971d4632", "source_ref_e2f1f69dfb7b32e3",
+            "source_ref_4c3de5a75d5bc2f7",
+        ].map(|id| source_binding_fixture(id, "1.1"));
+        let compiled = compile_agent_answer(raw, &bindings, &AnswerProvenanceLedger::default()).unwrap();
+        assert_eq!(compiled.view.sources.len(), bindings.len());
+        assert!(!compiled.answer.contains("[source_ref_"));
+        // Both final answers and Tutor prompt/help use this compiler.
+        assert_eq!(compile_presentation_text(raw, &bindings, &[]).unwrap().sources.len(), bindings.len());
+    }
+
+    #[test]
     fn source_presentation_bound_suffix_formats_compile_without_repair() {
         let bindings = vec![source_binding_fixture("source_ref_one", "1.1")];
         for answer in [
@@ -13471,6 +13826,10 @@ user_question=\"这段怎么理解？\"",
             "A claim\n[source_ref_one]",
             "依据书中的近似式 [source_ref_one]：\n\n> IR ≈ IC·√breadth",
             "The formula [source_ref_one]:\n\n> IR ≈ IC·√breadth",
+            "`bar` has type `&Foo`.[source_ref_one]",
+            "原文说“借用不取得所有权”。[source_ref_one]",
+            "An inline `` `code` `` example.[source_ref_one]",
+            "A `code` claim.[source_ref_one] The next sentence.",
         ] {
             let adapter = FakeAdapter::new(vec![], vec![]);
             let delivery = deliver_agent_answer(
@@ -13489,11 +13848,15 @@ user_question=\"这段怎么理解？\"",
         for answer in [
             "No citation chosen",
             "Example `[source_ref_one]`",
+            "Example `[source_ref_one].`",
+            "Example `` `[source_ref_one].` ``",
+            "原文写着“标记 [source_ref_one]。”",
             "```text\n[source_ref_one]\n```",
             "> quoted [source_ref_one]",
             "标记 [source_ref_one] 的语法",
             "A claim [unknown]",
             "A claim [source_ref_one](https://example.com)",
+            "A claim.[source_ref_one](https://example.com)",
         ] {
             let compiled =
                 compile_agent_answer(answer, &bindings, &AnswerProvenanceLedger::default())
@@ -15379,7 +15742,12 @@ user_question={}",
             let mut sink = CleaningSink { installed: None, fail_install: case == "install_failed" };
             let mut checkpoint = None;
             let result = maybe_auto_compact(CompactionPhase::MidTurn, budget, &b, &mut messages, &adapter,
-                &profile, &ContextFragmentLedger::default(), &[], &mut checkpoint, &mut sink);
+                &profile, &ContextFragmentLedger::default(), &[], &mut checkpoint, &mut sink,
+                &mut None, &|raw: &[Message], candidate: &CompactionCheckpoint| {
+                    let projected = messages_with_context_fragments(raw, &ContextFragmentLedger::default(), &b,
+                        &ActiveToolResultLedger::default(), Some(candidate), COMPACTION_CONSUMPTION_WRAPPER).map_err(compaction_error)?;
+                    Ok(ActiveContextBudget::from_plan(&AgentRequestPlan::for_agent_turn(profile.clone(), &projected, &[])))
+                });
             match case {
                 "installed" | "already_covered" => {
                     assert!(result.unwrap());
@@ -15389,7 +15757,12 @@ user_question={}",
                     if case == "already_covered" {
                         messages = original.clone();
                         let result = maybe_auto_compact(CompactionPhase::MidTurn, budget, &b, &mut messages, &adapter,
-                            &profile, &ContextFragmentLedger::default(), &[], &mut checkpoint, &mut sink);
+                            &profile, &ContextFragmentLedger::default(), &[], &mut checkpoint, &mut sink,
+                &mut None, &|raw: &[Message], candidate: &CompactionCheckpoint| {
+                    let projected = messages_with_context_fragments(raw, &ContextFragmentLedger::default(), &b,
+                        &ActiveToolResultLedger::default(), Some(candidate), COMPACTION_CONSUMPTION_WRAPPER).map_err(compaction_error)?;
+                    Ok(ActiveContextBudget::from_plan(&AgentRequestPlan::for_agent_turn(profile.clone(), &projected, &[])))
+                });
                         assert!(!result.unwrap());
                         assert_eq!(messages, original, "covered precheck must not change active history");
                     }
@@ -15826,7 +16199,7 @@ user_question={}",
             EvidenceState::Unlocated,
             &[],
             None,
-            false,
+            false, None,
         )
         .unwrap();
         profile.context_window_tokens = legacy_unseeded_plan
@@ -15848,7 +16221,7 @@ user_question={}",
             EvidenceState::Unlocated,
             &[],
             None,
-            false,
+            false, None,
         )
         .unwrap();
         assert!(legacy_unseeded_plan.active_context.fits);
@@ -15905,7 +16278,7 @@ user_question={}",
             evidence_state,
             &["book.text"],
             None,
-            false,
+            false, None,
         )
         .unwrap();
 
