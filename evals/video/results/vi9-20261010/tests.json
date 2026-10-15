@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-10",
+  "core_unique_passed": 11,
+  "core_suites": {
+    "video-enrichment.test.ts": 1,
+    "automatic-build-close.test.ts": 7,
+    "video-transcript.test.ts": 3
+  },
+  "server_unique_passed": 27,
+  "server_commands": [
+    "cargo test -p server --lib video_",
+    "cargo test -p server --lib video_publication",
+    "cargo test -p server --lib mu3"
+  ],
+  "server_video_unique_passed": 14,
+  "server_mu3_passed": 13,
+  "server_note": "Counts are unique across runs; the local resume test was added after the initial video_ run and passed in video_publication. The ignored browser host is exercised separately by vi9-browser.mjs.",
+  "web_unique_passed": 89,
+  "web_suites": {
+    "video-adoption.test.ts": 2,
+    "video-question.test.ts": 9,
+    "VideoReaderPane.test.ts": 7,
+    "RightRail.test.ts": 43,
+    "App.startup.test.ts": 22,
+    "NetworkApp.chat.test.ts": 6
+  },
+  "core_typecheck": "passed",
+  "web_typecheck": "passed",
+  "server_build": "cargo build -p server --bin server: passed",
+  "browser_command": "node --import tsx evals/video/vi9-browser.mjs",
+  "browser": "passed; Windows/Edge, real original video, HTTPS multi-user host, two independent workspaces, deterministic held answer without semantic inference",
+  "verification": "verification.json"
+}

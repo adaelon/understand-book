@@ -176,8 +176,9 @@ pub(crate) fn route_with_restore(state: &PrivateBookContext<'_>, body: &str, obs
         let mut resolved_labels = Vec::new();
         let mut resolved_indexes = Vec::new();
         for (index, binding) in version.content.source_bindings.iter().enumerate() {
+            let Some(range) = &binding.evidence_range else { continue; };
             if let Ok(source) = state.book.resolve_source(
-                &binding.evidence_range,
+                range,
                 "zh-CN",
                 Some(&binding.evidence_text_digest),
             ) {

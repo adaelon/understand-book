@@ -1124,6 +1124,7 @@ export interface AgentQuestionQuoteView {
   status?: SelectionResolution;
 }
 export interface AgentChatTurn {
+  video_question?: import("../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
   domain?: { effects: { effect_id: string; effect: { kind: "reader"; effect: AgentEffect } | { kind: "presentation"; reference: { presentation_id: string; revision: number } }; disposition: import("./effect-disposition").EffectDisposition | null }[] };
   teaching_ref?: string | null;
   presentation_follow_up?: import('./generated/PresentationFollowUp').PresentationFollowUp | null;
@@ -1202,6 +1203,8 @@ export interface LearningEvidenceView {
   source_quotes: { reason?: string; quote?: string; response_quote?: string; sources?: { quote: string }[] }[] | null;
 }
 export interface AgentChatMeta {
+  video_window_id?: string;
+  video_draft_id?: string;
   teaching_ref?: string;
   goal_id?: string;
   goal_action?: "cancel" | "replace";
@@ -1210,7 +1213,32 @@ export interface AgentChatMeta {
   question_anchor_lid?: string | null;
   question_quote?: AskQuote | null;
 }
+export interface AudioReviewSnapshot {
+  review_result_ref: string;
+  location: import('../../core/src/generated/MediaLocation').MediaLocation;
+  question: string;
+  reviewed_text: string;
+  uncertainties: string[];
+}
+export interface MediaSourceSnapshot {
+  audio_reviews?: AudioReviewSnapshot[];
+  target: import('../../core/src/generated/EvidenceTarget').EvidenceTarget;
+  publication: import('../../core/src/generated/PublishedBookRef').PublishedBookRef;
+  duration_ms: number;
+  transcript: import('../../core/src/generated/TranscriptSegment').TranscriptSegment[];
+  translations: import('../../core/src/generated/TranscriptTranslation').TranscriptTranslation[];
+}
+export function mediaSourceStart(media: MediaSourceSnapshot): number {
+  const targets = media.target.kind === 'joint' ? media.target.members.map(m => m.target) : [media.target];
+  const starts = targets.flatMap(t => t.kind === 'visual' ? [...t.frames, ...t.regions.map(r => r.frame)].map(f => f.actual_pts_ms)
+    : t.kind === 'audio' ? [t.location.start_ms] : t.kind === 'text' ? media.transcript.filter(s => s.text_range.lid === t.text_range.lid).map(s => s.location.start_ms) : []);
+  return Math.min(...starts);
+}
 export interface SourcePopupView {
+  media?: MediaSourceSnapshot;
+  media_url?: string | null;
+  unavailable_reason?: string;
+  frames?: { frame: import('../../core/src/generated/FrameLocation').FrameLocation; region?: import('../../core/src/generated/FrameRegion').FrameRegion | null; url: string }[];
   source_ref_id: string;
   label: string;
   highlighted_quote: string;
@@ -1270,6 +1298,9 @@ function qs(params: Record<string, string | undefined>): string {
 }
 
 export const api = {
+  videoContext: () => http<import("./video-api").PublishedVideo | null>("GET", "/book/video_context"),
+  adoptVideoPublication: (publication_id: string) => http<import('./video-adoption').VideoAdoption>('POST', '/reader/adopt_same_source_publication', { publication_id }),
+  videoDraft: (input: import("./video-question").DraftCommand) => http<{ draft: import("./video-question").VideoDraft | null }>("POST", "/reader/video_draft", input),
   desktopStatus: () => http<DesktopStatus>("GET", "/desktop/status"),
   // ── book.*(只读 GET)──
   manifest: () => http<Manifest>("GET", "/book/manifest"),

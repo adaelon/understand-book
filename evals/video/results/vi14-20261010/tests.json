@@ -1,0 +1,137 @@
+{
+  "status": "passed",
+  "counts": {
+    "core": 22,
+    "read_tools": 9,
+    "runtime": 51,
+    "server": 7
+  },
+  "total_unique_passed": 89,
+  "ignored": [
+    "video_publication_browser_host (existing manual browser host)"
+  ],
+  "core_typecheck": "passed",
+  "builds": [
+    "read-tools examples video_search, video_graph",
+    "server bins server, publish_book; example video_frames_probe"
+  ],
+  "rust_tests": [
+    "orchestrator::tests::tool_exposure_activation_applies_only_to_the_next_sampling",
+    "orchestrator::tests::tool_registry_has_one_complete_registration_per_visible_handler",
+    "orchestrator::tests::turn_intent_active_context_budget_includes_seeded_tool_exposure",
+    "orchestrator::tests::turn_intent_guided_read_seeds_first_tool_exposure_request_without_mutation",
+    "orchestrator::tests::video_runtime::video_budget_omission_and_path_only_never_create_observations",
+    "orchestrator::tests::video_runtime::video_graph_recall_is_a_pointer_until_actual_frames_are_observed",
+    "orchestrator::tests::video_runtime::video_observations_require_successful_main_request_and_exact_pixels",
+    "orchestrator::tests::video_runtime::video_question_frame_is_present_in_first_model_input_before_observation",
+    "orchestrator::tests::video_runtime::video_search_is_discoverable_but_only_followup_frames_create_evidence",
+    "orchestrator::tests::video_sources::video_source_text_visual_audio_joint_and_observation_gate",
+    "tests::context_projects_discourse_relations_to_near_and_far",
+    "tests::load_reads_optional_discourse_index_sidecar",
+    "tests::route_from_consumes_discourse_relations_via_mapping",
+    "tests::video_publication_tests::video_publication_discourse_requires_artifact_and_preserves_other_contributions",
+    "tests::video_publication_tests::video_publication_graph_support_is_cumulative_and_invalid_sources_block_publication",
+    "tests::video_publication_tests::video_publication_interleaved_batches_missing_dependencies_and_authorized_chain",
+    "tests::video_publication_tests::video_publication_local_pins_resume_and_preserves_reader_chat_and_draft",
+    "tests::video_publication_tests::video_publication_translation_progress_failure_and_cumulative_acceptance",
+    "tests::video_publication_tests::video_publication_two_windows_drafts_queue_reconnect_and_original_history",
+    "tool_exposure::tests::artifact_exposure_replaces_synthesize_without_exceeding_the_direct_budget",
+    "tool_exposure::tests::capability_resolver_changes_plan_with_runtime_evidence_profile_and_permissions",
+    "tool_exposure::tests::capability_resolver_covers_a_multi_tool_task_need_before_filling_alternatives",
+    "tool_exposure::tests::capability_resolver_requires_runtime_effect_seed_and_audits_without_task_text",
+    "tool_exposure::tests::explicit_navigation_is_scoped_through_discovery",
+    "tool_exposure::tests::explicit_note_and_highlight_have_separate_authority",
+    "tool_exposure::tests::historical_discovery_keeps_match_but_expires_run_local_activation",
+    "tool_exposure::tests::precise_routing_cards_keep_tool_search_v1_legacy_result_shape_equivalent",
+    "tool_exposure::tests::task_need_rejects_model_spoofing_and_stamps_runtime_authority",
+    "tool_exposure::tests::tool_exposure_initial_schema_golden_is_small_and_profile_gated",
+    "tool_exposure::tests::tool_exposure_schema_budget_is_hard_and_selection_is_repeatable",
+    "tool_exposure::tests::tool_exposure_search_activates_only_deferred_metadata_for_next_sampling",
+    "tool_exposure::tests::tool_exposure_search_caps_each_activation_and_never_reveals_hidden_tools",
+    "tool_exposure::tests::tool_exposure_source_presentation_is_direct_only_with_turn_evidence",
+    "tool_exposure::tests::tool_search_v2_filters_then_matches_structural_index_for_a_cjk_task",
+    "tool_exposure::tests::tool_search_v2_keeps_v1_receipts_readable_without_producing_them",
+    "tool_exposure::tests::tool_search_v2_order_score_and_max_results_are_repeatable",
+    "tool_exposure::tests::tool_search_v2_reader_write_requires_authority_and_permission_and_zero_hit_is_inert",
+    "tool_exposure::tests::tool_search_v2_schema_is_closed_bounded_and_provider_equivalent",
+    "tool_exposure::tests::turn_intent_negative_and_summary_keep_the_read_only_structural_first_surface",
+    "tool_exposure::tests::turn_intent_seed_respects_reader_permissions_and_content_profile",
+    "tool_exposure::tests::turn_intent_seeded_exposure_is_complete_profile_gated_and_budgeted",
+    "tool_exposure::tests::turn_intent_v1_classifies_only_the_frozen_guided_read_phrases",
+    "tool_exposure::tests::turn_intent_v1_prioritizes_negation_and_rejects_summary_or_read_aloud",
+    "tool_registry::contract_tests::artifact_read_exposes_pointer_and_cursor_rules",
+    "tool_registry::contract_tests::author_operations_require_complete_inputs",
+    "tool_registry::contract_tests::book_comparison_schema_requires_separate_targets",
+    "tool_registry::contract_tests::goal_operations_never_silently_discard_plan_fields",
+    "tool_registry::contract_tests::mcp_guide_schema_has_conditional_requirements",
+    "tool_registry::contract_tests::note_is_only_exposed_through_reader_note",
+    "tool_registry::contract_tests::optional_nulls_match_serde_without_weakening_required_fields",
+    "tool_registry::contract_tests::reader_commands_expose_nested_required_fields",
+    "tool_registry::contract_tests::search_schemas_expose_existing_length_limits",
+    "tool_registry::contract_tests::tutor_operations_require_their_payloads",
+    "tool_registry::tests::json_schema_validator_checks_required_types_and_unknown_fields",
+    "tool_registry::tests::precise_capability_migration_maps_every_legacy_registration",
+    "tool_registry::tests::rejects_missing_handlers_and_book_schema_drift",
+    "tool_registry::tests::rejects_unknown_and_duplicate_handlers",
+    "tool_registry::tests::routing_card_gate_rejects_empty_unknown_reader_write_and_book_drift",
+    "tool_registry::tests::routing_cards_cover_every_handler_and_reuse_book_contract_guidance",
+    "tool_registry::tests::tool_search_v2_registry_validation_enforces_closed_bounds",
+    "video::tests::video_contract_admission_uses_loaded_canonical_text_and_preserves_text_sources",
+    "video_discourse::tests::video_discourse_load_search_relation_ablation_scopes_and_missing_sources",
+    "video_graph::tests::video_graph_load_recall_preserves_modalities_homonyms_and_rejects_missing_sources",
+    "video_media::tests::video_publication_requires_complete_dependencies_and_loads_searchable_reader_without_graph",
+    "video_search::tests::video_search_absent_index_and_missing_dependency_do_not_claim_coverage",
+    "video_search::tests::video_search_code_operators_occurrences_descriptions_and_pagination",
+    "video_search::tests::video_search_new_analysis_replaces_only_its_range_and_explicit_old_is_readable"
+  ],
+  "core_tests": [
+    {
+      "file": "discourse-index.test.ts",
+      "tests": [
+        "PB2 TechnicalLearningDiscourseIndex gate materializes a headered discourse sidecar",
+        "PB2 TechnicalLearningDiscourseIndex gate accepts paper discourse functions and rhetorical moves under the shared discourse sidecar",
+        "PB2 TechnicalLearningDiscourseIndex gate drops invalid relations without judging label semantics",
+        "PB2 TechnicalLearningDiscourseIndex gate drops invalid items",
+        "PB2b gate 收紧 drops low-confidence relations below the threshold",
+        "PB2b gate 收紧 requires evidence_lids to contain both the source and target LID",
+        "PB2b gate 收紧 drops the whole item when local_summary exceeds the length cap",
+        "PB2b gate 收紧 keeps a relation whose evidence covers source and target"
+      ]
+    },
+    {
+      "file": "pass2.test.ts",
+      "tests": [
+        "P1 technical_learning.pass2_longrange_v1 gate lowers valid output to GraphEdge(scope=long_range) and audit sidecar",
+        "P1 technical_learning.pass2_longrange_v1 gate drops candidates with missing endpoints or dangling evidence",
+        "P1 technical_learning.pass2_longrange_v1 gate drops invalid scope or non-profile edge type"
+      ]
+    },
+    {
+      "file": "video-discourse.test.ts",
+      "tests": [
+        "prepares and resumes a pure transcript task before a visual catalog exists",
+        "preserves independent teaching roles, many-to-many VUs and both endpoint sources",
+        "rejects missing endpoint modalities, undelivered media, invalid semantics and unsupported VU links",
+        "four-tool native input replays images, gates final acknowledgement, and publishes immutable support"
+      ]
+    },
+    {
+      "file": "video-enrichment.test.ts",
+      "tests": [
+        "atomically accumulates accepted batches, retries unchanged batches and rejects replacement or wrong material"
+      ]
+    },
+    {
+      "file": "video-graph.test.ts",
+      "tests": [
+        "keeps pure visual objects without fake LIDs, same labels distinct and joint roles through schema serialization",
+        "rejects unprovided sources, false joint support, input changes and invented object matches",
+        "explicit same-object reuse accumulates language and visual occurrences without merging homonyms",
+        "generic graph gate rejects unsupported media and retains only accepted contributions",
+        "explicitly attaches a video occurrence to an existing Pass1 text object",
+        "four-tool native input replays images, gates final acknowledgement, and publishes immutable support"
+      ]
+    }
+  ],
+  "logs": "evals/video/generated/vi14/final-checks.log"
+}

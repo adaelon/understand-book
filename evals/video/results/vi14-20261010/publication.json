@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "reference": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+  },
+  "elapsed_ms": 5440,
+  "materialized_bytes": 254168425,
+  "files": 71
+}

@@ -1,0 +1,153 @@
+{
+  "status": "passed",
+  "source": "VI0a supplement plus controlled moving panel, not lecture footage",
+  "isolated": {
+    "options": {
+      "interval_ms": 1000,
+      "supplement_ms": 15000,
+      "change_threshold": 0.06,
+      "content_rect": [
+        0,
+        0,
+        0.85,
+        1
+      ]
+    },
+    "samples": [
+      {
+        "pts_ms": 0,
+        "change": 0
+      },
+      {
+        "pts_ms": 1000,
+        "change": 0
+      },
+      {
+        "pts_ms": 2000,
+        "change": 0.1337890625
+      },
+      {
+        "pts_ms": 3000,
+        "change": 0
+      },
+      {
+        "pts_ms": 4000,
+        "change": 0.1337890625
+      },
+      {
+        "pts_ms": 5000,
+        "change": 0
+      }
+    ],
+    "candidate_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "elapsed_ms": 325,
+    "decoded_bytes": 777600
+  },
+  "baseline": {
+    "options": {
+      "interval_ms": 1000,
+      "supplement_ms": 15000,
+      "change_threshold": 0.06,
+      "content_rect": [
+        0,
+        0,
+        0.85,
+        1
+      ]
+    },
+    "samples": [
+      {
+        "pts_ms": 0,
+        "change": 0
+      },
+      {
+        "pts_ms": 1000,
+        "change": 0
+      },
+      {
+        "pts_ms": 2000,
+        "change": 0.1337890625
+      },
+      {
+        "pts_ms": 3000,
+        "change": 0
+      },
+      {
+        "pts_ms": 4000,
+        "change": 0.1337890625
+      },
+      {
+        "pts_ms": 5000,
+        "change": 0
+      }
+    ],
+    "candidate_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "elapsed_ms": 302,
+    "decoded_bytes": 777600
+  },
+  "whole": {
+    "options": {
+      "interval_ms": 1000,
+      "supplement_ms": 15000,
+      "change_threshold": 0.06,
+      "content_rect": [
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    "samples": [
+      {
+        "pts_ms": 0,
+        "change": 0
+      },
+      {
+        "pts_ms": 1000,
+        "change": 0.1484375
+      },
+      {
+        "pts_ms": 2000,
+        "change": 0.1337890625
+      },
+      {
+        "pts_ms": 3000,
+        "change": 0.169921875
+      },
+      {
+        "pts_ms": 4000,
+        "change": 0.22265625
+      },
+      {
+        "pts_ms": 5000,
+        "change": 0.1455078125
+      }
+    ],
+    "candidate_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "elapsed_ms": 309,
+    "decoded_bytes": 777600
+  },
+  "teaching_candidates_survive": true,
+  "excluded_camera_does_not_trigger_teaching_changes": true
+}

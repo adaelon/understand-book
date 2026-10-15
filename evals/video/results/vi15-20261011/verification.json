@@ -1,0 +1,877 @@
+{
+  "status": "passed",
+  "publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+  },
+  "original_english_unchanged": true,
+  "time_map_unchanged": true,
+  "cases": [
+    {
+      "id": "v05",
+      "elapsed_ms": 20519,
+      "observation": {
+        "kind": "audio",
+        "location": {
+          "end_ms": 586000,
+          "start_ms": 578000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "observation_id": "01a12837-0caf-7da2-9704-353682514266",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+        },
+        "review_result_ref": "01a12837-0c99-7671-bcbe-b80f3f0a7690",
+        "run_id": "vi15-probe",
+        "tool_call_id": "audio-review"
+      },
+      "review": {
+        "location": {
+          "end_ms": 586000,
+          "start_ms": 578000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "provider": {
+          "audio_duration_ms": 8000,
+          "audio_input": "original_pcm_s16le_16000_mono",
+          "engine": "faster-whisper",
+          "engine_version": "1.2.1",
+          "inference_ms": 13335,
+          "language": "en",
+          "load_ms": 2947,
+          "model": "small.en",
+          "recognition_prompt": null
+        },
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+        },
+        "question": "讲者说的是 underflow 还是 overflow？",
+        "review_result_ref": "01a12837-0c99-7671-bcbe-b80f3f0a7690",
+        "reviewed_text": "back in the day, you will get instability. You'll get underflow, you'll get overflow, you'll get NANs.",
+        "reviewed_words": [
+          {
+            "end_ms": 578120,
+            "probability": 0.33077967166900635,
+            "start_ms": 578000,
+            "text": " back"
+          },
+          {
+            "end_ms": 578280,
+            "probability": 0.9896317720413208,
+            "start_ms": 578120,
+            "text": " in"
+          },
+          {
+            "end_ms": 578660,
+            "probability": 0.9516337513923645,
+            "start_ms": 578280,
+            "text": " the"
+          },
+          {
+            "end_ms": 579460,
+            "probability": 0.9217939376831055,
+            "start_ms": 578660,
+            "text": " day,"
+          },
+          {
+            "end_ms": 581000,
+            "probability": 0.9758090376853943,
+            "start_ms": 580640,
+            "text": " you"
+          },
+          {
+            "end_ms": 581520,
+            "probability": 0.9838585257530212,
+            "start_ms": 581000,
+            "text": " will"
+          },
+          {
+            "end_ms": 581720,
+            "probability": 0.9988036155700684,
+            "start_ms": 581520,
+            "text": " get"
+          },
+          {
+            "end_ms": 582260,
+            "probability": 0.9969846606254578,
+            "start_ms": 581720,
+            "text": " instability."
+          },
+          {
+            "end_ms": 583240,
+            "probability": 0.7639935612678528,
+            "start_ms": 583020,
+            "text": " You'll"
+          },
+          {
+            "end_ms": 583320,
+            "probability": 0.9958874583244324,
+            "start_ms": 583240,
+            "text": " get"
+          },
+          {
+            "end_ms": 583820,
+            "probability": 0.9210883378982544,
+            "start_ms": 583320,
+            "text": " underflow,"
+          },
+          {
+            "end_ms": 584080,
+            "probability": 0.9185144603252411,
+            "start_ms": 583980,
+            "text": " you'll"
+          },
+          {
+            "end_ms": 584100,
+            "probability": 0.9919384121894836,
+            "start_ms": 584080,
+            "text": " get"
+          },
+          {
+            "end_ms": 584500,
+            "probability": 0.9717035889625549,
+            "start_ms": 584100,
+            "text": " overflow,"
+          },
+          {
+            "end_ms": 585000,
+            "probability": 0.9951429665088654,
+            "start_ms": 584800,
+            "text": " you'll"
+          },
+          {
+            "end_ms": 585220,
+            "probability": 0.9929444193840027,
+            "start_ms": 585000,
+            "text": " get"
+          },
+          {
+            "end_ms": 585940,
+            "probability": 0.6806889375050863,
+            "start_ms": 585220,
+            "text": " NANs."
+          }
+        ],
+        "run_id": "vi15-probe",
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 582270,
+              "start_ms": 572170,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-85",
+            "text": "So, if you train with FP16, which people did back, back in the, you know, day, you will get instability.",
+            "text_range": {
+              "lid": "85",
+              "range": {
+                "end": 104,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 588690,
+              "start_ms": 582890,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-86",
+            "text": "You'll get underflow, you'll get overflow, you'll get NANs, it's pretty challenging.",
+            "text_range": {
+              "lid": "86",
+              "range": {
+                "end": 84,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ],
+        "uncertainties": [
+          "机器音频复核候选；词时间为识别估计，概率不等于正确性，未消除的听辨疑点仍须回听。",
+          "低把握词 back（578000–578120 ms），请回听核对。"
+        ]
+      },
+      "target": {
+        "kind": "audio",
+        "location": {
+          "end_ms": 586000,
+          "start_ms": 578000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+        },
+        "review_result_ref": "01a12837-0c99-7671-bcbe-b80f3f0a7690"
+      }
+    },
+    {
+      "id": "v07",
+      "elapsed_ms": 9122,
+      "observation": {
+        "kind": "audio",
+        "location": {
+          "end_ms": 656000,
+          "start_ms": 648000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "observation_id": "01a12837-3202-78a1-aab1-a58b82f3432d",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+        },
+        "review_result_ref": "01a12837-31f0-7e43-b7b3-52ecc5c91ba2",
+        "run_id": "vi15-probe",
+        "tool_call_id": "audio-review"
+      },
+      "review": {
+        "location": {
+          "end_ms": 656000,
+          "start_ms": 648000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "provider": {
+          "audio_duration_ms": 8000,
+          "audio_input": "original_pcm_s16le_16000_mono",
+          "engine": "faster-whisper",
+          "engine_version": "1.2.1",
+          "inference_ms": 3268,
+          "language": "en",
+          "load_ms": 2356,
+          "model": "small.en",
+          "recognition_prompt": null
+        },
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+        },
+        "question": "讲者具体说了什么？听不清的词请保留疑点。",
+        "review_result_ref": "01a12837-31f0-7e43-b7b3-52ecc5c91ba2",
+        "reviewed_text": "Okay, so let me actually skip over this this part",
+        "reviewed_words": [
+          {
+            "end_ms": 649580,
+            "probability": 0.6770622730255127,
+            "start_ms": 649040,
+            "text": " Okay,"
+          },
+          {
+            "end_ms": 652220,
+            "probability": 0.9914559721946716,
+            "start_ms": 651720,
+            "text": " so"
+          },
+          {
+            "end_ms": 652940,
+            "probability": 0.7263855934143066,
+            "start_ms": 652220,
+            "text": " let"
+          },
+          {
+            "end_ms": 653500,
+            "probability": 0.99847012758255,
+            "start_ms": 652940,
+            "text": " me"
+          },
+          {
+            "end_ms": 653700,
+            "probability": 0.996052622795105,
+            "start_ms": 653500,
+            "text": " actually"
+          },
+          {
+            "end_ms": 653980,
+            "probability": 0.9983733892440796,
+            "start_ms": 653700,
+            "text": " skip"
+          },
+          {
+            "end_ms": 654240,
+            "probability": 0.9993090629577637,
+            "start_ms": 653980,
+            "text": " over"
+          },
+          {
+            "end_ms": 654540,
+            "probability": 0.9572142362594604,
+            "start_ms": 654240,
+            "text": " this"
+          },
+          {
+            "end_ms": 654740,
+            "probability": 0.6090527772903442,
+            "start_ms": 654540,
+            "text": " this"
+          },
+          {
+            "end_ms": 655000,
+            "probability": 0.9994738698005676,
+            "start_ms": 654740,
+            "text": " part"
+          }
+        ],
+        "run_id": "vi15-probe",
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 649580,
+              "start_ms": 641360,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-96",
+            "text": "And because things are kind of sloppy and sarcastic anyway, you don't need that much resolution, okay?",
+            "text_range": {
+              "lid": "96",
+              "range": {
+                "end": 102,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 655020,
+              "start_ms": 652380,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-97",
+            "text": "So let me actually skip over this, this part.",
+            "text_range": {
+              "lid": "97",
+              "range": {
+                "end": 45,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ],
+        "uncertainties": [
+          "机器音频复核候选；词时间为识别估计，概率不等于正确性，未消除的听辨疑点仍须回听。"
+        ]
+      },
+      "target": {
+        "kind": "audio",
+        "location": {
+          "end_ms": 656000,
+          "start_ms": 648000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+        },
+        "review_result_ref": "01a12837-31f0-7e43-b7b3-52ecc5c91ba2"
+      }
+    },
+    {
+      "id": "terminology",
+      "elapsed_ms": 7925,
+      "observation": {
+        "kind": "audio",
+        "location": {
+          "end_ms": 650000,
+          "start_ms": 640000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "observation_id": "01a12837-521d-7af1-99e7-75a0460ff89c",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+        },
+        "review_result_ref": "01a12837-520f-7e93-92a1-7b4263676197",
+        "run_id": "vi15-probe",
+        "tool_call_id": "audio-review"
+      },
+      "review": {
+        "location": {
+          "end_ms": 650000,
+          "start_ms": 640000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "provider": {
+          "audio_duration_ms": 10000,
+          "audio_input": "original_pcm_s16le_16000_mono",
+          "engine": "faster-whisper",
+          "engine_version": "1.2.1",
+          "inference_ms": 3431,
+          "language": "en",
+          "load_ms": 1754,
+          "model": "small.en",
+          "recognition_prompt": null
+        },
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+        },
+        "question": "保存正文中的 sarcastic 是否是原话？",
+        "review_result_ref": "01a12837-520f-7e93-92a1-7b4263676197",
+        "reviewed_text": "and underflow, and because things are kind of sloppy and sarcastic anyway, you don't need that much resolution, okay?",
+        "reviewed_words": [
+          {
+            "end_ms": 640240,
+            "probability": 0.651671826839447,
+            "start_ms": 640000,
+            "text": " and"
+          },
+          {
+            "end_ms": 640800,
+            "probability": 0.85872682929039,
+            "start_ms": 640240,
+            "text": " underflow,"
+          },
+          {
+            "end_ms": 641560,
+            "probability": 0.9596213698387146,
+            "start_ms": 641360,
+            "text": " and"
+          },
+          {
+            "end_ms": 642160,
+            "probability": 0.9522829055786133,
+            "start_ms": 641560,
+            "text": " because"
+          },
+          {
+            "end_ms": 642420,
+            "probability": 0.9956764578819275,
+            "start_ms": 642160,
+            "text": " things"
+          },
+          {
+            "end_ms": 642600,
+            "probability": 0.9932098984718323,
+            "start_ms": 642420,
+            "text": " are"
+          },
+          {
+            "end_ms": 642760,
+            "probability": 0.9653250575065613,
+            "start_ms": 642600,
+            "text": " kind"
+          },
+          {
+            "end_ms": 642880,
+            "probability": 0.9969092011451721,
+            "start_ms": 642760,
+            "text": " of"
+          },
+          {
+            "end_ms": 643180,
+            "probability": 0.9962599277496338,
+            "start_ms": 642880,
+            "text": " sloppy"
+          },
+          {
+            "end_ms": 643320,
+            "probability": 0.9840562343597412,
+            "start_ms": 643180,
+            "text": " and"
+          },
+          {
+            "end_ms": 643740,
+            "probability": 0.6464979648590088,
+            "start_ms": 643320,
+            "text": " sarcastic"
+          },
+          {
+            "end_ms": 644160,
+            "probability": 0.9731631278991699,
+            "start_ms": 643740,
+            "text": " anyway,"
+          },
+          {
+            "end_ms": 645000,
+            "probability": 0.959111213684082,
+            "start_ms": 644940,
+            "text": " you"
+          },
+          {
+            "end_ms": 645120,
+            "probability": 0.9943816959857941,
+            "start_ms": 645000,
+            "text": " don't"
+          },
+          {
+            "end_ms": 645260,
+            "probability": 0.9963573813438416,
+            "start_ms": 645120,
+            "text": " need"
+          },
+          {
+            "end_ms": 645440,
+            "probability": 0.994877815246582,
+            "start_ms": 645260,
+            "text": " that"
+          },
+          {
+            "end_ms": 645720,
+            "probability": 0.9991538524627686,
+            "start_ms": 645440,
+            "text": " much"
+          },
+          {
+            "end_ms": 646680,
+            "probability": 0.9148296117782593,
+            "start_ms": 645720,
+            "text": " resolution,"
+          },
+          {
+            "end_ms": 649570,
+            "probability": 0.8103070259094238,
+            "start_ms": 649110,
+            "text": " okay?"
+          }
+        ],
+        "run_id": "vi15-probe",
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 640800,
+              "start_ms": 637180,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-95",
+            "text": "You want the dynamic range to not overflow and underflow.",
+            "text_range": {
+              "lid": "95",
+              "range": {
+                "end": 57,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 649580,
+              "start_ms": 641360,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-96",
+            "text": "And because things are kind of sloppy and sarcastic anyway, you don't need that much resolution, okay?",
+            "text_range": {
+              "lid": "96",
+              "range": {
+                "end": 102,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ],
+        "uncertainties": [
+          "机器音频复核候选；词时间为识别估计，概率不等于正确性，未消除的听辨疑点仍须回听。"
+        ]
+      },
+      "target": {
+        "kind": "audio",
+        "location": {
+          "end_ms": 650000,
+          "start_ms": 640000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+        },
+        "review_result_ref": "01a12837-520f-7e93-92a1-7b4263676197"
+      }
+    },
+    {
+      "id": "tensor",
+      "elapsed_ms": 8385,
+      "observation": {
+        "kind": "audio",
+        "location": {
+          "end_ms": 555000.0,
+          "start_ms": 547000.0,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "observation_id": "01a12838-05c7-7772-9f25-7afa8e15be4a",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+        },
+        "review_result_ref": "01a12838-05bc-7472-b061-8672c0154d91",
+        "run_id": "vi15-probe",
+        "tool_call_id": "audio-review"
+      },
+      "review": {
+        "location": {
+          "end_ms": 555000.0,
+          "start_ms": 547000.0,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "provider": {
+          "audio_duration_ms": 8000.0,
+          "audio_input": "original_pcm_s16le_16000_mono",
+          "engine": "faster-whisper",
+          "engine_version": "1.2.1",
+          "inference_ms": 4284,
+          "language": "en",
+          "load_ms": 1707,
+          "model": "small.en",
+          "recognition_prompt": null
+        },
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+        },
+        "question": "Is the saved word denser correct?",
+        "review_result_ref": "01a12838-05bc-7472-b061-8672c0154d91",
+        "reviewed_text": "Right? So even if you have, let's say, try to construct a 1e-8 tensor, then that is actually just 0.",
+        "reviewed_words": [
+          {
+            "end_ms": 547260.0,
+            "probability": 0.677862823009491,
+            "start_ms": 547000.0,
+            "text": " Right?"
+          },
+          {
+            "end_ms": 547520.0,
+            "probability": 0.9965332746505737,
+            "start_ms": 547400.0,
+            "text": " So"
+          },
+          {
+            "end_ms": 547860.0,
+            "probability": 0.8299770355224609,
+            "start_ms": 547520.0,
+            "text": " even"
+          },
+          {
+            "end_ms": 548000.0,
+            "probability": 0.9984210729598999,
+            "start_ms": 547860.0,
+            "text": " if"
+          },
+          {
+            "end_ms": 548120.0,
+            "probability": 0.9975487589836121,
+            "start_ms": 548000.0,
+            "text": " you"
+          },
+          {
+            "end_ms": 548460.0,
+            "probability": 0.9988806843757629,
+            "start_ms": 548120.0,
+            "text": " have,"
+          },
+          {
+            "end_ms": 548800.0,
+            "probability": 0.9954059422016144,
+            "start_ms": 548460.0,
+            "text": " let's"
+          },
+          {
+            "end_ms": 549020.0,
+            "probability": 0.9885474443435669,
+            "start_ms": 548800.0,
+            "text": " say,"
+          },
+          {
+            "end_ms": 549380.0,
+            "probability": 0.9534355401992798,
+            "start_ms": 549360.0,
+            "text": " try"
+          },
+          {
+            "end_ms": 549480.0,
+            "probability": 0.9992949962615967,
+            "start_ms": 549380.0,
+            "text": " to"
+          },
+          {
+            "end_ms": 549880.0,
+            "probability": 0.997448742389679,
+            "start_ms": 549480.0,
+            "text": " construct"
+          },
+          {
+            "end_ms": 550080.0,
+            "probability": 0.7740327715873718,
+            "start_ms": 549880.0,
+            "text": " a"
+          },
+          {
+            "end_ms": 550800.0,
+            "probability": 0.5922019481658936,
+            "start_ms": 550080.0,
+            "text": " 1e"
+          },
+          {
+            "end_ms": 552000.0,
+            "probability": 0.6314167827367783,
+            "start_ms": 550800.0,
+            "text": "-8"
+          },
+          {
+            "end_ms": 552820.0,
+            "probability": 0.7308613508939743,
+            "start_ms": 552000.0,
+            "text": " tensor,"
+          },
+          {
+            "end_ms": 553180.0,
+            "probability": 0.9778580665588379,
+            "start_ms": 552940.0,
+            "text": " then"
+          },
+          {
+            "end_ms": 553620.0,
+            "probability": 0.925578236579895,
+            "start_ms": 553180.0,
+            "text": " that"
+          },
+          {
+            "end_ms": 553780.0,
+            "probability": 0.9949312806129456,
+            "start_ms": 553620.0,
+            "text": " is"
+          },
+          {
+            "end_ms": 554080.0,
+            "probability": 0.9967128038406372,
+            "start_ms": 553780.0,
+            "text": " actually"
+          },
+          {
+            "end_ms": 554240.0,
+            "probability": 0.9981865286827087,
+            "start_ms": 554080.0,
+            "text": " just"
+          },
+          {
+            "end_ms": 554460.0,
+            "probability": 0.6149536371231079,
+            "start_ms": 554240.0,
+            "text": " 0."
+          }
+        ],
+        "run_id": "vi15-probe",
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 547270.0,
+              "start_ms": 538450.0,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-81",
+            "text": "If float 16 is, is, is good, except for you know, its dynamic range is kind of poor, right?",
+            "text_range": {
+              "lid": "81",
+              "range": {
+                "end": 91,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 554530.0,
+              "start_ms": 547370.0,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-82",
+            "text": "So even if you have, let's say, try to construct a 1e minus 8 denser, then that is actually just 0.",
+            "text_range": {
+              "lid": "82",
+              "range": {
+                "end": 99,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ],
+        "uncertainties": [
+          "机器音频复核候选；词时间为识别估计，概率不等于正确性，未消除的听辨疑点仍须回听。"
+        ]
+      },
+      "target": {
+        "kind": "audio",
+        "location": {
+          "end_ms": 555000.0,
+          "start_ms": 547000.0,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+        },
+        "review_result_ref": "01a12838-05bc-7472-b061-8672c0154d91"
+      }
+    }
+  ],
+  "comparison": "V05 two terms agree with the existing user listening record. V07 exact wording remains uncertain. The denser passage now returns tensor at estimated 552000–552820 ms; sarcastic remains unresolved. Terminology differences are machine review candidates, not user-approved edits.",
+  "model": "faster-whisper small.en CPU int8; no chat-model inference",
+  "output": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi15"
+}

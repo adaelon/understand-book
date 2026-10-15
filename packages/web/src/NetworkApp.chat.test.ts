@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils';
+import { nextTick } from 'vue';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import NetworkApp from './NetworkApp.vue';
 import { api } from './api';
@@ -7,7 +8,7 @@ import { installIdentity, installWorkspace, network, type NetworkWorkspace } fro
 import { workspaceAction } from './network-client';
 
 const reads = vi.hoisted(() => Object.fromEntries([
-  'manifest', 'assetManifest', 'sourceFingerprint', 'sourceManifest', 'profileManifest', 'text',
+  'videoContext', 'manifest', 'assetManifest', 'sourceFingerprint', 'sourceManifest', 'profileManifest', 'text',
   'recall', 'profileMemory', 'tutorState', 'tutorReadiness', 'agentRunCreate', 'agentRun',
 ].map(name => [name, vi.fn()])));
 vi.mock('./api', async original => {
@@ -38,6 +39,7 @@ beforeEach(() => {
   reads.assetManifest.mockResolvedValue({ images: [] });
   reads.sourceFingerprint.mockResolvedValue({ book_id: 'book', source_fingerprint: 'book' });
   reads.sourceManifest.mockResolvedValue(null);
+  reads.videoContext.mockResolvedValue(null);
   reads.profileManifest.mockResolvedValue({ profile_id: 'technical_learning', slots: [] });
   reads.text.mockResolvedValue({ lid: '1', text: '当前正文' });
   reads.recall.mockResolvedValue([]); reads.profileMemory.mockResolvedValue({});
@@ -68,6 +70,21 @@ async function start() {
   await flushPromises();
 }
 function rail() { return wrapper.getComponent({ name: 'RightRail' }); }
+
+it('keeps the visible chat and reading context when a same-source publication is adopted', async () => {
+  await start();
+  const reader = wrapper.getComponent({ name: 'ReaderPane' }).vm;
+  const before = rail().props('chat');
+  workspace = { ...workspace, revision: workspace.revision + 1, published_book_ref: { book_id: 'book', publication_id: 'enriched' } };
+  installWorkspace(workspace, network.value.attachment, false, 'enrichment');
+  // Check before a later recovery read can refill an incorrectly cleared chat.
+  await nextTick();
+  expect(rail().props('chat')).toEqual(before);
+  expect(rail().props('chat')[0].user).toBe('原对话');
+  expect(rail().props('activeChatSessionId')).toBe('old');
+  expect(wrapper.getComponent({ name: 'ReaderPane' }).vm).toBe(reader);
+  expect(reads.manifest).toHaveBeenCalledTimes(1);
+});
 
 it('creates and selects chats without replacing the reader, reloading book data or resetting its layout', async () => {
   await start();

@@ -1,0 +1,421 @@
+{
+  "status": "passed",
+  "publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+  },
+  "material": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    },
+    "transcript": {
+      "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+      "transcript_revision": "1",
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      }
+    }
+  },
+  "workspace": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi16\\workspace",
+  "scenarios": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi16\\scenarios\\2026-10-11T00-11-34.272Z",
+  "evidence": {
+    "terminology": {
+      "changes": [
+        {
+          "id": "change-1",
+          "segment_id": "segment-82",
+          "start": 62,
+          "before": "denser",
+          "after": "tensor",
+          "reason": "机器音频复核在对应时段识别为 tensor；画面代码同时展示 torch.tensor([1e-8], ...)，可佐证术语语境。",
+          "basis": "audio_review",
+          "evidence": [
+            {
+              "source_id": "audio:01a12838-05bc-7472-b061-8672c0154d91",
+              "role": "对应语音复核识别为 tensor"
+            },
+            {
+              "source_id": "image_1",
+              "role": "画面代码提供术语语境"
+            }
+          ],
+          "status": "pending",
+          "current_text": "So even if you have, let's say, try to construct a 1e minus 8 denser, then that is actually just 0.",
+          "conflict": false,
+          "conflict_reason": null
+        },
+        {
+          "id": "change-2",
+          "segment_id": "segment-87",
+          "start": 12,
+          "before": "beef float 16",
+          "after": "bfloat16",
+          "reason": "对应语音复核保留了该名称的口语发音，画面标题明确给出规范写法 bfloat16；仅规范技术术语拼写。",
+          "basis": "audio_review",
+          "evidence": [
+            {
+              "source_id": "audio:01a12846-bf58-7882-bdd7-847dc866e79e",
+              "role": "对应时段的术语口语发音"
+            },
+            {
+              "source_id": "image_3",
+              "role": "画面明确显示规范术语 bfloat16"
+            }
+          ],
+          "status": "pending",
+          "current_text": "So then, so beef float 16 was invented.",
+          "conflict": false,
+          "conflict_reason": null
+        }
+      ],
+      "notes": [
+        {
+          "kind": "visual_explanation",
+          "text": "画面中的示例是 torch.tensor([1e-8], dtype=torch.float16)，随后显示其结果为 0，并标注 Underflow，解释了讲者所说的小数值在 float16 中下溢为零。",
+          "evidence": [
+            {
+              "source_id": "image_1",
+              "role": "显示 torch.tensor([1e-8], dtype=torch.float16)"
+            },
+            {
+              "source_id": "image_2",
+              "role": "显示数值结果为 0"
+            }
+          ]
+        },
+        {
+          "kind": "visual_explanation",
+          "text": "后续画面以 bfloat16 为标题，并展示其 8 位指数与 7 位尾数的布局；该画面用于确认术语拼写，不用于替代语音证据。",
+          "evidence": [
+            {
+              "source_id": "image_3",
+              "role": "显示 bfloat16 标题和格式示意"
+            }
+          ]
+        },
+        {
+          "kind": "uncertain",
+          "text": "两处音频证据均来自机器复核；其中 tensor 与 beef 的词级概率并非确定性结论。第一处由代码画面强力佐证为 tensor；第二处画面只确认规范名称 bfloat16，不能单独证明讲者的具体发音。",
+          "evidence": [
+            {
+              "source_id": "audio:01a12838-05bc-7472-b061-8672c0154d91",
+              "role": "机器音频复核及其不确定性"
+            },
+            {
+              "source_id": "audio:01a12846-bf58-7882-bdd7-847dc866e79e",
+              "role": "机器音频复核及其不确定性"
+            },
+            {
+              "source_id": "image_3",
+              "role": "仅确认画面术语拼写"
+            }
+          ]
+        }
+      ],
+      "source_ids": [
+        "text:segment-82",
+        "text:segment-87",
+        "image_1",
+        "image_2",
+        "image_3",
+        "audio:01a12838-05bc-7472-b061-8672c0154d91",
+        "audio:01a12846-bf58-7882-bdd7-847dc866e79e"
+      ]
+    },
+    "uncertain": {
+      "changes": [],
+      "notes": [
+        {
+          "kind": "uncertain",
+          "text": "segment-96 中“sarcastic”暂不修改。短音频机器复核同样识别为该词，但该词概率较低（约 0.65），且复核结果明确提示仍需回听，现有证据不足以确定原话。",
+          "evidence": [
+            {
+              "source_id": "audio:01a12837-520f-7e93-92a1-7b4263676197",
+              "role": "短音频机器复核返回 sarcastic，但保留未消除的听辨疑点"
+            },
+            {
+              "source_id": "text:segment-96",
+              "role": "当前待复核文本中的原词位置与上下文"
+            }
+          ]
+        }
+      ]
+    },
+    "native_image_deliveries": [
+      {
+        "at": "2026-10-11T00:05:10.500Z",
+        "method": "tools/call",
+        "tool": "executor.input.next",
+        "isError": false,
+        "bytes": 1931118,
+        "images": 3
+      },
+      {
+        "at": "2026-10-11T00:08:26.756Z",
+        "method": "tools/call",
+        "tool": "executor.input.next",
+        "isError": false,
+        "bytes": 1931118,
+        "images": 3
+      }
+    ],
+    "runs": [
+      {
+        "draft": "terminology",
+        "elapsed_ms": 60232,
+        "exit_code": 0,
+        "complete": false,
+        "events": [
+          {
+            "type": "item.completed",
+            "item_type": "error"
+          },
+          {
+            "type": "item.started",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.open",
+            "status": "in_progress"
+          },
+          {
+            "type": "item.completed",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.open",
+            "status": "completed"
+          },
+          {
+            "type": "item.started",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.input.next",
+            "status": "in_progress"
+          },
+          {
+            "type": "item.completed",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.input.next",
+            "status": "completed"
+          },
+          {
+            "type": "item.started",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.generation.start",
+            "status": "in_progress"
+          },
+          {
+            "type": "item.completed",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.generation.start",
+            "status": "completed"
+          },
+          {
+            "type": "item.started",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.submit_candidate",
+            "status": "in_progress"
+          },
+          {
+            "type": "item.completed",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.submit_candidate",
+            "status": "failed"
+          },
+          {
+            "type": "item.completed",
+            "item_type": "agent_message"
+          },
+          {
+            "type": "turn.completed",
+            "usage": {
+              "input_tokens": 136024,
+              "cached_input_tokens": 100608,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 3717,
+              "reasoning_output_tokens": 473
+            }
+          }
+        ]
+      },
+      {
+        "draft": "terminology",
+        "elapsed_ms": 126513,
+        "exit_code": 0,
+        "complete": true,
+        "events": [
+          {
+            "type": "item.completed",
+            "item_type": "error"
+          },
+          {
+            "type": "error",
+            "message": "Reconnecting... 2/5 (stream disconnected before completion: tls handshake eof)"
+          },
+          {
+            "type": "error",
+            "message": "Reconnecting... 3/5 (stream disconnected before completion: tls handshake eof)"
+          },
+          {
+            "type": "error",
+            "message": "Reconnecting... 4/5 (stream disconnected before completion: tls handshake eof)"
+          },
+          {
+            "type": "error",
+            "message": "Reconnecting... 5/5 (stream disconnected before completion: tls handshake eof)"
+          },
+          {
+            "type": "item.started",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.open",
+            "status": "in_progress"
+          },
+          {
+            "type": "item.completed",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.open",
+            "status": "completed"
+          },
+          {
+            "type": "item.started",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.input.next",
+            "status": "in_progress"
+          },
+          {
+            "type": "item.completed",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.input.next",
+            "status": "completed"
+          },
+          {
+            "type": "item.started",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.generation.start",
+            "status": "in_progress"
+          },
+          {
+            "type": "item.completed",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.generation.start",
+            "status": "completed"
+          },
+          {
+            "type": "item.started",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.submit_candidate",
+            "status": "in_progress"
+          },
+          {
+            "type": "item.completed",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.submit_candidate",
+            "status": "completed"
+          },
+          {
+            "type": "item.completed",
+            "item_type": "agent_message"
+          },
+          {
+            "type": "turn.completed",
+            "usage": {
+              "input_tokens": 130769,
+              "cached_input_tokens": 96256,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 3935,
+              "reasoning_output_tokens": 556
+            }
+          }
+        ]
+      },
+      {
+        "draft": "uncertain",
+        "elapsed_ms": 52731,
+        "exit_code": 0,
+        "complete": true,
+        "events": [
+          {
+            "type": "item.completed",
+            "item_type": "error"
+          },
+          {
+            "type": "item.started",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.open",
+            "status": "in_progress"
+          },
+          {
+            "type": "item.completed",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.open",
+            "status": "completed"
+          },
+          {
+            "type": "item.started",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.input.next",
+            "status": "in_progress"
+          },
+          {
+            "type": "item.completed",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.input.next",
+            "status": "completed"
+          },
+          {
+            "type": "item.started",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.generation.start",
+            "status": "in_progress"
+          },
+          {
+            "type": "item.completed",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.generation.start",
+            "status": "completed"
+          },
+          {
+            "type": "item.started",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.submit_candidate",
+            "status": "in_progress"
+          },
+          {
+            "type": "item.completed",
+            "item_type": "mcp_tool_call",
+            "tool": "executor.submit_candidate",
+            "status": "completed"
+          },
+          {
+            "type": "item.completed",
+            "item_type": "agent_message"
+          },
+          {
+            "type": "turn.completed",
+            "usage": {
+              "input_tokens": 120085,
+              "cached_input_tokens": 100352,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 2892,
+              "reasoning_output_tokens": 85
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "checks": {
+    "pending_before_user_choice": true,
+    "partial_accept_only_selected": true,
+    "rejected_text_unchanged": true,
+    "batch_accept": true,
+    "manual_edit_keeps_old_suggestion_pending": true,
+    "original_source_map_and_publication_unchanged": true,
+    "notes_separate_from_speaker_text": true
+  },
+  "partial_export": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi16\\scenarios\\2026-10-11T00-11-34.272Z\\partial\\.build\\video-corrections\\accepted-input.json",
+  "decision_provenance": "All accept/reject/manual decisions are deterministic evaluation actions in isolated copies; the real model drafts in workspace remain pending.",
+  "limitations": [
+    "Whisper words/timing are machine candidates, not full human verbatim truth.",
+    "Source revision publication and derived updates belong to VI17."
+  ]
+}

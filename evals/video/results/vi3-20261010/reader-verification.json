@@ -1,0 +1,22 @@
+{
+  "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+  "underflow_occurrences": 2,
+  "readiness": {
+    "english_searchable": true,
+    "reasons": [],
+    "route": "reader",
+    "semantic": "pending",
+    "stages": {
+      "discourse": {
+        "status": "pending"
+      },
+      "graph": {
+        "status": "pending"
+      },
+      "video_transcript": {
+        "status": "done"
+      }
+    },
+    "status": "transcript_ready"
+  }
+}

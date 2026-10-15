@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-10",
+  "reviewer": "user",
+  "method": "User listened to the original-audio excerpts rendered in this conversation",
+  "user_response": "都说了；可以；好像说了要接着下一个part",
+  "observations": [
+    {
+      "sample": "V05",
+      "source_range_ms": [578000, 586000],
+      "question": "说的是 underflow、overflow，还是都说了？",
+      "response": "都说了",
+      "confirmed_terms": ["underflow", "overflow"],
+      "full_transcript": null,
+      "exact_word_boundaries": null
+    },
+    {
+      "sample": "V04",
+      "source_range_ms": [1205000, 1215000],
+      "question": "能否听清 hidden gets summed out？",
+      "response": "可以",
+      "confirmed_phrase": "hidden gets summed out",
+      "full_transcript": null,
+      "exact_word_boundaries": null
+    },
+    {
+      "sample": "V07",
+      "source_range_ms": [648000, 656000],
+      "question": "有哪些原话，还是只有停顿？",
+      "response": "好像说了要接着下一个part",
+      "candidate_meaning": "transition to the next part",
+      "certainty": "uncertain",
+      "full_transcript": null,
+      "exact_word_boundaries": null
+    }
+  ]
+}

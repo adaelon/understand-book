@@ -216,6 +216,14 @@ mod tests {
 
 /// An operation must be deterministic: model calls run after this borrow ends.
 pub trait ResidentStatePort {
+    fn media_source_for_text(&mut self, _range: &read_tools::EvidenceRange) -> Result<Option<crate::video_source::MediaSource>, read_tools::ToolError> { Ok(None) }
+    fn media_source_snapshot(&mut self, _target: base_schema::EvidenceTarget) -> Result<crate::video_source::MediaSource, read_tools::ToolError> { Err(crate::video::unavailable()) }
+    fn video_source_context(&mut self) -> Result<Option<serde_json::Value>, read_tools::ToolError> { Ok(None) }
+    fn review_video_audio(&mut self, _request: crate::video_audio::ReviewAudio, _cancellation: &CancellationToken) -> Result<crate::video_audio::AudioReview, read_tools::ToolError> { Err(crate::video::unavailable()) }
+    fn search_video(&mut self, _request: read_tools::video_search::VideoSearch) -> Result<serde_json::Value, read_tools::ToolError> { Err(crate::video::unavailable()) }
+    fn read_video_frames(&mut self, _request: crate::video::ReadFrames, _cancellation: &CancellationToken) -> Result<crate::video::FrameBatch, read_tools::ToolError> {
+        Err(crate::video::unavailable())
+    }
     fn tutor_assessment_input(&mut self, _action: &str) -> Result<serde_json::Value, read_tools::ToolError> {
         Err(memory::teaching::invalid("Assessment unavailable"))
     }
@@ -253,13 +261,15 @@ pub struct BorrowedResidentState<'a> {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ReaderInputSnapshot {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub video_question: Option<base_schema::VideoQuestionContext>,
     pub state: reader::ReaderState,
     pub minimap_context: Option<crate::context_fragment::ContextFragment>,
 }
 
 impl ReaderInputSnapshot {
     pub fn capture(book: &read_tools::Book, reader: &Reader, question: &str) -> Self {
-        Self { state: reader.state(), minimap_context: crate::orchestrator::paper_minimap_context_fragment(book, reader, question) }
+        Self { video_question: None, state: reader.state(), minimap_context: crate::orchestrator::paper_minimap_context_fragment(book, reader, question) }
     }
 }
 
@@ -271,6 +281,9 @@ impl ResidentStatePort for BorrowedResidentState<'_> {
 }
 
 pub struct RunContext {
+    pub audio_reviews: Vec<crate::video_audio::AudioReview>,
+    pub media_observations: Vec<base_schema::MediaObservation>,
+    pub(crate) pending_video: Vec<crate::video::FrameBatch>,
     pub tutor: Option<serde_json::Value>,
     pub tutor_resolved: bool,
     pub goal: Option<crate::goal::ResidentGoal>,
@@ -344,6 +357,9 @@ impl RunContext {
         runtime_profile: ModelRuntimeProfile,
     ) -> Self {
         Self {
+            audio_reviews: Vec::new(),
+            media_observations: Vec::new(),
+            pending_video: Vec::new(),
             tutor: None,
             tutor_resolved: false,
             goal: None,

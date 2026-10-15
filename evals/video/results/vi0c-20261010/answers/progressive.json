@@ -1,0 +1,55 @@
+{
+  "images": [
+    {
+      "image": 1,
+      "constructions": [
+        "x = torch.tensor([1e-8], dtype=torch.float16)",
+        "x = torch.tensor([1e-8], dtype=torch.bfloat16)"
+      ],
+      "assertions": [
+        "assert x == 0  # Underflow!",
+        "assert x != 0  # No underflow!"
+      ],
+      "displayed_result": "x = 0.000e+0",
+      "highlighted_explanation": "Google Brain developed bfloat (brain floating point) in 2018 to address this issue."
+    },
+    {
+      "image": 2,
+      "constructions": [
+        "x = torch.tensor([1e-8], dtype=torch.float16)",
+        "x = torch.tensor([1e-8], dtype=torch.bfloat16)"
+      ],
+      "assertions": [
+        "assert x == 0  # Underflow!",
+        "assert x != 0  # No underflow!"
+      ],
+      "displayed_result": "x = 0.000e+0",
+      "highlighted_explanation": "bfloat16 uses the same memory as float16 but has the same dynamic range as float32!"
+    },
+    {
+      "image": 3,
+      "constructions": [
+        "x = torch.tensor([1e-8], dtype=torch.float16)",
+        "x = torch.tensor([1e-8], dtype=torch.bfloat16)"
+      ],
+      "assertions": [
+        "assert x == 0  # Underflow!",
+        "assert x != 0  # No underflow!"
+      ],
+      "displayed_result": "x = 0.000e+0",
+      "highlighted_explanation": "The only catch is that the resolution is worse, but this matters less for deep learning."
+    },
+    {
+      "image": 4,
+      "constructions": [
+        "x = torch.tensor([1e-8], dtype=torch.bfloat16)"
+      ],
+      "assertions": [
+        "assert x != 0  # No underflow!"
+      ],
+      "displayed_result": "x = 1.001e-8",
+      "highlighted_text": "assert x != 0  # No underflow!"
+    }
+  ],
+  "comparison": "Images 1–3 retain the same constructions, assertions, and zero result while the highlight moves from bfloat's origin to its memory/dynamic range and then its worse resolution. Image 4 scrolls to the bfloat16 construction, highlights != 0 instead of == 0, and displays 1.001e-8 instead of 0.000e+0. No matrix code or einsum signature is visible."
+}

@@ -29,7 +29,10 @@ import {
   CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
   measureExecutorTransportResponse,
   serializeExecutorMcpToolResult,
+  executorMcpToolResult,
+  executorMcpResultByteLimit,
 } from "../../packages/core/src/executor-transport";
+import { CODEX_EXECUTOR_MEDIA_CAPABILITY_V1, DSH_EXECUTOR_MEDIA_CAPABILITY_V1 } from "../../packages/core/src/build-executor-media";
 
 const MCP_PROTOCOL_VERSION = "2025-06-18";
 const MAX_MCP_LINE_BYTES = 131_072;
@@ -195,7 +198,10 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
         : MCP_PROTOCOL_VERSION;
       return rpcResult(request.id, {
         protocolVersion: requestedVersion,
-        capabilities: { tools: { listChanged: false }, ...(dsh ? { experimental: { understand_book_executor: DSH_BUILD_EXECUTOR_CONTRACT_V1 } } : {}) },
+        capabilities: { tools: { listChanged: false }, experimental: {
+          ...(dsh ? { understand_book_executor: DSH_BUILD_EXECUTOR_CONTRACT_V1 } : {}),
+          understand_book_executor_media: dsh ? DSH_EXECUTOR_MEDIA_CAPABILITY_V1 : CODEX_EXECUTOR_MEDIA_CAPABILITY_V1,
+        } },
         serverInfo: {
           name: BUILD_EXECUTOR_MCP_CONTRACT_V3.server_name,
           version: dsh ? DSH_BUILD_EXECUTOR_CONTRACT_V1.version : BUILD_EXECUTOR_MCP_CONTRACT_V3.version,
@@ -266,7 +272,7 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
       sessionCommandCompleted = true;
       if (response.action.kind === "INPUT_BATCH") {
         if (Buffer.byteLength(serializeExecutorMcpToolResult(response), "utf8")
-          > profile.delivery_batch_limit.max_serialized_batch_bytes) {
+          > executorMcpResultByteLimit(response, profile.delivery_batch_limit.max_serialized_batch_bytes)) {
           throw new Error("Build Executor MCP input batch exceeds its tested carrier tier");
         }
       } else if (measureExecutorTransportResponse(
@@ -281,10 +287,10 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
       outcome = response.action.kind === "DONE" && response.action.status !== "committed"
         ? "bounded_error"
         : "ok";
-      rpcResponse = rpcResult(request.id, {
-        content: [{ type: "text" as const, text: canonicalAutomaticBuildJson(response) }],
-        isError: false,
-      });
+      rpcResponse = rpcResult(request.id, executorMcpToolResult(response));
+      if (Buffer.byteLength(`${JSON.stringify(rpcResponse)}\n`, "utf8") > CODEX_EXECUTOR_MEDIA_CAPABILITY_V1.max_jsonrpc_line_bytes) {
+        throw new Error("Build Executor MCP JSON-RPC envelope exceeds its media tier");
+      }
     } catch (error) {
       const phase = operationPhase(toolName);
       rpcResponse = boundedToolError(

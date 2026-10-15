@@ -1,3 +1,4 @@
+import { DSH_EXECUTOR_MEDIA_CAPABILITY_V1 } from "./build-executor-media";
 export const DSH_BUILD_EXECUTOR_CONTRACT_V1 = Object.freeze({
   version: "dsh_build_executor_contract.v1",
   bootstrap_version: "understand_book_dsh_executor_bootstrap.v1",
@@ -6,6 +7,7 @@ export const DSH_BUILD_EXECUTOR_CONTRACT_V1 = Object.freeze({
   profile_revision: 1,
   input_manifest_version: "automatic_build_executor_input_manifest.v4",
   handoff_record_version: "automatic_build_opaque_handoff_record.v5",
+  media_input: DSH_EXECUTOR_MEDIA_CAPABILITY_V1,
 });
 
 /** Startup negotiation also covers the control plane used before executor creation. */

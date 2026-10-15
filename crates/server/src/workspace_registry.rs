@@ -53,6 +53,8 @@ fn conflict() -> ToolError {
 
 #[derive(Clone, Serialize, Deserialize)]
 struct Checkpoint {
+    #[serde(default)]
+    video_drafts: crate::video_draft::Drafts,
     version: u32,
     reader: reader::ReaderCheckpoint,
     presentation: Option<runtime::presentation::PresentationFollowUp>,
@@ -139,6 +141,7 @@ impl WorkspaceRegistry {
 
     fn checkpoint(scene: &ResidentWorkspace) -> Checkpoint {
         Checkpoint {
+            video_drafts: scene.workspace.video_drafts.clone(),
             version: 1,
             reader: scene.workspace.reader.checkpoint(),
             presentation: scene.presentation.clone(),
@@ -179,6 +182,22 @@ impl WorkspaceRegistry {
         tx.commit().map_err(|_| storage())?;
         scene.revision += 1;
         scene.touched = Instant::now();
+        Ok(())
+    }
+
+    // Acceptance only transfers draft ownership; it is not a new reader action.
+    // Preserve the revision captured by the accepted Run for its reader effects.
+    pub(crate) fn persist_video_draft_handoff(
+        &mut self,
+        owner: &str,
+        scene: &ResidentWorkspace,
+    ) -> Result<(), ToolError> {
+        let saved = serde_json::to_string(&Self::checkpoint(scene)).map_err(|_| storage())?;
+        let changed = self.control.connection.execute(
+            "UPDATE reader_workspaces SET checkpoint=? WHERE owner_user_id=? AND workspace_id=? AND revision=?",
+            params![saved, owner, scene.workspace.id, scene.revision],
+        ).map_err(|_| storage())?;
+        if changed != 1 { return Err(conflict()); }
         Ok(())
     }
 
@@ -263,6 +282,7 @@ impl WorkspaceRegistry {
         workspace.publication = Some(publication);
         workspace.id = id.into();
         workspace.generation = record.generation + 1;
+        workspace.video_drafts = record.checkpoint.video_drafts;
         workspace.selected_chat = record.selected_chat;
         workspace.messages = messages(user, workspace.selected_chat.as_deref());
         let mut scene = ResidentWorkspace {
@@ -481,6 +501,53 @@ impl WorkspaceRegistry {
             command.as_object_mut().ok_or_else(invalid)?.remove(key);
         }
         let input = &command;
+        if action == "agent/source.resolve" {
+            let request = crate::parse_agent_source_request(&input.to_string()).map_err(|r| crate::workspace_client::reply(r).unwrap_err())?;
+            let binding = crate::workspace_source_binding(user, &scene.workspace, &request)?;
+            if let Some(media) = &binding.media {
+                let loaded = library.lock().unwrap().load(owner, &media.publication);
+                let popup = crate::video_source::popup(&binding, loaded.as_ref().map(|p| (p.book.as_ref(), p.directory())).map_err(|e| crate::user_storage_paths::error(&e.error_code, &e.category, &e.message)), media.publication.url("video/media"));
+                let mut value = view(&scene); value["result"] = popup; return Ok(value);
+            }
+        }
+        if action == "reader/adopt_same_source_publication" {
+            let in_flight: bool = self.control.connection.query_row(
+                "SELECT EXISTS(SELECT 1 FROM run_admissions WHERE owner_user_id=? AND workspace_id=? AND (dispatch_state IN ('preparing','queued','claimed') OR unsaved=1))",
+                params![owner,id], |r| r.get(0)).map_err(|_| storage())?;
+            let mut value = view(&scene);
+            if in_flight || scene.workspace.video_adoption_busy(user) {
+                value["result"] = json!({"status":"busy"}); return Ok(value);
+            }
+            let old = scene.workspace.publication.as_ref().unwrap().clone();
+            let next = library.lock().unwrap().video_successor(owner, &old.reference)?;
+            let Some(next) = next else {
+                value["result"] = json!({"status":"current"});
+                if input["publication_id"].as_str().is_some_and(|id| id != old.reference.publication_id) {
+                    value["result"]["video"] = crate::video_publication::projection(&old.book, old.directory())?;
+                }
+                return Ok(value);
+            };
+            // Build the projection before committing, so a read failure cannot half-adopt.
+            let video = crate::video_publication::projection(&next.book, next.directory())?;
+            scene.workspace.adopt_same_source_publication(next)?;
+            if let Err(e) = self.persist(owner, &mut scene, false) {
+                scene.workspace.adopt_same_source_publication(old)?;
+                return Err(e);
+            }
+            let mut value = view(&scene); value["result"] = json!({"status":"adopted","video":video});
+            return Ok(value);
+        }
+        if action == "reader/video_draft" {
+            let before = scene.workspace.video_drafts.clone();
+            let result = crate::video_draft::command(&mut scene.workspace, user, input)?;
+            if input["action"] != "get" {
+                if let Err(e) = self.persist(owner, &mut scene, false) {
+                    scene.workspace.video_drafts = before;
+                    return Err(e);
+                }
+            }
+            let mut value = view(&scene); value["result"] = result; return Ok(value);
+        }
         if action == "linked/attach" {
             if scene.attachment.as_deref() != Some(&stamp.attachment_id) {
                 return Err(stale());
@@ -707,8 +774,9 @@ impl WorkspaceRegistry {
             "agent/source.open" => {
                 let request = crate::parse_agent_source_request(&input.to_string()).map_err(|r| crate::workspace_client::reply(r).unwrap_err())?;
                 let binding = crate::workspace_source_binding(user, &scene.workspace, &request)?;
-                book.resolve_source(&binding.evidence_range, "zh-CN", Some(&binding.evidence_text_digest))?;
-                reader.goto_lid(book, &mut user.store, &binding.evidence_range.start_lid, now)?;
+                let range = binding.evidence_range.as_ref().ok_or_else(invalid)?;
+                book.resolve_source(range, "zh-CN", Some(&binding.evidence_text_digest))?;
+                reader.goto_lid(book, &mut user.store, &range.start_lid, now)?;
                 json!({"source_ref_id":binding.source_ref_id,"opened":true})
             }
             "reader/goto" => json!(reader.goto_lid(
@@ -1127,6 +1195,41 @@ impl crate::presentation_author::AuthorStorage for NetworkAuthorStorage<'_> {
     }
 }
 impl runtime::run_context::ResidentStatePort for NetworkRunPort {
+    fn media_source_snapshot(&mut self, target: base_schema::EvidenceTarget) -> Result<runtime::video_source::MediaSource, ToolError> {
+        self.authorized()?;
+        crate::video_source::snapshot(&self.scope.book, &self.scope.book_dir, target)
+    }
+    fn media_source_for_text(&mut self, range: &read_tools::EvidenceRange) -> Result<Option<runtime::video_source::MediaSource>, ToolError> {
+        self.authorized()?;
+        crate::video_source::text_snapshot(&self.scope.book, &self.scope.book_dir, range)
+    }
+    fn video_source_context(&mut self) -> Result<Option<serde_json::Value>, ToolError> {
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        crate::video_frames::source_context(&self.scope)
+    }
+    fn review_video_audio(&mut self, request: runtime::video_audio::ReviewAudio, cancellation: &runtime::run_context::CancellationToken) -> Result<runtime::video_audio::AudioReview, ToolError> {
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        let result = crate::video_audio::review_for_run(&self.scope, request, cancellation)?;
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        Ok(result)
+    }
+    fn search_video(&mut self, request: read_tools::video_search::VideoSearch) -> Result<serde_json::Value, ToolError> {
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        let result = crate::video_frames::search_for_run(&self.scope, request)?;
+        self.authorized()?;
+        Ok(result)
+    }
+    fn read_video_frames(&mut self, request: runtime::video::ReadFrames, cancellation: &runtime::run_context::CancellationToken) -> Result<runtime::video::FrameBatch, ToolError> {
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        let result = crate::video_frames::read_for_run(&self.scope, request, cancellation)?;
+        self.authorized()?;
+        Ok(result)
+    }
     fn author_presentation(&mut self, request: runtime::presentation_author::AuthorRequest,
         bindings: &[runtime::orchestrator::SourceBinding], messages: &[runtime::Message], cancellation: &runtime::run_context::CancellationToken,
     ) -> Result<runtime::presentation_author::AuthorResult, ToolError> {

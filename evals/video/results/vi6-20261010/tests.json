@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-10",
+  "scope": "VI6 focused checks; not the full repository suite",
+  "tests": [
+    { "suite": "Web video-question / VideoReaderPane", "passed": 10, "failed": 0 },
+    { "suite": "Web RightRail", "passed": 42, "failed": 0 },
+    { "suite": "Web App.startup / NetworkApp.chat", "passed": 27, "failed": 0 },
+    { "command": "cargo test -p server --lib video_draft", "passed": 2, "failed": 0 },
+    { "command": "cargo test -p server --lib mu6a_", "passed": 13, "failed": 0 },
+    { "command": "cargo test -p runtime --lib video_runtime", "passed": 3, "failed": 0 }
+  ],
+  "total_passed": 97,
+  "checks": [
+    { "command": "pnpm -C packages/web exec vue-tsc --noEmit", "exit_code": 0 },
+    { "command": "cargo build -p server --bin server", "exit_code": 0 },
+    { "command": "node evals/video/vi6-browser.mjs", "exit_code": 0, "evidence": "verification.json" }
+  ],
+  "browser_evidence": "bound-0812-playing-0827.png",
+  "generated_run": "evals/video/generated/vi6/2026-10-10T05-48-53.686Z",
+  "model": "Local HTTP recorder; no semantic inference or model API charge"
+}

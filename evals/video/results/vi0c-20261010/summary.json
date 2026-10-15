@@ -1,0 +1,90 @@
+{
+  "date": "2026-10-10",
+  "models": [
+    "gpt-6-astra"
+  ],
+  "reasoning_effort": "low",
+  "host_versions": [
+    "codex-cli 0.162.0-alpha.2"
+  ],
+  "passed_cases": 9,
+  "usage": {
+    "input_tokens": 351673,
+    "cached_input_tokens": 164096,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 4440,
+    "reasoning_output_tokens": 33
+  },
+  "successful_elapsed_ms": 643834,
+  "maximum_tested": {
+    "image_count": 8,
+    "images": [
+      {
+        "width": 1920,
+        "height": 1080,
+        "png_bytes": 439190,
+        "base64_bytes": 585588
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "png_bytes": 456792,
+        "base64_bytes": 609056
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "png_bytes": 448656,
+        "base64_bytes": 598208
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "png_bytes": 494471,
+        "base64_bytes": 659296
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "png_bytes": 546226,
+        "base64_bytes": 728304
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "png_bytes": 456792,
+        "base64_bytes": 609056
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "png_bytes": 402127,
+        "base64_bytes": 536172
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "png_bytes": 404052,
+        "base64_bytes": 538736
+      }
+    ],
+    "mcp_result_bytes": 4865109,
+    "jsonrpc_line_bytes": 4865144
+  },
+  "raw_wire_root": "../../generated/vi0c",
+  "other_attempts": "attempts.json; their usage and elapsed time are separate from successful cases",
+  "runtime_live": {
+    "status": "pending_configuration",
+    "authorization": "2026-10-10 user deferred real Reader Provider and DSH validation"
+  },
+  "dsh": {
+    "status": "pending_configuration",
+    "production_tool_render": "text JSON.stringify(value)",
+    "semantic_inference": false
+  },
+  "price": {
+    "currency": null,
+    "amount": null,
+    "reason": "No per-request monetary charge returned by Codex subscription host"
+  }
+}

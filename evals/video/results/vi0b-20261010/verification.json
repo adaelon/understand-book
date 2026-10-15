@@ -1,0 +1,83 @@
+{
+  "checks": {
+    "all_jobs_completed": true,
+    "changed_audio_changes_text": true,
+    "digital_silence_has_no_text": true
+  },
+  "listening_truth": "tracked_separately_in_samples.json",
+  "completed_audio_ms": 218999.56916099772,
+  "inference_elapsed_ms": 59773,
+  "semantic_accuracy": "not_measured_without_listening_truth",
+  "records": [
+    {
+      "id": "fp16",
+      "status": "completed",
+      "text": "a 1e minus 8 denser, then that is actually just 0. So you can't really represent very big numbers, and you can't represent very small numbers. And the reason is that this exponent is only 5 bits of exponent compared to 8. So if you train with FP16, which people did back in the day, you will get instability. You'll get underflow, you'll get overflow, you'll get NANDs,",
+      "elapsed_ms": 9032,
+      "error": null
+    },
+    {
+      "id": "bf16",
+      "status": "completed",
+      "text": "So, this was developed in actually 2018 to address this issue. And the observation was that, well, let's not compromise on the number of bits. It's the number of bits that's going to be the same as FP16, but we're going to shift some of the bits from the mantissa to the exponent. So that means it has more dynamic range than float 16. And it actually has the same dynamic range as float 32. But, of course, the, the resolution is worse because there's no free lunch here. But it turns out that in a lot of deep learning applications, this is well worth the trade-off. You want the dynamic range to not overflow and underflow. And because things are kind of sloppy and sarcastic anyway, you don't need that much resolution, okay? So, let me actually skip over this part.",
+      "elapsed_ms": 12885,
+      "error": null
+    },
+    {
+      "id": "einsum",
+      "status": "completed",
+      "text": "you say X has two dimensions, the row and the column, which I'm going to name sec1 and hidden. I'm going to have Y, that's a matrix, which has also rows and columns, which I'm going to name hidden and sec2. And I'm going to produce a tensor, or here a matrix, where the dimensions are indexed by sec1 and sec2. And anything that is not mentioned here, the hidden, get summed out. Okay, so the way this works is I'm going to sum over, enumerate over all possible values of all the variables that occur here, which are sequence, hidden, and C2, and",
+      "elapsed_ms": 10854,
+      "error": null
+    },
+    {
+      "id": "pause",
+      "status": "completed",
+      "text": "Okay, so let me actually skip over this this part",
+      "elapsed_ms": 2559,
+      "error": null
+    },
+    {
+      "id": "review-overflow",
+      "status": "completed",
+      "text": "back in the day, you will get instability. You'll get underflow, you'll get overflow, you'll get NANs.",
+      "elapsed_ms": 3023,
+      "error": null
+    },
+    {
+      "id": "review-hidden",
+      "status": "completed",
+      "text": "And anything that is not mentioned here, the hidden, uh, gets summed out. Okay? So the way this works is I'm going to sum over enumerate-",
+      "elapsed_ms": 6600,
+      "error": null
+    },
+    {
+      "id": "review-pause",
+      "status": "completed",
+      "text": "Okay, so",
+      "elapsed_ms": 2608,
+      "error": null
+    },
+    {
+      "id": "silence",
+      "status": "completed",
+      "text": "",
+      "elapsed_ms": 69,
+      "error": null
+    },
+    {
+      "id": "chunk-fp16-000",
+      "status": "completed",
+      "text": "1 e minus 8, denser than that is actually just 0. So you can't really represent very big numbers, and you can't represent very small numbers. And the reason is that this exponent is, you know, it's only, you know, five bits of exponent.",
+      "elapsed_ms": 4983,
+      "error": null
+    },
+    {
+      "id": "chunk-fp16-001",
+      "status": "completed",
+      "text": "you know, five bits of exponent from compared to eight. So if you train with FP16, which people did back in the day, you will get instability. You get underflow, you get overflow, you'll get NANs.",
+      "elapsed_ms": 7160,
+      "error": null
+    }
+  ]
+}

@@ -1,4 +1,7 @@
 import type { AutomaticBuildExecutorInputManifestV4 } from "./build-executor-input-manifest";
+import { readBuildExecutorMediaInput, assertExecutorMediaBudget, executorMediaManifest,
+  type ExecutorMediaInputV1, type ExecutorMediaManifestV1 } from "./build-executor-media";
+import { executorMcpResultByteLimit } from "./executor-transport";
 import { createHash, randomUUID } from "node:crypto";
 import { BuildExecutorInvalidArgumentsError } from "./build-executor-tool-contract";
 import { CODEX_BUILD_EXECUTION_PROFILE_V1, resolveBuildExecutionProfile, executionProfileSelection,
@@ -212,6 +215,8 @@ export type AutomaticBuildExecutorMcpErrorCodeV2 =
   | "candidate_request_too_large"
   | "candidate_sink_unavailable"
   | "writer_failed"
+  | "executor_media_capability_unavailable"
+  | "executor_media_context_limit"
   | "executor_internal";
 export type AutomaticBuildExecutorMcpErrorPhaseV2 =
   | "open"
@@ -305,6 +310,10 @@ export function automaticBuildExecutorMcpErrorFromSessionError(
     version: "automatic_build_executor_mcp_error.v2" as const,
     phase,
   };
+  if (error instanceof Error && (error.message === "executor_media_capability_unavailable"
+    || error.message === "executor_media_context_limit")) {
+    return { ...base, status: "interrupted", category: "transport", diagnostic_code: error.message };
+  }
   if (error instanceof BuildExecutorInvalidArgumentsError) {
     return { ...base, status: "interrupted", category: "session",
       diagnostic_code: "invalid_arguments", field: error.field };
@@ -786,7 +795,12 @@ export interface AutomaticBuildPrivateArtifactCandidateContractV3 {
 
 type AutomaticBuildExecutorOutputContractV3 =
   | AutomaticBuildSemanticCandidateContractV3
-  | AutomaticBuildPrivateArtifactCandidateContractV3;
+  | AutomaticBuildPrivateArtifactCandidateContractV3
+  | import('./video-translation').VideoTranslationCandidateContract
+  | import('./video-visual-units').VideoVisualCandidateContract
+  | import('./video-graph').VideoGraphCandidateContract
+  | import('./video-discourse').VideoDiscourseCandidateContract
+  | import('./video-correction-executor').VideoCorrectionCandidateContract;
 
 export interface AutomaticBuildExecutorInputManifestV3 {
   version: "automatic_build_executor_input_manifest.v3";
@@ -800,6 +814,7 @@ export interface AutomaticBuildExecutorInputManifestV3 {
     chunk_count: number;
   }>;
   total_chunk_count: number;
+  media_input?: ExecutorMediaManifestV1;
 }
 
 export interface AutomaticBuildExecutorInputNextRequestV4 {
@@ -820,6 +835,7 @@ export interface AutomaticBuildExecutorInputChunkV3 {
   payload_utf8: string;
   final_for_segment: boolean;
   final_for_generation: boolean;
+  media?: ExecutorMediaInputV1;
 }
 
 export interface AutomaticBuildExecutorInputBatchV1 {
@@ -2490,6 +2506,7 @@ function generationInputRefFor(input: {
   semantic_input_sha256: string;
   transport_profile: ExecutorTransportProfile;
   output_schema_version: string;
+  media_input_ref?: string;
 }): string {
   return `abinput1_${sha256({
     version: "automatic_build_executor_generation_input_identity.v2",
@@ -2579,13 +2596,14 @@ function packDeliverySegment(input: {
   );
 }
 
-function packedDeliveryMaterial(input: {
+export function packedDeliveryMaterial(input: {
   execution_profile: BuildExecutionProfileV1;
   opaque_session_ref: string;
   generation_input_ref: string;
   semantic_prompt: string;
   semantic_input: string;
   output_contract: AutomaticBuildExecutorOutputContractV3;
+  media?: ExecutorMediaInputV1;
 }): AutomaticBuildExecutorDeliveryMaterialV3 {
   const semanticPromptSha256 = sha256(input.semantic_prompt);
   const semanticInputSha256 = sha256(input.semantic_input);
@@ -2621,6 +2639,9 @@ function packedDeliveryMaterial(input: {
     || chunk.final_for_generation !== (ordinal === chunks.length - 1))) {
     throw new Error("executor input transport chunk ordering is invalid");
   }
+  // The final receipt acknowledges the indivisible image set as well as the final text.
+  // Reconnect replays the same frozen bytes; no generation grant precedes this receipt.
+  if (input.media) chunks.at(-1)!.media = input.media;
   const batchPack = packExecutorTransportBatches({
     chunks,
     limit: input.execution_profile.delivery_batch_limit,
@@ -2668,6 +2689,7 @@ function packedDeliveryMaterial(input: {
         },
       ],
       total_chunk_count: totalChunkCount,
+      ...(input.media ? { media_input: executorMediaManifest(input.media) } : {}),
     } as AutomaticBuildExecutorInputManifestV3 | AutomaticBuildExecutorInputManifestV4,
     chunks,
     batches: batchPack.batches,
@@ -2702,6 +2724,8 @@ function renderDeliveryMaterial(input: {
   const outputContract = semanticCandidateContractV3(descriptor, input.execution_profile.transport_profile);
   const semanticPromptSha256 = sha256(input.semantic_prompt);
   const semanticInputSha256 = sha256(semanticInput);
+  const media = readBuildExecutorMediaInput(input.target, descriptor);
+  if (media) assertExecutorMediaBudget(media, descriptor, input.execution_profile.harness_kind);
   const generationInputRef = generationInputRefFor({
     opaque_session_ref: input.opaque_session_ref,
     opaque_handoff_ref: input.opaque_handoff_ref,
@@ -2713,6 +2737,7 @@ function renderDeliveryMaterial(input: {
     semantic_input_sha256: semanticInputSha256,
     transport_profile: input.execution_profile.transport_profile,
     output_schema_version: outputContract.version,
+    ...(media ? { media_input_ref: media.media_input_ref } : {}),
   });
   return packedDeliveryMaterial({
     execution_profile: input.execution_profile,
@@ -2721,6 +2746,7 @@ function renderDeliveryMaterial(input: {
     semantic_prompt: input.semantic_prompt,
     semantic_input: semanticInput,
     output_contract: outputContract,
+    ...(media ? { media } : {}),
   });
 }
 
@@ -3336,7 +3362,7 @@ function boundedV3Response(
   response = { ...response, version: executionProfile.session_protocol } as AutomaticBuildExecutorSessionResponse;
   if (response.action.kind === "INPUT_BATCH") {
     const serializedBytes = Buffer.byteLength(serializeExecutorMcpToolResult(response), "utf8");
-    if (serializedBytes > executionProfile.delivery_batch_limit.max_serialized_batch_bytes) {
+    if (serializedBytes > executorMcpResultByteLimit(response, executionProfile.delivery_batch_limit.max_serialized_batch_bytes)) {
       throw new Error("executor V3 input batch exceeds its delivery batch limit");
     }
     return response;

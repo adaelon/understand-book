@@ -99,6 +99,11 @@ pub mod user_registry;
 pub mod published_library;
 mod book_cover;
 pub mod auth;
+pub mod video_media;
+pub mod video_frames;
+pub mod video_audio;
+mod video_draft;
+mod video_publication;
 pub mod authorization;
 pub mod multi_user_host;
 mod pending_confirmation;
@@ -1007,6 +1012,8 @@ pub struct AgentTurnError {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AgentChatTurn {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub video_question: Option<base_schema::VideoQuestionContext>,
     #[serde(default)]
     pub domain: session_event::TurnDomain,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1105,6 +1112,7 @@ pub struct AgentChatSessionSummary {
 
 #[derive(Debug, serde::Serialize)]
 pub struct AgentChatTurnView {
+    pub video_question: Option<base_schema::VideoQuestionContext>,
     pub domain: session_event::TurnDomain,
     pub published_book_ref: Option<published_library::PublishedBookRef>,
     pub teaching_ref: Option<String>,
@@ -1259,7 +1267,7 @@ fn validate_agent_turn(turn: &AgentChatTurn) -> Result<(), ToolError> {
     for binding in &turn.source_bindings {
         if binding.source_ref_id.trim().is_empty()
             || binding.book_id.trim().is_empty()
-            || binding.evidence_text_digest.trim().is_empty()
+            || !binding.valid_evidence()
             || !source_refs.insert(binding.source_ref_id.as_str())
         {
             return Err(agent_history_internal(format!(
@@ -1583,6 +1591,7 @@ fn precommit_agent_turn_with_goal(
     teaching_ref: Option<String>,
     requested_goal_id: Option<&str>,
     goal_action: Option<&str>,
+    video_question: Option<base_schema::VideoQuestionContext>,
     now: &str,
 ) -> Result<AgentTurnRef, ToolError> {
     if state.user.session_store.is_some() {
@@ -1591,7 +1600,8 @@ fn precommit_agent_turn_with_goal(
         let mut session = state.user.agent_history.sessions[index].clone();
         let turn_ref = append_pending_agent_turn(&mut session, user, question_anchor_lid, question_quote,
             presentation_follow_up, teaching_ref, requested_goal_id, goal_action,
-            state.workspace.publication.as_ref().map(|p| p.reference.clone()), None, now)?;
+            state.workspace.publication.as_ref().map(|p| p.reference.clone()).or_else(|| video_question.as_ref().map(|q| q.publication.clone())), None, now)?;
+        session.turns.last_mut().unwrap().video_question = video_question.clone();
         session.turns.last_mut().unwrap().domain.scene = Some(session_event::ReadingScene::capture(&state.workspace));
         let messages = session.messages.clone();
         state.user.session_store.as_mut().unwrap().accept(&mut state.user.agent_history, session, now)?;
@@ -1604,8 +1614,9 @@ fn precommit_agent_turn_with_goal(
     let session = &mut candidate.sessions[session_index];
     let turn_ref = append_pending_agent_turn(session, user, question_anchor_lid, question_quote,
         presentation_follow_up, teaching_ref, requested_goal_id, goal_action,
-        state.workspace.publication.as_ref().map(|p| p.reference.clone()), None, now)?;
-    session.turns.last_mut().unwrap().domain.scene = Some(session_event::ReadingScene::capture(&state.workspace));
+        state.workspace.publication.as_ref().map(|p| p.reference.clone()).or_else(|| video_question.as_ref().map(|q| q.publication.clone())), None, now)?;
+    session.turns.last_mut().unwrap().video_question = video_question.clone();
+        session.turns.last_mut().unwrap().domain.scene = Some(session_event::ReadingScene::capture(&state.workspace));
     let messages = session.messages.clone();
     commit_agent_history_candidate(state, candidate)?;
     state.workspace.select_chat(turn_ref.session_id.clone(), messages);
@@ -1676,6 +1687,7 @@ fn append_pending_agent_turn(
     }
     session.updated_at = now.into();
     session.turns.push(AgentChatTurn {
+        video_question: None,
         domain: Default::default(),
         admission_input: None,
         published_book_ref,
@@ -1712,7 +1724,7 @@ fn precommit_agent_turn(
     presentation_follow_up: Option<runtime::presentation::PresentationFollowUp>,
     now: &str,
 ) -> Result<AgentTurnRef, ToolError> {
-    precommit_agent_turn_with_goal(state, book_id, user, question_anchor_lid, question_quote, presentation_follow_up, None, None, None, now)
+    precommit_agent_turn_with_goal(state, book_id, user, question_anchor_lid, question_quote, presentation_follow_up, None, None, None, None, now)
 }
 
 fn finalize_agent_turn(
@@ -2250,13 +2262,14 @@ fn legacy_answer_projection(
             label: source.label.clone(),
         });
         bindings.push(SourceBinding {
+            media: None,
             source_ref_id,
             book_id: book.base.book_id.clone(),
-            evidence_range: EvidenceRange {
+            evidence_range: Some(EvidenceRange {
                 start_lid: lid.clone(),
                 end_lid: lid.clone(),
                 ranges: Vec::new(),
-            },
+            }),
             evidence_text_digest: source.evidence_text_digest.clone(),
             label_snapshot: source.label.clone(),
             preview_snapshot: source.preview.clone(),
@@ -2384,6 +2397,7 @@ fn turn_view(book: &Book, turn: &AgentChatTurn) -> AgentChatTurnView {
         }
     }
     AgentChatTurnView {
+        video_question: turn.video_question.clone(),
         domain: turn.domain.clone(),
         published_book_ref: turn.published_book_ref.clone(),
         teaching_ref: turn.teaching_ref.clone(),
@@ -2727,6 +2741,27 @@ fn route_inner(state: &mut AppState, req: Req) -> Reply {
     }
     if let Some(action) = path.strip_prefix("/build_intent/") {
         return build_intent_api::route_build_intent(state, action, req.method, req.body, req.now);
+    }
+    if path == "/reader/adopt_same_source_publication" {
+        if req.method != "POST" { return method_not_allowed(); }
+        let input = match body_value(req.body) { Ok(v) => v, Err(r) => return r };
+        let result = video_publication::adopt_local(state).and_then(|mut v| {
+            if v["status"] == "current" && input["publication_id"].as_str().is_some_and(|id| video_draft::publication(&state.workspace).is_ok_and(|p| p.publication_id != id)) {
+                v["video"] = video_publication::projection(&state.workspace.book, &state.workspace.book_dir)?;
+            }
+            Ok(v)
+        });
+        return match result { Ok(v) => ok_json(&v), Err(e) => err_reply(&e) };
+    }
+    if path == "/reader/video_draft" {
+        if req.method != "POST" { return method_not_allowed(); }
+        let input = match body_value(req.body) { Ok(v) => v, Err(r) => return r };
+        let before = state.workspace.video_drafts.clone();
+        return match video_draft::command(&mut state.workspace, &state.user, &input)
+            .and_then(|v| { if input["action"] != "get" { video_draft::persist(&state.workspace)?; } Ok(v) }) {
+            Ok(v) => ok_json(&v),
+            Err(e) => { state.workspace.video_drafts = before; err_reply(&e) }
+        };
     }
     if path == "/desktop/status" {
         if req.method != "GET" {
@@ -3458,6 +3493,20 @@ fn route_book(
         }
     }
     match leaf {
+        "video_context" => {
+            if !book_dir.join("video_source_manifest.json").is_file() { return ok_json(&Value::Null); }
+            let result = (|| -> Result<Value, ToolError> {
+                let (manifest, _) = book.load_video_source(book_dir)?;
+                let time_base = video_frames::presentation_time_base(book_dir, &manifest.source)?;
+                let mut view = video_publication::projection(book, book_dir)?;
+                view["time_base"] = json!(time_base); Ok(view)
+            })();
+            match result { Ok(v) => ok_json(&v), Err(e) => err_reply(&e) }
+        },
+        "video_transcript" => match book.load_video_source(book_dir) {
+            Ok((manifest, map)) => ok_json(&json!({"material":manifest.material,"source":manifest.source,"coverage":manifest.coverage,"map":map})),
+            Err(e) => err_reply(&e),
+        },
         "source_fingerprint" => route_source_fingerprint(book, book_dir),
         "library" => {
             let root = book_library_root(book_dir);
@@ -6111,6 +6160,15 @@ fn route_build_workbench(book: &Book, book_dir: &Path) -> Reply {
 }
 
 fn build_workbench_snapshot(book: &Book, book_dir: &Path, maintain_jobs: bool) -> Reply {
+    if book_dir.join("video_source_manifest.json").exists() {
+        return match book.load_video_source(book_dir) {
+            Ok(_) => ok_json(&json!({"version":"build_workbench_snapshot.v1","book_id":book.base.book_id,
+                "readiness":{"route":"reader","status":"transcript_ready","english_searchable":true,
+                "semantic":"pending","reasons":[],"stages":{"video_transcript":{"status":"done"},
+                "graph":{"status":"pending"},"discourse":{"status":"pending"}}},"jobs":[]})),
+            Err(e) => err_reply(&e),
+        };
+    }
     if is_current_existing_technical_book(book, book_dir) {
         return route_existing_technical_book_workbench(book, book_dir);
     }
@@ -11598,11 +11656,13 @@ fn workspace_source_binding(
     let turn = user.agent_history
         .sessions
         .iter()
-        .filter(|session| session.book_id == workspace.book.base.book_id)
+        .filter(|session| session.book_id == workspace.book.base.book_id || session.turns.iter().any(|turn|
+            turn.turn_id == request.turn_id && turn.source_bindings.iter().any(|binding|
+                binding.source_ref_id == request.source_ref_id && binding.media.is_some())))
         .flat_map(|session| session.turns.iter())
         .find(|turn| turn.turn_id == request.turn_id);
     if let Some(turn) = turn {
-        if turn.published_book_ref.as_ref() != workspace.publication.as_ref().map(|p| &p.reference) {
+        if !turn.source_bindings.iter().any(|b| b.source_ref_id == request.source_ref_id && b.media.is_some()) && turn.published_book_ref.as_ref() != workspace.publication.as_ref().map(|p| &p.reference) {
             return Err(user_storage_paths::error("PUBLICATION_BINDING_REQUIRED", "not_found", "Open the original publication to read this source; no replacement is selected"));
         }
     }
@@ -11644,8 +11704,9 @@ fn route_agent_source_resolve(state: &AppState, body: &str) -> Reply {
         Ok(binding) => binding,
         Err(error) => return err_reply(&error),
     };
+    if binding.media.is_some() { return ok_json(&video_source::local_popup(&state.workspace, &request, &binding)); }
     match state.workspace.book.resolve_source(
-        &binding.evidence_range,
+        binding.evidence_range.as_ref().expect("text binding"),
         "zh-CN",
         Some(&binding.evidence_text_digest),
     ) {
@@ -11683,9 +11744,10 @@ fn route_agent_source_open(state: &mut AppState, body: &str, now: &str) -> Reply
         Ok(binding) => binding,
         Err(error) => return err_reply(&error),
     };
+    let Some(range) = binding.evidence_range.as_ref() else { return validation("MEDIA_SOURCE_NAVIGATION", "Use the saved media position"); };
     if state.workspace.book
         .resolve_source(
-            &binding.evidence_range,
+            range,
             "zh-CN",
             Some(&binding.evidence_text_digest),
         )
@@ -11700,7 +11762,7 @@ fn route_agent_source_open(state: &mut AppState, body: &str, now: &str) -> Reply
     if let Err(error) = state.workspace.reader.goto_lid(
         &state.workspace.book,
         &mut state.user.store,
-        &binding.evidence_range.start_lid,
+        &range.start_lid,
         now,
     ) {
         return err_reply(&error);
@@ -11717,6 +11779,7 @@ fn route_agent_source_open(state: &mut AppState, body: &str, now: &str) -> Reply
 /// `OuterOutcome{answer, incomplete, effects, trace, ...}`;agent 动作即时驱动共享 reader 视口,
 /// effects 供前端可撤销提议、trace 供查询踪迹展示。provider 错经 run 映射 `PROVIDER_ERROR` 透传不降级。
 struct ValidatedAgentInput {
+    video_question: Option<base_schema::VideoQuestionContext>,
     request: Value, message: String, display_user: String, question_anchor_lid: Option<String>,
     question_quote: Option<AskQuote>, presentation_follow_up: Option<runtime::presentation::PresentationFollowUp>,
     agent_message: String, presentation_context: Option<String>,
@@ -11817,8 +11880,9 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
     let presentation_context = presentation_follow_up.as_ref()
         .map(|receipt| presentation_api::follow_up_context(&private_book_context::PrivateBookContext { user, book: &workspace.book, book_dir: &workspace.book_dir, messages: &workspace.messages, selected_chat: workspace.selected_chat.as_deref() }, receipt))
         .transpose().map_err(|error| err_reply(&error))?;
+    let video_question = video_draft::for_input(workspace, user, &v).map_err(|e| err_reply(&e))?;
     let message = msg.to_string();
-    Ok(ValidatedAgentInput { request: v, message, display_user, question_anchor_lid, question_quote,
+    Ok(ValidatedAgentInput { video_question, request: v, message, display_user, question_anchor_lid, question_quote,
         presentation_follow_up, agent_message, presentation_context })
 }
 
@@ -11827,7 +11891,7 @@ fn prepare_agent_chat(
     body: &str,
     now: &str,
 ) -> Result<agent_run::PreparedAgentChat, Reply> {
-    let ValidatedAgentInput { request: v, message, display_user, question_anchor_lid, question_quote,
+    let ValidatedAgentInput { video_question, request: v, message, display_user, question_anchor_lid, question_quote,
         presentation_follow_up, mut agent_message, presentation_context } = validate_agent_input(&mut state.user, &state.workspace, body)?;
     let msg = message.as_str();
     let current_book_id = state.workspace.book.base.book_id.clone();
@@ -11841,11 +11905,18 @@ fn prepare_agent_chat(
         v.get("teaching_ref").and_then(Value::as_str).map(str::to_string),
         v.get("goal_id").and_then(|value| value.as_str()),
         v.get("goal_action").and_then(|value| value.as_str()),
+        video_question.clone(),
         now,
     ) {
         Ok(turn_ref) => turn_ref,
         Err(error) => return Err(err_reply(&error)),
     };
+    if let Some(question) = &video_question {
+        state.workspace.video_drafts.retain(|_, d| d.context.draft_id != question.draft_id);
+        if let Err(error) = video_draft::persist(&state.workspace) {
+            eprintln!("video draft handoff checkpoint: {}", error.message);
+        }
+    }
     let tutor = match teaching::prepare(&state.private_context(), &turn_ref, &v, now) {
         Ok(tutor) => tutor,
         Err(error) => {
@@ -11858,7 +11929,8 @@ fn prepare_agent_chat(
         }
     };
     session_runtime::link_teaching(&mut state.user, &turn_ref, now).map_err(|e| err_reply(&e))?;
-    let scope = run_scope::RunScope::capture(state, &turn_ref, msg, question_quote, presentation_follow_up);
+    let mut scope = run_scope::RunScope::capture(state, &turn_ref, msg, question_quote, presentation_follow_up);
+    scope.reader_input.video_question = video_question;
     if scope.presentation_follow_up.is_some() {
         agent_message.push_str(presentation_context.as_deref().expect("validated presentation context"));
     }
@@ -12794,6 +12866,9 @@ pub fn load_session(path: &Option<PathBuf>) -> Option<SessionState> {
 
 #[cfg(test)]
 mod tests {
+    mod video_draft_tests;
+    mod video_publication_tests;
+    mod video_source_tests;
     mod adm10_tests;
     mod adm2_tests;
     mod inv2_tests;
@@ -20813,6 +20888,7 @@ unchanged after training concludes";
         let book_id = state.workspace.book.base.book_id.clone();
         let turns = (1..=3)
             .map(|ordinal| AgentChatTurn {
+                video_question: None,
                 domain: Default::default(),
                 admission_input: None,
                 published_book_ref: None,
@@ -20854,6 +20930,7 @@ unchanged after training concludes";
             created_at: "created".into(),
             updated_at: "updated".into(),
             turns: vec![AgentChatTurn {
+                video_question: None,
                 domain: Default::default(),
                 admission_input: None,
                 published_book_ref: None,
@@ -21412,9 +21489,10 @@ unchanged after training concludes";
             .unwrap();
         let source_ref_id = "source_ref_server_fixture".to_string();
         let binding = runtime::orchestrator::SourceBinding {
+            media: None,
             source_ref_id: source_ref_id.clone(),
             book_id: state.workspace.book.base.book_id.clone(),
-            evidence_range,
+            evidence_range: Some(evidence_range),
             evidence_text_digest: resolved.evidence_text_digest,
             label_snapshot: resolved.label.clone(),
             preview_snapshot: resolved.preview,
@@ -22984,6 +23062,7 @@ Version 1.2 and bare 1.1 stay unchanged.
         let mut history = AgentHistory::default();
         let mut session = new_agent_session("book", "t0", 0);
         session.turns.push(AgentChatTurn {
+                video_question: None,
                 domain: Default::default(),
                 admission_input: None,
                 published_book_ref: None,
@@ -23982,3 +24061,5 @@ Version 1.2 and bare 1.1 stay unchanged.
     }
 }
 
+
+mod video_source;

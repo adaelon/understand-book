@@ -1,0 +1,27 @@
+{
+  "status": "passed",
+  "runtime": {
+    "video": 7,
+    "tool_registry": 18,
+    "tool_exposure": 27
+  },
+  "server": {
+    "video_audio": 3,
+    "video_source": 2
+  },
+  "web": {
+    "MediaSourcePreview": 4
+  },
+  "total_unique": 61,
+  "web_typecheck": "passed",
+  "server_check": "passed",
+  "build": [
+    "server",
+    "video_audio_probe"
+  ],
+  "existing_warnings": [
+    "ts-rs serde attribute warnings",
+    "server dead_code warnings"
+  ],
+  "detected_and_fixed": "Audio success without matching transcript now opens source.present before the next model request."
+}

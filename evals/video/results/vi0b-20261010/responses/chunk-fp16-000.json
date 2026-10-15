@@ -1,0 +1,1037 @@
+{
+  "request": {
+    "job": {
+      "id": "chunk-fp16-000",
+      "audio_path": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi0b\\audio\\chunk-fp16-000.wav",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "source_revision": "vq27-local-20261008",
+      "source_start_ms": 550000.0,
+      "duration_ms": 20000.0,
+      "purpose": "chunk_recovery_experiment",
+      "origin": "clips/fp16.wav",
+      "core_start_ms": 550000,
+      "core_end_ms": 568000
+    },
+    "profile": {
+      "model": "small.en",
+      "device": "cpu",
+      "compute_type": "int8",
+      "cpu_threads": 8,
+      "transcribe": {
+        "language": "en",
+        "task": "transcribe",
+        "beam_size": 5,
+        "temperature": 0,
+        "word_timestamps": true,
+        "condition_on_previous_text": false,
+        "vad_filter": true,
+        "vad_parameters": {
+          "min_silence_duration_ms": 500
+        }
+      },
+      "versions": {
+        "faster-whisper": "1.2.1",
+        "ctranslate2": "4.8.2",
+        "av": "18.1.0",
+        "onnxruntime": "1.31.0"
+      },
+      "model_directory": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\.worktree-local\\whisper-models\\small.en"
+    }
+  },
+  "status": "completed",
+  "started_at": "2026-10-10T02:48:47.627191+00:00",
+  "raw_response": {
+    "segments": [
+      {
+        "id": 1,
+        "seek": 0,
+        "start": 0.0,
+        "end": 4.52,
+        "text": " 1 e minus 8, denser than that is actually just 0.",
+        "tokens": [
+          50363,
+          352,
+          304,
+          20208,
+          807,
+          11,
+          29509,
+          263,
+          621,
+          326,
+          318,
+          1682,
+          655,
+          657,
+          13,
+          50629
+        ],
+        "avg_logprob": -0.32459094594506654,
+        "compression_ratio": 1.542483660130719,
+        "no_speech_prob": 0.0009435088140890002,
+        "words": [
+          {
+            "start": 0.0,
+            "end": 0.42,
+            "word": " 1",
+            "probability": 0.3042072057723999
+          },
+          {
+            "start": 0.42,
+            "end": 0.78,
+            "word": " e",
+            "probability": 0.2463560402393341
+          },
+          {
+            "start": 0.78,
+            "end": 1.66,
+            "word": " minus",
+            "probability": 0.6927660703659058
+          },
+          {
+            "start": 1.66,
+            "end": 2.04,
+            "word": " 8,",
+            "probability": 0.9339906573295593
+          },
+          {
+            "start": 2.24,
+            "end": 2.8,
+            "word": " denser",
+            "probability": 0.6477177292108536
+          },
+          {
+            "start": 2.8,
+            "end": 3.14,
+            "word": " than",
+            "probability": 0.9036411046981812
+          },
+          {
+            "start": 3.14,
+            "end": 3.62,
+            "word": " that",
+            "probability": 0.6250886917114258
+          },
+          {
+            "start": 3.62,
+            "end": 3.78,
+            "word": " is",
+            "probability": 0.9606453776359558
+          },
+          {
+            "start": 3.78,
+            "end": 4.08,
+            "word": " actually",
+            "probability": 0.9894888997077942
+          },
+          {
+            "start": 4.08,
+            "end": 4.24,
+            "word": " just",
+            "probability": 0.9938169121742249
+          },
+          {
+            "start": 4.24,
+            "end": 4.52,
+            "word": " 0.",
+            "probability": 0.6977441906929016
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 2,
+        "seek": 0,
+        "start": 5.55,
+        "end": 7.51,
+        "text": " So you can't really represent very big numbers,",
+        "tokens": [
+          50629,
+          1406,
+          345,
+          460,
+          470,
+          1107,
+          2380,
+          845,
+          1263,
+          3146,
+          11,
+          50729
+        ],
+        "avg_logprob": -0.32459094594506654,
+        "compression_ratio": 1.542483660130719,
+        "no_speech_prob": 0.0009435088140890002,
+        "words": [
+          {
+            "start": 5.55,
+            "end": 5.75,
+            "word": " So",
+            "probability": 0.974522054195404
+          },
+          {
+            "start": 5.75,
+            "end": 5.83,
+            "word": " you",
+            "probability": 0.8099666237831116
+          },
+          {
+            "start": 5.83,
+            "end": 6.07,
+            "word": " can't",
+            "probability": 0.9765070378780365
+          },
+          {
+            "start": 6.07,
+            "end": 6.23,
+            "word": " really",
+            "probability": 0.9970222115516663
+          },
+          {
+            "start": 6.23,
+            "end": 6.73,
+            "word": " represent",
+            "probability": 0.9978798627853394
+          },
+          {
+            "start": 6.73,
+            "end": 6.97,
+            "word": " very",
+            "probability": 0.9908740520477295
+          },
+          {
+            "start": 6.97,
+            "end": 7.23,
+            "word": " big",
+            "probability": 0.9984524250030518
+          },
+          {
+            "start": 7.23,
+            "end": 7.51,
+            "word": " numbers,",
+            "probability": 0.9981860518455505
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 3,
+        "seek": 0,
+        "start": 7.63,
+        "end": 9.53,
+        "text": " and you can't represent very small numbers.",
+        "tokens": [
+          50729,
+          290,
+          345,
+          460,
+          470,
+          2380,
+          845,
+          1402,
+          3146,
+          13,
+          50899
+        ],
+        "avg_logprob": -0.32459094594506654,
+        "compression_ratio": 1.542483660130719,
+        "no_speech_prob": 0.0009435088140890002,
+        "words": [
+          {
+            "start": 7.63,
+            "end": 7.69,
+            "word": " and",
+            "probability": 0.9435102343559265
+          },
+          {
+            "start": 7.69,
+            "end": 7.77,
+            "word": " you",
+            "probability": 0.994654655456543
+          },
+          {
+            "start": 7.77,
+            "end": 8.19,
+            "word": " can't",
+            "probability": 0.815731942653656
+          },
+          {
+            "start": 8.19,
+            "end": 8.31,
+            "word": " represent",
+            "probability": 0.9957602620124817
+          },
+          {
+            "start": 8.31,
+            "end": 8.59,
+            "word": " very",
+            "probability": 0.9950893521308899
+          },
+          {
+            "start": 8.59,
+            "end": 9.03,
+            "word": " small",
+            "probability": 0.9990549683570862
+          },
+          {
+            "start": 9.03,
+            "end": 9.53,
+            "word": " numbers.",
+            "probability": 0.999160885810852
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 4,
+        "seek": 0,
+        "start": 11.71,
+        "end": 14.47,
+        "text": " And the reason is that this exponent is, you know,",
+        "tokens": [
+          50899,
+          843,
+          262,
+          1738,
+          318,
+          326,
+          428,
+          28622,
+          318,
+          11,
+          345,
+          760,
+          11,
+          51041
+        ],
+        "avg_logprob": -0.32459094594506654,
+        "compression_ratio": 1.542483660130719,
+        "no_speech_prob": 0.0009435088140890002,
+        "words": [
+          {
+            "start": 11.71,
+            "end": 11.83,
+            "word": " And",
+            "probability": 0.828022837638855
+          },
+          {
+            "start": 11.83,
+            "end": 12.09,
+            "word": " the",
+            "probability": 0.9518967270851135
+          },
+          {
+            "start": 12.09,
+            "end": 12.23,
+            "word": " reason",
+            "probability": 0.9988935589790344
+          },
+          {
+            "start": 12.23,
+            "end": 12.51,
+            "word": " is",
+            "probability": 0.9969078898429871
+          },
+          {
+            "start": 12.51,
+            "end": 12.69,
+            "word": " that",
+            "probability": 0.9910366535186768
+          },
+          {
+            "start": 12.69,
+            "end": 12.87,
+            "word": " this",
+            "probability": 0.9818632006645203
+          },
+          {
+            "start": 12.87,
+            "end": 13.35,
+            "word": " exponent",
+            "probability": 0.9957941770553589
+          },
+          {
+            "start": 13.35,
+            "end": 13.87,
+            "word": " is,",
+            "probability": 0.9500200748443604
+          },
+          {
+            "start": 13.87,
+            "end": 14.35,
+            "word": " you",
+            "probability": 0.8341538310050964
+          },
+          {
+            "start": 14.35,
+            "end": 14.47,
+            "word": " know,",
+            "probability": 0.9976271986961365
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 5,
+        "seek": 0,
+        "start": 14.61,
+        "end": 19.24,
+        "text": " it's only, you know, five bits of exponent.",
+        "tokens": [
+          51041,
+          340,
+          338,
+          691,
+          11,
+          345,
+          760,
+          11,
+          1936,
+          10340,
+          286,
+          28622,
+          13,
+          51339
+        ],
+        "avg_logprob": -0.32459094594506654,
+        "compression_ratio": 1.542483660130719,
+        "no_speech_prob": 0.0009435088140890002,
+        "words": [
+          {
+            "start": 14.61,
+            "end": 14.91,
+            "word": " it's",
+            "probability": 0.9773814082145691
+          },
+          {
+            "start": 14.91,
+            "end": 15.23,
+            "word": " only,",
+            "probability": 0.9944585561752319
+          },
+          {
+            "start": 15.7,
+            "end": 16.34,
+            "word": " you",
+            "probability": 0.9914954900741577
+          },
+          {
+            "start": 16.34,
+            "end": 16.56,
+            "word": " know,",
+            "probability": 0.9989007711410522
+          },
+          {
+            "start": 16.6,
+            "end": 17.44,
+            "word": " five",
+            "probability": 0.5359551906585693
+          },
+          {
+            "start": 17.44,
+            "end": 17.76,
+            "word": " bits",
+            "probability": 0.9928200840950012
+          },
+          {
+            "start": 17.76,
+            "end": 18.28,
+            "word": " of",
+            "probability": 0.997165858745575
+          },
+          {
+            "start": 18.28,
+            "end": 19.24,
+            "word": " exponent.",
+            "probability": 0.5329530835151672
+          }
+        ],
+        "temperature": 0
+      }
+    ],
+    "info": {
+      "language": "en",
+      "language_probability": 1,
+      "duration": 20.0,
+      "duration_after_vad": 19.04,
+      "all_language_probs": null,
+      "transcription_options": {
+        "beam_size": 5,
+        "best_of": 5,
+        "patience": 1,
+        "length_penalty": 1,
+        "repetition_penalty": 1,
+        "no_repeat_ngram_size": 0,
+        "log_prob_threshold": -1.0,
+        "no_speech_threshold": 0.6,
+        "compression_ratio_threshold": 2.4,
+        "condition_on_previous_text": false,
+        "prompt_reset_on_temperature": 0.5,
+        "temperatures": [
+          0
+        ],
+        "initial_prompt": null,
+        "prefix": null,
+        "suppress_blank": true,
+        "suppress_tokens": [
+          1,
+          2,
+          7,
+          8,
+          9,
+          10,
+          14,
+          25,
+          26,
+          27,
+          28,
+          29,
+          31,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          90,
+          91,
+          92,
+          93,
+          357,
+          366,
+          438,
+          532,
+          685,
+          705,
+          796,
+          930,
+          1058,
+          1220,
+          1267,
+          1279,
+          1303,
+          1343,
+          1377,
+          1391,
+          1635,
+          1782,
+          1875,
+          2162,
+          2361,
+          2488,
+          3467,
+          4008,
+          4211,
+          4600,
+          4808,
+          5299,
+          5855,
+          6329,
+          7203,
+          9609,
+          9959,
+          10563,
+          10786,
+          11420,
+          11709,
+          11907,
+          13163,
+          13697,
+          13700,
+          14808,
+          15306,
+          16410,
+          16791,
+          17992,
+          19203,
+          19510,
+          20724,
+          22305,
+          22935,
+          27007,
+          30109,
+          30420,
+          33409,
+          34949,
+          40283,
+          40493,
+          40549,
+          47282,
+          49146,
+          50257,
+          50357,
+          50358,
+          50359,
+          50360,
+          50361
+        ],
+        "without_timestamps": false,
+        "max_initial_timestamp": 1.0,
+        "word_timestamps": true,
+        "prepend_punctuations": "\"'“¿([{-",
+        "append_punctuations": "\"'.。,，!！?？:：”)]}、",
+        "multilingual": false,
+        "max_new_tokens": null,
+        "clip_timestamps": [
+          0.0
+        ],
+        "hallucination_silence_threshold": null,
+        "hotwords": null
+      },
+      "vad_options": {
+        "threshold": 0.5,
+        "neg_threshold": null,
+        "min_speech_duration_ms": 0,
+        "max_speech_duration_s": "Infinity",
+        "min_silence_duration_ms": 500,
+        "speech_pad_ms": 400
+      }
+    }
+  },
+  "segments": [
+    {
+      "text": " 1 e minus 8, denser than that is actually just 0.",
+      "start_ms": 0.0,
+      "end_ms": 4520.0,
+      "words": [
+        {
+          "text": " 1",
+          "start_ms": 0.0,
+          "end_ms": 420.0,
+          "source_start_ms": 550000.0,
+          "source_end_ms": 550420.0,
+          "probability": 0.3042072057723999,
+          "owned_by_core": true
+        },
+        {
+          "text": " e",
+          "start_ms": 420.0,
+          "end_ms": 780.0,
+          "source_start_ms": 550420.0,
+          "source_end_ms": 550780.0,
+          "probability": 0.2463560402393341,
+          "owned_by_core": true
+        },
+        {
+          "text": " minus",
+          "start_ms": 780.0,
+          "end_ms": 1660.0,
+          "source_start_ms": 550780.0,
+          "source_end_ms": 551660.0,
+          "probability": 0.6927660703659058,
+          "owned_by_core": true
+        },
+        {
+          "text": " 8,",
+          "start_ms": 1660.0,
+          "end_ms": 2040.0,
+          "source_start_ms": 551660.0,
+          "source_end_ms": 552040.0,
+          "probability": 0.9339906573295593,
+          "owned_by_core": true
+        },
+        {
+          "text": " denser",
+          "start_ms": 2240.0,
+          "end_ms": 2800.0,
+          "source_start_ms": 552240.0,
+          "source_end_ms": 552800.0,
+          "probability": 0.6477177292108536,
+          "owned_by_core": true
+        },
+        {
+          "text": " than",
+          "start_ms": 2800.0,
+          "end_ms": 3140.0,
+          "source_start_ms": 552800.0,
+          "source_end_ms": 553140.0,
+          "probability": 0.9036411046981812,
+          "owned_by_core": true
+        },
+        {
+          "text": " that",
+          "start_ms": 3140.0,
+          "end_ms": 3620.0,
+          "source_start_ms": 553140.0,
+          "source_end_ms": 553620.0,
+          "probability": 0.6250886917114258,
+          "owned_by_core": true
+        },
+        {
+          "text": " is",
+          "start_ms": 3620.0,
+          "end_ms": 3780.0,
+          "source_start_ms": 553620.0,
+          "source_end_ms": 553780.0,
+          "probability": 0.9606453776359558,
+          "owned_by_core": true
+        },
+        {
+          "text": " actually",
+          "start_ms": 3780.0,
+          "end_ms": 4080.0,
+          "source_start_ms": 553780.0,
+          "source_end_ms": 554080.0,
+          "probability": 0.9894888997077942,
+          "owned_by_core": true
+        },
+        {
+          "text": " just",
+          "start_ms": 4080.0,
+          "end_ms": 4240.0,
+          "source_start_ms": 554080.0,
+          "source_end_ms": 554240.0,
+          "probability": 0.9938169121742249,
+          "owned_by_core": true
+        },
+        {
+          "text": " 0.",
+          "start_ms": 4240.0,
+          "end_ms": 4520.0,
+          "source_start_ms": 554240.0,
+          "source_end_ms": 554520.0,
+          "probability": 0.6977441906929016,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 550000.0,
+      "source_end_ms": 554520.0
+    },
+    {
+      "text": " So you can't really represent very big numbers,",
+      "start_ms": 5550.0,
+      "end_ms": 7510.0,
+      "words": [
+        {
+          "text": " So",
+          "start_ms": 5550.0,
+          "end_ms": 5750.0,
+          "source_start_ms": 555550.0,
+          "source_end_ms": 555750.0,
+          "probability": 0.974522054195404,
+          "owned_by_core": true
+        },
+        {
+          "text": " you",
+          "start_ms": 5750.0,
+          "end_ms": 5830.0,
+          "source_start_ms": 555750.0,
+          "source_end_ms": 555830.0,
+          "probability": 0.8099666237831116,
+          "owned_by_core": true
+        },
+        {
+          "text": " can't",
+          "start_ms": 5830.0,
+          "end_ms": 6070.0,
+          "source_start_ms": 555830.0,
+          "source_end_ms": 556070.0,
+          "probability": 0.9765070378780365,
+          "owned_by_core": true
+        },
+        {
+          "text": " really",
+          "start_ms": 6070.0,
+          "end_ms": 6230.0,
+          "source_start_ms": 556070.0,
+          "source_end_ms": 556230.0,
+          "probability": 0.9970222115516663,
+          "owned_by_core": true
+        },
+        {
+          "text": " represent",
+          "start_ms": 6230.0,
+          "end_ms": 6730.0,
+          "source_start_ms": 556230.0,
+          "source_end_ms": 556730.0,
+          "probability": 0.9978798627853394,
+          "owned_by_core": true
+        },
+        {
+          "text": " very",
+          "start_ms": 6730.0,
+          "end_ms": 6970.0,
+          "source_start_ms": 556730.0,
+          "source_end_ms": 556970.0,
+          "probability": 0.9908740520477295,
+          "owned_by_core": true
+        },
+        {
+          "text": " big",
+          "start_ms": 6970.0,
+          "end_ms": 7230.0,
+          "source_start_ms": 556970.0,
+          "source_end_ms": 557230.0,
+          "probability": 0.9984524250030518,
+          "owned_by_core": true
+        },
+        {
+          "text": " numbers,",
+          "start_ms": 7230.0,
+          "end_ms": 7510.0,
+          "source_start_ms": 557230.0,
+          "source_end_ms": 557510.0,
+          "probability": 0.9981860518455505,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 555550.0,
+      "source_end_ms": 557510.0
+    },
+    {
+      "text": " and you can't represent very small numbers.",
+      "start_ms": 7630.0,
+      "end_ms": 9530.0,
+      "words": [
+        {
+          "text": " and",
+          "start_ms": 7630.0,
+          "end_ms": 7690.0,
+          "source_start_ms": 557630.0,
+          "source_end_ms": 557690.0,
+          "probability": 0.9435102343559265,
+          "owned_by_core": true
+        },
+        {
+          "text": " you",
+          "start_ms": 7690.0,
+          "end_ms": 7770.0,
+          "source_start_ms": 557690.0,
+          "source_end_ms": 557770.0,
+          "probability": 0.994654655456543,
+          "owned_by_core": true
+        },
+        {
+          "text": " can't",
+          "start_ms": 7770.0,
+          "end_ms": 8189.999999999999,
+          "source_start_ms": 557770.0,
+          "source_end_ms": 558190.0,
+          "probability": 0.815731942653656,
+          "owned_by_core": true
+        },
+        {
+          "text": " represent",
+          "start_ms": 8189.999999999999,
+          "end_ms": 8310.0,
+          "source_start_ms": 558190.0,
+          "source_end_ms": 558310.0,
+          "probability": 0.9957602620124817,
+          "owned_by_core": true
+        },
+        {
+          "text": " very",
+          "start_ms": 8310.0,
+          "end_ms": 8590.0,
+          "source_start_ms": 558310.0,
+          "source_end_ms": 558590.0,
+          "probability": 0.9950893521308899,
+          "owned_by_core": true
+        },
+        {
+          "text": " small",
+          "start_ms": 8590.0,
+          "end_ms": 9030.0,
+          "source_start_ms": 558590.0,
+          "source_end_ms": 559030.0,
+          "probability": 0.9990549683570862,
+          "owned_by_core": true
+        },
+        {
+          "text": " numbers.",
+          "start_ms": 9030.0,
+          "end_ms": 9530.0,
+          "source_start_ms": 559030.0,
+          "source_end_ms": 559530.0,
+          "probability": 0.999160885810852,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 557630.0,
+      "source_end_ms": 559530.0
+    },
+    {
+      "text": " And the reason is that this exponent is, you know,",
+      "start_ms": 11710.0,
+      "end_ms": 14470.0,
+      "words": [
+        {
+          "text": " And",
+          "start_ms": 11710.0,
+          "end_ms": 11830.0,
+          "source_start_ms": 561710.0,
+          "source_end_ms": 561830.0,
+          "probability": 0.828022837638855,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 11830.0,
+          "end_ms": 12090.0,
+          "source_start_ms": 561830.0,
+          "source_end_ms": 562090.0,
+          "probability": 0.9518967270851135,
+          "owned_by_core": true
+        },
+        {
+          "text": " reason",
+          "start_ms": 12090.0,
+          "end_ms": 12230.0,
+          "source_start_ms": 562090.0,
+          "source_end_ms": 562230.0,
+          "probability": 0.9988935589790344,
+          "owned_by_core": true
+        },
+        {
+          "text": " is",
+          "start_ms": 12230.0,
+          "end_ms": 12510.0,
+          "source_start_ms": 562230.0,
+          "source_end_ms": 562510.0,
+          "probability": 0.9969078898429871,
+          "owned_by_core": true
+        },
+        {
+          "text": " that",
+          "start_ms": 12510.0,
+          "end_ms": 12690.0,
+          "source_start_ms": 562510.0,
+          "source_end_ms": 562690.0,
+          "probability": 0.9910366535186768,
+          "owned_by_core": true
+        },
+        {
+          "text": " this",
+          "start_ms": 12690.0,
+          "end_ms": 12870.0,
+          "source_start_ms": 562690.0,
+          "source_end_ms": 562870.0,
+          "probability": 0.9818632006645203,
+          "owned_by_core": true
+        },
+        {
+          "text": " exponent",
+          "start_ms": 12870.0,
+          "end_ms": 13350.0,
+          "source_start_ms": 562870.0,
+          "source_end_ms": 563350.0,
+          "probability": 0.9957941770553589,
+          "owned_by_core": true
+        },
+        {
+          "text": " is,",
+          "start_ms": 13350.0,
+          "end_ms": 13870.0,
+          "source_start_ms": 563350.0,
+          "source_end_ms": 563870.0,
+          "probability": 0.9500200748443604,
+          "owned_by_core": true
+        },
+        {
+          "text": " you",
+          "start_ms": 13870.0,
+          "end_ms": 14350.0,
+          "source_start_ms": 563870.0,
+          "source_end_ms": 564350.0,
+          "probability": 0.8341538310050964,
+          "owned_by_core": true
+        },
+        {
+          "text": " know,",
+          "start_ms": 14350.0,
+          "end_ms": 14470.0,
+          "source_start_ms": 564350.0,
+          "source_end_ms": 564470.0,
+          "probability": 0.9976271986961365,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 561710.0,
+      "source_end_ms": 564470.0
+    },
+    {
+      "text": " it's only, you know, five bits of exponent.",
+      "start_ms": 14610.0,
+      "end_ms": 19240.0,
+      "words": [
+        {
+          "text": " it's",
+          "start_ms": 14610.0,
+          "end_ms": 14910.0,
+          "source_start_ms": 564610.0,
+          "source_end_ms": 564910.0,
+          "probability": 0.9773814082145691,
+          "owned_by_core": true
+        },
+        {
+          "text": " only,",
+          "start_ms": 14910.0,
+          "end_ms": 15230.0,
+          "source_start_ms": 564910.0,
+          "source_end_ms": 565230.0,
+          "probability": 0.9944585561752319,
+          "owned_by_core": true
+        },
+        {
+          "text": " you",
+          "start_ms": 15700.0,
+          "end_ms": 16340.0,
+          "source_start_ms": 565700.0,
+          "source_end_ms": 566340.0,
+          "probability": 0.9914954900741577,
+          "owned_by_core": true
+        },
+        {
+          "text": " know,",
+          "start_ms": 16340.0,
+          "end_ms": 16560.0,
+          "source_start_ms": 566340.0,
+          "source_end_ms": 566560.0,
+          "probability": 0.9989007711410522,
+          "owned_by_core": true
+        },
+        {
+          "text": " five",
+          "start_ms": 16600.0,
+          "end_ms": 17440.0,
+          "source_start_ms": 566600.0,
+          "source_end_ms": 567440.0,
+          "probability": 0.5359551906585693,
+          "owned_by_core": true
+        },
+        {
+          "text": " bits",
+          "start_ms": 17440.0,
+          "end_ms": 17760.0,
+          "source_start_ms": 567440.0,
+          "source_end_ms": 567760.0,
+          "probability": 0.9928200840950012,
+          "owned_by_core": true
+        },
+        {
+          "text": " of",
+          "start_ms": 17760.0,
+          "end_ms": 18280.0,
+          "source_start_ms": 567760.0,
+          "source_end_ms": 568280.0,
+          "probability": 0.997165858745575,
+          "owned_by_core": false
+        },
+        {
+          "text": " exponent.",
+          "start_ms": 18280.0,
+          "end_ms": 19240.0,
+          "source_start_ms": 568280.0,
+          "source_end_ms": 569240.0,
+          "probability": 0.5329530835151672,
+          "owned_by_core": false
+        }
+      ],
+      "source_start_ms": 564610.0,
+      "source_end_ms": 569240.0
+    }
+  ],
+  "text": "1 e minus 8, denser than that is actually just 0. So you can't really represent very big numbers, and you can't represent very small numbers. And the reason is that this exponent is, you know, it's only, you know, five bits of exponent.",
+  "observation": "machine_audio_transcription_not_listening_truth",
+  "elapsed_ms": 4983
+}

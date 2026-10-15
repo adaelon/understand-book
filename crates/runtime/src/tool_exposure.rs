@@ -1259,7 +1259,7 @@ fn classify(
     use ToolHandlerId as Handler;
 
     match handler {
-        Handler::PresentationAuthor => (Disposition::Deferred, Reason::CapabilityDeferred),
+        Handler::PresentationAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio => (Disposition::Deferred, Reason::CapabilityDeferred),
         Handler::ToolSearch => (Disposition::Direct, Reason::Discovery),
         Handler::GoalUpdate => (Disposition::Direct, Reason::RuntimeOwned),
         Handler::TutorStep => (Disposition::Hidden, Reason::RuntimeOwned),

@@ -1,0 +1,37 @@
+{
+  "status": "passed",
+  "at": "2026-10-11T07:16:52.458Z",
+  "platform": "win32",
+  "browser": "154.0.4258.62",
+  "publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a129cf-c1b7-72c2-bac7-40f9740fda6f"
+  },
+  "installed_server": "D:\\codex-build\\understand-book-vi18\\reader-installed\\server.exe",
+  "built_web": "D:\\codex-build\\understand-book-vi18\\reader-installed\\resources\\web-dist",
+  "system_only_path": "C:\\Windows\\System32",
+  "duration_ms": 4641376.1450000005,
+  "initial_ready_ms": 4381,
+  "positions": [
+    {
+      "time": 555.123,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "time": 1200,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "time": 4620,
+      "width": 1920,
+      "height": 1080
+    }
+  ],
+  "paused_at": 556.14841,
+  "playback_rate_restored": 1.5,
+  "exact_original_byte_range": true,
+  "head_length": "225917024",
+  "page_errors": []
+}

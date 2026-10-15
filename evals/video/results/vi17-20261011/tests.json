@@ -1,0 +1,152 @@
+{
+  "status": "passed",
+  "core_unique_tests": 74,
+  "core_suites": {
+    "video-revision.test.ts": 9,
+    "video-translation.test.ts": 5,
+    "video-visual-units.test.ts": 6,
+    "video-graph.test.ts": 6,
+    "video-discourse.test.ts": 4,
+    "video-correction.test.ts": 11,
+    "video-enrichment.test.ts": 1,
+    "video-transcript.test.ts": 3,
+    "video-contract.test.ts": 29
+  },
+  "server_video": 22,
+  "server_ordinary_source": 5,
+  "total_unique_tests": 101,
+  "ignored_browser_host": 1,
+  "core_typecheck": "passed",
+  "server_and_publisher_build": "passed",
+  "revision_suite": {
+    "numTotalTestSuites": 1,
+    "numPassedTestSuites": 1,
+    "numFailedTestSuites": 0,
+    "numPendingTestSuites": 0,
+    "numTotalTests": 9,
+    "numPassedTests": 9,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numTodoTests": 0,
+    "snapshot": {
+      "added": 0,
+      "failure": false,
+      "filesAdded": 0,
+      "filesRemoved": 0,
+      "filesRemovedList": [],
+      "filesUnmatched": 0,
+      "filesUpdated": 0,
+      "matched": 0,
+      "total": 0,
+      "unchecked": 0,
+      "uncheckedKeysByFile": [],
+      "unmatched": 0,
+      "updated": 0,
+      "didUpdate": false
+    },
+    "startTime": 1791679026519,
+    "success": true,
+    "testResults": [
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [],
+            "fullName": "creates an independent source revision, rebuilds offsets, keeps times and resumes with the same identity",
+            "status": "passed",
+            "title": "creates an independent source revision, rebuilds offsets, keeps times and resumes with the same identity",
+            "duration": 1302.6150000000016,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "recomputes an unedited translation task when its context-only neighbour changed and reuses the independent task",
+            "status": "passed",
+            "title": "recomputes an unedited translation task when its context-only neighbour changed and reuses the independent task",
+            "duration": 1154.3557,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "resumes from its portable frozen inputs even after the original workspace moved",
+            "status": "passed",
+            "title": "resumes from its portable frozen inputs even after the original workspace moved",
+            "duration": 1214.244700000003,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "inherits prior smaller translation cuts and keeps unfinished semantic tasks in the revision plan",
+            "status": "passed",
+            "title": "inherits prior smaller translation cuts and keeps unfinished semantic tasks in the revision plan",
+            "duration": 1480.883099999999,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "rejects unadopted/no-op updates and changed requests to an existing revision workspace",
+            "status": "passed",
+            "title": "rejects unadopted/no-op updates and changed requests to an existing revision workspace",
+            "duration": 697.3927000000003,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "updates visual associations and recomputes a task whose nearby context changed",
+            "status": "passed",
+            "title": "updates visual associations and recomputes a task whose nearby context changed",
+            "duration": 907.8907999999974,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "compares all semantic context including unreferenced transcript, nodes and exact frame bytes",
+            "status": "passed",
+            "title": "compares all semantic context including unreferenced transcript, nodes and exact frame bytes",
+            "duration": 433.95660000000134,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "readmits equivalent semantic results into the new publication and retains their reuse origin",
+            "status": "passed",
+            "title": "readmits equivalent semantic results into the new publication and retains their reuse origin",
+            "duration": 972.1793999999973,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "replacement media is reimported/retranscribed, cannot use old timecodes, and a failed build preserves the old workspace",
+            "status": "passed",
+            "title": "replacement media is reimported/retranscribed, cannot use old timecodes, and a failed build preserves the old workspace",
+            "duration": 4602.454900000004,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791679048008,
+        "endTime": 1791679060774.4548,
+        "status": "passed",
+        "message": "",
+        "name": "E:/allwork/download/agent/understand-book-video-understanding/packages/core/test/video-revision.test.ts"
+      }
+    ]
+  },
+  "commands": [
+    "pnpm --filter @understand-book/core exec vitest run test/video-revision.test.ts test/video-translation.test.ts",
+    "pnpm --filter @understand-book/core exec vitest run test/video-revision.test.ts test/video-visual-units.test.ts test/video-graph.test.ts test/video-discourse.test.ts test/video-correction.test.ts test/video-enrichment.test.ts test/video-transcript.test.ts test/video-contract.test.ts",
+    "pnpm --filter @understand-book/core typecheck",
+    "cargo test -p server --lib video_",
+    "cargo test -p server --lib agent_source_",
+    "cargo build -p server --bin server --bin publish_book",
+    "node --import tsx evals/video/vi17-verify.ts",
+    "node --import tsx evals/video/vi17-replacement.ts"
+  ]
+}

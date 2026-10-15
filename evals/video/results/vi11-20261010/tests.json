@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-10",
+  "core": {
+    "command": "pnpm --filter @understand-book/core test test/video-visual-units.test.ts test/video-executor-media.test.ts test/video-enrichment.test.ts test/video-translation.test.ts",
+    "passed": 16,
+    "failed": 0,
+    "new_visual_tests": 6,
+    "default_threshold_followup_passed": 5,
+    "final_affected_run": {
+      "failed": 0,
+      "files": [
+        "video-visual-units.test.ts",
+        "video-enrichment.test.ts",
+        "video-translation.test.ts"
+      ],
+      "note": "此前已通过的 video-executor-media 4 项未重复运行，独立用例合计 16。批次顺序恢复用例先失败、修复后通过。",
+      "passed": 12
+    }
+  },
+  "server": {
+    "command": "cargo test -p server --lib video_publication",
+    "passed": 5,
+    "failed": 0,
+    "ignored": 1,
+    "ignored_reason": "VI9 browser host helper"
+  },
+  "core_typecheck": "passed",
+  "camera": "real FFmpeg controlled moving panel: passed"
+}

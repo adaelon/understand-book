@@ -1,0 +1,549 @@
+{
+  "request": {
+    "job": {
+      "id": "review-overflow",
+      "audio_path": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi0b\\audio\\review-overflow.wav",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "source_revision": "vq27-local-20261008",
+      "source_start_ms": 578000.0,
+      "duration_ms": 7999.931972789116,
+      "purpose": "question_review",
+      "origin": "clips/fp16.wav"
+    },
+    "profile": {
+      "model": "small.en",
+      "device": "cpu",
+      "compute_type": "int8",
+      "cpu_threads": 8,
+      "transcribe": {
+        "language": "en",
+        "task": "transcribe",
+        "beam_size": 5,
+        "temperature": 0,
+        "word_timestamps": true,
+        "condition_on_previous_text": false,
+        "vad_filter": true,
+        "vad_parameters": {
+          "min_silence_duration_ms": 500
+        }
+      },
+      "versions": {
+        "faster-whisper": "1.2.1",
+        "ctranslate2": "4.8.2",
+        "av": "18.1.0",
+        "onnxruntime": "1.31.0"
+      },
+      "model_directory": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\.worktree-local\\whisper-models\\small.en"
+    }
+  },
+  "status": "completed",
+  "started_at": "2026-10-10T02:48:35.214677+00:00",
+  "raw_response": {
+    "segments": [
+      {
+        "id": 1,
+        "seek": 0,
+        "start": 0.0,
+        "end": 4.26,
+        "text": " back in the day, you will get instability.",
+        "tokens": [
+          50363,
+          736,
+          287,
+          262,
+          1110,
+          11,
+          345,
+          481,
+          651,
+          24842,
+          13,
+          50599
+        ],
+        "avg_logprob": -0.3191548773220607,
+        "compression_ratio": 1.3246753246753247,
+        "no_speech_prob": 0.06918126344680786,
+        "words": [
+          {
+            "start": 0.0,
+            "end": 0.12,
+            "word": " back",
+            "probability": 0.3401508033275604
+          },
+          {
+            "start": 0.12,
+            "end": 0.28,
+            "word": " in",
+            "probability": 0.9906392097473145
+          },
+          {
+            "start": 0.28,
+            "end": 0.66,
+            "word": " the",
+            "probability": 0.9522510170936584
+          },
+          {
+            "start": 0.66,
+            "end": 1.46,
+            "word": " day,",
+            "probability": 0.9192898273468018
+          },
+          {
+            "start": 2.64,
+            "end": 3.0,
+            "word": " you",
+            "probability": 0.9784961342811584
+          },
+          {
+            "start": 3.0,
+            "end": 3.52,
+            "word": " will",
+            "probability": 0.9844022989273071
+          },
+          {
+            "start": 3.52,
+            "end": 3.72,
+            "word": " get",
+            "probability": 0.9987597465515137
+          },
+          {
+            "start": 3.72,
+            "end": 4.26,
+            "word": " instability.",
+            "probability": 0.9967781901359558
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 2,
+        "seek": 0,
+        "start": 5.02,
+        "end": 6.5,
+        "text": " You'll get underflow, you'll get overflow,",
+        "tokens": [
+          50599,
+          921,
+          1183,
+          651,
+          739,
+          11125,
+          11,
+          345,
+          1183,
+          651,
+          30343,
+          11,
+          50703
+        ],
+        "avg_logprob": -0.3191548773220607,
+        "compression_ratio": 1.3246753246753247,
+        "no_speech_prob": 0.06918126344680786,
+        "words": [
+          {
+            "start": 5.02,
+            "end": 5.24,
+            "word": " You'll",
+            "probability": 0.785308301448822
+          },
+          {
+            "start": 5.24,
+            "end": 5.32,
+            "word": " get",
+            "probability": 0.9964041709899902
+          },
+          {
+            "start": 5.32,
+            "end": 5.82,
+            "word": " underflow,",
+            "probability": 0.9185664653778076
+          },
+          {
+            "start": 5.96,
+            "end": 6.08,
+            "word": " you'll",
+            "probability": 0.925973653793335
+          },
+          {
+            "start": 6.08,
+            "end": 6.1,
+            "word": " get",
+            "probability": 0.9913682341575623
+          },
+          {
+            "start": 6.1,
+            "end": 6.5,
+            "word": " overflow,",
+            "probability": 0.9749792218208313
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 3,
+        "seek": 0,
+        "start": 6.8,
+        "end": 7.96,
+        "text": " you'll get NANs.",
+        "tokens": [
+          50703,
+          345,
+          1183,
+          651,
+          399,
+          1565,
+          82,
+          13,
+          50773
+        ],
+        "avg_logprob": -0.3191548773220607,
+        "compression_ratio": 1.3246753246753247,
+        "no_speech_prob": 0.06918126344680786,
+        "words": [
+          {
+            "start": 6.8,
+            "end": 7.0,
+            "word": " you'll",
+            "probability": 0.9948163628578186
+          },
+          {
+            "start": 7.0,
+            "end": 7.22,
+            "word": " get",
+            "probability": 0.992576539516449
+          },
+          {
+            "start": 7.22,
+            "end": 7.96,
+            "word": " NANs.",
+            "probability": 0.6933698455492655
+          }
+        ],
+        "temperature": 0
+      }
+    ],
+    "info": {
+      "language": "en",
+      "language_probability": 1,
+      "duration": 7.9999375,
+      "duration_after_vad": 7.9999375,
+      "all_language_probs": null,
+      "transcription_options": {
+        "beam_size": 5,
+        "best_of": 5,
+        "patience": 1,
+        "length_penalty": 1,
+        "repetition_penalty": 1,
+        "no_repeat_ngram_size": 0,
+        "log_prob_threshold": -1.0,
+        "no_speech_threshold": 0.6,
+        "compression_ratio_threshold": 2.4,
+        "condition_on_previous_text": false,
+        "prompt_reset_on_temperature": 0.5,
+        "temperatures": [
+          0
+        ],
+        "initial_prompt": null,
+        "prefix": null,
+        "suppress_blank": true,
+        "suppress_tokens": [
+          1,
+          2,
+          7,
+          8,
+          9,
+          10,
+          14,
+          25,
+          26,
+          27,
+          28,
+          29,
+          31,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          90,
+          91,
+          92,
+          93,
+          357,
+          366,
+          438,
+          532,
+          685,
+          705,
+          796,
+          930,
+          1058,
+          1220,
+          1267,
+          1279,
+          1303,
+          1343,
+          1377,
+          1391,
+          1635,
+          1782,
+          1875,
+          2162,
+          2361,
+          2488,
+          3467,
+          4008,
+          4211,
+          4600,
+          4808,
+          5299,
+          5855,
+          6329,
+          7203,
+          9609,
+          9959,
+          10563,
+          10786,
+          11420,
+          11709,
+          11907,
+          13163,
+          13697,
+          13700,
+          14808,
+          15306,
+          16410,
+          16791,
+          17992,
+          19203,
+          19510,
+          20724,
+          22305,
+          22935,
+          27007,
+          30109,
+          30420,
+          33409,
+          34949,
+          40283,
+          40493,
+          40549,
+          47282,
+          49146,
+          50257,
+          50357,
+          50358,
+          50359,
+          50360,
+          50361
+        ],
+        "without_timestamps": false,
+        "max_initial_timestamp": 1.0,
+        "word_timestamps": true,
+        "prepend_punctuations": "\"'“¿([{-",
+        "append_punctuations": "\"'.。,，!！?？:：”)]}、",
+        "multilingual": false,
+        "max_new_tokens": null,
+        "clip_timestamps": [
+          0.0
+        ],
+        "hallucination_silence_threshold": null,
+        "hotwords": null
+      },
+      "vad_options": {
+        "threshold": 0.5,
+        "neg_threshold": null,
+        "min_speech_duration_ms": 0,
+        "max_speech_duration_s": "Infinity",
+        "min_silence_duration_ms": 500,
+        "speech_pad_ms": 400
+      }
+    }
+  },
+  "segments": [
+    {
+      "text": " back in the day, you will get instability.",
+      "start_ms": 0.0,
+      "end_ms": 4260.0,
+      "words": [
+        {
+          "text": " back",
+          "start_ms": 0.0,
+          "end_ms": 120.0,
+          "source_start_ms": 578000.0,
+          "source_end_ms": 578120.0,
+          "probability": 0.3401508033275604,
+          "owned_by_core": true
+        },
+        {
+          "text": " in",
+          "start_ms": 120.0,
+          "end_ms": 280.0,
+          "source_start_ms": 578120.0,
+          "source_end_ms": 578280.0,
+          "probability": 0.9906392097473145,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 280.0,
+          "end_ms": 660.0,
+          "source_start_ms": 578280.0,
+          "source_end_ms": 578660.0,
+          "probability": 0.9522510170936584,
+          "owned_by_core": true
+        },
+        {
+          "text": " day,",
+          "start_ms": 660.0,
+          "end_ms": 1460.0,
+          "source_start_ms": 578660.0,
+          "source_end_ms": 579460.0,
+          "probability": 0.9192898273468018,
+          "owned_by_core": true
+        },
+        {
+          "text": " you",
+          "start_ms": 2640.0,
+          "end_ms": 3000.0,
+          "source_start_ms": 580640.0,
+          "source_end_ms": 581000.0,
+          "probability": 0.9784961342811584,
+          "owned_by_core": true
+        },
+        {
+          "text": " will",
+          "start_ms": 3000.0,
+          "end_ms": 3520.0,
+          "source_start_ms": 581000.0,
+          "source_end_ms": 581520.0,
+          "probability": 0.9844022989273071,
+          "owned_by_core": true
+        },
+        {
+          "text": " get",
+          "start_ms": 3520.0,
+          "end_ms": 3720.0,
+          "source_start_ms": 581520.0,
+          "source_end_ms": 581720.0,
+          "probability": 0.9987597465515137,
+          "owned_by_core": true
+        },
+        {
+          "text": " instability.",
+          "start_ms": 3720.0,
+          "end_ms": 4260.0,
+          "source_start_ms": 581720.0,
+          "source_end_ms": 582260.0,
+          "probability": 0.9967781901359558,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 578000.0,
+      "source_end_ms": 582260.0
+    },
+    {
+      "text": " You'll get underflow, you'll get overflow,",
+      "start_ms": 5020.0,
+      "end_ms": 6500.0,
+      "words": [
+        {
+          "text": " You'll",
+          "start_ms": 5020.0,
+          "end_ms": 5240.0,
+          "source_start_ms": 583020.0,
+          "source_end_ms": 583240.0,
+          "probability": 0.785308301448822,
+          "owned_by_core": true
+        },
+        {
+          "text": " get",
+          "start_ms": 5240.0,
+          "end_ms": 5320.0,
+          "source_start_ms": 583240.0,
+          "source_end_ms": 583320.0,
+          "probability": 0.9964041709899902,
+          "owned_by_core": true
+        },
+        {
+          "text": " underflow,",
+          "start_ms": 5320.0,
+          "end_ms": 5820.0,
+          "source_start_ms": 583320.0,
+          "source_end_ms": 583820.0,
+          "probability": 0.9185664653778076,
+          "owned_by_core": true
+        },
+        {
+          "text": " you'll",
+          "start_ms": 5960.0,
+          "end_ms": 6080.0,
+          "source_start_ms": 583960.0,
+          "source_end_ms": 584080.0,
+          "probability": 0.925973653793335,
+          "owned_by_core": true
+        },
+        {
+          "text": " get",
+          "start_ms": 6080.0,
+          "end_ms": 6100.0,
+          "source_start_ms": 584080.0,
+          "source_end_ms": 584100.0,
+          "probability": 0.9913682341575623,
+          "owned_by_core": true
+        },
+        {
+          "text": " overflow,",
+          "start_ms": 6100.0,
+          "end_ms": 6500.0,
+          "source_start_ms": 584100.0,
+          "source_end_ms": 584500.0,
+          "probability": 0.9749792218208313,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 583020.0,
+      "source_end_ms": 584500.0
+    },
+    {
+      "text": " you'll get NANs.",
+      "start_ms": 6800.0,
+      "end_ms": 7960.0,
+      "words": [
+        {
+          "text": " you'll",
+          "start_ms": 6800.0,
+          "end_ms": 7000.0,
+          "source_start_ms": 584800.0,
+          "source_end_ms": 585000.0,
+          "probability": 0.9948163628578186,
+          "owned_by_core": true
+        },
+        {
+          "text": " get",
+          "start_ms": 7000.0,
+          "end_ms": 7220.0,
+          "source_start_ms": 585000.0,
+          "source_end_ms": 585220.0,
+          "probability": 0.992576539516449,
+          "owned_by_core": true
+        },
+        {
+          "text": " NANs.",
+          "start_ms": 7220.0,
+          "end_ms": 7960.0,
+          "source_start_ms": 585220.0,
+          "source_end_ms": 585960.0,
+          "probability": 0.6933698455492655,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 584800.0,
+      "source_end_ms": 585960.0
+    }
+  ],
+  "text": "back in the day, you will get instability. You'll get underflow, you'll get overflow, you'll get NANs.",
+  "observation": "machine_audio_transcription_not_listening_truth",
+  "elapsed_ms": 3023
+}

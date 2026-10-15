@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-11T02:40:21.764Z",
+  "method": "Direct original-frame inspection against admitted visual record",
+  "scope": "Two selected frames; not a claim of full lecture manual ground truth",
+  "observations": [
+    {
+      "part": 1,
+      "vu_id": "lecture18-part1/vu-0072/4",
+      "frame": "video-enrichments/visual-lecture18-part1-012/frames/f00252.png",
+      "at_ms": 723000,
+      "checked": "torch.finfo dtype identifiers, mixed precision heading highlight, bf16 parameters/activations/gradients and fp32 optimizer states match the original frame",
+      "result": "matches"
+    },
+    {
+      "part": 4,
+      "vu_id": "lecture18-part4/vu-0066/3",
+      "frame": "video-enrichments/visual-lecture18-part4-011/frames/f00228.png",
+      "at_ms": 4241000,
+      "checked": "parameter/activation/gradient/optimizer memory expressions and highlighted second-moment/Adam byte counts match the original frame",
+      "result": "matches"
+    }
+  ]
+}

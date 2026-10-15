@@ -1,0 +1,13 @@
+[
+  {
+    "host": "codex-cli 0.162.0-alpha.2",
+    "model": "gpt-6-astra",
+    "exit_code": 0,
+    "timed_out": false,
+    "elapsed_ms": 97466,
+    "status": "candidate_rejected",
+    "reason": "visual-only entities had empty occurrences; original text writer rejected routed LID evidence",
+    "correction": "executor role now omits visual-only nodes for text-only stage contracts",
+    "private_results": "evals/video/generated/vi4/2026-10-10T07-03-48.598Z"
+  }
+]

@@ -1,0 +1,55 @@
+[
+  {
+    "id": "old-cli-single-a",
+    "reason": "service rejected model on CLI 0.147.0",
+    "exit_code": 1,
+    "elapsed_ms": 22686,
+    "host": "codex-cli",
+    "model": "gpt-6-astra",
+    "usage": null,
+    "interruption": null,
+    "errors": [
+      "Reconnecting... 2/5 (stream disconnected before completion: tls handshake eof)",
+      "{\"type\":\"error\",\"status\":400,\"error\":{\"type\":\"invalid_request_error\",\"message\":\"The 'gpt-6-astra' model requires a newer version of Codex. Please upgrade to the latest app or CLI and try again.\"}}",
+      {
+        "message": "{\"type\":\"error\",\"status\":400,\"error\":{\"type\":\"invalid_request_error\",\"message\":\"The 'gpt-6-astra' model requires a newer version of Codex. Please upgrade to the latest app or CLI and try again.\"}}"
+      }
+    ]
+  },
+  {
+    "id": "missing-annotation-single-a",
+    "reason": "read-only tool annotations missing; tool approval refused",
+    "exit_code": 0,
+    "elapsed_ms": 50270,
+    "host": "codex-cli",
+    "model": "gpt-6-astra",
+    "usage": {
+      "input_tokens": 33980,
+      "cached_input_tokens": 24064,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 160,
+      "reasoning_output_tokens": 0
+    },
+    "interruption": null,
+    "errors": [
+      "Reconnecting... 2/5 (stream disconnected before completion: tls handshake eof)"
+    ]
+  },
+  {
+    "id": "timeout-reverse",
+    "reason": "image tool completed; final model response absent at evaluation timeout",
+    "exit_code": 4294967295,
+    "elapsed_ms": 323020,
+    "host": "codex-cli",
+    "host_version": "codex-cli 0.162.0-alpha.2",
+    "model": "gpt-6-astra",
+    "usage": null,
+    "interruption": {
+      "reason": "evaluation_wall_clock_timeout",
+      "budget_ms": 300000,
+      "phase": "image_tool_completed_model_answer_pending",
+      "usage": null
+    },
+    "errors": []
+  }
+]

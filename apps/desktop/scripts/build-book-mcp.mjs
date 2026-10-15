@@ -18,7 +18,7 @@ const output = path.join(outputDir, "book-mcp-x86_64-pc-windows-msvc.exe");
 
 const result = spawnSync(
   process.env.CARGO ?? "cargo",
-  ["build", "--locked", "--release", "-p", "server", "--bin", "book_mcp"],
+  ["build", "--locked", "--release", "-p", "server", "--bin", "book_mcp", "--bin", "publish_book", "--bin", "video_audio_review"],
   { cwd: repoRoot, stdio: "inherit" },
 );
 if (result.error) throw result.error;
@@ -26,4 +26,6 @@ if (result.status !== 0) process.exit(result.status ?? 1);
 
 mkdirSync(outputDir, { recursive: true });
 copyFileSync(source, output);
+for (const [sourceName,targetName] of [['publish_book','publish-book'],['video_audio_review','video-audio-review']])
+  copyFileSync(path.join(targetRoot,'release',`${sourceName}.exe`),path.join(outputDir,`${targetName}-x86_64-pc-windows-msvc.exe`));
 console.log(output);

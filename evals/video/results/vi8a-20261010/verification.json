@@ -1,0 +1,166 @@
+{
+  "date": "2026-10-10T07:32:38.949Z",
+  "browser": "154.0.4258.62",
+  "publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+  },
+  "bound_frame": {
+    "actual_pts_ms": 650000,
+    "height": 1080,
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    },
+    "width": 1920
+  },
+  "decoded_frame": {
+    "actual_pts_ms": 650000,
+    "height": 1080,
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    },
+    "width": 1920
+  },
+  "bound_region": {
+    "frame": {
+      "actual_pts_ms": 650000,
+      "height": 1080,
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "width": 1920
+    },
+    "rect_normalized": [
+      0.0625,
+      0.4444444444444444,
+      0.5833333333333334,
+      0.1388888888888889
+    ]
+  },
+  "decoded_region": {
+    "frame": {
+      "actual_pts_ms": 650000,
+      "height": 1080,
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "width": 1920
+    },
+    "rect_normalized": [
+      0.0625,
+      0.4444444444444444,
+      0.5833333333333334,
+      0.1388888888888889
+    ]
+  },
+  "image_size": [
+    1120,
+    150
+  ],
+  "layouts": [
+    {
+      "name": "wide",
+      "player": {
+        "x": 270,
+        "y": 120,
+        "width": 756,
+        "height": 425.25
+      },
+      "rect": [
+        0.0625,
+        0.4444444444444444,
+        0.5833333333333334,
+        0.1388888888888889
+      ],
+      "pixels": [
+        120,
+        480,
+        1120,
+        150
+      ]
+    },
+    {
+      "name": "narrow",
+      "player": {
+        "x": 270,
+        "y": 120,
+        "width": 340,
+        "height": 191.25
+      },
+      "rect": [
+        0.0625,
+        0.4444444444444444,
+        0.5833333333333334,
+        0.1388888888888889
+      ],
+      "pixels": [
+        120,
+        480,
+        1120,
+        150
+      ]
+    },
+    {
+      "name": "letterbox",
+      "player": {
+        "x": 270,
+        "y": 120,
+        "width": 340,
+        "height": 560
+      },
+      "rect": [
+        0.0625,
+        0.4444444444444444,
+        0.5833333333333334,
+        0.1388888888888889
+      ],
+      "pixels": [
+        120,
+        480,
+        1120,
+        150
+      ]
+    },
+    {
+      "name": "pillarbox",
+      "player": {
+        "x": 270,
+        "y": 120,
+        "width": 756,
+        "height": 260
+      },
+      "rect": [
+        0.0625,
+        0.4444444444444444,
+        0.5833333333333334,
+        0.1388888888888889
+      ],
+      "pixels": [
+        120,
+        480,
+        1120,
+        150
+      ]
+    }
+  ],
+  "selection_only_cancel_releases": true,
+  "text_cancel_preserves_binding": true,
+  "resize_preserves_binding": true,
+  "return_to_bound_frame": true,
+  "focus_does_not_pause": true,
+  "manual_play_and_edits_preserve_binding": true,
+  "reload_restores_draft": true,
+  "accepted_turn": "turn_f581e3ae9701daf1",
+  "history_preserves_binding": true,
+  "source_preview_preserves_main_player": true,
+  "explicit_entry_seeks_original": true,
+  "reloaded_history_source": true,
+  "requests": 5,
+  "images": 1,
+  "model": "local HTTP recorder; no semantic inference",
+  "output": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi8a\\2026-10-10T07-32-22.352Z"
+}

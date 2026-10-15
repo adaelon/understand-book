@@ -1,0 +1,47 @@
+{
+  "version": "video_build.v1",
+  "video": {
+    "media_id": "3d88898d-e641-46e0-8102-875bc057012f",
+    "media_revision": "1"
+  },
+  "book_id": "ac92ee40-a134-4818-bc87-a6ae12b9df29",
+  "transcript_id": "4610b71b-afff-4763-93b9-a0a667a350b0",
+  "profile": {
+    "engine": "faster-whisper",
+    "model": "small.en",
+    "language": "en",
+    "device": "cpu",
+    "compute_type": "int8",
+    "cpu_threads": 8,
+    "beam_size": 5,
+    "temperature": 0,
+    "word_timestamps": true,
+    "condition_on_previous_text": false,
+    "vad_filter": true,
+    "min_silence_duration_ms": 500
+  },
+  "stage": "failed",
+  "chunks": [
+    {
+      "id": "chunk-000",
+      "start_ms": 0,
+      "end_ms": 4000,
+      "input_start_ms": 0,
+      "input_end_ms": 6000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-001",
+      "start_ms": 4000,
+      "end_ms": 8000,
+      "input_start_ms": 2000,
+      "input_end_ms": 8000,
+      "status": "failed",
+      "attempts": 1,
+      "failure": "Command failed: E:\\allwork\\download\\agent\\understand-book-video-understanding\\.worktree-local\\whisper-venv\\Scripts\\python.exe E:\\allwork\\download\\agent\\understand-book-video-understanding\\packages\\core\\src\\video-whisper.py E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi3-recovery\\request.json E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi3-recovery\\workspace\\transcript\\raw\\chunk-001.json\nTraceback (most recent call last):\r\n  File \"E:\\allwork\\download\\agent\\understand-book-video-understanding\\packages\\core\\src\\video-whisper.py\", line 43, in <module>\r\n    main()\r\n  File \"E:\\allwork\\download\\agent\\understand-book-video-understanding\\packages\\core\\src\\video-whisper.py\", line 29, in main\r\n    segments, info = model.transcribe(request[\"audio\"], language=\"en\", task=\"transcribe\",\r\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"E:\\allwork\\download\\agent\\understand-book-video-understanding\\.worktree-local\\whisper-venv\\Lib\\site-packages\\faster_whisper\\transcribe.py\", line 876, in transcribe\r\n    audio = decode_audio(audio, sampling_rate=sampling_rate)\r\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"E:\\allwork\\download\\agent\\understand-book-video-understanding\\.worktree-local\\whisper-venv\\Lib\\site-packages\\faster_whisper\\audio.py\", line 46, in decode_audio\r\n    with av.open(input_file, mode=\"r\", metadata_errors=\"ignore\") as container:\r\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"av/container/core.py\", line 578, in av.container.core.open\r\n    return InputContainer(\r\n^^^^^^^\r\n  File \"av/container/core.py\", line 344, in av.container.core.Container.__cinit__\r\n    self.err_check(res)\r\n^^^\r\n  File \"av/container/core.py\", line 369, in av.container.core.Container.err_check\r\n    return err_check(value, filename=self.name)\r\n^^^^^^^\r\n  File \"av/error.py\", line 354, in av.error.err_check\r\n    raise cls(code, message, filename, log)\r\n^^^^^^^\r\nav.error.FileNotFoundError: [Errno 2] No such file or directory: 'E:\\\\allwork\\\\download\\\\agent\\\\understand-book-video-understanding\\\\evals\\\\video\\\\generated\\\\vi3-recovery\\\\missing.wav'\r\n"
+    }
+  ],
+  "failure": "Recognition failed for one or more chunks; resume to retry missing work"
+}

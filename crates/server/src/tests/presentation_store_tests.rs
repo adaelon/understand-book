@@ -67,9 +67,10 @@ fn content(state: &AppState, title: &str) -> PresentationContent {
         entrypoint: "index.html".into(),
         readable_content: format!("{title}: two of three pieces of evidence"),
         source_bindings: vec![SourceBinding {
+            media: None,
             source_ref_id: "source-rp2".into(),
             book_id: state.workspace.book.base.book_id.clone(),
-            evidence_range,
+            evidence_range: Some(evidence_range),
             evidence_text_digest: source.evidence_text_digest,
             label_snapshot: source.label,
             preview_snapshot: source.preview,

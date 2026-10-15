@@ -1,0 +1,1208 @@
+[
+  {
+    "vu_id": "lecture-v1/vu-0001/1",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 550000,
+      "end_ms": 554000
+    },
+    "representative_frames": [
+      {
+        "id": "f00001",
+        "requested_ms": 550000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 550000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00001.png",
+        "png_bytes": 457741,
+        "content_id": "f00001"
+      },
+      {
+        "id": "f00002",
+        "requested_ms": 553000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 553000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00002.png",
+        "png_bytes": 461954,
+        "content_id": "f00002"
+      }
+    ],
+    "screen_text": "IEEE half-precision 16-bit float; sign; exponent (5 bit); fraction (10 bit)\nx = 0.000e+0\nx = torch.zeros(4, 8, dtype=torch.float16)\nassert x.element_size() == 2\nHowever, the dynamic range (especially for small numbers) isn't great.\nx = torch.tensor([1e-8], dtype=torch.float16)\nassert x == 0  # Underflow!\nbfloat16; [Wikipedia]; exponent (8 bit); fraction (7 bit)",
+    "description": "页面展示 float16 内存与小数动态范围示例。顶部半透明浅蓝框显示 x 为零，遮住部分半精度位示意图。黄色整行高亮张量构造语句，下一行下溢断言及训练不稳定说明呈淡灰色；下方露出 bfloat16 标题与位宽标签。",
+    "change": "两帧代码与高亮相同，鼠标位置在 1e-8 附近移动。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-82"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0001/2",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 554000,
+      "end_ms": 562000
+    },
+    "representative_frames": [
+      {
+        "id": "f00003",
+        "requested_ms": 554000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 554000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00003.png",
+        "png_bytes": 475582,
+        "content_id": "f00003"
+      },
+      {
+        "id": "f00004",
+        "requested_ms": 561000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 561000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00004.png",
+        "png_bytes": 407668,
+        "content_id": "f00004"
+      }
+    ],
+    "screen_text": "x = 0.000e+0\nx = torch.zeros(4, 8, dtype=torch.float16)\nassert x.element_size() == 2\nHowever, the dynamic range (especially for small numbers) isn't great.\nx = torch.tensor([1e-8], dtype=torch.float16)\nassert x == 0  # Underflow!\nIf this happens when you train, you can get instability.\nbfloat16; [Wikipedia]",
+    "description": "页面位置及顶部浅蓝数值框保持不变。张量构造行正常显示，黄色高亮移到 assert x == 0  # Underflow!，断言文字由淡灰变为清晰；训练不稳定说明和 bfloat16 部分仍淡灰。",
+    "change": "554000 毫秒采样中高亮从张量构造行推进到下溢断言；561000 毫秒采样保持这一状态。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-82",
+      "segment-83",
+      "segment-84"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0002/1",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 562000,
+      "end_ms": 563000
+    },
+    "representative_frames": [
+      {
+        "id": "f00005",
+        "requested_ms": 562000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 562000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00005.png",
+        "png_bytes": 519911,
+        "content_id": "f00005"
+      }
+    ],
+    "screen_text": "x = torch.zeros(4, 8)\nx = 0.000e+0\nOne matrix in the feedforward layer of GPT-3:\nassert get_memory_usage(torch.empty(12288 * 4, 12288)) == 2304 * 1024 * 1024  # 2.3 GB\nfloat16; [Wikipedia]\nIEEE half-precision 16-bit float\nsign; exponent (5 bit); fraction (10 bit)\n0 | 0 1 1 0 0 | 0 1 0 0 0 0 0 0 0 0",
+    "description": "页面上方是默认浮点张量内存示例，部分被固定浅蓝数值框遮盖。中部显示 GPT-3 矩阵内存断言，下方完整展示 float16 位图：蓝色符号位、绿色五位指数和红色十位小数。",
+    "change": "相较前一上下文帧，页面滚动到更靠前内容，float16 位图完整出现；数值框仍显示零。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-84"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0002/2",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 563000,
+      "end_ms": 569000
+    },
+    "representative_frames": [
+      {
+        "id": "f00006",
+        "requested_ms": 563000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 563000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00006.png",
+        "png_bytes": 614094,
+        "content_id": "f00006"
+      },
+      {
+        "id": "f00007",
+        "requested_ms": 567000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 567000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00007.png",
+        "png_bytes": 630094,
+        "content_id": "f00007"
+      },
+      {
+        "id": "f00008",
+        "requested_ms": 568000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 568000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00008.png",
+        "png_bytes": 632134,
+        "content_id": "f00008"
+      }
+    ],
+    "screen_text": "assert x.element_size() == 4  # Float is 4 bytes\nx = 0.000e+0\nfloat16; [Wikipedia]\nIEEE half-precision 16-bit float\nsign; exponent (5 bit); fraction (10 bit)\n0 | 0 1 1 0 0 | 0 1 0 0 0 0 0 0 0 0\n15; 14; 10; 9; 0\nThe float16 data type (also known as fp16 or half precision) cuts down the memory.\nx = torch.zeros(4, 8, dtype=torch.float16)\nassert x.element_size() == 2",
+    "description": "页面内容向上移动，float16 位图居中且未被浅蓝框遮盖，图下显示半精度节省内存的说明与两字节断言。顶部 GPT-3 内存示例大部分落在数值框后。鼠标从绿色指数区左端移到标号 10 附近，代码与位图保持不变。",
+    "change": "563000 毫秒采样中位图上移；567000 与 568000 毫秒采样保持相同页面位置，仅鼠标沿指数区移动。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-84"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0003/1",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 569000,
+      "end_ms": 570000
+    },
+    "representative_frames": [
+      {
+        "id": "f00009",
+        "requested_ms": 569000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 569000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00009.png",
+        "png_bytes": 661485,
+        "content_id": "f00009"
+      }
+    ],
+    "screen_text": "assert get_memory_usage(x) == 4 * 8 * 4  # 128 bytes\nx = 0.000e+0\nfloat16; [Wikipedia]\nIEEE half-precision 16-bit float\nsign; exponent (5 bit); fraction (10 bit)\n0 | 0 1 1 0 0 | 0 1 0 0 0 0 0 0 0 0\nx = torch.zeros(4, 8, dtype=torch.float16)\nassert x.element_size() == 2\nHowever, the dynamic range (especially for small numbers) isn't great.",
+    "description": "float16 位图仍完整可见，蓝色符号位、绿色指数区与红色小数区下方是内存说明和代码。顶部浅蓝浮层固定显示 x 为零，覆盖 GPT-3 内存示例的大部分。",
+    "change": "相较前一上下文帧，页面内容略向上移，顶部出现 get_memory_usage(x) 断言。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-84"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0003/2",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 570000,
+      "end_ms": 571000
+    },
+    "representative_frames": [
+      {
+        "id": "f00010",
+        "requested_ms": 570000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 570000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00010.png",
+        "png_bytes": 531873,
+        "content_id": "f00010"
+      }
+    ],
+    "screen_text": "x = 0.000e+0\nThe float16 data type (also known as fp16 or half precision) cuts down the memory.\nx = torch.zeros(4, 8, dtype=torch.float16)\nassert x.element_size() == 2\nHowever, the dynamic range (especially for small numbers) isn't great.\nx = torch.tensor([1e-8], dtype=torch.float16)\nassert x == 0  # Underflow!\nIf this happens when you train, you can get instability.\nbfloat16; [Wikipedia]",
+    "description": "页面滚动到下溢示例，半精度位图移到顶部浅蓝浮层后方。黄色高亮 assert x == 0  # Underflow!，训练不稳定说明及 bfloat16 标题呈淡灰色。",
+    "change": "570000 毫秒采样中，下溢代码与下一节标题进入主要可视区域。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-84"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0003/3",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 571000,
+      "end_ms": 573000
+    },
+    "representative_frames": [
+      {
+        "id": "f00011",
+        "requested_ms": 571000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 571000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00011.png",
+        "png_bytes": 547039,
+        "content_id": "f00011"
+      },
+      {
+        "id": "f00012",
+        "requested_ms": 572000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 572000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00012.png",
+        "png_bytes": 514285,
+        "content_id": "f00012"
+      }
+    ],
+    "screen_text": "x = 0.000e+0\nx = torch.zeros(4, 8, dtype=torch.float16)\nassert x.element_size() == 2\nHowever, the dynamic range (especially for small numbers) isn't great.\nx = torch.tensor([1e-8], dtype=torch.float16)\nassert x == 0  # Underflow!\nIf this happens when you train, you can get instability.\nbfloat16; [Wikipedia]; exponent (8 bit); fraction (7 bit)",
+    "description": "页面再略向上移，下溢断言仍黄色高亮，训练不稳定说明仍淡灰。bfloat16 标题及八位指数、七位小数标签向上露出，顶部浮层继续显示零。",
+    "change": "571000 毫秒采样中内容再次上移；572000 毫秒采样保持相同代码、高亮和页面位置。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-84",
+      "segment-85"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0004/1",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 573000,
+      "end_ms": 592000
+    },
+    "representative_frames": [
+      {
+        "id": "f00013",
+        "requested_ms": 573000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 573000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00013.png",
+        "png_bytes": 628482,
+        "content_id": "f00013"
+      },
+      {
+        "id": "f00014",
+        "requested_ms": 588000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 588000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00014.png",
+        "png_bytes": 475872,
+        "content_id": "f00014"
+      },
+      {
+        "id": "f00015",
+        "requested_ms": 591000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 591000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00015.png",
+        "png_bytes": 448381,
+        "content_id": "f00015"
+      }
+    ],
+    "screen_text": "IEEE half-precision 16-bit float\nsign; exponent (5 bit); fraction (10 bit)\nx = 0.000e+0\nx = torch.zeros(4, 8, dtype=torch.float16)\nassert x.element_size() == 2\nHowever, the dynamic range (especially for small numbers) isn't great.\nx = torch.tensor([1e-8], dtype=torch.float16)\nassert x == 0  # Underflow!\nIf this happens when you train, you can get instability.\nbfloat16; [Wikipedia]; exponent (8 bit); fraction (7 bit)",
+    "description": "页面位置不变，顶部浅蓝数值框显示 x 为零。float16 张量和下溢断言正常显示，黄色整行高亮训练可能不稳定的说明。下方 bfloat16 标题、链接和位宽标签仍呈淡灰色。鼠标从说明下方移至说明文字附近。",
+    "change": "相较前一上下文帧，高亮从下溢断言移到训练不稳定说明，该说明由淡灰变清晰；后两帧保持相同高亮与代码。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-85",
+      "segment-86",
+      "segment-87"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0004/2",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 592000,
+      "end_ms": 593000
+    },
+    "representative_frames": [
+      {
+        "id": "f00016",
+        "requested_ms": 592000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 592000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00016.png",
+        "png_bytes": 504678,
+        "content_id": "f00016"
+      }
+    ],
+    "screen_text": "x = 0.000e+0\nx = torch.zeros(4, 8, dtype=torch.float16)\nassert x.element_size() == 2\nx = torch.tensor([1e-8], dtype=torch.float16)\nassert x == 0  # Underflow!\nIf this happens when you train, you can get instability.\nbfloat16\n[Wikipedia]\nexponent (8 bit); fraction (7 bit)",
+    "description": "黄色高亮移到 bfloat16 大标题，标题由淡灰变为黑色；上方训练不稳定说明恢复普通白底。标题下链接和位图标签仍淡灰，顶部数值框及 float16 示例保持不变。",
+    "change": "592000 毫秒采样中高亮推进到 bfloat16 标题。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-87"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0005/1",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 593000,
+      "end_ms": 594000
+    },
+    "representative_frames": [
+      {
+        "id": "f00017",
+        "requested_ms": 593000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 593000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00017.png",
+        "png_bytes": 506081,
+        "content_id": "f00017"
+      }
+    ],
+    "screen_text": "x = 0.000e+0\nx = torch.zeros(4, 8, dtype=torch.float16)\nassert x.element_size() == 2\nx = torch.tensor([1e-8], dtype=torch.float16)\nassert x == 0  # Underflow!\nIf this happens when you train, you can get instability.\nbfloat16\n[Wikipedia]",
+    "description": "顶部浅蓝数值框显示零，float16 下溢示例位于中部。黄色高亮 bfloat16 大标题，标题下链接及位图标签淡灰。",
+    "change": "延续前一上下文帧的标题高亮。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-87"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0005/2",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 594000,
+      "end_ms": 595000
+    },
+    "representative_frames": [
+      {
+        "id": "f00018",
+        "requested_ms": 594000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 594000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00018.png",
+        "png_bytes": 512448,
+        "content_id": "f00018"
+      }
+    ],
+    "screen_text": "x = 0.000e+0\nbfloat16\n[Wikipedia]\nexponent (8 bit); fraction (7 bit)",
+    "description": "页面位置不变，bfloat16 标题恢复白底，黄色高亮移至 [Wikipedia] 链接，链接变为清晰紫色；位图仍淡灰。",
+    "change": "高亮从标题推进到链接。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-87"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0005/3",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 595000,
+      "end_ms": 596000
+    },
+    "representative_frames": [
+      {
+        "id": "f00019",
+        "requested_ms": 595000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 595000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00019.png",
+        "png_bytes": 394451,
+        "content_id": "f00019"
+      }
+    ],
+    "screen_text": "x = torch.tensor([1e-8], dtype=torch.float16)\nx = 0.000e+0\n[Wikipedia]\nbfloat16\nsign; exponent (8 bit); fraction (7 bit)\n0 | 0 1 1 1 1 1 0 0 | 0 1 0 0 0 0 0\n15; 14; 7; 6; 0\nGoogle Brain developed bfloat (brain floating point) in 2018 to address this issue.\nbfloat16 uses the same memory as float16 but has the same dynamic range as float32!\nx = torch.tensor([1e-8], dtype=torch.bfloat16)\nassert x != 0  # No underflow!",
+    "description": "页面内容向上滚动，bfloat16 位图完整居中，黄色背景高亮位图所在块。图中蓝色符号位、八个绿色指数位和七个红色小数位清晰显示；图下说明及代码仍淡灰。浅蓝数值框覆盖上方标题附近内容。",
+    "change": "高亮推进到位图，并滚动露出 bfloat16 说明和无下溢示例。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-87",
+      "segment-88"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0005/4",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 596000,
+      "end_ms": 602000
+    },
+    "representative_frames": [
+      {
+        "id": "f00020",
+        "requested_ms": 596000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 596000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00020.png",
+        "png_bytes": 462478,
+        "content_id": "f00020"
+      }
+    ],
+    "screen_text": "x = 0.000e+0\nbfloat16\nsign; exponent (8 bit); fraction (7 bit)\n0 | 0 1 1 1 1 1 0 0 | 0 1 0 0 0 0 0\nGoogle Brain developed bfloat (brain floating point) in 2018 to address this issue.\nbfloat16 uses the same memory as float16 but has the same dynamic range as float32!\nThe only catch is that the resolution is worse, but this matters less for deep learning.\nx = torch.tensor([1e-8], dtype=torch.bfloat16)\nassert x != 0  # No underflow!",
+    "description": "位图恢复白底，黄色高亮移到 Google Brain 在 2018 年开发 bfloat 的说明，该行由淡灰变清晰。后续动态范围、分辨率说明与代码仍淡灰，顶部框数值仍为零。",
+    "change": "高亮从位图推进到开发背景说明，页面位置保持不变。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-88",
+      "segment-89"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0006/1",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 602000,
+      "end_ms": 603000
+    },
+    "representative_frames": [
+      {
+        "id": "f00021",
+        "requested_ms": 602000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 602000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00021.png",
+        "png_bytes": 476519,
+        "content_id": "f00021"
+      }
+    ],
+    "screen_text": "x = torch.tensor([1e-8], dtype=torch.float16)\nx = 0.000e+0\n[Wikipedia]; bfloat16\nsign; exponent (8 bit); fraction (7 bit)\n0 | 0 1 1 1 1 1 0 0 | 0 1 0 0 0 0 0\nGoogle Brain developed bfloat (brain floating point) in 2018 to address this issue.\nx = torch.tensor([1e-8], dtype=torch.bfloat16)\nassert x != 0  # No underflow!",
+    "description": "bfloat16 位图居中，八位绿色指数区和七位红色小数区清晰可见。黄色高亮仍在 Google Brain 开发背景说明；后续说明及代码淡灰，顶部浅蓝浮层仍显示零。鼠标停在小数位宽标签附近。",
+    "change": "保持前一上下文帧的页面和高亮，鼠标位置改变。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-89"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0006/2",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 603000,
+      "end_ms": 628000
+    },
+    "representative_frames": [
+      {
+        "id": "f00022",
+        "requested_ms": 603000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 603000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00022.png",
+        "png_bytes": 547666,
+        "content_id": "f00022"
+      },
+      {
+        "id": "f00023",
+        "requested_ms": 618000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 618000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00023.png",
+        "png_bytes": 476363,
+        "content_id": "f00023"
+      },
+      {
+        "id": "f00024",
+        "requested_ms": 627000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 627000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00024.png",
+        "png_bytes": 513769,
+        "content_id": "f00024"
+      }
+    ],
+    "screen_text": "x = 0.000e+0\nbfloat16\nsign; exponent (8 bit); fraction (7 bit)\n0 | 0 1 1 1 1 1 0 0 | 0 1 0 0 0 0 0\nGoogle Brain developed bfloat (brain floating point) in 2018 to address this issue.\nbfloat16 uses the same memory as float16 but has the same dynamic range as float32!\nThe only catch is that the resolution is worse, but this matters less for deep learning.\nx = torch.tensor([1e-8], dtype=torch.bfloat16)\nassert x != 0  # No underflow!",
+    "description": "黄色高亮推进到 bfloat16 内存与动态范围比较句，该句由淡灰变清晰；开发背景说明恢复白底。分辨率代价说明和无下溢代码仍淡灰。页面、位图与数值框保持不变，鼠标从小数标签附近移到指数区，随后移至 float32 文字附近。",
+    "change": "603000 毫秒采样中高亮从开发背景推进到内存及动态范围说明；618000 和 627000 毫秒采样保持相同高亮与代码。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-89",
+      "segment-90",
+      "segment-91",
+      "segment-92",
+      "segment-93"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0007/1",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 628000,
+      "end_ms": 647000
+    },
+    "representative_frames": [
+      {
+        "id": "f00025",
+        "requested_ms": 628000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 628000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00025.png",
+        "png_bytes": 571211,
+        "content_id": "f00025"
+      },
+      {
+        "id": "f00026",
+        "requested_ms": 643000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 643000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00026.png",
+        "png_bytes": 552967,
+        "content_id": "f00026"
+      },
+      {
+        "id": "f00027",
+        "requested_ms": 646000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 646000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00027.png",
+        "png_bytes": 506399,
+        "content_id": "f00027"
+      }
+    ],
+    "screen_text": "x = torch.tensor([1e-8], dtype=torch.float16)\nx = 0.000e+0\nbfloat16\n[Wikipedia]\nsign; exponent (8 bit); fraction (7 bit)\n0 | 01111100 | 0100000\nGoogle Brain developed bfloat (brain floating point) in 2018 to address this issue.\nbfloat16 uses the same memory as float16 but has the same dynamic range as float32!\nThe only catch is that the resolution is worse, but this matters less for deep learning.\nx = torch.tensor([1e-8], dtype=torch.bfloat16)\nassert x != 0  # No underflow!",
+    "description": "白底讲义展示 bfloat16 位布局：蓝色符号位、绿色八位指数、粉色七位小数。上方浅蓝浮层显示 x 为零；下方说明其内存用量、动态范围和精度取舍。黄色横条强调分辨率较差但对深度学习影响较小的句子，底部 bfloat16 示例代码呈淡色。",
+    "change": "相较前置画面，黄色强调从内存和动态范围说明移至分辨率取舍句；这些采样中的讲义内容与强调保持一致。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-93",
+      "segment-94",
+      "segment-95",
+      "segment-96"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0007/2",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 647000,
+      "end_ms": 648000
+    },
+    "representative_frames": [
+      {
+        "id": "f00028",
+        "requested_ms": 647000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 647000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00028.png",
+        "png_bytes": 507799,
+        "content_id": "f00028"
+      }
+    ],
+    "screen_text": "x = torch.tensor([1e-8], dtype=torch.float16)\nx = 1.001e-8\nbfloat16\nsign; exponent (8 bit); fraction (7 bit)\n0 | 01111100 | 0100000\nbfloat16 uses the same memory as float16 but has the same dynamic range as float32!\nThe only catch is that the resolution is worse, but this matters less for deep learning.\nx = torch.tensor([1e-8], dtype=torch.bfloat16)\nassert x != 0  # No underflow!",
+    "description": "白底讲义保留 bfloat16 三色位布局及内存、动态范围和精度说明。上方浅蓝浮层显示 x = 1.001e-8；黄色横条强调使用 torch.bfloat16 构造 1e-8 张量的代码，下方非零断言呈淡色。",
+    "change": "黄色强调移至 x = torch.tensor([1e-8], dtype=torch.bfloat16)，代码由淡色变为清晰；浅蓝浮层数值由 0.000e+0 变为 1.001e-8。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-96"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0008/1",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 648000,
+      "end_ms": 653000
+    },
+    "representative_frames": [
+      {
+        "id": "f00029",
+        "requested_ms": 648000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 648000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00029.png",
+        "png_bytes": 494302,
+        "content_id": "f00029"
+      },
+      {
+        "id": "f00030",
+        "requested_ms": 652000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 652000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00030.png",
+        "png_bytes": 529908,
+        "content_id": "f00030"
+      }
+    ],
+    "screen_text": "bfloat16\nx = 1.001e-8\nbfloat16 uses the same memory as float16 but has the same dynamic range as float32!\nThe only catch is that the resolution is worse, but this matters less for deep learning.\nx = torch.tensor([1e-8], dtype=torch.bfloat16)\nassert x != 0  # No underflow!\nLet's compare the dynamic ranges and memory usage of the different data types:\nfloat32_info = torch.finfo(torch.float32)\nfloat16_info = torch.finfo(torch.float16)\nbfloat16_info = torch.finfo(torch.bfloat16)\nImplications on training:",
+    "description": "白底讲义上方的浅蓝浮层显示 x = 1.001e-8，并覆盖部分 bfloat16 位图。中部张量代码及黄色强调的非零断言清晰可见；下方三种类型的 torch.finfo 查询和训练影响标题呈淡色。",
+    "change": "相较前置画面，页面内容上移，黄色强调由 bfloat16 张量构造代码移至 assert x != 0；两张采样的主体内容保持一致。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-96",
+      "segment-97"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0008/2",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 653000,
+      "end_ms": 654000
+    },
+    "representative_frames": [
+      {
+        "id": "f00031",
+        "requested_ms": 653000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 653000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00031.png",
+        "png_bytes": 694519,
+        "content_id": "f00031"
+      }
+    ],
+    "screen_text": "x = 1.001e-8\nfloat32_info = \"finfo(resolution=1e-06, min=-3.40282e+38, max=3.40282e+38, eps=1.19209e-07, smallest_normal=1.17549e-38, tiny=1.17549e-38, dtype=float32)\"\nassert x != 0  # No underflow!\nLet's compare the dynamic ranges and memory usage of the different data types:\nfloat32_info = torch.finfo(torch.float32)\nfloat16_info = torch.finfo(torch.float16)\nbfloat16_info = torch.finfo(torch.bfloat16)\nImplications on training:",
+    "description": "浅蓝浮层显示 x 的非零值和 float32_info 的 finfo 参数，包含范围、eps 与最小正规数。下方类型比较说明清晰，黄色横条强调 float32_info = torch.finfo(torch.float32)，后两种类型查询呈淡色。",
+    "change": "非零断言取消黄色强调；float32 查询获得强调，浮层扩大并新增 float32_info 参数结果。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-97"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0008/3",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 654000,
+      "end_ms": 655000
+    },
+    "representative_frames": [
+      {
+        "id": "f00032",
+        "requested_ms": 654000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 654000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00032.png",
+        "png_bytes": 759879,
+        "content_id": "f00032"
+      }
+    ],
+    "screen_text": "x = 1.001e-8\nfloat32_info = \"finfo(resolution=1e-06, min=-3.40282e+38, max=3.40282e+38, eps=1.19209e-07, smallest_normal=1.17549e-38, tiny=1.17549e-38, dtype=float32)\"\nfloat16_info = \"finfo(resolution=0.001, min=-65504, max=65504, eps=0.000976562, smallest_normal=6.10352e-05, tiny=6.10352e-05, dtype=float16)\"\nLet's compare the dynamic ranges and memory usage of the different data types:\nfloat32_info = torch.finfo(torch.float32)\nfloat16_info = torch.finfo(torch.float16)\nbfloat16_info = torch.finfo(torch.bfloat16)\nImplications on training:",
+    "description": "较大的浅蓝浮层列出 x、float32_info 和 float16_info，展示两种浮点类型的分辨率、范围、eps 和最小正规数。下方黄色横条强调 float16_info = torch.finfo(torch.float16)，bfloat16_info 查询呈淡色，底部露出训练影响标题。",
+    "change": "浮层向下扩展并新增 float16_info 参数结果；黄色强调由 float32 查询移至 float16 查询。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-97"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0009/1",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 1180000,
+      "end_ms": 1211000
+    },
+    "representative_frames": [
+      {
+        "id": "f00033",
+        "requested_ms": 1180000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 1180000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00033.png",
+        "png_bytes": 396570,
+        "content_id": "f00033"
+      },
+      {
+        "id": "f00034",
+        "requested_ms": 1181000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 1181000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00034.png",
+        "png_bytes": 406372,
+        "content_id": "f00034"
+      },
+      {
+        "id": "f00035",
+        "requested_ms": 1196000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 1196000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00035.png",
+        "png_bytes": 391937,
+        "content_id": "f00035"
+      },
+      {
+        "id": "f00036",
+        "requested_ms": 1210000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 1210000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00036.png",
+        "png_bytes": 404052,
+        "content_id": "f00036"
+      }
+    ],
+    "screen_text": "def einops_einsum():\nEinsum is generalized matrix multiplication with good bookkeeping.\nx = torch.ones(3, 4)  # seq1 hidden\ny = torch.ones(4, 3)  # hidden seq2\n# Old way\nz = x @ y  # seq1 seq2\n# New (einops) way\nz = einsum(x, y, \"seq1 hidden, hidden seq2 -> seq1 seq2\")\ny = [[1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1]]\nz = [[4, 4, 4], [4, 4, 4], [4, 4, 4]]\nLet's try a more complex example...",
+    "description": "白底带行号的代码讲义展示 einops_einsum 函数，以两个全一矩阵对照传统 @ 乘法和具名维度的 einsum。黄色横条强调 seq1 hidden, hidden seq2 -> seq1 seq2 的调用。右上浅蓝浮层展示四行三列全一的 y 和三行三列全四的 z，顶部还有部分全一矩阵；下方复杂示例标题呈淡色。",
+    "change": "各采样的代码、黄色强调及矩阵数值一致；浅蓝浮层位置略有调整，鼠标指针从浮层附近移至 einsum 的 seq2 附近，随后位于强调行下方。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-187",
+      "segment-188",
+      "segment-189",
+      "segment-190",
+      "segment-191"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "lecture-v1/vu-0010/1",
+    "analysis_id": "lecture-v1",
+    "location": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "start_ms": 1211000,
+      "end_ms": 1225000
+    },
+    "representative_frames": [
+      {
+        "id": "f00037",
+        "requested_ms": 1211000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 1211000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/lecture-v1/frames/f00037.png",
+        "png_bytes": 409249,
+        "content_id": "f00037"
+      }
+    ],
+    "screen_text": "def einops_einsum():\nEinsum is generalized matrix multiplication with good bookkeeping.\nx = torch.ones(3, 4)  # seq1 hidden\ny = torch.ones(4, 3)  # hidden seq2\n# Old way\nz = x @ y  # seq1 seq2\n# New (einops) way\nz = einsum(x, y, \"seq1 hidden, hidden seq2 -> seq1 seq2\")\ny = [[1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1]]\nz = [[4, 4, 4], [4, 4, 4], [4, 4, 4]]\nLet's try a more complex example...",
+    "description": "白底代码讲义展示 einops_einsum 函数及全一矩阵构造，对照 z = x @ y 和具名维度的 einsum 调用。黄色横条强调 seq1 hidden, hidden seq2 -> seq1 seq2 的表达式。右上浅蓝浮层显示四行三列全一的 y、三行三列全四的 z 和顶部部分全一矩阵；下方复杂示例标题呈淡色。",
+    "change": "相较前置采样，代码、黄色强调和浮层矩阵保持一致，鼠标位于强调行下方。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "segment-191",
+      "segment-192"
+    ],
+    "description_reused_from": null
+  }
+]

@@ -32,6 +32,8 @@ pub mod observation;
 pub mod orchestrator;
 pub mod presentation;
 pub mod presentation_author;
+pub mod video;
+pub mod video_audio;
 pub mod presentation_preview;
 pub mod profile_api;
 pub mod profile_context;
@@ -3356,13 +3358,17 @@ fn apply_completion_limits(body: &mut serde_json::Value, request: &CompletionReq
 }
 
 fn append_preview_images(messages: &mut Vec<serde_json::Value>, request: &AgentRequestPlan) {
-    if request.preview_images.is_empty() {
+    if request.preview_images.is_empty() && request.video_images.is_empty() {
         return;
     }
     let mut content = Vec::new();
     for image in &request.preview_images {
         content.push(serde_json::json!({"type":"text", "text":image.caption}));
         content.push(serde_json::json!({"type":"image_url", "image_url":{"url":format!("data:image/png;base64,{}",image.png_base64),"detail":"high"}}));
+    }
+    for input in &request.video_images {
+        content.push(serde_json::json!({"type":"text","text":input.caption()}));
+        content.push(serde_json::json!({"type":"image_url","image_url":{"url":format!("data:image/png;base64,{}",input.image.png_base64),"detail":"high"}}));
     }
     messages.push(serde_json::json!({"role":"user", "content":content}));
 }
@@ -3796,6 +3802,8 @@ mod tests {
             ],
             graph_nodes: vec![
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "entity:a".into(),
                     node_type: GraphNodeType::Entity,
                     name: "A".into(),
@@ -3803,6 +3811,8 @@ mod tests {
                     source_lid: None,
                 },
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "entity:p1".into(),
                     node_type: GraphNodeType::Entity,
                     name: "P1".into(),
@@ -3810,6 +3820,8 @@ mod tests {
                     source_lid: None,
                 },
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "entity:p2".into(),
                     node_type: GraphNodeType::Entity,
                     name: "P2".into(),
@@ -3819,6 +3831,7 @@ mod tests {
             ],
             graph_edges: vec![
                 GraphEdge {
+                    evidence: vec![],
                     source: "entity:a".into(),
                     target: "entity:p1".into(),
                     edge_type: "depends_on".into(),
@@ -3827,6 +3840,7 @@ mod tests {
                     weight: 0.9,
                 },
                 GraphEdge {
+                    evidence: vec![],
                     source: "entity:a".into(),
                     target: "entity:p2".into(),
                     edge_type: "depends_on".into(),
@@ -4004,6 +4018,8 @@ mod tests {
                 lid_nodes,
                 graph_nodes: vec![
                     GraphNode {
+                        identity: None,
+                        evidence: vec![],
                         id: "concept:eta".into(),
                         node_type: GraphNodeType::Concept,
                         name: "eta".into(),
@@ -4011,6 +4027,8 @@ mod tests {
                         source_lid: None,
                     },
                     GraphNode {
+                        identity: None,
+                        evidence: vec![],
                         id: "concept:mu".into(),
                         node_type: GraphNodeType::Concept,
                         name: "mu".into(),
@@ -4018,6 +4036,8 @@ mod tests {
                         source_lid: None,
                     },
                     GraphNode {
+                        identity: None,
+                        evidence: vec![],
                         id: "concept:sigma".into(),
                         node_type: GraphNodeType::Concept,
                         name: "sigma".into(),
@@ -4025,6 +4045,8 @@ mod tests {
                         source_lid: None,
                     },
                     GraphNode {
+                        identity: None,
+                        evidence: vec![],
                         id: "concept:trend_strategy".into(),
                         node_type: GraphNodeType::Concept,
                         name: "trend_strategy".into(),
@@ -4032,6 +4054,8 @@ mod tests {
                         source_lid: None,
                     },
                     GraphNode {
+                        identity: None,
+                        evidence: vec![],
                         id: "concept:drift_mu".into(),
                         node_type: GraphNodeType::Concept,
                         name: "drift_mu".into(),
@@ -4040,6 +4064,7 @@ mod tests {
                     },
                 ],
                 graph_edges: vec![GraphEdge {
+                    evidence: vec![],
                     source: "concept:eta".into(),
                     target: "concept:trend_strategy".into(),
                     edge_type: "related_fixture".into(),
@@ -5917,3 +5942,5 @@ mod tests {
         assert!(err.message.contains("缺 name"));
     }
 }
+
+pub mod video_source;

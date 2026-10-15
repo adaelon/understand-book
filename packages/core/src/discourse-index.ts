@@ -125,8 +125,8 @@ export interface DiscourseIndexBuildResult {
   dropped: DroppedDiscourseCandidate[];
 }
 
-const DISCOURSE_MODES = new Set<DiscourseMode>(["informative", "argumentative", "procedural", "descriptive", "meta"]);
-const LOCAL_FUNCTIONS = new Set<LocalFunction>([
+export const DISCOURSE_MODES = new Set<DiscourseMode>(["informative", "argumentative", "procedural", "descriptive", "meta"]);
+export const LOCAL_FUNCTIONS = new Set<LocalFunction>([
   "definition",
   "description",
   "classification",
@@ -154,7 +154,7 @@ const LOCAL_FUNCTIONS = new Set<LocalFunction>([
   "future_work",
   "transition",
 ]);
-const RHETORICAL_MOVES = new Set<RhetoricalMove>([
+export const RHETORICAL_MOVES = new Set<RhetoricalMove>([
   "chapter_setup",
   "problem_framing",
   "prerequisite",
@@ -175,7 +175,7 @@ const RHETORICAL_MOVES = new Set<RhetoricalMove>([
   "future_work_projection",
   "bridge_to_next",
 ]);
-const RELATION_TYPES = new Set<DiscourseRelationType>([
+export const RELATION_TYPES = new Set<DiscourseRelationType>([
   "elaborates",
   "exemplifies",
   "explains",
@@ -192,8 +192,8 @@ const RELATION_TYPES = new Set<DiscourseRelationType>([
   "answers",
   "depends_on",
 ]);
-const RELATION_FAMILIES = new Set<DiscourseRelationFamily>(["temporal", "contingency", "comparison", "expansion"]);
-const DIRECTIONS = new Set<DiscourseDirection>(["backward", "forward", "lateral"]);
+export const RELATION_FAMILIES = new Set<DiscourseRelationFamily>(["temporal", "contingency", "comparison", "expansion"]);
+export const DIRECTIONS = new Set<DiscourseDirection>(["backward", "forward", "lateral"]);
 
 function lidSet(nodes: LidNode[]): Set<string> {
   return new Set(nodes.map((n) => n.lid));

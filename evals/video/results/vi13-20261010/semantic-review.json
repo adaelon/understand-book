@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-10",
+  "method": "查看本轮图谱召回后经 VI5 回读的两张原分辨率图片，核对 V04/V01；转写通过 book.text 和时间映射独立核对。",
+  "frames": [
+    {
+      "file": "frames/1210000.png",
+      "observed": "x=torch.ones(3,4)，y=torch.ones(4,3)，einsum 输出 seq1 seq2；z 为 3×3 全4。",
+      "support": "画面提供维度、表达式和结果；原转写段189独立支持 hidden gets summed out。烧录字幕仍是画面文字。"
+    },
+    {
+      "file": "frames/648000.png",
+      "observed": "dtype=torch.bfloat16，assert x != 0，浮层1.001e-8。",
+      "support": "本任务未输入转写，这些对象与断言均保留为纯视觉来源。"
+    }
+  ],
+  "identity": "矩阵例子x与bfloat16例子x含义不同，保留不同ID；1211秒补图任务显式确认四个einsum对象并新增其语言/视觉支持。",
+  "result": "关键图像与角色说明一致。",
+  "limitations": "两张关键图抽查；不代表整讲语义验收。未校正机器转写的C1/C2、seek two等识别错误。"
+}

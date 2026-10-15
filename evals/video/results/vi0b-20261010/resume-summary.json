@@ -1,0 +1,105 @@
+{
+  "started_at": "2026-10-10T02:50:30.134854+00:00",
+  "profile": {
+    "model": "small.en",
+    "device": "cpu",
+    "compute_type": "int8",
+    "cpu_threads": 8,
+    "transcribe": {
+      "language": "en",
+      "task": "transcribe",
+      "beam_size": 5,
+      "temperature": 0,
+      "word_timestamps": true,
+      "condition_on_previous_text": false,
+      "vad_filter": true,
+      "vad_parameters": {
+        "min_silence_duration_ms": 500
+      }
+    },
+    "versions": {
+      "faster-whisper": "1.2.1",
+      "ctranslate2": "4.8.2",
+      "av": "18.1.0",
+      "onnxruntime": "1.31.0"
+    },
+    "model_directory": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\.worktree-local\\whisper-models\\small.en"
+  },
+  "python": "3.11.4",
+  "platform": "Windows-10-10.0.19044-SP0",
+  "model_load_ms": 2275,
+  "remote_service_calls": 0,
+  "api_cost": 0,
+  "jobs": [
+    {
+      "id": "fp16",
+      "status": "completed",
+      "reused": true,
+      "elapsed_ms": 9032,
+      "audio_duration_ms": 35999.93197278911
+    },
+    {
+      "id": "bf16",
+      "status": "completed",
+      "reused": true,
+      "elapsed_ms": 12885,
+      "audio_duration_ms": 59999.88662131519
+    },
+    {
+      "id": "einsum",
+      "status": "completed",
+      "reused": true,
+      "elapsed_ms": 10854,
+      "audio_duration_ms": 44999.90929705215
+    },
+    {
+      "id": "pause",
+      "status": "completed",
+      "reused": true,
+      "elapsed_ms": 2559,
+      "audio_duration_ms": 7999.977324263039
+    },
+    {
+      "id": "review-overflow",
+      "status": "completed",
+      "reused": true,
+      "elapsed_ms": 3023,
+      "audio_duration_ms": 7999.931972789116
+    },
+    {
+      "id": "review-hidden",
+      "status": "completed",
+      "reused": true,
+      "elapsed_ms": 6600,
+      "audio_duration_ms": 10000.0
+    },
+    {
+      "id": "review-pause",
+      "status": "completed",
+      "reused": true,
+      "elapsed_ms": 2608,
+      "audio_duration_ms": 4000.0
+    },
+    {
+      "id": "silence",
+      "status": "completed",
+      "reused": true,
+      "elapsed_ms": 69,
+      "audio_duration_ms": 8000
+    },
+    {
+      "id": "chunk-fp16-000",
+      "status": "completed",
+      "reused": true,
+      "elapsed_ms": 4983,
+      "audio_duration_ms": 20000.0
+    },
+    {
+      "id": "chunk-fp16-001",
+      "status": "completed",
+      "reused": true,
+      "elapsed_ms": 7160,
+      "audio_duration_ms": 19999.931972789116
+    }
+  ]
+}

@@ -42,11 +42,13 @@ import IntentArtifactPanel from "./IntentArtifactPanel.vue";
 import SessionRecap from './SessionRecap.vue';
 import { targetPublication, type RecapTarget } from '../session-recap';
 
+import { videoTime } from "../video-question";
 type ContextTab = "agent" | "artifacts" | "profile" | "trace" | "formula" | "notes";
 
 type AskDraft = AskQuote;
 type DisplayQuestionQuote = AskDraft | AgentQuestionQuoteView;
 interface ChatTurn {
+  videoQuestion?: import("../../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
   spendStop?: import('../account-allowance').SpendNotice;
   teachingRef?: string | null;
   presentationFollowUp?: PresentationFollowUp | null;
@@ -80,6 +82,10 @@ interface ChatSessionTurnSummary {
 }
 
 const props = defineProps<{
+  videoQuestion?: import("../../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
+  videoError?: string;
+  questionSendBlocked?: string;
+  questionInputBlocked?: boolean;
   chat: ChatTurn[];
   chatSessions: ChatSessionSummary[];
   chatGoals?: ResidentGoal[];
@@ -130,6 +136,8 @@ const props = defineProps<{
   requestedTabRevision?: number;
 }>();
 const emit = defineEmits<{
+  (e: 'media-source-enter', source: import('../api').MediaSourceSnapshot): void;
+  (e: "cancel-video-draft"): void;
   (e: 'recap-publication', target: RecapTarget): void;
   (e: "presentation-follow-up", message: string, receipt: import("../generated/PresentationFollowUp").PresentationFollowUp): void;
   (e: "update:agentInput", value: string): void;
@@ -207,7 +215,7 @@ function selectPresentation(turnId: string, reference: PresentationRef, open = t
   if (open) void scrollToTurn(turnId);
 }
 function submitMessage() {
-  if (props.sending || props.canStop || props.historyLoading || props.historyError || !props.agentInput.trim()) return;
+  if (props.questionSendBlocked || props.sending || props.canStop || props.historyLoading || props.historyError || !props.agentInput.trim()) return;
   if (workspaceVisible.value && sceneBound.value) {
     discussionOpen.value = true;
     followTranscript.value = true;
@@ -700,10 +708,10 @@ function onFullscreenKeydown(event: KeyboardEvent) {
     event.preventDefault(); chatMenuOpen.value = false; chatMenuButton.value?.focus(); return;
   }
   if (event.key === 'Escape' && recapOpen.value) { event.preventDefault(); closeRecap(); return; }
+  if (event.key === 'Escape' && agentSourcePopup.value) { event.preventDefault(); closeAgentSourcePopup(); return; }
   if (event.key !== "Escape" || !props.fullscreen) return;
   if (document.querySelector(".agent-presentation.expanded")) return;
   event.preventDefault();
-  if (agentSourcePopup.value) { closeAgentSourcePopup(); return; }
   if (historyOpen.value) { historyOpen.value = false; return; }
   emit("toggle-fullscreen");
   void nextTick(() => focusChatAction(fullscreenButton.value));
@@ -760,6 +768,7 @@ async function openActiveAgentSourceInReader() {
   const popup = agentSourcePopup.value;
   const source = activeAgentSource.value;
   if (!popup || !source || source.stale || !source.can_open_in_reader || popup.opening) return;
+  if (source.media) { emit('media-source-enter', source.media); closeAgentSourcePopup(); return; }
   const requestSequence = sourceRequestSequence;
   popup.opening = true;
   popup.error = null;
@@ -1087,6 +1096,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             </div>
             <blockquote>{{ turn.questionQuote.quote }}</blockquote>
           </div>
+          <p v-if="turn.videoQuestion" class="turn-video-context">视频问题 · {{ videoTime(turn.videoQuestion.frame.actual_pts_ms) }}{{ turn.videoQuestion.region ? ' · 已选区域' : '' }}<span v-if="turn.videoQuestion.range"> · 时间范围 {{ videoTime(turn.videoQuestion.range.start_ms) }}–{{ videoTime(turn.videoQuestion.range.end_ms) }}</span></p>
           <p class="u-msg">{{ turn.user }}</p>
           <PresentationSceneCard v-if="turn.presentationFollowUp" :receipt="turn.presentationFollowUp" @locate="locateScene(turn.presentationFollowUp)" @restore="locateScene(turn.presentationFollowUp, true)" />
           <AgentActivities v-if="turn.activities?.length" :activities="turn.activities" />
@@ -1226,6 +1236,9 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       </div>
 
       <div class="agent-input" :class="{ composing: composeExpanded }">
+        <p v-if="props.videoQuestion" aria-label="问题绑定位置">问题绑定 {{ videoTime(props.videoQuestion.frame.actual_pts_ms) }}{{ props.videoQuestion.region ? ' · 已选区域' : '' }}<span v-if="props.videoQuestion.range"> · 时间范围 {{ videoTime(props.videoQuestion.range.start_ms) }}–{{ videoTime(props.videoQuestion.range.end_ms) }}</span> <button @click="emit('cancel-video-draft')">取消草稿</button></p>
+        <p v-if="props.videoError" role="alert">{{ props.videoError }}</p>
+        <p v-if="props.questionSendBlocked" role="status">{{ props.questionSendBlocked }}</p>
         <div v-if="workspaceVisible || props.runConnection === 'reconnecting' || targetGoal || props.askDraft" class="agent-input-context">
         <div v-if="workspaceVisible" class="scene-binding">
           <span>{{ sceneBound ? `发送时绑定当前现场 · 版本 ${workspace?.reference.revision}` : '普通聊天' }}</span>
@@ -1251,7 +1264,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         <textarea
           ref="agentInputRef"
           data-workspace-input="agent"
-          :disabled="network.enabled && (props.historyLoading || !!props.historyError)"
+          :disabled="props.questionInputBlocked || (network.enabled && (props.historyLoading || !!props.historyError))"
           :value="props.agentInput"
           rows="1"
           aria-label="围绕当前阅读内容提问"
@@ -1261,7 +1274,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           @keydown="onAgentInputKeydown"
         />
         <button v-if="props.canStop" class="stop-agent" @click="emit('stop-agent')">停止</button>
-        <button v-else class="send-agent" :disabled="props.sending || props.historyLoading || !!props.historyError || !props.agentInput.trim()" @click="submitMessage">
+        <button v-else class="send-agent" :disabled="!!props.questionSendBlocked || props.sending || props.historyLoading || !!props.historyError || !props.agentInput.trim()" @click="submitMessage">
           {{ props.sending ? "发送中" : "发送" }}
         </button>
         </div>
@@ -1550,7 +1563,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
               @click="openActiveAgentSourceInReader"
             >
               <ExternalLink :size="15" aria-hidden="true" />
-              <span>{{ agentSourcePopup.opening ? "正在打开..." : "在正文中查看" }}</span>
+              <span>{{ agentSourcePopup.opening ? "正在打开..." : activeAgentSource?.media ? "进入原视频位置" : "在正文中查看" }}</span>
             </button>
           </footer>
         </section>

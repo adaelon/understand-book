@@ -1,0 +1,3006 @@
+{
+  "mode": "record",
+  "semantic_inference": false,
+  "publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+  },
+  "video": {
+    "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+    "media_revision": "1"
+  },
+  "checks": [
+    {
+      "provider": "native",
+      "name": "single_a",
+      "semantic_inference": false,
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 555133.3125,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 555123
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "requested_range": {
+          "end_ms": 556123,
+          "start_ms": 555123,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 559540,
+              "start_ms": 555540,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-83",
+            "text": "So you can't really represent very big numbers, and you can't represent very small numbers.",
+            "text_range": {
+              "lid": "83",
+              "range": {
+                "end": 91,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12436-e6d0-7652-90a7-5c8459fb4ecb",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12436-e675-7340-83ac-c4dab13f8a39",
+          "frames": [
+            {
+              "requested_ms": 555123,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 555133.3125,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "run": {
+        "answer": "RECORDING ONLY: no model inference.",
+        "elapsed_ms": 209,
+        "error": null,
+        "model": "vi5-recorder",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "read_ms": 73,
+        "usage": null
+      },
+      "request_bytes": 587892
+    },
+    {
+      "provider": "native",
+      "name": "single_b",
+      "semantic_inference": false,
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 650000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 650000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "requested_range": {
+          "end_ms": 651000,
+          "start_ms": 650000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": []
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12436-e815-7640-8e07-9fa4299acd1d",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12436-e7cb-76e0-9ac8-62e4feadb3cc",
+          "frames": [
+            {
+              "requested_ms": 650000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 650000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "run": {
+        "answer": "RECORDING ONLY: no model inference.",
+        "elapsed_ms": 210,
+        "error": null,
+        "model": "vi5-recorder",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "read_ms": 72,
+        "usage": null
+      },
+      "request_bytes": 610990
+    },
+    {
+      "provider": "native",
+      "name": "crop_a",
+      "semantic_inference": false,
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 150,
+            "image_width": 1120,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 555133.3125,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 555123
+            },
+            "region": {
+              "frame": {
+                "actual_pts_ms": 555133.3125,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "rect_normalized": [
+                0.015625,
+                0.4444444444444444,
+                0.5833333333333334,
+                0.1388888888888889
+              ]
+            }
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "requested_range": {
+          "end_ms": 556123,
+          "start_ms": 555123,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 559540,
+              "start_ms": 555540,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-83",
+            "text": "So you can't really represent very big numbers, and you can't represent very small numbers.",
+            "text_range": {
+              "lid": "83",
+              "range": {
+                "end": 91,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12436-efa0-7052-a849-47b6208d5b90",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12436-ef8f-7c81-a6b1-3a9fb82d5821",
+          "frames": [],
+          "regions": [
+            {
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 555133.3125,
+                "width": 1920,
+                "height": 1080
+              },
+              "rect_normalized": [
+                0.015625,
+                0.4444444444444444,
+                0.5833333333333334,
+                0.1388888888888889
+              ]
+            }
+          ]
+        }
+      ],
+      "run": {
+        "answer": "RECORDING ONLY: no model inference.",
+        "elapsed_ms": 1712,
+        "error": null,
+        "model": "vi5-recorder",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "read_ms": 1683,
+        "usage": null
+      },
+      "request_bytes": 96029
+    },
+    {
+      "provider": "native",
+      "name": "crop_b",
+      "semantic_inference": false,
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 150,
+            "image_width": 1120,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 650000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 650000
+            },
+            "region": {
+              "frame": {
+                "actual_pts_ms": 650000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "rect_normalized": [
+                0.015625,
+                0.3888888888888889,
+                0.5833333333333334,
+                0.1388888888888889
+              ]
+            }
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "requested_range": {
+          "end_ms": 651000,
+          "start_ms": 650000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": []
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12436-f1c0-7323-a98b-d080cd639e20",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12436-f1af-78a3-a2e0-8bb637409205",
+          "frames": [],
+          "regions": [
+            {
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 650000,
+                "width": 1920,
+                "height": 1080
+              },
+              "rect_normalized": [
+                0.015625,
+                0.3888888888888889,
+                0.5833333333333334,
+                0.1388888888888889
+              ]
+            }
+          ]
+        }
+      ],
+      "run": {
+        "answer": "RECORDING ONLY: no model inference.",
+        "elapsed_ms": 394,
+        "error": null,
+        "model": "vi5-recorder",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "read_ms": 366,
+        "usage": null
+      },
+      "request_bytes": 92973
+    },
+    {
+      "provider": "native",
+      "name": "progressive",
+      "semantic_inference": false,
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 600000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 600000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 615000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 615000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 630000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 630000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 650000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 650000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "requested_range": {
+          "end_ms": 651000,
+          "start_ms": 600000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 606580,
+              "start_ms": 599180,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-89",
+            "text": "And the observation... was that, well, let's not compromise on the number of bits.",
+            "text_range": {
+              "lid": "89",
+              "range": {
+                "end": 82,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 613740,
+              "start_ms": 606780,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-90",
+            "text": "It's the number of bits that's going to be the same as Fp16, but we're going to shift some of the bits from the mantissa to the exponent.",
+            "text_range": {
+              "lid": "90",
+              "range": {
+                "end": 137,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 621100,
+              "start_ms": 614600,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-91",
+            "text": "So that means it has more dynamic range than float 16.",
+            "text_range": {
+              "lid": "91",
+              "range": {
+                "end": 54,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 625750,
+              "start_ms": 623110,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-92",
+            "text": "And it actually has the same dynamic range as float 32.",
+            "text_range": {
+              "lid": "92",
+              "range": {
+                "end": 55,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 631600,
+              "start_ms": 626460,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-93",
+            "text": "But, of course, the, the resolution is worse because there's no free lunch here.",
+            "text_range": {
+              "lid": "93",
+              "range": {
+                "end": 80,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 636820,
+              "start_ms": 632120,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-94",
+            "text": "But it turns out that in a lot of deep learning applications, this is well worth the trade-off.",
+            "text_range": {
+              "lid": "94",
+              "range": {
+                "end": 95,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 640800,
+              "start_ms": 637180,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-95",
+            "text": "You want the dynamic range to not overflow and underflow.",
+            "text_range": {
+              "lid": "95",
+              "range": {
+                "end": 57,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 649580,
+              "start_ms": 641360,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-96",
+            "text": "And because things are kind of sloppy and sarcastic anyway, you don't need that much resolution, okay?",
+            "text_range": {
+              "lid": "96",
+              "range": {
+                "end": 102,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12436-f7f8-7030-906f-0eab67db88b0",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12436-f737-72f3-92c3-fe40d7fcb6f2",
+          "frames": [
+            {
+              "requested_ms": 600000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 600000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12436-f7f8-7030-906f-0eb6378b7ebe",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12436-f737-72f3-92c3-fe40d7fcb6f2",
+          "frames": [
+            {
+              "requested_ms": 615000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 615000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12436-f7f8-7030-906f-0eca80eab860",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12436-f737-72f3-92c3-fe40d7fcb6f2",
+          "frames": [
+            {
+              "requested_ms": 630000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 630000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12436-f7f8-7030-906f-0ed589fd6d2e",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12436-f737-72f3-92c3-fe40d7fcb6f2",
+          "frames": [
+            {
+              "requested_ms": 650000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 650000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "run": {
+        "answer": "RECORDING ONLY: no model inference.",
+        "elapsed_ms": 1621,
+        "error": null,
+        "model": "vi5-recorder",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "read_ms": 1298,
+        "usage": null
+      },
+      "request_bytes": 2602155
+    },
+    {
+      "provider": "native",
+      "name": "matrix",
+      "semantic_inference": false,
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 1200000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 1200000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 1210000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 1210000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "requested_range": {
+          "end_ms": 1211000,
+          "start_ms": 1200000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 1209680,
+              "start_ms": 1194780,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-189",
+            "text": "And I'm going to produce a tensor, or a Heria matrix, where the dimensions are indexed by C1 and C2 and anything that is not mentioned here, the hidden, gets summed out.",
+            "text_range": {
+              "lid": "189",
+              "range": {
+                "end": 169,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 1210500,
+              "start_ms": 1210240,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-190",
+            "text": "Okay.",
+            "text_range": {
+              "lid": "190",
+              "range": {
+                "end": 5,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 1223840,
+              "start_ms": 1210820,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-191",
+            "text": "So the way this works is I'm going to sum over, enumerate over all possible values of all the variables that occur here, which are sequence, hidden, and C2.",
+            "text_range": {
+              "lid": "191",
+              "range": {
+                "end": 156,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12436-fcf7-7d93-ab37-1fdcfa014229",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12436-fc95-7761-b495-1d3354d210ce",
+          "frames": [
+            {
+              "requested_ms": 1200000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 1200000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12436-fcf7-7d93-ab37-1fe543641c3f",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12436-fc95-7761-b495-1d3354d210ce",
+          "frames": [
+            {
+              "requested_ms": 1210000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 1210000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "run": {
+        "answer": "RECORDING ONLY: no model inference.",
+        "elapsed_ms": 1111,
+        "error": null,
+        "model": "vi5-recorder",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "read_ms": 927,
+        "usage": null
+      },
+      "request_bytes": 1078850
+    },
+    {
+      "provider": "native",
+      "name": "capacity8",
+      "semantic_inference": false,
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 600000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 600000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 607000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 607000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 614000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 614000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 621000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 621000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 628000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 628000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 635000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 635000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 642000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 642000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 649000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 649000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "requested_range": {
+          "end_ms": 650000,
+          "start_ms": 600000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 606580,
+              "start_ms": 599180,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-89",
+            "text": "And the observation... was that, well, let's not compromise on the number of bits.",
+            "text_range": {
+              "lid": "89",
+              "range": {
+                "end": 82,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 613740,
+              "start_ms": 606780,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-90",
+            "text": "It's the number of bits that's going to be the same as Fp16, but we're going to shift some of the bits from the mantissa to the exponent.",
+            "text_range": {
+              "lid": "90",
+              "range": {
+                "end": 137,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 621100,
+              "start_ms": 614600,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-91",
+            "text": "So that means it has more dynamic range than float 16.",
+            "text_range": {
+              "lid": "91",
+              "range": {
+                "end": 54,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 625750,
+              "start_ms": 623110,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-92",
+            "text": "And it actually has the same dynamic range as float 32.",
+            "text_range": {
+              "lid": "92",
+              "range": {
+                "end": 55,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 631600,
+              "start_ms": 626460,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-93",
+            "text": "But, of course, the, the resolution is worse because there's no free lunch here.",
+            "text_range": {
+              "lid": "93",
+              "range": {
+                "end": 80,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 636820,
+              "start_ms": 632120,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-94",
+            "text": "But it turns out that in a lot of deep learning applications, this is well worth the trade-off.",
+            "text_range": {
+              "lid": "94",
+              "range": {
+                "end": 95,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 640800,
+              "start_ms": 637180,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-95",
+            "text": "You want the dynamic range to not overflow and underflow.",
+            "text_range": {
+              "lid": "95",
+              "range": {
+                "end": 57,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 649580,
+              "start_ms": 641360,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-96",
+            "text": "And because things are kind of sloppy and sarcastic anyway, you don't need that much resolution, okay?",
+            "text_range": {
+              "lid": "96",
+              "range": {
+                "end": 102,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-0fd1-7633-a405-a06713b84b10",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-0e20-7473-8ae4-108f898f3f68",
+          "frames": [
+            {
+              "requested_ms": 600000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 600000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-0fd1-7633-a405-a07d50a6edae",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-0e20-7473-8ae4-108f898f3f68",
+          "frames": [
+            {
+              "requested_ms": 607000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 607000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-0fd1-7633-a405-a08df6da3e7d",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-0e20-7473-8ae4-108f898f3f68",
+          "frames": [
+            {
+              "requested_ms": 614000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 614000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-0fd1-7633-a405-a09919234a52",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-0e20-7473-8ae4-108f898f3f68",
+          "frames": [
+            {
+              "requested_ms": 621000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 621000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-0fd1-7633-a405-a0a86e629d44",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-0e20-7473-8ae4-108f898f3f68",
+          "frames": [
+            {
+              "requested_ms": 628000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 628000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-0fd1-7633-a405-a0b52a6bbeb6",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-0e20-7473-8ae4-108f898f3f68",
+          "frames": [
+            {
+              "requested_ms": 635000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 635000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-0fd1-7633-a405-a0c2878518c4",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-0e20-7473-8ae4-108f898f3f68",
+          "frames": [
+            {
+              "requested_ms": 642000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 642000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-0fd1-7633-a405-a0d07f4646e3",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-0e20-7473-8ae4-108f898f3f68",
+          "frames": [
+            {
+              "requested_ms": 649000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 649000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "run": {
+        "answer": "RECORDING ONLY: no model inference.",
+        "elapsed_ms": 4966,
+        "error": null,
+        "model": "vi5-recorder",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "read_ms": 4169,
+        "usage": null
+      },
+      "request_bytes": 5514163
+    },
+    {
+      "provider": "react",
+      "name": "single_a",
+      "semantic_inference": false,
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 555133.3125,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 555123
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "requested_range": {
+          "end_ms": 556123,
+          "start_ms": 555123,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 559540,
+              "start_ms": 555540,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-83",
+            "text": "So you can't really represent very big numbers, and you can't represent very small numbers.",
+            "text_range": {
+              "lid": "83",
+              "range": {
+                "end": 91,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-15f4-7943-bc9b-1a89f5fa6e1a",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-15b5-7e72-bfe6-365828c46659",
+          "frames": [
+            {
+              "requested_ms": 555123,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 555133.3125,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "run": {
+        "answer": "RECORDING ONLY: no model inference.",
+        "elapsed_ms": 679,
+        "error": null,
+        "model": "vi5-recorder",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "read_ms": 573,
+        "usage": null
+      },
+      "request_bytes": 588262
+    },
+    {
+      "provider": "react",
+      "name": "single_b",
+      "semantic_inference": false,
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 650000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 650000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "requested_range": {
+          "end_ms": 651000,
+          "start_ms": 650000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": []
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-18dd-7792-8b3d-bf59461bd3f3",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-189a-7cd0-a0ea-6e4700cb47e5",
+          "frames": [
+            {
+              "requested_ms": 650000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 650000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "run": {
+        "answer": "RECORDING ONLY: no model inference.",
+        "elapsed_ms": 622,
+        "error": null,
+        "model": "vi5-recorder",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "read_ms": 507,
+        "usage": null
+      },
+      "request_bytes": 611360
+    },
+    {
+      "provider": "react",
+      "name": "crop_a",
+      "semantic_inference": false,
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 150,
+            "image_width": 1120,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 555133.3125,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 555123
+            },
+            "region": {
+              "frame": {
+                "actual_pts_ms": 555133.3125,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "rect_normalized": [
+                0.015625,
+                0.4444444444444444,
+                0.5833333333333334,
+                0.1388888888888889
+              ]
+            }
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "requested_range": {
+          "end_ms": 556123,
+          "start_ms": 555123,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 559540,
+              "start_ms": 555540,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-83",
+            "text": "So you can't really represent very big numbers, and you can't represent very small numbers.",
+            "text_range": {
+              "lid": "83",
+              "range": {
+                "end": 91,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-1b71-7180-88eb-dc28549d8859",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-1b5d-70d2-b7d8-d163ee789ebb",
+          "frames": [],
+          "regions": [
+            {
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 555133.3125,
+                "width": 1920,
+                "height": 1080
+              },
+              "rect_normalized": [
+                0.015625,
+                0.4444444444444444,
+                0.5833333333333334,
+                0.1388888888888889
+              ]
+            }
+          ]
+        }
+      ],
+      "run": {
+        "answer": "RECORDING ONLY: no model inference.",
+        "elapsed_ms": 473,
+        "error": null,
+        "model": "vi5-recorder",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "read_ms": 442,
+        "usage": null
+      },
+      "request_bytes": 96399
+    },
+    {
+      "provider": "react",
+      "name": "crop_b",
+      "semantic_inference": false,
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 150,
+            "image_width": 1120,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 650000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 650000
+            },
+            "region": {
+              "frame": {
+                "actual_pts_ms": 650000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "rect_normalized": [
+                0.015625,
+                0.3888888888888889,
+                0.5833333333333334,
+                0.1388888888888889
+              ]
+            }
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "requested_range": {
+          "end_ms": 651000,
+          "start_ms": 650000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": []
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-1d8f-7761-af07-75799c8d079a",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-1d77-73e2-b9bf-5c4e83351657",
+          "frames": [],
+          "regions": [
+            {
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 650000,
+                "width": 1920,
+                "height": 1080
+              },
+              "rect_normalized": [
+                0.015625,
+                0.3888888888888889,
+                0.5833333333333334,
+                0.1388888888888889
+              ]
+            }
+          ]
+        }
+      ],
+      "run": {
+        "answer": "RECORDING ONLY: no model inference.",
+        "elapsed_ms": 422,
+        "error": null,
+        "model": "vi5-recorder",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "read_ms": 384,
+        "usage": null
+      },
+      "request_bytes": 93343
+    },
+    {
+      "provider": "react",
+      "name": "progressive",
+      "semantic_inference": false,
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 600000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 600000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 615000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 615000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 630000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 630000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 650000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 650000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "requested_range": {
+          "end_ms": 651000,
+          "start_ms": 600000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 606580,
+              "start_ms": 599180,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-89",
+            "text": "And the observation... was that, well, let's not compromise on the number of bits.",
+            "text_range": {
+              "lid": "89",
+              "range": {
+                "end": 82,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 613740,
+              "start_ms": 606780,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-90",
+            "text": "It's the number of bits that's going to be the same as Fp16, but we're going to shift some of the bits from the mantissa to the exponent.",
+            "text_range": {
+              "lid": "90",
+              "range": {
+                "end": 137,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 621100,
+              "start_ms": 614600,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-91",
+            "text": "So that means it has more dynamic range than float 16.",
+            "text_range": {
+              "lid": "91",
+              "range": {
+                "end": 54,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 625750,
+              "start_ms": 623110,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-92",
+            "text": "And it actually has the same dynamic range as float 32.",
+            "text_range": {
+              "lid": "92",
+              "range": {
+                "end": 55,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 631600,
+              "start_ms": 626460,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-93",
+            "text": "But, of course, the, the resolution is worse because there's no free lunch here.",
+            "text_range": {
+              "lid": "93",
+              "range": {
+                "end": 80,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 636820,
+              "start_ms": 632120,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-94",
+            "text": "But it turns out that in a lot of deep learning applications, this is well worth the trade-off.",
+            "text_range": {
+              "lid": "94",
+              "range": {
+                "end": 95,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 640800,
+              "start_ms": 637180,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-95",
+            "text": "You want the dynamic range to not overflow and underflow.",
+            "text_range": {
+              "lid": "95",
+              "range": {
+                "end": 57,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 649580,
+              "start_ms": 641360,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-96",
+            "text": "And because things are kind of sloppy and sarcastic anyway, you don't need that much resolution, okay?",
+            "text_range": {
+              "lid": "96",
+              "range": {
+                "end": 102,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-245c-71b3-8a7e-ad089562d775",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-237a-7053-812f-0767789ffac6",
+          "frames": [
+            {
+              "requested_ms": 600000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 600000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-245c-71b3-8a7e-ad1d2fe5ed72",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-237a-7053-812f-0767789ffac6",
+          "frames": [
+            {
+              "requested_ms": 615000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 615000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-245c-71b3-8a7e-ad2d4e36d98d",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-237a-7053-812f-0767789ffac6",
+          "frames": [
+            {
+              "requested_ms": 630000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 630000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-245c-71b3-8a7e-ad3a8bf34fff",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-237a-7053-812f-0767789ffac6",
+          "frames": [
+            {
+              "requested_ms": 650000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 650000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "run": {
+        "answer": "RECORDING ONLY: no model inference.",
+        "elapsed_ms": 1743,
+        "error": null,
+        "model": "vi5-recorder",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "read_ms": 1380,
+        "usage": null
+      },
+      "request_bytes": 2602525
+    },
+    {
+      "provider": "react",
+      "name": "matrix",
+      "semantic_inference": false,
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 1200000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 1200000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 1210000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 1210000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "requested_range": {
+          "end_ms": 1211000,
+          "start_ms": 1200000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 1209680,
+              "start_ms": 1194780,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-189",
+            "text": "And I'm going to produce a tensor, or a Heria matrix, where the dimensions are indexed by C1 and C2 and anything that is not mentioned here, the hidden, gets summed out.",
+            "text_range": {
+              "lid": "189",
+              "range": {
+                "end": 169,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 1210500,
+              "start_ms": 1210240,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-190",
+            "text": "Okay.",
+            "text_range": {
+              "lid": "190",
+              "range": {
+                "end": 5,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 1223840,
+              "start_ms": 1210820,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-191",
+            "text": "So the way this works is I'm going to sum over, enumerate over all possible values of all the variables that occur here, which are sequence, hidden, and C2.",
+            "text_range": {
+              "lid": "191",
+              "range": {
+                "end": 156,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-2956-71f2-8600-068b0fd41049",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-2909-75f2-b5e9-5ba9efef3e3e",
+          "frames": [
+            {
+              "requested_ms": 1200000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 1200000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-2956-71f2-8600-069498ca355f",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-2909-75f2-b5e9-5ba9efef3e3e",
+          "frames": [
+            {
+              "requested_ms": 1210000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 1210000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "run": {
+        "answer": "RECORDING ONLY: no model inference.",
+        "elapsed_ms": 1071,
+        "error": null,
+        "model": "vi5-recorder",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "read_ms": 926,
+        "usage": null
+      },
+      "request_bytes": 1079220
+    },
+    {
+      "provider": "react",
+      "name": "capacity8",
+      "semantic_inference": false,
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 600000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 600000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 607000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 607000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 614000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 614000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 621000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 621000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 628000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 628000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 635000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 635000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 642000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 642000
+            },
+            "region": null
+          },
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 649000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 649000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "requested_range": {
+          "end_ms": 650000,
+          "start_ms": 600000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 606580,
+              "start_ms": 599180,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-89",
+            "text": "And the observation... was that, well, let's not compromise on the number of bits.",
+            "text_range": {
+              "lid": "89",
+              "range": {
+                "end": 82,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 613740,
+              "start_ms": 606780,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-90",
+            "text": "It's the number of bits that's going to be the same as Fp16, but we're going to shift some of the bits from the mantissa to the exponent.",
+            "text_range": {
+              "lid": "90",
+              "range": {
+                "end": 137,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 621100,
+              "start_ms": 614600,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-91",
+            "text": "So that means it has more dynamic range than float 16.",
+            "text_range": {
+              "lid": "91",
+              "range": {
+                "end": 54,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 625750,
+              "start_ms": 623110,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-92",
+            "text": "And it actually has the same dynamic range as float 32.",
+            "text_range": {
+              "lid": "92",
+              "range": {
+                "end": 55,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 631600,
+              "start_ms": 626460,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-93",
+            "text": "But, of course, the, the resolution is worse because there's no free lunch here.",
+            "text_range": {
+              "lid": "93",
+              "range": {
+                "end": 80,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 636820,
+              "start_ms": 632120,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-94",
+            "text": "But it turns out that in a lot of deep learning applications, this is well worth the trade-off.",
+            "text_range": {
+              "lid": "94",
+              "range": {
+                "end": 95,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 640800,
+              "start_ms": 637180,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-95",
+            "text": "You want the dynamic range to not overflow and underflow.",
+            "text_range": {
+              "lid": "95",
+              "range": {
+                "end": 57,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 649580,
+              "start_ms": 641360,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-96",
+            "text": "And because things are kind of sloppy and sarcastic anyway, you don't need that much resolution, okay?",
+            "text_range": {
+              "lid": "96",
+              "range": {
+                "end": 102,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-40b6-7ae0-9031-49862ee80592",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-3f25-7d20-a36a-4cf5ab3e6146",
+          "frames": [
+            {
+              "requested_ms": 600000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 600000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-40b6-7ae0-9031-499a5280d0ac",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-3f25-7d20-a36a-4cf5ab3e6146",
+          "frames": [
+            {
+              "requested_ms": 607000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 607000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-40b6-7ae0-9031-49a59793a83d",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-3f25-7d20-a36a-4cf5ab3e6146",
+          "frames": [
+            {
+              "requested_ms": 614000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 614000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-40b6-7ae0-9031-49b09ac0ab65",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-3f25-7d20-a36a-4cf5ab3e6146",
+          "frames": [
+            {
+              "requested_ms": 621000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 621000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-40b6-7ae0-9031-49c12219d5b7",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-3f25-7d20-a36a-4cf5ab3e6146",
+          "frames": [
+            {
+              "requested_ms": 628000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 628000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-40b6-7ae0-9031-49ddee41785b",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-3f25-7d20-a36a-4cf5ab3e6146",
+          "frames": [
+            {
+              "requested_ms": 635000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 635000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-40b6-7ae0-9031-49e48ef4d211",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-3f25-7d20-a36a-4cf5ab3e6146",
+          "frames": [
+            {
+              "requested_ms": 642000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 642000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "visual",
+          "observation_id": "01a12437-40b6-7ae0-9031-49ff1934f4fd",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+          },
+          "model_request_id": "01a12437-3f25-7d20-a36a-4cf5ab3e6146",
+          "frames": [
+            {
+              "requested_ms": 649000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 649000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "run": {
+        "answer": "RECORDING ONLY: no model inference.",
+        "elapsed_ms": 6202,
+        "error": null,
+        "model": "vi5-recorder",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+        },
+        "read_ms": 5385,
+        "usage": null
+      },
+      "request_bytes": 5514533
+    }
+  ]
+}

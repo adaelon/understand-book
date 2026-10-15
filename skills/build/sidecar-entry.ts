@@ -16,6 +16,7 @@ import bookStructureThemesPrompt from "../../agents/book-structure-themes.md";
 import bookStructureRelationSelectorPrompt from "../../agents/book-structure-relation-selector.md";
 import bookStructureRelationExtractorPrompt from "../../agents/book-structure-relation-extractor.md";
 import dispatchExecutorPrompt from "../../agents/automatic-build-dispatch-executor.md";
+import videoWhisperScript from "../../packages/core/src/video-whisper.py";
 import canvasGeometry from "@napi-rs/canvas/geometry.js";
 import paperLexiconPrompt from "../../agents/paper-lexicon-extractor.md";
 import paperMetadataPrompt from "../../agents/paper-metadata-extractor.md";
@@ -43,6 +44,7 @@ const argv = process.argv.slice(2);
 const command = argv[0];
 
 const PROMPTS: Record<string, string> = {
+  "automatic-build-dispatch-executor.md": dispatchExecutorPrompt,
   "book-structure-extractor.md": bookStructurePrompt,
   "book-structure-v2-extractor.md": bookStructureV2Prompt,
   "formal-objects-extractor.md": formalObjectsPrompt,
@@ -128,7 +130,13 @@ async function runScript(script: string, args: string[]): Promise<void> {
   }
 }
 
-if (command === "executor.agent-template") {
+if (command === "video-asset" && argv[1] === "whisper" && argv.length === 2) {
+  process.stdout.write(videoWhisperScript);
+} else if (command?.startsWith('video-')) {
+  prepare('automatic-build.ts', argv);
+  const { runAutomaticBuildCli } = await import('./automatic-build');
+  await runAutomaticBuildCli(argv);
+} else if (command === "executor.agent-template") {
   if (argv.length !== 1) {
     console.error("usage: understand-book-build executor.agent-template");
     process.exit(2);

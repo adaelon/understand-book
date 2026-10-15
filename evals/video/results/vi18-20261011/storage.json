@@ -1,0 +1,56 @@
+{
+  "at": "2026-10-11T06:34:43.547Z",
+  "action": "Windows transparent compression; no files deleted",
+  "deletion_attempt": "Automatic approval rejected cache deletion with blocked by policy, no deletion executed",
+  "cold_cache_algorithm": "LZX",
+  "cold_cache_directories": [
+    "D:/codex-build/understand-book-vi12/release/deps",
+    "D:/codex-build/understand-book-vi12/debug/deps",
+    "D:/codex-build/understand-book-debug/target/debug/deps"
+  ],
+  "other_compression": "NTFS compression for build directories and retained graph/discourse input records",
+  "observed_free_gib_before": 0.4,
+  "observed_free_gib_after": 4.2,
+  "logs": [
+    "D:/codex-build/understand-book-vi18/compression.log",
+    "D:/codex-build/understand-book-vi18/compression-lzx-release.log",
+    "D:/codex-build/understand-book-vi18/compression-lzx.log"
+  ],
+  "final_collect": "Once graph and discourse contributions are all accepted, collect both and create one complete publication",
+  "completed_part_records": {
+    "from": "D:/codex-build/understand-book-vi18/production/part-4/.build",
+    "to": "C:/codex-build/understand-book-vi18/part-4-build",
+    "original_path": "Windows directory junction retains original access",
+    "files_deleted": false
+  },
+  "additional_cold_cache": {
+    "directory": "E:/allwork/download/agent/understand-book-video-understanding/target/debug/deps",
+    "algorithm": "LZX",
+    "uncompressed_bytes": 4152508121,
+    "stored_bytes": 808501681,
+    "log": "D:/codex-build/understand-book-vi18/compression-lzx-local.log"
+  },
+  "completed_part_1_records": {
+    "from": "D:/codex-build/understand-book-vi18/production/part-1/.build",
+    "to": "E:/allwork/download/agent/understand-book-video-understanding/.worktree-local/vi18-records/part-1-build",
+    "original_path": "Windows directory junction retains original access",
+    "files_deleted": false
+  },
+  "observed_free_gib_after_record_moves": {
+    "D": 5.22,
+    "E": 1.46,
+    "C": 0.7
+  },
+  "final_free_gib": {
+    "C": 1.02,
+    "D": 0.96,
+    "E": 1.44
+  },
+  "completed_part_record_compression": {
+    "directory": "C:/codex-build/understand-book-vi18/part-4-build",
+    "algorithm": "LZX",
+    "uncompressed_bytes": 1175835090,
+    "stored_bytes": 806547646,
+    "log": "D:/codex-build/understand-book-vi18/compression-lzx-records.log"
+  }
+}

@@ -1,5 +1,5 @@
 import { createApp } from "vue";
-import App from "./App.vue";
+import App from "./LocalApp.vue";
 import NetworkApp from "./NetworkApp.vue";
 import { installAppViewportHeightFallback } from "./app-viewport-height";
 import "katex/dist/katex.min.css"; // agent 答案 LaTeX 公式样式

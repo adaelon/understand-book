@@ -1,0 +1,48 @@
+校正草稿 terminology · 转写版本 1
+来源发布 01a125c2-840a-76d2-948c-0f427dd1ba88
+
+change-1 · segment-82 · pending
+修改前：denser
+修改后：tensor
+理由：机器音频复核在对应时段识别为 tensor；画面代码同时展示 torch.tensor([1e-8], ...)，可佐证术语语境。
+依据：audio:01a12838-05bc-7472-b061-8672c0154d91 — 对应语音复核识别为 tensor
+依据：image_1 — 画面代码提供术语语境
+
+change-2 · segment-87 · pending
+修改前：beef float 16
+修改后：bfloat16
+理由：对应语音复核保留了该名称的口语发音，画面标题明确给出规范写法 bfloat16；仅规范技术术语拼写。
+依据：audio:01a12846-bf58-7882-bdd7-847dc866e79e — 对应时段的术语口语发音
+依据：image_3 — 画面明确显示规范术语 bfloat16
+
+visual_explanation：画面中的示例是 torch.tensor([1e-8], dtype=torch.float16)，随后显示其结果为 0，并标注 Underflow，解释了讲者所说的小数值在 float16 中下溢为零。
+依据：image_1 — 显示 torch.tensor([1e-8], dtype=torch.float16)
+依据：image_2 — 显示数值结果为 0
+
+visual_explanation：后续画面以 bfloat16 为标题，并展示其 8 位指数与 7 位尾数的布局；该画面用于确认术语拼写，不用于替代语音证据。
+依据：image_3 — 显示 bfloat16 标题和格式示意
+
+uncertain：两处音频证据均来自机器复核；其中 tensor 与 beef 的词级概率并非确定性结论。第一处由代码画面强力佐证为 tensor；第二处画面只确认规范名称 bfloat16，不能单独证明讲者的具体发音。
+依据：audio:01a12838-05bc-7472-b061-8672c0154d91 — 机器音频复核及其不确定性
+依据：audio:01a12846-bf58-7882-bdd7-847dc866e79e — 机器音频复核及其不确定性
+依据：image_3 — 仅确认画面术语拼写
+
+原转写 text:segment-82 · 547.37–554.53 秒
+So even if you have, let's say, try to construct a 1e minus 8 denser, then that is actually just 0.
+
+原转写 text:segment-87 · 590.66–595.08 秒
+So then, so beef float 16 was invented.
+
+原画面 image_1：{"kind":"visual","publication":{"book_id":"19ac880d-a788-43f4-9725-6c56f4980189","publication_id":"01a125c2-840a-76d2-948c-0f427dd1ba88"},"frames":[{"video":{"media_id":"361e204a-50c7-40cd-9054-072b01a27659","media_revision":"1"},"actual_pts_ms":550000,"width":1920,"height":1080}],"regions":[]}
+
+原画面 image_2：{"kind":"visual","publication":{"book_id":"19ac880d-a788-43f4-9725-6c56f4980189","publication_id":"01a125c2-840a-76d2-948c-0f427dd1ba88"},"frames":[{"video":{"media_id":"361e204a-50c7-40cd-9054-072b01a27659","media_revision":"1"},"actual_pts_ms":553000,"width":1920,"height":1080}],"regions":[]}
+
+原画面 image_3：{"kind":"visual","publication":{"book_id":"19ac880d-a788-43f4-9725-6c56f4980189","publication_id":"01a125c2-840a-76d2-948c-0f427dd1ba88"},"frames":[{"video":{"media_id":"361e204a-50c7-40cd-9054-072b01a27659","media_revision":"1"},"actual_pts_ms":594000,"width":1920,"height":1080}],"regions":[]}
+
+原音频 audio:01a12838-05bc-7472-b061-8672c0154d91 · 547–555 秒
+Right? So even if you have, let's say, try to construct a 1e-8 tensor, then that is actually just 0.
+机器音频复核候选；词时间为识别估计，概率不等于正确性，未消除的听辨疑点仍须回听。
+
+原音频 audio:01a12846-bf58-7882-bdd7-847dc866e79e · 590–598 秒
+So then, um, so beef float 16, uh, was invented. So this was developed in actually 2018.
+机器音频复核候选；词时间为识别估计，概率不等于正确性，未消除的听辨疑点仍须回听。

@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-10T04:46:58.401Z",
+  "browser": "154.0.4258.62",
+  "first_publication_preserved_player": true,
+  "initial_position": 555.123,
+  "initial_rate": 1.25,
+  "checks": [
+    {
+      "segment": "segment-1",
+      "target": 1.14,
+      "actual": 1.14
+    },
+    {
+      "segment": "segment-361",
+      "target": 2298.1,
+      "actual": 2298.1
+    },
+    {
+      "segment": "segment-720",
+      "target": 4633.03,
+      "actual": 4633.03
+    }
+  ],
+  "restored_time": 4633.03,
+  "restored_rate": 1.5,
+  "video_questions": "pending VI5–VI7"
+}

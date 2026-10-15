@@ -54,6 +54,7 @@ describe("executor tool discovery", () => {
     const snippet = contract.match(/```javascript\n([\s\S]*?)\n```/u)?.[1];
     const state = new Map<string, unknown>();
     const calls: unknown[] = [];
+    const emittedImages: unknown[] = [];
     const responses = [
       { version: "automatic_build_executor_session.v3", action: { kind: "WAIT", retry_after_ms: 1 } },
       { version: "automatic_build_executor_session.v3", action: { kind: "DELIVER_INPUT", next_request: {
@@ -77,12 +78,15 @@ describe("executor tool discovery", () => {
     const names = EXECUTOR_TOOL_NAMES.map(name => `mcp__${EXECUTOR_SERVER_NAME}__${name.replaceAll(".", "_")}`);
     const tools = Object.fromEntries(names.map(name => [name, async (request: unknown) => {
       calls.push(request);
-      return { content: [{ type: "text", text: JSON.stringify(responses.shift()) }] };
+      const response = responses.shift();
+      return { content: [{ type: "text", text: JSON.stringify(response) },
+        ...(response?.action?.kind === "INPUT_BATCH" ? [{ type: "image", mimeType: "image/png", data: "native-png" }] : [])] };
     }]));
     const step = async (operation: string, request?: unknown) => {
       // Each cell has a fresh JS global; only functions.store/load survive.
       const call = runInNewContext(`${snippet}\nexecutorCall`, {
         ALL_TOOLS: names.map(name => ({ name })), tools, text: () => {},
+        image: (item: unknown) => emittedImages.push(item),
         store: (key: string, value: unknown) => state.set(key, JSON.parse(JSON.stringify(value))),
         load: (key: string) => state.get(key),
       }) as (operation: string, request: unknown) => Promise<void>;
@@ -114,6 +118,8 @@ describe("executor tool discovery", () => {
       diagnostic_code: "protocol_incompatible", phase: "input_delivery", protocol: "automatic_build_executor_session.v3",
     });
     expect(calls).toHaveLength(7);
+    expect(emittedImages).toHaveLength(2);
+    expect(JSON.stringify([...state])).not.toContain("native-png");
   });
 
   it("executes the published mapping against all four normalized MCP names", () => {
@@ -175,7 +181,7 @@ function expectFiles(relativePaths: string[]): void {
 }
 
 function readText(relativePath: string): string {
-  return readFileSync(absolute(relativePath), "utf8");
+  return readFileSync(absolute(relativePath), "utf8").replace(/\r\n?/gu, "\n");
 }
 
 function readOptionalText(relativePath: string): string {
@@ -412,11 +418,11 @@ describe("Codex executor bootstrap publication", () => {
     const template = readFileSync(absolute(ROOT_AGENT_TEMPLATE));
     const knownPredecessor = readFileSync(absolute(ROOT_KNOWN_PREDECESSOR_AGENT_TEMPLATE));
     const templateWithCrLf = Buffer.from(
-      template.toString("utf8").replace(/\n/gu, "\r\n"),
+      template.toString("utf8").replace(/\r\n?|\n/gu, "\r\n"),
       "utf8",
     );
     const knownPredecessorWithCrLf = Buffer.from(
-      knownPredecessor.toString("utf8").replace(/\n/gu, "\r\n"),
+      knownPredecessor.toString("utf8").replace(/\r\n?|\n/gu, "\r\n"),
       "utf8",
     );
     const run = (...extraArgs: string[]) => spawnSync("powershell.exe", [

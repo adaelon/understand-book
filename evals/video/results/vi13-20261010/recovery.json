@@ -1,0 +1,29 @@
+{
+  "status": "passed",
+  "tasks": [
+    {
+      "batch": "graph-vi13-einsum",
+      "reused": true
+    },
+    {
+      "batch": "graph-vi13-visual",
+      "reused": true
+    },
+    {
+      "batch": "graph-vi13-text",
+      "reused": true
+    },
+    {
+      "batch": "graph-vi13-confirm",
+      "reused": true
+    }
+  ],
+  "publication": {
+    "reused": true,
+    "reference": {
+      "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+      "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+    },
+    "elapsed_ms": 0
+  }
+}

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import MediaSourcePreview from './MediaSourcePreview.vue';
 import type { SourcePopupView } from '../api';
 import { renderMarkdown } from '../md';
 import { markMarkdownDomSourceRanges } from '../markdown-source-map';
@@ -21,7 +22,8 @@ const rendered = computed(() => {
 </script>
 
 <template>
-  <div v-if="source.stale" class="source-excerpt source-snapshot">{{ source.highlighted_quote }}</div>
+  <MediaSourcePreview v-if="source.media" :key="source.source_ref_id" :source="source" />
+  <div v-else-if="source.stale" class="source-excerpt source-snapshot">{{ source.highlighted_quote }}</div>
   <div v-else class="source-excerpt" v-html="rendered"></div>
 </template>
 

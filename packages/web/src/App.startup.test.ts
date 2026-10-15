@@ -8,7 +8,7 @@ import { writeReaderSurfacePreference } from './reader-surface';
 import * as networkClient from './network-client';
 
 const api = vi.hoisted(() => Object.fromEntries([
-  "desktopStatus", "buildWorkbench", "manifest", "assetManifest", "sourceFingerprint",
+  "videoContext", "videoDraft", "desktopStatus", "buildWorkbench", "manifest", "assetManifest", "sourceFingerprint",
   "sourceManifest", "state", "profileManifest", "text", "recall", "agentHistory",
   "profileMemory", "profileBackfill", "intentUsageEvent", "intentArtifacts", "bookLibrary",
   "openBook", "agentNew", "disposeEffect", "agentRunCreate", "agentRun", "agentRunRetrySave",
@@ -35,6 +35,8 @@ function start() {
 beforeEach(() => {
   vi.resetAllMocks();
   book = "startup";
+  api.videoContext.mockResolvedValue(null);
+  api.videoDraft.mockResolvedValue({ draft: null });
   api.tutorState.mockResolvedValue({ control: { enabled: true, revision: 0, current_tutor_session_id: null }, sessions: {} });
   api.tutorReadiness.mockResolvedValue({ status: 'ready', source_id: 'startup', source_revision: 's1', limitations: [], reason: '可用',
     teaching_assets: { status: 'stale', teaching_map_revision: null, limitations: [], reason: '教学资料构建失败' } });
@@ -390,4 +392,21 @@ describe("JL6 effect receipts in chat", () => {
     expect(reloaded.findComponent({ name: "RightRail" }).props("effState")(0, 0)).toBe("已保留");
     expect(api.disposeEffect).toHaveBeenCalledTimes(1);
   });
+});
+
+it('VI6 opens a local published video without interpreting preparation as a build workbench', async () => {
+  api.desktopStatus.mockResolvedValue({ desktop_host:false, reader_only:false, active_book:true });
+  const video = { media_id:'v',media_revision:'1' };
+  const publication = { book_id:book,publication_id:'original' };
+  const material = { book_id:book,video,transcript:{transcript_id:'t',transcript_revision:'1',video} };
+  api.videoContext.mockResolvedValue({ time_base:[1,1000], publication, material, source:{video,duration_ms:510000,width:1920,height:1080},map:{segments:[]} });
+  api.videoDraft.mockResolvedValue({ draft:{message:'恢复草稿',context:{draft_id:'d',publication,material,frame:{video,actual_pts_ms:492000,width:1920,height:1080},region:null,range:null}} });
+  const wrapper=start(); await flushPromises();
+  expect(api.buildWorkbench).not.toHaveBeenCalled();
+  expect(wrapper.findComponent({name:'VideoReaderPane'}).exists()).toBe(true);
+  expect(wrapper.findComponent({name:'ReaderPane'}).exists()).toBe(false);
+  const rail=wrapper.findComponent({name:'RightRail'});
+  expect(rail.props('agentInput')).toBe('恢复草稿');
+  expect(rail.props('videoQuestion').frame.actual_pts_ms).toBe(492000);
+  expect(rail.props('questionSendBlocked')).toBeUndefined();
 });

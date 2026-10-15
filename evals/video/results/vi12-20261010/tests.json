@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-10",
+  "status": "passed",
+  "checks": [
+    {"command": "cargo check -p server --lib", "result": "passed"},
+    {"command": "cargo build -p server --bin server", "result": "passed"},
+    {"command": "cargo test -p read-tools video_search", "passed": 3},
+    {"command": "cargo test -p runtime --lib video_", "passed": 5},
+    {"command": "cargo test -p runtime --lib tool_registry", "passed": 18},
+    {"command": "cargo test -p runtime --lib tool_exposure", "passed": 27},
+    {"command": "cargo test -p server --lib video_search_run_binding", "passed": 1},
+    {"command": "node evals/video/vi12-verify.mjs", "queries": 14, "real_frame_requests": 13}
+  ],
+  "unique_rust_tests_passed": 54,
+  "build_environment": {
+    "platform": "Windows",
+    "CARGO_TARGET_DIR": "D:/codex-build/understand-book-vi12",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_INCREMENTAL": "0",
+    "TEMP": "D:/codex-build/understand-book-vi12-tmp"
+  },
+  "notes": [
+    "Initial E-drive test compilation failed with no space on device; tests subsequently passed in the independent D-drive build directory.",
+    "The evaluation initially required exactly two hits for float16 ==. VI11's change description legitimately mentions the preceding float16/== state; the assertion now checks that both actual A occurrences and their independent context IDs survive.",
+    "Existing VI5 video_frames_probe executable supplied unchanged production frame decoding and HTTP projection; new server integration also exercised candidate read_hint against real FFmpeg pixels."
+  ]
+}

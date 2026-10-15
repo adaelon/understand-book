@@ -1,0 +1,2481 @@
+{
+  "status": "passed",
+  "semantic_inference": false,
+  "publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+  },
+  "visual_coverage_ms": 150000,
+  "lecture_search_ms": 653,
+  "supplement_search_ms": 23,
+  "search_model_calls": 0,
+  "frame_recording_requests": 13,
+  "old_publication_has_no_index": true,
+  "checks": [
+    {
+      "id": "V01-float16",
+      "question": "同为 1e-8，两个例子中的 dtype、断言和显示结果有什么变化？",
+      "query": "torch.float16 assert x == 0",
+      "publication": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+      },
+      "total_matches": 22,
+      "candidate_rank": 2,
+      "candidate": {
+        "analysis_id": "lecture-v1",
+        "change": "554000 毫秒采样中高亮从张量构造行推进到下溢断言；561000 毫秒采样保持这一状态。",
+        "description": "页面位置及顶部浅蓝数值框保持不变。张量构造行正常显示，黄色高亮移到 assert x == 0  # Underflow!，断言文字由淡灰变为清晰；训练不稳定说明和 bfloat16 部分仍淡灰。",
+        "frames": [
+          {
+            "actual_pts_ms": 554000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 561000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          }
+        ],
+        "location": {
+          "end_ms": 562000,
+          "start_ms": 554000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "matched_terms": [
+          "0",
+          "==",
+          "assert",
+          "float16",
+          "torch",
+          "x"
+        ],
+        "read_hint": {
+          "location": {
+            "end_ms": 562000,
+            "start_ms": 554000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          "sampling": [
+            554000
+          ]
+        },
+        "screen_text": "x = 0.000e+0\nx = torch.zeros(4, 8, dtype=torch.float16)\nassert x.element_size() == 2\nx = torch.tensor([1e-8], dtype=torch.float16)\nassert x == 0  # Underflow!",
+        "transcript_segment_ids": [
+          "segment-82",
+          "segment-83",
+          "segment-84"
+        ],
+        "vu_id": "lecture-v1/vu-0001/2"
+      },
+      "coverage": {
+        "accepted": [
+          {
+            "end_ms": 655000,
+            "start_ms": 550000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1225000,
+            "start_ms": 1180000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "end_ms": 550000,
+            "start_ms": 0,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1180000,
+            "start_ms": 655000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 4641376.1450000005,
+            "start_ms": 1225000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 555133.3125,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 555123
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+        },
+        "requested_range": {
+          "end_ms": 556123,
+          "start_ms": 555123,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 559540,
+              "start_ms": 555540,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-83",
+            "text": "So you can't really represent very big numbers, and you can't represent very small numbers.",
+            "text_range": {
+              "lid": "83",
+              "range": {
+                "end": 91,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12572-31db-7ec1-9ca7-bb95434c813e",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+          },
+          "model_request_id": "01a12572-31a0-7773-9946-98180c9dd1ef",
+          "frames": [
+            {
+              "requested_ms": 555123,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 555133.3125,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "png_bytes": 439190,
+      "request_pixels_equal": true
+    },
+    {
+      "id": "V01-bfloat16",
+      "question": "同为 1e-8，两个例子中的 dtype、断言和显示结果有什么变化？",
+      "query": "torch.bfloat16 assert x != 0",
+      "publication": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+      },
+      "total_matches": 22,
+      "candidate_rank": 7,
+      "candidate": {
+        "analysis_id": "lecture-v1",
+        "change": "相较前置画面，页面内容上移，黄色强调由 bfloat16 张量构造代码移至 assert x != 0；两张采样的主体内容保持一致。",
+        "description": "白底讲义上方的浅蓝浮层显示 x = 1.001e-8，并覆盖部分 bfloat16 位图。中部张量代码及黄色强调的非零断言清晰可见；下方三种类型的 torch.finfo 查询和训练影响标题呈淡色。",
+        "frames": [
+          {
+            "actual_pts_ms": 648000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 652000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          }
+        ],
+        "location": {
+          "end_ms": 653000,
+          "start_ms": 648000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "matched_terms": [
+          "!=",
+          "0",
+          "assert",
+          "bfloat16",
+          "torch",
+          "x"
+        ],
+        "read_hint": {
+          "location": {
+            "end_ms": 653000,
+            "start_ms": 648000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          "sampling": [
+            648000
+          ]
+        },
+        "screen_text": "bfloat16\nx = 1.001e-8\nbfloat16 uses the same memory as float16 but has the same dynamic range as float32!\nx = torch.tensor([1e-8], dtype=torch.bfloat16)\nassert x != 0  # No underflow!\nfloat32_info = torch.finfo(torch.float32)\nfloat16_info = torch.finfo(torch.float16)\nbfloat16_info = torch.finfo(torch.bfloat16)",
+        "transcript_segment_ids": [
+          "segment-96",
+          "segment-97"
+        ],
+        "vu_id": "lecture-v1/vu-0008/1"
+      },
+      "coverage": {
+        "accepted": [
+          {
+            "end_ms": 655000,
+            "start_ms": 550000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1225000,
+            "start_ms": 1180000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "end_ms": 550000,
+            "start_ms": 0,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1180000,
+            "start_ms": 655000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 4641376.1450000005,
+            "start_ms": 1225000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 650000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 650000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+        },
+        "requested_range": {
+          "end_ms": 651000,
+          "start_ms": 650000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": []
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12572-32df-7a01-9c4d-6028310efbb9",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+          },
+          "model_request_id": "01a12572-32b4-7a70-9140-dd60f522c93d",
+          "frames": [
+            {
+              "requested_ms": 650000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 650000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "png_bytes": 456792,
+      "request_pixels_equal": true
+    },
+    {
+      "id": "V02-origin",
+      "question": "四帧依次新增的当前讲解重点是什么？",
+      "query": "Google Brain",
+      "publication": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+      },
+      "total_matches": 5,
+      "candidate_rank": 2,
+      "candidate": {
+        "analysis_id": "lecture-v1",
+        "change": "高亮从位图推进到开发背景说明，页面位置保持不变。",
+        "description": "位图恢复白底，黄色高亮移到 Google Brain 在 2018 年开发 bfloat 的说明，该行由淡灰变清晰。后续动态范围、分辨率说明与代码仍淡灰，顶部框数值仍为零。",
+        "frames": [
+          {
+            "actual_pts_ms": 596000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          }
+        ],
+        "location": {
+          "end_ms": 602000,
+          "start_ms": 596000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "matched_terms": [
+          "brain",
+          "google"
+        ],
+        "read_hint": {
+          "location": {
+            "end_ms": 602000,
+            "start_ms": 596000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          "sampling": [
+            596000
+          ]
+        },
+        "screen_text": "Google Brain developed bfloat (brain floating point) in 2018 to address this issue.",
+        "transcript_segment_ids": [
+          "segment-88",
+          "segment-89"
+        ],
+        "vu_id": "lecture-v1/vu-0005/4"
+      },
+      "coverage": {
+        "accepted": [
+          {
+            "end_ms": 655000,
+            "start_ms": 550000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1225000,
+            "start_ms": 1180000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "end_ms": 550000,
+            "start_ms": 0,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1180000,
+            "start_ms": 655000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 4641376.1450000005,
+            "start_ms": 1225000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 600000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 600000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+        },
+        "requested_range": {
+          "end_ms": 601000,
+          "start_ms": 600000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 606580,
+              "start_ms": 599180,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-89",
+            "text": "And the observation... was that, well, let's not compromise on the number of bits.",
+            "text_range": {
+              "lid": "89",
+              "range": {
+                "end": 82,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12572-33d8-70b3-bba3-cf95830609ea",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+          },
+          "model_request_id": "01a12572-33a3-7601-ba94-1863b3d6aaad",
+          "frames": [
+            {
+              "requested_ms": 600000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 600000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "png_bytes": 448656,
+      "request_pixels_equal": true
+    },
+    {
+      "id": "V02-range",
+      "question": "四帧依次新增的当前讲解重点是什么？",
+      "query": "内存 动态范围",
+      "publication": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+      },
+      "total_matches": 10,
+      "candidate_rank": 2,
+      "candidate": {
+        "analysis_id": "lecture-v1",
+        "change": "603000 毫秒采样中高亮从开发背景推进到内存及动态范围说明；618000 和 627000 毫秒采样保持相同高亮与代码。",
+        "description": "黄色高亮推进到 bfloat16 内存与动态范围比较句，该句由淡灰变清晰；开发背景说明恢复白底。分辨率代价说明和无下溢代码仍淡灰。页面、位图与数值框保持不变，鼠标从小数标签附近移到指数区，随后移至 float32 文字附近。",
+        "frames": [
+          {
+            "actual_pts_ms": 603000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 618000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 627000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          }
+        ],
+        "location": {
+          "end_ms": 628000,
+          "start_ms": 603000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "matched_terms": [
+          "内存",
+          "动态",
+          "态范",
+          "范围"
+        ],
+        "read_hint": {
+          "location": {
+            "end_ms": 628000,
+            "start_ms": 603000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          "sampling": [
+            603000
+          ]
+        },
+        "screen_text": "x = 0.000e+0\nbfloat16\nsign; exponent (8 bit); fraction (7 bit)\n0 | 0 1 1 1 1 1 0 0 | 0 1 0 0 0 0 0\nGoogle Brain developed bfloat (brain floating point) in 2018 to address this issue.\nbfloat16 uses the same memory as float16 but has the same dynamic range as float32!\nThe only catch is that the resolution is worse, but this matters less for deep learning.\nx = torch.tensor([1e-8], dtype=torch.bfloat16)\nassert x != 0  # No underflow!",
+        "transcript_segment_ids": [
+          "segment-89",
+          "segment-90",
+          "segment-91",
+          "segment-92",
+          "segment-93"
+        ],
+        "vu_id": "lecture-v1/vu-0006/2"
+      },
+      "coverage": {
+        "accepted": [
+          {
+            "end_ms": 655000,
+            "start_ms": 550000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1225000,
+            "start_ms": 1180000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "end_ms": 550000,
+            "start_ms": 0,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1180000,
+            "start_ms": 655000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 4641376.1450000005,
+            "start_ms": 1225000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 615000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 615000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+        },
+        "requested_range": {
+          "end_ms": 616000,
+          "start_ms": 615000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 621100,
+              "start_ms": 614600,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-91",
+            "text": "So that means it has more dynamic range than float 16.",
+            "text_range": {
+              "lid": "91",
+              "range": {
+                "end": 54,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12572-34dd-7841-8796-5b675314098f",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+          },
+          "model_request_id": "01a12572-34a9-79d0-84d4-e4c008529477",
+          "frames": [
+            {
+              "requested_ms": 615000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 615000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "png_bytes": 494471,
+      "request_pixels_equal": true
+    },
+    {
+      "id": "V02-resolution",
+      "question": "四帧依次新增的当前讲解重点是什么？",
+      "query": "黄色强调 精度取舍",
+      "publication": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+      },
+      "total_matches": 20,
+      "candidate_rank": 1,
+      "candidate": {
+        "analysis_id": "lecture-v1",
+        "change": "相较前置画面，黄色强调从内存和动态范围说明移至分辨率取舍句；这些采样中的讲义内容与强调保持一致。",
+        "description": "白底讲义展示 bfloat16 位布局：蓝色符号位、绿色八位指数、粉色七位小数。上方浅蓝浮层显示 x 为零；下方说明其内存用量、动态范围和精度取舍。黄色横条强调分辨率较差但对深度学习影响较小的句子，底部 bfloat16 示例代码呈淡色。",
+        "frames": [
+          {
+            "actual_pts_ms": 628000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 643000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 646000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          }
+        ],
+        "location": {
+          "end_ms": 647000,
+          "start_ms": 628000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "matched_terms": [
+          "取舍",
+          "度取",
+          "强调",
+          "精度",
+          "色强",
+          "黄色"
+        ],
+        "read_hint": {
+          "location": {
+            "end_ms": 647000,
+            "start_ms": 628000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          "sampling": [
+            628000
+          ]
+        },
+        "screen_text": "x = torch.tensor([1e-8], dtype=torch.float16)\nx = 0.000e+0\nbfloat16\n[Wikipedia]\nsign; exponent (8 bit); fraction (7 bit)\n0 | 01111100 | 0100000\nGoogle Brain developed bfloat (brain floating point) in 2018 to address this issue.\nbfloat16 uses the same memory as float16 but has the same dynamic range as float32!\nThe only catch is that the resolution is worse, but this matters less for deep learning.\nx = torch.tensor([1e-8], dtype=torch.bfloat16)\nassert x != 0  # No underflow!",
+        "transcript_segment_ids": [
+          "segment-93",
+          "segment-94",
+          "segment-95",
+          "segment-96"
+        ],
+        "vu_id": "lecture-v1/vu-0007/1"
+      },
+      "coverage": {
+        "accepted": [
+          {
+            "end_ms": 655000,
+            "start_ms": 550000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1225000,
+            "start_ms": 1180000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "end_ms": 550000,
+            "start_ms": 0,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1180000,
+            "start_ms": 655000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 4641376.1450000005,
+            "start_ms": 1225000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 630000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 630000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+        },
+        "requested_range": {
+          "end_ms": 631000,
+          "start_ms": 630000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 631600,
+              "start_ms": 626460,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-93",
+            "text": "But, of course, the, the resolution is worse because there's no free lunch here.",
+            "text_range": {
+              "lid": "93",
+              "range": {
+                "end": 80,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12572-35f0-7550-8729-f493d56bc767",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+          },
+          "model_request_id": "01a12572-35bf-7563-87c3-a6e070b74db4",
+          "frames": [
+            {
+              "requested_ms": 630000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 630000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "png_bytes": 546226,
+      "request_pixels_equal": true
+    },
+    {
+      "id": "V02-result",
+      "question": "四帧依次新增的当前讲解重点是什么？",
+      "query": "1.001e-8",
+      "publication": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+      },
+      "total_matches": 22,
+      "candidate_rank": 2,
+      "candidate": {
+        "analysis_id": "lecture-v1",
+        "change": "相较前置画面，页面内容上移，黄色强调由 bfloat16 张量构造代码移至 assert x != 0；两张采样的主体内容保持一致。",
+        "description": "白底讲义上方的浅蓝浮层显示 x = 1.001e-8，并覆盖部分 bfloat16 位图。中部张量代码及黄色强调的非零断言清晰可见；下方三种类型的 torch.finfo 查询和训练影响标题呈淡色。",
+        "frames": [
+          {
+            "actual_pts_ms": 648000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 652000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          }
+        ],
+        "location": {
+          "end_ms": 653000,
+          "start_ms": 648000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "matched_terms": [
+          "001e",
+          "1",
+          "8"
+        ],
+        "read_hint": {
+          "location": {
+            "end_ms": 653000,
+            "start_ms": 648000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          "sampling": [
+            648000
+          ]
+        },
+        "screen_text": "x = 1.001e-8\nx = torch.tensor([1e-8], dtype=torch.bfloat16)",
+        "transcript_segment_ids": [
+          "segment-96",
+          "segment-97"
+        ],
+        "vu_id": "lecture-v1/vu-0008/1"
+      },
+      "coverage": {
+        "accepted": [
+          {
+            "end_ms": 655000,
+            "start_ms": 550000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1225000,
+            "start_ms": 1180000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "end_ms": 550000,
+            "start_ms": 0,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1180000,
+            "start_ms": 655000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 4641376.1450000005,
+            "start_ms": 1225000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 650000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 650000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+        },
+        "requested_range": {
+          "end_ms": 651000,
+          "start_ms": 650000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": []
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12572-36ef-73c3-8037-b2df5dfcb4f5",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+          },
+          "model_request_id": "01a12572-36c3-7c41-874d-3ef6ccd2cc73",
+          "frames": [
+            {
+              "requested_ms": 650000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 650000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "png_bytes": 456792,
+      "request_pixels_equal": true
+    },
+    {
+      "id": "V03-first",
+      "question": "这些时刻能复用代码描述吗？引用时能否合成同一个时间？",
+      "query": "einsum",
+      "publication": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+      },
+      "total_matches": 2,
+      "candidate_rank": 1,
+      "candidate": {
+        "analysis_id": "lecture-v1",
+        "change": "各采样的代码、黄色强调及矩阵数值一致；浅蓝浮层位置略有调整，鼠标指针从浮层附近移至 einsum 的 seq2 附近，随后位于强调行下方。",
+        "description": "白底带行号的代码讲义展示 einops_einsum 函数，以两个全一矩阵对照传统 @ 乘法和具名维度的 einsum。黄色横条强调 seq1 hidden, hidden seq2 -> seq1 seq2 的调用。右上浅蓝浮层展示四行三列全一的 y 和三行三列全四的 z，顶部还有部分全一矩阵；下方复杂示例标题呈淡色。",
+        "frames": [
+          {
+            "actual_pts_ms": 1180000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 1181000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 1196000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 1210000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          }
+        ],
+        "location": {
+          "end_ms": 1211000,
+          "start_ms": 1180000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "matched_terms": [
+          "einsum"
+        ],
+        "read_hint": {
+          "location": {
+            "end_ms": 1211000,
+            "start_ms": 1180000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          "sampling": [
+            1180000
+          ]
+        },
+        "screen_text": "Einsum is generalized matrix multiplication with good bookkeeping.\nz = einsum(x, y, \"seq1 hidden, hidden seq2 -> seq1 seq2\")",
+        "transcript_segment_ids": [
+          "segment-187",
+          "segment-188",
+          "segment-189",
+          "segment-190",
+          "segment-191"
+        ],
+        "vu_id": "lecture-v1/vu-0009/1"
+      },
+      "coverage": {
+        "accepted": [
+          {
+            "end_ms": 655000,
+            "start_ms": 550000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1225000,
+            "start_ms": 1180000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "end_ms": 550000,
+            "start_ms": 0,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1180000,
+            "start_ms": 655000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 4641376.1450000005,
+            "start_ms": 1225000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 1180000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 1180000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+        },
+        "requested_range": {
+          "end_ms": 1181000,
+          "start_ms": 1180000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 1186040,
+              "start_ms": 1177960,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-187",
+            "text": "In INOPs, basically you say X has two dimensions, the row and the column, which I'm gonna name seek one and hidden.",
+            "text_range": {
+              "lid": "187",
+              "range": {
+                "end": 115,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12572-37db-71c0-ac0f-3ebfe07e75cc",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+          },
+          "model_request_id": "01a12572-37b5-7013-935a-517b6871204b",
+          "frames": [
+            {
+              "requested_ms": 1180000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 1180000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "png_bytes": 396570,
+      "request_pixels_equal": true
+    },
+    {
+      "id": "V03-later",
+      "question": "这些时刻能复用代码描述吗？引用时能否合成同一个时间？",
+      "query": "einsum",
+      "publication": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+      },
+      "total_matches": 2,
+      "candidate_rank": 2,
+      "candidate": {
+        "analysis_id": "lecture-v1",
+        "change": "相较前置采样，代码、黄色强调和浮层矩阵保持一致，鼠标位于强调行下方。",
+        "description": "白底代码讲义展示 einops_einsum 函数及全一矩阵构造，对照 z = x @ y 和具名维度的 einsum 调用。黄色横条强调 seq1 hidden, hidden seq2 -> seq1 seq2 的表达式。右上浅蓝浮层显示四行三列全一的 y、三行三列全四的 z 和顶部部分全一矩阵；下方复杂示例标题呈淡色。",
+        "frames": [
+          {
+            "actual_pts_ms": 1211000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          }
+        ],
+        "location": {
+          "end_ms": 1225000,
+          "start_ms": 1211000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "matched_terms": [
+          "einsum"
+        ],
+        "read_hint": {
+          "location": {
+            "end_ms": 1225000,
+            "start_ms": 1211000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          "sampling": [
+            1211000
+          ]
+        },
+        "screen_text": "Einsum is generalized matrix multiplication with good bookkeeping.\nz = einsum(x, y, \"seq1 hidden, hidden seq2 -> seq1 seq2\")",
+        "transcript_segment_ids": [
+          "segment-191",
+          "segment-192"
+        ],
+        "vu_id": "lecture-v1/vu-0010/1"
+      },
+      "coverage": {
+        "accepted": [
+          {
+            "end_ms": 655000,
+            "start_ms": 550000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1225000,
+            "start_ms": 1180000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "end_ms": 550000,
+            "start_ms": 0,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1180000,
+            "start_ms": 655000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 4641376.1450000005,
+            "start_ms": 1225000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 1220000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 1220000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+        },
+        "requested_range": {
+          "end_ms": 1221000,
+          "start_ms": 1220000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 1223840,
+              "start_ms": 1210820,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-191",
+            "text": "So the way this works is I'm going to sum over, enumerate over all possible values of all the variables that occur here, which are sequence, hidden, and C2.",
+            "text_range": {
+              "lid": "191",
+              "range": {
+                "end": 156,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12572-38b9-7513-a08d-c9d2a5491951",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+          },
+          "model_request_id": "01a12572-3891-7791-9658-54b8face3a3f",
+          "frames": [
+            {
+              "requested_ms": 1220000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 1220000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "png_bytes": 390369,
+      "request_pixels_equal": true
+    },
+    {
+      "id": "V04-natural",
+      "question": "为什么输出是 3×3，hidden 到哪里去了？",
+      "query": "为什么输出是 3×3，hidden 到哪里去了？",
+      "publication": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+      },
+      "total_matches": 7,
+      "candidate_rank": 1,
+      "candidate": {
+        "analysis_id": "lecture-v1",
+        "change": "各采样的代码、黄色强调及矩阵数值一致；浅蓝浮层位置略有调整，鼠标指针从浮层附近移至 einsum 的 seq2 附近，随后位于强调行下方。",
+        "description": "白底带行号的代码讲义展示 einops_einsum 函数，以两个全一矩阵对照传统 @ 乘法和具名维度的 einsum。黄色横条强调 seq1 hidden, hidden seq2 -> seq1 seq2 的调用。右上浅蓝浮层展示四行三列全一的 y 和三行三列全四的 z，顶部还有部分全一矩阵；下方复杂示例标题呈淡色。",
+        "frames": [
+          {
+            "actual_pts_ms": 1180000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 1181000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 1196000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 1210000,
+            "height": 1080,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "width": 1920
+          }
+        ],
+        "location": {
+          "end_ms": 1211000,
+          "start_ms": 1180000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "matched_terms": [
+          "3",
+          "hidden"
+        ],
+        "read_hint": {
+          "location": {
+            "end_ms": 1211000,
+            "start_ms": 1180000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          "sampling": [
+            1180000
+          ]
+        },
+        "screen_text": "x = torch.ones(3, 4)  # seq1 hidden\ny = torch.ones(4, 3)  # hidden seq2\nz = einsum(x, y, \"seq1 hidden, hidden seq2 -> seq1 seq2\")",
+        "transcript_segment_ids": [
+          "segment-187",
+          "segment-188",
+          "segment-189",
+          "segment-190",
+          "segment-191"
+        ],
+        "vu_id": "lecture-v1/vu-0009/1"
+      },
+      "coverage": {
+        "accepted": [
+          {
+            "end_ms": 655000,
+            "start_ms": 550000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1225000,
+            "start_ms": 1180000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "end_ms": 550000,
+            "start_ms": 0,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 1180000,
+            "start_ms": 655000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          },
+          {
+            "end_ms": 4641376.1450000005,
+            "start_ms": 1225000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 1210000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 1210000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+        },
+        "requested_range": {
+          "end_ms": 1211000,
+          "start_ms": 1210000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 1210500,
+              "start_ms": 1210240,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-190",
+            "text": "Okay.",
+            "text_range": {
+              "lid": "190",
+              "range": {
+                "end": 5,
+                "start": 0
+              }
+            },
+            "words": []
+          },
+          {
+            "location": {
+              "end_ms": 1223840,
+              "start_ms": 1210820,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-191",
+            "text": "So the way this works is I'm going to sum over, enumerate over all possible values of all the variables that occur here, which are sequence, hidden, and C2.",
+            "text_range": {
+              "lid": "191",
+              "range": {
+                "end": 156,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12572-39aa-7590-a8a9-2b311046af65",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+          },
+          "model_request_id": "01a12572-3981-7232-b777-b745ed08ccd6",
+          "frames": [
+            {
+              "requested_ms": 1210000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 1210000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "png_bytes": 404052,
+      "request_pixels_equal": true
+    },
+    {
+      "id": "V06-none",
+      "question": "仅根据 595–655 秒这段材料，讲者使用的 GPU 序列号是什么？",
+      "query": "GPU 序列号",
+      "publication": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+      },
+      "total_matches": 0,
+      "candidate_rank": null,
+      "candidate": null,
+      "coverage": {
+        "accepted": [
+          {
+            "end_ms": 655000,
+            "start_ms": 595000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ],
+        "gaps": []
+      }
+    },
+    {
+      "id": "unindexed-current",
+      "query": "float16",
+      "publication": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+      },
+      "total_matches": 0,
+      "candidate_rank": null,
+      "candidate": null,
+      "coverage": {
+        "accepted": [],
+        "gaps": [
+          {
+            "end_ms": 2001000,
+            "start_ms": 2000000,
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 2000000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 2000000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+        },
+        "requested_range": {
+          "end_ms": 2001000,
+          "start_ms": 2000000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 2007440,
+              "start_ms": 1993460,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-314",
+            "text": "Uh, so, in general, that's the optimization, the algorithms that people are going to explore from much more- matrix multiplications are going to be much more about how you co-design with the systems rather than these more asymptotic, uh, algorithms.",
+            "text_range": {
+              "lid": "314",
+              "range": {
+                "end": 249,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12572-3aea-7b43-aac1-c3ad33e33ffa",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+          },
+          "model_request_id": "01a12572-3a92-7bf1-9fb1-b5fa8ddb8148",
+          "frames": [
+            {
+              "requested_ms": 2000000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 2000000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "png_bytes": 1165027,
+      "request_pixels_equal": true
+    },
+    {
+      "id": "V08-first",
+      "question": "2 秒和 4 秒各发生什么？相同代码再次出现应落在哪些时刻？",
+      "query": "float16 ==",
+      "publication": {
+        "book_id": "vi11-controlled-supplement",
+        "publication_id": "vi12-controlled-fixture"
+      },
+      "total_matches": 3,
+      "candidate_rank": 1,
+      "candidate": {
+        "analysis_id": "repeat-v1",
+        "change": "初始可见状态。",
+        "description": "白底黑字画面，顶部为教学补充说明，下方两行代码使用 torch.float16 创建张量，并以等于零的断言标注下溢；两帧内容一致。",
+        "frames": [
+          {
+            "actual_pts_ms": 0,
+            "height": 1080,
+            "video": {
+              "media_id": "vi0a-controlled-dtype-v1",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 1000,
+            "height": 1080,
+            "video": {
+              "media_id": "vi0a-controlled-dtype-v1",
+              "media_revision": "1"
+            },
+            "width": 1920
+          }
+        ],
+        "location": {
+          "end_ms": 2000,
+          "start_ms": 0,
+          "video": {
+            "media_id": "vi0a-controlled-dtype-v1",
+            "media_revision": "1"
+          }
+        },
+        "matched_terms": [
+          "==",
+          "float16"
+        ],
+        "read_hint": {
+          "location": {
+            "end_ms": 2000,
+            "start_ms": 0,
+            "video": {
+              "media_id": "vi0a-controlled-dtype-v1",
+              "media_revision": "1"
+            }
+          },
+          "sampling": [
+            0
+          ]
+        },
+        "screen_text": "x = torch.tensor([1e-8], dtype=torch.float16)\nassert x == 0  # Underflow!",
+        "transcript_segment_ids": [
+          "context-0"
+        ],
+        "vu_id": "repeat-v1/vu-0001/1"
+      },
+      "coverage": {
+        "accepted": [
+          {
+            "end_ms": 6000,
+            "start_ms": 0,
+            "video": {
+              "media_id": "vi0a-controlled-dtype-v1",
+              "media_revision": "1"
+            }
+          }
+        ],
+        "gaps": []
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 1000,
+                "height": 1080,
+                "video": {
+                  "media_id": "vi0a-controlled-dtype-v1",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 1000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "vi11-controlled-supplement",
+          "publication_id": "vi12-controlled-fixture"
+        },
+        "requested_range": {
+          "end_ms": 2000,
+          "start_ms": 1000,
+          "video": {
+            "media_id": "vi0a-controlled-dtype-v1",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 2000,
+              "start_ms": 0,
+              "video": {
+                "media_id": "vi0a-controlled-dtype-v1",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "context-0",
+            "text": "Controlled teaching context at occurrence 1; no source audio.",
+            "text_range": {
+              "lid": "p0",
+              "range": {
+                "end": 61,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12572-3baa-79a3-942a-1a44f1a6c20a",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "vi11-controlled-supplement",
+            "publication_id": "vi12-controlled-fixture"
+          },
+          "model_request_id": "01a12572-3b9a-7562-a638-fec9e0886a3a",
+          "frames": [
+            {
+              "requested_ms": 1000,
+              "frame": {
+                "video": {
+                  "media_id": "vi0a-controlled-dtype-v1",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 1000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "png_bytes": 33280,
+      "request_pixels_equal": true
+    },
+    {
+      "id": "V08-change",
+      "question": "2 秒和 4 秒各发生什么？相同代码再次出现应落在哪些时刻？",
+      "query": "bfloat16 !=",
+      "publication": {
+        "book_id": "vi11-controlled-supplement",
+        "publication_id": "vi12-controlled-fixture"
+      },
+      "total_matches": 1,
+      "candidate_rank": 1,
+      "candidate": {
+        "analysis_id": "repeat-v1",
+        "change": "在2000毫秒采样帧中，dtype 从 torch.float16 变为 torch.bfloat16，断言从 x == 0 变为 x != 0，注释从 Underflow! 变为 No underflow!。",
+        "description": "白底黑字布局保持一致，两行代码改为 torch.bfloat16 和不等于零的断言，注释显示无下溢；两帧内容一致。",
+        "frames": [
+          {
+            "actual_pts_ms": 2000,
+            "height": 1080,
+            "video": {
+              "media_id": "vi0a-controlled-dtype-v1",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 3000,
+            "height": 1080,
+            "video": {
+              "media_id": "vi0a-controlled-dtype-v1",
+              "media_revision": "1"
+            },
+            "width": 1920
+          }
+        ],
+        "location": {
+          "end_ms": 4000,
+          "start_ms": 2000,
+          "video": {
+            "media_id": "vi0a-controlled-dtype-v1",
+            "media_revision": "1"
+          }
+        },
+        "matched_terms": [
+          "!=",
+          "bfloat16"
+        ],
+        "read_hint": {
+          "location": {
+            "end_ms": 4000,
+            "start_ms": 2000,
+            "video": {
+              "media_id": "vi0a-controlled-dtype-v1",
+              "media_revision": "1"
+            }
+          },
+          "sampling": [
+            2000
+          ]
+        },
+        "screen_text": "x = torch.tensor([1e-8], dtype=torch.bfloat16)\nassert x != 0  # No underflow!",
+        "transcript_segment_ids": [
+          "context-1"
+        ],
+        "vu_id": "repeat-v1/vu-0001/2"
+      },
+      "coverage": {
+        "accepted": [
+          {
+            "end_ms": 6000,
+            "start_ms": 0,
+            "video": {
+              "media_id": "vi0a-controlled-dtype-v1",
+              "media_revision": "1"
+            }
+          }
+        ],
+        "gaps": []
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 3000,
+                "height": 1080,
+                "video": {
+                  "media_id": "vi0a-controlled-dtype-v1",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 3000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "vi11-controlled-supplement",
+          "publication_id": "vi12-controlled-fixture"
+        },
+        "requested_range": {
+          "end_ms": 4000,
+          "start_ms": 3000,
+          "video": {
+            "media_id": "vi0a-controlled-dtype-v1",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 4000,
+              "start_ms": 2000,
+              "video": {
+                "media_id": "vi0a-controlled-dtype-v1",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "context-1",
+            "text": "Controlled teaching context at occurrence 2; no source audio.",
+            "text_range": {
+              "lid": "p1",
+              "range": {
+                "end": 61,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12572-3c26-73f2-9a1d-9fa5550b7698",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "vi11-controlled-supplement",
+            "publication_id": "vi12-controlled-fixture"
+          },
+          "model_request_id": "01a12572-3c14-7b41-a43c-5504c47af690",
+          "frames": [
+            {
+              "requested_ms": 3000,
+              "frame": {
+                "video": {
+                  "media_id": "vi0a-controlled-dtype-v1",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 3000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "png_bytes": 34353,
+      "request_pixels_equal": true
+    },
+    {
+      "id": "V08-return",
+      "question": "2 秒和 4 秒各发生什么？相同代码再次出现应落在哪些时刻？",
+      "query": "float16 ==",
+      "publication": {
+        "book_id": "vi11-controlled-supplement",
+        "publication_id": "vi12-controlled-fixture"
+      },
+      "total_matches": 3,
+      "candidate_rank": 3,
+      "candidate": {
+        "analysis_id": "repeat-v1",
+        "change": "讲解区域再次出现相同画面；复用画面描述，保留本次位置与转写。",
+        "description": "白底黑字画面，顶部为教学补充说明，下方两行代码使用 torch.float16 创建张量，并以等于零的断言标注下溢；两帧内容一致。",
+        "frames": [
+          {
+            "actual_pts_ms": 4000,
+            "height": 1080,
+            "video": {
+              "media_id": "vi0a-controlled-dtype-v1",
+              "media_revision": "1"
+            },
+            "width": 1920
+          },
+          {
+            "actual_pts_ms": 5000,
+            "height": 1080,
+            "video": {
+              "media_id": "vi0a-controlled-dtype-v1",
+              "media_revision": "1"
+            },
+            "width": 1920
+          }
+        ],
+        "location": {
+          "end_ms": 6000,
+          "start_ms": 4000,
+          "video": {
+            "media_id": "vi0a-controlled-dtype-v1",
+            "media_revision": "1"
+          }
+        },
+        "matched_terms": [
+          "==",
+          "float16"
+        ],
+        "read_hint": {
+          "location": {
+            "end_ms": 6000,
+            "start_ms": 4000,
+            "video": {
+              "media_id": "vi0a-controlled-dtype-v1",
+              "media_revision": "1"
+            }
+          },
+          "sampling": [
+            4000
+          ]
+        },
+        "screen_text": "x = torch.tensor([1e-8], dtype=torch.float16)\nassert x == 0  # Underflow!",
+        "transcript_segment_ids": [
+          "context-2"
+        ],
+        "vu_id": "repeat-v1/vu-0002/1"
+      },
+      "coverage": {
+        "accepted": [
+          {
+            "end_ms": 6000,
+            "start_ms": 0,
+            "video": {
+              "media_id": "vi0a-controlled-dtype-v1",
+              "media_revision": "1"
+            }
+          }
+        ],
+        "gaps": []
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 5000,
+                "height": 1080,
+                "video": {
+                  "media_id": "vi0a-controlled-dtype-v1",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 5000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "vi11-controlled-supplement",
+          "publication_id": "vi12-controlled-fixture"
+        },
+        "requested_range": {
+          "end_ms": 6000,
+          "start_ms": 5000,
+          "video": {
+            "media_id": "vi0a-controlled-dtype-v1",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 6000,
+              "start_ms": 4000,
+              "video": {
+                "media_id": "vi0a-controlled-dtype-v1",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "context-2",
+            "text": "Controlled teaching context at occurrence 3; no source audio.",
+            "text_range": {
+              "lid": "p2",
+              "range": {
+                "end": 61,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a12572-3ca2-7bf2-a9b5-015508b541e6",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "vi11-controlled-supplement",
+            "publication_id": "vi12-controlled-fixture"
+          },
+          "model_request_id": "01a12572-3c95-7020-980a-b758cf927df9",
+          "frames": [
+            {
+              "requested_ms": 5000,
+              "frame": {
+                "video": {
+                  "media_id": "vi0a-controlled-dtype-v1",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 5000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "png_bytes": 33280,
+      "request_pixels_equal": true
+    }
+  ],
+  "limitations": [
+    "Natural-language search uses literal descriptors; the Resident may extract/rephrase query concepts.",
+    "Supplement is a read-ready controlled fixture with synthetic occurrence context, not source speech or a registered publication.",
+    "HTTP recorder confirms actual image projection and observation receipts, not a live-model semantic answer."
+  ]
+}

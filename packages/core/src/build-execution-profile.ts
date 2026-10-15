@@ -5,6 +5,7 @@ import {
   type ExecutorTransportProfile,
   type ExecutorTransportDeliveryBatchLimitV1,
 } from "./executor-transport";
+import { CODEX_EXECUTOR_MEDIA_CAPABILITY_V1, DSH_EXECUTOR_MEDIA_CAPABILITY_V1 } from "./build-executor-media";
 
 export interface BuildExecutionProfileSelectionV1 {
   profile_id: "codex_mcp_v3" | "dsh_native_v4";
@@ -19,6 +20,7 @@ export interface BuildExecutionProfileV1 extends BuildExecutionProfileSelectionV
   session_protocol: "automatic_build_executor_session.v3" | "automatic_build_executor_session.v4";
   input_manifest_version: "automatic_build_executor_input_manifest.v3" | "automatic_build_executor_input_manifest.v4";
   delivery_record_version: 3 | 4;
+  media_input: typeof CODEX_EXECUTOR_MEDIA_CAPABILITY_V1 | typeof DSH_EXECUTOR_MEDIA_CAPABILITY_V1;
 }
 
 /** Historical records resolve here by version, never by the machine's current host. */
@@ -32,6 +34,7 @@ export const CODEX_BUILD_EXECUTION_PROFILE_V1 = Object.freeze({
   session_protocol: "automatic_build_executor_session.v3",
   input_manifest_version: "automatic_build_executor_input_manifest.v3",
   delivery_record_version: 3,
+  media_input: CODEX_EXECUTOR_MEDIA_CAPABILITY_V1,
 } satisfies BuildExecutionProfileV1);
 
 export type CodexBuildExecutionProfileV1 = typeof CODEX_BUILD_EXECUTION_PROFILE_V1;
@@ -51,6 +54,7 @@ export const DSH_BUILD_EXECUTION_PROFILE_V1 = Object.freeze({
   session_protocol: "automatic_build_executor_session.v4",
   input_manifest_version: "automatic_build_executor_input_manifest.v4",
   delivery_record_version: 4,
+  media_input: DSH_EXECUTOR_MEDIA_CAPABILITY_V1,
 } satisfies BuildExecutionProfileV1);
 
 /** Select only a published identity. Callers cannot supply larger capacity numbers. */

@@ -373,13 +373,14 @@ impl RunAdmissions {
             drop(user);
             return self.repeat(access, context, &row, &normalized);
         }
-        let scene = access.workspaces.lock().unwrap().scene(
+        let mut registry = access.workspaces.lock().unwrap();
+        let scene = registry.scene(
             context.user_id(),
             workspace,
             &user,
             &access.library,
         )?;
-        let scene = scene.lock().unwrap();
+        let mut scene = scene.lock().unwrap();
         let stamp: WorkspaceStamp = serde_json::from_value(input.clone()).map_err(|_| invalid())?;
         scene.check(&stamp)?;
         if input.get("published_book_ref").is_some_and(|v| {
@@ -471,6 +472,7 @@ impl RunAdmissions {
         self.point("preparing")?;
         let result: Result<(), ToolError> = (|| {
             let ValidatedAgentInput {
+                video_question,
                 request,
                 message,
                 display_user,
@@ -524,11 +526,11 @@ impl RunAdmissions {
                 head,
                 publication: row.publication.clone(),
                 normalized,
-                reader: runtime::run_context::ReaderInputSnapshot::capture(
-                    &scene.workspace.book,
-                    &scene.workspace.reader,
-                    &message,
-                ),
+                reader: {
+                    let mut reader = runtime::run_context::ReaderInputSnapshot::capture(&scene.workspace.book, &scene.workspace.reader, &message);
+                    reader.video_question = video_question.clone();
+                    reader
+                },
                 confirmation: user.agent_history.confirmation_id(chat).map(str::to_owned),
                 provider: provider.binding,
                 message,
@@ -541,6 +543,7 @@ impl RunAdmissions {
                 now: now.into(),
                 preparation_complete: false,
             };
+            session.turns.last_mut().unwrap().video_question = video_question.clone();
             session.turns.last_mut().unwrap().domain.scene = Some(session_event::ReadingScene::capture(&scene.workspace));
             session.turns.last_mut().unwrap().admission_input = Some(frozen);
             if user.session_store.is_some() {
@@ -552,11 +555,20 @@ impl RunAdmissions {
                 save_agent_history_path(&user.history_path, &candidate)?;
                 user.agent_history = candidate;
             }
+            if let Some(question) = &video_question {
+                scene.workspace.video_drafts.retain(|_, d| d.context.draft_id != question.draft_id);
+                // The accepted log already owns the binding. An older checkpoint is
+                // reconciled against that log if this cleanup cannot be committed.
+                if let Err(error) = registry.persist_video_draft_handoff(context.user_id(), &scene) {
+                    eprintln!("video draft handoff checkpoint: {}", error.message);
+                }
+            }
             self.point("pending")?;
             self.complete_preparation(&mut user, &row)?;
             Ok(())
         })();
         drop(scene);
+        drop(registry);
         match result {
             Ok(()) => Ok(descriptor(&self.by_turn(&row.owner, &row.turn)?)),
             Err(e) if e.error_code == "INJECTED_CRASH" => Err(e),
@@ -779,6 +791,8 @@ fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolError> {
         "goal_id",
         "goal_action",
         "retry_of",
+        "video_window_id",
+        "video_draft_id",
     ] {
         v[key] = input[key].clone();
     }

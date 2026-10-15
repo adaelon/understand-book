@@ -24,6 +24,9 @@ pub enum ToolHandlerId {
     TutorStep,
     SourcePresent,
     PresentationAuthor,
+    VideoReadFrames,
+    VideoSearch,
+    VideoReviewAudio,
     ProfileManifest,
     ProfileMarkUsed,
     BookRouteFrom,
@@ -42,7 +45,7 @@ pub enum ToolHandlerId {
 }
 
 impl ToolHandlerId {
-    pub const ALL: [ToolHandlerId; 34] = [
+    pub const ALL: [ToolHandlerId; 37] = [
         ToolHandlerId::Book(BookToolId::Query),
         ToolHandlerId::Book(BookToolId::Synthesize),
         ToolHandlerId::Book(BookToolId::SearchText),
@@ -55,6 +58,9 @@ impl ToolHandlerId {
         ToolHandlerId::Artifact(ArtifactToolId::Read),
         ToolHandlerId::SourcePresent,
         ToolHandlerId::PresentationAuthor,
+        ToolHandlerId::VideoReadFrames,
+        ToolHandlerId::VideoSearch,
+        ToolHandlerId::VideoReviewAudio,
         ToolHandlerId::Book(BookToolId::Context),
         ToolHandlerId::Book(BookToolId::Concept),
         ToolHandlerId::Book(BookToolId::Structure),
@@ -90,6 +96,9 @@ impl ToolHandlerId {
             ToolHandlerId::GoalUpdate => "goal.update",
             ToolHandlerId::TutorStep => "tutor.step",
             ToolHandlerId::PresentationAuthor => "presentation.author",
+            ToolHandlerId::VideoReadFrames => "video.read_frames",
+            ToolHandlerId::VideoReviewAudio => "video.review_audio",
+            ToolHandlerId::VideoSearch => "video.search",
             ToolHandlerId::SourcePresent => "source.present",
             ToolHandlerId::ProfileManifest => "profile.manifest",
             ToolHandlerId::ProfileMarkUsed => "profile.mark_used",
@@ -469,6 +478,9 @@ impl ToolRegistration {
             "book.structure" => "查看书籍结构",
             "source.present" => "整理来源",
             "presentation.author" => "制作与预览内容",
+            "video.review_audio" => "复核短原音频",
+            "video.read_frames" => "读取视频画面",
+            "video.search" => "检索视频画面",
             "tool.search" => "查找可用工具",
             "tutor.step" => "选择教学动作",
             "goal.update" => "更新当前任务",
@@ -740,7 +752,7 @@ fn registration_for(spec: ToolSpec, handler: ToolHandlerId) -> ToolRegistration 
             ResultPolicy::MemoryReceipt,
             Parallelism::SequentialOnly,
         ),
-        Handler::PresentationAuthor => (
+        Handler::PresentationAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio => (
             ToolValidatorId::JsonSchema,
             ResultPolicy::EvidenceProjection,
             Parallelism::SequentialOnly,
@@ -876,6 +888,8 @@ fn capability_migration(handler: ToolHandlerId) -> CapabilityMigration {
         Handler::ToolSearch => migration(vec![Legacy::Discovery], vec![Capability::Discovery]),
         Handler::TutorStep => migration(vec![Legacy::MemoryWrite], vec![Capability::MemoryWrite]),
         Handler::GoalUpdate => migration(vec![], vec![Capability::GoalManagement]),
+        Handler::VideoReadFrames | Handler::VideoReviewAudio => migration(vec![Legacy::BookRead], vec![Capability::SourceRead]),
+        Handler::VideoSearch => migration(vec![Legacy::BookSearch], vec![Capability::LexicalLocate]),
         Handler::PresentationAuthor => migration(
             vec![Legacy::SourcePresentation],
             vec![Capability::PresentationAuthoring],
@@ -1159,6 +1173,12 @@ fn routing_shape(handler: ToolHandlerId) -> RoutingShape {
             all_profiles(),
             Cost::Low,
         ),
+        Handler::VideoReadFrames | Handler::VideoReviewAudio => shape(vec![Scope::Selection, Scope::Passage, Scope::Section],
+            vec![Operation::ReadSource, Operation::Explain, Operation::Compare], Effect::ReadOnly,
+            vec![Precondition::BookAvailable], all_profiles(), Cost::High),
+        Handler::VideoSearch => shape(vec![Scope::Passage, Scope::Section, Scope::Document],
+            vec![Operation::LocateLiteral, Operation::Compare], Effect::ReadOnly,
+            vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
         Handler::PresentationAuthor => shape(
             vec![
                 Scope::Selection,
@@ -1385,10 +1405,13 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
             "Read bounded artifact records returned by artifact.search or its continuation.",
             "Do not invent opaque refs or treat artifact records as canonical book evidence.",
         ),
+        Handler::VideoReviewAudio => ("Review short original audio and uncertain spoken words with Whisper. 原音频、听核、复核、讲者措辞、听不清、underflow、overflow。", "Machine recognition with uncertainties; compare saved transcript and actual frames; never edit source text or claim the main model heard audio."),
+        Handler::VideoReadFrames => ("Read actual video frames, crops, original PTS and corresponding English transcript. 视频画面、代码、公式、取帧、裁剪。", "Samples only; paths and descriptions do not establish a visual observation."),
+        Handler::VideoSearch => ("Locate visual units and source-backed teaching roles; follow explanations, examples and limitations to supporting material. 视频视觉检索、讲解结构、解释、示例、反例、条件限定、前文图示、代码、概念、重复画面、覆盖缺口。", "Candidates only; read discourse text_reads with book.text and read_hints with video.read_frames before source.present. Search unindexed current frames directly with the frame reader."),
         Handler::PresentationAuthor => ("Create and rehearse rich HTML answers, static Python/Matplotlib charts and interactive explanations.", "Do not use for a short plain answer or persist an untested candidate."),
         Handler::SourcePresent => (
             "Present an opaque user-visible source reference for evidence already observed in this turn.",
-            "Pass verbatim observed quote; the tool resolves its location. Do not use source presentation as evidence retrieval.",
+            "Pass verbatim observed quote or a media target copied from successful observations; the tool resolves its location. Do not use source presentation as evidence retrieval.",
         ),
         Handler::ProfileManifest => (
             "Read profile slots, presets, projections, or tool policy needed for the current task.",
@@ -1867,6 +1890,9 @@ mod tests {
             ),
             ("book.search_text", &["book_search"], &["lexical_locate"]),
             ("book.text", &["book_read"], &["source_read"]),
+            ("video.read_frames", &["book_read"], &["source_read"]),
+            ("video.review_audio", &["book_read"], &["source_read"]),
+            ("video.search", &["book_search"], &["lexical_locate"]),
             ("tool.search", &["discovery"], &["discovery"]),
             ("artifact.list", &["artifact_read"], &["artifact_read"]),
             ("artifact.search", &["artifact_read"], &["artifact_read"]),

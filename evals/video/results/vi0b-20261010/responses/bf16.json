@@ -1,0 +1,2819 @@
+{
+  "request": {
+    "job": {
+      "id": "bf16",
+      "audio_path": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi0b\\audio\\bf16.wav",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "source_revision": "vq27-local-20261008",
+      "source_start_ms": 595000.0,
+      "duration_ms": 59999.88662131519,
+      "purpose": "transcription",
+      "origin": "clips/bf16.wav"
+    },
+    "profile": {
+      "model": "small.en",
+      "device": "cpu",
+      "compute_type": "int8",
+      "cpu_threads": 8,
+      "transcribe": {
+        "language": "en",
+        "task": "transcribe",
+        "beam_size": 5,
+        "temperature": 0,
+        "word_timestamps": true,
+        "condition_on_previous_text": false,
+        "vad_filter": true,
+        "vad_parameters": {
+          "min_silence_duration_ms": 500
+        }
+      },
+      "versions": {
+        "faster-whisper": "1.2.1",
+        "ctranslate2": "4.8.2",
+        "av": "18.1.0",
+        "onnxruntime": "1.31.0"
+      },
+      "model_directory": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\.worktree-local\\whisper-models\\small.en"
+    }
+  },
+  "status": "completed",
+  "started_at": "2026-10-10T02:48:08.834444+00:00",
+  "raw_response": {
+    "segments": [
+      {
+        "id": 1,
+        "seek": 0,
+        "start": 0.0,
+        "end": 4.18,
+        "text": " So, this was developed in actually 2018 to address this issue.",
+        "tokens": [
+          50363,
+          1406,
+          11,
+          428,
+          373,
+          4166,
+          287,
+          1682,
+          2864,
+          284,
+          2209,
+          428,
+          2071,
+          13,
+          50611
+        ],
+        "avg_logprob": -0.21139208326737086,
+        "compression_ratio": 1.543778801843318,
+        "no_speech_prob": 0.0006251604063436389,
+        "words": [
+          {
+            "start": 0.0,
+            "end": 0.48,
+            "word": " So,",
+            "probability": 0.627527117729187
+          },
+          {
+            "start": 0.72,
+            "end": 0.76,
+            "word": " this",
+            "probability": 0.9828342199325562
+          },
+          {
+            "start": 0.76,
+            "end": 1.0,
+            "word": " was",
+            "probability": 0.9936248064041138
+          },
+          {
+            "start": 1.0,
+            "end": 1.36,
+            "word": " developed",
+            "probability": 0.9848734140396118
+          },
+          {
+            "start": 1.36,
+            "end": 1.62,
+            "word": " in",
+            "probability": 0.9683318138122559
+          },
+          {
+            "start": 1.62,
+            "end": 1.96,
+            "word": " actually",
+            "probability": 0.5800045132637024
+          },
+          {
+            "start": 1.96,
+            "end": 2.44,
+            "word": " 2018",
+            "probability": 0.947567343711853
+          },
+          {
+            "start": 2.44,
+            "end": 3.24,
+            "word": " to",
+            "probability": 0.8364425897598267
+          },
+          {
+            "start": 3.24,
+            "end": 3.56,
+            "word": " address",
+            "probability": 0.9959171414375305
+          },
+          {
+            "start": 3.56,
+            "end": 3.8,
+            "word": " this",
+            "probability": 0.9948357343673706
+          },
+          {
+            "start": 3.8,
+            "end": 4.18,
+            "word": " issue.",
+            "probability": 0.9967395663261414
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 2,
+        "seek": 0,
+        "start": 5.06,
+        "end": 11.58,
+        "text": " And the observation was that, well, let's not compromise on the number of bits.",
+        "tokens": [
+          50611,
+          843,
+          262,
+          13432,
+          373,
+          326,
+          11,
+          880,
+          11,
+          1309,
+          338,
+          407,
+          13110,
+          319,
+          262,
+          1271,
+          286,
+          10340,
+          13,
+          50951
+        ],
+        "avg_logprob": -0.21139208326737086,
+        "compression_ratio": 1.543778801843318,
+        "no_speech_prob": 0.0006251604063436389,
+        "words": [
+          {
+            "start": 5.06,
+            "end": 5.56,
+            "word": " And",
+            "probability": 0.9498905539512634
+          },
+          {
+            "start": 5.56,
+            "end": 6.06,
+            "word": " the",
+            "probability": 0.7476786971092224
+          },
+          {
+            "start": 6.06,
+            "end": 6.62,
+            "word": " observation",
+            "probability": 0.9971777200698853
+          },
+          {
+            "start": 6.62,
+            "end": 7.46,
+            "word": " was",
+            "probability": 0.988905668258667
+          },
+          {
+            "start": 7.46,
+            "end": 7.96,
+            "word": " that,",
+            "probability": 0.985211968421936
+          },
+          {
+            "start": 8.34,
+            "end": 8.44,
+            "word": " well,",
+            "probability": 0.8061919808387756
+          },
+          {
+            "start": 8.58,
+            "end": 8.82,
+            "word": " let's",
+            "probability": 0.9924774467945099
+          },
+          {
+            "start": 8.82,
+            "end": 9.1,
+            "word": " not",
+            "probability": 0.9971780776977539
+          },
+          {
+            "start": 9.1,
+            "end": 9.66,
+            "word": " compromise",
+            "probability": 0.9951901435852051
+          },
+          {
+            "start": 9.66,
+            "end": 10.22,
+            "word": " on",
+            "probability": 0.9923487901687622
+          },
+          {
+            "start": 10.22,
+            "end": 10.96,
+            "word": " the",
+            "probability": 0.7960443496704102
+          },
+          {
+            "start": 10.96,
+            "end": 11.2,
+            "word": " number",
+            "probability": 0.995457649230957
+          },
+          {
+            "start": 11.2,
+            "end": 11.42,
+            "word": " of",
+            "probability": 0.9960921406745911
+          },
+          {
+            "start": 11.42,
+            "end": 11.58,
+            "word": " bits.",
+            "probability": 0.995830237865448
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 3,
+        "seek": 0,
+        "start": 11.78,
+        "end": 16.28,
+        "text": " It's the number of bits that's going to be the same as FP16, but we're going to shift",
+        "tokens": [
+          50951,
+          632,
+          338,
+          262,
+          1271,
+          286,
+          10340,
+          326,
+          338,
+          1016,
+          284,
+          307,
+          262,
+          976,
+          355,
+          31459,
+          1433,
+          11,
+          475,
+          356,
+          821,
+          1016,
+          284,
+          6482,
+          51177
+        ],
+        "avg_logprob": -0.21139208326737086,
+        "compression_ratio": 1.543778801843318,
+        "no_speech_prob": 0.0006251604063436389,
+        "words": [
+          {
+            "start": 11.78,
+            "end": 11.9,
+            "word": " It's",
+            "probability": 0.8085428476333618
+          },
+          {
+            "start": 11.9,
+            "end": 12.24,
+            "word": " the",
+            "probability": 0.410857617855072
+          },
+          {
+            "start": 12.24,
+            "end": 12.42,
+            "word": " number",
+            "probability": 0.8898287415504456
+          },
+          {
+            "start": 12.42,
+            "end": 12.58,
+            "word": " of",
+            "probability": 0.9822102785110474
+          },
+          {
+            "start": 12.58,
+            "end": 12.72,
+            "word": " bits",
+            "probability": 0.9953786134719849
+          },
+          {
+            "start": 12.72,
+            "end": 12.9,
+            "word": " that's",
+            "probability": 0.7963371872901917
+          },
+          {
+            "start": 12.9,
+            "end": 12.96,
+            "word": " going",
+            "probability": 0.6614100933074951
+          },
+          {
+            "start": 12.96,
+            "end": 13.06,
+            "word": " to",
+            "probability": 0.9977421760559082
+          },
+          {
+            "start": 13.06,
+            "end": 13.12,
+            "word": " be",
+            "probability": 0.9973574280738831
+          },
+          {
+            "start": 13.12,
+            "end": 13.2,
+            "word": " the",
+            "probability": 0.88985276222229
+          },
+          {
+            "start": 13.2,
+            "end": 13.36,
+            "word": " same",
+            "probability": 0.9976947903633118
+          },
+          {
+            "start": 13.36,
+            "end": 13.58,
+            "word": " as",
+            "probability": 0.9788383841514587
+          },
+          {
+            "start": 13.58,
+            "end": 14.72,
+            "word": " FP16,",
+            "probability": 0.6729259490966797
+          },
+          {
+            "start": 15.34,
+            "end": 15.38,
+            "word": " but",
+            "probability": 0.9875998497009277
+          },
+          {
+            "start": 15.38,
+            "end": 15.66,
+            "word": " we're",
+            "probability": 0.9849976897239685
+          },
+          {
+            "start": 15.66,
+            "end": 15.84,
+            "word": " going",
+            "probability": 0.9973045587539673
+          },
+          {
+            "start": 15.84,
+            "end": 16.04,
+            "word": " to",
+            "probability": 0.9980643391609192
+          },
+          {
+            "start": 16.04,
+            "end": 16.28,
+            "word": " shift",
+            "probability": 0.9907695651054382
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 4,
+        "seek": 0,
+        "start": 16.28,
+        "end": 18.74,
+        "text": " some of the bits from the mantissa to the exponent.",
+        "tokens": [
+          51177,
+          617,
+          286,
+          262,
+          10340,
+          422,
+          262,
+          24818,
+          13808,
+          284,
+          262,
+          28622,
+          13,
+          51353
+        ],
+        "avg_logprob": -0.21139208326737086,
+        "compression_ratio": 1.543778801843318,
+        "no_speech_prob": 0.0006251604063436389,
+        "words": [
+          {
+            "start": 16.28,
+            "end": 16.48,
+            "word": " some",
+            "probability": 0.9971591234207153
+          },
+          {
+            "start": 16.48,
+            "end": 16.58,
+            "word": " of",
+            "probability": 0.9929310083389282
+          },
+          {
+            "start": 16.58,
+            "end": 16.68,
+            "word": " the",
+            "probability": 0.9965113997459412
+          },
+          {
+            "start": 16.68,
+            "end": 16.84,
+            "word": " bits",
+            "probability": 0.9977377653121948
+          },
+          {
+            "start": 16.84,
+            "end": 17.24,
+            "word": " from",
+            "probability": 0.9974914789199829
+          },
+          {
+            "start": 17.24,
+            "end": 17.62,
+            "word": " the",
+            "probability": 0.992629885673523
+          },
+          {
+            "start": 17.62,
+            "end": 17.94,
+            "word": " mantissa",
+            "probability": 0.9611439406871796
+          },
+          {
+            "start": 17.94,
+            "end": 18.22,
+            "word": " to",
+            "probability": 0.9963178634643555
+          },
+          {
+            "start": 18.22,
+            "end": 18.34,
+            "word": " the",
+            "probability": 0.9936981797218323
+          },
+          {
+            "start": 18.34,
+            "end": 18.74,
+            "word": " exponent.",
+            "probability": 0.990796685218811
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 5,
+        "seek": 0,
+        "start": 19.56,
+        "end": 26.1,
+        "text": " So that means it has more dynamic range than float 16.",
+        "tokens": [
+          51353,
+          1406,
+          326,
+          1724,
+          340,
+          468,
+          517,
+          8925,
+          2837,
+          621,
+          12178,
+          1467,
+          13,
+          51785
+        ],
+        "avg_logprob": -0.21139208326737086,
+        "compression_ratio": 1.543778801843318,
+        "no_speech_prob": 0.0006251604063436389,
+        "words": [
+          {
+            "start": 19.56,
+            "end": 19.9,
+            "word": " So",
+            "probability": 0.9922714233398438
+          },
+          {
+            "start": 19.9,
+            "end": 20.1,
+            "word": " that",
+            "probability": 0.5136685967445374
+          },
+          {
+            "start": 20.1,
+            "end": 20.3,
+            "word": " means",
+            "probability": 0.997159481048584
+          },
+          {
+            "start": 20.3,
+            "end": 20.46,
+            "word": " it",
+            "probability": 0.9578235149383545
+          },
+          {
+            "start": 20.46,
+            "end": 20.6,
+            "word": " has",
+            "probability": 0.9974429607391357
+          },
+          {
+            "start": 20.6,
+            "end": 20.82,
+            "word": " more",
+            "probability": 0.9978495836257935
+          },
+          {
+            "start": 20.82,
+            "end": 21.22,
+            "word": " dynamic",
+            "probability": 0.9987792372703552
+          },
+          {
+            "start": 21.22,
+            "end": 21.7,
+            "word": " range",
+            "probability": 0.9990691542625427
+          },
+          {
+            "start": 21.7,
+            "end": 22.72,
+            "word": " than",
+            "probability": 0.9080052375793457
+          },
+          {
+            "start": 22.72,
+            "end": 23.5,
+            "word": " float",
+            "probability": 0.662483274936676
+          },
+          {
+            "start": 23.5,
+            "end": 26.1,
+            "word": " 16.",
+            "probability": 0.5402577519416809
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 6,
+        "seek": 2610,
+        "start": 27.73,
+        "end": 30.73,
+        "text": " And it actually has the same dynamic range as float 32.",
+        "tokens": [
+          50363,
+          843,
+          340,
+          1682,
+          468,
+          262,
+          976,
+          8925,
+          2837,
+          355,
+          12178,
+          3933,
+          13,
+          50635
+        ],
+        "avg_logprob": -0.2289943577349186,
+        "compression_ratio": 1.6239669421487604,
+        "no_speech_prob": 0.004518904723227024,
+        "words": [
+          {
+            "start": 27.73,
+            "end": 28.17,
+            "word": " And",
+            "probability": 0.4630940556526184
+          },
+          {
+            "start": 28.27,
+            "end": 28.71,
+            "word": " it",
+            "probability": 0.9287552237510681
+          },
+          {
+            "start": 28.71,
+            "end": 28.89,
+            "word": " actually",
+            "probability": 0.9885016679763794
+          },
+          {
+            "start": 28.89,
+            "end": 29.05,
+            "word": " has",
+            "probability": 0.9953243136405945
+          },
+          {
+            "start": 29.05,
+            "end": 29.19,
+            "word": " the",
+            "probability": 0.9928804636001587
+          },
+          {
+            "start": 29.19,
+            "end": 29.33,
+            "word": " same",
+            "probability": 0.9972953200340271
+          },
+          {
+            "start": 29.33,
+            "end": 29.65,
+            "word": " dynamic",
+            "probability": 0.9981390237808228
+          },
+          {
+            "start": 29.65,
+            "end": 29.89,
+            "word": " range",
+            "probability": 0.7939642071723938
+          },
+          {
+            "start": 29.89,
+            "end": 30.09,
+            "word": " as",
+            "probability": 0.9678060412406921
+          },
+          {
+            "start": 30.09,
+            "end": 30.27,
+            "word": " float",
+            "probability": 0.7684897184371948
+          },
+          {
+            "start": 30.27,
+            "end": 30.73,
+            "word": " 32.",
+            "probability": 0.5979601144790649
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 7,
+        "seek": 2610,
+        "start": 31.76,
+        "end": 36.6,
+        "text": " But, of course, the, the resolution is worse because there's no free lunch here.",
+        "tokens": [
+          50635,
+          887,
+          11,
+          286,
+          1781,
+          11,
+          262,
+          11,
+          262,
+          6323,
+          318,
+          4785,
+          780,
+          612,
+          338,
+          645,
+          1479,
+          9965,
+          994,
+          13,
+          50907
+        ],
+        "avg_logprob": -0.2289943577349186,
+        "compression_ratio": 1.6239669421487604,
+        "no_speech_prob": 0.004518904723227024,
+        "words": [
+          {
+            "start": 31.76,
+            "end": 32.04,
+            "word": " But,",
+            "probability": 0.9937591552734375
+          },
+          {
+            "start": 32.18,
+            "end": 32.32,
+            "word": " of",
+            "probability": 0.9968389272689819
+          },
+          {
+            "start": 32.32,
+            "end": 32.48,
+            "word": " course,",
+            "probability": 0.999314546585083
+          },
+          {
+            "start": 32.64,
+            "end": 32.8,
+            "word": " the,",
+            "probability": 0.9603703022003174
+          },
+          {
+            "start": 32.8,
+            "end": 33.02,
+            "word": " the",
+            "probability": 0.9982062578201294
+          },
+          {
+            "start": 33.02,
+            "end": 33.5,
+            "word": " resolution",
+            "probability": 0.9948397278785706
+          },
+          {
+            "start": 33.5,
+            "end": 34.32,
+            "word": " is",
+            "probability": 0.9083381295204163
+          },
+          {
+            "start": 34.32,
+            "end": 34.7,
+            "word": " worse",
+            "probability": 0.900438666343689
+          },
+          {
+            "start": 34.7,
+            "end": 35.54,
+            "word": " because",
+            "probability": 0.5749719738960266
+          },
+          {
+            "start": 35.54,
+            "end": 35.8,
+            "word": " there's",
+            "probability": 0.9812288582324982
+          },
+          {
+            "start": 35.8,
+            "end": 35.92,
+            "word": " no",
+            "probability": 0.9973931312561035
+          },
+          {
+            "start": 35.92,
+            "end": 36.1,
+            "word": " free",
+            "probability": 0.9975643157958984
+          },
+          {
+            "start": 36.1,
+            "end": 36.32,
+            "word": " lunch",
+            "probability": 0.9881843328475952
+          },
+          {
+            "start": 36.32,
+            "end": 36.6,
+            "word": " here.",
+            "probability": 0.9927539229393005
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 8,
+        "seek": 2610,
+        "start": 37.14,
+        "end": 41.82,
+        "text": " But it turns out that in a lot of deep learning applications, this is well worth the trade-off.",
+        "tokens": [
+          50907,
+          887,
+          340,
+          4962,
+          503,
+          326,
+          287,
+          257,
+          1256,
+          286,
+          2769,
+          4673,
+          5479,
+          11,
+          428,
+          318,
+          880,
+          2861,
+          262,
+          3292,
+          12,
+          2364,
+          13,
+          51155
+        ],
+        "avg_logprob": -0.2289943577349186,
+        "compression_ratio": 1.6239669421487604,
+        "no_speech_prob": 0.004518904723227024,
+        "words": [
+          {
+            "start": 37.14,
+            "end": 37.48,
+            "word": " But",
+            "probability": 0.9983602166175842
+          },
+          {
+            "start": 37.48,
+            "end": 37.64,
+            "word": " it",
+            "probability": 0.8861420750617981
+          },
+          {
+            "start": 37.64,
+            "end": 37.8,
+            "word": " turns",
+            "probability": 0.9981865286827087
+          },
+          {
+            "start": 37.8,
+            "end": 38.0,
+            "word": " out",
+            "probability": 0.9973435997962952
+          },
+          {
+            "start": 38.0,
+            "end": 38.14,
+            "word": " that",
+            "probability": 0.8172685503959656
+          },
+          {
+            "start": 38.14,
+            "end": 38.24,
+            "word": " in",
+            "probability": 0.7556228637695312
+          },
+          {
+            "start": 38.24,
+            "end": 38.32,
+            "word": " a",
+            "probability": 0.9929195046424866
+          },
+          {
+            "start": 38.32,
+            "end": 38.44,
+            "word": " lot",
+            "probability": 0.9957908391952515
+          },
+          {
+            "start": 38.44,
+            "end": 38.52,
+            "word": " of",
+            "probability": 0.9787919521331787
+          },
+          {
+            "start": 38.52,
+            "end": 38.6,
+            "word": " deep",
+            "probability": 0.934325635433197
+          },
+          {
+            "start": 38.6,
+            "end": 38.82,
+            "word": " learning",
+            "probability": 0.9862522482872009
+          },
+          {
+            "start": 38.82,
+            "end": 39.52,
+            "word": " applications,",
+            "probability": 0.9974840879440308
+          },
+          {
+            "start": 39.52,
+            "end": 40.48,
+            "word": " this",
+            "probability": 0.98847496509552
+          },
+          {
+            "start": 40.48,
+            "end": 40.64,
+            "word": " is",
+            "probability": 0.99528968334198
+          },
+          {
+            "start": 40.64,
+            "end": 40.9,
+            "word": " well",
+            "probability": 0.9967677593231201
+          },
+          {
+            "start": 40.9,
+            "end": 41.2,
+            "word": " worth",
+            "probability": 0.9908928871154785
+          },
+          {
+            "start": 41.2,
+            "end": 41.4,
+            "word": " the",
+            "probability": 0.9462928771972656
+          },
+          {
+            "start": 41.4,
+            "end": 41.62,
+            "word": " trade",
+            "probability": 0.998531699180603
+          },
+          {
+            "start": 41.62,
+            "end": 41.82,
+            "word": "-off.",
+            "probability": 0.6978893280029297
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 9,
+        "seek": 2610,
+        "start": 42.18,
+        "end": 45.78,
+        "text": " You want the dynamic range to not overflow and underflow.",
+        "tokens": [
+          51155,
+          921,
+          765,
+          262,
+          8925,
+          2837,
+          284,
+          407,
+          30343,
+          290,
+          739,
+          11125,
+          13,
+          51355
+        ],
+        "avg_logprob": -0.2289943577349186,
+        "compression_ratio": 1.6239669421487604,
+        "no_speech_prob": 0.004518904723227024,
+        "words": [
+          {
+            "start": 42.18,
+            "end": 42.34,
+            "word": " You",
+            "probability": 0.9853074550628662
+          },
+          {
+            "start": 42.34,
+            "end": 42.52,
+            "word": " want",
+            "probability": 0.9976211190223694
+          },
+          {
+            "start": 42.52,
+            "end": 42.66,
+            "word": " the",
+            "probability": 0.9920132756233215
+          },
+          {
+            "start": 42.66,
+            "end": 43.0,
+            "word": " dynamic",
+            "probability": 0.9995167255401611
+          },
+          {
+            "start": 43.0,
+            "end": 43.58,
+            "word": " range",
+            "probability": 0.9995212554931641
+          },
+          {
+            "start": 43.58,
+            "end": 44.34,
+            "word": " to",
+            "probability": 0.8693786859512329
+          },
+          {
+            "start": 44.34,
+            "end": 44.64,
+            "word": " not",
+            "probability": 0.9857727885246277
+          },
+          {
+            "start": 44.64,
+            "end": 45.06,
+            "word": " overflow",
+            "probability": 0.9875870943069458
+          },
+          {
+            "start": 45.06,
+            "end": 45.26,
+            "word": " and",
+            "probability": 0.8429502248764038
+          },
+          {
+            "start": 45.26,
+            "end": 45.78,
+            "word": " underflow.",
+            "probability": 0.9538650512695312
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 10,
+        "seek": 2610,
+        "start": 46.36,
+        "end": 49.18,
+        "text": " And because things are kind of sloppy and sarcastic anyway,",
+        "tokens": [
+          51355,
+          843,
+          780,
+          1243,
+          389,
+          1611,
+          286,
+          35862,
+          290,
+          47037,
+          6949,
+          11,
+          51539
+        ],
+        "avg_logprob": -0.2289943577349186,
+        "compression_ratio": 1.6239669421487604,
+        "no_speech_prob": 0.004518904723227024,
+        "words": [
+          {
+            "start": 46.36,
+            "end": 46.72,
+            "word": " And",
+            "probability": 0.9894025325775146
+          },
+          {
+            "start": 46.72,
+            "end": 47.16,
+            "word": " because",
+            "probability": 0.7435100674629211
+          },
+          {
+            "start": 47.16,
+            "end": 47.42,
+            "word": " things",
+            "probability": 0.9972373247146606
+          },
+          {
+            "start": 47.42,
+            "end": 47.58,
+            "word": " are",
+            "probability": 0.9970064759254456
+          },
+          {
+            "start": 47.58,
+            "end": 47.76,
+            "word": " kind",
+            "probability": 0.9857712984085083
+          },
+          {
+            "start": 47.76,
+            "end": 47.88,
+            "word": " of",
+            "probability": 0.9972783923149109
+          },
+          {
+            "start": 47.88,
+            "end": 48.18,
+            "word": " sloppy",
+            "probability": 0.9945189356803894
+          },
+          {
+            "start": 48.18,
+            "end": 48.32,
+            "word": " and",
+            "probability": 0.9901644587516785
+          },
+          {
+            "start": 48.32,
+            "end": 48.74,
+            "word": " sarcastic",
+            "probability": 0.7602354884147644
+          },
+          {
+            "start": 48.74,
+            "end": 49.18,
+            "word": " anyway,",
+            "probability": 0.9725024700164795
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 11,
+        "seek": 2610,
+        "start": 49.84,
+        "end": 54.58,
+        "text": " you don't need that much resolution, okay?",
+        "tokens": [
+          51539,
+          345,
+          836,
+          470,
+          761,
+          326,
+          881,
+          6323,
+          11,
+          8788,
+          30,
+          51725
+        ],
+        "avg_logprob": -0.2289943577349186,
+        "compression_ratio": 1.6239669421487604,
+        "no_speech_prob": 0.004518904723227024,
+        "words": [
+          {
+            "start": 49.84,
+            "end": 50.0,
+            "word": " you",
+            "probability": 0.9889810085296631
+          },
+          {
+            "start": 50.0,
+            "end": 50.12,
+            "word": " don't",
+            "probability": 0.997266411781311
+          },
+          {
+            "start": 50.12,
+            "end": 50.26,
+            "word": " need",
+            "probability": 0.9980422258377075
+          },
+          {
+            "start": 50.26,
+            "end": 50.44,
+            "word": " that",
+            "probability": 0.9976629018783569
+          },
+          {
+            "start": 50.44,
+            "end": 50.74,
+            "word": " much",
+            "probability": 0.9993708729743958
+          },
+          {
+            "start": 50.74,
+            "end": 51.66,
+            "word": " resolution,",
+            "probability": 0.7272254824638367
+          },
+          {
+            "start": 54.14,
+            "end": 54.58,
+            "word": " okay?",
+            "probability": 0.9665579795837402
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 12,
+        "seek": 5256,
+        "start": 56.02,
+        "end": 59.98,
+        "text": " So, let me actually skip over this part.",
+        "tokens": [
+          50363,
+          1406,
+          11,
+          1309,
+          502,
+          1682,
+          14267,
+          625,
+          428,
+          636,
+          13,
+          50563
+        ],
+        "avg_logprob": -0.3838252929540781,
+        "compression_ratio": 0.8333333333333334,
+        "no_speech_prob": 0.0736321359872818,
+        "words": [
+          {
+            "start": 56.02,
+            "end": 57.1,
+            "word": " So,",
+            "probability": 0.7036094665527344
+          },
+          {
+            "start": 57.44,
+            "end": 58.44,
+            "word": " let",
+            "probability": 0.8577297329902649
+          },
+          {
+            "start": 58.44,
+            "end": 58.5,
+            "word": " me",
+            "probability": 0.9990893602371216
+          },
+          {
+            "start": 58.5,
+            "end": 58.7,
+            "word": " actually",
+            "probability": 0.978101372718811
+          },
+          {
+            "start": 58.7,
+            "end": 59.0,
+            "word": " skip",
+            "probability": 0.995850682258606
+          },
+          {
+            "start": 59.0,
+            "end": 59.24,
+            "word": " over",
+            "probability": 0.9967064261436462
+          },
+          {
+            "start": 59.24,
+            "end": 59.56,
+            "word": " this",
+            "probability": 0.9638400077819824
+          },
+          {
+            "start": 59.56,
+            "end": 59.98,
+            "word": " part.",
+            "probability": 0.6589320302009583
+          }
+        ],
+        "temperature": 0
+      }
+    ],
+    "info": {
+      "language": "en",
+      "language_probability": 1,
+      "duration": 59.999875,
+      "duration_after_vad": 56.543875,
+      "all_language_probs": null,
+      "transcription_options": {
+        "beam_size": 5,
+        "best_of": 5,
+        "patience": 1,
+        "length_penalty": 1,
+        "repetition_penalty": 1,
+        "no_repeat_ngram_size": 0,
+        "log_prob_threshold": -1.0,
+        "no_speech_threshold": 0.6,
+        "compression_ratio_threshold": 2.4,
+        "condition_on_previous_text": false,
+        "prompt_reset_on_temperature": 0.5,
+        "temperatures": [
+          0
+        ],
+        "initial_prompt": null,
+        "prefix": null,
+        "suppress_blank": true,
+        "suppress_tokens": [
+          1,
+          2,
+          7,
+          8,
+          9,
+          10,
+          14,
+          25,
+          26,
+          27,
+          28,
+          29,
+          31,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          90,
+          91,
+          92,
+          93,
+          357,
+          366,
+          438,
+          532,
+          685,
+          705,
+          796,
+          930,
+          1058,
+          1220,
+          1267,
+          1279,
+          1303,
+          1343,
+          1377,
+          1391,
+          1635,
+          1782,
+          1875,
+          2162,
+          2361,
+          2488,
+          3467,
+          4008,
+          4211,
+          4600,
+          4808,
+          5299,
+          5855,
+          6329,
+          7203,
+          9609,
+          9959,
+          10563,
+          10786,
+          11420,
+          11709,
+          11907,
+          13163,
+          13697,
+          13700,
+          14808,
+          15306,
+          16410,
+          16791,
+          17992,
+          19203,
+          19510,
+          20724,
+          22305,
+          22935,
+          27007,
+          30109,
+          30420,
+          33409,
+          34949,
+          40283,
+          40493,
+          40549,
+          47282,
+          49146,
+          50257,
+          50357,
+          50358,
+          50359,
+          50360,
+          50361
+        ],
+        "without_timestamps": false,
+        "max_initial_timestamp": 1.0,
+        "word_timestamps": true,
+        "prepend_punctuations": "\"'“¿([{-",
+        "append_punctuations": "\"'.。,，!！?？:：”)]}、",
+        "multilingual": false,
+        "max_new_tokens": null,
+        "clip_timestamps": [
+          0.0
+        ],
+        "hallucination_silence_threshold": null,
+        "hotwords": null
+      },
+      "vad_options": {
+        "threshold": 0.5,
+        "neg_threshold": null,
+        "min_speech_duration_ms": 0,
+        "max_speech_duration_s": "Infinity",
+        "min_silence_duration_ms": 500,
+        "speech_pad_ms": 400
+      }
+    }
+  },
+  "segments": [
+    {
+      "text": " So, this was developed in actually 2018 to address this issue.",
+      "start_ms": 0.0,
+      "end_ms": 4180.0,
+      "words": [
+        {
+          "text": " So,",
+          "start_ms": 0.0,
+          "end_ms": 480.0,
+          "source_start_ms": 595000.0,
+          "source_end_ms": 595480.0,
+          "probability": 0.627527117729187,
+          "owned_by_core": true
+        },
+        {
+          "text": " this",
+          "start_ms": 720.0,
+          "end_ms": 760.0,
+          "source_start_ms": 595720.0,
+          "source_end_ms": 595760.0,
+          "probability": 0.9828342199325562,
+          "owned_by_core": true
+        },
+        {
+          "text": " was",
+          "start_ms": 760.0,
+          "end_ms": 1000.0,
+          "source_start_ms": 595760.0,
+          "source_end_ms": 596000.0,
+          "probability": 0.9936248064041138,
+          "owned_by_core": true
+        },
+        {
+          "text": " developed",
+          "start_ms": 1000.0,
+          "end_ms": 1360.0,
+          "source_start_ms": 596000.0,
+          "source_end_ms": 596360.0,
+          "probability": 0.9848734140396118,
+          "owned_by_core": true
+        },
+        {
+          "text": " in",
+          "start_ms": 1360.0,
+          "end_ms": 1620.0,
+          "source_start_ms": 596360.0,
+          "source_end_ms": 596620.0,
+          "probability": 0.9683318138122559,
+          "owned_by_core": true
+        },
+        {
+          "text": " actually",
+          "start_ms": 1620.0,
+          "end_ms": 1960.0,
+          "source_start_ms": 596620.0,
+          "source_end_ms": 596960.0,
+          "probability": 0.5800045132637024,
+          "owned_by_core": true
+        },
+        {
+          "text": " 2018",
+          "start_ms": 1960.0,
+          "end_ms": 2440.0,
+          "source_start_ms": 596960.0,
+          "source_end_ms": 597440.0,
+          "probability": 0.947567343711853,
+          "owned_by_core": true
+        },
+        {
+          "text": " to",
+          "start_ms": 2440.0,
+          "end_ms": 3240.0,
+          "source_start_ms": 597440.0,
+          "source_end_ms": 598240.0,
+          "probability": 0.8364425897598267,
+          "owned_by_core": true
+        },
+        {
+          "text": " address",
+          "start_ms": 3240.0,
+          "end_ms": 3560.0,
+          "source_start_ms": 598240.0,
+          "source_end_ms": 598560.0,
+          "probability": 0.9959171414375305,
+          "owned_by_core": true
+        },
+        {
+          "text": " this",
+          "start_ms": 3560.0,
+          "end_ms": 3800.0,
+          "source_start_ms": 598560.0,
+          "source_end_ms": 598800.0,
+          "probability": 0.9948357343673706,
+          "owned_by_core": true
+        },
+        {
+          "text": " issue.",
+          "start_ms": 3800.0,
+          "end_ms": 4180.0,
+          "source_start_ms": 598800.0,
+          "source_end_ms": 599180.0,
+          "probability": 0.9967395663261414,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 595000.0,
+      "source_end_ms": 599180.0
+    },
+    {
+      "text": " And the observation was that, well, let's not compromise on the number of bits.",
+      "start_ms": 5060.0,
+      "end_ms": 11580.0,
+      "words": [
+        {
+          "text": " And",
+          "start_ms": 5060.0,
+          "end_ms": 5560.0,
+          "source_start_ms": 600060.0,
+          "source_end_ms": 600560.0,
+          "probability": 0.9498905539512634,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 5560.0,
+          "end_ms": 6060.0,
+          "source_start_ms": 600560.0,
+          "source_end_ms": 601060.0,
+          "probability": 0.7476786971092224,
+          "owned_by_core": true
+        },
+        {
+          "text": " observation",
+          "start_ms": 6060.0,
+          "end_ms": 6620.0,
+          "source_start_ms": 601060.0,
+          "source_end_ms": 601620.0,
+          "probability": 0.9971777200698853,
+          "owned_by_core": true
+        },
+        {
+          "text": " was",
+          "start_ms": 6620.0,
+          "end_ms": 7460.0,
+          "source_start_ms": 601620.0,
+          "source_end_ms": 602460.0,
+          "probability": 0.988905668258667,
+          "owned_by_core": true
+        },
+        {
+          "text": " that,",
+          "start_ms": 7460.0,
+          "end_ms": 7960.0,
+          "source_start_ms": 602460.0,
+          "source_end_ms": 602960.0,
+          "probability": 0.985211968421936,
+          "owned_by_core": true
+        },
+        {
+          "text": " well,",
+          "start_ms": 8340.0,
+          "end_ms": 8440.0,
+          "source_start_ms": 603340.0,
+          "source_end_ms": 603440.0,
+          "probability": 0.8061919808387756,
+          "owned_by_core": true
+        },
+        {
+          "text": " let's",
+          "start_ms": 8580.0,
+          "end_ms": 8820.0,
+          "source_start_ms": 603580.0,
+          "source_end_ms": 603820.0,
+          "probability": 0.9924774467945099,
+          "owned_by_core": true
+        },
+        {
+          "text": " not",
+          "start_ms": 8820.0,
+          "end_ms": 9100.0,
+          "source_start_ms": 603820.0,
+          "source_end_ms": 604100.0,
+          "probability": 0.9971780776977539,
+          "owned_by_core": true
+        },
+        {
+          "text": " compromise",
+          "start_ms": 9100.0,
+          "end_ms": 9660.0,
+          "source_start_ms": 604100.0,
+          "source_end_ms": 604660.0,
+          "probability": 0.9951901435852051,
+          "owned_by_core": true
+        },
+        {
+          "text": " on",
+          "start_ms": 9660.0,
+          "end_ms": 10220.0,
+          "source_start_ms": 604660.0,
+          "source_end_ms": 605220.0,
+          "probability": 0.9923487901687622,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 10220.0,
+          "end_ms": 10960.0,
+          "source_start_ms": 605220.0,
+          "source_end_ms": 605960.0,
+          "probability": 0.7960443496704102,
+          "owned_by_core": true
+        },
+        {
+          "text": " number",
+          "start_ms": 10960.0,
+          "end_ms": 11200.0,
+          "source_start_ms": 605960.0,
+          "source_end_ms": 606200.0,
+          "probability": 0.995457649230957,
+          "owned_by_core": true
+        },
+        {
+          "text": " of",
+          "start_ms": 11200.0,
+          "end_ms": 11420.0,
+          "source_start_ms": 606200.0,
+          "source_end_ms": 606420.0,
+          "probability": 0.9960921406745911,
+          "owned_by_core": true
+        },
+        {
+          "text": " bits.",
+          "start_ms": 11420.0,
+          "end_ms": 11580.0,
+          "source_start_ms": 606420.0,
+          "source_end_ms": 606580.0,
+          "probability": 0.995830237865448,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 600060.0,
+      "source_end_ms": 606580.0
+    },
+    {
+      "text": " It's the number of bits that's going to be the same as FP16, but we're going to shift",
+      "start_ms": 11780.0,
+      "end_ms": 16280.000000000002,
+      "words": [
+        {
+          "text": " It's",
+          "start_ms": 11780.0,
+          "end_ms": 11900.0,
+          "source_start_ms": 606780.0,
+          "source_end_ms": 606900.0,
+          "probability": 0.8085428476333618,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 11900.0,
+          "end_ms": 12240.0,
+          "source_start_ms": 606900.0,
+          "source_end_ms": 607240.0,
+          "probability": 0.410857617855072,
+          "owned_by_core": true
+        },
+        {
+          "text": " number",
+          "start_ms": 12240.0,
+          "end_ms": 12420.0,
+          "source_start_ms": 607240.0,
+          "source_end_ms": 607420.0,
+          "probability": 0.8898287415504456,
+          "owned_by_core": true
+        },
+        {
+          "text": " of",
+          "start_ms": 12420.0,
+          "end_ms": 12580.0,
+          "source_start_ms": 607420.0,
+          "source_end_ms": 607580.0,
+          "probability": 0.9822102785110474,
+          "owned_by_core": true
+        },
+        {
+          "text": " bits",
+          "start_ms": 12580.0,
+          "end_ms": 12720.0,
+          "source_start_ms": 607580.0,
+          "source_end_ms": 607720.0,
+          "probability": 0.9953786134719849,
+          "owned_by_core": true
+        },
+        {
+          "text": " that's",
+          "start_ms": 12720.0,
+          "end_ms": 12900.0,
+          "source_start_ms": 607720.0,
+          "source_end_ms": 607900.0,
+          "probability": 0.7963371872901917,
+          "owned_by_core": true
+        },
+        {
+          "text": " going",
+          "start_ms": 12900.0,
+          "end_ms": 12960.0,
+          "source_start_ms": 607900.0,
+          "source_end_ms": 607960.0,
+          "probability": 0.6614100933074951,
+          "owned_by_core": true
+        },
+        {
+          "text": " to",
+          "start_ms": 12960.0,
+          "end_ms": 13060.0,
+          "source_start_ms": 607960.0,
+          "source_end_ms": 608060.0,
+          "probability": 0.9977421760559082,
+          "owned_by_core": true
+        },
+        {
+          "text": " be",
+          "start_ms": 13060.0,
+          "end_ms": 13120.0,
+          "source_start_ms": 608060.0,
+          "source_end_ms": 608120.0,
+          "probability": 0.9973574280738831,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 13120.0,
+          "end_ms": 13200.0,
+          "source_start_ms": 608120.0,
+          "source_end_ms": 608200.0,
+          "probability": 0.88985276222229,
+          "owned_by_core": true
+        },
+        {
+          "text": " same",
+          "start_ms": 13200.0,
+          "end_ms": 13360.0,
+          "source_start_ms": 608200.0,
+          "source_end_ms": 608360.0,
+          "probability": 0.9976947903633118,
+          "owned_by_core": true
+        },
+        {
+          "text": " as",
+          "start_ms": 13360.0,
+          "end_ms": 13580.0,
+          "source_start_ms": 608360.0,
+          "source_end_ms": 608580.0,
+          "probability": 0.9788383841514587,
+          "owned_by_core": true
+        },
+        {
+          "text": " FP16,",
+          "start_ms": 13580.0,
+          "end_ms": 14720.0,
+          "source_start_ms": 608580.0,
+          "source_end_ms": 609720.0,
+          "probability": 0.6729259490966797,
+          "owned_by_core": true
+        },
+        {
+          "text": " but",
+          "start_ms": 15340.0,
+          "end_ms": 15380.0,
+          "source_start_ms": 610340.0,
+          "source_end_ms": 610380.0,
+          "probability": 0.9875998497009277,
+          "owned_by_core": true
+        },
+        {
+          "text": " we're",
+          "start_ms": 15380.0,
+          "end_ms": 15660.0,
+          "source_start_ms": 610380.0,
+          "source_end_ms": 610660.0,
+          "probability": 0.9849976897239685,
+          "owned_by_core": true
+        },
+        {
+          "text": " going",
+          "start_ms": 15660.0,
+          "end_ms": 15840.0,
+          "source_start_ms": 610660.0,
+          "source_end_ms": 610840.0,
+          "probability": 0.9973045587539673,
+          "owned_by_core": true
+        },
+        {
+          "text": " to",
+          "start_ms": 15840.0,
+          "end_ms": 16040.0,
+          "source_start_ms": 610840.0,
+          "source_end_ms": 611040.0,
+          "probability": 0.9980643391609192,
+          "owned_by_core": true
+        },
+        {
+          "text": " shift",
+          "start_ms": 16040.0,
+          "end_ms": 16280.000000000002,
+          "source_start_ms": 611040.0,
+          "source_end_ms": 611280.0,
+          "probability": 0.9907695651054382,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 606780.0,
+      "source_end_ms": 611280.0
+    },
+    {
+      "text": " some of the bits from the mantissa to the exponent.",
+      "start_ms": 16280.000000000002,
+      "end_ms": 18740.0,
+      "words": [
+        {
+          "text": " some",
+          "start_ms": 16280.000000000002,
+          "end_ms": 16480.0,
+          "source_start_ms": 611280.0,
+          "source_end_ms": 611480.0,
+          "probability": 0.9971591234207153,
+          "owned_by_core": true
+        },
+        {
+          "text": " of",
+          "start_ms": 16480.0,
+          "end_ms": 16580.0,
+          "source_start_ms": 611480.0,
+          "source_end_ms": 611580.0,
+          "probability": 0.9929310083389282,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 16580.0,
+          "end_ms": 16680.0,
+          "source_start_ms": 611580.0,
+          "source_end_ms": 611680.0,
+          "probability": 0.9965113997459412,
+          "owned_by_core": true
+        },
+        {
+          "text": " bits",
+          "start_ms": 16680.0,
+          "end_ms": 16840.0,
+          "source_start_ms": 611680.0,
+          "source_end_ms": 611840.0,
+          "probability": 0.9977377653121948,
+          "owned_by_core": true
+        },
+        {
+          "text": " from",
+          "start_ms": 16840.0,
+          "end_ms": 17240.0,
+          "source_start_ms": 611840.0,
+          "source_end_ms": 612240.0,
+          "probability": 0.9974914789199829,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 17240.0,
+          "end_ms": 17620.0,
+          "source_start_ms": 612240.0,
+          "source_end_ms": 612620.0,
+          "probability": 0.992629885673523,
+          "owned_by_core": true
+        },
+        {
+          "text": " mantissa",
+          "start_ms": 17620.0,
+          "end_ms": 17940.0,
+          "source_start_ms": 612620.0,
+          "source_end_ms": 612940.0,
+          "probability": 0.9611439406871796,
+          "owned_by_core": true
+        },
+        {
+          "text": " to",
+          "start_ms": 17940.0,
+          "end_ms": 18220.0,
+          "source_start_ms": 612940.0,
+          "source_end_ms": 613220.0,
+          "probability": 0.9963178634643555,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 18220.0,
+          "end_ms": 18340.0,
+          "source_start_ms": 613220.0,
+          "source_end_ms": 613340.0,
+          "probability": 0.9936981797218323,
+          "owned_by_core": true
+        },
+        {
+          "text": " exponent.",
+          "start_ms": 18340.0,
+          "end_ms": 18740.0,
+          "source_start_ms": 613340.0,
+          "source_end_ms": 613740.0,
+          "probability": 0.990796685218811,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 611280.0,
+      "source_end_ms": 613740.0
+    },
+    {
+      "text": " So that means it has more dynamic range than float 16.",
+      "start_ms": 19560.0,
+      "end_ms": 26100.0,
+      "words": [
+        {
+          "text": " So",
+          "start_ms": 19560.0,
+          "end_ms": 19900.0,
+          "source_start_ms": 614560.0,
+          "source_end_ms": 614900.0,
+          "probability": 0.9922714233398438,
+          "owned_by_core": true
+        },
+        {
+          "text": " that",
+          "start_ms": 19900.0,
+          "end_ms": 20100.0,
+          "source_start_ms": 614900.0,
+          "source_end_ms": 615100.0,
+          "probability": 0.5136685967445374,
+          "owned_by_core": true
+        },
+        {
+          "text": " means",
+          "start_ms": 20100.0,
+          "end_ms": 20300.0,
+          "source_start_ms": 615100.0,
+          "source_end_ms": 615300.0,
+          "probability": 0.997159481048584,
+          "owned_by_core": true
+        },
+        {
+          "text": " it",
+          "start_ms": 20300.0,
+          "end_ms": 20460.0,
+          "source_start_ms": 615300.0,
+          "source_end_ms": 615460.0,
+          "probability": 0.9578235149383545,
+          "owned_by_core": true
+        },
+        {
+          "text": " has",
+          "start_ms": 20460.0,
+          "end_ms": 20600.0,
+          "source_start_ms": 615460.0,
+          "source_end_ms": 615600.0,
+          "probability": 0.9974429607391357,
+          "owned_by_core": true
+        },
+        {
+          "text": " more",
+          "start_ms": 20600.0,
+          "end_ms": 20820.0,
+          "source_start_ms": 615600.0,
+          "source_end_ms": 615820.0,
+          "probability": 0.9978495836257935,
+          "owned_by_core": true
+        },
+        {
+          "text": " dynamic",
+          "start_ms": 20820.0,
+          "end_ms": 21220.0,
+          "source_start_ms": 615820.0,
+          "source_end_ms": 616220.0,
+          "probability": 0.9987792372703552,
+          "owned_by_core": true
+        },
+        {
+          "text": " range",
+          "start_ms": 21220.0,
+          "end_ms": 21700.0,
+          "source_start_ms": 616220.0,
+          "source_end_ms": 616700.0,
+          "probability": 0.9990691542625427,
+          "owned_by_core": true
+        },
+        {
+          "text": " than",
+          "start_ms": 21700.0,
+          "end_ms": 22720.0,
+          "source_start_ms": 616700.0,
+          "source_end_ms": 617720.0,
+          "probability": 0.9080052375793457,
+          "owned_by_core": true
+        },
+        {
+          "text": " float",
+          "start_ms": 22720.0,
+          "end_ms": 23500.0,
+          "source_start_ms": 617720.0,
+          "source_end_ms": 618500.0,
+          "probability": 0.662483274936676,
+          "owned_by_core": true
+        },
+        {
+          "text": " 16.",
+          "start_ms": 23500.0,
+          "end_ms": 26100.0,
+          "source_start_ms": 618500.0,
+          "source_end_ms": 621100.0,
+          "probability": 0.5402577519416809,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 614560.0,
+      "source_end_ms": 621100.0
+    },
+    {
+      "text": " And it actually has the same dynamic range as float 32.",
+      "start_ms": 27730.0,
+      "end_ms": 30730.0,
+      "words": [
+        {
+          "text": " And",
+          "start_ms": 27730.0,
+          "end_ms": 28170.0,
+          "source_start_ms": 622730.0,
+          "source_end_ms": 623170.0,
+          "probability": 0.4630940556526184,
+          "owned_by_core": true
+        },
+        {
+          "text": " it",
+          "start_ms": 28270.0,
+          "end_ms": 28710.0,
+          "source_start_ms": 623270.0,
+          "source_end_ms": 623710.0,
+          "probability": 0.9287552237510681,
+          "owned_by_core": true
+        },
+        {
+          "text": " actually",
+          "start_ms": 28710.0,
+          "end_ms": 28890.0,
+          "source_start_ms": 623710.0,
+          "source_end_ms": 623890.0,
+          "probability": 0.9885016679763794,
+          "owned_by_core": true
+        },
+        {
+          "text": " has",
+          "start_ms": 28890.0,
+          "end_ms": 29050.0,
+          "source_start_ms": 623890.0,
+          "source_end_ms": 624050.0,
+          "probability": 0.9953243136405945,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 29050.0,
+          "end_ms": 29190.0,
+          "source_start_ms": 624050.0,
+          "source_end_ms": 624190.0,
+          "probability": 0.9928804636001587,
+          "owned_by_core": true
+        },
+        {
+          "text": " same",
+          "start_ms": 29190.0,
+          "end_ms": 29330.0,
+          "source_start_ms": 624190.0,
+          "source_end_ms": 624330.0,
+          "probability": 0.9972953200340271,
+          "owned_by_core": true
+        },
+        {
+          "text": " dynamic",
+          "start_ms": 29330.0,
+          "end_ms": 29650.0,
+          "source_start_ms": 624330.0,
+          "source_end_ms": 624650.0,
+          "probability": 0.9981390237808228,
+          "owned_by_core": true
+        },
+        {
+          "text": " range",
+          "start_ms": 29650.0,
+          "end_ms": 29890.0,
+          "source_start_ms": 624650.0,
+          "source_end_ms": 624890.0,
+          "probability": 0.7939642071723938,
+          "owned_by_core": true
+        },
+        {
+          "text": " as",
+          "start_ms": 29890.0,
+          "end_ms": 30090.0,
+          "source_start_ms": 624890.0,
+          "source_end_ms": 625090.0,
+          "probability": 0.9678060412406921,
+          "owned_by_core": true
+        },
+        {
+          "text": " float",
+          "start_ms": 30090.0,
+          "end_ms": 30270.0,
+          "source_start_ms": 625090.0,
+          "source_end_ms": 625270.0,
+          "probability": 0.7684897184371948,
+          "owned_by_core": true
+        },
+        {
+          "text": " 32.",
+          "start_ms": 30270.0,
+          "end_ms": 30730.0,
+          "source_start_ms": 625270.0,
+          "source_end_ms": 625730.0,
+          "probability": 0.5979601144790649,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 622730.0,
+      "source_end_ms": 625730.0
+    },
+    {
+      "text": " But, of course, the, the resolution is worse because there's no free lunch here.",
+      "start_ms": 31760.0,
+      "end_ms": 36600.0,
+      "words": [
+        {
+          "text": " But,",
+          "start_ms": 31760.0,
+          "end_ms": 32040.0,
+          "source_start_ms": 626760.0,
+          "source_end_ms": 627040.0,
+          "probability": 0.9937591552734375,
+          "owned_by_core": true
+        },
+        {
+          "text": " of",
+          "start_ms": 32180.0,
+          "end_ms": 32320.0,
+          "source_start_ms": 627180.0,
+          "source_end_ms": 627320.0,
+          "probability": 0.9968389272689819,
+          "owned_by_core": true
+        },
+        {
+          "text": " course,",
+          "start_ms": 32320.0,
+          "end_ms": 32479.999999999996,
+          "source_start_ms": 627320.0,
+          "source_end_ms": 627480.0,
+          "probability": 0.999314546585083,
+          "owned_by_core": true
+        },
+        {
+          "text": " the,",
+          "start_ms": 32640.0,
+          "end_ms": 32800.0,
+          "source_start_ms": 627640.0,
+          "source_end_ms": 627800.0,
+          "probability": 0.9603703022003174,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 32800.0,
+          "end_ms": 33020.0,
+          "source_start_ms": 627800.0,
+          "source_end_ms": 628020.0,
+          "probability": 0.9982062578201294,
+          "owned_by_core": true
+        },
+        {
+          "text": " resolution",
+          "start_ms": 33020.0,
+          "end_ms": 33500.0,
+          "source_start_ms": 628020.0,
+          "source_end_ms": 628500.0,
+          "probability": 0.9948397278785706,
+          "owned_by_core": true
+        },
+        {
+          "text": " is",
+          "start_ms": 33500.0,
+          "end_ms": 34320.0,
+          "source_start_ms": 628500.0,
+          "source_end_ms": 629320.0,
+          "probability": 0.9083381295204163,
+          "owned_by_core": true
+        },
+        {
+          "text": " worse",
+          "start_ms": 34320.0,
+          "end_ms": 34700.0,
+          "source_start_ms": 629320.0,
+          "source_end_ms": 629700.0,
+          "probability": 0.900438666343689,
+          "owned_by_core": true
+        },
+        {
+          "text": " because",
+          "start_ms": 34700.0,
+          "end_ms": 35540.0,
+          "source_start_ms": 629700.0,
+          "source_end_ms": 630540.0,
+          "probability": 0.5749719738960266,
+          "owned_by_core": true
+        },
+        {
+          "text": " there's",
+          "start_ms": 35540.0,
+          "end_ms": 35800.0,
+          "source_start_ms": 630540.0,
+          "source_end_ms": 630800.0,
+          "probability": 0.9812288582324982,
+          "owned_by_core": true
+        },
+        {
+          "text": " no",
+          "start_ms": 35800.0,
+          "end_ms": 35920.0,
+          "source_start_ms": 630800.0,
+          "source_end_ms": 630920.0,
+          "probability": 0.9973931312561035,
+          "owned_by_core": true
+        },
+        {
+          "text": " free",
+          "start_ms": 35920.0,
+          "end_ms": 36100.0,
+          "source_start_ms": 630920.0,
+          "source_end_ms": 631100.0,
+          "probability": 0.9975643157958984,
+          "owned_by_core": true
+        },
+        {
+          "text": " lunch",
+          "start_ms": 36100.0,
+          "end_ms": 36320.0,
+          "source_start_ms": 631100.0,
+          "source_end_ms": 631320.0,
+          "probability": 0.9881843328475952,
+          "owned_by_core": true
+        },
+        {
+          "text": " here.",
+          "start_ms": 36320.0,
+          "end_ms": 36600.0,
+          "source_start_ms": 631320.0,
+          "source_end_ms": 631600.0,
+          "probability": 0.9927539229393005,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 626760.0,
+      "source_end_ms": 631600.0
+    },
+    {
+      "text": " But it turns out that in a lot of deep learning applications, this is well worth the trade-off.",
+      "start_ms": 37140.0,
+      "end_ms": 41820.0,
+      "words": [
+        {
+          "text": " But",
+          "start_ms": 37140.0,
+          "end_ms": 37480.0,
+          "source_start_ms": 632140.0,
+          "source_end_ms": 632480.0,
+          "probability": 0.9983602166175842,
+          "owned_by_core": true
+        },
+        {
+          "text": " it",
+          "start_ms": 37480.0,
+          "end_ms": 37640.0,
+          "source_start_ms": 632480.0,
+          "source_end_ms": 632640.0,
+          "probability": 0.8861420750617981,
+          "owned_by_core": true
+        },
+        {
+          "text": " turns",
+          "start_ms": 37640.0,
+          "end_ms": 37800.0,
+          "source_start_ms": 632640.0,
+          "source_end_ms": 632800.0,
+          "probability": 0.9981865286827087,
+          "owned_by_core": true
+        },
+        {
+          "text": " out",
+          "start_ms": 37800.0,
+          "end_ms": 38000.0,
+          "source_start_ms": 632800.0,
+          "source_end_ms": 633000.0,
+          "probability": 0.9973435997962952,
+          "owned_by_core": true
+        },
+        {
+          "text": " that",
+          "start_ms": 38000.0,
+          "end_ms": 38140.0,
+          "source_start_ms": 633000.0,
+          "source_end_ms": 633140.0,
+          "probability": 0.8172685503959656,
+          "owned_by_core": true
+        },
+        {
+          "text": " in",
+          "start_ms": 38140.0,
+          "end_ms": 38240.0,
+          "source_start_ms": 633140.0,
+          "source_end_ms": 633240.0,
+          "probability": 0.7556228637695312,
+          "owned_by_core": true
+        },
+        {
+          "text": " a",
+          "start_ms": 38240.0,
+          "end_ms": 38320.0,
+          "source_start_ms": 633240.0,
+          "source_end_ms": 633320.0,
+          "probability": 0.9929195046424866,
+          "owned_by_core": true
+        },
+        {
+          "text": " lot",
+          "start_ms": 38320.0,
+          "end_ms": 38440.0,
+          "source_start_ms": 633320.0,
+          "source_end_ms": 633440.0,
+          "probability": 0.9957908391952515,
+          "owned_by_core": true
+        },
+        {
+          "text": " of",
+          "start_ms": 38440.0,
+          "end_ms": 38520.0,
+          "source_start_ms": 633440.0,
+          "source_end_ms": 633520.0,
+          "probability": 0.9787919521331787,
+          "owned_by_core": true
+        },
+        {
+          "text": " deep",
+          "start_ms": 38520.0,
+          "end_ms": 38600.0,
+          "source_start_ms": 633520.0,
+          "source_end_ms": 633600.0,
+          "probability": 0.934325635433197,
+          "owned_by_core": true
+        },
+        {
+          "text": " learning",
+          "start_ms": 38600.0,
+          "end_ms": 38820.0,
+          "source_start_ms": 633600.0,
+          "source_end_ms": 633820.0,
+          "probability": 0.9862522482872009,
+          "owned_by_core": true
+        },
+        {
+          "text": " applications,",
+          "start_ms": 38820.0,
+          "end_ms": 39520.0,
+          "source_start_ms": 633820.0,
+          "source_end_ms": 634520.0,
+          "probability": 0.9974840879440308,
+          "owned_by_core": true
+        },
+        {
+          "text": " this",
+          "start_ms": 39520.0,
+          "end_ms": 40480.0,
+          "source_start_ms": 634520.0,
+          "source_end_ms": 635480.0,
+          "probability": 0.98847496509552,
+          "owned_by_core": true
+        },
+        {
+          "text": " is",
+          "start_ms": 40480.0,
+          "end_ms": 40640.0,
+          "source_start_ms": 635480.0,
+          "source_end_ms": 635640.0,
+          "probability": 0.99528968334198,
+          "owned_by_core": true
+        },
+        {
+          "text": " well",
+          "start_ms": 40640.0,
+          "end_ms": 40900.0,
+          "source_start_ms": 635640.0,
+          "source_end_ms": 635900.0,
+          "probability": 0.9967677593231201,
+          "owned_by_core": true
+        },
+        {
+          "text": " worth",
+          "start_ms": 40900.0,
+          "end_ms": 41200.0,
+          "source_start_ms": 635900.0,
+          "source_end_ms": 636200.0,
+          "probability": 0.9908928871154785,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 41200.0,
+          "end_ms": 41400.0,
+          "source_start_ms": 636200.0,
+          "source_end_ms": 636400.0,
+          "probability": 0.9462928771972656,
+          "owned_by_core": true
+        },
+        {
+          "text": " trade",
+          "start_ms": 41400.0,
+          "end_ms": 41620.0,
+          "source_start_ms": 636400.0,
+          "source_end_ms": 636620.0,
+          "probability": 0.998531699180603,
+          "owned_by_core": true
+        },
+        {
+          "text": "-off.",
+          "start_ms": 41620.0,
+          "end_ms": 41820.0,
+          "source_start_ms": 636620.0,
+          "source_end_ms": 636820.0,
+          "probability": 0.6978893280029297,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 632140.0,
+      "source_end_ms": 636820.0
+    },
+    {
+      "text": " You want the dynamic range to not overflow and underflow.",
+      "start_ms": 42180.0,
+      "end_ms": 45780.0,
+      "words": [
+        {
+          "text": " You",
+          "start_ms": 42180.0,
+          "end_ms": 42340.0,
+          "source_start_ms": 637180.0,
+          "source_end_ms": 637340.0,
+          "probability": 0.9853074550628662,
+          "owned_by_core": true
+        },
+        {
+          "text": " want",
+          "start_ms": 42340.0,
+          "end_ms": 42520.0,
+          "source_start_ms": 637340.0,
+          "source_end_ms": 637520.0,
+          "probability": 0.9976211190223694,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 42520.0,
+          "end_ms": 42660.0,
+          "source_start_ms": 637520.0,
+          "source_end_ms": 637660.0,
+          "probability": 0.9920132756233215,
+          "owned_by_core": true
+        },
+        {
+          "text": " dynamic",
+          "start_ms": 42660.0,
+          "end_ms": 43000.0,
+          "source_start_ms": 637660.0,
+          "source_end_ms": 638000.0,
+          "probability": 0.9995167255401611,
+          "owned_by_core": true
+        },
+        {
+          "text": " range",
+          "start_ms": 43000.0,
+          "end_ms": 43580.0,
+          "source_start_ms": 638000.0,
+          "source_end_ms": 638580.0,
+          "probability": 0.9995212554931641,
+          "owned_by_core": true
+        },
+        {
+          "text": " to",
+          "start_ms": 43580.0,
+          "end_ms": 44340.0,
+          "source_start_ms": 638580.0,
+          "source_end_ms": 639340.0,
+          "probability": 0.8693786859512329,
+          "owned_by_core": true
+        },
+        {
+          "text": " not",
+          "start_ms": 44340.0,
+          "end_ms": 44640.0,
+          "source_start_ms": 639340.0,
+          "source_end_ms": 639640.0,
+          "probability": 0.9857727885246277,
+          "owned_by_core": true
+        },
+        {
+          "text": " overflow",
+          "start_ms": 44640.0,
+          "end_ms": 45060.0,
+          "source_start_ms": 639640.0,
+          "source_end_ms": 640060.0,
+          "probability": 0.9875870943069458,
+          "owned_by_core": true
+        },
+        {
+          "text": " and",
+          "start_ms": 45060.0,
+          "end_ms": 45260.0,
+          "source_start_ms": 640060.0,
+          "source_end_ms": 640260.0,
+          "probability": 0.8429502248764038,
+          "owned_by_core": true
+        },
+        {
+          "text": " underflow.",
+          "start_ms": 45260.0,
+          "end_ms": 45780.0,
+          "source_start_ms": 640260.0,
+          "source_end_ms": 640780.0,
+          "probability": 0.9538650512695312,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 637180.0,
+      "source_end_ms": 640780.0
+    },
+    {
+      "text": " And because things are kind of sloppy and sarcastic anyway,",
+      "start_ms": 46360.0,
+      "end_ms": 49180.0,
+      "words": [
+        {
+          "text": " And",
+          "start_ms": 46360.0,
+          "end_ms": 46720.0,
+          "source_start_ms": 641360.0,
+          "source_end_ms": 641720.0,
+          "probability": 0.9894025325775146,
+          "owned_by_core": true
+        },
+        {
+          "text": " because",
+          "start_ms": 46720.0,
+          "end_ms": 47160.0,
+          "source_start_ms": 641720.0,
+          "source_end_ms": 642160.0,
+          "probability": 0.7435100674629211,
+          "owned_by_core": true
+        },
+        {
+          "text": " things",
+          "start_ms": 47160.0,
+          "end_ms": 47420.0,
+          "source_start_ms": 642160.0,
+          "source_end_ms": 642420.0,
+          "probability": 0.9972373247146606,
+          "owned_by_core": true
+        },
+        {
+          "text": " are",
+          "start_ms": 47420.0,
+          "end_ms": 47580.0,
+          "source_start_ms": 642420.0,
+          "source_end_ms": 642580.0,
+          "probability": 0.9970064759254456,
+          "owned_by_core": true
+        },
+        {
+          "text": " kind",
+          "start_ms": 47580.0,
+          "end_ms": 47760.0,
+          "source_start_ms": 642580.0,
+          "source_end_ms": 642760.0,
+          "probability": 0.9857712984085083,
+          "owned_by_core": true
+        },
+        {
+          "text": " of",
+          "start_ms": 47760.0,
+          "end_ms": 47880.0,
+          "source_start_ms": 642760.0,
+          "source_end_ms": 642880.0,
+          "probability": 0.9972783923149109,
+          "owned_by_core": true
+        },
+        {
+          "text": " sloppy",
+          "start_ms": 47880.0,
+          "end_ms": 48180.0,
+          "source_start_ms": 642880.0,
+          "source_end_ms": 643180.0,
+          "probability": 0.9945189356803894,
+          "owned_by_core": true
+        },
+        {
+          "text": " and",
+          "start_ms": 48180.0,
+          "end_ms": 48320.0,
+          "source_start_ms": 643180.0,
+          "source_end_ms": 643320.0,
+          "probability": 0.9901644587516785,
+          "owned_by_core": true
+        },
+        {
+          "text": " sarcastic",
+          "start_ms": 48320.0,
+          "end_ms": 48740.0,
+          "source_start_ms": 643320.0,
+          "source_end_ms": 643740.0,
+          "probability": 0.7602354884147644,
+          "owned_by_core": true
+        },
+        {
+          "text": " anyway,",
+          "start_ms": 48740.0,
+          "end_ms": 49180.0,
+          "source_start_ms": 643740.0,
+          "source_end_ms": 644180.0,
+          "probability": 0.9725024700164795,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 641360.0,
+      "source_end_ms": 644180.0
+    },
+    {
+      "text": " you don't need that much resolution, okay?",
+      "start_ms": 49840.0,
+      "end_ms": 54580.0,
+      "words": [
+        {
+          "text": " you",
+          "start_ms": 49840.0,
+          "end_ms": 50000.0,
+          "source_start_ms": 644840.0,
+          "source_end_ms": 645000.0,
+          "probability": 0.9889810085296631,
+          "owned_by_core": true
+        },
+        {
+          "text": " don't",
+          "start_ms": 50000.0,
+          "end_ms": 50120.0,
+          "source_start_ms": 645000.0,
+          "source_end_ms": 645120.0,
+          "probability": 0.997266411781311,
+          "owned_by_core": true
+        },
+        {
+          "text": " need",
+          "start_ms": 50120.0,
+          "end_ms": 50260.0,
+          "source_start_ms": 645120.0,
+          "source_end_ms": 645260.0,
+          "probability": 0.9980422258377075,
+          "owned_by_core": true
+        },
+        {
+          "text": " that",
+          "start_ms": 50260.0,
+          "end_ms": 50440.0,
+          "source_start_ms": 645260.0,
+          "source_end_ms": 645440.0,
+          "probability": 0.9976629018783569,
+          "owned_by_core": true
+        },
+        {
+          "text": " much",
+          "start_ms": 50440.0,
+          "end_ms": 50740.0,
+          "source_start_ms": 645440.0,
+          "source_end_ms": 645740.0,
+          "probability": 0.9993708729743958,
+          "owned_by_core": true
+        },
+        {
+          "text": " resolution,",
+          "start_ms": 50740.0,
+          "end_ms": 51660.0,
+          "source_start_ms": 645740.0,
+          "source_end_ms": 646660.0,
+          "probability": 0.7272254824638367,
+          "owned_by_core": true
+        },
+        {
+          "text": " okay?",
+          "start_ms": 54140.0,
+          "end_ms": 54580.0,
+          "source_start_ms": 649140.0,
+          "source_end_ms": 649580.0,
+          "probability": 0.9665579795837402,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 644840.0,
+      "source_end_ms": 649580.0
+    },
+    {
+      "text": " So, let me actually skip over this part.",
+      "start_ms": 56020.0,
+      "end_ms": 59980.0,
+      "words": [
+        {
+          "text": " So,",
+          "start_ms": 56020.0,
+          "end_ms": 57100.0,
+          "source_start_ms": 651020.0,
+          "source_end_ms": 652100.0,
+          "probability": 0.7036094665527344,
+          "owned_by_core": true
+        },
+        {
+          "text": " let",
+          "start_ms": 57440.0,
+          "end_ms": 58440.0,
+          "source_start_ms": 652440.0,
+          "source_end_ms": 653440.0,
+          "probability": 0.8577297329902649,
+          "owned_by_core": true
+        },
+        {
+          "text": " me",
+          "start_ms": 58440.0,
+          "end_ms": 58500.0,
+          "source_start_ms": 653440.0,
+          "source_end_ms": 653500.0,
+          "probability": 0.9990893602371216,
+          "owned_by_core": true
+        },
+        {
+          "text": " actually",
+          "start_ms": 58500.0,
+          "end_ms": 58700.0,
+          "source_start_ms": 653500.0,
+          "source_end_ms": 653700.0,
+          "probability": 0.978101372718811,
+          "owned_by_core": true
+        },
+        {
+          "text": " skip",
+          "start_ms": 58700.0,
+          "end_ms": 59000.0,
+          "source_start_ms": 653700.0,
+          "source_end_ms": 654000.0,
+          "probability": 0.995850682258606,
+          "owned_by_core": true
+        },
+        {
+          "text": " over",
+          "start_ms": 59000.0,
+          "end_ms": 59240.0,
+          "source_start_ms": 654000.0,
+          "source_end_ms": 654240.0,
+          "probability": 0.9967064261436462,
+          "owned_by_core": true
+        },
+        {
+          "text": " this",
+          "start_ms": 59240.0,
+          "end_ms": 59560.0,
+          "source_start_ms": 654240.0,
+          "source_end_ms": 654560.0,
+          "probability": 0.9638400077819824,
+          "owned_by_core": true
+        },
+        {
+          "text": " part.",
+          "start_ms": 59560.0,
+          "end_ms": 59980.0,
+          "source_start_ms": 654560.0,
+          "source_end_ms": 654980.0,
+          "probability": 0.6589320302009583,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 651020.0,
+      "source_end_ms": 654980.0
+    }
+  ],
+  "text": "So, this was developed in actually 2018 to address this issue. And the observation was that, well, let's not compromise on the number of bits. It's the number of bits that's going to be the same as FP16, but we're going to shift some of the bits from the mantissa to the exponent. So that means it has more dynamic range than float 16. And it actually has the same dynamic range as float 32. But, of course, the, the resolution is worse because there's no free lunch here. But it turns out that in a lot of deep learning applications, this is well worth the trade-off. You want the dynamic range to not overflow and underflow. And because things are kind of sloppy and sarcastic anyway, you don't need that much resolution, okay? So, let me actually skip over this part.",
+  "observation": "machine_audio_transcription_not_listening_truth",
+  "elapsed_ms": 12885
+}

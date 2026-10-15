@@ -1,0 +1,41 @@
+{
+  "at": "2026-10-11T04:19:50.367Z",
+  "steps": [
+    {
+      "name": "parity",
+      "status": 0,
+      "signal": null,
+      "elapsed_ms": 230318
+    },
+    {
+      "name": "executor",
+      "status": 0,
+      "signal": null,
+      "elapsed_ms": 30747
+    },
+    {
+      "name": "plugin",
+      "status": 0,
+      "signal": null,
+      "elapsed_ms": 653
+    },
+    {
+      "name": "release-config",
+      "status": 0,
+      "signal": null,
+      "elapsed_ms": 217
+    },
+    {
+      "name": "installer",
+      "status": 0,
+      "signal": null,
+      "elapsed_ms": 583583
+    },
+    {
+      "name": "export",
+      "status": 0,
+      "signal": null,
+      "elapsed_ms": 217
+    }
+  ]
+}

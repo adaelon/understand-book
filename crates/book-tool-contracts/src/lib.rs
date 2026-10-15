@@ -87,9 +87,9 @@ const CONTRACTS: &[BookToolContract] = &[
         Some("book.concept"),
         Some("book_concept"),
         Some("concept"),
-        "Deterministically recall whole-book concept and entity candidates with match reasons, bounded previews, and complete occurrence LIDs. After choosing candidates, read their full evidence with book.text.",
+        "Deterministically recall whole-book concept and entity candidates with match reasons, bounded previews, and complete occurrence LIDs. Video graph candidates also retain distinct object meanings, text/visual/joint support, relations and video.read_frames hints. Read chosen text with book.text and actual video frames before citing.",
         "Discover concept or entity candidates when the user may not know the graph display label.",
-        "Do not treat previews as final evidence or silently select a candidate; read chosen occurrence LIDs with book.text.",
+        "Do not treat previews or graph support as observed evidence, or silently select a homonym. Read chosen occurrence LIDs with book.text and video_graph.read_hints with video.read_frames; pure visual objects have no invented LIDs.",
         "book_concept.v2",
     ),
     contract(

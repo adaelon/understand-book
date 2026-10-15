@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-10T04:31:34.701Z",
+  "source": {
+    "original": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi2\\moved-workspace\\media\\original.mp4",
+    "source_start_ms": 578000,
+    "source_end_ms": 586000
+  },
+  "calls": [
+    "chunk-000",
+    "chunk-001",
+    "chunk-001"
+  ],
+  "actual_failure": "Command failed: E:\\allwork\\download\\agent\\understand-book-video-understanding\\.worktree-local\\whisper-venv\\Scripts\\python.exe E:\\allwork\\download\\agent\\understand-book-video-understanding\\packages\\core\\src\\video-whisper.py E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi3-recovery\\request.json E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi3-recovery\\workspace\\transcript\\raw\\chunk-001.json\nTraceback (most recent call last):\r\n  File \"E:\\allwork\\download\\agent\\understand-book-video-understanding\\packages\\core\\src\\video-whisper.py\", line 43, in <module>\r\n    main()\r\n  File \"E:\\allwork\\download\\agent\\understand-book-video-understanding\\packages\\core\\src\\video-whisper.py\", line 29, in main\r\n    segments, info = model.transcribe(request[\"audio\"], language=\"en\", task=\"transcribe\",\r\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"E:\\allwork\\download\\agent\\understand-book-video-understanding\\.worktree-local\\whisper-venv\\Lib\\site-packages\\faster_whisper\\transcribe.py\", line 876, in transcribe\r\n    audio = decode_audio(audio, sampling_rate=sampling_rate)\r\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"E:\\allwork\\download\\agent\\understand-book-video-understanding\\.worktree-local\\whisper-venv\\Lib\\site-packages\\faster_whisper\\audio.py\", line 46, in decode_audio\r\n    with av.open(input_file, mode=\"r\", metadata_errors=\"ignore\") as container:\r\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"av/container/core.py\", line 578, in av.container.core.open\r\n    return InputContainer(\r\n^^^^^^^\r\n  File \"av/container/core.py\", line 344, in av.container.core.Container.__cinit__\r\n    self.err_check(res)\r\n^^^\r\n  File \"av/container/core.py\", line 369, in av.container.core.Container.err_check\r\n    return err_check(value, filename=self.name)\r\n^^^^^^^\r\n  File \"av/error.py\", line 354, in av.error.err_check\r\n    raise cls(code, message, filename, log)\r\n^^^^^^^\r\nav.error.FileNotFoundError: [Errno 2] No such file or directory: 'E:\\\\allwork\\\\download\\\\agent\\\\understand-book-video-understanding\\\\evals\\\\video\\\\generated\\\\vi3-recovery\\\\missing.wav'\r\n",
+  "restored_stage": "ready",
+  "preserved_success_response": true,
+  "failed_attempts": 2,
+  "engine": "faster-whisper 1.2.1 small.en CPU int8"
+}

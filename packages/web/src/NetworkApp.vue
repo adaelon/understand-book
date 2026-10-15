@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import App from './App.vue';
+import VideoReaderPane from './components/VideoReaderPane.vue';
+import { videoCatalog, type PreparingVideo } from './video-api';
+const videos = ref<PreparingVideo[]>([]), selectedVideo = ref<PreparingVideo | null>(null);
 import BookCover from './components/BookCover.vue';
 import LoadingAnimation from './components/LoadingAnimation.vue';
 import AccountAllowance from './components/AccountAllowance.vue';
@@ -112,12 +115,16 @@ function pageHide() {
 const pending = ref(0);
 const pendingItems = ref<PendingSubmission[]>([]);
 watch(() => network.value.identity?.user_id, () => {
+  videos.value = []; selectedVideo.value = null;
   pendingItems.value = []; pending.value = 0; linkedPresentation.value = null; books.value = [];
 }, { flush: 'sync' });
 let identityCheck: Promise<void> | null = null;
 const channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('understand-book:authentication');
 network.value = { ...network.value, enabled: true };
-async function catalog() { books.value = (await networkFetch<{ books: typeof books.value }>('GET', '/library')).books; }
+async function catalog() {
+  books.value = (await networkFetch<{ books: typeof books.value }>('GET', '/library')).books;
+  videos.value = (await videoCatalog()).videos;
+}
 async function restore() {
   await recoverWorkspaceBinding();
   await recover();
@@ -244,6 +251,7 @@ onBeforeUnmount(() => {
       <span v-if="error" role="alert">{{ error }}</span>
     </div>
     <AgentPresentation v-if="!suspended && network.linked && linkedPresentation && network.workspace" :key="key" :session-id="linkedPresentation.session_id" :turn-id="linkedPresentation.turn_id" :reference="linkedPresentation.reference" @follow-up="followUp" @source="showLinkedSource" />
+    <VideoReaderPane v-else-if="!suspended && selectedVideo" :key="`${selectedVideo.video.media_id}/${selectedVideo.video.media_revision}`" :initial="selectedVideo" :owner="network.identity.user_id" @close="selectedVideo = null" @ready="reference => { selectedVideo = null; openBook(reference); }" />
     <main v-else-if="openingRecap" class="network-loading"><LoadingAnimation /></main>
     <App v-else-if="!suspended && network.workspace" :key="appKey" v-model:chat-draft="chatDraft" :recap-target="recapTarget" @show-allowance="allowanceOpen = true" @recap-consumed="recapTarget = null" @recap-publication="openRecapPublication">
       <template #account>
@@ -266,12 +274,13 @@ onBeforeUnmount(() => {
         <p><span class="account-email">{{ network.identity.email || network.identity.user_id }}</span> <button @click="settingsOpen = true">个人设置</button> <button @click="allowanceOpen = true">使用额度</button> <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a> <button @click="logout">退出登录</button></p>
       </header>
       <div class="network-library-grid">
+        <button v-for="video in videos" :key="video.video.media_id" class="network-book-card" @click="video.publication ? openBook(video.publication) : selectedVideo = video"><strong>{{ video.title }}</strong><span>{{ video.english_ready ? "视频 · 英文已发布" : "视频 · 转写准备中" }}</span></button>
         <button v-for="book in books" :key="book.published_book_ref.publication_id" class="network-book-card" :disabled="busy" @click="openBook(book.published_book_ref)">
           <BookCover :title="book.published_book_ref.book_id" :cover="book.cover" />
           <strong>{{ bookLabel(book) }}</strong>
         </button>
       </div>
-      <p v-if="!books.length">账号已创建，等待管理员开通材料。</p>
+      <p v-if="!books.length && !videos.length">账号已创建，等待管理员开通材料。</p>
     </main>
     <AccountSettings v-if="settingsOpen" @close="settingsOpen = false" @bound="channel?.postMessage('profile-changed')" @password-changed="passwordChanged" />
     <AccountAllowance v-if="allowanceOpen" :key="key" @close="allowanceOpen = false" />

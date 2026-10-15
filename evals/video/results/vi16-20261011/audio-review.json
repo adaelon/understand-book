@@ -1,0 +1,216 @@
+{
+  "elapsed_ms": 9156,
+  "observation": {
+    "kind": "audio",
+    "location": {
+      "end_ms": 598000.0,
+      "start_ms": 590000.0,
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      }
+    },
+    "observation_id": "01a12846-bf63-70b0-9163-ae80d695ca72",
+    "publication": {
+      "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+      "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+    },
+    "review_result_ref": "01a12846-bf58-7882-bdd7-847dc866e79e",
+    "run_id": "vi15-probe",
+    "tool_call_id": "audio-review"
+  },
+  "review": {
+    "location": {
+      "end_ms": 598000.0,
+      "start_ms": 590000.0,
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      }
+    },
+    "provider": {
+      "audio_duration_ms": 8000.0,
+      "audio_input": "original_pcm_s16le_16000_mono",
+      "engine": "faster-whisper",
+      "engine_version": "1.2.1",
+      "inference_ms": 3753,
+      "language": "en",
+      "load_ms": 2201,
+      "model": "small.en",
+      "recognition_prompt": null
+    },
+    "publication": {
+      "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+      "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+    },
+    "question": "讲者在这里说的浮点格式名称是什么？",
+    "review_result_ref": "01a12846-bf58-7882-bdd7-847dc866e79e",
+    "reviewed_text": "So then, um, so beef float 16, uh, was invented. So this was developed in actually 2018.",
+    "reviewed_words": [
+      {
+        "end_ms": 590620.0,
+        "probability": 0.8646929860115051,
+        "start_ms": 590000.0,
+        "text": " So"
+      },
+      {
+        "end_ms": 591060.0,
+        "probability": 0.5619135499000549,
+        "start_ms": 590620.0,
+        "text": " then,"
+      },
+      {
+        "end_ms": 591480.0,
+        "probability": 0.5564818382263184,
+        "start_ms": 591420.0,
+        "text": " um,"
+      },
+      {
+        "end_ms": 592120.0,
+        "probability": 0.9306387901306152,
+        "start_ms": 592060.0,
+        "text": " so"
+      },
+      {
+        "end_ms": 592400.0,
+        "probability": 0.5538609027862549,
+        "start_ms": 592120.0,
+        "text": " beef"
+      },
+      {
+        "end_ms": 592700.0,
+        "probability": 0.927341103553772,
+        "start_ms": 592400.0,
+        "text": " float"
+      },
+      {
+        "end_ms": 593120.0,
+        "probability": 0.8299974203109741,
+        "start_ms": 592700.0,
+        "text": " 16,"
+      },
+      {
+        "end_ms": 593780.0,
+        "probability": 0.9351778626441956,
+        "start_ms": 593120.0,
+        "text": " uh,"
+      },
+      {
+        "end_ms": 594340.0,
+        "probability": 0.9979829788208008,
+        "start_ms": 593880.0,
+        "text": " was"
+      },
+      {
+        "end_ms": 595060.0,
+        "probability": 0.995005190372467,
+        "start_ms": 594340.0,
+        "text": " invented."
+      },
+      {
+        "end_ms": 595520.0,
+        "probability": 0.9990347623825073,
+        "start_ms": 595440.0,
+        "text": " So"
+      },
+      {
+        "end_ms": 595760.0,
+        "probability": 0.9729993939399719,
+        "start_ms": 595520.0,
+        "text": " this"
+      },
+      {
+        "end_ms": 595980.0,
+        "probability": 0.9990874528884888,
+        "start_ms": 595760.0,
+        "text": " was"
+      },
+      {
+        "end_ms": 596340.0,
+        "probability": 0.9992408752441406,
+        "start_ms": 595980.0,
+        "text": " developed"
+      },
+      {
+        "end_ms": 596620.0,
+        "probability": 0.9867733716964722,
+        "start_ms": 596340.0,
+        "text": " in"
+      },
+      {
+        "end_ms": 596920.0,
+        "probability": 0.7959438562393188,
+        "start_ms": 596620.0,
+        "text": " actually"
+      },
+      {
+        "end_ms": 597400.0,
+        "probability": 0.9908589720726013,
+        "start_ms": 596920.0,
+        "text": " 2018."
+      }
+    ],
+    "run_id": "vi15-probe",
+    "transcript": [
+      {
+        "location": {
+          "end_ms": 595080.0,
+          "start_ms": 590660.0,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "segment_id": "segment-87",
+        "text": "So then, so beef float 16 was invented.",
+        "text_range": {
+          "lid": "87",
+          "range": {
+            "end": 39,
+            "start": 0
+          }
+        },
+        "words": []
+      },
+      {
+        "location": {
+          "end_ms": 599180.0,
+          "start_ms": 595320.0,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "segment_id": "segment-88",
+        "text": "So this was developed in actually 2018 to address this issue.",
+        "text_range": {
+          "lid": "88",
+          "range": {
+            "end": 61,
+            "start": 0
+          }
+        },
+        "words": []
+      }
+    ],
+    "uncertainties": [
+      "机器音频复核候选；词时间为识别估计，概率不等于正确性，未消除的听辨疑点仍须回听。"
+    ]
+  },
+  "target": {
+    "kind": "audio",
+    "location": {
+      "end_ms": 598000.0,
+      "start_ms": 590000.0,
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      }
+    },
+    "publication": {
+      "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+      "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+    },
+    "review_result_ref": "01a12846-bf58-7882-bdd7-847dc866e79e"
+  }
+}

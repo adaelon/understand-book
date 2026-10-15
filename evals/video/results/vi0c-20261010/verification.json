@@ -1,0 +1,1084 @@
+{
+  "codex": {
+    "single_a": {
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_ms": 44194,
+      "host": "codex-cli",
+      "model": "gpt-6-astra",
+      "checks": {
+        "process_success": true,
+        "native_image_bytes_and_order": true,
+        "one_successful_image_call": true,
+        "no_other_tool_access": true,
+        "turn_completed": true,
+        "ordered_image_count": true,
+        "image_1_dtype": true,
+        "image_1_operator": true,
+        "image_1_result": true
+      },
+      "transport": {
+        "image_count": 1,
+        "images": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 439190,
+            "base64_bytes": 585588
+          }
+        ],
+        "mcp_result_bytes": 585700,
+        "jsonrpc_line_bytes": 585735
+      },
+      "usage": {
+        "input_tokens": 36410,
+        "cached_input_tokens": 16768,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 302,
+        "reasoning_output_tokens": 11
+      },
+      "answer": {
+        "images": [
+          {
+            "image": 1,
+            "tensor_constructions": [
+              "x = torch.zeros(4, 8, dtype=torch.float16)",
+              "x = torch.tensor([1e-8], dtype=torch.float16)"
+            ],
+            "assertions": [
+              "assert x.element_size() == 2",
+              "assert x == 0  # Underflow!"
+            ],
+            "displayed_result": "x = 0.000e+0",
+            "highlighted": "assert x == 0  # Underflow!",
+            "explanations": [
+              "The float16 data type (also known as fp16 or half precision) cuts down the memory.",
+              "However, the dynamic range (especially for small numbers) isn't great.",
+              "If this happens when you train, you can get instability."
+            ],
+            "einsum": null
+          }
+        ],
+        "comparison": "Only one image was supplied; no changes between images to compare."
+      },
+      "error": null
+    },
+    "single_b": {
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_ms": 60059,
+      "host": "codex-cli",
+      "host_version": "codex-cli 0.162.0-alpha.2",
+      "model": "gpt-6-astra",
+      "checks": {
+        "process_success": true,
+        "native_image_bytes_and_order": true,
+        "one_successful_image_call": true,
+        "no_other_tool_access": true,
+        "turn_completed": true,
+        "ordered_image_count": true,
+        "image_1_dtype": true,
+        "image_1_operator": true,
+        "image_1_result": true
+      },
+      "transport": {
+        "image_count": 1,
+        "images": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 456792,
+            "base64_bytes": 609056
+          }
+        ],
+        "mcp_result_bytes": 609168,
+        "jsonrpc_line_bytes": 609203
+      },
+      "usage": {
+        "input_tokens": 36411,
+        "cached_input_tokens": 24064,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 238,
+        "reasoning_output_tokens": 0
+      },
+      "answer": {
+        "images": [
+          {
+            "image": 1,
+            "tensor": "x = torch.tensor([1e-8], dtype=torch.bfloat16)",
+            "assertion": "assert x != 0  # No underflow!",
+            "displayed_result": "x = 1.001e-8",
+            "explanation": [
+              "bfloat16 uses the same memory as float16 but has the same dynamic range as float32!",
+              "The only catch is that the resolution is worse, but this matters less for deep learning."
+            ]
+          }
+        ],
+        "comparison": "Only one image was supplied; no changes between images can be compared."
+      },
+      "error": null
+    },
+    "crop_a": {
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_ms": 67890,
+      "host": "codex-cli",
+      "host_version": "codex-cli 0.162.0-alpha.2",
+      "model": "gpt-6-astra",
+      "checks": {
+        "process_success": true,
+        "native_image_bytes_and_order": true,
+        "one_successful_image_call": true,
+        "no_other_tool_access": true,
+        "turn_completed": true,
+        "ordered_image_count": true,
+        "image_1_dtype": true,
+        "image_1_operator": true,
+        "image_1_no_hidden_result": true
+      },
+      "transport": {
+        "image_count": 1,
+        "images": [
+          {
+            "width": 1120,
+            "height": 150,
+            "png_bytes": 69920,
+            "base64_bytes": 93228
+          }
+        ],
+        "mcp_result_bytes": 93340,
+        "jsonrpc_line_bytes": 93375
+      },
+      "usage": {
+        "input_tokens": 34182,
+        "cached_input_tokens": 24064,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 229,
+        "reasoning_output_tokens": 22
+      },
+      "answer": {
+        "images": [
+          {
+            "image": 1,
+            "tensor": "x = torch.tensor([1e-8], dtype=torch.float16)",
+            "assertion": "assert x == 0  # Underflow!",
+            "highlighted": "assert x == 0  # Underflow!",
+            "displayed_numeric_result": null
+          }
+        ],
+        "comparison": "Only one image was supplied; no changes to compare."
+      },
+      "error": null
+    },
+    "crop_b": {
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_ms": 42767,
+      "host": "codex-cli",
+      "host_version": "codex-cli 0.162.0-alpha.2",
+      "model": "gpt-6-astra",
+      "checks": {
+        "process_success": true,
+        "native_image_bytes_and_order": true,
+        "one_successful_image_call": true,
+        "no_other_tool_access": true,
+        "turn_completed": true,
+        "ordered_image_count": true,
+        "image_1_dtype": true,
+        "image_1_operator": true,
+        "image_1_no_hidden_result": true
+      },
+      "transport": {
+        "image_count": 1,
+        "images": [
+          {
+            "width": 1120,
+            "height": 150,
+            "png_bytes": 67911,
+            "base64_bytes": 90548
+          }
+        ],
+        "mcp_result_bytes": 90660,
+        "jsonrpc_line_bytes": 90695
+      },
+      "usage": {
+        "input_tokens": 34165,
+        "cached_input_tokens": 24064,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 179,
+        "reasoning_output_tokens": 0
+      },
+      "answer": {
+        "images": [
+          {
+            "image": 1,
+            "tensor_construction": "x = torch.tensor([1e-8], dtype=torch.bfloat16)",
+            "highlighted_assertion": "assert x != 0  # No underflow!",
+            "displayed_numeric_result": null
+          }
+        ],
+        "comparison": "Only one image supplied; no changes to compare."
+      },
+      "error": null
+    },
+    "pair": {
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_ms": 46873,
+      "host": "codex-cli",
+      "host_version": "codex-cli 0.162.0-alpha.2",
+      "model": "gpt-6-astra",
+      "checks": {
+        "process_success": true,
+        "native_image_bytes_and_order": true,
+        "one_successful_image_call": true,
+        "no_other_tool_access": true,
+        "turn_completed": true,
+        "ordered_image_count": true,
+        "image_1_dtype": true,
+        "image_1_operator": true,
+        "image_1_result": true,
+        "image_2_dtype": true,
+        "image_2_operator": true,
+        "image_2_result": true
+      },
+      "transport": {
+        "image_count": 2,
+        "images": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 439190,
+            "base64_bytes": 585588
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 456792,
+            "base64_bytes": 609056
+          }
+        ],
+        "mcp_result_bytes": 1194839,
+        "jsonrpc_line_bytes": 1194874
+      },
+      "usage": {
+        "input_tokens": 38132,
+        "cached_input_tokens": 16768,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 429,
+        "reasoning_output_tokens": 0
+      },
+      "answer": {
+        "images": [
+          {
+            "image": 1,
+            "constructions": [
+              "x = torch.zeros(4, 8, dtype=torch.float16)",
+              "x = torch.tensor([1e-8], dtype=torch.float16)"
+            ],
+            "assertions": [
+              "assert x.element_size() == 2",
+              "assert x == 0  # Underflow!"
+            ],
+            "displayed_result": "x = 0.000e+0",
+            "explanation": "However, the dynamic range (especially for small numbers) isn't great."
+          },
+          {
+            "image": 2,
+            "constructions": [
+              "x = torch.tensor([1e-8], dtype=torch.bfloat16)"
+            ],
+            "assertions": [
+              "assert x != 0  # No underflow!"
+            ],
+            "displayed_result": "x = 1.001e-8",
+            "explanation": "bfloat16 uses the same memory as float16 but has the same dynamic range as float32! The only catch is that the resolution is worse, but this matters less for deep learning."
+          }
+        ],
+        "comparison": "The dtype changes from float16 to bfloat16 for [1e-8]. The displayed result changes from 0.000e+0 to 1.001e-8, and the assertion changes from == 0 (Underflow!) to != 0 (No underflow!). No einsum code is visible."
+      },
+      "error": null
+    },
+    "reverse": {
+      "status": "passed",
+      "exit_code": 0,
+      "timed_out": false,
+      "elapsed_ms": 60941,
+      "host": "codex-cli",
+      "host_version": "codex-cli 0.162.0-alpha.2",
+      "model": "gpt-6-astra",
+      "checks": {
+        "process_success": true,
+        "native_image_bytes_and_order": true,
+        "one_successful_image_call": true,
+        "no_other_tool_access": true,
+        "turn_completed": true,
+        "ordered_image_count": true,
+        "image_1_dtype": true,
+        "image_1_operator": true,
+        "image_1_result": true,
+        "image_2_dtype": true,
+        "image_2_operator": true,
+        "image_2_result": true
+      },
+      "transport": {
+        "image_count": 2,
+        "images": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 456792,
+            "base64_bytes": 609056
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 439190,
+            "base64_bytes": 585588
+          }
+        ],
+        "mcp_result_bytes": 1194839,
+        "jsonrpc_line_bytes": 1194874
+      },
+      "usage": {
+        "input_tokens": 38134,
+        "cached_input_tokens": 16768,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 468,
+        "reasoning_output_tokens": 0
+      },
+      "answer": {
+        "images": [
+          {
+            "image": 1,
+            "construction": "x = torch.tensor([1e-8], dtype=torch.bfloat16)",
+            "assertion": "assert x != 0  # No underflow!",
+            "displayed_result": "x = 1.001e-8",
+            "explanation": [
+              "bfloat16 uses the same memory as float16 but has the same dynamic range as float32!",
+              "The only catch is that the resolution is worse, but this matters less for deep learning."
+            ]
+          },
+          {
+            "image": 2,
+            "constructions": [
+              "x = torch.zeros(4, 8, dtype=torch.float16)",
+              "x = torch.tensor([1e-8], dtype=torch.float16)"
+            ],
+            "assertions": [
+              "assert x.element_size() == 2",
+              "assert x == 0  # Underflow!"
+            ],
+            "displayed_result": "x = 0.000e+0",
+            "explanation": "However, the dynamic range (especially for small numbers) isn't great.",
+            "matrix_shape": [
+              4,
+              8
+            ],
+            "einsum": null
+          }
+        ],
+        "comparison": "Image 1 shows bfloat16 preserving 1e-8 as 1.001e-8 with != 0 and 'No underflow!'. Image 2 switches to float16, displays 0.000e+0, and uses == 0 with 'Underflow!'; it also shows a (4, 8) zero tensor and a 2-byte element-size assertion. Neither image shows einsum code."
+      },
+      "error": null
+    },
+    "progressive": {
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_ms": 67764,
+      "host": "codex-cli",
+      "host_version": "codex-cli 0.162.0-alpha.2",
+      "model": "gpt-6-astra",
+      "checks": {
+        "process_success": true,
+        "native_image_bytes_and_order": true,
+        "one_successful_image_call": true,
+        "no_other_tool_access": true,
+        "turn_completed": true,
+        "ordered_image_count": true,
+        "image_1_highlight": true,
+        "image_2_highlight": true,
+        "image_3_highlight": true,
+        "image_4_dtype": true,
+        "image_4_operator": true,
+        "image_4_result": true
+      },
+      "transport": {
+        "image_count": 4,
+        "images": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 448656,
+            "base64_bytes": 598208
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 494471,
+            "base64_bytes": 659296
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 546226,
+            "base64_bytes": 728304
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 456792,
+            "base64_bytes": 609056
+          }
+        ],
+        "mcp_result_bytes": 2595225,
+        "jsonrpc_line_bytes": 2595260
+      },
+      "usage": {
+        "input_tokens": 43271,
+        "cached_input_tokens": 24832,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 696,
+        "reasoning_output_tokens": 0
+      },
+      "answer": {
+        "images": [
+          {
+            "image": 1,
+            "constructions": [
+              "x = torch.tensor([1e-8], dtype=torch.float16)",
+              "x = torch.tensor([1e-8], dtype=torch.bfloat16)"
+            ],
+            "assertions": [
+              "assert x == 0  # Underflow!",
+              "assert x != 0  # No underflow!"
+            ],
+            "displayed_result": "x = 0.000e+0",
+            "highlighted_explanation": "Google Brain developed bfloat (brain floating point) in 2018 to address this issue."
+          },
+          {
+            "image": 2,
+            "constructions": [
+              "x = torch.tensor([1e-8], dtype=torch.float16)",
+              "x = torch.tensor([1e-8], dtype=torch.bfloat16)"
+            ],
+            "assertions": [
+              "assert x == 0  # Underflow!",
+              "assert x != 0  # No underflow!"
+            ],
+            "displayed_result": "x = 0.000e+0",
+            "highlighted_explanation": "bfloat16 uses the same memory as float16 but has the same dynamic range as float32!"
+          },
+          {
+            "image": 3,
+            "constructions": [
+              "x = torch.tensor([1e-8], dtype=torch.float16)",
+              "x = torch.tensor([1e-8], dtype=torch.bfloat16)"
+            ],
+            "assertions": [
+              "assert x == 0  # Underflow!",
+              "assert x != 0  # No underflow!"
+            ],
+            "displayed_result": "x = 0.000e+0",
+            "highlighted_explanation": "The only catch is that the resolution is worse, but this matters less for deep learning."
+          },
+          {
+            "image": 4,
+            "constructions": [
+              "x = torch.tensor([1e-8], dtype=torch.bfloat16)"
+            ],
+            "assertions": [
+              "assert x != 0  # No underflow!"
+            ],
+            "displayed_result": "x = 1.001e-8",
+            "highlighted_text": "assert x != 0  # No underflow!"
+          }
+        ],
+        "comparison": "Images 1–3 retain the same constructions, assertions, and zero result while the highlight moves from bfloat's origin to its memory/dynamic range and then its worse resolution. Image 4 scrolls to the bfloat16 construction, highlights != 0 instead of == 0, and displays 1.001e-8 instead of 0.000e+0. No matrix code or einsum signature is visible."
+      },
+      "error": null
+    },
+    "matrix": {
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_ms": 62887,
+      "host": "codex-cli",
+      "host_version": "codex-cli 0.162.0-alpha.2",
+      "model": "gpt-6-astra",
+      "checks": {
+        "process_success": true,
+        "native_image_bytes_and_order": true,
+        "one_successful_image_call": true,
+        "no_other_tool_access": true,
+        "turn_completed": true,
+        "ordered_image_count": true,
+        "image_1_signature": true,
+        "image_1_input_shapes": true,
+        "image_2_signature": true,
+        "image_2_input_shapes": true
+      },
+      "transport": {
+        "image_count": 2,
+        "images": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 402127,
+            "base64_bytes": 536172
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 404052,
+            "base64_bytes": 538736
+          }
+        ],
+        "mcp_result_bytes": 1075103,
+        "jsonrpc_line_bytes": 1075138
+      },
+      "usage": {
+        "input_tokens": 37394,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 598,
+        "reasoning_output_tokens": 0
+      },
+      "answer": {
+        "images": [
+          {
+            "image": 1,
+            "construction": [
+              "x = torch.ones(3, 4) # seq1 hidden",
+              "y = torch.ones(4, 3) # hidden seq2"
+            ],
+            "input_shapes": [
+              [
+                3,
+                4
+              ],
+              [
+                4,
+                3
+              ]
+            ],
+            "matrix_code": [
+              "# Old way",
+              "z = x @ y # seq1 seq2",
+              "# New (einops) way",
+              "z = einsum(x, y, \"seq1 hidden, hidden seq2 -> seq1 seq2\")"
+            ],
+            "einsum_signature": "seq1 hidden, hidden seq2 -> seq1 seq2",
+            "displayed_result": [
+              [
+                4,
+                4,
+                4
+              ],
+              [
+                4,
+                4,
+                4
+              ],
+              [
+                4,
+                4,
+                4
+              ]
+            ],
+            "explanation": "Einsum is generalized matrix multiplication with good bookkeeping.",
+            "subtitle": "And I'm going to produce a tensor here a matrix."
+          },
+          {
+            "image": 2,
+            "construction": [
+              "x = torch.ones(3, 4) # seq1 hidden",
+              "y = torch.ones(4, 3) # hidden seq2"
+            ],
+            "input_shapes": [
+              [
+                3,
+                4
+              ],
+              [
+                4,
+                3
+              ]
+            ],
+            "matrix_code": [
+              "# Old way",
+              "z = x @ y # seq1 seq2",
+              "# New (einops) way",
+              "z = einsum(x, y, \"seq1 hidden, hidden seq2 -> seq1 seq2\")"
+            ],
+            "einsum_signature": "seq1 hidden, hidden seq2 -> seq1 seq2",
+            "displayed_result": [
+              [
+                4,
+                4,
+                4
+              ],
+              [
+                4,
+                4,
+                4
+              ],
+              [
+                4,
+                4,
+                4
+              ]
+            ],
+            "explanation": "Einsum is generalized matrix multiplication with good bookkeeping.",
+            "subtitle": "And anything that is not mentioned here, the hidden gets summed out."
+          }
+        ],
+        "comparison": "The constructions, highlighted einsum line, and displayed 3×3 result remain unchanged. The subtitle changes from producing a matrix to explaining that hidden is summed out. No assertion is visible."
+      },
+      "error": null
+    },
+    "capacity8": {
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_ms": 190459,
+      "host": "codex-cli",
+      "host_version": "codex-cli 0.162.0-alpha.2",
+      "model": "gpt-6-astra",
+      "checks": {
+        "process_success": true,
+        "native_image_bytes_and_order": true,
+        "one_successful_image_call": true,
+        "no_other_tool_access": true,
+        "turn_completed": true,
+        "ordered_image_count": true,
+        "image_1_dtype": true,
+        "image_1_operator": true,
+        "image_1_result": true,
+        "image_2_dtype": true,
+        "image_2_operator": true,
+        "image_2_result": true,
+        "image_3_highlight": true,
+        "image_4_highlight": true,
+        "image_5_highlight": true,
+        "image_6_dtype": true,
+        "image_6_operator": true,
+        "image_6_result": true,
+        "image_7_signature": true,
+        "image_7_input_shapes": true,
+        "image_8_signature": true,
+        "image_8_input_shapes": true
+      },
+      "transport": {
+        "image_count": 8,
+        "images": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 439190,
+            "base64_bytes": 585588
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 456792,
+            "base64_bytes": 609056
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 448656,
+            "base64_bytes": 598208
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 494471,
+            "base64_bytes": 659296
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 546226,
+            "base64_bytes": 728304
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 456792,
+            "base64_bytes": 609056
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 402127,
+            "base64_bytes": 536172
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 404052,
+            "base64_bytes": 538736
+          }
+        ],
+        "mcp_result_bytes": 4865109,
+        "jsonrpc_line_bytes": 4865144
+      },
+      "usage": {
+        "input_tokens": 53574,
+        "cached_input_tokens": 16768,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1301,
+        "reasoning_output_tokens": 0
+      },
+      "answer": {
+        "images": [
+          {
+            "image": 1,
+            "code": [
+              "x = torch.zeros(4, 8, dtype=torch.float16)",
+              "assert x.element_size() == 2",
+              "x = torch.tensor([1e-8], dtype=torch.float16)",
+              "assert x == 0  # Underflow!"
+            ],
+            "result": "x = 0.000e+0",
+            "highlight": "assert x == 0  # Underflow!"
+          },
+          {
+            "image": 2,
+            "code": [
+              "x = torch.tensor([1e-8], dtype=torch.bfloat16)",
+              "assert x != 0  # No underflow!"
+            ],
+            "result": "x = 1.001e-8",
+            "highlight": "assert x != 0  # No underflow!"
+          },
+          {
+            "image": 3,
+            "code": [
+              "x = torch.tensor([1e-8], dtype=torch.float16)",
+              "assert x == 0  # Underflow!",
+              "x = torch.tensor([1e-8], dtype=torch.bfloat16)",
+              "assert x != 0  # No underflow!"
+            ],
+            "result": "x = 0.000e+0",
+            "highlight": "Google Brain developed bfloat (brain floating point) in 2018 to address this issue.",
+            "diagram": "bfloat16: sign; exponent (8 bit); fraction (7 bit)."
+          },
+          {
+            "image": 4,
+            "code": [
+              "x = torch.tensor([1e-8], dtype=torch.float16)",
+              "assert x == 0  # Underflow!",
+              "x = torch.tensor([1e-8], dtype=torch.bfloat16)",
+              "assert x != 0  # No underflow!"
+            ],
+            "result": "x = 0.000e+0",
+            "highlight": "bfloat16 uses the same memory as float16 but has the same dynamic range as float32!"
+          },
+          {
+            "image": 5,
+            "code": [
+              "x = torch.tensor([1e-8], dtype=torch.float16)",
+              "assert x == 0  # Underflow!",
+              "x = torch.tensor([1e-8], dtype=torch.bfloat16)",
+              "assert x != 0  # No underflow!"
+            ],
+            "result": "x = 0.000e+0",
+            "highlight": "The only catch is that the resolution is worse, but this matters less for deep learning."
+          },
+          {
+            "image": 6,
+            "code": [
+              "x = torch.tensor([1e-8], dtype=torch.bfloat16)",
+              "assert x != 0  # No underflow!"
+            ],
+            "result": "x = 1.001e-8",
+            "highlight": "assert x != 0  # No underflow!"
+          },
+          {
+            "image": 7,
+            "code": [
+              "x = torch.ones(3, 4)  # seq1 hidden",
+              "y = torch.ones(4, 3)  # hidden seq2",
+              "# Old way",
+              "z = x @ y  # seq1 seq2",
+              "# New (einops) way",
+              "z = einsum(x, y, \"seq1 hidden, hidden seq2 -> seq1 seq2\")"
+            ],
+            "input_shapes": {
+              "x": [
+                3,
+                4
+              ],
+              "y": [
+                4,
+                3
+              ]
+            },
+            "einsum_signature": "seq1 hidden, hidden seq2 -> seq1 seq2",
+            "result": {
+              "shape": [
+                3,
+                3
+              ],
+              "z": [
+                [
+                  4,
+                  4,
+                  4
+                ],
+                [
+                  4,
+                  4,
+                  4
+                ],
+                [
+                  4,
+                  4,
+                  4
+                ]
+              ]
+            }
+          },
+          {
+            "image": 8,
+            "code": [
+              "x = torch.ones(3, 4)  # seq1 hidden",
+              "y = torch.ones(4, 3)  # hidden seq2",
+              "# Old way",
+              "z = x @ y  # seq1 seq2",
+              "# New (einops) way",
+              "z = einsum(x, y, \"seq1 hidden, hidden seq2 -> seq1 seq2\")"
+            ],
+            "input_shapes": {
+              "x": [
+                3,
+                4
+              ],
+              "y": [
+                4,
+                3
+              ]
+            },
+            "einsum_signature": "seq1 hidden, hidden seq2 -> seq1 seq2",
+            "result": {
+              "shape": [
+                3,
+                3
+              ],
+              "z": [
+                [
+                  4,
+                  4,
+                  4
+                ],
+                [
+                  4,
+                  4,
+                  4
+                ],
+                [
+                  4,
+                  4,
+                  4
+                ]
+              ]
+            },
+            "subtitle": "And anything that is not mentioned here, the hidden gets summed out."
+          }
+        ],
+        "comparison": "1→2 changes float16 to bfloat16, == to !=, Underflow! to No underflow!, and 0.000e+0 to 1.001e-8. Images 3–5 display 0.000e+0 while the highlight moves from bfloat's origin to its memory/dynamic range and then worse resolution. Image 6 repeats image 2's construction, assertion and result. Images 7–8 show identical matrix inputs, einsum signature and 3×3 result of all 4s; image 8's subtitle explains summing out hidden."
+      },
+      "error": null
+    }
+  },
+  "runtime_record": {
+    "single_a": {
+      "status": "projection_passed",
+      "mode": "record",
+      "model": "vi0c-projection-recorder",
+      "provider_mode": "native",
+      "exit_code": 0,
+      "semantic_inference": false,
+      "answer": "RECORDING ONLY: no model inference.",
+      "elapsed_ms": 114,
+      "error": null,
+      "request_json_bytes": 586389,
+      "usage": null,
+      "checks": {
+        "process_success": true,
+        "full_body_measured": true,
+        "images_and_order_preserved": true,
+        "actual_http_body_matches": true
+      }
+    },
+    "single_b": {
+      "status": "projection_passed",
+      "mode": "record",
+      "model": "vi0c-projection-recorder",
+      "provider_mode": "native",
+      "exit_code": 0,
+      "semantic_inference": false,
+      "answer": "RECORDING ONLY: no model inference.",
+      "elapsed_ms": 67,
+      "error": null,
+      "request_json_bytes": 609857,
+      "usage": null,
+      "checks": {
+        "process_success": true,
+        "full_body_measured": true,
+        "images_and_order_preserved": true,
+        "actual_http_body_matches": true
+      }
+    },
+    "crop_a": {
+      "status": "projection_passed",
+      "mode": "record",
+      "model": "vi0c-projection-recorder",
+      "provider_mode": "native",
+      "exit_code": 0,
+      "semantic_inference": false,
+      "answer": "RECORDING ONLY: no model inference.",
+      "elapsed_ms": 21,
+      "error": null,
+      "request_json_bytes": 94029,
+      "usage": null,
+      "checks": {
+        "process_success": true,
+        "full_body_measured": true,
+        "images_and_order_preserved": true,
+        "actual_http_body_matches": true
+      }
+    },
+    "crop_b": {
+      "status": "projection_passed",
+      "mode": "record",
+      "model": "vi0c-projection-recorder",
+      "provider_mode": "native",
+      "exit_code": 0,
+      "semantic_inference": false,
+      "answer": "RECORDING ONLY: no model inference.",
+      "elapsed_ms": 22,
+      "error": null,
+      "request_json_bytes": 91349,
+      "usage": null,
+      "checks": {
+        "process_success": true,
+        "full_body_measured": true,
+        "images_and_order_preserved": true,
+        "actual_http_body_matches": true
+      }
+    },
+    "pair": {
+      "status": "projection_passed",
+      "mode": "record",
+      "model": "vi0c-projection-recorder",
+      "provider_mode": "native",
+      "exit_code": 0,
+      "semantic_inference": false,
+      "answer": "RECORDING ONLY: no model inference.",
+      "elapsed_ms": 111,
+      "error": null,
+      "request_json_bytes": 1195560,
+      "usage": null,
+      "checks": {
+        "process_success": true,
+        "full_body_measured": true,
+        "images_and_order_preserved": true,
+        "actual_http_body_matches": true
+      }
+    },
+    "reverse": {
+      "status": "projection_passed",
+      "mode": "record",
+      "model": "vi0c-projection-recorder",
+      "provider_mode": "native",
+      "exit_code": 0,
+      "semantic_inference": false,
+      "answer": "RECORDING ONLY: no model inference.",
+      "elapsed_ms": 127,
+      "error": null,
+      "request_json_bytes": 1195560,
+      "usage": null,
+      "checks": {
+        "process_success": true,
+        "full_body_measured": true,
+        "images_and_order_preserved": true,
+        "actual_http_body_matches": true
+      }
+    },
+    "progressive": {
+      "status": "projection_passed",
+      "mode": "record",
+      "model": "vi0c-projection-recorder",
+      "provider_mode": "native",
+      "exit_code": 0,
+      "semantic_inference": false,
+      "answer": "RECORDING ONLY: no model inference.",
+      "elapsed_ms": 266,
+      "error": null,
+      "request_json_bytes": 2596010,
+      "usage": null,
+      "checks": {
+        "process_success": true,
+        "full_body_measured": true,
+        "images_and_order_preserved": true,
+        "actual_http_body_matches": true
+      }
+    },
+    "matrix": {
+      "status": "projection_passed",
+      "mode": "record",
+      "model": "vi0c-projection-recorder",
+      "provider_mode": "native",
+      "exit_code": 0,
+      "semantic_inference": false,
+      "answer": "RECORDING ONLY: no model inference.",
+      "elapsed_ms": 110,
+      "error": null,
+      "request_json_bytes": 1075824,
+      "usage": null,
+      "checks": {
+        "process_success": true,
+        "full_body_measured": true,
+        "images_and_order_preserved": true,
+        "actual_http_body_matches": true
+      }
+    },
+    "capacity8": {
+      "status": "projection_passed",
+      "mode": "record",
+      "model": "vi0c-projection-recorder",
+      "provider_mode": "native",
+      "exit_code": 0,
+      "semantic_inference": false,
+      "answer": "RECORDING ONLY: no model inference.",
+      "elapsed_ms": 553,
+      "error": null,
+      "request_json_bytes": 4866022,
+      "usage": null,
+      "checks": {
+        "process_success": true,
+        "full_body_measured": true,
+        "images_and_order_preserved": true,
+        "actual_http_body_matches": true
+      }
+    }
+  },
+  "runtime_live": {
+    "status": "pending_configuration",
+    "authorization": "2026-10-10 user deferred real Reader Provider and DSH validation"
+  },
+  "dsh": {
+    "status": "pending_configuration",
+    "production_tool_render": "text JSON.stringify(value)",
+    "semantic_inference": false
+  },
+  "limits": "Largest successful case is a tested lower bound; no provider hard maximum inferred.",
+  "price": {
+    "currency": null,
+    "amount": null,
+    "reason": "No per-request monetary charge returned by Codex subscription host"
+  },
+  "codex_all_passed": true,
+  "runtime_projection_all_passed": true
+}

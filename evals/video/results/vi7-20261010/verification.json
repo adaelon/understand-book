@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-10T06:40:17.293Z",
+  "browser": "154.0.4258.62",
+  "publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+  },
+  "bound_frame": {
+    "actual_pts_ms": 491966.6875,
+    "height": 1080,
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    },
+    "width": 1920
+  },
+  "decoded_frame": {
+    "actual_pts_ms": 491966.6875,
+    "height": 1080,
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    },
+    "width": 1920
+  },
+  "focus_does_not_pause": true,
+  "manual_play_and_edits_preserve_binding": true,
+  "reload_restores_draft": true,
+  "accepted_turn": "turn_f581e3ae9701daf1",
+  "history_preserves_binding": true,
+  "source_preview_preserves_main_player": true,
+  "explicit_entry_seeks_original": true,
+  "reloaded_history_source": true,
+  "requests": 4,
+  "images": 1,
+  "model": "local HTTP recorder; no semantic inference",
+  "output": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi7\\2026-10-10T06-40-00.448Z"
+}

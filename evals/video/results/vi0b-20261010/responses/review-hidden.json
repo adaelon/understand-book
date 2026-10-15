@@ -1,0 +1,679 @@
+{
+  "request": {
+    "job": {
+      "id": "review-hidden",
+      "audio_path": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi0b\\audio\\review-hidden.wav",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "source_revision": "vq27-local-20261008",
+      "source_start_ms": 1205000.0,
+      "duration_ms": 10000.0,
+      "purpose": "correction_review",
+      "origin": "clips/einsum.wav"
+    },
+    "profile": {
+      "model": "small.en",
+      "device": "cpu",
+      "compute_type": "int8",
+      "cpu_threads": 8,
+      "transcribe": {
+        "language": "en",
+        "task": "transcribe",
+        "beam_size": 5,
+        "temperature": 0,
+        "word_timestamps": true,
+        "condition_on_previous_text": false,
+        "vad_filter": true,
+        "vad_parameters": {
+          "min_silence_duration_ms": 500
+        }
+      },
+      "versions": {
+        "faster-whisper": "1.2.1",
+        "ctranslate2": "4.8.2",
+        "av": "18.1.0",
+        "onnxruntime": "1.31.0"
+      },
+      "model_directory": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\.worktree-local\\whisper-models\\small.en"
+    }
+  },
+  "status": "completed",
+  "started_at": "2026-10-10T02:48:38.265559+00:00",
+  "raw_response": {
+    "segments": [
+      {
+        "id": 1,
+        "seek": 0,
+        "start": 0.02,
+        "end": 4.66,
+        "text": " And anything that is not mentioned here, the hidden, uh, gets summed out.",
+        "tokens": [
+          50363,
+          843,
+          1997,
+          326,
+          318,
+          407,
+          4750,
+          994,
+          11,
+          262,
+          7104,
+          11,
+          21480,
+          11,
+          3011,
+          32794,
+          503,
+          13,
+          50611
+        ],
+        "avg_logprob": -0.30302376821637156,
+        "compression_ratio": 1.191304347826087,
+        "no_speech_prob": 0.00669756019487977,
+        "words": [
+          {
+            "start": 0.02,
+            "end": 0.52,
+            "word": " And",
+            "probability": 0.49397119879722595
+          },
+          {
+            "start": 0.52,
+            "end": 0.96,
+            "word": " anything",
+            "probability": 0.9452524781227112
+          },
+          {
+            "start": 0.96,
+            "end": 1.36,
+            "word": " that",
+            "probability": 0.9969794750213623
+          },
+          {
+            "start": 1.36,
+            "end": 1.82,
+            "word": " is",
+            "probability": 0.9929617047309875
+          },
+          {
+            "start": 1.82,
+            "end": 2.14,
+            "word": " not",
+            "probability": 0.9960677623748779
+          },
+          {
+            "start": 2.14,
+            "end": 2.48,
+            "word": " mentioned",
+            "probability": 0.9936298727989197
+          },
+          {
+            "start": 2.48,
+            "end": 2.78,
+            "word": " here,",
+            "probability": 0.9970244765281677
+          },
+          {
+            "start": 3.06,
+            "end": 3.1,
+            "word": " the",
+            "probability": 0.9876680970191956
+          },
+          {
+            "start": 3.1,
+            "end": 3.38,
+            "word": " hidden,",
+            "probability": 0.9929639101028442
+          },
+          {
+            "start": 3.76,
+            "end": 3.9,
+            "word": " uh,",
+            "probability": 0.2904101312160492
+          },
+          {
+            "start": 3.94,
+            "end": 4.1,
+            "word": " gets",
+            "probability": 0.9288426041603088
+          },
+          {
+            "start": 4.1,
+            "end": 4.36,
+            "word": " summed",
+            "probability": 0.9944846034049988
+          },
+          {
+            "start": 4.36,
+            "end": 4.66,
+            "word": " out.",
+            "probability": 0.7987083792686462
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 2,
+        "seek": 0,
+        "start": 5.08,
+        "end": 9.98,
+        "text": " Okay? So the way this works is I'm going to sum over enumerate-",
+        "tokens": [
+          50611,
+          16805,
+          30,
+          1406,
+          262,
+          835,
+          428,
+          2499,
+          318,
+          314,
+          1101,
+          1016,
+          284,
+          2160,
+          625,
+          27056,
+          378,
+          12,
+          50857
+        ],
+        "avg_logprob": -0.30302376821637156,
+        "compression_ratio": 1.191304347826087,
+        "no_speech_prob": 0.00669756019487977,
+        "words": [
+          {
+            "start": 5.08,
+            "end": 5.5,
+            "word": " Okay?",
+            "probability": 0.9325796365737915
+          },
+          {
+            "start": 5.84,
+            "end": 6.08,
+            "word": " So",
+            "probability": 0.9986477494239807
+          },
+          {
+            "start": 6.08,
+            "end": 6.22,
+            "word": " the",
+            "probability": 0.8636358976364136
+          },
+          {
+            "start": 6.22,
+            "end": 6.34,
+            "word": " way",
+            "probability": 0.9988752007484436
+          },
+          {
+            "start": 6.34,
+            "end": 6.5,
+            "word": " this",
+            "probability": 0.9956796765327454
+          },
+          {
+            "start": 6.5,
+            "end": 6.74,
+            "word": " works",
+            "probability": 0.9946243166923523
+          },
+          {
+            "start": 6.74,
+            "end": 6.94,
+            "word": " is",
+            "probability": 0.9711467027664185
+          },
+          {
+            "start": 6.94,
+            "end": 7.18,
+            "word": " I'm",
+            "probability": 0.9386436641216278
+          },
+          {
+            "start": 7.18,
+            "end": 7.32,
+            "word": " going",
+            "probability": 0.8199648857116699
+          },
+          {
+            "start": 7.32,
+            "end": 7.62,
+            "word": " to",
+            "probability": 0.9981210827827454
+          },
+          {
+            "start": 7.62,
+            "end": 8.38,
+            "word": " sum",
+            "probability": 0.9901346564292908
+          },
+          {
+            "start": 8.38,
+            "end": 9.0,
+            "word": " over",
+            "probability": 0.9901952147483826
+          },
+          {
+            "start": 9.0,
+            "end": 9.92,
+            "word": " enumerate",
+            "probability": 0.7821744978427887
+          },
+          {
+            "start": 9.92,
+            "end": 9.98,
+            "word": "-",
+            "probability": 0.27188384532928467
+          }
+        ],
+        "temperature": 0
+      }
+    ],
+    "info": {
+      "language": "en",
+      "language_probability": 1,
+      "duration": 10.0,
+      "duration_after_vad": 9.984,
+      "all_language_probs": null,
+      "transcription_options": {
+        "beam_size": 5,
+        "best_of": 5,
+        "patience": 1,
+        "length_penalty": 1,
+        "repetition_penalty": 1,
+        "no_repeat_ngram_size": 0,
+        "log_prob_threshold": -1.0,
+        "no_speech_threshold": 0.6,
+        "compression_ratio_threshold": 2.4,
+        "condition_on_previous_text": false,
+        "prompt_reset_on_temperature": 0.5,
+        "temperatures": [
+          0
+        ],
+        "initial_prompt": null,
+        "prefix": null,
+        "suppress_blank": true,
+        "suppress_tokens": [
+          1,
+          2,
+          7,
+          8,
+          9,
+          10,
+          14,
+          25,
+          26,
+          27,
+          28,
+          29,
+          31,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          90,
+          91,
+          92,
+          93,
+          357,
+          366,
+          438,
+          532,
+          685,
+          705,
+          796,
+          930,
+          1058,
+          1220,
+          1267,
+          1279,
+          1303,
+          1343,
+          1377,
+          1391,
+          1635,
+          1782,
+          1875,
+          2162,
+          2361,
+          2488,
+          3467,
+          4008,
+          4211,
+          4600,
+          4808,
+          5299,
+          5855,
+          6329,
+          7203,
+          9609,
+          9959,
+          10563,
+          10786,
+          11420,
+          11709,
+          11907,
+          13163,
+          13697,
+          13700,
+          14808,
+          15306,
+          16410,
+          16791,
+          17992,
+          19203,
+          19510,
+          20724,
+          22305,
+          22935,
+          27007,
+          30109,
+          30420,
+          33409,
+          34949,
+          40283,
+          40493,
+          40549,
+          47282,
+          49146,
+          50257,
+          50357,
+          50358,
+          50359,
+          50360,
+          50361
+        ],
+        "without_timestamps": false,
+        "max_initial_timestamp": 1.0,
+        "word_timestamps": true,
+        "prepend_punctuations": "\"'“¿([{-",
+        "append_punctuations": "\"'.。,，!！?？:：”)]}、",
+        "multilingual": false,
+        "max_new_tokens": null,
+        "clip_timestamps": [
+          0.0
+        ],
+        "hallucination_silence_threshold": null,
+        "hotwords": null
+      },
+      "vad_options": {
+        "threshold": 0.5,
+        "neg_threshold": null,
+        "min_speech_duration_ms": 0,
+        "max_speech_duration_s": "Infinity",
+        "min_silence_duration_ms": 500,
+        "speech_pad_ms": 400
+      }
+    }
+  },
+  "segments": [
+    {
+      "text": " And anything that is not mentioned here, the hidden, uh, gets summed out.",
+      "start_ms": 20.0,
+      "end_ms": 4660.0,
+      "words": [
+        {
+          "text": " And",
+          "start_ms": 20.0,
+          "end_ms": 520.0,
+          "source_start_ms": 1205020.0,
+          "source_end_ms": 1205520.0,
+          "probability": 0.49397119879722595,
+          "owned_by_core": true
+        },
+        {
+          "text": " anything",
+          "start_ms": 520.0,
+          "end_ms": 960.0,
+          "source_start_ms": 1205520.0,
+          "source_end_ms": 1205960.0,
+          "probability": 0.9452524781227112,
+          "owned_by_core": true
+        },
+        {
+          "text": " that",
+          "start_ms": 960.0,
+          "end_ms": 1360.0,
+          "source_start_ms": 1205960.0,
+          "source_end_ms": 1206360.0,
+          "probability": 0.9969794750213623,
+          "owned_by_core": true
+        },
+        {
+          "text": " is",
+          "start_ms": 1360.0,
+          "end_ms": 1820.0,
+          "source_start_ms": 1206360.0,
+          "source_end_ms": 1206820.0,
+          "probability": 0.9929617047309875,
+          "owned_by_core": true
+        },
+        {
+          "text": " not",
+          "start_ms": 1820.0,
+          "end_ms": 2140.0,
+          "source_start_ms": 1206820.0,
+          "source_end_ms": 1207140.0,
+          "probability": 0.9960677623748779,
+          "owned_by_core": true
+        },
+        {
+          "text": " mentioned",
+          "start_ms": 2140.0,
+          "end_ms": 2480.0,
+          "source_start_ms": 1207140.0,
+          "source_end_ms": 1207480.0,
+          "probability": 0.9936298727989197,
+          "owned_by_core": true
+        },
+        {
+          "text": " here,",
+          "start_ms": 2480.0,
+          "end_ms": 2780.0,
+          "source_start_ms": 1207480.0,
+          "source_end_ms": 1207780.0,
+          "probability": 0.9970244765281677,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 3060.0,
+          "end_ms": 3100.0,
+          "source_start_ms": 1208060.0,
+          "source_end_ms": 1208100.0,
+          "probability": 0.9876680970191956,
+          "owned_by_core": true
+        },
+        {
+          "text": " hidden,",
+          "start_ms": 3100.0,
+          "end_ms": 3380.0,
+          "source_start_ms": 1208100.0,
+          "source_end_ms": 1208380.0,
+          "probability": 0.9929639101028442,
+          "owned_by_core": true
+        },
+        {
+          "text": " uh,",
+          "start_ms": 3760.0,
+          "end_ms": 3900.0,
+          "source_start_ms": 1208760.0,
+          "source_end_ms": 1208900.0,
+          "probability": 0.2904101312160492,
+          "owned_by_core": true
+        },
+        {
+          "text": " gets",
+          "start_ms": 3940.0,
+          "end_ms": 4100.0,
+          "source_start_ms": 1208940.0,
+          "source_end_ms": 1209100.0,
+          "probability": 0.9288426041603088,
+          "owned_by_core": true
+        },
+        {
+          "text": " summed",
+          "start_ms": 4100.0,
+          "end_ms": 4360.0,
+          "source_start_ms": 1209100.0,
+          "source_end_ms": 1209360.0,
+          "probability": 0.9944846034049988,
+          "owned_by_core": true
+        },
+        {
+          "text": " out.",
+          "start_ms": 4360.0,
+          "end_ms": 4660.0,
+          "source_start_ms": 1209360.0,
+          "source_end_ms": 1209660.0,
+          "probability": 0.7987083792686462,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 1205020.0,
+      "source_end_ms": 1209660.0
+    },
+    {
+      "text": " Okay? So the way this works is I'm going to sum over enumerate-",
+      "start_ms": 5080.0,
+      "end_ms": 9980.0,
+      "words": [
+        {
+          "text": " Okay?",
+          "start_ms": 5080.0,
+          "end_ms": 5500.0,
+          "source_start_ms": 1210080.0,
+          "source_end_ms": 1210500.0,
+          "probability": 0.9325796365737915,
+          "owned_by_core": true
+        },
+        {
+          "text": " So",
+          "start_ms": 5840.0,
+          "end_ms": 6080.0,
+          "source_start_ms": 1210840.0,
+          "source_end_ms": 1211080.0,
+          "probability": 0.9986477494239807,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 6080.0,
+          "end_ms": 6220.0,
+          "source_start_ms": 1211080.0,
+          "source_end_ms": 1211220.0,
+          "probability": 0.8636358976364136,
+          "owned_by_core": true
+        },
+        {
+          "text": " way",
+          "start_ms": 6220.0,
+          "end_ms": 6340.0,
+          "source_start_ms": 1211220.0,
+          "source_end_ms": 1211340.0,
+          "probability": 0.9988752007484436,
+          "owned_by_core": true
+        },
+        {
+          "text": " this",
+          "start_ms": 6340.0,
+          "end_ms": 6500.0,
+          "source_start_ms": 1211340.0,
+          "source_end_ms": 1211500.0,
+          "probability": 0.9956796765327454,
+          "owned_by_core": true
+        },
+        {
+          "text": " works",
+          "start_ms": 6500.0,
+          "end_ms": 6740.0,
+          "source_start_ms": 1211500.0,
+          "source_end_ms": 1211740.0,
+          "probability": 0.9946243166923523,
+          "owned_by_core": true
+        },
+        {
+          "text": " is",
+          "start_ms": 6740.0,
+          "end_ms": 6940.0,
+          "source_start_ms": 1211740.0,
+          "source_end_ms": 1211940.0,
+          "probability": 0.9711467027664185,
+          "owned_by_core": true
+        },
+        {
+          "text": " I'm",
+          "start_ms": 6940.0,
+          "end_ms": 7180.0,
+          "source_start_ms": 1211940.0,
+          "source_end_ms": 1212180.0,
+          "probability": 0.9386436641216278,
+          "owned_by_core": true
+        },
+        {
+          "text": " going",
+          "start_ms": 7180.0,
+          "end_ms": 7320.0,
+          "source_start_ms": 1212180.0,
+          "source_end_ms": 1212320.0,
+          "probability": 0.8199648857116699,
+          "owned_by_core": true
+        },
+        {
+          "text": " to",
+          "start_ms": 7320.0,
+          "end_ms": 7620.0,
+          "source_start_ms": 1212320.0,
+          "source_end_ms": 1212620.0,
+          "probability": 0.9981210827827454,
+          "owned_by_core": true
+        },
+        {
+          "text": " sum",
+          "start_ms": 7620.0,
+          "end_ms": 8380.0,
+          "source_start_ms": 1212620.0,
+          "source_end_ms": 1213380.0,
+          "probability": 0.9901346564292908,
+          "owned_by_core": true
+        },
+        {
+          "text": " over",
+          "start_ms": 8380.0,
+          "end_ms": 9000.0,
+          "source_start_ms": 1213380.0,
+          "source_end_ms": 1214000.0,
+          "probability": 0.9901952147483826,
+          "owned_by_core": true
+        },
+        {
+          "text": " enumerate",
+          "start_ms": 9000.0,
+          "end_ms": 9920.0,
+          "source_start_ms": 1214000.0,
+          "source_end_ms": 1214920.0,
+          "probability": 0.7821744978427887,
+          "owned_by_core": true
+        },
+        {
+          "text": "-",
+          "start_ms": 9920.0,
+          "end_ms": 9980.0,
+          "source_start_ms": 1214920.0,
+          "source_end_ms": 1214980.0,
+          "probability": 0.27188384532928467,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 1210080.0,
+      "source_end_ms": 1214980.0
+    }
+  ],
+  "text": "And anything that is not mentioned here, the hidden, uh, gets summed out. Okay? So the way this works is I'm going to sum over enumerate-",
+  "observation": "machine_audio_transcription_not_listening_truth",
+  "elapsed_ms": 6600
+}

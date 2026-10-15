@@ -28,7 +28,7 @@ pub(crate) fn read(user: &user_runtime::UserRuntime, workspace: &reader_workspac
         "agent/source.resolve" => (|| {
             let request = parse_agent_source_request(&input.to_string()).map_err(|r| reply(r).unwrap_err())?;
             let binding = workspace_source_binding(user, workspace, &request)?;
-            let resolved = workspace.book.resolve_source(&binding.evidence_range, "zh-CN", Some(&binding.evidence_text_digest));
+            let resolved = workspace.book.resolve_source(binding.evidence_range.as_ref().ok_or_else(|| invalid_note_request("MEDIA_SOURCE_NAVIGATION", "Use saved media position"))?, "zh-CN", Some(&binding.evidence_text_digest));
             Ok(match resolved {
                 Ok(source) => json!({"source_ref_id":binding.source_ref_id,"label":source.label,"heading_path":source.heading_path,"highlighted_quote":source.highlighted_quote,"context_before":source.context_before,"context_after":source.context_after,"excerpt":source.excerpt,"stale":false,"can_open_in_reader":true}),
                 Err(_) => json!({"source_ref_id":binding.source_ref_id,"label":binding.label_snapshot,"highlighted_quote":binding.preview_snapshot,"context_before":"","context_after":"","stale":true,"can_open_in_reader":false}),

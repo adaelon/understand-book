@@ -1,0 +1,380 @@
+{
+  "codex_profile": {
+    "version": "executor_transport_profile.v2",
+    "carrier": "codex_executor_mcp",
+    "session_protocol": "automatic_build_executor_session.v3",
+    "max_tool_result_tokens": 2048,
+    "max_tool_result_bytes": 8192,
+    "result_envelope_reserve_tokens": 256,
+    "max_input_chunks": 64,
+    "max_candidate_request_tokens": 2048,
+    "max_candidate_request_bytes": 32768
+  },
+  "dsh_profile": {
+    "version": "executor_transport_profile.v3",
+    "carrier": "dsh_native_mcp",
+    "session_protocol": "automatic_build_executor_session.v4",
+    "max_tool_result_tokens": 2048,
+    "max_tool_result_bytes": 8192,
+    "result_envelope_reserve_tokens": 256,
+    "max_input_chunks": 64,
+    "max_candidate_request_tokens": 2048,
+    "max_candidate_request_bytes": 32768
+  },
+  "codex_batch": {
+    "version": "executor_transport_delivery_batch_limit.v1",
+    "max_chunks_per_batch": 8,
+    "max_serialized_batch_bytes": 65536,
+    "max_batches_per_work_unit": 64
+  },
+  "rows": {
+    "single_a": {
+      "native": {
+        "image_count": 1,
+        "images": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 439190,
+            "base64_bytes": 585588
+          }
+        ],
+        "mcp_result_bytes": 585700,
+        "jsonrpc_line_bytes": 585735
+      },
+      "legacy": {
+        "serialized_mcp_result_bytes": 585782,
+        "outer_content_types": [
+          "text"
+        ],
+        "exceeds_codex_batch_bytes": true,
+        "codex_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ],
+        "dsh_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ]
+      }
+    },
+    "single_b": {
+      "native": {
+        "image_count": 1,
+        "images": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 456792,
+            "base64_bytes": 609056
+          }
+        ],
+        "mcp_result_bytes": 609168,
+        "jsonrpc_line_bytes": 609203
+      },
+      "legacy": {
+        "serialized_mcp_result_bytes": 609250,
+        "outer_content_types": [
+          "text"
+        ],
+        "exceeds_codex_batch_bytes": true,
+        "codex_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ],
+        "dsh_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ]
+      }
+    },
+    "crop_a": {
+      "native": {
+        "image_count": 1,
+        "images": [
+          {
+            "width": 1120,
+            "height": 150,
+            "png_bytes": 69920,
+            "base64_bytes": 93228
+          }
+        ],
+        "mcp_result_bytes": 93340,
+        "jsonrpc_line_bytes": 93375
+      },
+      "legacy": {
+        "serialized_mcp_result_bytes": 93422,
+        "outer_content_types": [
+          "text"
+        ],
+        "exceeds_codex_batch_bytes": true,
+        "codex_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ],
+        "dsh_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ]
+      }
+    },
+    "crop_b": {
+      "native": {
+        "image_count": 1,
+        "images": [
+          {
+            "width": 1120,
+            "height": 150,
+            "png_bytes": 67911,
+            "base64_bytes": 90548
+          }
+        ],
+        "mcp_result_bytes": 90660,
+        "jsonrpc_line_bytes": 90695
+      },
+      "legacy": {
+        "serialized_mcp_result_bytes": 90742,
+        "outer_content_types": [
+          "text"
+        ],
+        "exceeds_codex_batch_bytes": true,
+        "codex_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ],
+        "dsh_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ]
+      }
+    },
+    "pair": {
+      "native": {
+        "image_count": 2,
+        "images": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 439190,
+            "base64_bytes": 585588
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 456792,
+            "base64_bytes": 609056
+          }
+        ],
+        "mcp_result_bytes": 1194839,
+        "jsonrpc_line_bytes": 1194874
+      },
+      "legacy": {
+        "serialized_mcp_result_bytes": 1194941,
+        "outer_content_types": [
+          "text"
+        ],
+        "exceeds_codex_batch_bytes": true,
+        "codex_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ],
+        "dsh_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ]
+      }
+    },
+    "reverse": {
+      "native": {
+        "image_count": 2,
+        "images": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 456792,
+            "base64_bytes": 609056
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 439190,
+            "base64_bytes": 585588
+          }
+        ],
+        "mcp_result_bytes": 1194839,
+        "jsonrpc_line_bytes": 1194874
+      },
+      "legacy": {
+        "serialized_mcp_result_bytes": 1194941,
+        "outer_content_types": [
+          "text"
+        ],
+        "exceeds_codex_batch_bytes": true,
+        "codex_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ],
+        "dsh_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ]
+      }
+    },
+    "progressive": {
+      "native": {
+        "image_count": 4,
+        "images": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 448656,
+            "base64_bytes": 598208
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 494471,
+            "base64_bytes": 659296
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 546226,
+            "base64_bytes": 728304
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 456792,
+            "base64_bytes": 609056
+          }
+        ],
+        "mcp_result_bytes": 2595225,
+        "jsonrpc_line_bytes": 2595260
+      },
+      "legacy": {
+        "serialized_mcp_result_bytes": 2595367,
+        "outer_content_types": [
+          "text"
+        ],
+        "exceeds_codex_batch_bytes": true,
+        "codex_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ],
+        "dsh_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ]
+      }
+    },
+    "matrix": {
+      "native": {
+        "image_count": 2,
+        "images": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 402127,
+            "base64_bytes": 536172
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 404052,
+            "base64_bytes": 538736
+          }
+        ],
+        "mcp_result_bytes": 1075103,
+        "jsonrpc_line_bytes": 1075138
+      },
+      "legacy": {
+        "serialized_mcp_result_bytes": 1075205,
+        "outer_content_types": [
+          "text"
+        ],
+        "exceeds_codex_batch_bytes": true,
+        "codex_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ],
+        "dsh_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ]
+      }
+    },
+    "capacity8": {
+      "native": {
+        "image_count": 8,
+        "images": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 439190,
+            "base64_bytes": 585588
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 456792,
+            "base64_bytes": 609056
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 448656,
+            "base64_bytes": 598208
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 494471,
+            "base64_bytes": 659296
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 546226,
+            "base64_bytes": 728304
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 456792,
+            "base64_bytes": 609056
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 402127,
+            "base64_bytes": 536172
+          },
+          {
+            "width": 1920,
+            "height": 1080,
+            "png_bytes": 404052,
+            "base64_bytes": 538736
+          }
+        ],
+        "mcp_result_bytes": 4865109,
+        "jsonrpc_line_bytes": 4865144
+      },
+      "legacy": {
+        "serialized_mcp_result_bytes": 4865331,
+        "outer_content_types": [
+          "text"
+        ],
+        "exceeds_codex_batch_bytes": true,
+        "codex_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ],
+        "dsh_blocking_reasons": [
+          "token_cap_exceeded",
+          "byte_cap_exceeded"
+        ]
+      }
+    }
+  }
+}

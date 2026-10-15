@@ -1,0 +1,1 @@
+{"images":[{"image":1,"tensor":"x = torch.tensor([1e-8], dtype=torch.float16)","assertion":"assert x == 0  # Underflow!","highlighted":"assert x == 0  # Underflow!","displayed_numeric_result":null}],"comparison":"Only one image was supplied; no changes to compare."}

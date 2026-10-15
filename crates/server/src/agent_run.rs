@@ -63,6 +63,32 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
     }
 }
 impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
+    fn media_source_snapshot(&mut self, target: base_schema::EvidenceTarget) -> Result<runtime::video_source::MediaSource, ToolError> {
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        crate::video_source::snapshot(&self.scope.book, &self.scope.book_dir, target)
+    }
+    fn media_source_for_text(&mut self, range: &EvidenceRange) -> Result<Option<runtime::video_source::MediaSource>, ToolError> {
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        crate::video_source::text_snapshot(&self.scope.book, &self.scope.book_dir, range)
+    }
+    fn video_source_context(&mut self) -> Result<Option<Value>, ToolError> {
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        crate::video_frames::source_context(self.scope)
+    }
+    fn review_video_audio(&mut self, request: runtime::video_audio::ReviewAudio, cancellation: &CancellationToken) -> Result<runtime::video_audio::AudioReview, ToolError> {
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        let result = crate::video_audio::review_for_run(self.scope, request, cancellation)?;
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        Ok(result)
+    }
+    fn search_video(&mut self, request: read_tools::video_search::VideoSearch) -> Result<Value, ToolError> {
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        crate::video_frames::search_for_run(self.scope, request)
+    }
+    fn read_video_frames(&mut self, request: runtime::video::ReadFrames, cancellation: &CancellationToken) -> Result<runtime::video::FrameBatch, ToolError> {
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        crate::video_frames::read_for_run(self.scope, request, cancellation)
+    }
     fn tutor_assessment_input(&mut self, action: &str) -> Result<Value, ToolError> {
         self.with_private(|state| teaching::assessment_input(state, self.turn_ref, action))
     }

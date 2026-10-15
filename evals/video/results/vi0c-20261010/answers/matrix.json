@@ -1,0 +1,41 @@
+{
+  "images": [
+    {
+      "image": 1,
+      "construction": [
+        "x = torch.ones(3, 4) # seq1 hidden",
+        "y = torch.ones(4, 3) # hidden seq2"
+      ],
+      "input_shapes": [[3, 4], [4, 3]],
+      "matrix_code": [
+        "# Old way",
+        "z = x @ y # seq1 seq2",
+        "# New (einops) way",
+        "z = einsum(x, y, \"seq1 hidden, hidden seq2 -> seq1 seq2\")"
+      ],
+      "einsum_signature": "seq1 hidden, hidden seq2 -> seq1 seq2",
+      "displayed_result": [[4, 4, 4], [4, 4, 4], [4, 4, 4]],
+      "explanation": "Einsum is generalized matrix multiplication with good bookkeeping.",
+      "subtitle": "And I'm going to produce a tensor here a matrix."
+    },
+    {
+      "image": 2,
+      "construction": [
+        "x = torch.ones(3, 4) # seq1 hidden",
+        "y = torch.ones(4, 3) # hidden seq2"
+      ],
+      "input_shapes": [[3, 4], [4, 3]],
+      "matrix_code": [
+        "# Old way",
+        "z = x @ y # seq1 seq2",
+        "# New (einops) way",
+        "z = einsum(x, y, \"seq1 hidden, hidden seq2 -> seq1 seq2\")"
+      ],
+      "einsum_signature": "seq1 hidden, hidden seq2 -> seq1 seq2",
+      "displayed_result": [[4, 4, 4], [4, 4, 4], [4, 4, 4]],
+      "explanation": "Einsum is generalized matrix multiplication with good bookkeeping.",
+      "subtitle": "And anything that is not mentioned here, the hidden gets summed out."
+    }
+  ],
+  "comparison": "The constructions, highlighted einsum line, and displayed 3×3 result remain unchanged. The subtitle changes from producing a matrix to explaining that hidden is summed out. No assertion is visible."
+}

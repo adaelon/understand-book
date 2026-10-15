@@ -1,0 +1,119 @@
+{
+  "date": "2026-10-10T07:46:17.313Z",
+  "browser": "154.0.4258.62",
+  "publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+  },
+  "material": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "transcript": {
+      "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+      "transcript_revision": "1",
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      }
+    },
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    }
+  },
+  "bound_frame": {
+    "actual_pts_ms": 650000,
+    "height": 1080,
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    },
+    "width": 1920
+  },
+  "bound_region": {
+    "frame": {
+      "actual_pts_ms": 650000,
+      "height": 1080,
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "width": 1920
+    },
+    "rect_normalized": [
+      0.0625,
+      0.4444444444444444,
+      0.5833333333333334,
+      0.1388888888888889
+    ]
+  },
+  "bound_range": {
+    "end_ms": 651000,
+    "start_ms": 555123,
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    }
+  },
+  "batches": [
+    {
+      "start_ms": 555123,
+      "end_ms": 615123,
+      "sampling": [
+        555123,
+        585000,
+        600000
+      ]
+    },
+    {
+      "start_ms": 615123,
+      "end_ms": 651000,
+      "sampling": [
+        615123,
+        630000,
+        650000
+      ]
+    }
+  ],
+  "actual_pts_ms": [
+    555133.3125,
+    585000,
+    600000,
+    615133.3125,
+    630000,
+    650000
+  ],
+  "referenced_frames": [
+    {
+      "actual_pts_ms": 555133.3125,
+      "height": 1080,
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "width": 1920
+    },
+    {
+      "actual_pts_ms": 650000,
+      "height": 1080,
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "width": 1920
+    }
+  ],
+  "range_only_cancel_releases": true,
+  "region_and_range_independent": true,
+  "manual_play_and_edits_preserve_binding": true,
+  "reload_restores_draft": true,
+  "accepted_turn": "turn_f581e3ae9701daf1",
+  "history_preserves_binding": true,
+  "source_preview_preserves_main_player": true,
+  "explicit_entry_seeks_original": true,
+  "reloaded_history_source": true,
+  "visible_unsampled_gaps": true,
+  "requests": 6,
+  "images": 6,
+  "model": "local HTTP recorder; no semantic inference",
+  "output": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi8b\\2026-10-10T07-45-39.920Z"
+}

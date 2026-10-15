@@ -1205,7 +1205,16 @@ fn start_server_with_memory_path(
         (None, None)
     };
     let session = load_session(&session_path);
+    let prepared_video = config.book_dir.as_ref().filter(|p| p.join("video_import.json").is_file()).cloned();
     let (dir, book, saved_top) = match config.book_dir {
+        Some(book_dir) if prepared_video.is_some() => {
+            if let Ok((_, published)) = crate::video_media::linked_publication(&book_dir) {
+                let published = crate::video_publication::local_resume_directory(&published, &session_path);
+                let dir = published.to_string_lossy().into_owned();
+                let book = Book::load(&dir).map_err(|e|format!("failed to load video publication: {e}"))?;
+                (dir, book, None)
+            } else { bootstrap_book(config.library_root.as_deref())? }
+        },
         Some(book_dir) => {
             let requested = book_dir.to_string_lossy().into_owned();
             let (dir, saved_top) = select_start_book(requested, session.as_ref());
@@ -1379,6 +1388,7 @@ fn start_server_with_memory_path(
         let observability = observability.clone();
         let dist = config.web_dist.clone();
         let reader_only = config.reader_only;
+        let prepared_video = prepared_video.clone();
         let stop_signal = stop.clone();
         handles.push(thread::spawn(move || {
             while !stop_signal.load(Ordering::Acquire) {
@@ -1391,6 +1401,67 @@ fn start_server_with_memory_path(
                 }
                 let method = request.method().to_string();
                 let url = request.url().to_string();
+                let video_url = normalize_api_url(&url);
+                if let Some(path) = video_url.strip_prefix("/book/video/source/").and_then(|v| v.strip_suffix("/media")) {
+                    if matches!(method.as_str(), "GET" | "HEAD") {
+                        let source = (|| {
+                            let (turn_id, source_ref_id) = path.split_once('/').ok_or_else(crate::authorization::missing)?;
+                            let guard = state.lock().unwrap();
+                            let binding = crate::agent_source_binding(&guard, &crate::AgentSourceRequest { turn_id: turn_id.into(), source_ref_id: source_ref_id.into() })?;
+                            let media = binding.media.ok_or_else(crate::authorization::missing)?;
+                            let directory = crate::video_source::local_directory(&guard.workspace, &media.publication)?;
+                            let book = Book::load(directory.to_str().ok_or_else(crate::authorization::missing)?).map_err(|_| crate::authorization::missing())?;
+                            let (manifest, _) = book.load_video_source(&directory)?;
+                            Ok::<_, read_tools::ToolError>(directory.join(manifest.source.imported_path))
+                        })();
+                        match source { Ok(path) => crate::video_media::serve(request, &path), Err(_) => { let _ = request.respond(tiny_http::Response::empty(404)); } }
+                        continue;
+                    }
+                }
+                if video_url == "/book/video/media" && matches!(method.as_str(), "GET" | "HEAD") {
+                    let source = {
+                        let guard = state.lock().unwrap();
+                        guard.workspace.book.load_video_source(&guard.workspace.book_dir)
+                            .map(|(m,_)| guard.workspace.book_dir.join(m.source.imported_path))
+                    };
+                    match source { Ok(path) => crate::video_media::serve(request, &path), Err(_) => { let _ = request.respond(tiny_http::Response::empty(404)); } }
+                    continue;
+                }
+                if video_url == "/videos" || video_url.starts_with("/videos/") {
+                    let dirs = {
+                        let guard = state.lock().unwrap();
+                        crate::video_media::local_dirs(prepared_video.as_deref(), guard.services.library_root.as_deref())
+                    };
+                    if video_url == "/videos" && method == "GET" {
+                        let videos: Vec<_> = dirs.iter().filter_map(|d| crate::video_media::projection(d).ok()).collect();
+                        let active = prepared_video.as_ref().and_then(|d|crate::video_media::read_import(d).ok()).map(|s|s.video);
+                        let _ = request.respond(response_from_json(200, json!({"videos":videos,"active":active}).to_string()));
+                    } else if let Some((reference, leaf)) = crate::video_media::route_parts(&video_url) {
+                        let dir = dirs.iter().find(|d|crate::video_media::read_import(d).is_ok_and(|s|s.video == reference));
+                        match (dir, leaf, method.as_str()) {
+                            (Some(dir), "media", "GET" | "HEAD") => match crate::video_media::media_path(dir) {
+                                Ok(path) => crate::video_media::serve(request, &path),
+                                Err(e) => { let _ = request.respond(response_from_json(404, json!({"message":e.message}).to_string())); }
+                            },
+                            (Some(dir), "open", "POST") => {
+                                let reply = match crate::video_media::linked_publication(dir) {
+                                    Ok((_, directory)) => crate::route_open_book(&mut state.lock().unwrap(), &json!({"dir":directory}).to_string(), &now_ts()),
+                                    Err(e) => crate::err_reply(&e),
+                                };
+                                let _ = request.respond(response_from_json(reply.status, reply.body));
+                            }
+                            (Some(dir), "status" | "transcript", "GET") => {
+                                let reply = if leaf == "transcript" { crate::video_media::transcript(dir) } else { crate::video_media::projection(dir) };
+                                let _ = request.respond(response_from_json(if reply.is_ok() {200} else {404},
+                                    reply.unwrap_or_else(|e|json!({"message":e.message})).to_string()));
+                            }
+                            (Some(_), "ask", "POST") => { let _ = request.respond(response_from_json(409,
+                                json!({"error_code":"VIDEO_TRANSCRIPT_NOT_READY","message":"全片转写与首个发布尚未就绪"}).to_string())); }
+                            _ => { let _ = request.respond(response_from_json(404, "{}".into())); }
+                        }
+                    } else { let _ = request.respond(response_from_json(404, "{}".into())); }
+                    continue;
+                }
                 let mut body = String::new();
                 let _ = request.as_reader().read_to_string(&mut body);
                 if method == "GET"
@@ -2143,6 +2214,7 @@ mod tests {
                 updated_at: "0".into(),
                 turns: (1..=turns_per_session)
                     .map(|ordinal| AgentChatTurn {
+                        video_question: None,
                         domain: Default::default(),
                         admission_input: None,
                         published_book_ref: None,

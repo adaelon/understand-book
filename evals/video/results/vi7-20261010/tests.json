@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-10",
+  "unique_passed": 141,
+  "checks": [
+    {
+      "command": "cargo test -p runtime --lib source_ -- --skip source_presentation_formula_recovers_cq5_block_quote --skip source_presentation_real_book_quote_locates_the_discussed_multi_lid_passage",
+      "passed": 44,
+      "log": ".worktree-local/vi7-runtime-final.log"
+    },
+    {
+      "command": "cargo test -p runtime --lib video_",
+      "passed": 4,
+      "overlap_with_source_filter": 1,
+      "log": ".worktree-local/vi7-runtime-video-final.log"
+    },
+    {
+      "command": "cargo test -p runtime --lib source_presentation_tool_spec_exposes_quote_or_media_target",
+      "passed": 1,
+      "included_in_source_filter": true,
+      "log": ".worktree-local/vi7-tool-contract.log"
+    },
+    {
+      "command": "cargo test -p server --lib video_",
+      "passed": 9,
+      "log": ".worktree-local/vi7-server-video-final.log"
+    },
+    {
+      "command": "cargo test -p server --lib agent_source",
+      "passed": 5,
+      "log": ".worktree-local/vi7-server-text.log"
+    },
+    {
+      "command": "pnpm -C packages/web exec vitest run src/components/MediaSourcePreview.test.ts src/components/SourceExcerpt.test.ts src/components/VideoReaderPane.test.ts src/components/RightRail.test.ts src/App.startup.test.ts src/NetworkApp.chat.test.ts",
+      "passed": 79,
+      "note": "Before the additional explicit media navigation/Escape case; final RightRail 43 replaces its original 42, giving 80 unique Web cases.",
+      "log": ".worktree-local/vi7-web-tests-final.log"
+    },
+    {
+      "command": "pnpm -C packages/web exec vitest run src/components/MediaSourcePreview.test.ts src/components/RightRail.test.ts",
+      "passed": 45,
+      "log": ".worktree-local/vi7-web-preview-final.log"
+    },
+    {
+      "command": "pnpm -C packages/web exec vitest run src/components/RightRail.test.ts",
+      "passed": 43,
+      "log": ".worktree-local/vi7-web-escape-pass.log"
+    },
+    {
+      "command": "cargo build -p server --bin server",
+      "status": "passed",
+      "log": ".worktree-local/vi7-build-final.log"
+    },
+    {
+      "command": "pnpm -C packages/web typecheck",
+      "status": "passed",
+      "log": ".worktree-local/vi7-web-typecheck-final.log"
+    },
+    {
+      "command": "node evals/video/vi7-browser.mjs",
+      "status": "passed",
+      "evidence": "verification.json"
+    }
+  ],
+  "unavailable_existing_tests": {
+    "fixture": ".understand-book/quantification-essence/base.json",
+    "tests": [
+      "source_presentation_formula_recovers_cq5_block_quote",
+      "source_presentation_real_book_quote_locates_the_discussed_multi_lid_passage"
+    ],
+    "initial_result": "missing base.json; no test code changed to bypass it"
+  },
+  "model": "Local HTTP recorder only; no semantic inference. Audio observation uses protocol fixtures."
+}

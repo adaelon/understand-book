@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { flushPromises, mount } from "@vue/test-utils";
+import { flushPromises, mount, enableAutoUnmount } from "@vue/test-utils";
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import RightRail from "./RightRail.vue";
@@ -7,6 +7,8 @@ import { api } from '../api';
 import { renderMarkdown } from '../md';
 import { network, installIdentity, installWorkspace } from '../network-context';
 import type { RecapTarget, SessionRecap } from '../session-recap';
+
+enableAutoUnmount(afterEach);
 
 const baseProps = {
   chat: [],
@@ -1225,3 +1227,19 @@ describe("mobile input continuity", () => {
   });
 });
 
+
+it('opens media beside the answer and enters the main video only after the explicit action', async () => {
+  const media = { publication: { book_id: 'book', publication_id: 'old' }, duration_ms: 600000,
+    target: { kind: 'visual' as const, publication: { book_id: 'book', publication_id: 'old' }, frames: [{ video: { media_id: 'v', media_revision: '1' }, actual_pts_ms: 492000, width: 1920, height: 1080 }], regions: [] }, transcript: [], translations: [] };
+  vi.spyOn(api, 'agentSourceResolve').mockResolvedValue({ source_ref_id: 'source_ref_a', label: '视频画面', highlighted_quote: '', context_before: '', context_after: '', stale: false, can_open_in_reader: true, media, media_url: '/original/media' });
+  const open = vi.spyOn(api, 'agentSourceOpen');
+  const wrapper = mount(RightRail, { props: { ...baseProps, chat: [{ turnId: 'turn-a', user: 'question', outcome: sourceOutcome(), pending: false, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] }] } });
+  await wrapper.findAll('.agent-source-button')[0].trigger('click'); await flushPromises();
+  expect(document.body.querySelector('.media-source-preview video')).not.toBeNull();
+  expect(wrapper.emitted('media-source-enter')).toBeUndefined(); expect(open).not.toHaveBeenCalled();
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await flushPromises();
+  expect(document.body.querySelector('.media-source-preview')).toBeNull();
+  await wrapper.findAll('.agent-source-button')[0].trigger('click'); await flushPromises();
+  (document.body.querySelector('.source-open-reader') as HTMLButtonElement).click(); await flushPromises();
+  expect(wrapper.emitted('media-source-enter')).toEqual([[media]]); expect(open).not.toHaveBeenCalled(); wrapper.unmount();
+});

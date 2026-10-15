@@ -1,0 +1,107 @@
+{
+  "status": "passed",
+  "source_clip": {
+    "start_ms": 547000,
+    "end_ms": 555000
+  },
+  "previous_material": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    },
+    "transcript": {
+      "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+      "transcript_revision": "1",
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      }
+    }
+  },
+  "material": {
+    "book_id": "56e9fc06-6ca0-435c-a8d1-f8f542394acb",
+    "video": {
+      "media_id": "89e192d4-7c0c-4801-a751-2a96ecc0f450",
+      "media_revision": "1"
+    },
+    "transcript": {
+      "transcript_id": "1bc41c65-f6c2-4d4e-94d7-c63a04f1f05e",
+      "transcript_revision": "1",
+      "video": {
+        "media_id": "89e192d4-7c0c-4801-a751-2a96ecc0f450",
+        "media_revision": "1"
+      }
+    }
+  },
+  "old_location_rejected": {
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    },
+    "start_ms": 547370,
+    "end_ms": 554530
+  },
+  "duration_ms": 8000,
+  "map": {
+    "transcript": {
+      "transcript_id": "1bc41c65-f6c2-4d4e-94d7-c63a04f1f05e",
+      "transcript_revision": "1",
+      "video": {
+        "media_id": "89e192d4-7c0c-4801-a751-2a96ecc0f450",
+        "media_revision": "1"
+      }
+    },
+    "raw_result_path": "transcript/raw_results.json",
+    "machine_transcription": {
+      "engine": "faster-whisper",
+      "model": "small.en",
+      "language": "en"
+    },
+    "segments": [
+      {
+        "segment_id": "segment-1",
+        "text": "Right?",
+        "location": {
+          "video": {
+            "media_id": "89e192d4-7c0c-4801-a751-2a96ecc0f450",
+            "media_revision": "1"
+          },
+          "start_ms": 0,
+          "end_ms": 260
+        },
+        "text_range": {
+          "lid": "1",
+          "range": {
+            "start": 0,
+            "end": 6
+          }
+        },
+        "words": []
+      },
+      {
+        "segment_id": "segment-2",
+        "text": "So even if you have, let's say, try to construct a 1e minus 8 tensor, then that is actually just 0.",
+        "location": {
+          "video": {
+            "media_id": "89e192d4-7c0c-4801-a751-2a96ecc0f450",
+            "media_revision": "1"
+          },
+          "start_ms": 400,
+          "end_ms": 7460
+        },
+        "text_range": {
+          "lid": "2",
+          "range": {
+            "start": 0,
+            "end": 99
+          }
+        },
+        "words": []
+      }
+    ]
+  },
+  "text": "Right?\n\nSo even if you have, let's say, try to construct a 1e minus 8 tensor, then that is actually just 0.\n\n",
+  "elapsed_ms": 12065,
+  "validation_scope": "Actual original-video clip, import, real Whisper transcript and old-location rejection; derived-stage replacement is covered by the implementation and bounded task plans."
+}

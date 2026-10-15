@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-10",
+  "core_unique_passed": 10,
+  "core_suites": {
+    "video-translation.test.ts": 5,
+    "video-enrichment.test.ts": 1,
+    "video-executor-media.test.ts": 4
+  },
+  "server_unique_passed": 5,
+  "server_commands": [
+    "cargo test -p server --lib video_publication_",
+    "cargo test -p server --lib video_publication_translation_progress_failure_and_cumulative_acceptance"
+  ],
+  "server_note": "Unique tests; the translation progress case was added after the first four passed. Browser host ignored by unit runs is exercised separately.",
+  "web_unique_passed": 38,
+  "web_suites": {
+    "VideoReaderPane.test.ts": 8,
+    "video-adoption.test.ts": 2,
+    "NetworkApp.chat.test.ts": 6,
+    "App.startup.test.ts": 22
+  },
+  "core_typecheck": "passed",
+  "web_typecheck": "passed",
+  "server_build": "server and publish_book: passed",
+  "browser_commands": [
+    "node evals/video/vi10-browser.mjs",
+    "node evals/video/vi7-browser.mjs evals/video/generated/vi10/workspace"
+  ],
+  "browser": "Windows / Edge; real 720-segment Chinese generated through Codex Harness; source answer controlled by local HTTP recorder without semantic inference",
+  "source_test_note": "Initial script checked send readiness before history hydration finished; explicit readiness wait added, rerun passed.",
+  "verification": "verification.json"
+}

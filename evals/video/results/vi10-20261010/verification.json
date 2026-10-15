@@ -1,0 +1,653 @@
+{
+  "status": "passed",
+  "material": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    },
+    "transcript": {
+      "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+      "transcript_revision": "1",
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      }
+    }
+  },
+  "segments": 720,
+  "tasks": 33,
+  "groups": 6,
+  "elapsed_ms": 1384341,
+  "publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a1251d-b995-7991-b48b-e54cf4ee61e4"
+  },
+  "directory": "\\\\?\\E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi10\\service\\library\\published\\19ac880d-a788-43f4-9725-6c56f4980189\\01a1251d-b995-7991-b48b-e54cf4ee61e4",
+  "english_unchanged": true,
+  "translation_coverage": {
+    "capability": "translation",
+    "accepted": [
+      {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 0,
+        "end_ms": 4641376.1450000005
+      }
+    ],
+    "pending": [],
+    "failed": []
+  },
+  "execution": {
+    "platform": "Windows",
+    "harness": "Codex executor MCP v3",
+    "host": "codex-cli 0.162.0-alpha.2",
+    "publication_segments": 120,
+    "model_selection": "CLI default, --ignore-user-config",
+    "reasoning_effort": "low",
+    "task_english_chars_max": 3200,
+    "task_segments_max": 32
+  },
+  "recovery": {
+    "preserved_tasks": 6,
+    "preserved_segments": 72,
+    "accepted_bytes_unchanged": true,
+    "accepted_attempts_unchanged": true,
+    "completed_publication_reused": true
+  },
+  "first_chinese_wait_ms_including_interruption": 947250,
+  "total_wall_ms_including_interruption": 2745432,
+  "media_bytes_per_publication": 225917024,
+  "actual_publications": 12,
+  "actual_copied_media_bytes": 2711004288,
+  "normal_six_batch_plus_english_media_bytes": 1581419168,
+  "publications": [
+    {
+      "group": "english",
+      "reference": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a124f3-d31e-7c51-94de-18525e751af3"
+      },
+      "elapsed_ms": 2107,
+      "reused": false
+    },
+    {
+      "group": "progress",
+      "reference": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a124f4-5cca-74e3-8e1d-9d1c5e880c2a"
+      },
+      "elapsed_ms": 2546,
+      "reused": false
+    },
+    {
+      "group": "progress",
+      "reference": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a124fa-cba5-7922-a5ba-ad78a28e56e6"
+      },
+      "elapsed_ms": 2456,
+      "reused": false
+    },
+    {
+      "group": "progress",
+      "reference": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a124fb-5f88-7523-bfaf-be6651b5accf"
+      },
+      "elapsed_ms": 1637,
+      "reused": false
+    },
+    {
+      "group": "zh-001",
+      "reference": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12502-496f-7493-9306-a8da5cb303d8"
+      },
+      "elapsed_ms": 1583,
+      "reused": false
+    },
+    {
+      "group": "progress",
+      "reference": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12507-4ec2-73e1-9188-0e99d2a6eea0"
+      },
+      "elapsed_ms": 2348,
+      "reused": false
+    },
+    {
+      "group": "zh-001",
+      "reference": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12508-a511-7f91-84a4-f70c44d1e30b"
+      },
+      "elapsed_ms": 2632,
+      "reused": false
+    },
+    {
+      "group": "zh-002",
+      "reference": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a1250b-6c76-74e2-9112-a24824f08953"
+      },
+      "elapsed_ms": 2223,
+      "reused": false
+    },
+    {
+      "group": "zh-003",
+      "reference": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a1250f-729f-7483-b3d0-427cda6c8e29"
+      },
+      "elapsed_ms": 2015,
+      "reused": false
+    },
+    {
+      "group": "zh-004",
+      "reference": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12514-0f7b-71c2-a2e7-8d71cba7ec97"
+      },
+      "elapsed_ms": 2738,
+      "reused": false
+    },
+    {
+      "group": "zh-005",
+      "reference": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a12519-14bf-78c3-86fa-5bed777402d9"
+      },
+      "elapsed_ms": 3278,
+      "reused": false
+    },
+    {
+      "group": "zh-006",
+      "reference": {
+        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+        "publication_id": "01a1251d-b995-7991-b48b-e54cf4ee61e4"
+      },
+      "elapsed_ms": 4858,
+      "reused": false
+    }
+  ],
+  "runs": [
+    {
+      "group": "zh-001",
+      "elapsed_ms": 33087,
+      "exit_code": 0,
+      "complete": false
+    },
+    {
+      "group": "zh-001",
+      "elapsed_ms": 367722,
+      "exit_code": 4294967295,
+      "complete": false
+    },
+    {
+      "group": "zh-001",
+      "elapsed_ms": 13864,
+      "exit_code": 1,
+      "complete": false
+    },
+    {
+      "group": "zh-001",
+      "elapsed_ms": 348817,
+      "exit_code": 0,
+      "complete": true
+    },
+    {
+      "group": "zh-002",
+      "elapsed_ms": 326731,
+      "exit_code": 4294967295,
+      "complete": false
+    },
+    {
+      "group": "zh-002",
+      "elapsed_ms": 179655,
+      "exit_code": 0,
+      "complete": true
+    },
+    {
+      "group": "zh-003",
+      "elapsed_ms": 261547,
+      "exit_code": 0,
+      "complete": true
+    },
+    {
+      "group": "zh-004",
+      "elapsed_ms": 299736,
+      "exit_code": 0,
+      "complete": true
+    },
+    {
+      "group": "zh-005",
+      "elapsed_ms": 325612,
+      "exit_code": 0,
+      "complete": true
+    },
+    {
+      "group": "zh-006",
+      "elapsed_ms": 299184,
+      "exit_code": 0,
+      "complete": true
+    }
+  ],
+  "usage": [
+    {
+      "input_tokens": 37006,
+      "cached_input_tokens": 0,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 722,
+      "reasoning_output_tokens": 0
+    },
+    {
+      "input_tokens": 399107,
+      "cached_input_tokens": 360704,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 9786,
+      "reasoning_output_tokens": 9
+    },
+    {
+      "input_tokens": 201860,
+      "cached_input_tokens": 169600,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 5823,
+      "reasoning_output_tokens": 0
+    },
+    {
+      "input_tokens": 421035,
+      "cached_input_tokens": 338048,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 10797,
+      "reasoning_output_tokens": 7
+    },
+    {
+      "input_tokens": 439126,
+      "cached_input_tokens": 393728,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 12042,
+      "reasoning_output_tokens": 9
+    },
+    {
+      "input_tokens": 429702,
+      "cached_input_tokens": 351232,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 11011,
+      "reasoning_output_tokens": 9
+    },
+    {
+      "input_tokens": 433534,
+      "cached_input_tokens": 388864,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 10999,
+      "reasoning_output_tokens": 7
+    }
+  ],
+  "usage_note": "Host-reported completed-turn usage; forcibly interrupted turns have no final usage. Model was the CLI default, low reasoning; model identity and monetary charges were not returned.",
+  "candidates": [
+    {
+      "file": "translation-001.json",
+      "segments": 12,
+      "estimated_candidate_tokens": 592
+    },
+    {
+      "file": "translation-002.json",
+      "segments": 12,
+      "estimated_candidate_tokens": 424
+    },
+    {
+      "file": "translation-003.json",
+      "segments": 12,
+      "estimated_candidate_tokens": 457
+    },
+    {
+      "file": "translation-004.json",
+      "segments": 12,
+      "estimated_candidate_tokens": 348
+    },
+    {
+      "file": "translation-005.json",
+      "segments": 12,
+      "estimated_candidate_tokens": 493
+    },
+    {
+      "file": "translation-006.json",
+      "segments": 12,
+      "estimated_candidate_tokens": 494
+    },
+    {
+      "file": "translation-007.json",
+      "segments": 12,
+      "estimated_candidate_tokens": 413
+    },
+    {
+      "file": "translation-008.json",
+      "segments": 12,
+      "estimated_candidate_tokens": 455
+    },
+    {
+      "file": "translation-009.json",
+      "segments": 12,
+      "estimated_candidate_tokens": 427
+    },
+    {
+      "file": "translation-010.json",
+      "segments": 12,
+      "estimated_candidate_tokens": 421
+    },
+    {
+      "file": "translation-011.json",
+      "segments": 12,
+      "estimated_candidate_tokens": 423
+    },
+    {
+      "file": "translation-012.json",
+      "segments": 12,
+      "estimated_candidate_tokens": 401
+    },
+    {
+      "file": "translation-013.json",
+      "segments": 12,
+      "estimated_candidate_tokens": 405
+    },
+    {
+      "file": "translation-014.json",
+      "segments": 12,
+      "estimated_candidate_tokens": 434
+    },
+    {
+      "file": "translation-015.json",
+      "segments": 12,
+      "estimated_candidate_tokens": 524
+    },
+    {
+      "file": "translation-resized-001.json",
+      "segments": 32,
+      "estimated_candidate_tokens": 1147
+    },
+    {
+      "file": "translation-resized-002.json",
+      "segments": 28,
+      "estimated_candidate_tokens": 858
+    },
+    {
+      "file": "translation-resized-003.json",
+      "segments": 32,
+      "estimated_candidate_tokens": 1117
+    },
+    {
+      "file": "translation-resized-004.json",
+      "segments": 32,
+      "estimated_candidate_tokens": 1009
+    },
+    {
+      "file": "translation-resized-005.json",
+      "segments": 32,
+      "estimated_candidate_tokens": 1081
+    },
+    {
+      "file": "translation-resized-006.json",
+      "segments": 24,
+      "estimated_candidate_tokens": 721
+    },
+    {
+      "file": "translation-resized-007.json",
+      "segments": 32,
+      "estimated_candidate_tokens": 1079
+    },
+    {
+      "file": "translation-resized-008.json",
+      "segments": 32,
+      "estimated_candidate_tokens": 922
+    },
+    {
+      "file": "translation-resized-009.json",
+      "segments": 32,
+      "estimated_candidate_tokens": 960
+    },
+    {
+      "file": "translation-resized-010.json",
+      "segments": 24,
+      "estimated_candidate_tokens": 844
+    },
+    {
+      "file": "translation-resized-011.json",
+      "segments": 32,
+      "estimated_candidate_tokens": 874
+    },
+    {
+      "file": "translation-resized-012.json",
+      "segments": 29,
+      "estimated_candidate_tokens": 1172
+    },
+    {
+      "file": "translation-resized-013.json",
+      "segments": 32,
+      "estimated_candidate_tokens": 1065
+    },
+    {
+      "file": "translation-resized-014.json",
+      "segments": 27,
+      "estimated_candidate_tokens": 994
+    },
+    {
+      "file": "translation-resized-015.json",
+      "segments": 32,
+      "estimated_candidate_tokens": 1133
+    },
+    {
+      "file": "translation-resized-016.json",
+      "segments": 32,
+      "estimated_candidate_tokens": 1102
+    },
+    {
+      "file": "translation-resized-017.json",
+      "segments": 32,
+      "estimated_candidate_tokens": 1064
+    },
+    {
+      "file": "translation-resized-018.json",
+      "segments": 24,
+      "estimated_candidate_tokens": 894
+    }
+  ],
+  "samples": [
+    {
+      "segment_id": "segment-83",
+      "location": {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 555540,
+        "end_ms": 559540
+      },
+      "english": "So you can't really represent very big numbers, and you can't represent very small numbers.",
+      "chinese": "所以，你无法真正表示很大的数，也无法表示很小的数。",
+      "checked_meaning": "Both inability statements, for large and small numbers, remain negative."
+    },
+    {
+      "segment_id": "segment-84",
+      "location": {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 561680,
+        "end_ms": 571100
+      },
+      "english": "And the reason is that this exponent is, you know, it's only, you know, five bits of, of exponent from, compared to eight.",
+      "chinese": "原因就在于，这里的指数只有五位，而不是八位。",
+      "checked_meaning": "Exponent width compares five bits against eight."
+    },
+    {
+      "segment_id": "segment-85",
+      "location": {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 572170,
+        "end_ms": 582270
+      },
+      "english": "So, if you train with FP16, which people did back, back in the, you know, day, you will get instability.",
+      "chinese": "所以，如果用 FP16 训练，就像以前人们做的那样，就会出现不稳定的情况。",
+      "checked_meaning": "FP16 training is conditional and unstable."
+    },
+    {
+      "segment_id": "segment-86",
+      "location": {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 582890,
+        "end_ms": 588690
+      },
+      "english": "You'll get underflow, you'll get overflow, you'll get NANs, it's pretty challenging.",
+      "chinese": "会出现下溢、上溢，还会出现 NAN，处理起来相当棘手。",
+      "checked_meaning": "Underflow, overflow and NaN all remain present."
+    },
+    {
+      "segment_id": "segment-87",
+      "location": {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 590660,
+        "end_ms": 595080
+      },
+      "english": "So then, so beef float 16 was invented.",
+      "chinese": "于是，beef float 16（beef float 16，转写存疑）被发明出来了。",
+      "checked_meaning": "Uncertain machine term is retained rather than rewriting English."
+    },
+    {
+      "segment_id": "segment-90",
+      "location": {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 606780,
+        "end_ms": 613740
+      },
+      "english": "It's the number of bits that's going to be the same as Fp16, but we're going to shift some of the bits from the mantissa to the exponent.",
+      "chinese": "总位数仍然与 Fp16 相同，但我们要把尾数中的一些位移给指数。",
+      "checked_meaning": "Total bits stay the same; bits move from mantissa to exponent."
+    },
+    {
+      "segment_id": "segment-92",
+      "location": {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 623110,
+        "end_ms": 625750
+      },
+      "english": "And it actually has the same dynamic range as float 32.",
+      "chinese": "而且，它实际上具有与 float 32 相同的动态范围。",
+      "checked_meaning": "The dynamic range is the same as float32."
+    },
+    {
+      "segment_id": "segment-93",
+      "location": {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 626460,
+        "end_ms": 631600
+      },
+      "english": "But, of course, the, the resolution is worse because there's no free lunch here.",
+      "chinese": "但当然，它的分辨率会更差，因为这里没有免费的午餐。",
+      "checked_meaning": "The resolution tradeoff remains worse."
+    },
+    {
+      "segment_id": "segment-189",
+      "location": {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 1194780,
+        "end_ms": 1209680
+      },
+      "english": "And I'm going to produce a tensor, or a Heria matrix, where the dimensions are indexed by C1 and C2 and anything that is not mentioned here, the hidden, gets summed out.",
+      "chinese": "我要生成一个张量，或者一个 Heria 矩阵（Heria，转写存疑），维度由 C1 和 C2 索引。这里没有提到的维度，也就是 hidden，都会被求和消去。",
+      "checked_meaning": "Unmentioned hidden dimension is summed out, with original code identifiers."
+    },
+    {
+      "segment_id": "segment-191",
+      "location": {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 1210820,
+        "end_ms": 1223840
+      },
+      "english": "So the way this works is I'm going to sum over, enumerate over all possible values of all the variables that occur here, which are sequence, hidden, and C2.",
+      "chinese": "它的工作方式是：我会遍历这里出现的所有变量的所有可能取值并求和，这些变量是 sequence、hidden 和 C2。",
+      "checked_meaning": "Summation enumerates all values, preserving variable names."
+    }
+  ],
+  "browser": {
+    "status": "passed",
+    "browser": "154.0.4258.62",
+    "first_batch_anchor_shift_px": 0.0625,
+    "same_player": true,
+    "paused_position_and_rate_preserved": true,
+    "total_segments": 720,
+    "reload_preserved": true,
+    "publication": {
+      "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+      "publication_id": "01a1251d-b995-7991-b48b-e54cf4ee61e4"
+    },
+    "errors": [],
+    "output": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi10\\browser-1791622802945"
+  },
+  "source": {
+    "date": "2026-10-10T09:23:19.343Z",
+    "browser": "154.0.4258.62",
+    "publication": {
+      "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+      "publication_id": "01a1251d-b995-7991-b48b-e54cf4ee61e4"
+    },
+    "bound_frame": {
+      "actual_pts_ms": 491966.6875,
+      "height": 1080,
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "width": 1920
+    },
+    "decoded_frame": {
+      "actual_pts_ms": 491966.6875,
+      "height": 1080,
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "width": 1920
+    },
+    "focus_does_not_pause": true,
+    "manual_play_and_edits_preserve_binding": true,
+    "reload_restores_draft": true,
+    "accepted_turn": "turn_f581e3ae9701daf1",
+    "history_preserves_binding": true,
+    "source_preview_preserves_main_player": true,
+    "explicit_entry_seeks_original": true,
+    "reloaded_history_source": true,
+    "requests": 4,
+    "images": 1,
+    "model": "local HTTP recorder; no semantic inference",
+    "source_translation_count": 1,
+    "output": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi10-source\\2026-10-10T09-22-50.309Z"
+  }
+}

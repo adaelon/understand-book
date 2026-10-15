@@ -126,7 +126,8 @@ fn seed_presentation(f: &Fixture) -> Value {
     let book = f.access.library.lock().unwrap().load("A", &f.x).unwrap().book.clone();
     let evidence_range = read_tools::EvidenceRange { start_lid: "1.1".into(), end_lid: "1.1".into(), ranges: vec![] };
     let resolved = book.resolve_source(&evidence_range, "zh-CN", None).unwrap();
-    let binding = SourceBinding { source_ref_id: "mu8-source".into(), book_id: f.x.book_id.clone(), evidence_range,
+    let binding = SourceBinding {
+            media: None, source_ref_id: "mu8-source".into(), book_id: f.x.book_id.clone(), evidence_range: Some(evidence_range),
         evidence_text_digest: resolved.evidence_text_digest, label_snapshot: "MU8 原文".into(), preview_snapshot: resolved.preview };
     {
         let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();

@@ -25,6 +25,7 @@ export const network = shallowRef<{
   identity: NetworkIdentity | null; workspace: NetworkWorkspace | null;
   attachment: string; epoch: number; enabled: boolean; linked: boolean;
   readerGeneration?: number;
+  readerPublication?: string;
 }>({ identity: null, workspace: null, attachment: '', epoch: 0, enabled: false, linked: false });
 
 export function sceneKey() {
@@ -34,7 +35,7 @@ export function sceneKey() {
 // Chat commands advance request authority without replacing the mounted book.
 export function readerKey() {
   const n = network.value, w = n.workspace;
-  return `${n.epoch}:${n.identity?.user_id}:${w?.workspace_id}:${n.readerGeneration ?? w?.generation}:${w?.published_book_ref.book_id}:${w?.published_book_ref.publication_id}`;
+  return `${n.epoch}:${n.identity?.user_id}:${w?.workspace_id}:${n.readerGeneration ?? w?.generation}:${w?.published_book_ref.book_id}:${n.readerPublication ?? w?.published_book_ref.publication_id}`;
 }
 /** Same local owner as Server UserRuntime; network identity is unavailable until authenticated. */
 export function readerPreferenceOwner(): string | null {
@@ -44,7 +45,7 @@ export function installIdentity(identity: NetworkIdentity | null) {
   submittedRunDrafts.clear();
   network.value = { enabled: true, identity, workspace: null, attachment: crypto.randomUUID(), epoch: network.value.epoch + 1, linked: false };
 }
-export function installWorkspace(workspace: NetworkWorkspace, attachment = network.value.attachment, linked = network.value.linked, transition?: 'chat') {
+export function installWorkspace(workspace: NetworkWorkspace, attachment = network.value.attachment, linked = network.value.linked, transition?: 'chat' | 'enrichment') {
   if (network.value.linked && network.value.workspace && workspace.generation !== network.value.workspace.generation) {
     network.value = { ...network.value, workspace: null, epoch: network.value.epoch + 1 };
     return;
@@ -53,10 +54,15 @@ export function installWorkspace(workspace: NetworkWorkspace, attachment = netwo
   const sameBook = previous?.workspace_id === workspace.workspace_id
     && previous.published_book_ref.book_id === workspace.published_book_ref.book_id
     && previous.published_book_ref.publication_id === workspace.published_book_ref.publication_id;
-  const keepReader = sameBook && attachment === network.value.attachment
+  // Ordinary book/open advances generation. Same-generation publication changes
+  // also occur when recovering an enrichment response lost in transit.
+  const enrichment = previous?.workspace_id === workspace.workspace_id
+    && previous.published_book_ref.book_id === workspace.published_book_ref.book_id && previous.generation === workspace.generation;
+  const keepReader = (sameBook || enrichment) && attachment === network.value.attachment
     && (previous.generation === workspace.generation || transition === 'chat');
   const readerGeneration = keepReader ? network.value.readerGeneration ?? previous.generation : workspace.generation;
-  network.value = { ...network.value, workspace, attachment, linked, readerGeneration };
+  const readerPublication = keepReader ? network.value.readerPublication ?? previous!.published_book_ref.publication_id : workspace.published_book_ref.publication_id;
+  network.value = { ...network.value, workspace, attachment, linked, readerGeneration, readerPublication };
   if (!linked && network.value.identity) sessionStorage.setItem(workspaceStorageKey(), JSON.stringify({ workspace_id: workspace.workspace_id }));
 }
 export function workspaceStorageKey() { return `understand-book:workspace:${network.value.identity?.user_id}`; }

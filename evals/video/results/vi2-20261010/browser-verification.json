@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-10T04:11:17.162Z",
+  "browser": "154.0.4258.62",
+  "platform": "win32",
+  "video": {
+    "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+    "media_revision": "1"
+  },
+  "positions": [
+    {
+      "time": 555.123,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "time": 1200,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "time": 4620,
+      "width": 1920,
+      "height": 1080
+    }
+  ],
+  "paused_at": 556.230826,
+  "resumed_rate": 1.5,
+  "range_responses": [
+    {
+      "status": 206,
+      "range": "bytes 0-225917023/225917024"
+    },
+    {
+      "status": 206,
+      "range": "bytes 30081024-225917023/225917024"
+    },
+    {
+      "status": 206,
+      "range": "bytes 62750720-225917023/225917024"
+    },
+    {
+      "status": 206,
+      "range": "bytes 224395264-225917023/225917024"
+    },
+    {
+      "status": 206,
+      "range": "bytes 224722944-225917023/225917024"
+    },
+    {
+      "status": 206,
+      "range": "bytes 31129600-225917023/225917024"
+    },
+    {
+      "status": 206,
+      "range": "bytes 0-225917023/225917024"
+    }
+  ],
+  "byte_range_exact": true,
+  "head_length": "225917024",
+  "qa_status": 409,
+  "original_external_path_missing": true,
+  "workspace_moved": true
+}

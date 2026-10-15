@@ -1,0 +1,192 @@
+{
+  "date": "2026-10-10T04:47:05.179Z",
+  "video": {
+    "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+    "media_revision": "1"
+  },
+  "transcript": {
+    "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+    "transcript_revision": "1",
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    }
+  },
+  "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+  "publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a12422-ab9d-7f40-bd4f-efe18d9132fc"
+  },
+  "complete_coverage_ms": 4641376.1450000005,
+  "chunks": 16,
+  "segments": 720,
+  "started_at": "2026-10-10T04:22:11.4800110Z",
+  "build_state_saved_at": "2026-10-10T04:46:31.997Z",
+  "elapsed_to_saved_state_ms": 1460517,
+  "inference_ms": 1226864,
+  "model_load_ms": 30503,
+  "raw_bytes": 2925659,
+  "source_bytes": 60275,
+  "media_bytes": 225917024,
+  "boundaries": [
+    {
+      "at_ms": 300000,
+      "kind": "shared_words",
+      "left": "chunk-000",
+      "right": "chunk-001",
+      "anchor": "is a tensor. So, you know."
+    },
+    {
+      "at_ms": 600000,
+      "kind": "shared_words",
+      "left": "chunk-001",
+      "right": "chunk-002",
+      "anchor": "address this issue. And the observation..."
+    },
+    {
+      "at_ms": 900000,
+      "kind": "shared_words",
+      "left": "chunk-002",
+      "right": "chunk-003",
+      "anchor": "you know, software stack."
+    },
+    {
+      "at_ms": 1200000,
+      "kind": "shared_words",
+      "left": "chunk-003",
+      "right": "chunk-004",
+      "anchor": "matrix, where"
+    },
+    {
+      "at_ms": 1500000,
+      "kind": "shared_words",
+      "left": "chunk-004",
+      "right": "chunk-005",
+      "anchor": "is saying, look, this is some"
+    },
+    {
+      "at_ms": 1800000,
+      "kind": "shared_words",
+      "left": "chunk-005",
+      "right": "chunk-006",
+      "anchor": "okay. So, so"
+    },
+    {
+      "at_ms": 2100000,
+      "kind": "shared_words",
+      "left": "chunk-006",
+      "right": "chunk-007",
+      "anchor": "done is measured flops. So this is"
+    },
+    {
+      "at_ms": 2400000,
+      "kind": "shared_words",
+      "left": "chunk-007",
+      "right": "chunk-008",
+      "anchor": "be really, really slow because,"
+    },
+    {
+      "at_ms": 2700000,
+      "kind": "shared_words",
+      "left": "chunk-008",
+      "right": "chunk-009",
+      "anchor": "is 1E minus 6."
+    },
+    {
+      "at_ms": 3000000,
+      "kind": "shared_words",
+      "left": "chunk-009",
+      "right": "chunk-010",
+      "anchor": "and then you write y, which is a scalar, which is"
+    },
+    {
+      "at_ms": 3300000,
+      "kind": "shared_words",
+      "left": "chunk-010",
+      "right": "chunk-011",
+      "anchor": "for most of the"
+    },
+    {
+      "at_ms": 3600000,
+      "kind": "shared_words",
+      "left": "chunk-011",
+      "right": "chunk-012",
+      "anchor": "this is just basic mechanics of,"
+    },
+    {
+      "at_ms": 3900000,
+      "kind": "shared_words",
+      "left": "chunk-012",
+      "right": "chunk-013",
+      "anchor": "the flops is the, you know, the same."
+    },
+    {
+      "at_ms": 4200000,
+      "kind": "shared_words",
+      "left": "chunk-013",
+      "right": "chunk-014",
+      "anchor": "parameters. And this is all"
+    },
+    {
+      "at_ms": 4500000,
+      "kind": "shared_words",
+      "left": "chunk-014",
+      "right": "chunk-015",
+      "anchor": "if you store all the activations, remember in your deep network,"
+    }
+  ],
+  "points": [
+    {
+      "requested_ms": 0,
+      "segment_id": "segment-1",
+      "lid": "1",
+      "location": {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 1140,
+        "end_ms": 5100
+      },
+      "text": "I hope everyone is staying dry, um, I'm not."
+    },
+    {
+      "requested_ms": 2320688.0725000002,
+      "segment_id": "segment-366",
+      "lid": "366",
+      "location": {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 2325620,
+        "end_ms": 2326140
+      },
+      "text": "Yeah."
+    },
+    {
+      "requested_ms": 4611376.1450000005,
+      "segment_id": "segment-715",
+      "lid": "715",
+      "location": {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 4603220,
+        "end_ms": 4612060
+      },
+      "text": "And then we talked about arithmetic intensity and roofline analysis, which allows us to diagnose whether a computation rotation is memory bound or compute bound."
+    }
+  ],
+  "uncertain_word_count": 507,
+  "checks": {
+    "continuous_successful_plan": true,
+    "canonical_text_lid_mapping": true,
+    "all_joins_resolved": true,
+    "beginning_middle_end": true
+  },
+  "listening_truth": "Full manual verbatim truth and word alignment remain unmeasured",
+  "api_calls": 0,
+  "api_cost": 0
+}

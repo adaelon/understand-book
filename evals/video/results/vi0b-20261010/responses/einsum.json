@@ -1,0 +1,2144 @@
+{
+  "request": {
+    "job": {
+      "id": "einsum",
+      "audio_path": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi0b\\audio\\einsum.wav",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "source_revision": "vq27-local-20261008",
+      "source_start_ms": 1180000.0,
+      "duration_ms": 44999.90929705215,
+      "purpose": "transcription",
+      "origin": "clips/einsum.wav"
+    },
+    "profile": {
+      "model": "small.en",
+      "device": "cpu",
+      "compute_type": "int8",
+      "cpu_threads": 8,
+      "transcribe": {
+        "language": "en",
+        "task": "transcribe",
+        "beam_size": 5,
+        "temperature": 0,
+        "word_timestamps": true,
+        "condition_on_previous_text": false,
+        "vad_filter": true,
+        "vad_parameters": {
+          "min_silence_duration_ms": 500
+        }
+      },
+      "versions": {
+        "faster-whisper": "1.2.1",
+        "ctranslate2": "4.8.2",
+        "av": "18.1.0",
+        "onnxruntime": "1.31.0"
+      },
+      "model_directory": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\.worktree-local\\whisper-models\\small.en"
+    }
+  },
+  "status": "completed",
+  "started_at": "2026-10-10T02:48:21.748418+00:00",
+  "raw_response": {
+    "segments": [
+      {
+        "id": 1,
+        "seek": 0,
+        "start": 0.0,
+        "end": 4.44,
+        "text": " you say X has two dimensions, the row and the column,",
+        "tokens": [
+          50363,
+          345,
+          910,
+          1395,
+          468,
+          734,
+          15225,
+          11,
+          262,
+          5752,
+          290,
+          262,
+          5721,
+          11,
+          50591
+        ],
+        "avg_logprob": -0.17262324952968844,
+        "compression_ratio": 1.8615384615384616,
+        "no_speech_prob": 0.0005895431968383491,
+        "words": [
+          {
+            "start": 0.0,
+            "end": 0.0,
+            "word": " you",
+            "probability": 0.4840272068977356
+          },
+          {
+            "start": 0.0,
+            "end": 0.52,
+            "word": " say",
+            "probability": 0.9866005778312683
+          },
+          {
+            "start": 0.52,
+            "end": 1.5,
+            "word": " X",
+            "probability": 0.543613851070404
+          },
+          {
+            "start": 1.5,
+            "end": 1.86,
+            "word": " has",
+            "probability": 0.9907466173171997
+          },
+          {
+            "start": 1.86,
+            "end": 2.38,
+            "word": " two",
+            "probability": 0.7675632238388062
+          },
+          {
+            "start": 2.38,
+            "end": 3.16,
+            "word": " dimensions,",
+            "probability": 0.9925332069396973
+          },
+          {
+            "start": 3.56,
+            "end": 3.76,
+            "word": " the",
+            "probability": 0.9919683337211609
+          },
+          {
+            "start": 3.76,
+            "end": 3.96,
+            "word": " row",
+            "probability": 0.9855842590332031
+          },
+          {
+            "start": 3.96,
+            "end": 4.14,
+            "word": " and",
+            "probability": 0.9757368564605713
+          },
+          {
+            "start": 4.14,
+            "end": 4.18,
+            "word": " the",
+            "probability": 0.9044710397720337
+          },
+          {
+            "start": 4.18,
+            "end": 4.44,
+            "word": " column,",
+            "probability": 0.9940272569656372
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 2,
+        "seek": 0,
+        "start": 4.54,
+        "end": 6.08,
+        "text": " which I'm going to name sec1 and hidden.",
+        "tokens": [
+          50591,
+          543,
+          314,
+          1101,
+          1016,
+          284,
+          1438,
+          792,
+          16,
+          290,
+          7104,
+          13,
+          50696
+        ],
+        "avg_logprob": -0.17262324952968844,
+        "compression_ratio": 1.8615384615384616,
+        "no_speech_prob": 0.0005895431968383491,
+        "words": [
+          {
+            "start": 4.54,
+            "end": 4.64,
+            "word": " which",
+            "probability": 0.9964582324028015
+          },
+          {
+            "start": 4.64,
+            "end": 4.82,
+            "word": " I'm",
+            "probability": 0.9785495102405548
+          },
+          {
+            "start": 4.82,
+            "end": 4.88,
+            "word": " going",
+            "probability": 0.7444719076156616
+          },
+          {
+            "start": 4.88,
+            "end": 5.0,
+            "word": " to",
+            "probability": 0.99708491563797
+          },
+          {
+            "start": 5.0,
+            "end": 5.16,
+            "word": " name",
+            "probability": 0.9926350712776184
+          },
+          {
+            "start": 5.16,
+            "end": 5.62,
+            "word": " sec1",
+            "probability": 0.2525610998272896
+          },
+          {
+            "start": 5.62,
+            "end": 5.78,
+            "word": " and",
+            "probability": 0.9607279896736145
+          },
+          {
+            "start": 5.78,
+            "end": 6.08,
+            "word": " hidden.",
+            "probability": 0.8063786029815674
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 3,
+        "seek": 0,
+        "start": 6.5,
+        "end": 10.44,
+        "text": " I'm going to have Y, that's a matrix, which has also rows",
+        "tokens": [
+          50696,
+          314,
+          1101,
+          1016,
+          284,
+          423,
+          575,
+          11,
+          326,
+          338,
+          257,
+          17593,
+          11,
+          543,
+          468,
+          635,
+          15274,
+          50893
+        ],
+        "avg_logprob": -0.17262324952968844,
+        "compression_ratio": 1.8615384615384616,
+        "no_speech_prob": 0.0005895431968383491,
+        "words": [
+          {
+            "start": 6.5,
+            "end": 6.74,
+            "word": " I'm",
+            "probability": 0.9935194849967957
+          },
+          {
+            "start": 6.74,
+            "end": 6.8,
+            "word": " going",
+            "probability": 0.973511815071106
+          },
+          {
+            "start": 6.8,
+            "end": 6.92,
+            "word": " to",
+            "probability": 0.9940273761749268
+          },
+          {
+            "start": 6.92,
+            "end": 7.04,
+            "word": " have",
+            "probability": 0.9963555335998535
+          },
+          {
+            "start": 7.04,
+            "end": 7.42,
+            "word": " Y,",
+            "probability": 0.9364779591560364
+          },
+          {
+            "start": 7.5,
+            "end": 8.02,
+            "word": " that's",
+            "probability": 0.9949630498886108
+          },
+          {
+            "start": 8.02,
+            "end": 8.16,
+            "word": " a",
+            "probability": 0.4797147214412689
+          },
+          {
+            "start": 8.16,
+            "end": 8.58,
+            "word": " matrix,",
+            "probability": 0.9963668584823608
+          },
+          {
+            "start": 9.0,
+            "end": 9.18,
+            "word": " which",
+            "probability": 0.9982484579086304
+          },
+          {
+            "start": 9.18,
+            "end": 9.54,
+            "word": " has",
+            "probability": 0.9907351732254028
+          },
+          {
+            "start": 9.54,
+            "end": 10.18,
+            "word": " also",
+            "probability": 0.9858062863349915
+          },
+          {
+            "start": 10.18,
+            "end": 10.44,
+            "word": " rows",
+            "probability": 0.9984991550445557
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 4,
+        "seek": 0,
+        "start": 10.44,
+        "end": 14.76,
+        "text": " and columns, which I'm going to name hidden and sec2.",
+        "tokens": [
+          50893,
+          290,
+          15180,
+          11,
+          543,
+          314,
+          1101,
+          1016,
+          284,
+          1438,
+          7104,
+          290,
+          792,
+          17,
+          13,
+          51141
+        ],
+        "avg_logprob": -0.17262324952968844,
+        "compression_ratio": 1.8615384615384616,
+        "no_speech_prob": 0.0005895431968383491,
+        "words": [
+          {
+            "start": 10.44,
+            "end": 10.64,
+            "word": " and",
+            "probability": 0.9961647987365723
+          },
+          {
+            "start": 10.64,
+            "end": 10.96,
+            "word": " columns,",
+            "probability": 0.9953159093856812
+          },
+          {
+            "start": 10.98,
+            "end": 11.16,
+            "word": " which",
+            "probability": 0.9984900951385498
+          },
+          {
+            "start": 11.16,
+            "end": 11.34,
+            "word": " I'm",
+            "probability": 0.9925054609775543
+          },
+          {
+            "start": 11.34,
+            "end": 11.44,
+            "word": " going",
+            "probability": 0.9857268929481506
+          },
+          {
+            "start": 11.44,
+            "end": 11.64,
+            "word": " to",
+            "probability": 0.9975243210792542
+          },
+          {
+            "start": 11.64,
+            "end": 11.98,
+            "word": " name",
+            "probability": 0.9962730407714844
+          },
+          {
+            "start": 11.98,
+            "end": 13.38,
+            "word": " hidden",
+            "probability": 0.813646137714386
+          },
+          {
+            "start": 13.38,
+            "end": 14.16,
+            "word": " and",
+            "probability": 0.9742456674575806
+          },
+          {
+            "start": 14.16,
+            "end": 14.76,
+            "word": " sec2.",
+            "probability": 0.9739712774753571
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 5,
+        "seek": 0,
+        "start": 15.54,
+        "end": 20.38,
+        "text": " And I'm going to produce a tensor, or here a matrix,",
+        "tokens": [
+          51141,
+          843,
+          314,
+          1101,
+          1016,
+          284,
+          4439,
+          257,
+          11192,
+          273,
+          11,
+          393,
+          994,
+          257,
+          17593,
+          11,
+          51413
+        ],
+        "avg_logprob": -0.17262324952968844,
+        "compression_ratio": 1.8615384615384616,
+        "no_speech_prob": 0.0005895431968383491,
+        "words": [
+          {
+            "start": 15.54,
+            "end": 16.0,
+            "word": " And",
+            "probability": 0.9391957521438599
+          },
+          {
+            "start": 16.0,
+            "end": 16.54,
+            "word": " I'm",
+            "probability": 0.9798875153064728
+          },
+          {
+            "start": 16.54,
+            "end": 16.6,
+            "word": " going",
+            "probability": 0.9946786165237427
+          },
+          {
+            "start": 16.6,
+            "end": 16.7,
+            "word": " to",
+            "probability": 0.9970085024833679
+          },
+          {
+            "start": 16.7,
+            "end": 17.1,
+            "word": " produce",
+            "probability": 0.9982226490974426
+          },
+          {
+            "start": 17.1,
+            "end": 18.3,
+            "word": " a",
+            "probability": 0.9494388103485107
+          },
+          {
+            "start": 18.3,
+            "end": 19.4,
+            "word": " tensor,",
+            "probability": 0.9845157861709595
+          },
+          {
+            "start": 19.52,
+            "end": 19.62,
+            "word": " or",
+            "probability": 0.9846310019493103
+          },
+          {
+            "start": 19.62,
+            "end": 19.88,
+            "word": " here",
+            "probability": 0.7979570627212524
+          },
+          {
+            "start": 19.88,
+            "end": 20.02,
+            "word": " a",
+            "probability": 0.7722553014755249
+          },
+          {
+            "start": 20.02,
+            "end": 20.38,
+            "word": " matrix,",
+            "probability": 0.9992504715919495
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 6,
+        "seek": 0,
+        "start": 20.76,
+        "end": 25.0,
+        "text": " where the dimensions are indexed by sec1 and sec2.",
+        "tokens": [
+          51413,
+          810,
+          262,
+          15225,
+          389,
+          41497,
+          416,
+          792,
+          16,
+          290,
+          792,
+          17,
+          13,
+          51635
+        ],
+        "avg_logprob": -0.17262324952968844,
+        "compression_ratio": 1.8615384615384616,
+        "no_speech_prob": 0.0005895431968383491,
+        "words": [
+          {
+            "start": 20.76,
+            "end": 21.24,
+            "word": " where",
+            "probability": 0.9982625842094421
+          },
+          {
+            "start": 21.24,
+            "end": 22.32,
+            "word": " the",
+            "probability": 0.9812823534011841
+          },
+          {
+            "start": 22.32,
+            "end": 22.74,
+            "word": " dimensions",
+            "probability": 0.9979236125946045
+          },
+          {
+            "start": 22.74,
+            "end": 23.08,
+            "word": " are",
+            "probability": 0.9991211295127869
+          },
+          {
+            "start": 23.08,
+            "end": 23.54,
+            "word": " indexed",
+            "probability": 0.9932124614715576
+          },
+          {
+            "start": 23.54,
+            "end": 23.82,
+            "word": " by",
+            "probability": 0.9965711832046509
+          },
+          {
+            "start": 23.82,
+            "end": 24.24,
+            "word": " sec1",
+            "probability": 0.9821616411209106
+          },
+          {
+            "start": 24.24,
+            "end": 24.4,
+            "word": " and",
+            "probability": 0.994511604309082
+          },
+          {
+            "start": 24.4,
+            "end": 25.0,
+            "word": " sec2.",
+            "probability": 0.9868395328521729
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 7,
+        "seek": 0,
+        "start": 25.34,
+        "end": 28.38,
+        "text": " And anything that is not mentioned here, the hidden,",
+        "tokens": [
+          51635,
+          843,
+          1997,
+          326,
+          318,
+          407,
+          4750,
+          994,
+          11,
+          262,
+          7104,
+          11,
+          51811
+        ],
+        "avg_logprob": -0.17262324952968844,
+        "compression_ratio": 1.8615384615384616,
+        "no_speech_prob": 0.0005895431968383491,
+        "words": [
+          {
+            "start": 25.34,
+            "end": 25.56,
+            "word": " And",
+            "probability": 0.9920486807823181
+          },
+          {
+            "start": 25.56,
+            "end": 25.96,
+            "word": " anything",
+            "probability": 0.9961718916893005
+          },
+          {
+            "start": 25.96,
+            "end": 26.38,
+            "word": " that",
+            "probability": 0.9990906715393066
+          },
+          {
+            "start": 26.38,
+            "end": 26.82,
+            "word": " is",
+            "probability": 0.997526228427887
+          },
+          {
+            "start": 26.82,
+            "end": 27.14,
+            "word": " not",
+            "probability": 0.9993143081665039
+          },
+          {
+            "start": 27.14,
+            "end": 27.48,
+            "word": " mentioned",
+            "probability": 0.996288537979126
+          },
+          {
+            "start": 27.48,
+            "end": 27.78,
+            "word": " here,",
+            "probability": 0.9968525767326355
+          },
+          {
+            "start": 27.98,
+            "end": 28.08,
+            "word": " the",
+            "probability": 0.9962730407714844
+          },
+          {
+            "start": 28.08,
+            "end": 28.38,
+            "word": " hidden,",
+            "probability": 0.9982118606567383
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 8,
+        "seek": 2838,
+        "start": 28.38,
+        "end": 35.44,
+        "text": " get summed out. Okay, so the way this works is I'm going to sum over, enumerate over all",
+        "tokens": [
+          50363,
+          651,
+          32794,
+          503,
+          13,
+          16805,
+          11,
+          523,
+          262,
+          835,
+          428,
+          2499,
+          318,
+          314,
+          1101,
+          1016,
+          284,
+          2160,
+          625,
+          11,
+          27056,
+          378,
+          625,
+          477,
+          50711
+        ],
+        "avg_logprob": -0.276519102246865,
+        "compression_ratio": 1.3282442748091603,
+        "no_speech_prob": 0.003878036281093955,
+        "words": [
+          {
+            "start": 28.38,
+            "end": 29.08,
+            "word": " get",
+            "probability": 0.24821089208126068
+          },
+          {
+            "start": 29.08,
+            "end": 29.36,
+            "word": " summed",
+            "probability": 0.9844076633453369
+          },
+          {
+            "start": 29.36,
+            "end": 29.7,
+            "word": " out.",
+            "probability": 0.46617308259010315
+          },
+          {
+            "start": 30.5,
+            "end": 30.5,
+            "word": " Okay,",
+            "probability": 0.5110644698143005
+          },
+          {
+            "start": 30.72,
+            "end": 31.08,
+            "word": " so",
+            "probability": 0.9847075939178467
+          },
+          {
+            "start": 31.08,
+            "end": 31.2,
+            "word": " the",
+            "probability": 0.96162348985672
+          },
+          {
+            "start": 31.2,
+            "end": 31.34,
+            "word": " way",
+            "probability": 0.9986034035682678
+          },
+          {
+            "start": 31.34,
+            "end": 31.5,
+            "word": " this",
+            "probability": 0.9866468906402588
+          },
+          {
+            "start": 31.5,
+            "end": 31.72,
+            "word": " works",
+            "probability": 0.9941877126693726
+          },
+          {
+            "start": 31.72,
+            "end": 31.96,
+            "word": " is",
+            "probability": 0.9493048191070557
+          },
+          {
+            "start": 31.96,
+            "end": 32.2,
+            "word": " I'm",
+            "probability": 0.9406057000160217
+          },
+          {
+            "start": 32.2,
+            "end": 32.32,
+            "word": " going",
+            "probability": 0.9041265249252319
+          },
+          {
+            "start": 32.32,
+            "end": 32.84,
+            "word": " to",
+            "probability": 0.9980138540267944
+          },
+          {
+            "start": 32.84,
+            "end": 33.36,
+            "word": " sum",
+            "probability": 0.9584136009216309
+          },
+          {
+            "start": 33.36,
+            "end": 33.96,
+            "word": " over,",
+            "probability": 0.9818732738494873
+          },
+          {
+            "start": 34.5,
+            "end": 34.94,
+            "word": " enumerate",
+            "probability": 0.9869696199893951
+          },
+          {
+            "start": 34.94,
+            "end": 35.16,
+            "word": " over",
+            "probability": 0.9751556515693665
+          },
+          {
+            "start": 35.16,
+            "end": 35.44,
+            "word": " all",
+            "probability": 0.9874030351638794
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 9,
+        "seek": 2838,
+        "start": 35.44,
+        "end": 43.34,
+        "text": " possible values of all the variables that occur here, which are sequence, hidden, and",
+        "tokens": [
+          50711,
+          1744,
+          3815,
+          286,
+          477,
+          262,
+          9633,
+          326,
+          3051,
+          994,
+          11,
+          543,
+          389,
+          8379,
+          11,
+          7104,
+          11,
+          290,
+          51111
+        ],
+        "avg_logprob": -0.276519102246865,
+        "compression_ratio": 1.3282442748091603,
+        "no_speech_prob": 0.003878036281093955,
+        "words": [
+          {
+            "start": 35.44,
+            "end": 35.8,
+            "word": " possible",
+            "probability": 0.9964022636413574
+          },
+          {
+            "start": 35.8,
+            "end": 36.28,
+            "word": " values",
+            "probability": 0.9941490888595581
+          },
+          {
+            "start": 36.28,
+            "end": 36.56,
+            "word": " of",
+            "probability": 0.992078959941864
+          },
+          {
+            "start": 36.56,
+            "end": 36.84,
+            "word": " all",
+            "probability": 0.9964974522590637
+          },
+          {
+            "start": 36.84,
+            "end": 37.02,
+            "word": " the",
+            "probability": 0.7888644933700562
+          },
+          {
+            "start": 37.02,
+            "end": 37.54,
+            "word": " variables",
+            "probability": 0.9966253042221069
+          },
+          {
+            "start": 37.54,
+            "end": 39.48,
+            "word": " that",
+            "probability": 0.8690613508224487
+          },
+          {
+            "start": 39.48,
+            "end": 40.64,
+            "word": " occur",
+            "probability": 0.9868646264076233
+          },
+          {
+            "start": 40.64,
+            "end": 40.96,
+            "word": " here,",
+            "probability": 0.9965330362319946
+          },
+          {
+            "start": 41.34,
+            "end": 41.42,
+            "word": " which",
+            "probability": 0.9983348250389099
+          },
+          {
+            "start": 41.42,
+            "end": 41.62,
+            "word": " are",
+            "probability": 0.9945645332336426
+          },
+          {
+            "start": 41.62,
+            "end": 42.06,
+            "word": " sequence,",
+            "probability": 0.5386311411857605
+          },
+          {
+            "start": 42.58,
+            "end": 42.7,
+            "word": " hidden,",
+            "probability": 0.9865239858627319
+          },
+          {
+            "start": 43.26,
+            "end": 43.34,
+            "word": " and",
+            "probability": 0.9944562315940857
+          }
+        ],
+        "temperature": 0
+      },
+      {
+        "id": 10,
+        "seek": 4334,
+        "start": 43.34,
+        "end": 44.96,
+        "text": " C2, and",
+        "tokens": [
+          50363,
+          327,
+          17,
+          11,
+          290,
+          50446
+        ],
+        "avg_logprob": -0.6514184985842023,
+        "compression_ratio": 0.4666666666666667,
+        "no_speech_prob": 0.1910897195339203,
+        "words": [
+          {
+            "start": 43.34,
+            "end": 44.18,
+            "word": " C2,",
+            "probability": 0.6468731015920639
+          },
+          {
+            "start": 44.5,
+            "end": 44.96,
+            "word": " and",
+            "probability": 0.9621281623840332
+          }
+        ],
+        "temperature": 0
+      }
+    ],
+    "info": {
+      "language": "en",
+      "language_probability": 1,
+      "duration": 44.9999375,
+      "duration_after_vad": 44.9999375,
+      "all_language_probs": null,
+      "transcription_options": {
+        "beam_size": 5,
+        "best_of": 5,
+        "patience": 1,
+        "length_penalty": 1,
+        "repetition_penalty": 1,
+        "no_repeat_ngram_size": 0,
+        "log_prob_threshold": -1.0,
+        "no_speech_threshold": 0.6,
+        "compression_ratio_threshold": 2.4,
+        "condition_on_previous_text": false,
+        "prompt_reset_on_temperature": 0.5,
+        "temperatures": [
+          0
+        ],
+        "initial_prompt": null,
+        "prefix": null,
+        "suppress_blank": true,
+        "suppress_tokens": [
+          1,
+          2,
+          7,
+          8,
+          9,
+          10,
+          14,
+          25,
+          26,
+          27,
+          28,
+          29,
+          31,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          90,
+          91,
+          92,
+          93,
+          357,
+          366,
+          438,
+          532,
+          685,
+          705,
+          796,
+          930,
+          1058,
+          1220,
+          1267,
+          1279,
+          1303,
+          1343,
+          1377,
+          1391,
+          1635,
+          1782,
+          1875,
+          2162,
+          2361,
+          2488,
+          3467,
+          4008,
+          4211,
+          4600,
+          4808,
+          5299,
+          5855,
+          6329,
+          7203,
+          9609,
+          9959,
+          10563,
+          10786,
+          11420,
+          11709,
+          11907,
+          13163,
+          13697,
+          13700,
+          14808,
+          15306,
+          16410,
+          16791,
+          17992,
+          19203,
+          19510,
+          20724,
+          22305,
+          22935,
+          27007,
+          30109,
+          30420,
+          33409,
+          34949,
+          40283,
+          40493,
+          40549,
+          47282,
+          49146,
+          50257,
+          50357,
+          50358,
+          50359,
+          50360,
+          50361
+        ],
+        "without_timestamps": false,
+        "max_initial_timestamp": 1.0,
+        "word_timestamps": true,
+        "prepend_punctuations": "\"'“¿([{-",
+        "append_punctuations": "\"'.。,，!！?？:：”)]}、",
+        "multilingual": false,
+        "max_new_tokens": null,
+        "clip_timestamps": [
+          0.0
+        ],
+        "hallucination_silence_threshold": null,
+        "hotwords": null
+      },
+      "vad_options": {
+        "threshold": 0.5,
+        "neg_threshold": null,
+        "min_speech_duration_ms": 0,
+        "max_speech_duration_s": "Infinity",
+        "min_silence_duration_ms": 500,
+        "speech_pad_ms": 400
+      }
+    }
+  },
+  "segments": [
+    {
+      "text": " you say X has two dimensions, the row and the column,",
+      "start_ms": 0.0,
+      "end_ms": 4440.0,
+      "words": [
+        {
+          "text": " you",
+          "start_ms": 0.0,
+          "end_ms": 0.0,
+          "source_start_ms": 1180000.0,
+          "source_end_ms": 1180000.0,
+          "probability": 0.4840272068977356,
+          "owned_by_core": true
+        },
+        {
+          "text": " say",
+          "start_ms": 0.0,
+          "end_ms": 520.0,
+          "source_start_ms": 1180000.0,
+          "source_end_ms": 1180520.0,
+          "probability": 0.9866005778312683,
+          "owned_by_core": true
+        },
+        {
+          "text": " X",
+          "start_ms": 520.0,
+          "end_ms": 1500.0,
+          "source_start_ms": 1180520.0,
+          "source_end_ms": 1181500.0,
+          "probability": 0.543613851070404,
+          "owned_by_core": true
+        },
+        {
+          "text": " has",
+          "start_ms": 1500.0,
+          "end_ms": 1860.0,
+          "source_start_ms": 1181500.0,
+          "source_end_ms": 1181860.0,
+          "probability": 0.9907466173171997,
+          "owned_by_core": true
+        },
+        {
+          "text": " two",
+          "start_ms": 1860.0,
+          "end_ms": 2380.0,
+          "source_start_ms": 1181860.0,
+          "source_end_ms": 1182380.0,
+          "probability": 0.7675632238388062,
+          "owned_by_core": true
+        },
+        {
+          "text": " dimensions,",
+          "start_ms": 2380.0,
+          "end_ms": 3160.0,
+          "source_start_ms": 1182380.0,
+          "source_end_ms": 1183160.0,
+          "probability": 0.9925332069396973,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 3560.0,
+          "end_ms": 3760.0,
+          "source_start_ms": 1183560.0,
+          "source_end_ms": 1183760.0,
+          "probability": 0.9919683337211609,
+          "owned_by_core": true
+        },
+        {
+          "text": " row",
+          "start_ms": 3760.0,
+          "end_ms": 3960.0,
+          "source_start_ms": 1183760.0,
+          "source_end_ms": 1183960.0,
+          "probability": 0.9855842590332031,
+          "owned_by_core": true
+        },
+        {
+          "text": " and",
+          "start_ms": 3960.0,
+          "end_ms": 4140.0,
+          "source_start_ms": 1183960.0,
+          "source_end_ms": 1184140.0,
+          "probability": 0.9757368564605713,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 4140.0,
+          "end_ms": 4180.0,
+          "source_start_ms": 1184140.0,
+          "source_end_ms": 1184180.0,
+          "probability": 0.9044710397720337,
+          "owned_by_core": true
+        },
+        {
+          "text": " column,",
+          "start_ms": 4180.0,
+          "end_ms": 4440.0,
+          "source_start_ms": 1184180.0,
+          "source_end_ms": 1184440.0,
+          "probability": 0.9940272569656372,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 1180000.0,
+      "source_end_ms": 1184440.0
+    },
+    {
+      "text": " which I'm going to name sec1 and hidden.",
+      "start_ms": 4540.0,
+      "end_ms": 6080.0,
+      "words": [
+        {
+          "text": " which",
+          "start_ms": 4540.0,
+          "end_ms": 4640.0,
+          "source_start_ms": 1184540.0,
+          "source_end_ms": 1184640.0,
+          "probability": 0.9964582324028015,
+          "owned_by_core": true
+        },
+        {
+          "text": " I'm",
+          "start_ms": 4640.0,
+          "end_ms": 4820.0,
+          "source_start_ms": 1184640.0,
+          "source_end_ms": 1184820.0,
+          "probability": 0.9785495102405548,
+          "owned_by_core": true
+        },
+        {
+          "text": " going",
+          "start_ms": 4820.0,
+          "end_ms": 4880.0,
+          "source_start_ms": 1184820.0,
+          "source_end_ms": 1184880.0,
+          "probability": 0.7444719076156616,
+          "owned_by_core": true
+        },
+        {
+          "text": " to",
+          "start_ms": 4880.0,
+          "end_ms": 5000.0,
+          "source_start_ms": 1184880.0,
+          "source_end_ms": 1185000.0,
+          "probability": 0.99708491563797,
+          "owned_by_core": true
+        },
+        {
+          "text": " name",
+          "start_ms": 5000.0,
+          "end_ms": 5160.0,
+          "source_start_ms": 1185000.0,
+          "source_end_ms": 1185160.0,
+          "probability": 0.9926350712776184,
+          "owned_by_core": true
+        },
+        {
+          "text": " sec1",
+          "start_ms": 5160.0,
+          "end_ms": 5620.0,
+          "source_start_ms": 1185160.0,
+          "source_end_ms": 1185620.0,
+          "probability": 0.2525610998272896,
+          "owned_by_core": true
+        },
+        {
+          "text": " and",
+          "start_ms": 5620.0,
+          "end_ms": 5780.0,
+          "source_start_ms": 1185620.0,
+          "source_end_ms": 1185780.0,
+          "probability": 0.9607279896736145,
+          "owned_by_core": true
+        },
+        {
+          "text": " hidden.",
+          "start_ms": 5780.0,
+          "end_ms": 6080.0,
+          "source_start_ms": 1185780.0,
+          "source_end_ms": 1186080.0,
+          "probability": 0.8063786029815674,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 1184540.0,
+      "source_end_ms": 1186080.0
+    },
+    {
+      "text": " I'm going to have Y, that's a matrix, which has also rows",
+      "start_ms": 6500.0,
+      "end_ms": 10440.0,
+      "words": [
+        {
+          "text": " I'm",
+          "start_ms": 6500.0,
+          "end_ms": 6740.0,
+          "source_start_ms": 1186500.0,
+          "source_end_ms": 1186740.0,
+          "probability": 0.9935194849967957,
+          "owned_by_core": true
+        },
+        {
+          "text": " going",
+          "start_ms": 6740.0,
+          "end_ms": 6800.0,
+          "source_start_ms": 1186740.0,
+          "source_end_ms": 1186800.0,
+          "probability": 0.973511815071106,
+          "owned_by_core": true
+        },
+        {
+          "text": " to",
+          "start_ms": 6800.0,
+          "end_ms": 6920.0,
+          "source_start_ms": 1186800.0,
+          "source_end_ms": 1186920.0,
+          "probability": 0.9940273761749268,
+          "owned_by_core": true
+        },
+        {
+          "text": " have",
+          "start_ms": 6920.0,
+          "end_ms": 7040.0,
+          "source_start_ms": 1186920.0,
+          "source_end_ms": 1187040.0,
+          "probability": 0.9963555335998535,
+          "owned_by_core": true
+        },
+        {
+          "text": " Y,",
+          "start_ms": 7040.0,
+          "end_ms": 7420.0,
+          "source_start_ms": 1187040.0,
+          "source_end_ms": 1187420.0,
+          "probability": 0.9364779591560364,
+          "owned_by_core": true
+        },
+        {
+          "text": " that's",
+          "start_ms": 7500.0,
+          "end_ms": 8020.0,
+          "source_start_ms": 1187500.0,
+          "source_end_ms": 1188020.0,
+          "probability": 0.9949630498886108,
+          "owned_by_core": true
+        },
+        {
+          "text": " a",
+          "start_ms": 8020.0,
+          "end_ms": 8160.0,
+          "source_start_ms": 1188020.0,
+          "source_end_ms": 1188160.0,
+          "probability": 0.4797147214412689,
+          "owned_by_core": true
+        },
+        {
+          "text": " matrix,",
+          "start_ms": 8160.0,
+          "end_ms": 8580.0,
+          "source_start_ms": 1188160.0,
+          "source_end_ms": 1188580.0,
+          "probability": 0.9963668584823608,
+          "owned_by_core": true
+        },
+        {
+          "text": " which",
+          "start_ms": 9000.0,
+          "end_ms": 9180.0,
+          "source_start_ms": 1189000.0,
+          "source_end_ms": 1189180.0,
+          "probability": 0.9982484579086304,
+          "owned_by_core": true
+        },
+        {
+          "text": " has",
+          "start_ms": 9180.0,
+          "end_ms": 9540.0,
+          "source_start_ms": 1189180.0,
+          "source_end_ms": 1189540.0,
+          "probability": 0.9907351732254028,
+          "owned_by_core": true
+        },
+        {
+          "text": " also",
+          "start_ms": 9540.0,
+          "end_ms": 10180.0,
+          "source_start_ms": 1189540.0,
+          "source_end_ms": 1190180.0,
+          "probability": 0.9858062863349915,
+          "owned_by_core": true
+        },
+        {
+          "text": " rows",
+          "start_ms": 10180.0,
+          "end_ms": 10440.0,
+          "source_start_ms": 1190180.0,
+          "source_end_ms": 1190440.0,
+          "probability": 0.9984991550445557,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 1186500.0,
+      "source_end_ms": 1190440.0
+    },
+    {
+      "text": " and columns, which I'm going to name hidden and sec2.",
+      "start_ms": 10440.0,
+      "end_ms": 14760.0,
+      "words": [
+        {
+          "text": " and",
+          "start_ms": 10440.0,
+          "end_ms": 10640.0,
+          "source_start_ms": 1190440.0,
+          "source_end_ms": 1190640.0,
+          "probability": 0.9961647987365723,
+          "owned_by_core": true
+        },
+        {
+          "text": " columns,",
+          "start_ms": 10640.0,
+          "end_ms": 10960.0,
+          "source_start_ms": 1190640.0,
+          "source_end_ms": 1190960.0,
+          "probability": 0.9953159093856812,
+          "owned_by_core": true
+        },
+        {
+          "text": " which",
+          "start_ms": 10980.0,
+          "end_ms": 11160.0,
+          "source_start_ms": 1190980.0,
+          "source_end_ms": 1191160.0,
+          "probability": 0.9984900951385498,
+          "owned_by_core": true
+        },
+        {
+          "text": " I'm",
+          "start_ms": 11160.0,
+          "end_ms": 11340.0,
+          "source_start_ms": 1191160.0,
+          "source_end_ms": 1191340.0,
+          "probability": 0.9925054609775543,
+          "owned_by_core": true
+        },
+        {
+          "text": " going",
+          "start_ms": 11340.0,
+          "end_ms": 11440.0,
+          "source_start_ms": 1191340.0,
+          "source_end_ms": 1191440.0,
+          "probability": 0.9857268929481506,
+          "owned_by_core": true
+        },
+        {
+          "text": " to",
+          "start_ms": 11440.0,
+          "end_ms": 11640.0,
+          "source_start_ms": 1191440.0,
+          "source_end_ms": 1191640.0,
+          "probability": 0.9975243210792542,
+          "owned_by_core": true
+        },
+        {
+          "text": " name",
+          "start_ms": 11640.0,
+          "end_ms": 11980.0,
+          "source_start_ms": 1191640.0,
+          "source_end_ms": 1191980.0,
+          "probability": 0.9962730407714844,
+          "owned_by_core": true
+        },
+        {
+          "text": " hidden",
+          "start_ms": 11980.0,
+          "end_ms": 13380.0,
+          "source_start_ms": 1191980.0,
+          "source_end_ms": 1193380.0,
+          "probability": 0.813646137714386,
+          "owned_by_core": true
+        },
+        {
+          "text": " and",
+          "start_ms": 13380.0,
+          "end_ms": 14160.0,
+          "source_start_ms": 1193380.0,
+          "source_end_ms": 1194160.0,
+          "probability": 0.9742456674575806,
+          "owned_by_core": true
+        },
+        {
+          "text": " sec2.",
+          "start_ms": 14160.0,
+          "end_ms": 14760.0,
+          "source_start_ms": 1194160.0,
+          "source_end_ms": 1194760.0,
+          "probability": 0.9739712774753571,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 1190440.0,
+      "source_end_ms": 1194760.0
+    },
+    {
+      "text": " And I'm going to produce a tensor, or here a matrix,",
+      "start_ms": 15540.0,
+      "end_ms": 20380.0,
+      "words": [
+        {
+          "text": " And",
+          "start_ms": 15540.0,
+          "end_ms": 16000.0,
+          "source_start_ms": 1195540.0,
+          "source_end_ms": 1196000.0,
+          "probability": 0.9391957521438599,
+          "owned_by_core": true
+        },
+        {
+          "text": " I'm",
+          "start_ms": 16000.0,
+          "end_ms": 16540.0,
+          "source_start_ms": 1196000.0,
+          "source_end_ms": 1196540.0,
+          "probability": 0.9798875153064728,
+          "owned_by_core": true
+        },
+        {
+          "text": " going",
+          "start_ms": 16540.0,
+          "end_ms": 16600.0,
+          "source_start_ms": 1196540.0,
+          "source_end_ms": 1196600.0,
+          "probability": 0.9946786165237427,
+          "owned_by_core": true
+        },
+        {
+          "text": " to",
+          "start_ms": 16600.0,
+          "end_ms": 16700.0,
+          "source_start_ms": 1196600.0,
+          "source_end_ms": 1196700.0,
+          "probability": 0.9970085024833679,
+          "owned_by_core": true
+        },
+        {
+          "text": " produce",
+          "start_ms": 16700.0,
+          "end_ms": 17100.0,
+          "source_start_ms": 1196700.0,
+          "source_end_ms": 1197100.0,
+          "probability": 0.9982226490974426,
+          "owned_by_core": true
+        },
+        {
+          "text": " a",
+          "start_ms": 17100.0,
+          "end_ms": 18300.0,
+          "source_start_ms": 1197100.0,
+          "source_end_ms": 1198300.0,
+          "probability": 0.9494388103485107,
+          "owned_by_core": true
+        },
+        {
+          "text": " tensor,",
+          "start_ms": 18300.0,
+          "end_ms": 19400.0,
+          "source_start_ms": 1198300.0,
+          "source_end_ms": 1199400.0,
+          "probability": 0.9845157861709595,
+          "owned_by_core": true
+        },
+        {
+          "text": " or",
+          "start_ms": 19520.0,
+          "end_ms": 19620.0,
+          "source_start_ms": 1199520.0,
+          "source_end_ms": 1199620.0,
+          "probability": 0.9846310019493103,
+          "owned_by_core": true
+        },
+        {
+          "text": " here",
+          "start_ms": 19620.0,
+          "end_ms": 19880.0,
+          "source_start_ms": 1199620.0,
+          "source_end_ms": 1199880.0,
+          "probability": 0.7979570627212524,
+          "owned_by_core": true
+        },
+        {
+          "text": " a",
+          "start_ms": 19880.0,
+          "end_ms": 20020.0,
+          "source_start_ms": 1199880.0,
+          "source_end_ms": 1200020.0,
+          "probability": 0.7722553014755249,
+          "owned_by_core": true
+        },
+        {
+          "text": " matrix,",
+          "start_ms": 20020.0,
+          "end_ms": 20380.0,
+          "source_start_ms": 1200020.0,
+          "source_end_ms": 1200380.0,
+          "probability": 0.9992504715919495,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 1195540.0,
+      "source_end_ms": 1200380.0
+    },
+    {
+      "text": " where the dimensions are indexed by sec1 and sec2.",
+      "start_ms": 20760.0,
+      "end_ms": 25000.0,
+      "words": [
+        {
+          "text": " where",
+          "start_ms": 20760.0,
+          "end_ms": 21240.0,
+          "source_start_ms": 1200760.0,
+          "source_end_ms": 1201240.0,
+          "probability": 0.9982625842094421,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 21240.0,
+          "end_ms": 22320.0,
+          "source_start_ms": 1201240.0,
+          "source_end_ms": 1202320.0,
+          "probability": 0.9812823534011841,
+          "owned_by_core": true
+        },
+        {
+          "text": " dimensions",
+          "start_ms": 22320.0,
+          "end_ms": 22740.0,
+          "source_start_ms": 1202320.0,
+          "source_end_ms": 1202740.0,
+          "probability": 0.9979236125946045,
+          "owned_by_core": true
+        },
+        {
+          "text": " are",
+          "start_ms": 22740.0,
+          "end_ms": 23080.0,
+          "source_start_ms": 1202740.0,
+          "source_end_ms": 1203080.0,
+          "probability": 0.9991211295127869,
+          "owned_by_core": true
+        },
+        {
+          "text": " indexed",
+          "start_ms": 23080.0,
+          "end_ms": 23540.0,
+          "source_start_ms": 1203080.0,
+          "source_end_ms": 1203540.0,
+          "probability": 0.9932124614715576,
+          "owned_by_core": true
+        },
+        {
+          "text": " by",
+          "start_ms": 23540.0,
+          "end_ms": 23820.0,
+          "source_start_ms": 1203540.0,
+          "source_end_ms": 1203820.0,
+          "probability": 0.9965711832046509,
+          "owned_by_core": true
+        },
+        {
+          "text": " sec1",
+          "start_ms": 23820.0,
+          "end_ms": 24240.0,
+          "source_start_ms": 1203820.0,
+          "source_end_ms": 1204240.0,
+          "probability": 0.9821616411209106,
+          "owned_by_core": true
+        },
+        {
+          "text": " and",
+          "start_ms": 24240.0,
+          "end_ms": 24400.0,
+          "source_start_ms": 1204240.0,
+          "source_end_ms": 1204400.0,
+          "probability": 0.994511604309082,
+          "owned_by_core": true
+        },
+        {
+          "text": " sec2.",
+          "start_ms": 24400.0,
+          "end_ms": 25000.0,
+          "source_start_ms": 1204400.0,
+          "source_end_ms": 1205000.0,
+          "probability": 0.9868395328521729,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 1200760.0,
+      "source_end_ms": 1205000.0
+    },
+    {
+      "text": " And anything that is not mentioned here, the hidden,",
+      "start_ms": 25340.0,
+      "end_ms": 28380.0,
+      "words": [
+        {
+          "text": " And",
+          "start_ms": 25340.0,
+          "end_ms": 25560.0,
+          "source_start_ms": 1205340.0,
+          "source_end_ms": 1205560.0,
+          "probability": 0.9920486807823181,
+          "owned_by_core": true
+        },
+        {
+          "text": " anything",
+          "start_ms": 25560.0,
+          "end_ms": 25960.0,
+          "source_start_ms": 1205560.0,
+          "source_end_ms": 1205960.0,
+          "probability": 0.9961718916893005,
+          "owned_by_core": true
+        },
+        {
+          "text": " that",
+          "start_ms": 25960.0,
+          "end_ms": 26380.0,
+          "source_start_ms": 1205960.0,
+          "source_end_ms": 1206380.0,
+          "probability": 0.9990906715393066,
+          "owned_by_core": true
+        },
+        {
+          "text": " is",
+          "start_ms": 26380.0,
+          "end_ms": 26820.0,
+          "source_start_ms": 1206380.0,
+          "source_end_ms": 1206820.0,
+          "probability": 0.997526228427887,
+          "owned_by_core": true
+        },
+        {
+          "text": " not",
+          "start_ms": 26820.0,
+          "end_ms": 27140.0,
+          "source_start_ms": 1206820.0,
+          "source_end_ms": 1207140.0,
+          "probability": 0.9993143081665039,
+          "owned_by_core": true
+        },
+        {
+          "text": " mentioned",
+          "start_ms": 27140.0,
+          "end_ms": 27480.0,
+          "source_start_ms": 1207140.0,
+          "source_end_ms": 1207480.0,
+          "probability": 0.996288537979126,
+          "owned_by_core": true
+        },
+        {
+          "text": " here,",
+          "start_ms": 27480.0,
+          "end_ms": 27780.0,
+          "source_start_ms": 1207480.0,
+          "source_end_ms": 1207780.0,
+          "probability": 0.9968525767326355,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 27980.0,
+          "end_ms": 28080.0,
+          "source_start_ms": 1207980.0,
+          "source_end_ms": 1208080.0,
+          "probability": 0.9962730407714844,
+          "owned_by_core": true
+        },
+        {
+          "text": " hidden,",
+          "start_ms": 28080.0,
+          "end_ms": 28380.0,
+          "source_start_ms": 1208080.0,
+          "source_end_ms": 1208380.0,
+          "probability": 0.9982118606567383,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 1205340.0,
+      "source_end_ms": 1208380.0
+    },
+    {
+      "text": " get summed out. Okay, so the way this works is I'm going to sum over, enumerate over all",
+      "start_ms": 28380.0,
+      "end_ms": 35440.0,
+      "words": [
+        {
+          "text": " get",
+          "start_ms": 28380.0,
+          "end_ms": 29080.0,
+          "source_start_ms": 1208380.0,
+          "source_end_ms": 1209080.0,
+          "probability": 0.24821089208126068,
+          "owned_by_core": true
+        },
+        {
+          "text": " summed",
+          "start_ms": 29080.0,
+          "end_ms": 29360.0,
+          "source_start_ms": 1209080.0,
+          "source_end_ms": 1209360.0,
+          "probability": 0.9844076633453369,
+          "owned_by_core": true
+        },
+        {
+          "text": " out.",
+          "start_ms": 29360.0,
+          "end_ms": 29700.0,
+          "source_start_ms": 1209360.0,
+          "source_end_ms": 1209700.0,
+          "probability": 0.46617308259010315,
+          "owned_by_core": true
+        },
+        {
+          "text": " Okay,",
+          "start_ms": 30500.0,
+          "end_ms": 30500.0,
+          "source_start_ms": 1210500.0,
+          "source_end_ms": 1210500.0,
+          "probability": 0.5110644698143005,
+          "owned_by_core": true
+        },
+        {
+          "text": " so",
+          "start_ms": 30720.0,
+          "end_ms": 31080.0,
+          "source_start_ms": 1210720.0,
+          "source_end_ms": 1211080.0,
+          "probability": 0.9847075939178467,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 31080.0,
+          "end_ms": 31200.0,
+          "source_start_ms": 1211080.0,
+          "source_end_ms": 1211200.0,
+          "probability": 0.96162348985672,
+          "owned_by_core": true
+        },
+        {
+          "text": " way",
+          "start_ms": 31200.0,
+          "end_ms": 31340.0,
+          "source_start_ms": 1211200.0,
+          "source_end_ms": 1211340.0,
+          "probability": 0.9986034035682678,
+          "owned_by_core": true
+        },
+        {
+          "text": " this",
+          "start_ms": 31340.0,
+          "end_ms": 31500.0,
+          "source_start_ms": 1211340.0,
+          "source_end_ms": 1211500.0,
+          "probability": 0.9866468906402588,
+          "owned_by_core": true
+        },
+        {
+          "text": " works",
+          "start_ms": 31500.0,
+          "end_ms": 31720.0,
+          "source_start_ms": 1211500.0,
+          "source_end_ms": 1211720.0,
+          "probability": 0.9941877126693726,
+          "owned_by_core": true
+        },
+        {
+          "text": " is",
+          "start_ms": 31720.0,
+          "end_ms": 31960.0,
+          "source_start_ms": 1211720.0,
+          "source_end_ms": 1211960.0,
+          "probability": 0.9493048191070557,
+          "owned_by_core": true
+        },
+        {
+          "text": " I'm",
+          "start_ms": 31960.0,
+          "end_ms": 32200.000000000004,
+          "source_start_ms": 1211960.0,
+          "source_end_ms": 1212200.0,
+          "probability": 0.9406057000160217,
+          "owned_by_core": true
+        },
+        {
+          "text": " going",
+          "start_ms": 32200.000000000004,
+          "end_ms": 32320.0,
+          "source_start_ms": 1212200.0,
+          "source_end_ms": 1212320.0,
+          "probability": 0.9041265249252319,
+          "owned_by_core": true
+        },
+        {
+          "text": " to",
+          "start_ms": 32320.0,
+          "end_ms": 32840.0,
+          "source_start_ms": 1212320.0,
+          "source_end_ms": 1212840.0,
+          "probability": 0.9980138540267944,
+          "owned_by_core": true
+        },
+        {
+          "text": " sum",
+          "start_ms": 32840.0,
+          "end_ms": 33360.0,
+          "source_start_ms": 1212840.0,
+          "source_end_ms": 1213360.0,
+          "probability": 0.9584136009216309,
+          "owned_by_core": true
+        },
+        {
+          "text": " over,",
+          "start_ms": 33360.0,
+          "end_ms": 33960.0,
+          "source_start_ms": 1213360.0,
+          "source_end_ms": 1213960.0,
+          "probability": 0.9818732738494873,
+          "owned_by_core": true
+        },
+        {
+          "text": " enumerate",
+          "start_ms": 34500.0,
+          "end_ms": 34940.0,
+          "source_start_ms": 1214500.0,
+          "source_end_ms": 1214940.0,
+          "probability": 0.9869696199893951,
+          "owned_by_core": true
+        },
+        {
+          "text": " over",
+          "start_ms": 34940.0,
+          "end_ms": 35160.0,
+          "source_start_ms": 1214940.0,
+          "source_end_ms": 1215160.0,
+          "probability": 0.9751556515693665,
+          "owned_by_core": true
+        },
+        {
+          "text": " all",
+          "start_ms": 35160.0,
+          "end_ms": 35440.0,
+          "source_start_ms": 1215160.0,
+          "source_end_ms": 1215440.0,
+          "probability": 0.9874030351638794,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 1208380.0,
+      "source_end_ms": 1215440.0
+    },
+    {
+      "text": " possible values of all the variables that occur here, which are sequence, hidden, and",
+      "start_ms": 35440.0,
+      "end_ms": 43340.0,
+      "words": [
+        {
+          "text": " possible",
+          "start_ms": 35440.0,
+          "end_ms": 35800.0,
+          "source_start_ms": 1215440.0,
+          "source_end_ms": 1215800.0,
+          "probability": 0.9964022636413574,
+          "owned_by_core": true
+        },
+        {
+          "text": " values",
+          "start_ms": 35800.0,
+          "end_ms": 36280.0,
+          "source_start_ms": 1215800.0,
+          "source_end_ms": 1216280.0,
+          "probability": 0.9941490888595581,
+          "owned_by_core": true
+        },
+        {
+          "text": " of",
+          "start_ms": 36280.0,
+          "end_ms": 36560.0,
+          "source_start_ms": 1216280.0,
+          "source_end_ms": 1216560.0,
+          "probability": 0.992078959941864,
+          "owned_by_core": true
+        },
+        {
+          "text": " all",
+          "start_ms": 36560.0,
+          "end_ms": 36840.0,
+          "source_start_ms": 1216560.0,
+          "source_end_ms": 1216840.0,
+          "probability": 0.9964974522590637,
+          "owned_by_core": true
+        },
+        {
+          "text": " the",
+          "start_ms": 36840.0,
+          "end_ms": 37020.0,
+          "source_start_ms": 1216840.0,
+          "source_end_ms": 1217020.0,
+          "probability": 0.7888644933700562,
+          "owned_by_core": true
+        },
+        {
+          "text": " variables",
+          "start_ms": 37020.0,
+          "end_ms": 37540.0,
+          "source_start_ms": 1217020.0,
+          "source_end_ms": 1217540.0,
+          "probability": 0.9966253042221069,
+          "owned_by_core": true
+        },
+        {
+          "text": " that",
+          "start_ms": 37540.0,
+          "end_ms": 39480.0,
+          "source_start_ms": 1217540.0,
+          "source_end_ms": 1219480.0,
+          "probability": 0.8690613508224487,
+          "owned_by_core": true
+        },
+        {
+          "text": " occur",
+          "start_ms": 39480.0,
+          "end_ms": 40640.0,
+          "source_start_ms": 1219480.0,
+          "source_end_ms": 1220640.0,
+          "probability": 0.9868646264076233,
+          "owned_by_core": true
+        },
+        {
+          "text": " here,",
+          "start_ms": 40640.0,
+          "end_ms": 40960.0,
+          "source_start_ms": 1220640.0,
+          "source_end_ms": 1220960.0,
+          "probability": 0.9965330362319946,
+          "owned_by_core": true
+        },
+        {
+          "text": " which",
+          "start_ms": 41340.0,
+          "end_ms": 41420.0,
+          "source_start_ms": 1221340.0,
+          "source_end_ms": 1221420.0,
+          "probability": 0.9983348250389099,
+          "owned_by_core": true
+        },
+        {
+          "text": " are",
+          "start_ms": 41420.0,
+          "end_ms": 41620.0,
+          "source_start_ms": 1221420.0,
+          "source_end_ms": 1221620.0,
+          "probability": 0.9945645332336426,
+          "owned_by_core": true
+        },
+        {
+          "text": " sequence,",
+          "start_ms": 41620.0,
+          "end_ms": 42060.0,
+          "source_start_ms": 1221620.0,
+          "source_end_ms": 1222060.0,
+          "probability": 0.5386311411857605,
+          "owned_by_core": true
+        },
+        {
+          "text": " hidden,",
+          "start_ms": 42580.0,
+          "end_ms": 42700.0,
+          "source_start_ms": 1222580.0,
+          "source_end_ms": 1222700.0,
+          "probability": 0.9865239858627319,
+          "owned_by_core": true
+        },
+        {
+          "text": " and",
+          "start_ms": 43260.0,
+          "end_ms": 43340.0,
+          "source_start_ms": 1223260.0,
+          "source_end_ms": 1223340.0,
+          "probability": 0.9944562315940857,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 1215440.0,
+      "source_end_ms": 1223340.0
+    },
+    {
+      "text": " C2, and",
+      "start_ms": 43340.0,
+      "end_ms": 44960.0,
+      "words": [
+        {
+          "text": " C2,",
+          "start_ms": 43340.0,
+          "end_ms": 44180.0,
+          "source_start_ms": 1223340.0,
+          "source_end_ms": 1224180.0,
+          "probability": 0.6468731015920639,
+          "owned_by_core": true
+        },
+        {
+          "text": " and",
+          "start_ms": 44500.0,
+          "end_ms": 44960.0,
+          "source_start_ms": 1224500.0,
+          "source_end_ms": 1224960.0,
+          "probability": 0.9621281623840332,
+          "owned_by_core": true
+        }
+      ],
+      "source_start_ms": 1223340.0,
+      "source_end_ms": 1224960.0
+    }
+  ],
+  "text": "you say X has two dimensions, the row and the column, which I'm going to name sec1 and hidden. I'm going to have Y, that's a matrix, which has also rows and columns, which I'm going to name hidden and sec2. And I'm going to produce a tensor, or here a matrix, where the dimensions are indexed by sec1 and sec2. And anything that is not mentioned here, the hidden, get summed out. Okay, so the way this works is I'm going to sum over, enumerate over all possible values of all the variables that occur here, which are sequence, hidden, and C2, and",
+  "observation": "machine_audio_transcription_not_listening_truth",
+  "elapsed_ms": 10854
+}

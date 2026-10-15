@@ -1,0 +1,26 @@
+{"reused":false,"reference":{"book_id":"19ac880d-a788-43f4-9725-6c56f4980189","publication_id":"01a1253d-2a47-7f81-b6c9-8f1d88359cf0"},"elapsed_ms":2906,"files":{"base.json":135009,"media/original.mp4":225917024,"source.txt":60275,"transcript/raw_results.json":2925659,"transcript_map.json":358376,"transcript_translations.json":267743,"video-enrichments/visual-lecture-v1-001/frames/f00001.png":457741,"video-enrichments/visual-lecture-v1-001/frames/f00002.png":461954,"video-enrichments/visual-lecture-v1-001/frames/f00003.png":475582,"video-enrichments/visual-lecture-v1-001/frames/f00004.png":407668,"video-enrichments/visual-lecture-v1-001/frames/f00005.png":519911,"video-enrichments/visual-lecture-v1-001/frames/f00006.png":614094,"video-enrichments/visual-lecture-v1-001/frames/f00007.png":630094,"video-enrichments/visual-lecture-v1-001/frames/f00008.png":632134,"video-enrichments/visual-lecture-v1-001/frames/f00009.png":661485,"video-enrichments/visual-lecture-v1-001/frames/f00010.png":531873,"video-enrichments/visual-lecture-v1-001/frames/f00011.png":547039,"video-enrichments/visual-lecture-v1-001/frames/f00012.png":514285,"video-enrichments/visual-lecture-v1-001/frames/f00013.png":628482,"video-enrichments/visual-lecture-v1-001/frames/f00014.png":475872,"video-enrichments/visual-lecture-v1-001/frames/f00015.png":448381,"video-enrichments/visual-lecture-v1-001/frames/f00016.png":504678,"video-enrichments/visual-lecture-v1-001/frames/f00017.png":506081,"video-enrichments/visual-lecture-v1-001/frames/f00018.png":512448,"video-enrichments/visual-lecture-v1-001/frames/f00019.png":394451,"video-enrichments/visual-lecture-v1-001/frames/f00020.png":462478,"video-enrichments/visual-lecture-v1-001/frames/f00021.png":476519,"video-enrichments/visual-lecture-v1-001/frames/f00022.png":547666,"video-enrichments/visual-lecture-v1-001/frames/f00023.png":476363,"video-enrichments/visual-lecture-v1-001/frames/f00024.png":513769,"video-enrichments/visual-lecture-v1-001/visual_units.json":31234,"video-enrichments/zh-001/transcript_translations.json":45217,"video-enrichments/zh-002/transcript_translations.json":44665,"video-enrichments/zh-003/transcript_translations.json":44208,"video-enrichments/zh-004/transcript_translations.json":43833,"video-enrichments/zh-005/transcript_translations.json":44824,"video-enrichments/zh-006/transcript_translations.json":45012,"video_enrichments.json":6005,"video_source_manifest.json":6652,"video_translation_progress.json":21901}}
+{"analysis":"lecture-v1","group":0,"status":"accepted"}
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: E:\allwork\download\agent\understand-book-video-understanding\target\debug\publish_book.exe E:\allwork\download\agent\understand-book-video-understanding\evals\video\generated\vi11\service import E:\allwork\download\agent\understand-book-video-understanding\evals\video\generated\vi11\workspace
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9
+Publication could not be read or committed
+
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at ChildProcess.exithandler (node:child_process:417:12)
+    at ChildProcess.emit (node:events:508:28)
+    at maybeClose (node:internal/child_process:1101:16)
+    at ChildProcess._handle.onexit (node:internal/child_process:305:5) {
+  code: 1,
+  killed: false,
+  signal: null,
+  cmd: 'E:\\allwork\\download\\agent\\understand-book-video-understanding\\target\\debug\\publish_book.exe E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi11\\service import E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi11\\workspace',
+  stdout: '',
+  stderr: 'Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=9\n' +
+    'Publication could not be read or committed\n'
+}
+
+Node.js v24.9.0

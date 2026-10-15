@@ -6,6 +6,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+pub mod video;
+pub use video::*;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS, JsonSchema)]
 #[ts(export, export_to = "../../../packages/core/src/generated/")]
 pub struct BuildTargetRefV2 {
@@ -114,6 +117,14 @@ pub enum GraphNodeType {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, JsonSchema)]
 #[ts(export, export_to = "../../../packages/core/src/generated/")]
 pub struct GraphNode {
+    /// Explicitly scoped video object identity; legacy text IDs keep their meaning.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub identity: Option<GraphIdentity>,
+    /// Admitted source pointers, not read-time observation receipts.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[ts(as = "Option<Vec<JointEvidenceMember>>", optional)]
+    pub evidence: Vec<JointEvidenceMember>,
     /// entity:{name} | concept:{name} | claim:{lid}:{slug}
     pub id: String,
     #[serde(rename = "type")]
@@ -151,6 +162,9 @@ pub enum Direction {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, JsonSchema)]
 #[ts(export, export_to = "../../../packages/core/src/generated/")]
 pub struct GraphEdge {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[ts(as = "Option<Vec<JointEvidenceMember>>", optional)]
+    pub evidence: Vec<JointEvidenceMember>,
     pub source: String,
     pub target: String,
     #[serde(rename = "type")]
@@ -158,6 +172,13 @@ pub struct GraphEdge {
     pub direction: Direction,
     pub scope: EdgeScope,
     pub weight: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+#[ts(export, export_to = "../../../packages/core/src/generated/")]
+pub enum GraphIdentity {
+    VideoObject { meaning: String },
 }
 
 /// 公式参数解释。每条解释必须带真实 LID 证据 `[ADR-0029]`。
@@ -234,6 +255,8 @@ pub fn sample_base() -> ReadOnlyBase {
         ],
         graph_nodes: vec![
             GraphNode {
+                identity: None,
+                evidence: vec![],
                 id: "entity:command".into(),
                 node_type: GraphNodeType::Entity,
                 name: "command".into(),
@@ -241,6 +264,8 @@ pub fn sample_base() -> ReadOnlyBase {
                 source_lid: None,
             },
             GraphNode {
+                identity: None,
+                evidence: vec![],
                 id: "claim:1.1:cmd-is-reified-call".into(),
                 node_type: GraphNodeType::Claim,
                 name: "命令是对象化的方法调用".into(),
@@ -249,6 +274,7 @@ pub fn sample_base() -> ReadOnlyBase {
             },
         ],
         graph_edges: vec![GraphEdge {
+            evidence: vec![],
             source: "claim:1.1:cmd-is-reified-call".into(),
             target: "entity:command".into(),
             edge_type: "exemplifies".into(),

@@ -142,14 +142,29 @@ pub struct AnswerDeliveryDiagnostics {
     pub repair: Option<AnswerDeliveryAttemptDiagnostics>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SourceBinding {
     pub source_ref_id: String,
     pub book_id: String,
-    pub evidence_range: EvidenceRange,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence_range: Option<EvidenceRange>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub evidence_text_digest: String,
+    #[serde(default, skip_serializing_if = "Option::is_none", deserialize_with = "crate::video_source::deserialize_snapshot")]
+    pub media: Option<crate::video_source::MediaSource>,
     pub label_snapshot: String,
     pub preview_snapshot: String,
+}
+
+impl SourceBinding {
+    pub fn valid_evidence(&self) -> bool {
+        match (&self.evidence_range, &self.media) {
+            (Some(_), None) => !self.evidence_text_digest.trim().is_empty(),
+            (None, Some(media)) => self.evidence_text_digest.is_empty() && media.publication.book_id == self.book_id
+                && crate::video_source::publication(&media.target) == Some(&media.publication),
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq, Eq)]
@@ -765,6 +780,7 @@ impl ProgressPhase {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct TurnProgressLedger {
     phase: ProgressPhase,
+    media_reads: BTreeSet<String>,
 }
 
 impl TurnProgressLedger {
@@ -1371,6 +1387,7 @@ pub(crate) struct TurnEvidenceLedger {
     evidence: Vec<ObservedTurnEvidence>,
     presented: Vec<PresentedSource>,
     evidence_state: EvidenceState,
+    media_presented: Vec<SourceBinding>,
 }
 
 impl TurnEvidenceLedger {
@@ -1485,7 +1502,7 @@ impl TurnEvidenceLedger {
         if let Some(existing) = self
             .presented
             .iter()
-            .find(|source| source.binding.evidence_range == evidence_range)
+            .find(|source| source.binding.evidence_range.as_ref() == Some(&evidence_range))
         {
             return Ok(SourcePresentResult {
                 source_ref_id: existing.binding.source_ref_id.clone(),
@@ -1501,9 +1518,10 @@ impl TurnEvidenceLedger {
         );
         self.presented.push(PresentedSource {
             binding: SourceBinding {
+            media: None,
                 source_ref_id: source_ref_id.clone(),
                 book_id: book.base.book_id.clone(),
-                evidence_range,
+                evidence_range: Some(evidence_range),
                 evidence_text_digest: resolved.evidence_text_digest.clone(),
                 label_snapshot: resolved.label.clone(),
                 preview_snapshot: resolved.preview.clone(),
@@ -1517,6 +1535,42 @@ impl TurnEvidenceLedger {
             label: source.binding.label_snapshot.clone(),
             preview: source.binding.preview_snapshot.clone(),
         })
+    }
+
+    fn check_media_target(&self, book: &Book, target: &base_schema::EvidenceTarget, observations: &[base_schema::MediaObservation]) -> Result<(), ToolError> {
+        for member in crate::video_source::members(target) {
+            let observed = match member {
+                base_schema::EvidenceTarget::Text { text_range, .. } => {
+                    let range = EvidenceRange { start_lid: text_range.lid.clone(), end_lid: text_range.lid.clone(), ranges: vec![read_tools::SourceSelectedRange {
+                        lid: text_range.lid.clone(), range: read_tools::SourceTextRange { start: text_range.range.start as u32, end: text_range.range.end as u32 }
+                    }] };
+                    evidence_intervals(book, &range).is_some_and(|ranges| !ranges.is_empty() && ranges.iter().all(|(a,b)| self.observed_intervals(book).iter().any(|(x,y)| x <= a && b <= y)))
+                },
+                _ => crate::video_source::observed(member, observations),
+            };
+            if !observed { return Err(source_presentation_error("SOURCE_NOT_OBSERVED", "Read this exact source in the current turn before presenting it; a crop does not observe its full frame.")); }
+        }
+        Ok(())
+    }
+
+    fn present_media(&mut self, media: crate::video_source::MediaSource) -> Result<SourcePresentResult, ToolError> {
+        if let Some(b) = self.media_presented.iter().find(|b| b.media.as_ref().is_some_and(|m| m.target == media.target)) {
+            return Ok(SourcePresentResult { source_ref_id: b.source_ref_id.clone(), label: b.label_snapshot.clone(), preview: b.preview_snapshot.clone() });
+        }
+        let ms = crate::video_source::start_ms(&media);
+        let kind = match &media.target { base_schema::EvidenceTarget::Text {..} => "英文转写", base_schema::EvidenceTarget::Audio {..} => "原音频", base_schema::EvidenceTarget::Joint {..} => "联合来源", _ => "视频画面" };
+        let seconds = (ms / 1000.0).round() as u64;
+        let label = format!("{kind} · {:02}:{:02}", seconds / 60, seconds % 60);
+        let preview = if media.audio_reviews.is_empty() {
+            media.transcript.iter().map(|s| s.text.as_str()).collect::<Vec<_>>().join("\n")
+        } else {
+            media.audio_reviews.iter().map(|r| format!("机器音频复核：{}\n{}", r.reviewed_text, r.uncertainties.join("；"))).collect::<Vec<_>>().join("\n")
+        };
+        let source_ref_id = format!("src_{}", uuid::Uuid::now_v7().simple());
+        self.media_presented.push(SourceBinding { source_ref_id: source_ref_id.clone(), book_id: media.publication.book_id.clone(),
+            evidence_range: None, evidence_text_digest: String::new(), label_snapshot: label.clone(), preview_snapshot: preview.clone(), media: Some(media) });
+        self.evidence_state = EvidenceState::KnownLids;
+        Ok(SourcePresentResult { source_ref_id, label, preview })
     }
 
     fn observed_intervals(&self, book: &Book) -> Vec<(usize, usize)> {
@@ -1554,6 +1608,7 @@ impl TurnEvidenceLedger {
         self.presented
             .iter()
             .map(|source| source.binding.clone())
+            .chain(self.media_presented.iter().cloned())
             .collect()
     }
 }
@@ -2654,10 +2709,7 @@ pub fn compile_presentation_text(
             &binding.preview_snapshot,
             AnswerProvenanceChannel::SelectionEvidence,
         );
-        for lid in [
-            &binding.evidence_range.start_lid,
-            &binding.evidence_range.end_lid,
-        ] {
+        for lid in binding.evidence_range.iter().flat_map(|range| [&range.start_lid, &range.end_lid]) {
             provenance.observe_internal_locator(lid, AnswerProvenanceChannel::SelectionLocator);
         }
     }
@@ -2924,13 +2976,8 @@ fn repair_raw_lid_leaks(
         let label = bindings
             .iter()
             .find(|binding| {
-                binding.evidence_range.start_lid == value
-                    || binding.evidence_range.end_lid == value
-                    || binding
-                        .evidence_range
-                        .ranges
-                        .iter()
-                        .any(|range| range.lid == value)
+                binding.evidence_range.as_ref().is_some_and(|r| r.start_lid == value
+                    || r.end_lid == value || r.ranges.iter().any(|range| range.lid == value))
             })
             .map(|binding| binding.label_snapshot.as_str())
             .unwrap_or(if raw.is_ascii() {
@@ -3126,6 +3173,9 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
     };
     vec![
         crate::presentation_author::spec(),
+        crate::video::spec(),
+        crate::video::search_spec(),
+        crate::video_audio::spec(),
         crate::tutor::spec(),
         book_s(BookToolId::Query),
         book_s(BookToolId::Synthesize),
@@ -3162,14 +3212,7 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
         s(
             "source.present",
             crate::agent_prompt::SOURCE_PRESENT_CONTRACT,
-            json!({
-                "type": "object",
-                "properties": {
-                    "quote": {"type": "string", "minLength": 1, "description": "Continuous verbatim text already observed this turn; include enough context to support the claim and uniquely identify the passage. The tool computes LIDs and exact offsets."}
-                },
-                "required": ["quote"],
-                "additionalProperties": false
-            }),
+            crate::video_source::source_schema(),
         ),
         book_s(BookToolId::Context),
         book_s(BookToolId::Concept),
@@ -4178,6 +4221,9 @@ fn dispatch_state_tool(
         | ToolHandlerId::GoalUpdate
         | ToolHandlerId::SourcePresent
         | ToolHandlerId::PresentationAuthor
+        | ToolHandlerId::VideoReadFrames
+        | ToolHandlerId::VideoSearch
+        | ToolHandlerId::VideoReviewAudio
         | ToolHandlerId::ProfileMarkUsed => {
             unreachable!(
                 "special and Book handlers are dispatched before the generic handler match"
@@ -4398,6 +4444,7 @@ fn tool_progress_signature(
     let projection_revision = port.submit_private(|store| store.projection_revision()).ok();
     let state = serde_json::json!({
         "phase": progress.phase,
+        "media_reads": progress.media_reads,
         "evidence": evidence.evidence_ranges(),
         "source_bindings": evidence.bindings().iter().map(|binding| binding.source_ref_id.as_str()).collect::<Vec<_>>(),
         "evidence_plan_origins": evidence_plan.origins,
@@ -5481,8 +5528,12 @@ pub fn run_context(
     question: &str,
     now: &str,
 ) -> Result<OuterOutcome, ToolError> {
+    context.pending_video.clear();
+    context.media_observations.clear();
+    context.audio_reviews.clear();
     let result = run_context_inner(book, state, adapter, context, profile_snapshot, resources,
         active_checkpoint, checkpoint_sink, question, now);
+    context.pending_video.clear();
     if context.cancellation.is_cancelled() {
         context.presentation_authoring = None;
         context.presentation_authoring_finished = true;
@@ -5585,6 +5636,14 @@ fn run_context_inner(
         context_fragments
             .upsert(fragment)
             .map_err(context_fragment_error)?;
+    }
+    if let Some(question) = &reader_input.video_question {
+        context_fragments.upsert(ContextFragment::new("video.question", FragmentScope::TurnFrozen, Role::System,
+            serde_json::json!({"question_context":question,"guidance":"This question refers to the frozen frame and optional selected range, not the current player position. If range is present, inspect the process with video.read_frames in chronological batches of at most 60000 ms and 8 ascending sample times each, reading the returned transcript and necessary surrounding context. Longer ranges require successive bounded reads; inspect changes or unresolved gaps with further sampling. The region is an independent focus on the frozen frame, not a crop to apply automatically to all process frames. Without range, read the frozen frame before explaining visual content. This context is a pointer, not observed evidence. Cite only the actual supporting frames/regions and read text via source.present; discrete samples do not establish continuous observation. State remaining gaps when they matter to the answer."}).to_string(),
+            FragmentSensitivity::Sensitive)).map_err(context_fragment_error)?;
+    }
+    if let Some(video) = state.video_source_context()? {
+        context_fragments.upsert(ContextFragment::new("video.source", FragmentScope::TurnFrozen, Role::System, video.to_string(), FragmentSensitivity::Sensitive)).map_err(context_fragment_error)?;
     }
     let effects = &mut context.effects;
     let trace = &mut context.trace;
@@ -5856,7 +5915,8 @@ fn run_context_inner(
                 Some((image.candidate_id.clone()?, image.environment_name.clone()?))
             })
             .collect::<HashSet<_>>();
-        let image_tokens = request_plan.preview_images.len() as u32 * 4096;
+        crate::video::attach(&mut request_plan, std::mem::take(&mut context.pending_video));
+        let image_tokens = (request_plan.preview_images.len() + request_plan.video_images.len()) as u32 * 4096;
         let final_budget = ActiveContextBudget::from_plan(&request_plan);
         if !final_budget.fits {
             return Err(active_context_exhausted(final_budget));
@@ -5893,6 +5953,8 @@ fn run_context_inner(
             }
         };
         context.cancellation.check()?;
+        crate::video::accept_observed(&request_plan, &mut context.media_observations, &context.events);
+        if !context.media_observations.is_empty() { context.evidence_ledger.evidence_state = EvidenceState::KnownLids; }
         context
             .unobserved_preview_environments
             .extend(omitted_preview_environments.iter().cloned());
@@ -6186,6 +6248,7 @@ fn run_context_inner(
             });
             let source_preparation = (matches!(handler, Some(ToolHandlerId::SourcePresent))
                 && schema_valid
+                && serde_json::from_str::<serde_json::Value>(&tc.arguments).is_ok_and(|v| v.get("target").is_none())
                 && !blocked_without_progress)
                 .then(|| context.evidence_ledger.prepare_present(book, &tc.arguments));
             let provenance_allowed = text_authorization.as_ref().is_none_or(|r| r.is_ok())
@@ -6324,6 +6387,68 @@ fn run_context_inner(
                     })();
                     (result.unwrap_or_else(|error| to_json(&error)), None, None)
                 }
+                Some(ToolHandlerId::VideoReviewAudio) => {
+                    let result = serde_json::from_str::<crate::video_audio::ReviewAudio>(&tc.arguments)
+                        .map_err(|e| ToolError { error_code:"TOOL_ARGUMENTS_INVALID".into(), category:"invalid_input".into(), message:e.to_string() })
+                        .and_then(|request| state.review_video_audio(request, &context.cancellation));
+                    context.cancellation.check()?;
+                    let body = match result {
+                        Ok(review) => {
+                            let observation = review.observation(&review.run_id, &tc.id);
+                            let body = serde_json::json!({"review":review,"target":review.target(),"observation":observation,
+                                "guidance":"The audio review tool processed original audio. Compare the candidate with saved transcript and separately observed frames; retain uncertainties. The main model has not listened to the audio. Saved English is unchanged."}).to_string();
+                            context.progress_ledger.media_reads.insert(serde_json::json!({"audio":review.location,"publication":review.publication}).to_string());
+                            for segment in &review.transcript {
+                                context.evidence_ledger.observe(read_tools::EvidenceRange { start_lid:segment.text_range.lid.clone(),end_lid:segment.text_range.lid.clone(),
+                                    ranges:vec![read_tools::SourceSelectedRange { lid:segment.text_range.lid.clone(),range:read_tools::SourceTextRange { start:segment.text_range.range.start as u32,end:segment.text_range.range.end as u32 } }] });
+                            }
+                            context.media_observations.push(observation);
+                            context.evidence_ledger.evidence_state = EvidenceState::KnownLids;
+                            context.audio_reviews.push(review);
+                            body
+                        }
+                        Err(e) => to_json(&e),
+                    };
+                    (body, None, None)
+                },
+                Some(ToolHandlerId::VideoSearch) => {
+                    let result = serde_json::from_str::<read_tools::video_search::VideoSearch>(&tc.arguments)
+                        .map_err(|e| ToolError { error_code:"TOOL_ARGUMENTS_INVALID".into(), category:"invalid_input".into(), message:e.to_string() })
+                        .and_then(|request| state.search_video(request));
+                    // Search cards grant neither text nor media observation.
+                    (result.map(|v| v.to_string()).unwrap_or_else(|e| to_json(&e)), None, None)
+                },
+                Some(ToolHandlerId::VideoReadFrames) => {
+                    let result = serde_json::from_str::<crate::video::ReadFrames>(&tc.arguments)
+                        .map_err(|e| ToolError { error_code:"TOOL_ARGUMENTS_INVALID".into(), category:"invalid_input".into(), message:e.to_string() })
+                        .and_then(|request| {
+                            let pending: usize = context.pending_video.iter().map(|b| b.images.len()).sum();
+                            if pending + request.sampling.len() > 8 {
+                                return Err(ToolError { error_code:"VIDEO_BATCH_LIMIT".into(), category:"invalid_input".into(), message:"At most 8 pending video frames per model request; inspect these before reading more".into() });
+                            }
+                            state.read_video_frames(request, &context.cancellation)
+                        });
+                    let body = match result {
+                        Ok(batch) => {
+                            let body = batch.projection().to_string();
+                            for image in &batch.images {
+                                context.progress_ledger.media_reads.insert(serde_json::json!({"publication":batch.publication,"frame":image.read.frame,"region":image.region}).to_string());
+                            }
+                            for segment in &batch.transcript {
+                                context.evidence_ledger.observe(read_tools::EvidenceRange {
+                                    start_lid: segment.text_range.lid.clone(), end_lid: segment.text_range.lid.clone(),
+                                    ranges: vec![read_tools::SourceSelectedRange { lid: segment.text_range.lid.clone(), range: read_tools::SourceTextRange {
+                                        start: segment.text_range.range.start as u32, end: segment.text_range.range.end as u32,
+                                    }}],
+                                });
+                            }
+                            context.pending_video.push(batch);
+                            body
+                        },
+                        Err(e) => to_json(&e),
+                    };
+                    (body, None, None)
+                },
                 Some(ToolHandlerId::PresentationAuthor) => {
                     let result = (|| -> Result<crate::presentation_author::AuthorResult, ToolError> {
                         let request: crate::presentation_author::AuthorRequest = serde_json::from_str(&tc.arguments)
@@ -6433,11 +6558,30 @@ fn run_context_inner(
                     (result, None, query_audit)
                 }
                 Some(ToolHandlerId::SourcePresent) => {
-                    let presented = match source_preparation {
-                        Some(Ok((evidence, resolved))) => context.evidence_ledger.present_prepared(book, evidence, resolved),
+                    let media_target = serde_json::from_str::<serde_json::Value>(&tc.arguments).ok().and_then(|v| v.get("target").cloned());
+                    let presented = if let Some(target) = media_target {
+                        (|| {
+                            let target: base_schema::EvidenceTarget = serde_json::from_value(target)
+                                .map_err(|e| source_presentation_error("INVALID_SOURCE_RANGE", &e.to_string()))?;
+                            context.evidence_ledger.check_media_target(book, &target, &context.media_observations)?;
+                            let mut snapshot = state.media_source_snapshot(target)?;
+                            snapshot.observations = context.media_observations.iter().filter(|o| match o {
+                                base_schema::MediaObservation::Visual { publication, .. } | base_schema::MediaObservation::Audio { publication, .. } => publication == &snapshot.publication,
+                            }).cloned().collect();
+                            snapshot.audio_reviews = context.audio_reviews.iter().filter(|review|
+                                crate::video_source::members(&snapshot.target).iter().any(|target| **target == review.target())
+                            ).cloned().collect();
+                            context.evidence_ledger.present_media(snapshot)
+                        })()
+                    } else { match source_preparation {
+                        Some(Ok((evidence, resolved))) => match state.media_source_for_text(&evidence) {
+                            Ok(Some(media)) => context.evidence_ledger.present_media(media),
+                            Ok(None) => context.evidence_ledger.present_prepared(book, evidence, resolved),
+                            Err(e) => Err(e),
+                        },
                         Some(Err(error)) => Err(error),
                         None => context.evidence_ledger.present(book, &tc.arguments),
-                    };
+                    }};
                     let result = match presented {
                         Ok(source) => to_json(&source),
                         Err(error) => to_json(&error),
@@ -6809,6 +6953,7 @@ fn run_context_inner(
                     context.presentation_authoring_finished,
                 )?;
             }
+            crate::video::attach(&mut finalization_plan, std::mem::take(&mut context.pending_video));
             let finalization_budget = ActiveContextBudget::from_plan(&finalization_plan);
             if !finalization_budget.fits {
                 return Err(active_context_exhausted(finalization_budget));
@@ -6837,7 +6982,7 @@ fn run_context_inner(
                 .ok()
                 .and_then(|turn| turn.usage_total_tokens);
             let billed_tokens_charged =
-                provider_reported_tokens.unwrap_or_else(|| messages_estimate(&provider_messages));
+                provider_reported_tokens.unwrap_or_else(|| messages_estimate(&provider_messages) + finalization_plan.video_images.len() as u32 * 4096);
             spent += billed_tokens_charged;
             request_audit.finish_request(
                 request_audit_index,
@@ -6850,6 +6995,8 @@ fn run_context_inner(
                 .mark_projected_fresh_results_sampled();
 
             let finalization_turn = finalization_result.map_err(crate::AdapterError::into_tool_error)?;
+            context.cancellation.check()?;
+            crate::video::accept_observed(&finalization_plan, &mut context.media_observations, &context.events);
             let objective_gap = context.goal.as_ref().and_then(|goal| goal.objective_gap(
                 context.delivered_presentations.len(),
                 run_effects(effects.clone(), &context.navigation).len(),
@@ -6942,6 +7089,8 @@ fn run_context_inner(
 
 #[cfg(test)]
 mod tests {
+    include!("video_orchestrator_tests.rs");
+    include!("video_source_tests.rs");
     mod adm6 { include!("adm6_tests.rs"); }
     use super::*;
 
@@ -8816,6 +8965,8 @@ mod tests {
     fn concept_routing_agent_selects_candidate_then_reads_full_occurrence() {
         let mut b = book();
         b.base.graph_nodes.push(GraphNode {
+            identity: None,
+            evidence: vec![],
             id: "concept:command-detail".into(),
             node_type: GraphNodeType::Concept,
             name: "command detail".into(),
@@ -10466,7 +10617,7 @@ user_question=\"explain normalization and create a rich presentation\"";
         .unwrap();
 
         assert_eq!(out.source_bindings.len(), 1);
-        assert_eq!(out.source_bindings[0].evidence_range.start_lid, "1.1");
+        assert_eq!(out.source_bindings[0].evidence_range.as_ref().unwrap().start_lid, "1.1");
         let result = messages
             .iter()
             .find(|message| message.tool_call_id.as_deref() == Some("present"))
@@ -10562,7 +10713,7 @@ user_question=\"explain normalization and create a rich presentation\"";
         .unwrap();
 
         assert_eq!(out.source_bindings.len(), 1);
-        assert_eq!(out.source_bindings[0].evidence_range, evidence);
+        assert_eq!(out.source_bindings[0].evidence_range, Some(evidence));
         assert_eq!(out.trace[0].tool, "book.search_text");
         assert_eq!(out.trace[1].tool, "source.present");
     }
@@ -11451,7 +11602,7 @@ user_question=\"explain normalization and create a rich presentation\"";
         assert!(first_out.trace.len() <= 4);
         assert_eq!(first_out.trace[0].tool, "book.search_text");
         assert!(first_out.trace.iter().all(|step| step.tool != "book.query"));
-        assert_eq!(first_out.source_bindings[0].evidence_range, evidence);
+        assert_eq!(first_out.source_bindings[0].evidence_range, Some(evidence));
 
         let layered_adapter = FakeAdapter::new(
             vec![
@@ -11549,7 +11700,7 @@ user_question=\"explain normalization and create a rich presentation\"";
         )
         .unwrap();
         assert_eq!(query_out.source_bindings.len(), 1);
-        assert_eq!(query_out.source_bindings[0].evidence_range.ranges.len(), 1);
+        assert_eq!(query_out.source_bindings[0].evidence_range.as_ref().unwrap().ranges.len(), 1);
 
         let synth_final = format!("synthesize done[[source:{source_ref_id}]]");
         let synth = FakeAdapter::new(
@@ -11592,7 +11743,7 @@ user_question=\"explain normalization and create a rich presentation\"";
         )
         .unwrap();
         assert_eq!(synth_out.source_bindings.len(), 1);
-        assert_eq!(synth_out.source_bindings[0].evidence_range.ranges.len(), 1);
+        assert_eq!(synth_out.source_bindings[0].evidence_range.as_ref().unwrap().ranges.len(), 1);
     }
 
     #[test]
@@ -11701,7 +11852,8 @@ user_question=\"explain normalization and create a rich presentation\"";
         let quote = "噪声抬高了H(Y)，因此需要分类。";
         let result = ledger.present(&b, &quote_args(quote)).unwrap();
         assert!(result.preview.contains(quote));
-        let range = &ledger.bindings()[0].evidence_range;
+        let bindings = ledger.bindings();
+        let range = bindings[0].evidence_range.as_ref().unwrap();
         assert_eq!(range.start_lid, "1.1");
         assert_eq!(range.end_lid, "1.2");
         assert_eq!(range.ranges[0].range.start, 5);
@@ -11846,7 +11998,7 @@ user_question=\"explain normalization and create a rich presentation\"";
             ledger.presented[0].resolved.highlighted_quote,
             quote.replace("\n", "\r\n")
         );
-        assert_eq!(ledger.bindings()[0].evidence_range.ranges[0].range.start, 2);
+        assert_eq!(ledger.bindings()[0].evidence_range.as_ref().unwrap().ranges[0].range.start, 2);
         assert_eq!(ledger.presented[0].resolved.context_before, "前言");
         assert_eq!(ledger.presented[0].resolved.context_after, "尾文");
     }
@@ -11868,8 +12020,8 @@ user_question=\"explain normalization and create a rich presentation\"";
             ledger.present(&b, &quote_args(&quote)).unwrap();
             let selected = &ledger.presented[0];
             assert_eq!(selected.resolved.highlighted_quote, formula);
-            assert_eq!(selected.binding.evidence_range.ranges[0].range.start, 3);
-            assert_eq!(selected.binding.evidence_range.ranges[0].range.end as usize,
+            assert_eq!(selected.binding.evidence_range.as_ref().unwrap().ranges[0].range.start, 3);
+            assert_eq!(selected.binding.evidence_range.as_ref().unwrap().ranges[0].range.end as usize,
                 3 + formula.encode_utf16().count());
             assert_eq!(selected.resolved.context_before, "前🙂");
             assert_eq!(selected.resolved.context_after, "尾文");
@@ -11931,7 +12083,7 @@ user_question=\"explain normalization and create a rich presentation\"";
         assert!(error.message.contains("aaSAMEbbbb"));
         assert!(error.message.contains("ccSAMEdddd"));
         ledger.present(&b, &quote_args("ccSAME")).unwrap();
-        assert_eq!(ledger.bindings()[0].evidence_range.start_lid, "1.2");
+        assert_eq!(ledger.bindings()[0].evidence_range.as_ref().unwrap().start_lid, "1.2");
     }
 
     #[test]
@@ -11956,8 +12108,8 @@ user_question=\"explain normalization and create a rich presentation\"";
             ledger.presented[0].resolved.highlighted_quote,
             original.trim()
         );
-        assert_eq!(ledger.bindings()[0].evidence_range.start_lid, "1.7.2");
-        assert_eq!(ledger.bindings()[0].evidence_range.end_lid, "1.7.4");
+        assert_eq!(ledger.bindings()[0].evidence_range.as_ref().unwrap().start_lid, "1.7.2");
+        assert_eq!(ledger.bindings()[0].evidence_range.as_ref().unwrap().end_lid, "1.7.4");
     }
 
     #[test]
@@ -12132,15 +12284,15 @@ user_question=\"explain normalization and create a rich presentation\"";
     }
 
     #[test]
-    fn source_presentation_tool_spec_exposes_only_required_quote() {
+    fn source_presentation_tool_spec_exposes_quote_or_media_target() {
         let spec = tool_specs()
             .into_iter()
             .find(|spec| spec.name == "source.present")
             .unwrap();
 
         assert_eq!(
-            spec.parameters["required"],
-            serde_json::json!(["quote"])
+            spec.parameters["oneOf"],
+            serde_json::json!([{"required":["quote"]},{"required":["target"]}])
         );
         assert!(spec.parameters["properties"].get("end_lid").is_none());
         assert!(spec.parameters["properties"].get("start_lid").is_none());
@@ -12151,7 +12303,7 @@ user_question=\"explain normalization and create a rich presentation\"";
         let delivery = modules.iter()
             .find(|module| module.asset_id == "resident-agent.policy.source-delivery")
             .unwrap();
-        assert_eq!(delivery.revision, "v10");
+        assert_eq!(delivery.revision, "v11");
         assert_eq!(spec.description, crate::agent_prompt::SOURCE_PRESENT_CONTRACT);
         assert!(delivery.text.contains(&spec.description));
         assert_eq!(delivery.text.matches("Citation coverage examples (").count(), 1);
@@ -12273,13 +12425,14 @@ user_question=\"explain normalization and create a rich presentation\"";
 
     fn source_binding_fixture(source_ref_id: &str, lid: &str) -> SourceBinding {
         SourceBinding {
+            media: None,
             source_ref_id: source_ref_id.into(),
             book_id: "book".into(),
-            evidence_range: EvidenceRange {
+            evidence_range: Some(EvidenceRange {
                 start_lid: lid.into(),
                 end_lid: lid.into(),
                 ranges: Vec::new(),
-            },
+            }),
             evidence_text_digest: format!("digest-{source_ref_id}"),
             label_snapshot: format!("正文 · {source_ref_id}"),
             preview_snapshot: format!("preview {source_ref_id}"),
@@ -13183,7 +13336,7 @@ user_question=\"这段怎么理解？\"",
         assert_eq!(reread.turns, 3);
         assert_eq!(reread.source_bindings.len(), 1);
         assert_eq!(
-            reread.source_bindings[0].evidence_range.start_lid,
+            reread.source_bindings[0].evidence_range.as_ref().unwrap().start_lid,
             "1.19.83"
         );
         assert!(reread

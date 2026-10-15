@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-10",
+  "method": "直接查看本批次交付的两张原分辨率 PNG，独立读取冻结转写；验收器确认 VI5 实际回读与这两张图逐像素一致。",
+  "frames": [
+    {
+      "file": "frames/1196000.png",
+      "observed": "代码给出 x=torch.ones(3,4)、y=torch.ones(4,3)，einsum 输入 seq1 hidden, hidden seq2，输出 seq1 seq2；z 是 3×3 全4。",
+      "supports": "item-2 的输出索引与结果；求和规则的语言依据来自 segment-189。"
+    },
+    {
+      "file": "frames/1211000.png",
+      "observed": "同一 einsum 表达式和矩阵结果持续显示，烧录字幕讲解枚举所有可能取值。",
+      "supports": "item-3 的索引上下文；独立转写 segment-191 说明枚举所有变量取值。"
+    }
+  ],
+  "relation": {
+    "source": "item-3",
+    "target": "item-2",
+    "type": "explains",
+    "assessment": "枚举变量取值的计算过程解释未保留 hidden 的求和规则；两端文本和图片分别保存，关联有语义依据。"
+  },
+  "many_to_many": "真实 VU-0009 同时关联 description 和 explanation；一角色跨多个 VU、同一 VU 多角色及两端模态缺失拒绝由 Core/Rust 夹具覆盖。",
+  "result": "关键解释关系与原材料一致。",
+  "limitations": [
+    "本次复核 1180–1225 秒有界材料，不代表整讲。",
+    "segment-188/189/191 中 seek two、Heria、C1/C2 等机器转写原样保留；未把可见代码写回英文。",
+    "记录器验证读时传输和观察，不生成真实模型回答。"
+  ]
+}

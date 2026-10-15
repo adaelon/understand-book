@@ -1,0 +1,143 @@
+{
+  "status": "passed",
+  "host": "codex-cli 0.162.0-alpha.2",
+  "model": "gpt-6-astra",
+  "original_material": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    },
+    "transcript": {
+      "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+      "transcript_revision": "1",
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      }
+    }
+  },
+  "work_unit": "0",
+  "media_input": {
+    "version": "executor_media_input.v1",
+    "media_input_ref": "4c80b0dd-a444-43f6-ba08-6579a3d041f2",
+    "work_unit_id": "0",
+    "stage": "pass1",
+    "material": {
+      "book_id": "transcript",
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "transcript": {
+        "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+        "transcript_revision": "1",
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        }
+      }
+    },
+    "images": [
+      {
+        "image_id": "image_1",
+        "requested_ms": 650000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 650000,
+          "width": 1920,
+          "height": 1080
+        },
+        "region": null,
+        "width": 1920,
+        "height": 1080,
+        "png_bytes": 456792
+      },
+      {
+        "image_id": "image_2",
+        "requested_ms": 650000,
+        "frame": {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 650000,
+          "width": 1920,
+          "height": 1080
+        },
+        "region": {
+          "frame": {
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            },
+            "actual_pts_ms": 650000,
+            "width": 1920,
+            "height": 1080
+          },
+          "rect_normalized": [
+            0.015625,
+            0.3888888888888889,
+            0.5833333333333334,
+            0.1388888888888889
+          ]
+        },
+        "width": 1120,
+        "height": 150,
+        "png_bytes": 67911
+      }
+    ],
+    "reserved_image_tokens": 4352
+  },
+  "image_count": 2,
+  "native_bytes_and_order_equal": true,
+  "generation_started": true,
+  "candidate_accepted": true,
+  "parent_result": {
+    "version": "automatic_build_executor_lifecycle.v2",
+    "status": "committed",
+    "protocol": "automatic_build_executor_session.v3"
+  },
+  "calls": [
+    "executor.open",
+    "executor.input.next",
+    "executor.generation.start",
+    "executor.submit_candidate"
+  ],
+  "elapsed_ms": 72516,
+  "private_results": "evals\\video\\generated\\vi4\\2026-10-10T07-08-50.430Z",
+  "limits": "Source-mode Codex MCP; DSH and installed binary media path remain unverified. Graph media evidence schema is VI13.",
+  "envelopes": [
+    {
+      "tool": "executor.open",
+      "mcp_result_bytes": 2763,
+      "jsonrpc_line_bytes": 2798
+    },
+    {
+      "tool": "executor.input.next",
+      "mcp_result_bytes": 708449,
+      "jsonrpc_line_bytes": 708484
+    },
+    {
+      "tool": "executor.generation.start",
+      "mcp_result_bytes": 923,
+      "jsonrpc_line_bytes": 958
+    },
+    {
+      "tool": "executor.submit_candidate",
+      "mcp_result_bytes": 166,
+      "jsonrpc_line_bytes": 201
+    }
+  ],
+  "joint_term_disambiguation": true,
+  "usage": {
+    "input_tokens": 124962,
+    "cached_input_tokens": 102656,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 2779,
+    "reasoning_output_tokens": 0
+  }
+}

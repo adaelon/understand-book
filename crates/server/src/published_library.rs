@@ -11,24 +11,14 @@ use std::{
     sync::{Arc, Weak},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct PublishedBookRef {
-    pub book_id: String,
-    pub publication_id: String,
-}
-impl PublishedBookRef {
-    pub fn url(&self, leaf: &str) -> String {
-        format!(
-            "/api/books/{}/publications/{}/{}",
-            self.book_id, self.publication_id, leaf
-        )
-    }
-}
+pub use base_schema::PublishedBookRef;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PublicationManifest {
     pub version: String,
     pub reference: PublishedBookRef,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub previous_publication: Option<PublishedBookRef>,
     pub source_fingerprint: String,
     /// Exact files admitted by the importer, with byte lengths (no additional digests).
     pub files: BTreeMap<String, u64>,
@@ -66,7 +56,7 @@ pub struct PublishedLibrary {
     max_bytes: u64,
 }
 
-fn invalid() -> ToolError {
+pub(crate) fn invalid() -> ToolError {
     error(
         "PUBLICATION_INVALID",
         "validation",
@@ -96,6 +86,8 @@ fn capacity() -> ToolError {
 }
 
 const OPTIONAL: &[&str] = &[
+    "transcript_translations.json",
+    "video_translation_progress.json",
     "formula_semantics.json",
     "discourse_index.json",
     "book_structure.json",
@@ -114,7 +106,7 @@ const OPTIONAL: &[&str] = &[
     "pdf_selection_map/manifest.json",
 ];
 
-fn relative(path: &str) -> Result<(), ToolError> {
+pub(crate) fn relative(path: &str) -> Result<(), ToolError> {
     if path.is_empty()
         || path.contains(['\\', ':', '%'])
         || path
@@ -142,18 +134,18 @@ fn regular_file(path: &Path) -> Result<(), ToolError> {
     }
     Ok(())
 }
-fn read_json(path: &Path) -> Result<Value, ToolError> {
+pub(crate) fn read_json(path: &Path) -> Result<Value, ToolError> {
     regular_file(path)?;
     serde_json::from_slice(&fs::read(path).map_err(|_| storage())?).map_err(|_| invalid())
 }
-fn write_json(path: &Path, value: &impl Serialize) -> Result<(), ToolError> {
+pub(crate) fn write_json(path: &Path, value: &impl Serialize) -> Result<(), ToolError> {
     fs::write(
         path,
         serde_json::to_vec_pretty(value).map_err(|_| invalid())?,
     )
     .map_err(|_| storage())
 }
-fn copy_file(input: &Path, stage: &Path, rel: &str) -> Result<(), ToolError> {
+pub(crate) fn copy_file(input: &Path, stage: &Path, rel: &str) -> Result<(), ToolError> {
     relative(rel)?;
     regular_file(input)?;
     let dest = stage.join(rel);
@@ -175,6 +167,15 @@ fn dependencies(input: &Path, stage: &Path) -> Result<(), ToolError> {
         if fs::symlink_metadata(input.join(file)).is_ok() {
             copy_file(&input.join(file), stage, file)?;
         }
+    }
+    if input.join("video_source_manifest.json").exists() {
+        let manifest: base_schema::VideoSourceManifest = serde_json::from_value(read_json(&input.join("video_source_manifest.json"))?).map_err(|_|invalid())?;
+        manifest.validate().map_err(|_|invalid())?;
+        copy_file(&input.join("video_source_manifest.json"), stage, "video_source_manifest.json")?;
+        copy_file(&input.join(&manifest.source.imported_path), stage, &manifest.source.imported_path)?;
+        copy_file(&input.join(&manifest.transcript_map_path), stage, &manifest.transcript_map_path)?;
+        let map: base_schema::TranscriptMap = serde_json::from_value(read_json(&input.join(&manifest.transcript_map_path))?).map_err(|_|invalid())?;
+        copy_file(&input.join(&map.raw_result_path), stage, &map.raw_result_path)?;
     }
     let manifest_path = stage.join("source_manifest.json");
     if manifest_path.exists() {
@@ -374,6 +375,15 @@ impl PublishedLibrary {
         fs::create_dir_all(root.join("staging")).map_err(|_| storage())?;
         let stage = tempfile::tempdir_in(root.join("staging")).map_err(|_| storage())?;
         dependencies(input, stage.path())?;
+        let book_id = read_json(&stage.path().join("base.json"))?["book_id"].as_str().ok_or_else(invalid)?.to_string();
+        let previous: Option<(String, String)> = self.control.connection.query_row(
+            "SELECT directory,manifest FROM book_publications WHERE book_id=? ORDER BY rowid DESC LIMIT 1", [&book_id],
+            |r| Ok((r.get(0)?, r.get(1)?))).optional().map_err(|_| storage())?;
+        crate::video_publication::assemble(input, previous.as_ref().map(|(dir,_)| Path::new(dir)), stage.path())?;
+        let previous_publication = if stage.path().join("video_source_manifest.json").exists() {
+            previous.as_ref().map(|(_, m)| serde_json::from_str::<PublicationManifest>(m)
+                .map(|m| m.reference).map_err(|_| invalid())).transpose()?
+        } else { None };
         let book = Book::load(stage.path().to_str().ok_or_else(invalid)?).map_err(|_| invalid())?;
         let snapshot = crate::build_workbench_snapshot(&book, input, false);
         let snapshot: Value = serde_json::from_str(&snapshot.body).map_err(|_| invalid())?;
@@ -453,7 +463,7 @@ impl PublishedLibrary {
         let mut stmt = self
             .control
             .connection
-            .prepare("SELECT directory FROM book_publications WHERE book_id=? LIMIT 1")
+            .prepare("SELECT directory FROM book_publications WHERE book_id=? ORDER BY rowid DESC LIMIT 1")
             .map_err(|_| storage())?;
         let previous: Vec<String> = stmt
             .query_map([&reference.book_id], |r| r.get(0))
@@ -463,6 +473,15 @@ impl PublishedLibrary {
         drop(stmt);
         for directory in previous {
             let old = Path::new(&directory);
+            let video_path = "video_source_manifest.json";
+            if old.join(video_path).exists() || stage.path().join(video_path).exists() {
+                let before: base_schema::VideoSourceManifest = serde_json::from_value(read_json(&old.join(video_path))?).map_err(|_|invalid())?;
+                let after: base_schema::VideoSourceManifest = serde_json::from_value(read_json(&stage.path().join(video_path))?).map_err(|_|invalid())?;
+                after.validate_successor(&before).map_err(|_|invalid())?;
+                if !equal_files(&old.join(&before.source.imported_path), &stage.path().join(&after.source.imported_path))? {
+                    return Err(error("BOOK_CONTENT_CHANGED", "conflict", "Changed video requires a new book_id"));
+                }
+            }
             if fs::read(old.join("source.txt")).map_err(|_| unavailable())?
                 != fs::read(stage.path().join("source.txt")).map_err(|_| storage())?
                 || optional_bytes(&old.join("original.pdf"))?
@@ -510,9 +529,13 @@ impl PublishedLibrary {
         let manifest = PublicationManifest {
             version: "book_publication.v1".into(),
             reference: reference.clone(),
+            previous_publication,
             source_fingerprint: book.source_fingerprint().into(),
             files,
-            capabilities: source["capabilities"].clone(),
+            capabilities: if stage.path().join("video_source_manifest.json").exists() {
+                json!({"english_searchable":true,"semantic":"pending","video":true,
+                    "coverage":read_json(&stage.path().join("video_source_manifest.json"))?["coverage"]})
+            } else { source["capabilities"].clone() },
             artifact_versions,
             teaching_readiness,
             tutor_readiness,
@@ -539,7 +562,21 @@ impl PublishedLibrary {
             params![reference.book_id, reference.publication_id, destination.to_string_lossy(), serde_json::to_string(&manifest).map_err(|_| invalid())?]).map_err(|_| storage())?;
         tx.execute("INSERT INTO book_defaults(book_id,publication_id) VALUES(?,?) ON CONFLICT(book_id) DO UPDATE SET publication_id=excluded.publication_id",
             params![reference.book_id, reference.publication_id]).map_err(|_| storage())?;
+        if let Some(previous) = &manifest.previous_publication {
+            tx.execute("INSERT INTO book_grants(owner_user_id,book_id,publication_id) SELECT owner_user_id,book_id,? FROM book_grants WHERE book_id=? AND publication_id=?",
+                params![reference.publication_id,previous.book_id,previous.publication_id]).map_err(|_|storage())?;
+        }
         tx.commit().map_err(|_| storage())?;
+        if input.join("video_import.json").exists() {
+            let video = crate::video_media::read_import(input)?.video;
+            let registry = self.control.writer.root().join("library/videos").join(&video.media_id).join(&video.media_revision);
+            if registry.join("video_import.json").exists() {
+                let readers: Vec<String> = serde_json::from_slice(&fs::read(registry.join("readers.json")).map_err(|_|storage())?).map_err(|_|invalid())?;
+                for owner in readers { self.grant(&owner,&reference)?; }
+                crate::video_media::link_publication(&registry,&destination,&reference)?;
+            }
+            crate::video_media::link_publication(input,&destination,&reference)?;
+        }
         Ok(manifest)
     }
 
@@ -564,6 +601,25 @@ impl PublishedLibrary {
             book_id: book_id.into(),
             publication_id,
         })
+    }
+    /// Latest authorized descendant, independent of an administrator's default selection.
+    pub(crate) fn video_successor(&mut self, owner: &str, current: &PublishedBookRef) -> Result<Option<Arc<PublishedBook>>, ToolError> {
+        self.authorize(owner, current)?;
+        let candidates: Vec<String> = {
+            let mut query = self.control.connection.prepare("SELECT p.publication_id FROM book_publications p JOIN book_grants g USING(book_id,publication_id) WHERE g.owner_user_id=? AND p.book_id=? ORDER BY p.rowid DESC").map_err(|_|storage())?;
+            let rows = query.query_map(params![owner,current.book_id], |r| r.get(0)).map_err(|_|storage())?;
+            rows.collect::<Result<_,_>>().map_err(|_|storage())?
+        };
+        for id in candidates {
+            let candidate = PublishedBookRef { book_id: current.book_id.clone(), publication_id: id };
+            if candidate == *current { return Ok(None); }
+            let mut ancestor = self.record(&candidate)?.1.previous_publication;
+            while let Some(parent) = ancestor {
+                if parent == *current { return self.load(owner, &candidate).map(Some); }
+                ancestor = self.record(&parent)?.1.previous_publication;
+            }
+        }
+        Ok(None)
     }
     /// Public catalog projection: no filesystem paths or other users' grants.
     pub fn list(&self, owner: &str) -> Result<Vec<Value>, ToolError> {
@@ -746,6 +802,20 @@ impl PublishedLibrary {
             .workspace
             .restore_chat(&mut state.user.agent_history, now);
         Ok(())
+    }
+}
+
+pub(crate) fn equal_files(left: &Path, right: &Path) -> Result<bool, ToolError> {
+    use std::io::Read;
+    let mut left = fs::File::open(left).map_err(|_|unavailable())?;
+    let mut right = fs::File::open(right).map_err(|_|invalid())?;
+    if left.metadata().map_err(|_|storage())?.len() != right.metadata().map_err(|_|storage())?.len() { return Ok(false); }
+    let mut a = [0u8; 65536]; let mut b = [0u8; 65536];
+    loop {
+        let n = left.read(&mut a).map_err(|_|storage())?;
+        if n == 0 { return Ok(true); }
+        right.read_exact(&mut b[..n]).map_err(|_|storage())?;
+        if a[..n] != b[..n] { return Ok(false); }
     }
 }
 

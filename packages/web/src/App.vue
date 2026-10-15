@@ -2,10 +2,16 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { FolderOpen, Highlighter, Languages, MessageSquareText, RotateCcw, Save, Sparkles, X } from "@lucide/vue";
 import { api as sharedApi, ApiError } from "./api";
-import { network, bindSceneApi, sceneKey, readerKey, readerPreferenceOwner, submittedRunDrafts, type ChatDraft } from './network-context';
+import { network, bindSceneApi, readerKey, readerPreferenceOwner, submittedRunDrafts, type ChatDraft } from './network-context';
 import { useReaderTypography } from './useReaderTypography';
 import ReaderTypographyPanel from './components/ReaderTypographyPanel.vue';
 import BookCover from './components/BookCover.vue';
+import VideoReaderPane from './components/VideoReaderPane.vue';
+import { mediaSourceStart, type MediaSourceSnapshot } from './api';
+import { createVideoQuestion, videoWindowId } from './video-question';
+import { createVideoAdoption } from './video-adoption';
+import type { PublishedVideo } from './video-api';
+import { publishedUrl } from './network-client';
 import LoadingAnimation from './components/LoadingAnimation.vue';
 import type { ScrollAnchor } from './reader-text-anchor';
 import { typographyHtml } from './reader-typography';
@@ -16,6 +22,51 @@ const recapEmit = defineEmits<{ (e: 'recap-publication', target: RecapTarget): v
 import { spendNotice, type SpendNotice } from './account-allowance';
 const api = bindSceneApi(sharedApi, readerKey);
 const mountedReaderKey = readerKey();
+const publishedVideo = ref<PublishedVideo | null>(null);
+const videoFrameReady = ref(false);
+const videoPane = ref<InstanceType<typeof VideoReaderPane>>();
+const videoQuestion = createVideoQuestion(videoWindowId(), input => api.videoDraft(input), id => {
+  if (!videoPane.value) throw new Error('请等待视频加载');
+  return videoPane.value.captureQuestion(id);
+});
+const videoInitial = computed(() => publishedVideo.value ? {
+  video: publishedVideo.value.source.video, title: '视频阅读', stage: 'awaiting_transcript' as const,
+  copied_bytes: 1, total_bytes: 1, duration_ms: publishedVideo.value.source.duration_ms,
+  playable: true, qa_ready: false as const, english_ready: true, failure: null, publication: publishedVideo.value.publication,
+} : null);
+const videoMediaUrl = ref('');
+const videoAdoption = createVideoAdoption(
+  () => !!publishedVideo.value && !agentHistoryLoading.value && !agentHistoryError.value
+    && !videoQuestion.restoring.value && !videoQuestion.draft.value && !videoQuestion.error.value
+    && !agentInput.value && !sending.value && !chat.value.some(t => t.pending || t.submissionUnknown)
+    && !videoPane.value?.editing,
+  () => api.adoptVideoPublication(publishedVideo.value!.publication.publication_id),
+  video => { if (publishedVideo.value) publishedVideo.value = { ...video, time_base: publishedVideo.value.time_base }; },
+);
+let videoAdoptionTimer: ReturnType<typeof setTimeout> | undefined;
+async function refreshVideoPublication() {
+  await videoAdoption.refresh();
+  if (!disposed) videoAdoptionTimer = setTimeout(refreshVideoPublication, 3000);
+}
+watch(() => network.value.workspace?.published_book_ref.publication_id, async () => {
+  // Recovery can discover a commit whose HTTP response was lost.
+  await nextTick();
+  if (!publishedVideo.value || disposed || videoAdoption.adopting.value
+    || publishedVideo.value.publication.publication_id === network.value.workspace?.published_book_ref.publication_id) return;
+  try { const video = await api.videoContext(); if (!disposed && video) publishedVideo.value = video; }
+  catch (error) { videoAdoption.error.value = (error as Error).message; }
+});
+function onAgentInput(value: string) {
+  agentInput.value = value;
+  if (publishedVideo.value) videoQuestion.input(value);
+}
+function enterMediaSource(source: MediaSourceSnapshot) {
+  if (publishedVideo.value?.publication.book_id !== source.publication.book_id) return;
+  const ms = mediaSourceStart(source);
+  if (Number.isFinite(ms)) videoPane.value?.seek(ms);
+}
+function cancelVideoDraft() { videoQuestion.clear(); agentInput.value = ''; }
+
 let disposed = false;
 import { generateBookIdFromTitle } from "./book-id";
 import type {
@@ -2156,10 +2207,13 @@ async function init() {
       return;
     }
     desktopNeedsBook.value = false;
-    const workbench = network.value.enabled ? null : await loadBuildWorkbenchSnapshot();
-    if (network.value.enabled) {
-      const w = network.value.workspace!;
-      buildWorkbenchSnapshot.value = { book_id: w.published_book_ref.book_id, readiness: { route: "reader", reasons: [], stages: {} } } as unknown as BuildWorkbenchSnapshot;
+    const video = await api.videoContext();
+    if (!current()) return;
+    if (video) readerOnly.value = true;
+    const workbench = network.value.enabled || video ? null : await loadBuildWorkbenchSnapshot();
+    if (network.value.enabled || video) {
+      const reference = video?.publication ?? network.value.workspace!.published_book_ref;
+      buildWorkbenchSnapshot.value = { book_id: reference.book_id, readiness: { route: "reader", reasons: [], stages: {} } } as unknown as BuildWorkbenchSnapshot;
     }
     if (!workbench && buildWorkbenchError.value) {
       appSurface.value = readerOnly.value ? "waiting-materials" : "workbench";
@@ -2180,6 +2234,13 @@ async function init() {
     if (!current()) return;
     if (buildWorkbenchSnapshot.value?.book_id !== noteSource.book_id) {
       throw new Error("Note source identity does not match the active book");
+    }
+    publishedVideo.value = video;
+    if (video) {
+      videoMediaUrl.value = network.value.enabled ? `/api${publishedUrl('video/media')}` : '/api/book/video/media';
+      await videoQuestion.restore();
+      if (!current()) return;
+      agentInput.value = videoQuestion.draft.value?.message ?? '';
     }
     noteSourceFingerprint.value = noteSource.source_fingerprint;
     await nextTick(); // Apply this book's saved reading surface before deciding what blocks display.
@@ -2386,12 +2447,14 @@ onMounted(() => {
   window.addEventListener("tutor-response", onTutorResponse);
   void tutor.load();
   void init();
+  videoAdoptionTimer = setTimeout(refreshVideoPublication, 3000);
   document.addEventListener("visibilitychange", scheduleWorkspaceRecovery);
   window.addEventListener("pageshow", scheduleWorkspaceRecovery);
   window.addEventListener("online", scheduleWorkspaceRecovery);
 });
 onBeforeUnmount(() => {
   disposed = true;
+  videoAdoption.dispose(); clearTimeout(videoAdoptionTimer);
   window.removeEventListener("agent-admission-changed", scheduleWorkspaceRecovery);
   window.removeEventListener("workspace-recovered", scheduleWorkspaceRecovery);
   window.removeEventListener("linked-reader-changed", refreshLinkedReader);
@@ -3102,6 +3165,7 @@ function clearAskDraft() {
 
 // ── agent 对话区(外层 E agent 主入口)`[ADR-0030]` ──
 interface ChatTurn {
+  videoQuestion?: import("../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
   spendStop?: SpendNotice;
   teachingRef?: string | null;
   presentationFollowUp?: import('./generated/PresentationFollowUp').PresentationFollowUp | null;
@@ -3135,6 +3199,9 @@ const agentHistoryLoading = ref(true);
 const agentHistoryError = ref<string | null>(null);
 let startupHistoryRequestSeq = 0;
 const agentInput = ref(recapProps.chatDraft?.message ?? "");
+watch(agentInput, value => {
+  if (publishedVideo.value && !value && videoQuestion.draft.value) videoQuestion.input('');
+});
 const tutor = useTutorControl();
 const tutorPanelOpen = ref(false);
 const presentationWorkspace = ref<import('./presentation-workspace').PresentationWorkspace | null>(null);
@@ -3158,9 +3225,9 @@ const workspaceAuxTabRevision = ref(0);
 const agentFullscreen = ref(false);
 const agentFullscreenSuspendedForSource = ref(false);
 const mobileWorkspaceEnabled = import.meta.env.VITE_MOBILE_WORKSPACE !== "0";
-const workspaceContextKey = computed(() => `${network.value.enabled ? sceneKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}:${activeChatSessionId.value || "no-chat"}`);
+const workspaceContextKey = computed(() => `${network.value.enabled ? readerKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}:${activeChatSessionId.value || "no-chat"}`);
 const readerContextKey = computed(() => `${network.value.enabled ? readerKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}`);
-const chatSceneKey = computed(() => network.value.enabled ? sceneKey() : 'local');
+const chatSceneKey = computed(() => network.value.enabled ? `${readerKey()}:${network.value.workspace?.generation}` : 'local');
 const workspaceLogicalState = computed<WorkspaceLogicalState>(() => ({
   // Reader layout belongs to the book; recovering a chat must not replay saved focus.
   contextKey: buildWorkbenchSnapshot.value?.book_id ?? "no-book",
@@ -3180,7 +3247,7 @@ function updateReadingReturn() {
 let pendingReadingReturnPoint: ReadingReturnPoint | null = null;
 watch(workspaceContextKey, (contextKey, previous) => {
   previousPdfAnchor.value = null;
-  const recoveringFirstChat = previous === `${network.value.enabled ? sceneKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}:no-chat`;
+  const recoveringFirstChat = previous === `${network.value.enabled ? readerKey() : "local"}:${buildWorkbenchSnapshot.value?.book_id ?? "no-book"}:no-chat`;
   if (!recoveringFirstChat) {
     hlPopover.value = null;
     window.getSelection()?.removeAllRanges();
@@ -3458,6 +3525,7 @@ function localQuestionQuoteView(draft: AskDraft): AgentQuestionQuoteView {
 function chatTurnFromHistory(turn: StoredAgentChatTurn, previous?: ChatTurn): ChatTurn {
   const matchingPrevious = previous?.user === turn.user ? previous : undefined;
   return {
+    videoQuestion: turn.video_question,
     spendStop: spendNotice(turn.error, turn.status === 'pending_assistant' ? 'pending' : 'saved'),
     dispositions: Object.fromEntries((turn.domain?.effects ?? []).filter(e => e.disposition).map(e => [e.effect_id, e.disposition!])),
     teachingRef: turn.teaching_ref,
@@ -3481,6 +3549,9 @@ function chatTurnFromHistory(turn: StoredAgentChatTurn, previous?: ChatTurn): Ch
 }
 
 function applyAgentHistory(history: AgentHistoryResponse) {
+  for (const turn of history.current.turns) if (turn.video_question && turn.video_question.draft_id === videoQuestion.draft.value?.context.draft_id) {
+    videoQuestion.accepted(turn.video_question!.draft_id); agentInput.value = '';
+  }
   if (residentRun.snapshot.value && residentRun.snapshot.value.descriptor.session_id !== history.current.id) residentRun.forget();
   const previousChat = activeChatSessionId.value === history.active_session_id ? chat.value : [];
   activeChatSessionId.value = history.active_session_id;
@@ -3627,6 +3698,11 @@ function onTutorResponse(event: Event) {
 }
 async function submitAgentMessage(msg: string, displayUser: string, draft: AskDraft | null, presentationFollowUp?: import("./generated/PresentationFollowUp").PresentationFollowUp, goalMeta: Pick<AgentChatMeta, "goal_id" | "goal_action" | "teaching_ref"> = {}, submittedDraft?: ChatDraft) {
   if (sending.value || agentHistoryLoading.value || agentHistoryError.value) return;
+  let videoMeta: { video_window_id?: string; video_draft_id?: string } = {};
+  if (publishedVideo.value) {
+    try { videoMeta = await videoQuestion.submission(); }
+    catch (error) { fail(error); return; }
+  }
   const questionAnchorLid = draft?.lid ?? selectedLid.value ?? viewport.value?.top_lid ?? null;
   const turn: ChatTurn = {
     teachingRef: goalMeta.teaching_ref,
@@ -3650,6 +3726,7 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
   try {
     const result = await api.agentRunCreate(msg, {
       presentation_follow_up: presentationFollowUp,
+      ...videoMeta,
       ...goalMeta,
       display_user: displayUser, question_anchor_lid: questionAnchorLid,
       question_quote: draft ? { ...draft } : null,
@@ -3659,6 +3736,7 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
     }
     if (disposed || submission !== submissionSequence) return;
     if ("turn_id" in result) {
+      if (videoMeta.video_draft_id) { videoQuestion.accepted(videoMeta.video_draft_id); agentInput.value = ''; }
       turn.turnId = result.turn_id;
       activeChatSessionId.value = result.session_id;
       residentRun.observe(result);
@@ -3700,7 +3778,7 @@ async function sendAgent() {
   if (!msg) return;
   const draft = askDraft.value;
   const submittedDraft = { message: agentInput.value, quote: draft, goalId: targetGoalId.value };
-  agentInput.value = "";
+  if (!publishedVideo.value) agentInput.value = "";
   askDraft.value = null;
   await submitAgentMessage(msg, msg, draft, undefined, targetGoalId.value ? { goal_id: targetGoalId.value } : {}, submittedDraft);
 }
@@ -4616,8 +4694,9 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @mousedown="startResize('left', $event)"
       ></div>
 
+      <VideoReaderPane v-if="publishedVideo && videoInitial" ref="videoPane" :initial="videoInitial" :published="publishedVideo" :owner="readerPreferenceOwner() || 'local'" :media-url="videoMediaUrl" :question="videoQuestion.draft.value?.context" :selection-disabled="videoQuestion.restoring.value || sending || videoAdoption.adopting.value" @select-region="videoQuestion.selectRegion" @clear-region="videoQuestion.clearRegion" @select-range="videoQuestion.selectRange" @clear-range="videoQuestion.clearRange" @frame-ready="videoFrameReady = $event" embedded />
       <PdfReaderPane
-        v-if="activeReaderSurface === 'pdf'"
+        v-else-if="activeReaderSurface === 'pdf'"
         ref="pdfReaderPaneRef"
         :source-manifest="sourceManifest"
         :source-map="pdfSourceMap"
@@ -4681,6 +4760,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @place-note="startNotePlacement"
       />
 
+      <p v-if="publishedVideo && videoAdoption.error.value" role="status">新成果暂未接入：{{ videoAdoption.error.value }}</p>
       <div
         class="resize-handle resize-handle-right"
         role="separator"
@@ -4695,7 +4775,12 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         ref="rightRailRef"
         @recap-publication="recapEmit('recap-publication', $event)"
         :fullscreen="agentFullscreen"
-        v-model:agent-input="agentInput"
+        :agent-input="agentInput"
+        :video-question="videoQuestion.draft.value?.context"
+        :video-error="videoQuestion.error.value"
+        :question-input-blocked="videoQuestion.restoring.value || videoAdoption.adopting.value || (!!publishedVideo && !videoFrameReady && !videoQuestion.draft.value)"
+        @update:agent-input="onAgentInput"
+        @cancel-video-draft="cancelVideoDraft"
         :history-loading="agentHistoryLoading"
         :history-error="agentHistoryError"
         :chat="chat"
@@ -4769,6 +4854,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @delete-highlight="deleteHighlight"
         @agent-source-will-open="captureAgentSourceReturnPoint"
         @agent-source-opened="syncAfterAgentSourceOpen"
+        @media-source-enter="enterMediaSource"
         @refresh-profile="refreshProfileSurface()"
         @mutate-profile="mutateProfile"
         @confirm-sensitive-profile="confirmSensitiveProfile"

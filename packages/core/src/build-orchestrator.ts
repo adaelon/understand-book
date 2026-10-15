@@ -208,6 +208,11 @@ export type AutomaticBuildStage =
   | "teaching_publish"
   | "paper_reading_guide";
 
+// Media preparation precedes semantic stages; it owns its durable per-chunk plan and uses
+// the same artifact publication transaction before a transcript-backed Book is exposed.
+export { buildVideoTranscript, readVideoBuild } from "./video-transcript";
+export { prepareVideoTranslation, acceptVideoTranslation, publishVideoTranslationGroup } from "./video-translation";
+
 import { routeTeachingBuildStages, type TeachingGenerationTask, type TeachingBuildInput } from "./teaching-build";
 import { prepareBuildRetrieval, readBuildRetrievalState, retrievalConfigurationMatches, type BuildRetrievalRuntime, type TeachingRetrievalRequest } from "./automatic-build-retrieval";
 import { readAutomaticBuildStageUsage } from "./automatic-build-metrics";

@@ -1983,7 +1983,8 @@ fn jl8_network_recap_keeps_private_owner_and_original_publication_without_execut
         let turn = &session.turns[0];
         let reference = AgentTurnRef { session_id: session.id.clone(), turn_id: turn.turn_id.clone(), user_turn_ordinal: turn.user_turn_ordinal };
         crate::session_runtime::append(&mut user, &reference, "source", crate::session_event::EventBody::SourcesBound { bindings: vec![SourceBinding {
-            source_ref_id: "original-source".into(), book_id: f.x.book_id.clone(), evidence_range: range,
+            media: None,
+            source_ref_id: "original-source".into(), book_id: f.x.book_id.clone(), evidence_range: Some(range),
             evidence_text_digest: resolved.evidence_text_digest, label_snapshot: resolved.label, preview_snapshot: resolved.preview,
         }] }).unwrap();
     }
@@ -2107,7 +2108,7 @@ fn jl7_backup_restores_new_chats_checkpoint_and_original_domain_objects() {
     assert_eq!(private.read_presentation(&turn.session_id, &reference).unwrap().content, candidate.content);
     assert!(!session.turns[0].source_bindings.is_empty());
     for source in &session.turns[0].source_bindings {
-        assert_eq!(publication.book.resolve_source(&source.evidence_range, "zh-CN", None).unwrap().evidence_text_digest, source.evidence_text_digest);
+        assert_eq!(publication.book.resolve_source(source.evidence_range.as_ref().unwrap(), "zh-CN", None).unwrap().evidence_text_digest, source.evidence_text_digest);
     }
     assert_eq!(user.store.recall(&RecallQuery { layer: Some("long_term".into()), ..Default::default() })[0].mem_id, note.mem_id);
     let learning = user.learning_store().unwrap();

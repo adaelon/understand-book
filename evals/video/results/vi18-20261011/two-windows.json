@@ -1,0 +1,135 @@
+{
+  "date": "2026-10-11T01:32:03.502Z",
+  "material": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    },
+    "transcript": {
+      "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+      "transcript_revision": "1",
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      }
+    }
+  },
+  "publications": [
+    {
+      "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+      "publication_id": "01a12896-0d92-7d51-bde5-0f893b3a60c2"
+    },
+    {
+      "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+      "publication_id": "01a12896-687d-7c32-97a0-4906b09c151d"
+    },
+    {
+      "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+      "publication_id": "01a12896-81e2-7d02-bd87-15b09ddd4595"
+    }
+  ],
+  "granularity": "one accepted batch per publication (four translations; two real frames plus index)",
+  "media_bytes_per_publication": 225917024,
+  "media_bytes_three_snapshots": 677751072,
+  "publication_ms": [
+    2796,
+    2362
+  ],
+  "two_windows": true,
+  "draft_and_inflight_pinned": true,
+  "identical_media_element": true,
+  "playing_and_paused_preserved": true,
+  "rate": 1.5,
+  "english_anchor": {
+    "before": -0.0625,
+    "after": -0.4375
+  },
+  "saved_chat_and_reconnect": true,
+  "missing_dependency_rejected": true,
+  "late_notification_keeps_latest": true,
+  "model": "deterministic held answer, no semantic inference",
+  "responses": {
+    "a": [
+      {
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12896-0d92-7d51-bde5-0f893b3a60c2"
+        },
+        "status": "current"
+      },
+      {
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12896-0d92-7d51-bde5-0f893b3a60c2"
+        },
+        "status": "current"
+      },
+      {
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12896-81e2-7d02-bd87-15b09ddd4595"
+        },
+        "status": "adopted"
+      },
+      {
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12896-81e2-7d02-bd87-15b09ddd4595"
+        },
+        "status": "current"
+      },
+      {
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12896-81e2-7d02-bd87-15b09ddd4595"
+        },
+        "status": "current"
+      }
+    ],
+    "b": [
+      {
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12896-0d92-7d51-bde5-0f893b3a60c2"
+        },
+        "status": "current"
+      },
+      {
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12896-687d-7c32-97a0-4906b09c151d"
+        },
+        "status": "adopted"
+      },
+      {
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12896-687d-7c32-97a0-4906b09c151d"
+        },
+        "status": "current"
+      },
+      {
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12896-81e2-7d02-bd87-15b09ddd4595"
+        },
+        "status": "adopted"
+      },
+      {
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12896-81e2-7d02-bd87-15b09ddd4595"
+        },
+        "status": "current"
+      },
+      {
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a12896-81e2-7d02-bd87-15b09ddd4595"
+        },
+        "status": "current"
+      }
+    ]
+  }
+}

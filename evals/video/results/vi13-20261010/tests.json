@@ -1,0 +1,104 @@
+{
+  "date": "2026-10-10",
+  "status": "passed",
+  "records": [
+    {
+      "area": "base_schema",
+      "command": "cargo test -p base-schema",
+      "passed": 54,
+      "status": "passed"
+    },
+    {
+      "area": "core_graph",
+      "command": "pnpm -C packages/core exec vitest run test/video-graph.test.ts",
+      "passed": 6,
+      "status": "passed"
+    },
+    {
+      "area": "core_merge",
+      "command": "pnpm -C packages/core exec vitest run test/merge.test.ts",
+      "passed": 9,
+      "status": "passed"
+    },
+    {
+      "area": "core_pass1",
+      "command": "pnpm -C packages/core exec vitest run test/pass1-reduction.test.ts",
+      "passed": 15,
+      "status": "passed"
+    },
+    {
+      "area": "core_pass2",
+      "command": "pnpm -C packages/core exec vitest run test/pass2.test.ts test/pass2-build.test.ts",
+      "passed": 23,
+      "status": "passed"
+    },
+    {
+      "area": "core_media",
+      "command": "pnpm -C packages/core exec vitest run test/video-executor-media.test.ts",
+      "passed": 4,
+      "status": "passed"
+    },
+    {
+      "area": "read_concept",
+      "command": "cargo test -p read-tools --lib concept",
+      "passed": 11,
+      "status": "passed"
+    },
+    {
+      "area": "read_video_graph",
+      "command": "cargo test -p read-tools --lib video_graph",
+      "passed": 1,
+      "status": "passed"
+    },
+    {
+      "area": "runtime_video",
+      "command": "cargo test -p runtime --lib video_",
+      "passed": 6,
+      "status": "passed"
+    },
+    {
+      "area": "runtime_registry",
+      "command": "cargo test -p runtime --lib tool_registry",
+      "passed": 18,
+      "status": "passed"
+    },
+    {
+      "area": "runtime_exposure",
+      "command": "cargo test -p runtime --lib tool_exposure",
+      "passed": 27,
+      "status": "passed"
+    },
+    {
+      "area": "book_contracts",
+      "command": "cargo test -p book-tool-contracts",
+      "passed": 10,
+      "status": "passed"
+    },
+    {
+      "area": "server_publication",
+      "command": "cargo test -p server --lib video_publication",
+      "passed": 6,
+      "status": "passed"
+    }
+  ],
+  "total_unique_runner_cases": 190,
+  "notes": [
+    "Counts include Rust type binding export tests. Repeated runs are not counted twice.",
+    "One ignored Server browser-host fixture is not included; this slice changes no browser interaction."
+  ],
+  "typecheck": {
+    "command": "pnpm -C packages/core typecheck",
+    "status": "passed"
+  },
+  "build": {
+    "target": "D:/codex-build/understand-book-vi12",
+    "profile": "debug=0, incremental=0",
+    "binaries": [
+      "server",
+      "publish_book",
+      "video_graph example",
+      "video_frames_probe example"
+    ]
+  },
+  "real_verification": "verification.json"
+}

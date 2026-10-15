@@ -1,0 +1,873 @@
+{
+  "status": "passed",
+  "publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+  },
+  "input_publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+  },
+  "nodes": 17,
+  "edges": 17,
+  "graph_coverage": {
+    "capability": "graph",
+    "accepted": [
+      {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 648000,
+        "end_ms": 653000
+      },
+      {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 1180000,
+        "end_ms": 1238460
+      }
+    ],
+    "pending": [
+      {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 0,
+        "end_ms": 648000
+      },
+      {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 653000,
+        "end_ms": 1180000
+      },
+      {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 1238460,
+        "end_ms": 4641376.1450000005
+      }
+    ],
+    "failed": []
+  },
+  "original_source_and_720_translations_preserved": true,
+  "old_publication_unchanged": true,
+  "same_name_x": [
+    {
+      "node_id": "video:graph-vi13-einsum:n1",
+      "identity": {
+        "kind": "video_object",
+        "meaning": "形状为(3,4)的全1矩阵，维度标记为seq1和hidden。"
+      }
+    },
+    {
+      "node_id": "video:graph-vi13-text:n2",
+      "identity": {
+        "kind": "video_object",
+        "meaning": "计算过程中被索引并参与乘法的输入 x；当前片段未说明其形状。"
+      }
+    },
+    {
+      "node_id": "video:graph-vi13-visual:n4",
+      "identity": {
+        "kind": "video_object",
+        "meaning": "由代码torch.tensor([1e-8], dtype=torch.bfloat16)创建的张量，画面显示其值约为1.001e-8。"
+      }
+    }
+  ],
+  "pure_visual_without_lids": true,
+  "confirmations": [
+    {
+      "batch": "graph-vi13-confirm",
+      "node_id": "video:graph-vi13-einsum:n1",
+      "reason": "当前画面再次显示同一段代码中的 x = torch.ones(3, 4)，并由语音将x作为该einsum计算的输入。"
+    },
+    {
+      "batch": "graph-vi13-confirm",
+      "node_id": "video:graph-vi13-einsum:n2",
+      "reason": "当前画面再次显示同一段代码中的 y = torch.ones(4, 3)，并由语音将y作为该einsum计算的输入。"
+    },
+    {
+      "batch": "graph-vi13-confirm",
+      "node_id": "video:graph-vi13-einsum:n3",
+      "reason": "画面是同一einsum表达式，语音继续解释它对各维度取值的枚举与求和过程。"
+    },
+    {
+      "batch": "graph-vi13-confirm",
+      "node_id": "video:graph-vi13-einsum:n4",
+      "reason": "当前画面再次显示同一计算的z及其九个值4，语音称乘积会累加到结果z。"
+    }
+  ],
+  "joint_relations": [
+    {
+      "direction": "directed",
+      "evidence": [
+        {
+          "support_role": "联合支持",
+          "target": {
+            "kind": "joint",
+            "members": [
+              {
+                "support_role": "画面给出被解释的einsum表达式。",
+                "target": {
+                  "frames": [
+                    {
+                      "actual_pts_ms": 1211000,
+                      "height": 1080,
+                      "video": {
+                        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                        "media_revision": "1"
+                      },
+                      "width": 1920
+                    }
+                  ],
+                  "kind": "visual",
+                  "publication": {
+                    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                    "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+                  },
+                  "regions": []
+                }
+              },
+              {
+                "support_role": "语音开始解释该表达式的枚举求和过程。",
+                "target": {
+                  "kind": "text",
+                  "publication": {
+                    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                    "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+                  },
+                  "text_range": {
+                    "lid": "191",
+                    "range": {
+                      "end": 156,
+                      "start": 0
+                    }
+                  },
+                  "transcript": {
+                    "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                    "transcript_revision": "1",
+                    "video": {
+                      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                      "media_revision": "1"
+                    }
+                  }
+                }
+              },
+              {
+                "support_role": "语音继续说明索引、乘法和累加步骤。",
+                "target": {
+                  "kind": "text",
+                  "publication": {
+                    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                    "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+                  },
+                  "text_range": {
+                    "lid": "192",
+                    "range": {
+                      "end": 140,
+                      "start": 0
+                    }
+                  },
+                  "transcript": {
+                    "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                    "transcript_revision": "1",
+                    "video": {
+                      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                      "media_revision": "1"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "scope": "local",
+      "source": "video:graph-vi13-einsum:n3",
+      "target": "video:graph-vi13-confirm:n5",
+      "type": "计算过程",
+      "weight": 1
+    },
+    {
+      "direction": "directed",
+      "evidence": [
+        {
+          "support_role": "联合支持",
+          "target": {
+            "kind": "joint",
+            "members": [
+              {
+                "support_role": "语音说明乘积累加到结果z。",
+                "target": {
+                  "kind": "text",
+                  "publication": {
+                    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                    "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+                  },
+                  "text_range": {
+                    "lid": "192",
+                    "range": {
+                      "end": 140,
+                      "start": 0
+                    }
+                  },
+                  "transcript": {
+                    "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                    "transcript_revision": "1",
+                    "video": {
+                      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                      "media_revision": "1"
+                    }
+                  }
+                }
+              },
+              {
+                "support_role": "画面显示结果z及其3×3数值。",
+                "target": {
+                  "frames": [
+                    {
+                      "actual_pts_ms": 1211000,
+                      "height": 1080,
+                      "video": {
+                        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                        "media_revision": "1"
+                      },
+                      "width": 1920
+                    }
+                  ],
+                  "kind": "visual",
+                  "publication": {
+                    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                    "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+                  },
+                  "regions": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "scope": "local",
+      "source": "video:graph-vi13-confirm:n5",
+      "target": "video:graph-vi13-einsum:n4",
+      "type": "累加得到",
+      "weight": 1
+    },
+    {
+      "direction": "directed",
+      "evidence": [
+        {
+          "support_role": "联合支持",
+          "target": {
+            "kind": "joint",
+            "members": [
+              {
+                "support_role": "语音说明hidden被求和消去。",
+                "target": {
+                  "kind": "text",
+                  "publication": {
+                    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                    "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+                  },
+                  "text_range": {
+                    "lid": "189",
+                    "range": {
+                      "end": 169,
+                      "start": 0
+                    }
+                  },
+                  "transcript": {
+                    "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                    "transcript_revision": "1",
+                    "video": {
+                      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                      "media_revision": "1"
+                    }
+                  }
+                }
+              },
+              {
+                "support_role": "输出标签只保留seq1与seq2，图示结果为3×3。",
+                "target": {
+                  "frames": [
+                    {
+                      "actual_pts_ms": 1210000,
+                      "height": 1080,
+                      "video": {
+                        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                        "media_revision": "1"
+                      },
+                      "width": 1920
+                    }
+                  ],
+                  "kind": "visual",
+                  "publication": {
+                    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                    "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+                  },
+                  "regions": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "scope": "local",
+      "source": "video:graph-vi13-einsum:n5",
+      "target": "video:graph-vi13-einsum:n4",
+      "type": "决定输出维度和值",
+      "weight": 0.949999988079071
+    }
+  ],
+  "text_reads": [
+    {
+      "lid": "188",
+      "text": "I'm gonna have Y, that's the matrix, which has also rows and columns, which I'm gonna name hidden and seek two.\n\n"
+    },
+    {
+      "lid": "189",
+      "text": "And I'm going to produce a tensor, or a Heria matrix, where the dimensions are indexed by C1 and C2 and anything that is not mentioned here, the hidden, gets summed out.\n\n"
+    },
+    {
+      "lid": "191",
+      "text": "So the way this works is I'm going to sum over, enumerate over all possible values of all the variables that occur here, which are sequence, hidden, and C2.\n\n"
+    },
+    {
+      "lid": "192",
+      "text": "And I'm going to basically index into x, index into y, multiply them and dump them, accumulate them into the result z sub sequence C2. Okay?\n\n"
+    }
+  ],
+  "frame_requests": 5,
+  "checks": [
+    {
+      "candidate": "video:graph-vi13-einsum:n3",
+      "time": 1211000,
+      "read_hint": {
+        "location": {
+          "end_ms": 1211000.001,
+          "start_ms": 1211000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "sampling": [
+          1211000
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 1211000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 1211000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+        },
+        "requested_range": {
+          "end_ms": 1211000.001,
+          "start_ms": 1211000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 1223840,
+              "start_ms": 1210820,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-191",
+            "text": "So the way this works is I'm going to sum over, enumerate over all possible values of all the variables that occur here, which are sequence, hidden, and C2.",
+            "text_range": {
+              "lid": "191",
+              "range": {
+                "end": 156,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a125a0-dcf4-79c1-8ea0-faf6b8edd6b7",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+          },
+          "model_request_id": "01a125a0-dcbc-7ce2-9d0f-34d6fb780ad2",
+          "frames": [
+            {
+              "requested_ms": 1211000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 1211000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "request_pixels_equal": true,
+      "source_pixels_equal": true
+    },
+    {
+      "candidate": "video:graph-vi13-einsum:n3",
+      "time": 1210000,
+      "read_hint": {
+        "location": {
+          "end_ms": 1210000.001,
+          "start_ms": 1210000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "sampling": [
+          1210000
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 1210000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 1210000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+        },
+        "requested_range": {
+          "end_ms": 1210000.001,
+          "start_ms": 1210000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": []
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a125a0-e7a1-71e1-a34c-2b157b162509",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+          },
+          "model_request_id": "01a125a0-e77d-7192-b4b1-a5790a6d5e2a",
+          "frames": [
+            {
+              "requested_ms": 1210000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 1210000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "request_pixels_equal": true,
+      "source_pixels_equal": true
+    },
+    {
+      "candidate": "video:graph-vi13-einsum:n3",
+      "time": 1196000,
+      "read_hint": {
+        "location": {
+          "end_ms": 1196000.001,
+          "start_ms": 1196000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "sampling": [
+          1196000
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 1196000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 1196000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+        },
+        "requested_range": {
+          "end_ms": 1196000.001,
+          "start_ms": 1196000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 1209680,
+              "start_ms": 1194780,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-189",
+            "text": "And I'm going to produce a tensor, or a Heria matrix, where the dimensions are indexed by C1 and C2 and anything that is not mentioned here, the hidden, gets summed out.",
+            "text_range": {
+              "lid": "189",
+              "range": {
+                "end": 169,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a125a0-f4a1-7fe0-a944-0fe89a1d0884",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+          },
+          "model_request_id": "01a125a0-f480-7eb2-b8d1-17b7cdb3f153",
+          "frames": [
+            {
+              "requested_ms": 1196000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 1196000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "request_pixels_equal": true,
+      "source_pixels_equal": true
+    },
+    {
+      "candidate": "video:graph-vi13-visual:n1",
+      "time": 652000,
+      "read_hint": {
+        "location": {
+          "end_ms": 652000.001,
+          "start_ms": 652000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "sampling": [
+          652000
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 652000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 652000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+        },
+        "requested_range": {
+          "end_ms": 652000.001,
+          "start_ms": 652000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": []
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a125a1-0547-7ab3-ae7d-35abb7d21c3c",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+          },
+          "model_request_id": "01a125a1-051c-73b1-8bb1-9ce66561de67",
+          "frames": [
+            {
+              "requested_ms": 652000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 652000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "request_pixels_equal": true,
+      "source_pixels_equal": true
+    },
+    {
+      "candidate": "video:graph-vi13-visual:n1",
+      "time": 648000,
+      "read_hint": {
+        "location": {
+          "end_ms": 648000.001,
+          "start_ms": 648000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "sampling": [
+          648000
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 648000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 648000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+        },
+        "requested_range": {
+          "end_ms": 648000.001,
+          "start_ms": 648000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 649580,
+              "start_ms": 641360,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-96",
+            "text": "And because things are kind of sloppy and sarcastic anyway, you don't need that much resolution, okay?",
+            "text_range": {
+              "lid": "96",
+              "range": {
+                "end": 102,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a125a1-110d-71b3-bd97-64a80c871903",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+          },
+          "model_request_id": "01a125a1-10e2-7940-b1a4-110ddeefe676",
+          "frames": [
+            {
+              "requested_ms": 648000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 648000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "request_pixels_equal": true,
+      "source_pixels_equal": true
+    }
+  ],
+  "extraction_model_runs": 4,
+  "extraction_elapsed_ms": 286960,
+  "usage": [
+    {
+      "task": "graph-vi13-einsum",
+      "usage": {
+        "input_tokens": 148947,
+        "cached_input_tokens": 115712,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 3534,
+        "reasoning_output_tokens": 157
+      }
+    },
+    {
+      "task": "graph-vi13-visual",
+      "usage": {
+        "input_tokens": 126024,
+        "cached_input_tokens": 109952,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 3988,
+        "reasoning_output_tokens": 136
+      }
+    },
+    {
+      "task": "graph-vi13-text",
+      "usage": {
+        "input_tokens": 117731,
+        "cached_input_tokens": 88704,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 3508,
+        "reasoning_output_tokens": 299
+      }
+    },
+    {
+      "task": "graph-vi13-confirm",
+      "usage": {
+        "input_tokens": 135492,
+        "cached_input_tokens": 99840,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 4363,
+        "reasoning_output_tokens": 238
+      }
+    }
+  ],
+  "limitations": [
+    "Graph extraction used real Codex native images and transcript. Read-time HTTP recorder verifies transport and observation, not a live-model semantic answer.",
+    "Graph coverage is bounded to these accepted work units, not the whole lecture."
+  ]
+}

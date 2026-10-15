@@ -1,0 +1,1357 @@
+[
+  {
+    "sample": "micro",
+    "interval_ms": 500,
+    "change_threshold": 0.01,
+    "frames": 12,
+    "candidates": 6,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 2000,
+        "nearest_ms": 2000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 4000,
+        "nearest_ms": 4000,
+        "distance_ms": 0
+      }
+    ],
+    "semantic_review": "controlled",
+    "times": [
+      0,
+      1500,
+      2000,
+      3500,
+      4000,
+      5500
+    ],
+    "elapsed_ms": 1130,
+    "decoded_bytes": 1555200
+  },
+  {
+    "sample": "micro",
+    "interval_ms": 500,
+    "change_threshold": 0.03,
+    "frames": 12,
+    "candidates": 6,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 2000,
+        "nearest_ms": 2000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 4000,
+        "nearest_ms": 4000,
+        "distance_ms": 0
+      }
+    ],
+    "semantic_review": "controlled",
+    "times": [
+      0,
+      1500,
+      2000,
+      3500,
+      4000,
+      5500
+    ],
+    "elapsed_ms": 1130,
+    "decoded_bytes": 1555200
+  },
+  {
+    "sample": "micro",
+    "interval_ms": 500,
+    "change_threshold": 0.06,
+    "frames": 12,
+    "candidates": 6,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 2000,
+        "nearest_ms": 2000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 4000,
+        "nearest_ms": 4000,
+        "distance_ms": 0
+      }
+    ],
+    "semantic_review": "controlled",
+    "times": [
+      0,
+      1500,
+      2000,
+      3500,
+      4000,
+      5500
+    ],
+    "elapsed_ms": 1130,
+    "decoded_bytes": 1555200
+  },
+  {
+    "sample": "progressive",
+    "interval_ms": 500,
+    "change_threshold": 0.01,
+    "frames": 120,
+    "candidates": 48,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 600000,
+        "nearest_ms": 600000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 615000,
+        "nearest_ms": 615000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 630000,
+        "nearest_ms": 627500,
+        "distance_ms": 2500
+      },
+      {
+        "labelled_ms": 650000,
+        "nearest_ms": 648000,
+        "distance_ms": 2000
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      595000,
+      595500,
+      600000,
+      600500,
+      601000,
+      601500,
+      602500,
+      603000,
+      603500,
+      604000,
+      604500,
+      605000,
+      605500,
+      606000,
+      606500,
+      611000,
+      611500,
+      612000,
+      612500,
+      613000,
+      613500,
+      614000,
+      614500,
+      615000,
+      620000,
+      620500,
+      621000,
+      621500,
+      622000,
+      622500,
+      623000,
+      623500,
+      624000,
+      624500,
+      625000,
+      627000,
+      627500,
+      642500,
+      646500,
+      647000,
+      647500,
+      648000,
+      652000,
+      652500,
+      653000,
+      653500,
+      654000,
+      654500
+    ],
+    "elapsed_ms": 1481,
+    "decoded_bytes": 15552000
+  },
+  {
+    "sample": "progressive",
+    "interval_ms": 500,
+    "change_threshold": 0.03,
+    "frames": 120,
+    "candidates": 31,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 600000,
+        "nearest_ms": 600000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 615000,
+        "nearest_ms": 615000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 630000,
+        "nearest_ms": 627500,
+        "distance_ms": 2500
+      },
+      {
+        "labelled_ms": 650000,
+        "nearest_ms": 648000,
+        "distance_ms": 2000
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      595000,
+      595500,
+      600000,
+      600500,
+      601000,
+      601500,
+      602500,
+      603000,
+      603500,
+      604000,
+      604500,
+      612000,
+      612500,
+      614000,
+      614500,
+      615000,
+      624000,
+      624500,
+      627000,
+      627500,
+      642500,
+      646500,
+      647000,
+      647500,
+      648000,
+      652000,
+      652500,
+      653000,
+      653500,
+      654000,
+      654500
+    ],
+    "elapsed_ms": 1481,
+    "decoded_bytes": 15552000
+  },
+  {
+    "sample": "progressive",
+    "interval_ms": 500,
+    "change_threshold": 0.06,
+    "frames": 120,
+    "candidates": 18,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 600000,
+        "nearest_ms": 602500,
+        "distance_ms": 2500
+      },
+      {
+        "labelled_ms": 615000,
+        "nearest_ms": 618000,
+        "distance_ms": 3000
+      },
+      {
+        "labelled_ms": 630000,
+        "nearest_ms": 627500,
+        "distance_ms": 2500
+      },
+      {
+        "labelled_ms": 650000,
+        "nearest_ms": 648000,
+        "distance_ms": 2000
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      595000,
+      595500,
+      602500,
+      603000,
+      618000,
+      627000,
+      627500,
+      642500,
+      646500,
+      647000,
+      647500,
+      648000,
+      652000,
+      652500,
+      653000,
+      653500,
+      654000,
+      654500
+    ],
+    "elapsed_ms": 1481,
+    "decoded_bytes": 15552000
+  },
+  {
+    "sample": "repeated",
+    "interval_ms": 500,
+    "change_threshold": 0.01,
+    "frames": 90,
+    "candidates": 76,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 1180000,
+        "nearest_ms": 1180000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1200000,
+        "nearest_ms": 1200000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1210000,
+        "nearest_ms": 1209500,
+        "distance_ms": 500
+      },
+      {
+        "labelled_ms": 1220000,
+        "nearest_ms": 1220000,
+        "distance_ms": 0
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      1180000,
+      1180500,
+      1181000,
+      1181500,
+      1182000,
+      1184000,
+      1184500,
+      1185000,
+      1185500,
+      1186000,
+      1186500,
+      1187000,
+      1190500,
+      1191000,
+      1191500,
+      1192000,
+      1192500,
+      1193000,
+      1193500,
+      1194000,
+      1194500,
+      1196000,
+      1196500,
+      1197000,
+      1197500,
+      1198000,
+      1198500,
+      1199000,
+      1199500,
+      1200000,
+      1200500,
+      1201500,
+      1202000,
+      1202500,
+      1203000,
+      1203500,
+      1204000,
+      1204500,
+      1205000,
+      1205500,
+      1206000,
+      1206500,
+      1207000,
+      1207500,
+      1208000,
+      1208500,
+      1209000,
+      1209500,
+      1210500,
+      1211000,
+      1211500,
+      1212000,
+      1212500,
+      1213000,
+      1213500,
+      1214000,
+      1214500,
+      1215000,
+      1215500,
+      1216000,
+      1216500,
+      1217000,
+      1217500,
+      1218000,
+      1218500,
+      1219000,
+      1219500,
+      1220000,
+      1220500,
+      1221000,
+      1221500,
+      1222000,
+      1222500,
+      1223000,
+      1223500,
+      1224500
+    ],
+    "elapsed_ms": 1153,
+    "decoded_bytes": 11664000
+  },
+  {
+    "sample": "repeated",
+    "interval_ms": 500,
+    "change_threshold": 0.03,
+    "frames": 90,
+    "candidates": 44,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 1180000,
+        "nearest_ms": 1180000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1200000,
+        "nearest_ms": 1200000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1210000,
+        "nearest_ms": 1210500,
+        "distance_ms": 500
+      },
+      {
+        "labelled_ms": 1220000,
+        "nearest_ms": 1220000,
+        "distance_ms": 0
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      1180000,
+      1180500,
+      1184000,
+      1184500,
+      1185000,
+      1185500,
+      1186000,
+      1191500,
+      1192000,
+      1193500,
+      1194000,
+      1194500,
+      1196500,
+      1197000,
+      1197500,
+      1198000,
+      1198500,
+      1199000,
+      1200000,
+      1200500,
+      1201500,
+      1202000,
+      1202500,
+      1203000,
+      1206000,
+      1206500,
+      1208500,
+      1209000,
+      1210500,
+      1211000,
+      1211500,
+      1212500,
+      1213000,
+      1213500,
+      1214000,
+      1215000,
+      1215500,
+      1216000,
+      1216500,
+      1220000,
+      1220500,
+      1221500,
+      1222000,
+      1224500
+    ],
+    "elapsed_ms": 1153,
+    "decoded_bytes": 11664000
+  },
+  {
+    "sample": "repeated",
+    "interval_ms": 500,
+    "change_threshold": 0.06,
+    "frames": 90,
+    "candidates": 6,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 1180000,
+        "nearest_ms": 1180000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1200000,
+        "nearest_ms": 1195500,
+        "distance_ms": 4500
+      },
+      {
+        "labelled_ms": 1210000,
+        "nearest_ms": 1210500,
+        "distance_ms": 500
+      },
+      {
+        "labelled_ms": 1220000,
+        "nearest_ms": 1224500,
+        "distance_ms": 4500
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      1180000,
+      1180500,
+      1195500,
+      1210500,
+      1211000,
+      1224500
+    ],
+    "elapsed_ms": 1153,
+    "decoded_bytes": 11664000
+  },
+  {
+    "sample": "micro",
+    "interval_ms": 1000,
+    "change_threshold": 0.01,
+    "frames": 6,
+    "candidates": 6,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 2000,
+        "nearest_ms": 2000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 4000,
+        "nearest_ms": 4000,
+        "distance_ms": 0
+      }
+    ],
+    "semantic_review": "controlled",
+    "times": [
+      0,
+      1000,
+      2000,
+      3000,
+      4000,
+      5000
+    ],
+    "elapsed_ms": 295,
+    "decoded_bytes": 777600
+  },
+  {
+    "sample": "micro",
+    "interval_ms": 1000,
+    "change_threshold": 0.03,
+    "frames": 6,
+    "candidates": 6,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 2000,
+        "nearest_ms": 2000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 4000,
+        "nearest_ms": 4000,
+        "distance_ms": 0
+      }
+    ],
+    "semantic_review": "controlled",
+    "times": [
+      0,
+      1000,
+      2000,
+      3000,
+      4000,
+      5000
+    ],
+    "elapsed_ms": 295,
+    "decoded_bytes": 777600
+  },
+  {
+    "sample": "micro",
+    "interval_ms": 1000,
+    "change_threshold": 0.06,
+    "frames": 6,
+    "candidates": 6,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 2000,
+        "nearest_ms": 2000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 4000,
+        "nearest_ms": 4000,
+        "distance_ms": 0
+      }
+    ],
+    "semantic_review": "controlled",
+    "times": [
+      0,
+      1000,
+      2000,
+      3000,
+      4000,
+      5000
+    ],
+    "elapsed_ms": 295,
+    "decoded_bytes": 777600
+  },
+  {
+    "sample": "progressive",
+    "interval_ms": 1000,
+    "change_threshold": 0.01,
+    "frames": 60,
+    "candidates": 30,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 600000,
+        "nearest_ms": 600000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 615000,
+        "nearest_ms": 615000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 630000,
+        "nearest_ms": 628000,
+        "distance_ms": 2000
+      },
+      {
+        "labelled_ms": 650000,
+        "nearest_ms": 648000,
+        "distance_ms": 2000
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      595000,
+      596000,
+      600000,
+      601000,
+      602000,
+      603000,
+      604000,
+      605000,
+      606000,
+      607000,
+      611000,
+      612000,
+      613000,
+      614000,
+      615000,
+      620000,
+      621000,
+      622000,
+      623000,
+      624000,
+      625000,
+      627000,
+      628000,
+      643000,
+      646000,
+      647000,
+      648000,
+      652000,
+      653000,
+      654000
+    ],
+    "elapsed_ms": 1421,
+    "decoded_bytes": 7776000
+  },
+  {
+    "sample": "progressive",
+    "interval_ms": 1000,
+    "change_threshold": 0.03,
+    "frames": 60,
+    "candidates": 20,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 600000,
+        "nearest_ms": 600000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 615000,
+        "nearest_ms": 615000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 630000,
+        "nearest_ms": 628000,
+        "distance_ms": 2000
+      },
+      {
+        "labelled_ms": 650000,
+        "nearest_ms": 648000,
+        "distance_ms": 2000
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      595000,
+      596000,
+      600000,
+      601000,
+      602000,
+      603000,
+      604000,
+      605000,
+      606000,
+      614000,
+      615000,
+      627000,
+      628000,
+      643000,
+      646000,
+      647000,
+      648000,
+      652000,
+      653000,
+      654000
+    ],
+    "elapsed_ms": 1421,
+    "decoded_bytes": 7776000
+  },
+  {
+    "sample": "progressive",
+    "interval_ms": 1000,
+    "change_threshold": 0.06,
+    "frames": 60,
+    "candidates": 14,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 600000,
+        "nearest_ms": 602000,
+        "distance_ms": 2000
+      },
+      {
+        "labelled_ms": 615000,
+        "nearest_ms": 618000,
+        "distance_ms": 3000
+      },
+      {
+        "labelled_ms": 630000,
+        "nearest_ms": 628000,
+        "distance_ms": 2000
+      },
+      {
+        "labelled_ms": 650000,
+        "nearest_ms": 648000,
+        "distance_ms": 2000
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      595000,
+      596000,
+      602000,
+      603000,
+      618000,
+      627000,
+      628000,
+      643000,
+      646000,
+      647000,
+      648000,
+      652000,
+      653000,
+      654000
+    ],
+    "elapsed_ms": 1421,
+    "decoded_bytes": 7776000
+  },
+  {
+    "sample": "repeated",
+    "interval_ms": 1000,
+    "change_threshold": 0.01,
+    "frames": 45,
+    "candidates": 42,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 1180000,
+        "nearest_ms": 1180000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1200000,
+        "nearest_ms": 1200000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1210000,
+        "nearest_ms": 1210000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1220000,
+        "nearest_ms": 1220000,
+        "distance_ms": 0
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      1180000,
+      1181000,
+      1182000,
+      1184000,
+      1185000,
+      1186000,
+      1187000,
+      1190000,
+      1191000,
+      1192000,
+      1193000,
+      1194000,
+      1195000,
+      1196000,
+      1197000,
+      1198000,
+      1199000,
+      1200000,
+      1201000,
+      1202000,
+      1203000,
+      1204000,
+      1205000,
+      1206000,
+      1207000,
+      1208000,
+      1209000,
+      1210000,
+      1211000,
+      1212000,
+      1213000,
+      1214000,
+      1215000,
+      1216000,
+      1217000,
+      1218000,
+      1219000,
+      1220000,
+      1221000,
+      1222000,
+      1223000,
+      1224000
+    ],
+    "elapsed_ms": 1107,
+    "decoded_bytes": 5832000
+  },
+  {
+    "sample": "repeated",
+    "interval_ms": 1000,
+    "change_threshold": 0.03,
+    "frames": 45,
+    "candidates": 21,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 1180000,
+        "nearest_ms": 1180000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1200000,
+        "nearest_ms": 1200000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1210000,
+        "nearest_ms": 1210000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1220000,
+        "nearest_ms": 1224000,
+        "distance_ms": 4000
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      1180000,
+      1181000,
+      1191000,
+      1192000,
+      1193000,
+      1194000,
+      1195000,
+      1198000,
+      1199000,
+      1200000,
+      1201000,
+      1202000,
+      1203000,
+      1208000,
+      1209000,
+      1210000,
+      1211000,
+      1212000,
+      1213000,
+      1214000,
+      1224000
+    ],
+    "elapsed_ms": 1107,
+    "decoded_bytes": 5832000
+  },
+  {
+    "sample": "repeated",
+    "interval_ms": 1000,
+    "change_threshold": 0.06,
+    "frames": 45,
+    "candidates": 6,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 1180000,
+        "nearest_ms": 1180000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1200000,
+        "nearest_ms": 1196000,
+        "distance_ms": 4000
+      },
+      {
+        "labelled_ms": 1210000,
+        "nearest_ms": 1210000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1220000,
+        "nearest_ms": 1224000,
+        "distance_ms": 4000
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      1180000,
+      1181000,
+      1196000,
+      1210000,
+      1211000,
+      1224000
+    ],
+    "elapsed_ms": 1107,
+    "decoded_bytes": 5832000
+  },
+  {
+    "sample": "micro",
+    "interval_ms": 2000,
+    "change_threshold": 0.01,
+    "frames": 3,
+    "candidates": 3,
+    "misses": [
+      2000,
+      4000
+    ],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 2000,
+        "nearest_ms": 2000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 4000,
+        "nearest_ms": 4000,
+        "distance_ms": 0
+      }
+    ],
+    "semantic_review": "controlled",
+    "times": [
+      0,
+      2000,
+      4000
+    ],
+    "elapsed_ms": 280,
+    "decoded_bytes": 388800
+  },
+  {
+    "sample": "micro",
+    "interval_ms": 2000,
+    "change_threshold": 0.03,
+    "frames": 3,
+    "candidates": 3,
+    "misses": [
+      2000,
+      4000
+    ],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 2000,
+        "nearest_ms": 2000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 4000,
+        "nearest_ms": 4000,
+        "distance_ms": 0
+      }
+    ],
+    "semantic_review": "controlled",
+    "times": [
+      0,
+      2000,
+      4000
+    ],
+    "elapsed_ms": 280,
+    "decoded_bytes": 388800
+  },
+  {
+    "sample": "micro",
+    "interval_ms": 2000,
+    "change_threshold": 0.06,
+    "frames": 3,
+    "candidates": 3,
+    "misses": [
+      2000,
+      4000
+    ],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 2000,
+        "nearest_ms": 2000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 4000,
+        "nearest_ms": 4000,
+        "distance_ms": 0
+      }
+    ],
+    "semantic_review": "controlled",
+    "times": [
+      0,
+      2000,
+      4000
+    ],
+    "elapsed_ms": 280,
+    "decoded_bytes": 388800
+  },
+  {
+    "sample": "progressive",
+    "interval_ms": 2000,
+    "change_threshold": 0.01,
+    "frames": 30,
+    "candidates": 21,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 600000,
+        "nearest_ms": 599000,
+        "distance_ms": 1000
+      },
+      {
+        "labelled_ms": 615000,
+        "nearest_ms": 615000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 630000,
+        "nearest_ms": 629000,
+        "distance_ms": 1000
+      },
+      {
+        "labelled_ms": 650000,
+        "nearest_ms": 649000,
+        "distance_ms": 1000
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      595000,
+      597000,
+      599000,
+      601000,
+      603000,
+      605000,
+      607000,
+      611000,
+      613000,
+      615000,
+      619000,
+      621000,
+      623000,
+      625000,
+      627000,
+      629000,
+      645000,
+      647000,
+      649000,
+      651000,
+      653000
+    ],
+    "elapsed_ms": 1420,
+    "decoded_bytes": 3888000
+  },
+  {
+    "sample": "progressive",
+    "interval_ms": 2000,
+    "change_threshold": 0.03,
+    "frames": 30,
+    "candidates": 16,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 600000,
+        "nearest_ms": 599000,
+        "distance_ms": 1000
+      },
+      {
+        "labelled_ms": 615000,
+        "nearest_ms": 615000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 630000,
+        "nearest_ms": 629000,
+        "distance_ms": 1000
+      },
+      {
+        "labelled_ms": 650000,
+        "nearest_ms": 649000,
+        "distance_ms": 1000
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      595000,
+      597000,
+      599000,
+      601000,
+      603000,
+      605000,
+      607000,
+      613000,
+      615000,
+      627000,
+      629000,
+      645000,
+      647000,
+      649000,
+      651000,
+      653000
+    ],
+    "elapsed_ms": 1420,
+    "decoded_bytes": 3888000
+  },
+  {
+    "sample": "progressive",
+    "interval_ms": 2000,
+    "change_threshold": 0.06,
+    "frames": 30,
+    "candidates": 12,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 600000,
+        "nearest_ms": 601000,
+        "distance_ms": 1000
+      },
+      {
+        "labelled_ms": 615000,
+        "nearest_ms": 619000,
+        "distance_ms": 4000
+      },
+      {
+        "labelled_ms": 630000,
+        "nearest_ms": 629000,
+        "distance_ms": 1000
+      },
+      {
+        "labelled_ms": 650000,
+        "nearest_ms": 649000,
+        "distance_ms": 1000
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      595000,
+      597000,
+      601000,
+      603000,
+      619000,
+      627000,
+      629000,
+      645000,
+      647000,
+      649000,
+      651000,
+      653000
+    ],
+    "elapsed_ms": 1420,
+    "decoded_bytes": 3888000
+  },
+  {
+    "sample": "repeated",
+    "interval_ms": 2000,
+    "change_threshold": 0.01,
+    "frames": 23,
+    "candidates": 23,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 1180000,
+        "nearest_ms": 1180000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1200000,
+        "nearest_ms": 1200000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1210000,
+        "nearest_ms": 1210000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1220000,
+        "nearest_ms": 1220000,
+        "distance_ms": 0
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      1180000,
+      1182000,
+      1184000,
+      1186000,
+      1188000,
+      1190000,
+      1192000,
+      1194000,
+      1196000,
+      1198000,
+      1200000,
+      1202000,
+      1204000,
+      1206000,
+      1208000,
+      1210000,
+      1212000,
+      1214000,
+      1216000,
+      1218000,
+      1220000,
+      1222000,
+      1224000
+    ],
+    "elapsed_ms": 1141,
+    "decoded_bytes": 2980800
+  },
+  {
+    "sample": "repeated",
+    "interval_ms": 2000,
+    "change_threshold": 0.03,
+    "frames": 23,
+    "candidates": 13,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 1180000,
+        "nearest_ms": 1180000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1200000,
+        "nearest_ms": 1200000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1210000,
+        "nearest_ms": 1210000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1220000,
+        "nearest_ms": 1224000,
+        "distance_ms": 4000
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      1180000,
+      1182000,
+      1192000,
+      1194000,
+      1196000,
+      1200000,
+      1202000,
+      1204000,
+      1206000,
+      1208000,
+      1210000,
+      1212000,
+      1224000
+    ],
+    "elapsed_ms": 1141,
+    "decoded_bytes": 2980800
+  },
+  {
+    "sample": "repeated",
+    "interval_ms": 2000,
+    "change_threshold": 0.06,
+    "frames": 23,
+    "candidates": 5,
+    "misses": [],
+    "anchor_distances_ms": [
+      {
+        "labelled_ms": 1180000,
+        "nearest_ms": 1180000,
+        "distance_ms": 0
+      },
+      {
+        "labelled_ms": 1200000,
+        "nearest_ms": 1198000,
+        "distance_ms": 2000
+      },
+      {
+        "labelled_ms": 1210000,
+        "nearest_ms": 1214000,
+        "distance_ms": 4000
+      },
+      {
+        "labelled_ms": 1220000,
+        "nearest_ms": 1224000,
+        "distance_ms": 4000
+      }
+    ],
+    "semantic_review": "requires_original_frame_review",
+    "times": [
+      1180000,
+      1182000,
+      1198000,
+      1214000,
+      1224000
+    ],
+    "elapsed_ms": 1141,
+    "decoded_bytes": 2980800
+  }
+]

@@ -1,0 +1,179 @@
+[
+  {
+    "vu_id": "repeat-v1/vu-0001/1",
+    "analysis_id": "repeat-v1",
+    "location": {
+      "video": {
+        "media_id": "vi0a-controlled-dtype-v1",
+        "media_revision": "1"
+      },
+      "start_ms": 0,
+      "end_ms": 2000
+    },
+    "representative_frames": [
+      {
+        "id": "f00001",
+        "requested_ms": 0,
+        "frame": {
+          "video": {
+            "media_id": "vi0a-controlled-dtype-v1",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/repeat-v1/frames/f00001.png",
+        "png_bytes": 33280,
+        "content_id": "f00001"
+      },
+      {
+        "id": "f00002",
+        "requested_ms": 1000,
+        "frame": {
+          "video": {
+            "media_id": "vi0a-controlled-dtype-v1",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 1000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/repeat-v1/frames/f00002.png",
+        "png_bytes": 33280,
+        "content_id": "f00001"
+      }
+    ],
+    "screen_text": "VI0a controlled teaching supplement - NOT lecture footage\nx = torch.tensor([1e-8], dtype=torch.float16)\nassert x == 0  # Underflow!",
+    "description": "白底黑字画面，顶部为教学补充说明，下方两行代码使用 torch.float16 创建张量，并以等于零的断言标注下溢；两帧内容一致。",
+    "change": "初始可见状态。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "context-0"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "repeat-v1/vu-0001/2",
+    "analysis_id": "repeat-v1",
+    "location": {
+      "video": {
+        "media_id": "vi0a-controlled-dtype-v1",
+        "media_revision": "1"
+      },
+      "start_ms": 2000,
+      "end_ms": 4000
+    },
+    "representative_frames": [
+      {
+        "id": "f00003",
+        "requested_ms": 2000,
+        "frame": {
+          "video": {
+            "media_id": "vi0a-controlled-dtype-v1",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 2000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/repeat-v1/frames/f00003.png",
+        "png_bytes": 34353,
+        "content_id": "f00003"
+      },
+      {
+        "id": "f00004",
+        "requested_ms": 3000,
+        "frame": {
+          "video": {
+            "media_id": "vi0a-controlled-dtype-v1",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 3000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/repeat-v1/frames/f00004.png",
+        "png_bytes": 34353,
+        "content_id": "f00003"
+      }
+    ],
+    "screen_text": "VI0a controlled teaching supplement - NOT lecture footage\nx = torch.tensor([1e-8], dtype=torch.bfloat16)\nassert x != 0  # No underflow!",
+    "description": "白底黑字布局保持一致，两行代码改为 torch.bfloat16 和不等于零的断言，注释显示无下溢；两帧内容一致。",
+    "change": "在2000毫秒采样帧中，dtype 从 torch.float16 变为 torch.bfloat16，断言从 x == 0 变为 x != 0，注释从 Underflow! 变为 No underflow!。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "context-1"
+    ],
+    "description_reused_from": null
+  },
+  {
+    "vu_id": "repeat-v1/vu-0002/1",
+    "analysis_id": "repeat-v1",
+    "location": {
+      "video": {
+        "media_id": "vi0a-controlled-dtype-v1",
+        "media_revision": "1"
+      },
+      "start_ms": 4000,
+      "end_ms": 6000
+    },
+    "representative_frames": [
+      {
+        "id": "f00005",
+        "requested_ms": 4000,
+        "frame": {
+          "video": {
+            "media_id": "vi0a-controlled-dtype-v1",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 4000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/repeat-v1/frames/f00005.png",
+        "png_bytes": 33280,
+        "content_id": "f00001"
+      },
+      {
+        "id": "f00006",
+        "requested_ms": 5000,
+        "frame": {
+          "video": {
+            "media_id": "vi0a-controlled-dtype-v1",
+            "media_revision": "1"
+          },
+          "actual_pts_ms": 5000,
+          "width": 1920,
+          "height": 1080
+        },
+        "path": ".build/video-visual/repeat-v1/frames/f00006.png",
+        "png_bytes": 33280,
+        "content_id": "f00001"
+      }
+    ],
+    "screen_text": "VI0a controlled teaching supplement - NOT lecture footage\nx = torch.tensor([1e-8], dtype=torch.float16)\nassert x == 0  # Underflow!",
+    "description": "白底黑字画面，顶部为教学补充说明，下方两行代码使用 torch.float16 创建张量，并以等于零的断言标注下溢；两帧内容一致。",
+    "change": "讲解区域再次出现相同画面；复用画面描述，保留本次位置与转写。",
+    "content_rect": [
+      0,
+      0,
+      1,
+      0.89
+    ],
+    "transcript_segment_ids": [
+      "context-2"
+    ],
+    "description_reused_from": "repeat-v1/vu-0001/1"
+  }
+]

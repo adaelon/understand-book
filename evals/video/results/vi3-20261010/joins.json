@@ -1,0 +1,3687 @@
+{
+  "boundaries": [
+    {
+      "at_ms": 300000,
+      "kind": "shared_words",
+      "left": "chunk-000",
+      "right": "chunk-001",
+      "anchor": "is a tensor. So, you know."
+    },
+    {
+      "at_ms": 600000,
+      "kind": "shared_words",
+      "left": "chunk-001",
+      "right": "chunk-002",
+      "anchor": "address this issue. And the observation..."
+    },
+    {
+      "at_ms": 900000,
+      "kind": "shared_words",
+      "left": "chunk-002",
+      "right": "chunk-003",
+      "anchor": "you know, software stack."
+    },
+    {
+      "at_ms": 1200000,
+      "kind": "shared_words",
+      "left": "chunk-003",
+      "right": "chunk-004",
+      "anchor": "matrix, where"
+    },
+    {
+      "at_ms": 1500000,
+      "kind": "shared_words",
+      "left": "chunk-004",
+      "right": "chunk-005",
+      "anchor": "is saying, look, this is some"
+    },
+    {
+      "at_ms": 1800000,
+      "kind": "shared_words",
+      "left": "chunk-005",
+      "right": "chunk-006",
+      "anchor": "okay. So, so"
+    },
+    {
+      "at_ms": 2100000,
+      "kind": "shared_words",
+      "left": "chunk-006",
+      "right": "chunk-007",
+      "anchor": "done is measured flops. So this is"
+    },
+    {
+      "at_ms": 2400000,
+      "kind": "shared_words",
+      "left": "chunk-007",
+      "right": "chunk-008",
+      "anchor": "be really, really slow because,"
+    },
+    {
+      "at_ms": 2700000,
+      "kind": "shared_words",
+      "left": "chunk-008",
+      "right": "chunk-009",
+      "anchor": "is 1E minus 6."
+    },
+    {
+      "at_ms": 3000000,
+      "kind": "shared_words",
+      "left": "chunk-009",
+      "right": "chunk-010",
+      "anchor": "and then you write y, which is a scalar, which is"
+    },
+    {
+      "at_ms": 3300000,
+      "kind": "shared_words",
+      "left": "chunk-010",
+      "right": "chunk-011",
+      "anchor": "for most of the"
+    },
+    {
+      "at_ms": 3600000,
+      "kind": "shared_words",
+      "left": "chunk-011",
+      "right": "chunk-012",
+      "anchor": "this is just basic mechanics of,"
+    },
+    {
+      "at_ms": 3900000,
+      "kind": "shared_words",
+      "left": "chunk-012",
+      "right": "chunk-013",
+      "anchor": "the flops is the, you know, the same."
+    },
+    {
+      "at_ms": 4200000,
+      "kind": "shared_words",
+      "left": "chunk-013",
+      "right": "chunk-014",
+      "anchor": "parameters. And this is all"
+    },
+    {
+      "at_ms": 4500000,
+      "kind": "shared_words",
+      "left": "chunk-014",
+      "right": "chunk-015",
+      "anchor": "if you store all the activations, remember in your deep network,"
+    }
+  ],
+  "timing_groups": [
+    {
+      "start_ms": 522470,
+      "end_ms": 522470,
+      "reason": "merged_adjacent_sentence_estimates"
+    },
+    {
+      "start_ms": 601620,
+      "end_ms": 606580,
+      "reason": "merged_adjacent_sentence_estimates"
+    },
+    {
+      "start_ms": 1238460,
+      "end_ms": 1238460,
+      "reason": "merged_adjacent_sentence_estimates"
+    },
+    {
+      "start_ms": 1653770,
+      "end_ms": 1653770,
+      "reason": "merged_adjacent_sentence_estimates"
+    },
+    {
+      "start_ms": 1975500,
+      "end_ms": 1975500,
+      "reason": "merged_adjacent_sentence_estimates"
+    }
+  ],
+  "uncertainties": [
+    {
+      "text": " um,",
+      "start": 4019.9999999999995,
+      "end": 4019.9999999999995,
+      "probability": 0.25536149740219116,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " the",
+      "start": 36000,
+      "end": 36600,
+      "probability": 0.475822389125824,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " skin",
+      "start": 51100,
+      "end": 51840,
+      "probability": 0.34183424711227417,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " So",
+      "start": 56970,
+      "end": 57470,
+      "probability": 0.45216888189315796,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " going",
+      "start": 64610,
+      "end": 64730.00000000001,
+      "probability": 0.4948178827762604,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " is",
+      "start": 82570,
+      "end": 82830,
+      "probability": 0.21609768271446228,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " train",
+      "start": 82830,
+      "end": 84490,
+      "probability": 0.4092637300491333,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " 1",
+      "start": 126500,
+      "end": 127480,
+      "probability": 0.4157859981060028,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " we",
+      "start": 149480,
+      "end": 149480,
+      "probability": 0.13037018477916718,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " MFU,",
+      "start": 149900,
+      "end": 150300,
+      "probability": 0.4138468950986862,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " What's",
+      "start": 167700,
+      "end": 168040,
+      "probability": 0.4207003191113472,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " atom",
+      "start": 172360,
+      "end": 173000,
+      "probability": 0.33721813559532166,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " will",
+      "start": 192900,
+      "end": 193980,
+      "probability": 0.3502553403377533,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " in",
+      "start": 210380,
+      "end": 210540,
+      "probability": 0.4925990402698517,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " this",
+      "start": 212260,
+      "end": 212400,
+      "probability": 0.4827900826931,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " the",
+      "start": 213740,
+      "end": 213800,
+      "probability": 0.185809925198555,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " OK,",
+      "start": 230810,
+      "end": 230930,
+      "probability": 0.07493341714143753,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " why",
+      "start": 257660.00000000003,
+      "end": 258000,
+      "probability": 0.47765544056892395,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " in",
+      "start": 258820,
+      "end": 258940,
+      "probability": 0.36145174503326416,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " ma,",
+      "start": 274620,
+      "end": 274860,
+      "probability": 0.0834415853023529,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " are",
+      "start": 288860,
+      "end": 289020,
+      "probability": 0.42581266164779663,
+      "chunk": "chunk-000"
+    },
+    {
+      "text": " seek",
+      "start": 303640,
+      "end": 303900,
+      "probability": 0.4650786519050598,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " you",
+      "start": 327980,
+      "end": 328160,
+      "probability": 0.355273962020874,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " erudies.",
+      "start": 328680,
+      "end": 329120,
+      "probability": 0.4751097559928894,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " what",
+      "start": 362200,
+      "end": 362660,
+      "probability": 0.46789121627807617,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " a",
+      "start": 365510,
+      "end": 366150,
+      "probability": 0.46204739809036255,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " you",
+      "start": 411220,
+      "end": 411300,
+      "probability": 0.2992113530635834,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " a",
+      "start": 437120,
+      "end": 437480,
+      "probability": 0.3001064658164978,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " and",
+      "start": 464950,
+      "end": 465110,
+      "probability": 0.20742596685886383,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " get",
+      "start": 473850,
+      "end": 474670,
+      "probability": 0.4816840589046478,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " OK,",
+      "start": 481660,
+      "end": 481660,
+      "probability": 0.24869699776172638,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " then,",
+      "start": 494500,
+      "end": 494720,
+      "probability": 0.06883299350738525,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " here.",
+      "start": 522470,
+      "end": 522470,
+      "probability": 0.0924198105931282,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " If",
+      "start": 538450,
+      "end": 538450,
+      "probability": 0.3451223075389862,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " you",
+      "start": 542570,
+      "end": 544070,
+      "probability": 0.46907174587249756,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " its",
+      "start": 544250,
+      "end": 544350,
+      "probability": 0.3880561888217926,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " try",
+      "start": 549010,
+      "end": 549370,
+      "probability": 0.29264307022094727,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " 1e",
+      "start": 550110,
+      "end": 550810,
+      "probability": 0.4993472695350647,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " back",
+      "start": 577610,
+      "end": 578110,
+      "probability": 0.48713216185569763,
+      "chunk": "chunk-001"
+    },
+    {
+      "text": " Fp16,",
+      "start": 608600,
+      "end": 609680,
+      "probability": 0.432195708155632,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " But,",
+      "start": 626460,
+      "end": 626980,
+      "probability": 0.4386472702026367,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " float",
+      "start": 663980,
+      "end": 664240,
+      "probability": 0.26882970333099365,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " Um,",
+      "start": 684180,
+      "end": 685080,
+      "probability": 0.08371827006340027,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " flow",
+      "start": 688460,
+      "end": 688580,
+      "probability": 0.369748055934906,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " flow",
+      "start": 692160,
+      "end": 692740,
+      "probability": 0.33303719758987427,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " six",
+      "start": 693560,
+      "end": 693580,
+      "probability": 0.11440115422010422,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " a",
+      "start": 694300,
+      "end": 694460,
+      "probability": 0.20513732731342316,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " a",
+      "start": 703160,
+      "end": 703300,
+      "probability": 0.25330260396003723,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " And",
+      "start": 714270,
+      "end": 714910,
+      "probability": 0.2482508271932602,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " BFS",
+      "start": 737220,
+      "end": 737940,
+      "probability": 0.37694624066352844,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " 16",
+      "start": 737940,
+      "end": 739460,
+      "probability": 0.38212430477142334,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " of",
+      "start": 750550,
+      "end": 750650,
+      "probability": 0.4003983438014984,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " going",
+      "start": 757400,
+      "end": 757500,
+      "probability": 0.42695939540863037,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " library",
+      "start": 764800,
+      "end": 765160,
+      "probability": 0.4990280270576477,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " BF16",
+      "start": 769960,
+      "end": 771240,
+      "probability": 0.48796702921390533,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " matmalls",
+      "start": 773400,
+      "end": 773700,
+      "probability": 0.4850192964076996,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " it",
+      "start": 777900,
+      "end": 778280,
+      "probability": 0.40458163619041443,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " it",
+      "start": 796530,
+      "end": 796630,
+      "probability": 0.44545456767082214,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " because",
+      "start": 802970,
+      "end": 803410,
+      "probability": 0.4224390983581543,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " two",
+      "start": 810850,
+      "end": 811410,
+      "probability": 0.2834164798259735,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " more",
+      "start": 820630,
+      "end": 820790,
+      "probability": 0.4390626549720764,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " or",
+      "start": 820790,
+      "end": 820810,
+      "probability": 0.27228614687919617,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " NVIDIA",
+      "start": 824810,
+      "end": 825010,
+      "probability": 0.28556710481643677,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " if",
+      "start": 830010,
+      "end": 830110,
+      "probability": 0.43322986364364624,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " going",
+      "start": 848170,
+      "end": 848310,
+      "probability": 0.4329589307308197,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " blocks,",
+      "start": 859790,
+      "end": 860010,
+      "probability": 0.23600450158119202,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " Nematron",
+      "start": 875980,
+      "end": 876380,
+      "probability": 0.4492105096578598,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " can",
+      "start": 893560,
+      "end": 893560,
+      "probability": 0.47745481133461,
+      "chunk": "chunk-002"
+    },
+    {
+      "text": " Is",
+      "start": 915630,
+      "end": 915770,
+      "probability": 0.22374102473258972,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " there",
+      "start": 915770,
+      "end": 915870,
+      "probability": 0.4078902006149292,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " a",
+      "start": 916770,
+      "end": 917010,
+      "probability": 0.4046509265899658,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " that",
+      "start": 920510,
+      "end": 920630,
+      "probability": 0.2741692364215851,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " are",
+      "start": 920630,
+      "end": 920830,
+      "probability": 0.29016032814979553,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " essentially",
+      "start": 920830,
+      "end": 920830,
+      "probability": 0.11828548461198807,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " right",
+      "start": 920830,
+      "end": 921030,
+      "probability": 0.20248769223690033,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " long,",
+      "start": 921150,
+      "end": 921370,
+      "probability": 0.4378708600997925,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " then",
+      "start": 921630,
+      "end": 921770,
+      "probability": 0.3379915952682495,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " that",
+      "start": 923830,
+      "end": 923990,
+      "probability": 0.47637253999710083,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " in",
+      "start": 924990,
+      "end": 925490,
+      "probability": 0.43634945154190063,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " FV4.",
+      "start": 925490,
+      "end": 926050,
+      "probability": 0.455903023481369,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " would",
+      "start": 928320,
+      "end": 928480,
+      "probability": 0.021310972049832344,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " scale",
+      "start": 928680,
+      "end": 928960,
+      "probability": 0.17635619640350342,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " Yeah.",
+      "start": 932770,
+      "end": 932830,
+      "probability": 0.21790480613708496,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " of",
+      "start": 945490,
+      "end": 945570,
+      "probability": 0.4663877487182617,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " ever",
+      "start": 948490,
+      "end": 948690,
+      "probability": 0.18101079761981964,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " but",
+      "start": 957590,
+      "end": 958090,
+      "probability": 0.4514214098453522,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": "-",
+      "start": 961730,
+      "end": 961890,
+      "probability": 0.16718298196792603,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " a",
+      "start": 961890,
+      "end": 961890,
+      "probability": 0.3972504138946533,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " Uh,",
+      "start": 965200,
+      "end": 965200,
+      "probability": 0.04388486221432686,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": "-",
+      "start": 966100,
+      "end": 966280,
+      "probability": 0.309104859828949,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " the",
+      "start": 966280,
+      "end": 966280,
+      "probability": 0.3378158211708069,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " about",
+      "start": 966460,
+      "end": 966700,
+      "probability": 0.4444229304790497,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " one",
+      "start": 968080,
+      "end": 968280,
+      "probability": 0.47193995118141174,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " Currently",
+      "start": 969800,
+      "end": 970020,
+      "probability": 0.2355334460735321,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " one",
+      "start": 970400,
+      "end": 971600,
+      "probability": 0.20215259492397308,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " than",
+      "start": 971780,
+      "end": 971980,
+      "probability": 0.06730151921510696,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " model.",
+      "start": 972140,
+      "end": 972320,
+      "probability": 0.18638333678245544,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " On",
+      "start": 973740,
+      "end": 973940,
+      "probability": 0.02986316941678524,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " training",
+      "start": 974060,
+      "end": 974500,
+      "probability": 0.2530435621738434,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": "-",
+      "start": 976160,
+      "end": 976300,
+      "probability": 0.3794344961643219,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " and,",
+      "start": 995560,
+      "end": 995880,
+      "probability": 0.2898918092250824,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " and",
+      "start": 997760,
+      "end": 998520,
+      "probability": 0.298489511013031,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " that",
+      "start": 1010340,
+      "end": 1010340,
+      "probability": 0.252270370721817,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " and",
+      "start": 1020230,
+      "end": 1021210,
+      "probability": 0.40473535656929016,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " by",
+      "start": 1029970,
+      "end": 1030490,
+      "probability": 0.4816286861896515,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " you",
+      "start": 1041330,
+      "end": 1041510,
+      "probability": 0.42623192071914673,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " so",
+      "start": 1045110,
+      "end": 1045850,
+      "probability": 0.4742913544178009,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " GPU",
+      "start": 1052350,
+      "end": 1052630,
+      "probability": 0.3868705630302429,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " so",
+      "start": 1056370,
+      "end": 1057830,
+      "probability": 0.4580112099647522,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " get",
+      "start": 1071110,
+      "end": 1071270,
+      "probability": 0.1848006695508957,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " OK,",
+      "start": 1075120,
+      "end": 1075460,
+      "probability": 0.080534428358078,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " or",
+      "start": 1093540,
+      "end": 1093800,
+      "probability": 0.30831626057624817,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " So",
+      "start": 1096580,
+      "end": 1096800,
+      "probability": 0.1779649555683136,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " and",
+      "start": 1116940,
+      "end": 1117700,
+      "probability": 0.46638309955596924,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " like",
+      "start": 1118660,
+      "end": 1118840,
+      "probability": 0.4886612892150879,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " And",
+      "start": 1127360,
+      "end": 1127960,
+      "probability": 0.3900966942310333,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " using",
+      "start": 1134600,
+      "end": 1135200,
+      "probability": 0.38541027903556824,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " INOPS",
+      "start": 1138720,
+      "end": 1139060,
+      "probability": 0.4519212543964386,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " going",
+      "start": 1149680,
+      "end": 1149780,
+      "probability": 0.4029170870780945,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " So",
+      "start": 1153840,
+      "end": 1154520,
+      "probability": 0.3223066031932831,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " it",
+      "start": 1156100,
+      "end": 1156220,
+      "probability": 0.4920557141304016,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " is",
+      "start": 1156220,
+      "end": 1156640,
+      "probability": 0.47979608178138733,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " 3",
+      "start": 1166760,
+      "end": 1167280,
+      "probability": 0.45370131731033325,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " In",
+      "start": 1177960,
+      "end": 1178480,
+      "probability": 0.1512226164340973,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " gonna",
+      "start": 1184820,
+      "end": 1184920,
+      "probability": 0.4066183567047119,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " seek",
+      "start": 1185180,
+      "end": 1185400,
+      "probability": 0.06872475892305374,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " one",
+      "start": 1185400,
+      "end": 1185620,
+      "probability": 0.4284932017326355,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " the",
+      "start": 1188000,
+      "end": 1188120,
+      "probability": 0.4049595892429352,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " And",
+      "start": 1194780,
+      "end": 1195740,
+      "probability": 0.13651138544082642,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " Heria",
+      "start": 1199860,
+      "end": 1200000,
+      "probability": 0.35602644085884094,
+      "chunk": "chunk-003"
+    },
+    {
+      "text": " C1",
+      "start": 1203820,
+      "end": 1204220,
+      "probability": 0.45737943798303604,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " and",
+      "start": 1204840,
+      "end": 1205540,
+      "probability": 0.4795480966567993,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " And",
+      "start": 1223840,
+      "end": 1224860,
+      "probability": 0.4036842882633209,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " x,",
+      "start": 1228600,
+      "end": 1228920,
+      "probability": 0.4416253864765167,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " and",
+      "start": 1256840,
+      "end": 1257420,
+      "probability": 0.45555001497268677,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " I",
+      "start": 1264520,
+      "end": 1264920,
+      "probability": 0.4613615572452545,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " matmal",
+      "start": 1276260,
+      "end": 1276660,
+      "probability": 0.344779834151268,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " I",
+      "start": 1282560,
+      "end": 1283060,
+      "probability": 0.09192690998315811,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " C1",
+      "start": 1288000,
+      "end": 1288480,
+      "probability": 0.48472924530506134,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " Notice",
+      "start": 1295100,
+      "end": 1295540,
+      "probability": 0.06648106873035431,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " in",
+      "start": 1297880,
+      "end": 1299700,
+      "probability": 0.405453085899353,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " I",
+      "start": 1309200,
+      "end": 1309360,
+      "probability": 0.3768910765647888,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " makes",
+      "start": 1310620,
+      "end": 1311020,
+      "probability": 0.45775488018989563,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " want",
+      "start": 1317500,
+      "end": 1317620,
+      "probability": 0.4771035313606262,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " you",
+      "start": 1329360,
+      "end": 1329420,
+      "probability": 0.3422779142856598,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " rank",
+      "start": 1329600,
+      "end": 1329780,
+      "probability": 0.47558534145355225,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " dimension,",
+      "start": 1342960,
+      "end": 1343220,
+      "probability": 0.3383626639842987,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " like",
+      "start": 1345480,
+      "end": 1345720,
+      "probability": 0.450752854347229,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " without",
+      "start": 1357540,
+      "end": 1358120,
+      "probability": 0.3238256573677063,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " INE",
+      "start": 1367760,
+      "end": 1368680,
+      "probability": 0.14049410447478294,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " sum,",
+      "start": 1368680,
+      "end": 1368760,
+      "probability": 0.2740511894226074,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " ops",
+      "start": 1370360,
+      "end": 1370540,
+      "probability": 0.2558286488056183,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " reduce.",
+      "start": 1372680,
+      "end": 1373040,
+      "probability": 0.4553077816963196,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " reduce.",
+      "start": 1373040,
+      "end": 1373280,
+      "probability": 0.3528476357460022,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " sum",
+      "start": 1377260,
+      "end": 1377520,
+      "probability": 0.08496999740600586,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " max",
+      "start": 1377940,
+      "end": 1378780,
+      "probability": 0.27955394983291626,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " and",
+      "start": 1378780,
+      "end": 1378920,
+      "probability": 0.4192354679107666,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " a",
+      "start": 1386480,
+      "end": 1386620,
+      "probability": 0.45694535970687866,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " these",
+      "start": 1407810,
+      "end": 1408410,
+      "probability": 0.23614290356636047,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " Here",
+      "start": 1416650,
+      "end": 1416970,
+      "probability": 0.28747281432151794,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " summed,",
+      "start": 1420230,
+      "end": 1420450,
+      "probability": 0.3304562270641327,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " Is",
+      "start": 1426330,
+      "end": 1426750,
+      "probability": 0.29540106654167175,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " So,",
+      "start": 1468380,
+      "end": 1469080,
+      "probability": 0.382942795753479,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " 3",
+      "start": 1471440,
+      "end": 1471860,
+      "probability": 0.4207751154899597,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " the,",
+      "start": 1476140,
+      "end": 1477740,
+      "probability": 0.29936087131500244,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " And",
+      "start": 1495290,
+      "end": 1496490,
+      "probability": 0.428348183631897,
+      "chunk": "chunk-004"
+    },
+    {
+      "text": " And",
+      "start": 1523500,
+      "end": 1524520,
+      "probability": 0.37439197301864624,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " I",
+      "start": 1542860,
+      "end": 1542920,
+      "probability": 0.47703760862350464,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " of",
+      "start": 1553160,
+      "end": 1553220,
+      "probability": 0.4031181037425995,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " 2.",
+      "start": 1566820,
+      "end": 1567160,
+      "probability": 0.31234073638916016,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " Okay.",
+      "start": 1582030,
+      "end": 1582430,
+      "probability": 0.38335955142974854,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " The",
+      "start": 1587360,
+      "end": 1587380,
+      "probability": 0.07807231694459915,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " thing",
+      "start": 1588860,
+      "end": 1589340,
+      "probability": 0.3951137661933899,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " in",
+      "start": 1589340,
+      "end": 1589540,
+      "probability": 0.2542063295841217,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " shift",
+      "start": 1589540,
+      "end": 1589700,
+      "probability": 0.20095503330230713,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " it",
+      "start": 1589700,
+      "end": 1589860,
+      "probability": 0.3425758481025696,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " to",
+      "start": 1589860,
+      "end": 1590160,
+      "probability": 0.33154574036598206,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " not",
+      "start": 1590860,
+      "end": 1591020,
+      "probability": 0.13312068581581116,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " there",
+      "start": 1591020,
+      "end": 1591180,
+      "probability": 0.21174445748329163,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " Like",
+      "start": 1592850,
+      "end": 1592870,
+      "probability": 0.4451172649860382,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " or",
+      "start": 1593710,
+      "end": 1593910,
+      "probability": 0.4069148898124695,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " column",
+      "start": 1593910,
+      "end": 1594050,
+      "probability": 0.11705943197011948,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " I",
+      "start": 1614360,
+      "end": 1614400,
+      "probability": 0.4012812077999115,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " you",
+      "start": 1620160,
+      "end": 1621000,
+      "probability": 0.11595814675092697,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " it",
+      "start": 1627080,
+      "end": 1628080,
+      "probability": 0.3550195097923279,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " me,",
+      "start": 1650450,
+      "end": 1650550,
+      "probability": 0.07998951524496078,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " but",
+      "start": 1669850,
+      "end": 1670170,
+      "probability": 0.4503565728664398,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " So",
+      "start": 1678690,
+      "end": 1679730,
+      "probability": 0.4081324636936188,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " if",
+      "start": 1683280,
+      "end": 1683900,
+      "probability": 0.3841003179550171,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " and",
+      "start": 1706440,
+      "end": 1706680,
+      "probability": 0.4648054540157318,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " but",
+      "start": 1708440,
+      "end": 1708580,
+      "probability": 0.2529143691062927,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " Okay,",
+      "start": 1733420,
+      "end": 1733700,
+      "probability": 0.25205549597740173,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " There",
+      "start": 1763370,
+      "end": 1763770,
+      "probability": 0.30155616998672485,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " Bf16,",
+      "start": 1766710,
+      "end": 1768450,
+      "probability": 0.31008030474185944,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " slash",
+      "start": 1771510,
+      "end": 1771530,
+      "probability": 0.09906642138957977,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " it",
+      "start": 1778960,
+      "end": 1779320,
+      "probability": 0.3213559091091156,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " fine",
+      "start": 1783580,
+      "end": 1784100,
+      "probability": 0.26896071434020996,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " sparse",
+      "start": 1787160,
+      "end": 1787520,
+      "probability": 0.27924102544784546,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " you",
+      "start": 1791800,
+      "end": 1792180,
+      "probability": 0.4474039375782013,
+      "chunk": "chunk-005"
+    },
+    {
+      "text": " sort",
+      "start": 1806570,
+      "end": 1806750,
+      "probability": 0.30995675921440125,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " this",
+      "start": 1809070,
+      "end": 1809190,
+      "probability": 0.4951789081096649,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " It",
+      "start": 1855800,
+      "end": 1856280,
+      "probability": 0.30413028597831726,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " matballs.",
+      "start": 1864260,
+      "end": 1864920,
+      "probability": 0.45718586444854736,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " you",
+      "start": 1868440,
+      "end": 1868480,
+      "probability": 0.26644131541252136,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " X,",
+      "start": 1892040,
+      "end": 1893880,
+      "probability": 0.47220322489738464,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " two",
+      "start": 1909440,
+      "end": 1910060,
+      "probability": 0.4143056869506836,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " basically",
+      "start": 1912420,
+      "end": 1913800,
+      "probability": 0.38114792108535767,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " three",
+      "start": 1914800,
+      "end": 1915480,
+      "probability": 0.4353523552417755,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " Okay.",
+      "start": 1928310,
+      "end": 1928390,
+      "probability": 0.4444126784801483,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " d",
+      "start": 1935690,
+      "end": 1936310,
+      "probability": 0.27154552936553955,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " the",
+      "start": 1954140,
+      "end": 1955180,
+      "probability": 0.4117499589920044,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " n",
+      "start": 1958820,
+      "end": 1958980,
+      "probability": 0.13894814252853394,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": "-n",
+      "start": 1958980,
+      "end": 1959100,
+      "probability": 0.40166234970092773,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " going",
+      "start": 1969540,
+      "end": 1969680,
+      "probability": 0.4957640469074249,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " matmals",
+      "start": 1971200,
+      "end": 1971520,
+      "probability": 0.4278642038504283,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " with",
+      "start": 1972140,
+      "end": 1972620,
+      "probability": 0.46976253390312195,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " important",
+      "start": 1972620,
+      "end": 1972980,
+      "probability": 0.4994381368160248,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " Uh,",
+      "start": 1980230,
+      "end": 1980230,
+      "probability": 0.14176049828529358,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " other",
+      "start": 1980630,
+      "end": 1980790,
+      "probability": 0.13059866428375244,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " supporting",
+      "start": 1981030,
+      "end": 1981330,
+      "probability": 0.32472825050354004,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " matrix",
+      "start": 1981330,
+      "end": 1981790,
+      "probability": 0.30223366618156433,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": "-qui",
+      "start": 1991180,
+      "end": 1991360,
+      "probability": 0.4648580625653267,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " uh,",
+      "start": 1991600,
+      "end": 1991760,
+      "probability": 0.33239567279815674,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " more",
+      "start": 1999320,
+      "end": 1999680,
+      "probability": 0.4702083468437195,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": "-",
+      "start": 1999680,
+      "end": 2000200,
+      "probability": 0.18807531893253326,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " Considering",
+      "start": 2011850,
+      "end": 2012370,
+      "probability": 0.35596317052841187,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " addition",
+      "start": 2012370,
+      "end": 2012870,
+      "probability": 0.37824809551239014,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " to",
+      "start": 2014270,
+      "end": 2014890,
+      "probability": 0.08766329288482666,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " But,",
+      "start": 2028950,
+      "end": 2029650,
+      "probability": 0.17222435772418976,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " um,",
+      "start": 2029950,
+      "end": 2030390,
+      "probability": 0.4520782232284546,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": "-",
+      "start": 2030730,
+      "end": 2030730,
+      "probability": 0.32629719376564026,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " built",
+      "start": 2031370,
+      "end": 2031610,
+      "probability": 0.2625133991241455,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": "-",
+      "start": 2031610,
+      "end": 2031910,
+      "probability": 0.30000633001327515,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " you",
+      "start": 2036190,
+      "end": 2037170,
+      "probability": 0.4151850938796997,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " matmul",
+      "start": 2037770,
+      "end": 2038130,
+      "probability": 0.33315210541089374,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " dK",
+      "start": 2043820,
+      "end": 2044380,
+      "probability": 0.30674321949481964,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " in",
+      "start": 2057920,
+      "end": 2058400,
+      "probability": 0.32774657011032104,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " n",
+      "start": 2076230,
+      "end": 2076490,
+      "probability": 0.4358424246311188,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " what",
+      "start": 2096010,
+      "end": 2096690,
+      "probability": 0.26887401938438416,
+      "chunk": "chunk-006"
+    },
+    {
+      "text": " actually",
+      "start": 2110350,
+      "end": 2110530,
+      "probability": 0.15549375116825104,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " I",
+      "start": 2115960,
+      "end": 2116220,
+      "probability": 0.4279542863368988,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " going",
+      "start": 2118100,
+      "end": 2118120,
+      "probability": 0.48607775568962097,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " in",
+      "start": 2124130,
+      "end": 2125590,
+      "probability": 0.4556744694709778,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " kind",
+      "start": 2136150,
+      "end": 2136330,
+      "probability": 0.33679962158203125,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " And",
+      "start": 2182820,
+      "end": 2183340,
+      "probability": 0.30598190426826477,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " the...",
+      "start": 2222110,
+      "end": 2223070,
+      "probability": 0.4221235574223101,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " Okay.",
+      "start": 2223710,
+      "end": 2224250,
+      "probability": 0.4949358403682709,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " way",
+      "start": 2229150,
+      "end": 2230050,
+      "probability": 0.4606614410877228,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " model",
+      "start": 2233030,
+      "end": 2234350,
+      "probability": 0.47146347165107727,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " with,",
+      "start": 2259820,
+      "end": 2260240,
+      "probability": 0.231255903840065,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " pr,",
+      "start": 2261300,
+      "end": 2261340,
+      "probability": 0.4510760009288788,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " And",
+      "start": 2268120,
+      "end": 2268780,
+      "probability": 0.44325003027915955,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " only",
+      "start": 2278420,
+      "end": 2278900,
+      "probability": 0.2526036202907562,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " map",
+      "start": 2279960,
+      "end": 2280140,
+      "probability": 0.4603790044784546,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " mall,",
+      "start": 2280140,
+      "end": 2280360,
+      "probability": 0.29100826382637024,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " write",
+      "start": 2299900,
+      "end": 2300680,
+      "probability": 0.42804017663002014,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " uh,",
+      "start": 2303340,
+      "end": 2303840,
+      "probability": 0.4231020510196686,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " Yeah.",
+      "start": 2325620,
+      "end": 2326140,
+      "probability": 0.3338964879512787,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " that",
+      "start": 2329120,
+      "end": 2329920,
+      "probability": 0.4623924791812897,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " You're",
+      "start": 2350500,
+      "end": 2350760,
+      "probability": 0.3488856554031372,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " getting",
+      "start": 2350760,
+      "end": 2350860,
+      "probability": 0.2584778666496277,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " percent.",
+      "start": 2351140,
+      "end": 2351460,
+      "probability": 0.38746047019958496,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " Yeah,",
+      "start": 2351720,
+      "end": 2352160,
+      "probability": 0.4944516718387604,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " do",
+      "start": 2352620,
+      "end": 2352760,
+      "probability": 0.4268161952495575,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " on",
+      "start": 2353840,
+      "end": 2353960,
+      "probability": 0.13130386173725128,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " Um,",
+      "start": 2366170,
+      "end": 2366990,
+      "probability": 0.13784626126289368,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " and",
+      "start": 2372130,
+      "end": 2372370,
+      "probability": 0.35678666830062866,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " num",
+      "start": 2386040,
+      "end": 2386520,
+      "probability": 0.3506507873535156,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " it",
+      "start": 2388100,
+      "end": 2388220,
+      "probability": 0.40461304783821106,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " spec",
+      "start": 2393080,
+      "end": 2393460,
+      "probability": 0.47813332080841064,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " um,",
+      "start": 2393840,
+      "end": 2394440,
+      "probability": 0.3000946342945099,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " So",
+      "start": 2396800,
+      "end": 2396820,
+      "probability": 0.49651142954826355,
+      "chunk": "chunk-007"
+    },
+    {
+      "text": " now",
+      "start": 2404700,
+      "end": 2405500,
+      "probability": 0.4328773021697998,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " intensity.",
+      "start": 2432650,
+      "end": 2433330,
+      "probability": 0.1657339334487915,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " matmalls",
+      "start": 2441210,
+      "end": 2442230,
+      "probability": 0.4075251817703247,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " and",
+      "start": 2443130,
+      "end": 2443310,
+      "probability": 0.4170930087566376,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " the",
+      "start": 2444470,
+      "end": 2444690,
+      "probability": 0.3536471128463745,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " and",
+      "start": 2454410,
+      "end": 2455790,
+      "probability": 0.477512925863266,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " And",
+      "start": 2456030,
+      "end": 2456030,
+      "probability": 0.19206634163856506,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " what,",
+      "start": 2462070,
+      "end": 2463030,
+      "probability": 0.3853570520877838,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " from",
+      "start": 2471340,
+      "end": 2471880,
+      "probability": 0.4046608805656433,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " two.",
+      "start": 2505600,
+      "end": 2505800,
+      "probability": 0.49696582555770874,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " second.",
+      "start": 2511200,
+      "end": 2512020,
+      "probability": 0.27927637100219727,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " Okay?",
+      "start": 2513710,
+      "end": 2514190,
+      "probability": 0.46367397904396057,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " most",
+      "start": 2524820,
+      "end": 2525580,
+      "probability": 0.4873817563056946,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " model",
+      "start": 2528180,
+      "end": 2528440,
+      "probability": 0.2136191725730896,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " Okay,",
+      "start": 2543350,
+      "end": 2544390,
+      "probability": 0.45351558923721313,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " going",
+      "start": 2545610,
+      "end": 2545690,
+      "probability": 0.43897297978401184,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " and",
+      "start": 2547390,
+      "end": 2548370,
+      "probability": 0.2674578130245209,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " max",
+      "start": 2567720,
+      "end": 2568200,
+      "probability": 0.45809808373451233,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " I",
+      "start": 2575170,
+      "end": 2576830,
+      "probability": 0.317594438791275,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " count",
+      "start": 2576830,
+      "end": 2577230,
+      "probability": 0.2703668773174286,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " x",
+      "start": 2583870,
+      "end": 2584350,
+      "probability": 0.3830169141292572,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " and,",
+      "start": 2584540,
+      "end": 2586140,
+      "probability": 0.15343807637691498,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " 2,",
+      "start": 2593940,
+      "end": 2594440,
+      "probability": 0.42832306027412415,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " a",
+      "start": 2595280,
+      "end": 2595480,
+      "probability": 0.28262078762054443,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " then",
+      "start": 2599660,
+      "end": 2599760,
+      "probability": 0.3652569055557251,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " moved.",
+      "start": 2605730,
+      "end": 2606030,
+      "probability": 0.46331751346588135,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " And",
+      "start": 2631230,
+      "end": 2632270,
+      "probability": 0.47822925448417664,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " 1e",
+      "start": 2634070,
+      "end": 2634810,
+      "probability": 0.4669622629880905,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " but",
+      "start": 2659090,
+      "end": 2659910,
+      "probability": 0.10193400084972382,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " we",
+      "start": 2671380,
+      "end": 2672740,
+      "probability": 0.3957611918449402,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " In",
+      "start": 2688860,
+      "end": 2689000,
+      "probability": 0.4679780602455139,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " So",
+      "start": 2695130,
+      "end": 2695330,
+      "probability": 0.44047150015830994,
+      "chunk": "chunk-008"
+    },
+    {
+      "text": " OK.",
+      "start": 2701020,
+      "end": 2701040,
+      "probability": 0.21583810448646545,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " what",
+      "start": 2702860,
+      "end": 2703360,
+      "probability": 0.2920864224433899,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " time,",
+      "start": 2708570,
+      "end": 2708910,
+      "probability": 0.4726170301437378,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " your",
+      "start": 2713550,
+      "end": 2713650,
+      "probability": 0.4629645347595215,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " value?",
+      "start": 2727540,
+      "end": 2727700,
+      "probability": 0.1823272407054901,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " you?",
+      "start": 2727700,
+      "end": 2727840,
+      "probability": 0.14967016875743866,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " So,",
+      "start": 2740940,
+      "end": 2741320,
+      "probability": 0.39935603737831116,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " is",
+      "start": 2758910,
+      "end": 2759690,
+      "probability": 0.4963859021663666,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " do",
+      "start": 2761310,
+      "end": 2761710,
+      "probability": 0.21938538551330566,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " Okay,",
+      "start": 2784920,
+      "end": 2785480,
+      "probability": 0.28981316089630127,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " flowing",
+      "start": 2792630,
+      "end": 2793190,
+      "probability": 0.3996894955635071,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " algorithm",
+      "start": 2803100,
+      "end": 2803860,
+      "probability": 0.44412070512771606,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " bytes,",
+      "start": 2811920,
+      "end": 2812280,
+      "probability": 0.0327465645968914,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " 0",
+      "start": 2821960,
+      "end": 2822060,
+      "probability": 0.48517629504203796,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " accelerated",
+      "start": 2835400,
+      "end": 2836060,
+      "probability": 0.44048765301704407,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " Alright,",
+      "start": 2839800,
+      "end": 2840760,
+      "probability": 0.0874549001455307,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " and",
+      "start": 2842760,
+      "end": 2843240,
+      "probability": 0.484159916639328,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " and",
+      "start": 2865060,
+      "end": 2866020,
+      "probability": 0.3512551486492157,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " Okay,",
+      "start": 2869560,
+      "end": 2870520,
+      "probability": 0.3919016718864441,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " yeah,",
+      "start": 2884880,
+      "end": 2884980,
+      "probability": 0.4078103303909302,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " all",
+      "start": 2885780,
+      "end": 2885940,
+      "probability": 0.12742048501968384,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " Guillou",
+      "start": 2900790,
+      "end": 2901070,
+      "probability": 0.25119360784689587,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " scale",
+      "start": 2928580,
+      "end": 2928840,
+      "probability": 0.27635467052459717,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " U",
+      "start": 2928840,
+      "end": 2928980,
+      "probability": 0.42800742387771606,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " that",
+      "start": 2931740,
+      "end": 2931860,
+      "probability": 0.4386245608329773,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " This",
+      "start": 2933700,
+      "end": 2934440,
+      "probability": 0.4072394371032715,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " Gelu",
+      "start": 2954420,
+      "end": 2954800,
+      "probability": 0.4635003134608269,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " in,",
+      "start": 2968500,
+      "end": 2968660,
+      "probability": 0.26533037424087524,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " Galio,",
+      "start": 2969280,
+      "end": 2969620,
+      "probability": 0.33985136449337006,
+      "chunk": "chunk-009"
+    },
+    {
+      "text": " And",
+      "start": 3002120,
+      "end": 3002380,
+      "probability": 0.4699350595474243,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " addition,",
+      "start": 3009480,
+      "end": 3009700,
+      "probability": 0.36972489953041077,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " OK,",
+      "start": 3013090,
+      "end": 3013090,
+      "probability": 0.07485237717628479,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " area",
+      "start": 3014870,
+      "end": 3015010,
+      "probability": 0.08307172358036041,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " hopefully",
+      "start": 3022060,
+      "end": 3022540,
+      "probability": 0.433587908744812,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " Okay?",
+      "start": 3025280,
+      "end": 3026220,
+      "probability": 0.28963854908943176,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " I",
+      "start": 3033110,
+      "end": 3033310,
+      "probability": 0.3691083490848541,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " x",
+      "start": 3033850,
+      "end": 3034570,
+      "probability": 0.4484184980392456,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " and",
+      "start": 3036870,
+      "end": 3037770,
+      "probability": 0.4250923693180084,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " which",
+      "start": 3049740,
+      "end": 3050140,
+      "probability": 0.2935393154621124,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " and",
+      "start": 3052480,
+      "end": 3053180,
+      "probability": 0.48916909098625183,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " everything",
+      "start": 3065980,
+      "end": 3066740,
+      "probability": 0.4016325771808624,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " OK,",
+      "start": 3078390,
+      "end": 3078390,
+      "probability": 0.4389317035675049,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " 2n",
+      "start": 3091690,
+      "end": 3093890,
+      "probability": 0.4240727126598358,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " And",
+      "start": 3117880,
+      "end": 3118480,
+      "probability": 0.39175286889076233,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " in",
+      "start": 3136900,
+      "end": 3137120,
+      "probability": 0.45735031366348267,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " you",
+      "start": 3166480,
+      "end": 3166940,
+      "probability": 0.48433971405029297,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " as",
+      "start": 3170770,
+      "end": 3170910,
+      "probability": 0.4893244504928589,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " bound,",
+      "start": 3174330,
+      "end": 3174590,
+      "probability": 0.4960659444332123,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " later,",
+      "start": 3175590,
+      "end": 3175790,
+      "probability": 0.10146603733301163,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " the",
+      "start": 3183890,
+      "end": 3184010,
+      "probability": 0.4441649615764618,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " the,",
+      "start": 3191670,
+      "end": 3193170,
+      "probability": 0.18728409707546234,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " And",
+      "start": 3203120,
+      "end": 3203600,
+      "probability": 0.4833502769470215,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " dot",
+      "start": 3218940,
+      "end": 3219120,
+      "probability": 0.3718430995941162,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " a,",
+      "start": 3219800,
+      "end": 3219960,
+      "probability": 0.4089260697364807,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " as",
+      "start": 3223540,
+      "end": 3223840,
+      "probability": 0.2993209660053253,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " in",
+      "start": 3226800,
+      "end": 3227020,
+      "probability": 0.4483037292957306,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " at",
+      "start": 3229980,
+      "end": 3230100,
+      "probability": 0.3110206723213196,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " FP16.",
+      "start": 3242000,
+      "end": 3243260,
+      "probability": 0.48144522309303284,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " though,",
+      "start": 3246750,
+      "end": 3246950,
+      "probability": 0.41567447781562805,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " actual",
+      "start": 3261840,
+      "end": 3262340,
+      "probability": 0.2930997908115387,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " um,",
+      "start": 3272620,
+      "end": 3273400,
+      "probability": 0.33533066511154175,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " promise",
+      "start": 3275700,
+      "end": 3276200,
+      "probability": 0.46745750308036804,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " for",
+      "start": 3298430,
+      "end": 3298790,
+      "probability": 0.19926847517490387,
+      "chunk": "chunk-010"
+    },
+    {
+      "text": " maybe",
+      "start": 3305500,
+      "end": 3306040,
+      "probability": 0.38679367303848267,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " just",
+      "start": 3319700,
+      "end": 3320320,
+      "probability": 0.2600136995315552,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " So",
+      "start": 3323840,
+      "end": 3324280,
+      "probability": 0.3270094096660614,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " We",
+      "start": 3326800,
+      "end": 3326800,
+      "probability": 0.17313340306282043,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " X",
+      "start": 3356500,
+      "end": 3356660,
+      "probability": 0.39681681990623474,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " vertical",
+      "start": 3357720,
+      "end": 3358840,
+      "probability": 0.11183521151542664,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " H100s",
+      "start": 3370440,
+      "end": 3372660,
+      "probability": 0.46503714720408124,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " that",
+      "start": 3381420,
+      "end": 3381580,
+      "probability": 0.38344472646713257,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " value",
+      "start": 3387420,
+      "end": 3388400,
+      "probability": 0.41030144691467285,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " and",
+      "start": 3413400,
+      "end": 3414420,
+      "probability": 0.3909188210964203,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " obviously,",
+      "start": 3415200,
+      "end": 3416220,
+      "probability": 0.42426756024360657,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " So,",
+      "start": 3439680,
+      "end": 3439860,
+      "probability": 0.4693698585033417,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " matmals,",
+      "start": 3442460,
+      "end": 3442940,
+      "probability": 0.30784014860788983,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " you",
+      "start": 3444000,
+      "end": 3444980,
+      "probability": 0.48168882727622986,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " an",
+      "start": 3465140,
+      "end": 3465620,
+      "probability": 0.21706198155879974,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " and",
+      "start": 3468520,
+      "end": 3469840,
+      "probability": 0.34393343329429626,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " okay",
+      "start": 3487470,
+      "end": 3488450,
+      "probability": 0.10237153619527817,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " like",
+      "start": 3497640,
+      "end": 3497840,
+      "probability": 0.485080748796463,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " of",
+      "start": 3524910,
+      "end": 3525030,
+      "probability": 0.4286077916622162,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " of",
+      "start": 3535930,
+      "end": 3536370,
+      "probability": 0.38222965598106384,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " value",
+      "start": 3536370,
+      "end": 3536770,
+      "probability": 0.48790690302848816,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " Okay,",
+      "start": 3540610,
+      "end": 3540690,
+      "probability": 0.4245940148830414,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " in,",
+      "start": 3552340,
+      "end": 3552640,
+      "probability": 0.21561633050441742,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " it",
+      "start": 3553600,
+      "end": 3553720,
+      "probability": 0.4332624673843384,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " simple,",
+      "start": 3554100,
+      "end": 3554220,
+      "probability": 0.10275689512491226,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " 23,",
+      "start": 3562780,
+      "end": 3563280,
+      "probability": 0.4094655513763428,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " of,",
+      "start": 3564280,
+      "end": 3564880,
+      "probability": 0.35486072301864624,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " Oh,",
+      "start": 3571460,
+      "end": 3571940,
+      "probability": 0.2507273256778717,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " is",
+      "start": 3579100,
+      "end": 3580560,
+      "probability": 0.4895828068256378,
+      "chunk": "chunk-011"
+    },
+    {
+      "text": " So",
+      "start": 3612910,
+      "end": 3613070,
+      "probability": 0.4207395017147064,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " where",
+      "start": 3621480,
+      "end": 3621620,
+      "probability": 0.23948407173156738,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " D",
+      "start": 3635240,
+      "end": 3637060,
+      "probability": 0.17885202169418335,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " OK,",
+      "start": 3638720,
+      "end": 3639000,
+      "probability": 0.3186703324317932,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " i",
+      "start": 3639560,
+      "end": 3639760,
+      "probability": 0.30877435207366943,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " int,",
+      "start": 3650240,
+      "end": 3651080,
+      "probability": 0.21309258043766022,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " and",
+      "start": 3654500,
+      "end": 3654840,
+      "probability": 0.47699490189552307,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " kind",
+      "start": 3660660,
+      "end": 3661140,
+      "probability": 0.4108271598815918,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " math",
+      "start": 3662660,
+      "end": 3662820,
+      "probability": 0.338657021522522,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " moles.",
+      "start": 3662820,
+      "end": 3663040,
+      "probability": 0.3985043913125992,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " um,",
+      "start": 3674310,
+      "end": 3674630,
+      "probability": 0.21804188191890717,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " and",
+      "start": 3681590,
+      "end": 3682510,
+      "probability": 0.26997411251068115,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " and",
+      "start": 3701950,
+      "end": 3702410,
+      "probability": 0.36984169483184814,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " in",
+      "start": 3714370,
+      "end": 3714590,
+      "probability": 0.296099990606308,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " sorry",
+      "start": 3716090,
+      "end": 3717530,
+      "probability": 0.23347710072994232,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " an",
+      "start": 3721090,
+      "end": 3721170,
+      "probability": 0.39211004972457886,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " okay",
+      "start": 3722210,
+      "end": 3723230,
+      "probability": 0.4551672041416168,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " backward",
+      "start": 3729320,
+      "end": 3729660,
+      "probability": 0.4350755512714386,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " if",
+      "start": 3730140,
+      "end": 3730800,
+      "probability": 0.49181389808654785,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " things,",
+      "start": 3734520,
+      "end": 3734840,
+      "probability": 0.05374874174594879,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " kind",
+      "start": 3737940,
+      "end": 3738560,
+      "probability": 0.20787982642650604,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " Einsam",
+      "start": 3763090,
+      "end": 3763370,
+      "probability": 0.4862066904703776,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " you",
+      "start": 3763790,
+      "end": 3764470,
+      "probability": 0.22060802578926086,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " DH2,",
+      "start": 3766710,
+      "end": 3768190,
+      "probability": 0.4981907084584236,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " and",
+      "start": 3789500,
+      "end": 3789940,
+      "probability": 0.362366646528244,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " Okay,",
+      "start": 3792100,
+      "end": 3792540,
+      "probability": 0.4656139016151428,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " you",
+      "start": 3794200,
+      "end": 3794280,
+      "probability": 0.49106115102767944,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " looking",
+      "start": 3807720,
+      "end": 3808060,
+      "probability": 0.4874817132949829,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " and",
+      "start": 3820540,
+      "end": 3821260,
+      "probability": 0.4732683598995209,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " the",
+      "start": 3821260,
+      "end": 3821400,
+      "probability": 0.4523356854915619,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " dimension.",
+      "start": 3828380,
+      "end": 3829120,
+      "probability": 0.4152523875236511,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " And",
+      "start": 3831590,
+      "end": 3831830,
+      "probability": 0.2414558231830597,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " the",
+      "start": 3845990,
+      "end": 3847150,
+      "probability": 0.4373965859413147,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " And",
+      "start": 3849370,
+      "end": 3850150,
+      "probability": 0.3162054121494293,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " d",
+      "start": 3850670,
+      "end": 3851750,
+      "probability": 0.49543532729148865,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " loss",
+      "start": 3851750,
+      "end": 3851990,
+      "probability": 0.2868783175945282,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " So",
+      "start": 3875640,
+      "end": 3876220,
+      "probability": 0.2830774188041687,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " but",
+      "start": 3876320,
+      "end": 3876900,
+      "probability": 0.1771763563156128,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " you",
+      "start": 3892380,
+      "end": 3892560,
+      "probability": 0.4173116385936737,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " wet",
+      "start": 3896100,
+      "end": 3896300,
+      "probability": 0.22199362516403198,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " but",
+      "start": 3897480,
+      "end": 3897820,
+      "probability": 0.4709544777870178,
+      "chunk": "chunk-012"
+    },
+    {
+      "text": " the,",
+      "start": 3915860,
+      "end": 3915920,
+      "probability": 0.2820594012737274,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " Okay,",
+      "start": 3928150,
+      "end": 3928950,
+      "probability": 0.43930038809776306,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " jumps.",
+      "start": 3961280,
+      "end": 3961460,
+      "probability": 0.06651070713996887,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " grand",
+      "start": 3963180,
+      "end": 3963400,
+      "probability": 0.4304838180541992,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " and",
+      "start": 3971180,
+      "end": 3971660,
+      "probability": 0.21292616426944733,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " well",
+      "start": 3990030,
+      "end": 3990230,
+      "probability": 0.4887695014476776,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " If",
+      "start": 3993450,
+      "end": 3993450,
+      "probability": 0.33292102813720703,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " OK,",
+      "start": 4004790,
+      "end": 4004790,
+      "probability": 0.3184773623943329,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " going",
+      "start": 4022310,
+      "end": 4022310,
+      "probability": 0.2336803823709488,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " Adam.",
+      "start": 4029850,
+      "end": 4030330,
+      "probability": 0.4374416172504425,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " somewhere",
+      "start": 4032030,
+      "end": 4032430,
+      "probability": 0.3939785659313202,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " you",
+      "start": 4041710,
+      "end": 4042230,
+      "probability": 0.30551376938819885,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " Um,",
+      "start": 4052370,
+      "end": 4052690,
+      "probability": 0.38557732105255127,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " going",
+      "start": 4053210,
+      "end": 4053310,
+      "probability": 0.2868175208568573,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " assignment",
+      "start": 4079010,
+      "end": 4079290,
+      "probability": 0.4923337996006012,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " ADAM.",
+      "start": 4081590,
+      "end": 4081990,
+      "probability": 0.4061897322535515,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " the",
+      "start": 4093770,
+      "end": 4093870,
+      "probability": 0.3541882336139679,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " So",
+      "start": 4127490,
+      "end": 4128050,
+      "probability": 0.26536089181900024,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " you",
+      "start": 4129150,
+      "end": 4129510,
+      "probability": 0.49725592136383057,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " Okay.",
+      "start": 4137650,
+      "end": 4138170,
+      "probability": 0.3949417471885681,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " what",
+      "start": 4164770,
+      "end": 4165130,
+      "probability": 0.18385910987854004,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " it",
+      "start": 4176330,
+      "end": 4176470,
+      "probability": 0.3855913579463959,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " FB16,",
+      "start": 4176570,
+      "end": 4177270,
+      "probability": 0.48121272027492523,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " D",
+      "start": 4190380,
+      "end": 4190660,
+      "probability": 0.44567400217056274,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " layers",
+      "start": 4191820,
+      "end": 4191940,
+      "probability": 0.1590571403503418,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " for",
+      "start": 4191940,
+      "end": 4192120,
+      "probability": 0.35626059770584106,
+      "chunk": "chunk-013"
+    },
+    {
+      "text": " of",
+      "start": 4200080,
+      "end": 4200180,
+      "probability": 0.1563984453678131,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " tends",
+      "start": 4232630,
+      "end": 4232910,
+      "probability": 0.39417338371276855,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " Adam,",
+      "start": 4247270,
+      "end": 4247430,
+      "probability": 0.22513550519943237,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " you",
+      "start": 4253190,
+      "end": 4253350,
+      "probability": 0.3760266900062561,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " the",
+      "start": 4256050,
+      "end": 4256090,
+      "probability": 0.2813287377357483,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " um,",
+      "start": 4272320,
+      "end": 4272700,
+      "probability": 0.05480463057756424,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " the,",
+      "start": 4274480,
+      "end": 4275760,
+      "probability": 0.49986788630485535,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " the",
+      "start": 4277530,
+      "end": 4277910,
+      "probability": 0.3574703335762024,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " memory.",
+      "start": 4295430,
+      "end": 4295950,
+      "probability": 0.29607343673706055,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " OK,",
+      "start": 4298800,
+      "end": 4298900,
+      "probability": 0.19887273013591766,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " d",
+      "start": 4304800,
+      "end": 4304960,
+      "probability": 0.4741629958152771,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " and",
+      "start": 4317640,
+      "end": 4317780,
+      "probability": 0.28145620226860046,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " OK,",
+      "start": 4320850,
+      "end": 4320950,
+      "probability": 0.09537990391254425,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " both",
+      "start": 4335460,
+      "end": 4335680,
+      "probability": 0.48840466141700745,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " on",
+      "start": 4338920,
+      "end": 4339320,
+      "probability": 0.4564058780670166,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " in",
+      "start": 4350760,
+      "end": 4351360,
+      "probability": 0.45266976952552795,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " Tatsu",
+      "start": 4359280,
+      "end": 4359720,
+      "probability": 0.49679383635520935,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " going",
+      "start": 4367440,
+      "end": 4367560,
+      "probability": 0.26418206095695496,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " compute,",
+      "start": 4374540,
+      "end": 4374660,
+      "probability": 0.49219515919685364,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " metric",
+      "start": 4377920,
+      "end": 4378120,
+      "probability": 0.2914382219314575,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " we",
+      "start": 4400700,
+      "end": 4401520,
+      "probability": 0.4781618118286133,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " B",
+      "start": 4421520,
+      "end": 4424020,
+      "probability": 0.3702964782714844,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " And",
+      "start": 4429560,
+      "end": 4430040,
+      "probability": 0.49619588255882263,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " also",
+      "start": 4434530,
+      "end": 4434670,
+      "probability": 0.4175095856189728,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " so",
+      "start": 4451030,
+      "end": 4451210,
+      "probability": 0.4006149470806122,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " If",
+      "start": 4455450,
+      "end": 4455690,
+      "probability": 0.48281070590019226,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " Um,",
+      "start": 4459350,
+      "end": 4459350,
+      "probability": 0.4899637699127197,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": "-",
+      "start": 4471150,
+      "end": 4471970,
+      "probability": 0.3657624125480652,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " at",
+      "start": 4482180,
+      "end": 4482340,
+      "probability": 0.3901154696941376,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": " network,",
+      "start": 4501540,
+      "end": 4501960,
+      "probability": 0.4563731253147125,
+      "chunk": "chunk-014"
+    },
+    {
+      "text": "-the",
+      "start": 4503600,
+      "end": 4503800,
+      "probability": 0.46226560324430466,
+      "chunk": "chunk-015"
+    },
+    {
+      "text": " a",
+      "start": 4525010,
+      "end": 4525170,
+      "probability": 0.05584731325507164,
+      "chunk": "chunk-015"
+    },
+    {
+      "text": " OK,",
+      "start": 4529710,
+      "end": 4530090,
+      "probability": 0.1380077749490738,
+      "chunk": "chunk-015"
+    },
+    {
+      "text": " for",
+      "start": 4549010,
+      "end": 4549890,
+      "probability": 0.46132755279541016,
+      "chunk": "chunk-015"
+    },
+    {
+      "text": " And",
+      "start": 4552960,
+      "end": 4553520,
+      "probability": 0.3138614296913147,
+      "chunk": "chunk-015"
+    },
+    {
+      "text": " check",
+      "start": 4556140,
+      "end": 4556300,
+      "probability": 0.18289224803447723,
+      "chunk": "chunk-015"
+    },
+    {
+      "text": " L",
+      "start": 4557280,
+      "end": 4557780,
+      "probability": 0.4863705635070801,
+      "chunk": "chunk-015"
+    },
+    {
+      "text": " optimizer",
+      "start": 4579180,
+      "end": 4579540,
+      "probability": 0.357594296336174,
+      "chunk": "chunk-015"
+    },
+    {
+      "text": " data.",
+      "start": 4580740,
+      "end": 4581540,
+      "probability": 0.1762898713350296,
+      "chunk": "chunk-015"
+    },
+    {
+      "text": " introduced",
+      "start": 4582100,
+      "end": 4582340,
+      "probability": 0.34548038244247437,
+      "chunk": "chunk-015"
+    },
+    {
+      "text": " the",
+      "start": 4588460,
+      "end": 4588620,
+      "probability": 0.4104935824871063,
+      "chunk": "chunk-015"
+    },
+    {
+      "text": " rotation",
+      "start": 4609380,
+      "end": 4609540,
+      "probability": 0.11342772096395493,
+      "chunk": "chunk-015"
+    },
+    {
+      "text": " microphones",
+      "start": 4613700,
+      "end": 4614020,
+      "probability": 0.12296471744775772,
+      "chunk": "chunk-015"
+    },
+    {
+      "text": " batch",
+      "start": 4628240,
+      "end": 4629160,
+      "probability": 0.4634283781051636,
+      "chunk": "chunk-015"
+    }
+  ]
+}

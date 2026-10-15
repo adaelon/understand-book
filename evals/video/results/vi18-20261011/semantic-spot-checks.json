@@ -1,0 +1,106 @@
+{
+  "status": "passed",
+  "at": "2026-10-11T06:16:52.924Z",
+  "source": "accepted worker artifacts and directly viewed original frames",
+  "scope": "Two semantic samples, not an exhaustive semantic or verbatim audit",
+  "samples": [
+    {
+      "part": 1,
+      "vu_id": "lecture18-part1/vu-0072/4",
+      "actual_pts_ms": 736000,
+      "graph_batch": "lecture18-graph-p1-046",
+      "discourse_batch": "lecture18-discourse-p1-046",
+      "observed_original_frame": "video-enrichments/lecture18-graph-p1-046/frames/image_5.png",
+      "observation": "BF16用于参数、激活值和梯度；FP32用于优化器状态。",
+      "graph_nodes": [
+        {
+          "id": "video:lecture18-graph-p1-046:n1",
+          "name": "混合精度训练",
+          "meaning": "让一部分计算使用一种精度、其他计算使用另一种精度的训练方式。"
+        },
+        {
+          "id": "video:lecture18-graph-p1-046:n2",
+          "name": "参数、激活值与梯度",
+          "meaning": "混合精度训练中通常以BF16存储的三类训练数据。"
+        },
+        {
+          "id": "video:lecture18-graph-p1-046:n3",
+          "name": "BF16用于参数、激活值和梯度",
+          "meaning": "一般规则是使用BF16存储参数、激活值和梯度。"
+        },
+        {
+          "id": "video:lecture18-graph-p1-046:n4",
+          "name": "优化器状态",
+          "meaning": "幻灯片所示在混合精度训练中使用FP32的一类状态。"
+        },
+        {
+          "id": "video:lecture18-graph-p1-046:n5",
+          "name": "FP32用于优化器状态",
+          "meaning": "混合精度训练的幻灯片建议优化器状态使用FP32。"
+        }
+      ],
+      "discourse_items": [
+        {
+          "id": "discourse:lecture18-discourse-p1-046:i1",
+          "local_summary": "讲者发现当前内容可能已过时，先重新编译课程材料，再进入混合精度训练主题。"
+        },
+        {
+          "id": "discourse:lecture18-discourse-p1-046:i2",
+          "local_summary": "混合精度训练指不同计算采用不同数值精度。"
+        },
+        {
+          "id": "discourse:lecture18-discourse-p1-046:i3",
+          "local_summary": "一般规则是：参数、激活值和梯度使用 bfloat16（幻灯片写作 bf16）。"
+        }
+      ],
+      "result": "sampled meanings agree with original frame and supplied transcript; source references retained"
+    },
+    {
+      "part": 4,
+      "vu_id": "lecture18-part4/vu-0066/3",
+      "actual_pts_ms": 4241000,
+      "graph_batch": "lecture18-graph-p4-042",
+      "discourse_batch": "lecture18-discourse-p4-042",
+      "observed_original_frame": "video-enrichments/lecture18-graph-p4-042/frames/image_4.png",
+      "observation": "二阶矩每参数4字节，Adam一阶与二阶矩8字节；FP32用于累积统计稳定性。",
+      "graph_nodes": [
+        {
+          "id": "video:lecture18-graph-p4-041:n5",
+          "name": "BF16优化器状态不稳定",
+          "meaning": "用 BF16 保存涉及平方与跨多步平均的优化器状态往往不稳定。"
+        },
+        {
+          "id": "video:lecture18-graph-p4-042:n2",
+          "name": "AdaGrad状态每参数需要4字节",
+          "meaning": "AdaGrad 为每个参数保存优化器状态时需要4字节。"
+        },
+        {
+          "id": "video:lecture18-graph-p4-038:n3",
+          "name": "Adam状态每参数需要8字节",
+          "meaning": "画面说明二阶矩占每参数4字节，而 Adam 保存一阶矩和二阶矩，因此每参数需要8字节。"
+        },
+        {
+          "id": "video:lecture18-graph-p4-042:n4",
+          "name": "二阶矩状态",
+          "meaning": "优化器累计梯度平方所得的二阶矩；画面标明其每参数占4字节。"
+        }
+      ],
+      "discourse_items": [
+        {
+          "id": "discourse:lecture18-discourse-p4-042:i1",
+          "local_summary": "将优化器状态改用 bfloat16 的尝试会不稳定：优化过程涉及平方并跨多个步骤做平均，低精度难以稳定承载这种累积。"
+        },
+        {
+          "id": "discourse:lecture18-discourse-p4-042:i2",
+          "local_summary": "Adagrad 的优化器状态为每个参数保存一个二阶矩，因此需要 4 bytes/parameter；画面同时提示 Adam 保存一阶和二阶矩时需 8 bytes/parameter。"
+        }
+      ],
+      "result": "sampled meanings agree with original frame and supplied transcript; source references retained"
+    }
+  ],
+  "final_publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a129cf-c1b7-72c2-bac7-40f9740fda6f"
+  },
+  "final_published_artifacts_unchanged": true
+}

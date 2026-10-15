@@ -9,6 +9,7 @@ use std::{
 };
 
 pub struct ReaderWorkspace {
+    pub(crate) video_drafts: crate::video_draft::Drafts,
     pub publication: Option<Arc<crate::published_library::PublishedBook>>,
     pub id: String,
     pub generation: u64,
@@ -31,6 +32,7 @@ impl ReaderWorkspace {
         session_path: Option<PathBuf>,
     ) -> Self {
         Self {
+            video_drafts: crate::video_draft::load(&session_path),
             publication: None,
             id: "local".into(),
             generation: 0,
@@ -54,6 +56,23 @@ impl ReaderWorkspace {
         self.selected_chat = None;
         self.messages.clear();
         self.workbench_loaded_revision = None;
+    }
+
+    /// Same-source enrichment changes resources, never the Reader or chat selection.
+    pub(crate) fn adopt_same_source_publication(&mut self, publication: Arc<crate::published_library::PublishedBook>) -> Result<(), read_tools::ToolError> {
+        let before = self.book.load_video_source(&self.book_dir)?.0;
+        let after = publication.book.load_video_source(publication.directory())?.0;
+        if before.material != after.material { return Err(crate::published_library::invalid()); }
+        self.book = publication.book.clone();
+        self.book_dir = publication.directory.clone();
+        self.publication = Some(publication);
+        Ok(())
+    }
+
+    pub(crate) fn video_adoption_busy(&self, user: &crate::user_runtime::UserRuntime) -> bool {
+        self.video_drafts.values().any(|d| d.context.material.book_id == self.book.base.book_id && !crate::video_draft::consumed(user, &d.context.draft_id))
+            || user.agent_history.sessions.iter().filter(|s| self.selected_chat.as_ref() == Some(&s.id))
+                .flat_map(|s| &s.turns).any(|t| t.status == crate::AgentAssistantStatus::PendingAssistant)
     }
 
     pub fn localization_cache_path(&self) -> Option<PathBuf> {

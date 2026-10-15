@@ -63,7 +63,7 @@ export function workspaceAction<T = unknown>(action: string, body: Record<string
       ...body, attachment_id: n.attachment, generation: latest.generation, expected_revision: latest.revision,
     });
     if (value.workspace_id) installWorkspace(value, n.attachment, n.linked,
-      action === 'chat/new' || action === 'chat/select' ? 'chat' : undefined);
+      action === 'chat/new' || action === 'chat/select' ? 'chat' : action === 'reader/adopt_same_source_publication' ? 'enrichment' : undefined);
     return value as T;
   });
   writes = result;

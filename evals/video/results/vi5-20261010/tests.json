@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-10",
+  "timezone": "Asia/Hong_Kong",
+  "runtime": {
+    "video_": 2,
+    "tool_registry": 18,
+    "tool_exposure": 27,
+    "presentation_image": 2
+  },
+  "server": {
+    "video_frames": 1
+  },
+  "total_passed": 50,
+  "builds": [
+    "cargo check -p server --lib",
+    "cargo build -p server --example video_frames_probe"
+  ],
+  "original_media_http_cases": 14,
+  "original_media_images": 36,
+  "semantic_inference": false,
+  "live_model": "Pending per existing user agreement; provider configuration absent in this worktree/environment",
+  "failures_resolved": [
+    "Windows cache rename failed while Command retained stderr handle; dropping Command after spawn released it.",
+    "Replay initially required nonempty transcript at 650000–651000 ms; actual canonical map has a speech gap. Replay now compares exact intersecting segments, including an empty result."
+  ],
+  "commands": [
+    "cargo test -p runtime --lib video_",
+    "cargo test -p runtime --lib tool_registry",
+    "cargo test -p runtime --lib tool_exposure",
+    "cargo test -p runtime --lib presentation_image",
+    "cargo test -p server --lib video_frames",
+    "node evals/video/vi5-runtime.mjs record"
+  ]
+}

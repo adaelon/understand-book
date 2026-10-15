@@ -1,0 +1,3107 @@
+{
+  "status": "passed",
+  "old_publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a1285c-3fd1-7420-a118-cfcf134bcd4d"
+  },
+  "new_publication": {
+    "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+    "publication_id": "01a12865-798b-79d0-851c-bc9b43300afd"
+  },
+  "original_publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+  },
+  "previous_book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+  "material": {
+    "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    },
+    "transcript": {
+      "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+      "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      }
+    }
+  },
+  "changed_segment": {
+    "before": {
+      "segment_id": "segment-82",
+      "text": "So even if you have, let's say, try to construct a 1e minus 8 denser, then that is actually just 0.",
+      "location": {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 547370,
+        "end_ms": 554530
+      },
+      "text_range": {
+        "lid": "82",
+        "range": {
+          "start": 0,
+          "end": 99
+        }
+      },
+      "words": []
+    },
+    "after": {
+      "segment_id": "segment-82",
+      "text": "So even if you have, let's say, try to construct a 1e minus 8 tensor, then that is actually just 0.",
+      "location": {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 547370,
+        "end_ms": 554530
+      },
+      "text_range": {
+        "lid": "82",
+        "range": {
+          "start": 0,
+          "end": 99
+        }
+      },
+      "words": []
+    },
+    "old_chinese": {
+      "transcript": {
+        "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+        "transcript_revision": "1",
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        }
+      },
+      "segment_id": "segment-82",
+      "zh_text": "所以，即使你试着构造一个值为 1e-8 的 denser（denser，转写存疑），它实际上也只是 0。"
+    },
+    "chinese": {
+      "transcript": {
+        "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+        "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        }
+      },
+      "segment_id": "segment-82",
+      "zh_text": "比如试着构造一个 1e-8 的张量，结果实际上就是 0。"
+    }
+  },
+  "checks": {
+    "rebound_character_map": true,
+    "sentence_times_preserved": true,
+    "translation_context_invalidation": true,
+    "graph_and_discourse_recomputed": true,
+    "unchanged_complete_inputs_reused": true,
+    "old_publication_readable": true,
+    "original_canonical_files_unchanged": true,
+    "frame_pixels_equal": true,
+    "resume_without_model_or_publication": true
+  },
+  "decisions": [
+    {
+      "stage": "visual",
+      "task": "lecture-v1/vu-0001",
+      "action": "recompute",
+      "reason": "nearby transcript changed or completed result unavailable"
+    },
+    {
+      "stage": "visual",
+      "task": "lecture-v1/vu-0002",
+      "action": "reused",
+      "previous_task": "vu-0002",
+      "reason": "frames, scan settings and full nearby transcript equivalent"
+    },
+    {
+      "stage": "visual",
+      "task": "lecture-v1/vu-0003",
+      "action": "reused",
+      "previous_task": "vu-0003",
+      "reason": "frames, scan settings and full nearby transcript equivalent"
+    },
+    {
+      "stage": "visual",
+      "task": "lecture-v1/vu-0004",
+      "action": "reused",
+      "previous_task": "vu-0004",
+      "reason": "frames, scan settings and full nearby transcript equivalent"
+    },
+    {
+      "stage": "visual",
+      "task": "lecture-v1/vu-0005",
+      "action": "reused",
+      "previous_task": "vu-0005",
+      "reason": "frames, scan settings and full nearby transcript equivalent"
+    },
+    {
+      "stage": "visual",
+      "task": "lecture-v1/vu-0006",
+      "action": "reused",
+      "previous_task": "vu-0006",
+      "reason": "frames, scan settings and full nearby transcript equivalent"
+    },
+    {
+      "stage": "visual",
+      "task": "lecture-v1/vu-0007",
+      "action": "reused",
+      "previous_task": "vu-0007",
+      "reason": "frames, scan settings and full nearby transcript equivalent"
+    },
+    {
+      "stage": "visual",
+      "task": "lecture-v1/vu-0008",
+      "action": "reused",
+      "previous_task": "vu-0008",
+      "reason": "frames, scan settings and full nearby transcript equivalent"
+    },
+    {
+      "stage": "visual",
+      "task": "lecture-v1/vu-0009",
+      "action": "reused",
+      "previous_task": "vu-0009",
+      "reason": "frames, scan settings and full nearby transcript equivalent"
+    },
+    {
+      "stage": "visual",
+      "task": "lecture-v1/vu-0010",
+      "action": "reused",
+      "previous_task": "vu-0010",
+      "reason": "frames, scan settings and full nearby transcript equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-001",
+      "action": "recompute",
+      "reason": "full input changed or completed result unavailable"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-002",
+      "action": "recompute",
+      "reason": "full input changed or completed result unavailable"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-003",
+      "action": "recompute",
+      "reason": "full input changed or completed result unavailable"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-004",
+      "action": "recompute",
+      "reason": "full input changed or completed result unavailable"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-005",
+      "action": "recompute",
+      "reason": "full input changed or completed result unavailable"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-006",
+      "action": "recompute",
+      "reason": "full input changed or completed result unavailable"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-007",
+      "action": "recompute",
+      "reason": "full input changed or completed result unavailable"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-008",
+      "action": "recompute",
+      "reason": "full input changed or completed result unavailable"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-009",
+      "action": "reused",
+      "previous_task": "translation-resized-003",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-010",
+      "action": "reused",
+      "previous_task": "translation-resized-004",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-011",
+      "action": "reused",
+      "previous_task": "translation-resized-005",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-012",
+      "action": "reused",
+      "previous_task": "translation-resized-006",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-013",
+      "action": "reused",
+      "previous_task": "translation-resized-007",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-014",
+      "action": "reused",
+      "previous_task": "translation-resized-008",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-015",
+      "action": "reused",
+      "previous_task": "translation-resized-009",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-016",
+      "action": "reused",
+      "previous_task": "translation-resized-010",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-017",
+      "action": "reused",
+      "previous_task": "translation-resized-011",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-018",
+      "action": "reused",
+      "previous_task": "translation-resized-012",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-019",
+      "action": "reused",
+      "previous_task": "translation-resized-013",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-020",
+      "action": "reused",
+      "previous_task": "translation-resized-014",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-021",
+      "action": "reused",
+      "previous_task": "translation-resized-015",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-022",
+      "action": "reused",
+      "previous_task": "translation-resized-016",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-023",
+      "action": "reused",
+      "previous_task": "translation-resized-017",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "translation",
+      "task": "translation-024",
+      "action": "reused",
+      "previous_task": "translation-resized-018",
+      "reason": "required text and both context windows equivalent"
+    },
+    {
+      "stage": "graph",
+      "task": "graph-vi13-einsum",
+      "action": "reused",
+      "previous_task": "graph-vi13-einsum",
+      "reason": "complete delivered transcript, frames and semantic context equivalent after source rebinding"
+    },
+    {
+      "stage": "graph",
+      "task": "graph-vi13-visual",
+      "action": "reused",
+      "previous_task": "graph-vi13-visual",
+      "reason": "complete delivered transcript, frames and semantic context equivalent after source rebinding"
+    },
+    {
+      "stage": "graph",
+      "task": "graph-vi13-text",
+      "action": "reused",
+      "previous_task": "graph-vi13-text",
+      "reason": "complete delivered transcript, frames and semantic context equivalent after source rebinding"
+    },
+    {
+      "stage": "graph",
+      "task": "graph-vi13-confirm",
+      "action": "reused",
+      "previous_task": "graph-vi13-confirm",
+      "reason": "complete delivered transcript, frames and semantic context equivalent after source rebinding"
+    },
+    {
+      "stage": "graph",
+      "task": "graph-vi17-tensor",
+      "action": "recompute",
+      "reason": "complete model input changed"
+    },
+    {
+      "stage": "discourse",
+      "task": "discourse-vi14-einsum",
+      "action": "reused",
+      "previous_task": "discourse-vi14-einsum",
+      "reason": "complete delivered transcript, frames and semantic context equivalent after source rebinding"
+    },
+    {
+      "stage": "discourse",
+      "task": "discourse-vi17-tensor",
+      "action": "recompute",
+      "reason": "complete model input changed"
+    }
+  ],
+  "semantic_results": {
+    "graph": {
+      "before": {
+        "version": "video_graph.v1",
+        "material": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "transcript": {
+            "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+            "transcript_revision": "1",
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        },
+        "input_publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a1285a-70a8-70d1-9543-897c5cdf0f4e"
+        },
+        "nodes": [
+          {
+            "id": "video:graph-vi17-tensor:n1",
+            "type": "concept",
+            "name": "float16",
+            "identity": {
+              "kind": "video_object",
+              "meaning": "IEEE半精度16位浮点格式；画面示例中每个元素占2字节，但动态范围尤其对小数不足。"
+            },
+            "occurrences": [
+              "81"
+            ],
+            "source_lid": null,
+            "evidence": [
+              {
+                "target": {
+                  "kind": "joint",
+                  "members": [
+                    {
+                      "target": {
+                        "kind": "text",
+                        "publication": {
+                          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                          "publication_id": "01a1285a-70a8-70d1-9543-897c5cdf0f4e"
+                        },
+                        "transcript": {
+                          "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                          "transcript_revision": "1",
+                          "video": {
+                            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                            "media_revision": "1"
+                          }
+                        },
+                        "text_range": {
+                          "lid": "81",
+                          "range": {
+                            "start": 0,
+                            "end": 91
+                          }
+                        }
+                      },
+                      "support_role": "语音指出float16的动态范围较差。"
+                    },
+                    {
+                      "target": {
+                        "kind": "visual",
+                        "publication": {
+                          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                          "publication_id": "01a1285a-70a8-70d1-9543-897c5cdf0f4e"
+                        },
+                        "frames": [
+                          {
+                            "video": {
+                              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                              "media_revision": "1"
+                            },
+                            "actual_pts_ms": 550000,
+                            "width": 1920,
+                            "height": 1080
+                          }
+                        ],
+                        "regions": []
+                      },
+                      "support_role": "画面显示标题“IEEE half-precision 16-bit float”、代码“x = torch.zeros(4, 8, dtype=torch.float16)”与“assert x.element_size() == 2”。"
+                    }
+                  ]
+                },
+                "support_role": "联合支持"
+              }
+            ]
+          },
+          {
+            "id": "video:graph-vi17-tensor:n2",
+            "type": "entity",
+            "name": "x",
+            "identity": {
+              "kind": "video_object",
+              "meaning": "由“x = torch.tensor([1e-8], dtype=torch.float16)”创建的float16张量，画面数值显示为0.000e+0。"
+            },
+            "occurrences": [],
+            "source_lid": null,
+            "evidence": [
+              {
+                "target": {
+                  "kind": "visual",
+                  "publication": {
+                    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                    "publication_id": "01a1285a-70a8-70d1-9543-897c5cdf0f4e"
+                  },
+                  "frames": [
+                    {
+                      "video": {
+                        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                        "media_revision": "1"
+                      },
+                      "actual_pts_ms": 553000,
+                      "width": 1920,
+                      "height": 1080
+                    }
+                  ],
+                  "regions": []
+                },
+                "support_role": "画面精确显示“x = torch.tensor([1e-8], dtype=torch.float16)”以及x的显示值“0.000e+0”。"
+              }
+            ]
+          },
+          {
+            "id": "video:graph-vi17-tensor:n3",
+            "type": "claim",
+            "name": "float16中的1e-8下溢为零",
+            "identity": {
+              "kind": "video_object",
+              "meaning": "数值1e-8存入float16张量后实际表示为0。"
+            },
+            "occurrences": [],
+            "source_lid": "82",
+            "evidence": [
+              {
+                "target": {
+                  "kind": "joint",
+                  "members": [
+                    {
+                      "target": {
+                        "kind": "text",
+                        "publication": {
+                          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                          "publication_id": "01a1285a-70a8-70d1-9543-897c5cdf0f4e"
+                        },
+                        "transcript": {
+                          "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                          "transcript_revision": "1",
+                          "video": {
+                            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                            "media_revision": "1"
+                          }
+                        },
+                        "text_range": {
+                          "lid": "82",
+                          "range": {
+                            "start": 0,
+                            "end": 99
+                          }
+                        }
+                      },
+                      "support_role": "语音说明尝试构造数值为1e-8的张量时，结果实际就是0。"
+                    },
+                    {
+                      "target": {
+                        "kind": "visual",
+                        "publication": {
+                          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                          "publication_id": "01a1285a-70a8-70d1-9543-897c5cdf0f4e"
+                        },
+                        "frames": [
+                          {
+                            "video": {
+                              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                              "media_revision": "1"
+                            },
+                            "actual_pts_ms": 553000,
+                            "width": 1920,
+                            "height": 1080
+                          }
+                        ],
+                        "regions": []
+                      },
+                      "support_role": "画面代码指定dtype=torch.float16并输入1e-8，上方x值显示为0.000e+0。"
+                    }
+                  ]
+                },
+                "support_role": "联合支持"
+              }
+            ]
+          },
+          {
+            "id": "video:graph-vi17-tensor:n4",
+            "type": "claim",
+            "name": "float16难以表示极大和极小数",
+            "identity": {
+              "kind": "video_object",
+              "meaning": "float16有限的动态范围使其不能很好地表示非常大的数和非常小的数。"
+            },
+            "occurrences": [],
+            "source_lid": "83",
+            "evidence": [
+              {
+                "target": {
+                  "kind": "text",
+                  "publication": {
+                    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                    "publication_id": "01a1285a-70a8-70d1-9543-897c5cdf0f4e"
+                  },
+                  "transcript": {
+                    "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                    "transcript_revision": "1",
+                    "video": {
+                      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                      "media_revision": "1"
+                    }
+                  },
+                  "text_range": {
+                    "lid": "83",
+                    "range": {
+                      "start": 0,
+                      "end": 91
+                    }
+                  }
+                },
+                "support_role": "语音明确说明不能表示非常大的数，也不能表示非常小的数。"
+              }
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "source": "video:graph-vi17-tensor:n2",
+            "target": "video:graph-vi17-tensor:n1",
+            "type": "使用数据类型",
+            "direction": "directed",
+            "scope": "local",
+            "weight": 1,
+            "evidence": [
+              {
+                "target": {
+                  "kind": "visual",
+                  "publication": {
+                    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                    "publication_id": "01a1285a-70a8-70d1-9543-897c5cdf0f4e"
+                  },
+                  "frames": [
+                    {
+                      "video": {
+                        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                        "media_revision": "1"
+                      },
+                      "actual_pts_ms": 553000,
+                      "width": 1920,
+                      "height": 1080
+                    }
+                  ],
+                  "regions": []
+                },
+                "support_role": "代码中x的dtype明确为torch.float16。"
+              }
+            ]
+          },
+          {
+            "source": "video:graph-vi17-tensor:n3",
+            "target": "video:graph-vi17-tensor:n2",
+            "type": "描述结果",
+            "direction": "directed",
+            "scope": "local",
+            "weight": 1,
+            "evidence": [
+              {
+                "target": {
+                  "kind": "joint",
+                  "members": [
+                    {
+                      "target": {
+                        "kind": "text",
+                        "publication": {
+                          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                          "publication_id": "01a1285a-70a8-70d1-9543-897c5cdf0f4e"
+                        },
+                        "transcript": {
+                          "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                          "transcript_revision": "1",
+                          "video": {
+                            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                            "media_revision": "1"
+                          }
+                        },
+                        "text_range": {
+                          "lid": "82",
+                          "range": {
+                            "start": 0,
+                            "end": 99
+                          }
+                        }
+                      },
+                      "support_role": "语音给出1e-8张量实际为0的结果。"
+                    },
+                    {
+                      "target": {
+                        "kind": "visual",
+                        "publication": {
+                          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                          "publication_id": "01a1285a-70a8-70d1-9543-897c5cdf0f4e"
+                        },
+                        "frames": [
+                          {
+                            "video": {
+                              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                              "media_revision": "1"
+                            },
+                            "actual_pts_ms": 553000,
+                            "width": 1920,
+                            "height": 1080
+                          }
+                        ],
+                        "regions": []
+                      },
+                      "support_role": "画面把1e-8输入与x的0.000e+0显示对应起来。"
+                    }
+                  ]
+                },
+                "support_role": "联合支持"
+              }
+            ]
+          },
+          {
+            "source": "video:graph-vi17-tensor:n3",
+            "target": "video:graph-vi17-tensor:n1",
+            "type": "体现动态范围限制",
+            "direction": "directed",
+            "scope": "local",
+            "weight": 0.95,
+            "evidence": [
+              {
+                "target": {
+                  "kind": "joint",
+                  "members": [
+                    {
+                      "target": {
+                        "kind": "text",
+                        "publication": {
+                          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                          "publication_id": "01a1285a-70a8-70d1-9543-897c5cdf0f4e"
+                        },
+                        "transcript": {
+                          "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                          "transcript_revision": "1",
+                          "video": {
+                            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                            "media_revision": "1"
+                          }
+                        },
+                        "text_range": {
+                          "lid": "81",
+                          "range": {
+                            "start": 0,
+                            "end": 91
+                          }
+                        }
+                      },
+                      "support_role": "语音指出float16动态范围较差。"
+                    },
+                    {
+                      "target": {
+                        "kind": "visual",
+                        "publication": {
+                          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                          "publication_id": "01a1285a-70a8-70d1-9543-897c5cdf0f4e"
+                        },
+                        "frames": [
+                          {
+                            "video": {
+                              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                              "media_revision": "1"
+                            },
+                            "actual_pts_ms": 550000,
+                            "width": 1920,
+                            "height": 1080
+                          }
+                        ],
+                        "regions": []
+                      },
+                      "support_role": "画面写明动态范围尤其对小数不佳，并展示float16的1e-8示例。"
+                    }
+                  ]
+                },
+                "support_role": "联合支持"
+              }
+            ]
+          },
+          {
+            "source": "video:graph-vi17-tensor:n4",
+            "target": "video:graph-vi17-tensor:n1",
+            "type": "描述限制",
+            "direction": "directed",
+            "scope": "local",
+            "weight": 1,
+            "evidence": [
+              {
+                "target": {
+                  "kind": "text",
+                  "publication": {
+                    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                    "publication_id": "01a1285a-70a8-70d1-9543-897c5cdf0f4e"
+                  },
+                  "transcript": {
+                    "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                    "transcript_revision": "1",
+                    "video": {
+                      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                      "media_revision": "1"
+                    }
+                  },
+                  "text_range": {
+                    "lid": "83",
+                    "range": {
+                      "start": 0,
+                      "end": 91
+                    }
+                  }
+                },
+                "support_role": "语音直接陈述极大与极小数均无法表示。"
+              }
+            ]
+          }
+        ],
+        "frames": [
+          {
+            "frame": {
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              },
+              "actual_pts_ms": 550000,
+              "width": 1920,
+              "height": 1080
+            },
+            "path": "video-enrichments/graph-vi17-tensor/frames/image_1.png"
+          },
+          {
+            "frame": {
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              },
+              "actual_pts_ms": 553000,
+              "width": 1920,
+              "height": 1080
+            },
+            "path": "video-enrichments/graph-vi17-tensor/frames/image_2.png"
+          }
+        ]
+      },
+      "after": {
+        "version": "video_graph.v1",
+        "material": {
+          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "transcript": {
+            "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+            "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        },
+        "input_publication": {
+          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+          "publication_id": "01a12863-900d-7832-b688-dcce44130359"
+        },
+        "nodes": [
+          {
+            "id": "video:graph-vi17-tensor:n1",
+            "type": "concept",
+            "name": "float16",
+            "identity": {
+              "kind": "video_object",
+              "meaning": "IEEE半精度16位浮点类型；其动态范围较差，尤其难以表示很小的数。"
+            },
+            "occurrences": [
+              "81"
+            ],
+            "source_lid": null,
+            "evidence": [
+              {
+                "target": {
+                  "kind": "joint",
+                  "members": [
+                    {
+                      "target": {
+                        "kind": "text",
+                        "publication": {
+                          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                          "publication_id": "01a12863-900d-7832-b688-dcce44130359"
+                        },
+                        "transcript": {
+                          "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                          "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+                          "video": {
+                            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                            "media_revision": "1"
+                          }
+                        },
+                        "text_range": {
+                          "lid": "81",
+                          "range": {
+                            "start": 0,
+                            "end": 91
+                          }
+                        }
+                      },
+                      "support_role": "语音指出float16虽有优点，但动态范围较差。"
+                    },
+                    {
+                      "target": {
+                        "kind": "visual",
+                        "publication": {
+                          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                          "publication_id": "01a12863-900d-7832-b688-dcce44130359"
+                        },
+                        "frames": [
+                          {
+                            "video": {
+                              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                              "media_revision": "1"
+                            },
+                            "actual_pts_ms": 550000,
+                            "width": 1920,
+                            "height": 1080
+                          }
+                        ],
+                        "regions": []
+                      },
+                      "support_role": "画面标题显示“IEEE half-precision 16-bit float”，并写明小数值动态范围不佳。"
+                    }
+                  ]
+                },
+                "support_role": "联合支持"
+              }
+            ]
+          },
+          {
+            "id": "video:graph-vi17-tensor:n2",
+            "type": "entity",
+            "name": "x（1e-8 float16张量）",
+            "identity": {
+              "kind": "video_object",
+              "meaning": "由精确代码 x = torch.tensor([1e-8], dtype=torch.float16) 构造、画面显示为0.000e+0的张量。"
+            },
+            "occurrences": [
+              "82"
+            ],
+            "source_lid": null,
+            "evidence": [
+              {
+                "target": {
+                  "kind": "joint",
+                  "members": [
+                    {
+                      "target": {
+                        "kind": "text",
+                        "publication": {
+                          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                          "publication_id": "01a12863-900d-7832-b688-dcce44130359"
+                        },
+                        "transcript": {
+                          "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                          "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+                          "video": {
+                            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                            "media_revision": "1"
+                          }
+                        },
+                        "text_range": {
+                          "lid": "82",
+                          "range": {
+                            "start": 0,
+                            "end": 99
+                          }
+                        }
+                      },
+                      "support_role": "语音说明尝试构造数值为1e-8的张量后，实际结果为0。"
+                    },
+                    {
+                      "target": {
+                        "kind": "visual",
+                        "publication": {
+                          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                          "publication_id": "01a12863-900d-7832-b688-dcce44130359"
+                        },
+                        "frames": [
+                          {
+                            "video": {
+                              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                              "media_revision": "1"
+                            },
+                            "actual_pts_ms": 553000,
+                            "width": 1920,
+                            "height": 1080
+                          }
+                        ],
+                        "regions": []
+                      },
+                      "support_role": "画面精确显示 x = torch.tensor([1e-8], dtype=torch.float16)，上方结果为0.000e+0。"
+                    }
+                  ]
+                },
+                "support_role": "联合支持"
+              }
+            ]
+          },
+          {
+            "id": "video:graph-vi17-tensor:n3",
+            "type": "claim",
+            "name": "float16中的1e-8下溢为零",
+            "identity": {
+              "kind": "video_object",
+              "meaning": "数值1e-8存入float16张量时无法保留，结果下溢成0。"
+            },
+            "occurrences": [],
+            "source_lid": "82",
+            "evidence": [
+              {
+                "target": {
+                  "kind": "joint",
+                  "members": [
+                    {
+                      "target": {
+                        "kind": "text",
+                        "publication": {
+                          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                          "publication_id": "01a12863-900d-7832-b688-dcce44130359"
+                        },
+                        "transcript": {
+                          "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                          "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+                          "video": {
+                            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                            "media_revision": "1"
+                          }
+                        },
+                        "text_range": {
+                          "lid": "82",
+                          "range": {
+                            "start": 0,
+                            "end": 99
+                          }
+                        }
+                      },
+                      "support_role": "语音提供结论：构造1e-8张量后实际为0。"
+                    },
+                    {
+                      "target": {
+                        "kind": "visual",
+                        "publication": {
+                          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                          "publication_id": "01a12863-900d-7832-b688-dcce44130359"
+                        },
+                        "frames": [
+                          {
+                            "video": {
+                              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                              "media_revision": "1"
+                            },
+                            "actual_pts_ms": 553000,
+                            "width": 1920,
+                            "height": 1080
+                          }
+                        ],
+                        "regions": []
+                      },
+                      "support_role": "画面提供具体dtype、精确构造代码和0.000e+0结果。"
+                    }
+                  ]
+                },
+                "support_role": "联合支持"
+              }
+            ]
+          },
+          {
+            "id": "video:graph-vi17-tensor:n4",
+            "type": "claim",
+            "name": "float16难以表示极大和极小数",
+            "identity": {
+              "kind": "video_object",
+              "meaning": "float16不能很好地表示非常大的数，也不能很好地表示非常小的数。"
+            },
+            "occurrences": [],
+            "source_lid": "83",
+            "evidence": [
+              {
+                "target": {
+                  "kind": "text",
+                  "publication": {
+                    "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                    "publication_id": "01a12863-900d-7832-b688-dcce44130359"
+                  },
+                  "transcript": {
+                    "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                    "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+                    "video": {
+                      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                      "media_revision": "1"
+                    }
+                  },
+                  "text_range": {
+                    "lid": "83",
+                    "range": {
+                      "start": 0,
+                      "end": 91
+                    }
+                  }
+                },
+                "support_role": "语音直接说明不能表示非常大的数和非常小的数。"
+              }
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "source": "video:graph-vi17-tensor:n2",
+            "target": "video:graph-vi17-tensor:n1",
+            "type": "数据类型为",
+            "direction": "directed",
+            "scope": "local",
+            "weight": 1,
+            "evidence": [
+              {
+                "target": {
+                  "kind": "visual",
+                  "publication": {
+                    "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                    "publication_id": "01a12863-900d-7832-b688-dcce44130359"
+                  },
+                  "frames": [
+                    {
+                      "video": {
+                        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                        "media_revision": "1"
+                      },
+                      "actual_pts_ms": 553000,
+                      "width": 1920,
+                      "height": 1080
+                    }
+                  ],
+                  "regions": []
+                },
+                "support_role": "代码中的dtype=torch.float16明确给出x的数据类型。"
+              }
+            ]
+          },
+          {
+            "source": "video:graph-vi17-tensor:n3",
+            "target": "video:graph-vi17-tensor:n2",
+            "type": "描述结果",
+            "direction": "directed",
+            "scope": "local",
+            "weight": 1,
+            "evidence": [
+              {
+                "target": {
+                  "kind": "joint",
+                  "members": [
+                    {
+                      "target": {
+                        "kind": "text",
+                        "publication": {
+                          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                          "publication_id": "01a12863-900d-7832-b688-dcce44130359"
+                        },
+                        "transcript": {
+                          "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                          "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+                          "video": {
+                            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                            "media_revision": "1"
+                          }
+                        },
+                        "text_range": {
+                          "lid": "82",
+                          "range": {
+                            "start": 0,
+                            "end": 99
+                          }
+                        }
+                      },
+                      "support_role": "语音说明1e-8张量实际成为0。"
+                    },
+                    {
+                      "target": {
+                        "kind": "visual",
+                        "publication": {
+                          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                          "publication_id": "01a12863-900d-7832-b688-dcce44130359"
+                        },
+                        "frames": [
+                          {
+                            "video": {
+                              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                              "media_revision": "1"
+                            },
+                            "actual_pts_ms": 553000,
+                            "width": 1920,
+                            "height": 1080
+                          }
+                        ],
+                        "regions": []
+                      },
+                      "support_role": "画面把1e-8的float16构造代码与0.000e+0结果同时展示。"
+                    }
+                  ]
+                },
+                "support_role": "联合支持"
+              }
+            ]
+          },
+          {
+            "source": "video:graph-vi17-tensor:n3",
+            "target": "video:graph-vi17-tensor:n4",
+            "type": "具体例证",
+            "direction": "directed",
+            "scope": "local",
+            "weight": 0.95,
+            "evidence": [
+              {
+                "target": {
+                  "kind": "text",
+                  "publication": {
+                    "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                    "publication_id": "01a12863-900d-7832-b688-dcce44130359"
+                  },
+                  "transcript": {
+                    "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                    "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+                    "video": {
+                      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                      "media_revision": "1"
+                    }
+                  },
+                  "text_range": {
+                    "lid": "82",
+                    "range": {
+                      "start": 0,
+                      "end": 99
+                    }
+                  }
+                },
+                "support_role": "给出1e-8变成0的具体例子。"
+              },
+              {
+                "target": {
+                  "kind": "text",
+                  "publication": {
+                    "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                    "publication_id": "01a12863-900d-7832-b688-dcce44130359"
+                  },
+                  "transcript": {
+                    "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                    "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+                    "video": {
+                      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                      "media_revision": "1"
+                    }
+                  },
+                  "text_range": {
+                    "lid": "83",
+                    "range": {
+                      "start": 0,
+                      "end": 91
+                    }
+                  }
+                },
+                "support_role": "随后概括float16无法表示很大或很小的数。"
+              }
+            ]
+          }
+        ],
+        "frames": [
+          {
+            "frame": {
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              },
+              "actual_pts_ms": 550000,
+              "width": 1920,
+              "height": 1080
+            },
+            "path": "video-enrichments/graph-vi17-tensor/frames/image_1.png"
+          },
+          {
+            "frame": {
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              },
+              "actual_pts_ms": 553000,
+              "width": 1920,
+              "height": 1080
+            },
+            "path": "video-enrichments/graph-vi17-tensor/frames/image_2.png"
+          }
+        ]
+      },
+      "input_changed": true
+    },
+    "discourse": {
+      "before": {
+        "version": "video_discourse.v1",
+        "material": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "transcript": {
+            "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+            "transcript_revision": "1",
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        },
+        "input_publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a1285b-3f10-7ec0-a8c5-0c772749e53b"
+        },
+        "items": [
+          {
+            "mode": "argumentative",
+            "local_function": "limitation",
+            "rhetorical_move": "limitation_acknowledgement",
+            "local_summary": "float16虽有用，但动态范围较差，尤其难以表示很小的数。",
+            "vu_ids": [],
+            "relations": [],
+            "id": "discourse:discourse-vi17-tensor:i1",
+            "evidence": [
+              {
+                "target": {
+                  "kind": "text",
+                  "publication": {
+                    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                    "publication_id": "01a1285b-3f10-7ec0-a8c5-0c772749e53b"
+                  },
+                  "transcript": {
+                    "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                    "transcript_revision": "1",
+                    "video": {
+                      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                      "media_revision": "1"
+                    }
+                  },
+                  "text_range": {
+                    "lid": "81",
+                    "range": {
+                      "start": 0,
+                      "end": 91
+                    }
+                  }
+                },
+                "support_role": "指出float16动态范围较差"
+              }
+            ]
+          },
+          {
+            "mode": "informative",
+            "local_function": "example",
+            "rhetorical_move": "worked_example",
+            "local_summary": "构造值为1e-8的float16张量时会发生下溢，实际结果变为0。",
+            "vu_ids": [
+              "lecture-v1/vu-0001/1"
+            ],
+            "relations": [
+              {
+                "target_id": "discourse:discourse-vi17-tensor:i1",
+                "type": "exemplifies",
+                "family": "expansion",
+                "direction": "backward",
+                "confidence": 0.99,
+                "rationale": "1e-8变为0的具体下溢案例，例证了float16对极小数动态范围不足。",
+                "evidence": [
+                  {
+                    "target": {
+                      "kind": "joint",
+                      "members": [
+                        {
+                          "target": {
+                            "kind": "text",
+                            "publication": {
+                              "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                              "publication_id": "01a1285b-3f10-7ec0-a8c5-0c772749e53b"
+                            },
+                            "transcript": {
+                              "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                              "transcript_revision": "1",
+                              "video": {
+                                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                                "media_revision": "1"
+                              }
+                            },
+                            "text_range": {
+                              "lid": "82",
+                              "range": {
+                                "start": 0,
+                                "end": 99
+                              }
+                            }
+                          },
+                          "support_role": "提供具体下溢案例"
+                        },
+                        {
+                          "target": {
+                            "kind": "visual",
+                            "publication": {
+                              "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                              "publication_id": "01a1285b-3f10-7ec0-a8c5-0c772749e53b"
+                            },
+                            "frames": [
+                              {
+                                "video": {
+                                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                                  "media_revision": "1"
+                                },
+                                "actual_pts_ms": 550000,
+                                "width": 1920,
+                                "height": 1080
+                              }
+                            ],
+                            "regions": []
+                          },
+                          "support_role": "展示案例代码与零值结果"
+                        },
+                        {
+                          "target": {
+                            "kind": "visual",
+                            "publication": {
+                              "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                              "publication_id": "01a1285b-3f10-7ec0-a8c5-0c772749e53b"
+                            },
+                            "frames": [
+                              {
+                                "video": {
+                                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                                  "media_revision": "1"
+                                },
+                                "actual_pts_ms": 553000,
+                                "width": 1920,
+                                "height": 1080
+                              }
+                            ],
+                            "regions": []
+                          },
+                          "support_role": "展示案例代码与零值结果"
+                        },
+                        {
+                          "target": {
+                            "kind": "text",
+                            "publication": {
+                              "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                              "publication_id": "01a1285b-3f10-7ec0-a8c5-0c772749e53b"
+                            },
+                            "transcript": {
+                              "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                              "transcript_revision": "1",
+                              "video": {
+                                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                                "media_revision": "1"
+                              }
+                            },
+                            "text_range": {
+                              "lid": "81",
+                              "range": {
+                                "start": 0,
+                                "end": 91
+                              }
+                            }
+                          },
+                          "support_role": "提供被例证的动态范围限制"
+                        }
+                      ]
+                    },
+                    "support_role": "联合支持"
+                  }
+                ]
+              }
+            ],
+            "id": "discourse:discourse-vi17-tensor:i2",
+            "evidence": [
+              {
+                "target": {
+                  "kind": "joint",
+                  "members": [
+                    {
+                      "target": {
+                        "kind": "text",
+                        "publication": {
+                          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                          "publication_id": "01a1285b-3f10-7ec0-a8c5-0c772749e53b"
+                        },
+                        "transcript": {
+                          "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                          "transcript_revision": "1",
+                          "video": {
+                            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                            "media_revision": "1"
+                          }
+                        },
+                        "text_range": {
+                          "lid": "82",
+                          "range": {
+                            "start": 0,
+                            "end": 99
+                          }
+                        }
+                      },
+                      "support_role": "口头说明1e-8在float16中变为0"
+                    },
+                    {
+                      "target": {
+                        "kind": "visual",
+                        "publication": {
+                          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                          "publication_id": "01a1285b-3f10-7ec0-a8c5-0c772749e53b"
+                        },
+                        "frames": [
+                          {
+                            "video": {
+                              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                              "media_revision": "1"
+                            },
+                            "actual_pts_ms": 550000,
+                            "width": 1920,
+                            "height": 1080
+                          }
+                        ],
+                        "regions": []
+                      },
+                      "support_role": "屏幕展示torch.tensor([1e-8], dtype=torch.float16)及0.000e+0结果"
+                    },
+                    {
+                      "target": {
+                        "kind": "visual",
+                        "publication": {
+                          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                          "publication_id": "01a1285b-3f10-7ec0-a8c5-0c772749e53b"
+                        },
+                        "frames": [
+                          {
+                            "video": {
+                              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                              "media_revision": "1"
+                            },
+                            "actual_pts_ms": 553000,
+                            "width": 1920,
+                            "height": 1080
+                          }
+                        ],
+                        "regions": []
+                      },
+                      "support_role": "屏幕继续展示该代码与零值结果"
+                    }
+                  ]
+                },
+                "support_role": "联合支持"
+              }
+            ]
+          },
+          {
+            "mode": "informative",
+            "local_function": "explanation",
+            "rhetorical_move": "concept_elaboration",
+            "local_summary": "动态范围受限意味着float16既不能表示非常大的数，也不能表示非常小的数。",
+            "vu_ids": [],
+            "relations": [
+              {
+                "target_id": "discourse:discourse-vi17-tensor:i1",
+                "type": "elaborates",
+                "family": "expansion",
+                "direction": "backward",
+                "confidence": 0.97,
+                "rationale": "把“动态范围较差”展开为大数和小数两端均有表示限制。",
+                "evidence": [
+                  {
+                    "target": {
+                      "kind": "text",
+                      "publication": {
+                        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                        "publication_id": "01a1285b-3f10-7ec0-a8c5-0c772749e53b"
+                      },
+                      "transcript": {
+                        "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                        "transcript_revision": "1",
+                        "video": {
+                          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                          "media_revision": "1"
+                        }
+                      },
+                      "text_range": {
+                        "lid": "83",
+                        "range": {
+                          "start": 0,
+                          "end": 91
+                        }
+                      }
+                    },
+                    "support_role": "展开说明两端表示限制"
+                  },
+                  {
+                    "target": {
+                      "kind": "text",
+                      "publication": {
+                        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                        "publication_id": "01a1285b-3f10-7ec0-a8c5-0c772749e53b"
+                      },
+                      "transcript": {
+                        "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                        "transcript_revision": "1",
+                        "video": {
+                          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                          "media_revision": "1"
+                        }
+                      },
+                      "text_range": {
+                        "lid": "81",
+                        "range": {
+                          "start": 0,
+                          "end": 91
+                        }
+                      }
+                    },
+                    "support_role": "提供被展开的动态范围限制"
+                  }
+                ]
+              }
+            ],
+            "id": "discourse:discourse-vi17-tensor:i3",
+            "evidence": [
+              {
+                "target": {
+                  "kind": "text",
+                  "publication": {
+                    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                    "publication_id": "01a1285b-3f10-7ec0-a8c5-0c772749e53b"
+                  },
+                  "transcript": {
+                    "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                    "transcript_revision": "1",
+                    "video": {
+                      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                      "media_revision": "1"
+                    }
+                  },
+                  "text_range": {
+                    "lid": "83",
+                    "range": {
+                      "start": 0,
+                      "end": 91
+                    }
+                  }
+                },
+                "support_role": "概括动态范围在大数和小数两端的限制"
+              }
+            ]
+          }
+        ],
+        "frames": [
+          {
+            "image_id": "image_1",
+            "frame": {
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              },
+              "actual_pts_ms": 550000,
+              "width": 1920,
+              "height": 1080
+            },
+            "path": "video-enrichments/discourse-vi17-tensor/frames/image_1.png"
+          },
+          {
+            "image_id": "image_2",
+            "frame": {
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              },
+              "actual_pts_ms": 553000,
+              "width": 1920,
+              "height": 1080
+            },
+            "path": "video-enrichments/discourse-vi17-tensor/frames/image_2.png"
+          }
+        ],
+        "visual_units": [
+          {
+            "vu_id": "lecture-v1/vu-0001/1",
+            "image_ids": [
+              "image_1",
+              "image_2"
+            ]
+          }
+        ]
+      },
+      "after": {
+        "version": "video_discourse.v1",
+        "material": {
+          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "transcript": {
+            "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+            "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+            "video": {
+              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+              "media_revision": "1"
+            }
+          }
+        },
+        "input_publication": {
+          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+          "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+        },
+        "items": [
+          {
+            "mode": "informative",
+            "local_function": "limitation",
+            "rhetorical_move": "limitation_acknowledgement",
+            "local_summary": "float16虽节省内存，但动态范围较差，尤其难以表示很小的数。",
+            "vu_ids": [
+              "lecture-v1/vu-0001/1"
+            ],
+            "relations": [],
+            "id": "discourse:discourse-vi17-tensor:item-1",
+            "evidence": [
+              {
+                "target": {
+                  "kind": "joint",
+                  "members": [
+                    {
+                      "target": {
+                        "kind": "text",
+                        "publication": {
+                          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                          "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+                        },
+                        "transcript": {
+                          "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                          "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+                          "video": {
+                            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                            "media_revision": "1"
+                          }
+                        },
+                        "text_range": {
+                          "lid": "81",
+                          "range": {
+                            "start": 0,
+                            "end": 91
+                          }
+                        }
+                      },
+                      "support_role": "指出float16动态范围较差"
+                    },
+                    {
+                      "target": {
+                        "kind": "visual",
+                        "publication": {
+                          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                          "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+                        },
+                        "frames": [
+                          {
+                            "video": {
+                              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                              "media_revision": "1"
+                            },
+                            "actual_pts_ms": 550000,
+                            "width": 1920,
+                            "height": 1080
+                          }
+                        ],
+                        "regions": []
+                      },
+                      "support_role": "画面展示float16位布局及小数动态范围不足的说明"
+                    },
+                    {
+                      "target": {
+                        "kind": "visual",
+                        "publication": {
+                          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                          "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+                        },
+                        "frames": [
+                          {
+                            "video": {
+                              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                              "media_revision": "1"
+                            },
+                            "actual_pts_ms": 553000,
+                            "width": 1920,
+                            "height": 1080
+                          }
+                        ],
+                        "regions": []
+                      },
+                      "support_role": "画面延续同一float16限制示例"
+                    }
+                  ]
+                },
+                "support_role": "联合支持"
+              }
+            ]
+          },
+          {
+            "mode": "informative",
+            "local_function": "example",
+            "rhetorical_move": "worked_example",
+            "local_summary": "构造dtype=torch.float16的1e-8张量时，数值下溢并实际变为0。",
+            "vu_ids": [
+              "lecture-v1/vu-0001/1"
+            ],
+            "relations": [
+              {
+                "target_id": "discourse:discourse-vi17-tensor:item-1",
+                "type": "exemplifies",
+                "family": "expansion",
+                "direction": "backward",
+                "confidence": 0.99,
+                "rationale": "1e-8在float16中下溢为0，是其小数动态范围不足的具体实例。",
+                "evidence": [
+                  {
+                    "target": {
+                      "kind": "joint",
+                      "members": [
+                        {
+                          "target": {
+                            "kind": "text",
+                            "publication": {
+                              "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                              "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+                            },
+                            "transcript": {
+                              "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                              "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+                              "video": {
+                                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                                "media_revision": "1"
+                              }
+                            },
+                            "text_range": {
+                              "lid": "82",
+                              "range": {
+                                "start": 0,
+                                "end": 99
+                              }
+                            }
+                          },
+                          "support_role": "提供下溢实例"
+                        },
+                        {
+                          "target": {
+                            "kind": "text",
+                            "publication": {
+                              "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                              "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+                            },
+                            "transcript": {
+                              "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                              "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+                              "video": {
+                                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                                "media_revision": "1"
+                              }
+                            },
+                            "text_range": {
+                              "lid": "81",
+                              "range": {
+                                "start": 0,
+                                "end": 91
+                              }
+                            }
+                          },
+                          "support_role": "提供被实例化的动态范围限制"
+                        },
+                        {
+                          "target": {
+                            "kind": "visual",
+                            "publication": {
+                              "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                              "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+                            },
+                            "frames": [
+                              {
+                                "video": {
+                                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                                  "media_revision": "1"
+                                },
+                                "actual_pts_ms": 550000,
+                                "width": 1920,
+                                "height": 1080
+                              }
+                            ],
+                            "regions": []
+                          },
+                          "support_role": "展示float16代码与零值结果"
+                        },
+                        {
+                          "target": {
+                            "kind": "visual",
+                            "publication": {
+                              "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                              "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+                            },
+                            "frames": [
+                              {
+                                "video": {
+                                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                                  "media_revision": "1"
+                                },
+                                "actual_pts_ms": 553000,
+                                "width": 1920,
+                                "height": 1080
+                              }
+                            ],
+                            "regions": []
+                          },
+                          "support_role": "延续展示实例结果与字幕"
+                        }
+                      ]
+                    },
+                    "support_role": "联合支持"
+                  }
+                ]
+              }
+            ],
+            "id": "discourse:discourse-vi17-tensor:item-2",
+            "evidence": [
+              {
+                "target": {
+                  "kind": "joint",
+                  "members": [
+                    {
+                      "target": {
+                        "kind": "text",
+                        "publication": {
+                          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                          "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+                        },
+                        "transcript": {
+                          "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                          "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+                          "video": {
+                            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                            "media_revision": "1"
+                          }
+                        },
+                        "text_range": {
+                          "lid": "82",
+                          "range": {
+                            "start": 0,
+                            "end": 99
+                          }
+                        }
+                      },
+                      "support_role": "口述1e-8张量实际变为0"
+                    },
+                    {
+                      "target": {
+                        "kind": "visual",
+                        "publication": {
+                          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                          "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+                        },
+                        "frames": [
+                          {
+                            "video": {
+                              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                              "media_revision": "1"
+                            },
+                            "actual_pts_ms": 550000,
+                            "width": 1920,
+                            "height": 1080
+                          }
+                        ],
+                        "regions": []
+                      },
+                      "support_role": "屏幕显示torch.tensor([1e-8], dtype=torch.float16)及结果0"
+                    },
+                    {
+                      "target": {
+                        "kind": "visual",
+                        "publication": {
+                          "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                          "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+                        },
+                        "frames": [
+                          {
+                            "video": {
+                              "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                              "media_revision": "1"
+                            },
+                            "actual_pts_ms": 553000,
+                            "width": 1920,
+                            "height": 1080
+                          }
+                        ],
+                        "regions": []
+                      },
+                      "support_role": "屏幕与字幕共同呈现1e-8变为0"
+                    }
+                  ]
+                },
+                "support_role": "联合支持"
+              }
+            ]
+          },
+          {
+            "mode": "informative",
+            "local_function": "explanation",
+            "rhetorical_move": "concept_elaboration",
+            "local_summary": "动态范围有限意味着float16既不能表示很大的数，也不能表示很小的数。",
+            "vu_ids": [],
+            "relations": [
+              {
+                "target_id": "discourse:discourse-vi17-tensor:item-1",
+                "type": "explains",
+                "family": "expansion",
+                "direction": "backward",
+                "confidence": 0.97,
+                "rationale": "对“动态范围较差”的含义作展开：可表示数值的上下界都受限。",
+                "evidence": [
+                  {
+                    "target": {
+                      "kind": "joint",
+                      "members": [
+                        {
+                          "target": {
+                            "kind": "text",
+                            "publication": {
+                              "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                              "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+                            },
+                            "transcript": {
+                              "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                              "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+                              "video": {
+                                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                                "media_revision": "1"
+                              }
+                            },
+                            "text_range": {
+                              "lid": "83",
+                              "range": {
+                                "start": 0,
+                                "end": 91
+                              }
+                            }
+                          },
+                          "support_role": "解释范围限制的两端"
+                        },
+                        {
+                          "target": {
+                            "kind": "text",
+                            "publication": {
+                              "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                              "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+                            },
+                            "transcript": {
+                              "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                              "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+                              "video": {
+                                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                                "media_revision": "1"
+                              }
+                            },
+                            "text_range": {
+                              "lid": "81",
+                              "range": {
+                                "start": 0,
+                                "end": 91
+                              }
+                            }
+                          },
+                          "support_role": "提供被解释的float16动态范围问题"
+                        },
+                        {
+                          "target": {
+                            "kind": "visual",
+                            "publication": {
+                              "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                              "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+                            },
+                            "frames": [
+                              {
+                                "video": {
+                                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                                  "media_revision": "1"
+                                },
+                                "actual_pts_ms": 550000,
+                                "width": 1920,
+                                "height": 1080
+                              }
+                            ],
+                            "regions": []
+                          },
+                          "support_role": "支持目标项中的float16位布局与范围语境"
+                        },
+                        {
+                          "target": {
+                            "kind": "visual",
+                            "publication": {
+                              "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                              "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+                            },
+                            "frames": [
+                              {
+                                "video": {
+                                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                                  "media_revision": "1"
+                                },
+                                "actual_pts_ms": 553000,
+                                "width": 1920,
+                                "height": 1080
+                              }
+                            ],
+                            "regions": []
+                          },
+                          "support_role": "支持目标项中的float16限制语境"
+                        }
+                      ]
+                    },
+                    "support_role": "联合支持"
+                  }
+                ]
+              }
+            ],
+            "id": "discourse:discourse-vi17-tensor:item-3",
+            "evidence": [
+              {
+                "target": {
+                  "kind": "text",
+                  "publication": {
+                    "book_id": "5bfd5def-182f-4205-b574-0ca553e79450",
+                    "publication_id": "01a12864-80bb-7671-bea3-e6c7c17ee20f"
+                  },
+                  "transcript": {
+                    "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                    "transcript_revision": "4205162f-24ed-4228-8902-013fa791ebb6",
+                    "video": {
+                      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                      "media_revision": "1"
+                    }
+                  },
+                  "text_range": {
+                    "lid": "83",
+                    "range": {
+                      "start": 0,
+                      "end": 91
+                    }
+                  }
+                },
+                "support_role": "概括大数与小数均受表示范围限制"
+              }
+            ]
+          }
+        ],
+        "frames": [
+          {
+            "image_id": "image_1",
+            "frame": {
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              },
+              "actual_pts_ms": 550000,
+              "width": 1920,
+              "height": 1080
+            },
+            "path": "video-enrichments/discourse-vi17-tensor/frames/image_1.png"
+          },
+          {
+            "image_id": "image_2",
+            "frame": {
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              },
+              "actual_pts_ms": 553000,
+              "width": 1920,
+              "height": 1080
+            },
+            "path": "video-enrichments/discourse-vi17-tensor/frames/image_2.png"
+          }
+        ],
+        "visual_units": [
+          {
+            "vu_id": "lecture-v1/vu-0001/1",
+            "image_ids": [
+              "image_1",
+              "image_2"
+            ]
+          }
+        ]
+      },
+      "input_changed": true
+    }
+  },
+  "runs": [
+    {
+      "baseline": false,
+      "file": "workspace/.build/video-translation/runs/zh-001/1791678668051/run.json",
+      "group": "zh-001",
+      "elapsed_ms": 120082,
+      "exit_code": 0,
+      "complete": true,
+      "events": [
+        {
+          "type": "item.completed",
+          "item_type": "error"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "agent_message"
+        },
+        {
+          "type": "turn.completed",
+          "usage": {
+            "input_tokens": 422449,
+            "cached_input_tokens": 378368,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 11546,
+            "reasoning_output_tokens": 296
+          }
+        }
+      ]
+    },
+    {
+      "baseline": false,
+      "file": "workspace/.build/video-translation/runs/zh-002/1791678788224/run.json",
+      "group": "zh-002",
+      "elapsed_ms": 121885,
+      "exit_code": 0,
+      "complete": true,
+      "events": [
+        {
+          "type": "item.completed",
+          "item_type": "error"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "server": "understand_book_build_executor",
+          "status": "completed"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "agent_message"
+        },
+        {
+          "type": "turn.completed",
+          "usage": {
+            "input_tokens": 417402,
+            "cached_input_tokens": 390144,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 10883,
+            "reasoning_output_tokens": 210
+          }
+        }
+      ]
+    },
+    {
+      "baseline": false,
+      "file": "workspace/.build/video-visual/lecture-v1/runs/0/1791678499851/run.json",
+      "group": 0,
+      "elapsed_ms": 46809,
+      "exit_code": 0,
+      "complete": false,
+      "events": [
+        {
+          "type": "item.completed",
+          "item_type": "error"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "failed"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "agent_message"
+        },
+        {
+          "type": "turn.completed",
+          "usage": {
+            "input_tokens": 136952,
+            "cached_input_tokens": 101376,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 3484,
+            "reasoning_output_tokens": 255
+          }
+        }
+      ]
+    },
+    {
+      "baseline": false,
+      "file": "workspace/.build/video-visual/lecture-v1/runs/0/1791678911003/run.json",
+      "group": 0,
+      "elapsed_ms": 62687,
+      "exit_code": 0,
+      "complete": true,
+      "events": [
+        {
+          "type": "item.completed",
+          "item_type": "error"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "agent_message"
+        },
+        {
+          "type": "turn.completed",
+          "usage": {
+            "input_tokens": 174527,
+            "cached_input_tokens": 136704,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 5177,
+            "reasoning_output_tokens": 254
+          }
+        }
+      ]
+    },
+    {
+      "baseline": false,
+      "file": "workspace/.build/video-graph/graph-vi17-tensor/runs/1791678977678/run.json",
+      "elapsed_ms": 52524,
+      "exit_code": 0,
+      "complete": true,
+      "events": [
+        {
+          "type": "item.completed",
+          "item_type": "error"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "agent_message"
+        },
+        {
+          "type": "turn.completed",
+          "usage": {
+            "input_tokens": 145602,
+            "cached_input_tokens": 123136,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 3890,
+            "reasoning_output_tokens": 350
+          }
+        }
+      ]
+    },
+    {
+      "baseline": false,
+      "file": "workspace/.build/video-discourse/discourse-vi17-tensor/runs/1791679041631/run.json",
+      "elapsed_ms": 56276,
+      "exit_code": 0,
+      "complete": true,
+      "events": [
+        {
+          "type": "item.completed",
+          "item_type": "error"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "agent_message"
+        },
+        {
+          "type": "turn.completed",
+          "usage": {
+            "input_tokens": 119034,
+            "cached_input_tokens": 105600,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 3724,
+            "reasoning_output_tokens": 213
+          }
+        }
+      ]
+    },
+    {
+      "baseline": true,
+      "file": "source/.build/video-graph/graph-vi17-tensor/runs/1791678379042/run.json",
+      "elapsed_ms": 49424,
+      "exit_code": 0,
+      "complete": true,
+      "events": [
+        {
+          "type": "item.completed",
+          "item_type": "error"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "agent_message"
+        },
+        {
+          "type": "turn.completed",
+          "usage": {
+            "input_tokens": 145588,
+            "cached_input_tokens": 107264,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 3731,
+            "reasoning_output_tokens": 137
+          }
+        }
+      ]
+    },
+    {
+      "baseline": true,
+      "file": "source/.build/video-discourse/discourse-vi17-tensor/runs/1791678432401/run.json",
+      "elapsed_ms": 61630,
+      "exit_code": 0,
+      "complete": true,
+      "events": [
+        {
+          "type": "item.completed",
+          "item_type": "error"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "agent_message"
+        },
+        {
+          "type": "turn.completed",
+          "usage": {
+            "input_tokens": 118788,
+            "cached_input_tokens": 89600,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 3515,
+            "reasoning_output_tokens": 138
+          }
+        }
+      ]
+    }
+  ],
+  "model_elapsed_ms": 571317,
+  "usage": {
+    "input_tokens": 1680342,
+    "cached_input_tokens": 1432192,
+    "output_tokens": 45950,
+    "api_cost": null
+  },
+  "published_bytes": 256093943,
+  "limitations": [
+    "Original model correction drafts remain pending; adopted wording is from the isolated VI16 evaluation copy.",
+    "Full lecture semantics and installation/DSH/Linux acceptance remain VI18 work."
+  ]
+}

@@ -1,0 +1,157 @@
+{
+  "status": "passed",
+  "core_unique_tests": 57,
+  "suites": {
+    "video-correction.test.ts": 11,
+    "video-graph.test.ts": 6,
+    "video-transcript.test.ts": 3,
+    "video-executor-media.test.ts": 4,
+    "video-contract.test.ts": 29,
+    "video-discourse.test.ts": 4
+  },
+  "typecheck": "pnpm --filter @understand-book/core typecheck: passed",
+  "new_suite": {
+    "numTotalTestSuites": 1,
+    "numPassedTestSuites": 1,
+    "numFailedTestSuites": 0,
+    "numPendingTestSuites": 0,
+    "numTotalTests": 11,
+    "numPassedTests": 11,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numTodoTests": 0,
+    "snapshot": {
+      "added": 0,
+      "failure": false,
+      "filesAdded": 0,
+      "filesRemoved": 0,
+      "filesRemovedList": [],
+      "filesUnmatched": 0,
+      "filesUpdated": 0,
+      "matched": 0,
+      "total": 0,
+      "unchecked": 0,
+      "uncheckedKeysByFile": [],
+      "unmatched": 0,
+      "updated": 0,
+      "didUpdate": false
+    },
+    "startTime": 1791677420451,
+    "success": true,
+    "testResults": [
+      {
+        "assertionResults": [
+          {
+            "ancestorTitles": [],
+            "fullName": "manual edits and export preserve original publication, times and transcript identity",
+            "status": "passed",
+            "title": "manual edits and export preserve original publication, times and transcript identity",
+            "duration": 79.83960000000025,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "repeated invalid model candidates stop after three attempts without leaving a draft",
+            "status": "passed",
+            "title": "repeated invalid model candidates stop after three attempts without leaving a draft",
+            "duration": 98.21600000000035,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "candidate submission stays pending, partial adoption can continue in the same segment without losing prior choices",
+            "status": "passed",
+            "title": "candidate submission stays pending, partial adoption can continue in the same segment without losing prior choices",
+            "duration": 143.20900000000074,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "rejection preserves the original words and notes cannot enter exported speaker text",
+            "status": "passed",
+            "title": "rejection preserves the original words and notes cannot enter exported speaker text",
+            "duration": 98.72989999999936,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "manual editing while a draft is being generated preserves its old input and leaves its suggestions pending",
+            "status": "passed",
+            "title": "manual editing while a draft is being generated preserves its old input and leaves its suggestions pending",
+            "duration": 129.95640000000003,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "an intervening manual edit remains a conflict even when the text is changed back",
+            "status": "passed",
+            "title": "an intervening manual edit remains a conflict even when the text is changed back",
+            "duration": 147.24129999999968,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "accept all applies unaffected segments but keeps conflicting segments pending",
+            "status": "passed",
+            "title": "accept all applies unaffected segments but keeps conflicting segments pending",
+            "duration": 202.34519999999975,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "rejects changed versions, source fabrication, wrong ranges, overlapping proposals and visual-only speech edits",
+            "status": "passed",
+            "title": "rejects changed versions, source fabrication, wrong ranges, overlapping proposals and visual-only speech edits",
+            "duration": 119.16589999999997,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "freezes authentic VI15 review metadata, keeps uncertainty, and rejects another publication or time range",
+            "status": "passed",
+            "title": "freezes authentic VI15 review metadata, keeps uncertainty, and rejects another publication or time range",
+            "duration": 121.35950000000048,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "four-tool delivery replays native images and saves only a pending draft after the final acknowledgement",
+            "status": "passed",
+            "title": "four-tool delivery replays native images and saves only a pending draft after the final acknowledgement",
+            "duration": 119.53750000000036,
+            "failureMessages": [],
+            "meta": {}
+          },
+          {
+            "ancestorTitles": [],
+            "fullName": "maintenance preparation resumes without redoing audio and rejects a changed correction request",
+            "status": "passed",
+            "title": "maintenance preparation resumes without redoing audio and rejects a changed correction request",
+            "duration": 95.3093000000008,
+            "failureMessages": [],
+            "meta": {}
+          }
+        ],
+        "startTime": 1791677427724,
+        "endTime": 1791677429079.3093,
+        "status": "passed",
+        "message": "",
+        "name": "E:/allwork/download/agent/understand-book-video-understanding/packages/core/test/video-correction.test.ts"
+      }
+    ]
+  },
+  "commands": [
+    "pnpm --filter @understand-book/core exec vitest run test/video-correction.test.ts test/video-contract.test.ts test/video-graph.test.ts test/video-discourse.test.ts",
+    "pnpm --filter @understand-book/core exec vitest run test/video-correction.test.ts test/video-executor-media.test.ts test/video-transcript.test.ts",
+    "pnpm --filter @understand-book/core exec vitest run test/video-correction.test.ts --reporter=json --outputFile=../../evals/video/generated/vi16/tests-correction.json"
+  ]
+}

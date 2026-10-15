@@ -23,7 +23,7 @@ import {
   parseAutomaticBuildStageBatchResult,
   readAutomaticBuildPublicationReceipt,
   type AutomaticBuildPublicationReceiptV1,
-  type AutomaticBuildPublicationStage,
+  type AutomaticBuildPublicationStage as PublicationStage,
 } from "./automatic-build-publication";
 import {
   semanticContractFromExtractionPolicy,
@@ -32,6 +32,7 @@ import {
 } from "./semantic-artifact";
 
 const SHA256 = /^[a-f0-9]{64}$/u;
+type AutomaticBuildPublicationStage = Exclude<PublicationStage, "video_transcript" | "video_enrichment">;
 const CLOSE_STAGES: AutomaticBuildPublicationStage[] = [
   "pass1",
   "paper_metadata",

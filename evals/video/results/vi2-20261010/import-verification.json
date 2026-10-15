@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-10T04:06:05.197Z",
+  "source_sample": "cs336-2026-p2-pytorch-vq27",
+  "workspace": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi2\\moved-workspace",
+  "imported": {
+    "version": "video_import.v1",
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    },
+    "title": "external",
+    "original_path": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi2\\external.mp4",
+    "stage": "awaiting_transcript",
+    "copied_bytes": 225917024,
+    "total_bytes": 225917024,
+    "source": {
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      },
+      "imported_path": "media/original.mp4",
+      "original_path": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi2\\external.mp4",
+      "duration_ms": 4641376.1450000005,
+      "width": 1920,
+      "height": 1080
+    },
+    "failure": null
+  },
+  "elapsed_ms": 3413,
+  "external_path_missing": true,
+  "workspace_moved": true,
+  "restored_identity": {
+    "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+    "media_revision": "1"
+  },
+  "book_created": false,
+  "qa_ready": false
+}

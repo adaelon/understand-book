@@ -1,0 +1,217 @@
+{
+  "date": "2026-10-10T23:50:53.034Z",
+  "browser": "154.0.4258.62",
+  "publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+  },
+  "bound_frame": {
+    "actual_pts_ms": 491966.6875,
+    "height": 1080,
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    },
+    "width": 1920
+  },
+  "audio_location": {
+    "end_ms": 586000,
+    "start_ms": 578000,
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    }
+  },
+  "audio_review": {
+    "location": {
+      "end_ms": 586000,
+      "start_ms": 578000,
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      }
+    },
+    "provider": {
+      "audio_duration_ms": 8000,
+      "audio_input": "original_pcm_s16le_16000_mono",
+      "engine": "faster-whisper",
+      "engine_version": "1.2.1",
+      "inference_ms": 6097,
+      "language": "en",
+      "load_ms": 3383,
+      "model": "small.en",
+      "recognition_prompt": null
+    },
+    "publication": {
+      "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+      "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+    },
+    "question": "讲者说的是 underflow 还是 overflow？",
+    "review_result_ref": "01a12839-e808-79a3-b67a-413e03cdbeda",
+    "reviewed_text": "back in the day, you will get instability. You'll get underflow, you'll get overflow, you'll get NANs.",
+    "reviewed_words": [
+      {
+        "end_ms": 578120,
+        "probability": 0.33077967166900635,
+        "start_ms": 578000,
+        "text": " back"
+      },
+      {
+        "end_ms": 578280,
+        "probability": 0.9896317720413208,
+        "start_ms": 578120,
+        "text": " in"
+      },
+      {
+        "end_ms": 578660,
+        "probability": 0.9516337513923645,
+        "start_ms": 578280,
+        "text": " the"
+      },
+      {
+        "end_ms": 579460,
+        "probability": 0.9217939376831055,
+        "start_ms": 578660,
+        "text": " day,"
+      },
+      {
+        "end_ms": 581000,
+        "probability": 0.9758090376853943,
+        "start_ms": 580640,
+        "text": " you"
+      },
+      {
+        "end_ms": 581520,
+        "probability": 0.9838585257530212,
+        "start_ms": 581000,
+        "text": " will"
+      },
+      {
+        "end_ms": 581720,
+        "probability": 0.9988036155700684,
+        "start_ms": 581520,
+        "text": " get"
+      },
+      {
+        "end_ms": 582260,
+        "probability": 0.9969846606254578,
+        "start_ms": 581720,
+        "text": " instability."
+      },
+      {
+        "end_ms": 583240,
+        "probability": 0.7639935612678528,
+        "start_ms": 583020,
+        "text": " You'll"
+      },
+      {
+        "end_ms": 583320,
+        "probability": 0.9958874583244324,
+        "start_ms": 583240,
+        "text": " get"
+      },
+      {
+        "end_ms": 583820,
+        "probability": 0.9210883378982544,
+        "start_ms": 583320,
+        "text": " underflow,"
+      },
+      {
+        "end_ms": 584080,
+        "probability": 0.9185144603252411,
+        "start_ms": 583980,
+        "text": " you'll"
+      },
+      {
+        "end_ms": 584100,
+        "probability": 0.9919384121894836,
+        "start_ms": 584080,
+        "text": " get"
+      },
+      {
+        "end_ms": 584500,
+        "probability": 0.9717035889625549,
+        "start_ms": 584100,
+        "text": " overflow,"
+      },
+      {
+        "end_ms": 585000,
+        "probability": 0.9951429665088654,
+        "start_ms": 584800,
+        "text": " you'll"
+      },
+      {
+        "end_ms": 585220,
+        "probability": 0.9929444193840027,
+        "start_ms": 585000,
+        "text": " get"
+      },
+      {
+        "end_ms": 585940,
+        "probability": 0.6806889375050863,
+        "start_ms": 585220,
+        "text": " NANs."
+      }
+    ],
+    "run_id": "turn_f581e3ae9701daf1",
+    "transcript": [
+      {
+        "location": {
+          "end_ms": 582270,
+          "start_ms": 572170,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "segment_id": "segment-85",
+        "text": "So, if you train with FP16, which people did back, back in the, you know, day, you will get instability.",
+        "text_range": {
+          "lid": "85",
+          "range": {
+            "end": 104,
+            "start": 0
+          }
+        },
+        "words": []
+      },
+      {
+        "location": {
+          "end_ms": 588690,
+          "start_ms": 582890,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "segment_id": "segment-86",
+        "text": "You'll get underflow, you'll get overflow, you'll get NANs, it's pretty challenging.",
+        "text_range": {
+          "lid": "86",
+          "range": {
+            "end": 84,
+            "start": 0
+          }
+        },
+        "words": []
+      }
+    ],
+    "uncertainties": [
+      "机器音频复核候选；词时间为识别估计，概率不等于正确性，未消除的听辨疑点仍须回听。",
+      "低把握词 back（578000–578120 ms），请回听核对。"
+    ]
+  },
+  "focus_does_not_pause": true,
+  "manual_play_and_edits_preserve_binding": true,
+  "reload_restores_draft": true,
+  "accepted_turn": "turn_f581e3ae9701daf1",
+  "history_preserves_binding": true,
+  "source_preview_preserves_main_player": true,
+  "explicit_entry_seeks_original": true,
+  "reloaded_history_source": true,
+  "requests": 4,
+  "actual_audio_provider": "local faster-whisper small.en CPU int8",
+  "model": "local HTTP recorder; no semantic inference",
+  "source_translation_count": 2,
+  "output": "E:\\allwork\\download\\agent\\understand-book-video-understanding\\evals\\video\\generated\\vi15-browser\\2026-10-10T23-50-10.690Z"
+}

@@ -5,7 +5,7 @@ pub const BASE_INSTRUCTIONS: &str = "You are the resident reading agent for the 
 
 const POLICY_REVISION: &str = "v4";
 const EVIDENCE_ROUTING_REVISION: &str = "v4";
-const SOURCE_DELIVERY_REVISION: &str = "v10";
+const SOURCE_DELIVERY_REVISION: &str = "v11";
 const FINISH_POLICY_REVISION: &str = "v7";
 const TOOL_DISCOVERY_REVISION: &str = "v7";
 pub mod presentation;
@@ -21,11 +21,11 @@ const EVIDENCE_ROUTING: &str = "Evidence routing:
 - For a document overview, choose at most six representative source LIDs returned by the structural projection that cover distinct throughlines or key stops; do not enumerate the chapter tree or probe adjacent LIDs.
 - If book.text or book.synthesize returns LID_PROVENANCE_REQUIRED or LID_RECOVERY_REQUIRED, do not retry that target or a nearby variant. Obtain a new locator through structure, literal search, semantic query, or context, wait for the next sampling, and exactly copy a returned LID.";
 
-pub(crate) const SOURCE_PRESENT_CONTRACT: &str = "Convert contiguous in-book evidence already observed in this turn into a user-visible source reference. Pass only quote: copy the original text exactly, including punctuation, whitespace and formulas. The tool prefers exact text, but also accepts whitespace changes immediately inside paired $ or $$ formula delimiters; formula contents and prose remain exact. It locates the quote within observed source and computes original LIDs and character ranges; do not supply LIDs. Select enough text to support the complete claim, including necessary conditions, negation and qualifications; cite non-adjacent premises separately. Keywords and headings locate evidence; read the body before explaining a mechanism or inference. SOURCE_AMBIGUOUS means the text occurs at multiple observed positions: extend quote with distinctive observed context. SOURCE_NOT_OBSERVED means no supported match: correct the copy or read the missing source. Returns an opaque source_ref_id, label and preview. Inspect the preview: if it is only a word or heading but the claim needs a passage, submit the supporting passage. The preview may be truncated; missing text in the preview alone does not mean the binding failed.";
+pub(crate) const SOURCE_PRESENT_CONTRACT: &str = "Convert contiguous in-book evidence already observed in this turn into a user-visible source reference. For text pass quote; for video pass target (text, visual, audio, or joint) copied from actual reads, with each joint member's support_role. Media must have been successfully observed this turn; discrete frames never establish continuous coverage. For quote: copy the original text exactly, including punctuation, whitespace and formulas. The tool prefers exact text, but also accepts whitespace changes immediately inside paired $ or $$ formula delimiters; formula contents and prose remain exact. It locates the quote within observed source and computes original LIDs and character ranges; do not supply LIDs. Select enough text to support the complete claim, including necessary conditions, negation and qualifications; cite non-adjacent premises separately. Keywords and headings locate evidence; read the body before explaining a mechanism or inference. SOURCE_AMBIGUOUS means the text occurs at multiple observed positions: extend quote with distinctive observed context. SOURCE_NOT_OBSERVED means no supported match: correct the copy or read the missing source. Returns an opaque source_ref_id, label and preview. Inspect the preview: if it is only a word or heading but the claim needs a passage, submit the supporting passage. The preview may be truncated; missing text in the preview alone does not mean the binding failed.";
 
 const SOURCE_DELIVERY: &str = "Source presentation:
 - source.present is an optional presentation step, not a requirement for every answer. Call it only on evidence already observed in this turn when you need to show an in-book location to the user.
-- Submit a verbatim continuous quote, without start_lid/end_lid. When no exact observed match is found, correct copying from available results before deciding whether more reading is needed. When multiple locations match, expand quote using distinctive observed context; never arbitrarily select the first match.
+- For text submit a verbatim continuous quote, without start_lid/end_lid; for media submit the observed target, preserving its original publication and actual positions. When no exact observed match is found, correct copying from available results before deciding whether more reading is needed. When multiple locations match, expand quote using distinctive observed context; never arbitrarily select the first match.
 - When the user requests original sources, select the supporting observed passages with source.present before delivering factual claims. Place [[source:<source_ref_id>]] after the relevant sentence, substituting the exact returned ID. Bare IDs and a separate list of IDs do not create source citations. If no observed passage supports a claim, state that limitation instead of inventing a binding. Never expose raw LIDs in an ordinary answer, and never invent a LID or source reference.";
 
 const SOURCE_DELIVERY_EXAMPLES: &str = r#"Citation coverage examples (C1/C2/C3 below are illustrative, never real source IDs):
@@ -304,7 +304,7 @@ mod tests {
                 .iter()
                 .find(|module| module.asset_id == "resident-agent.policy.source-delivery")
                 .map(|module| module.revision.as_str()),
-            Some("v10")
+            Some("v11")
         );
     }
 

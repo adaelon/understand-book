@@ -1,0 +1,30 @@
+{
+  "images": [
+    {
+      "image": 1,
+      "construction": "x = torch.tensor([1e-8], dtype=torch.bfloat16)",
+      "assertion": "assert x != 0  # No underflow!",
+      "displayed_result": "x = 1.001e-8",
+      "explanation": [
+        "bfloat16 uses the same memory as float16 but has the same dynamic range as float32!",
+        "The only catch is that the resolution is worse, but this matters less for deep learning."
+      ]
+    },
+    {
+      "image": 2,
+      "constructions": [
+        "x = torch.zeros(4, 8, dtype=torch.float16)",
+        "x = torch.tensor([1e-8], dtype=torch.float16)"
+      ],
+      "assertions": [
+        "assert x.element_size() == 2",
+        "assert x == 0  # Underflow!"
+      ],
+      "displayed_result": "x = 0.000e+0",
+      "explanation": "However, the dynamic range (especially for small numbers) isn't great.",
+      "matrix_shape": [4, 8],
+      "einsum": null
+    }
+  ],
+  "comparison": "Image 1 shows bfloat16 preserving 1e-8 as 1.001e-8 with != 0 and 'No underflow!'. Image 2 switches to float16, displays 0.000e+0, and uses == 0 with 'Underflow!'; it also shows a (4, 8) zero tensor and a 2-byte element-size assertion. Neither image shows einsum code."
+}

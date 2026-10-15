@@ -1,0 +1,38 @@
+[
+  {
+    "reference": {
+      "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+      "publication_id": "01a12534-8aad-7811-9953-a99121fa444b"
+    },
+    "elapsed_ms": 1474,
+    "reused": false,
+    "media_bytes": 225917024
+  },
+  {
+    "reference": {
+      "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+      "publication_id": "01a1253d-2a47-7f81-b6c9-8f1d88359cf0"
+    },
+    "elapsed_ms": 2906,
+    "reused": false,
+    "media_bytes": 225917024
+  },
+  {
+    "reference": {
+      "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+      "publication_id": "01a12543-48d3-74a1-b53d-3bcaa7b32a61"
+    },
+    "elapsed_ms": 2786,
+    "reused": false,
+    "media_bytes": 225917024
+  },
+  {
+    "reference": {
+      "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+      "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+    },
+    "elapsed_ms": 2000,
+    "reused": false,
+    "media_bytes": 225917024
+  }
+]

@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-10",
+  "method": "直接查看原分辨率 PNG，对照已接纳模型候选；像素来源一致性另见 verification.json。",
+  "scope": "抽查关键数值、代码操作符、渐进高亮与矩阵结果，不代表全部文字逐字符人工校验。",
+  "frames": [
+    {
+      "frame": "f00002",
+      "observed": "float16 的 1e-8、assert x == 0 与浮层 0.000e+0",
+      "vu": "lecture-v1/vu-0001/1"
+    },
+    {
+      "frame": "f00020",
+      "observed": "Google Brain 在 2018 年开发 bfloat 的说明高亮；后续文字淡色",
+      "vu": "lecture-v1/vu-0005/4"
+    },
+    {
+      "frame": "f00023",
+      "observed": "same memory as float16、same dynamic range as float32 句子高亮",
+      "vu": "lecture-v1/vu-0006/2"
+    },
+    {
+      "frame": "f00025",
+      "observed": "resolution is worse 的精度取舍句子高亮",
+      "vu": "lecture-v1/vu-0007/1"
+    },
+    {
+      "frame": "f00029",
+      "observed": "bfloat16 的 assert x != 0 与浮层 x = 1.001e-8",
+      "vu": "lecture-v1/vu-0008/1"
+    },
+    {
+      "frame": "f00033",
+      "observed": "x 为 3×4，y 为 4×3；einsum 签名 seq1 hidden, hidden seq2 -> seq1 seq2；z 为 3×3 全 4",
+      "vu": "lecture-v1/vu-0009/1"
+    },
+    {
+      "frame": "f00036",
+      "observed": "同一 einsum 签名和 3×3 全 4 结果仍在画面中",
+      "vu": "lecture-v1/vu-0009/1"
+    }
+  ],
+  "result": "上述关键内容与对应候选一致"
+}

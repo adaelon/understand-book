@@ -1,0 +1,200 @@
+{
+  "source": {
+    "id": "cs336-2026-p2-pytorch-vq27",
+    "revision": "vq27-local-20261008",
+    "path": "See samples.json source.path",
+    "title": "CS336 2026 P2 PyTorch — VQ27 用户本地文件",
+    "size_bytes": 225917024,
+    "duration_ms": 4641376.145,
+    "width": 1920,
+    "height": 1080,
+    "identity_note": "人工指定样本 ID/修订；字节数与规格仅防止误用已知 480P/其他讲次，不证明内容等同。替换原片须新样本修订。"
+  },
+  "frames": {
+    "f555123": {
+      "id": "f555123",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "path": "frames/f555123.png",
+      "requested_ms": 555123,
+      "actual_pts": 8882133,
+      "time_base": "1/16000",
+      "actual_pts_ms": 555133.3125,
+      "width": 1920,
+      "height": 1080,
+      "source_revision": "vq27-local-20261008",
+      "png_bytes": 439190
+    },
+    "f650000": {
+      "id": "f650000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "path": "frames/f650000.png",
+      "requested_ms": 650000,
+      "actual_pts": 10400000,
+      "time_base": "1/16000",
+      "actual_pts_ms": 650000,
+      "width": 1920,
+      "height": 1080,
+      "source_revision": "vq27-local-20261008",
+      "png_bytes": 456792
+    },
+    "f600000": {
+      "id": "f600000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "path": "frames/f600000.png",
+      "requested_ms": 600000,
+      "actual_pts": 9600000,
+      "time_base": "1/16000",
+      "actual_pts_ms": 600000,
+      "width": 1920,
+      "height": 1080,
+      "source_revision": "vq27-local-20261008",
+      "png_bytes": 448656
+    },
+    "f615000": {
+      "id": "f615000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "path": "frames/f615000.png",
+      "requested_ms": 615000,
+      "actual_pts": 9840000,
+      "time_base": "1/16000",
+      "actual_pts_ms": 615000,
+      "width": 1920,
+      "height": 1080,
+      "source_revision": "vq27-local-20261008",
+      "png_bytes": 494471
+    },
+    "f630000": {
+      "id": "f630000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "path": "frames/f630000.png",
+      "requested_ms": 630000,
+      "actual_pts": 10080000,
+      "time_base": "1/16000",
+      "actual_pts_ms": 630000,
+      "width": 1920,
+      "height": 1080,
+      "source_revision": "vq27-local-20261008",
+      "png_bytes": 546226
+    },
+    "f1200000": {
+      "id": "f1200000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "path": "frames/f1200000.png",
+      "requested_ms": 1200000,
+      "actual_pts": 19200000,
+      "time_base": "1/16000",
+      "actual_pts_ms": 1200000,
+      "width": 1920,
+      "height": 1080,
+      "source_revision": "vq27-local-20261008",
+      "png_bytes": 402127
+    },
+    "f1210000": {
+      "id": "f1210000",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "path": "frames/f1210000.png",
+      "requested_ms": 1210000,
+      "actual_pts": 19360000,
+      "time_base": "1/16000",
+      "actual_pts_ms": 1210000,
+      "width": 1920,
+      "height": 1080,
+      "source_revision": "vq27-local-20261008",
+      "png_bytes": 404052
+    },
+    "f555123_crop": {
+      "id": "f555123_crop",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "path": "vi0c/images/f555123_crop.png",
+      "requested_ms": 555123,
+      "actual_pts": 8882133,
+      "time_base": "1/16000",
+      "actual_pts_ms": 555133.3125,
+      "width": 1120,
+      "height": 150,
+      "source_revision": "vq27-local-20261008",
+      "png_bytes": 69920,
+      "rect_pixels": [
+        30,
+        480,
+        1120,
+        150
+      ],
+      "rect_normalized": [
+        0.015625,
+        0.4444444444444444,
+        0.5833333333333334,
+        0.1388888888888889
+      ]
+    },
+    "f650000_crop": {
+      "id": "f650000_crop",
+      "source_id": "cs336-2026-p2-pytorch-vq27",
+      "path": "vi0c/images/f650000_crop.png",
+      "requested_ms": 650000,
+      "actual_pts": 10400000,
+      "time_base": "1/16000",
+      "actual_pts_ms": 650000,
+      "width": 1120,
+      "height": 150,
+      "source_revision": "vq27-local-20261008",
+      "png_bytes": 67911,
+      "rect_pixels": [
+        30,
+        420,
+        1120,
+        150
+      ],
+      "rect_normalized": [
+        0.015625,
+        0.3888888888888889,
+        0.5833333333333334,
+        0.1388888888888889
+      ]
+    }
+  },
+  "cases": {
+    "single_a": [
+      "f555123"
+    ],
+    "single_b": [
+      "f650000"
+    ],
+    "crop_a": [
+      "f555123_crop"
+    ],
+    "crop_b": [
+      "f650000_crop"
+    ],
+    "pair": [
+      "f555123",
+      "f650000"
+    ],
+    "reverse": [
+      "f650000",
+      "f555123"
+    ],
+    "progressive": [
+      "f600000",
+      "f615000",
+      "f630000",
+      "f650000"
+    ],
+    "matrix": [
+      "f1200000",
+      "f1210000"
+    ],
+    "capacity8": [
+      "f555123",
+      "f650000",
+      "f600000",
+      "f615000",
+      "f630000",
+      "f650000",
+      "f1200000",
+      "f1210000"
+    ]
+  },
+  "question": "Read only the supplied images, in their supplied order. For each image transcribe the visible tensor construction, assertion including operator/comment, displayed numeric result, or highlighted explanation. For matrix code give the input shapes and exact einsum signature and result. Compare changes between images. Do not infer hidden text. Return concise JSON with an images array and a comparison string. No other tools or files.",
+  "media_root": "../../generated"
+}

@@ -309,19 +309,21 @@ pub(crate) fn resolve(
         {
             source.unavailable_reason = match &book {
                 None => Some("原发布当前不可用".into()),
-                Some((book, _)) => {
+                Some((book, directory)) => {
                     let binding = turn
                         .source_bindings
                         .iter()
                         .find(|b| b.source_ref_id == source.source_ref_id)
                         .unwrap();
-                    book.resolve_source(
-                        &binding.evidence_range,
+                    if let Some(media) = &binding.media {
+                        crate::video_source::snapshot(book, directory, media.target.clone()).err().map(|_| "原媒体当前不可用".into())
+                    } else { book.resolve_source(
+                        binding.evidence_range.as_ref().expect("text binding"),
                         "zh-CN",
                         Some(&binding.evidence_text_digest),
                     )
                     .err()
-                    .map(|_| "原文当前不可用".into())
+                    .map(|_| "原文当前不可用".into()) }
                 }
             };
         }

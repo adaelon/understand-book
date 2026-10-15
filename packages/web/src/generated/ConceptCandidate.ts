@@ -3,4 +3,4 @@ import type { ConceptCandidateKind } from "./ConceptCandidateKind";
 import type { ConceptMatchTier } from "./ConceptMatchTier";
 import type { ConceptPreview } from "./ConceptPreview";
 
-export type ConceptCandidate = { node_id: string, kind: ConceptCandidateKind, name: string, occurrences: Array<string>, match_tier: ConceptMatchTier, matched_terms: Array<string>, match_reasons: Array<string>, previews: Array<ConceptPreview>, };
+export type ConceptCandidate = { video_graph?: unknown, node_id: string, kind: ConceptCandidateKind, name: string, occurrences: Array<string>, match_tier: ConceptMatchTier, matched_terms: Array<string>, match_reasons: Array<string>, previews: Array<ConceptPreview>, };

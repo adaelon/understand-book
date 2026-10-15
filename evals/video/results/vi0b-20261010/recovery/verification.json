@@ -1,0 +1,6 @@
+{
+  "failure": "FileNotFoundError: [Errno 2] No such file or directory: 'E:\\\\allwork\\\\download\\\\agent\\\\understand-book-video-understanding\\\\evals\\\\video\\\\generated\\\\vi0b\\\\recovery\\\\restored.wav'",
+  "recovered": "completed",
+  "same_audio_same_text": true,
+  "retry_elapsed_ms": 3486
+}

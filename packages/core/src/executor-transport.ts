@@ -1,5 +1,6 @@
 import { canonicalAutomaticBuildJson } from "./automatic-build-protocol";
 import { estimateTokens } from "./window";
+import { CODEX_EXECUTOR_MEDIA_CAPABILITY_V1, executorMediaManifest, type ExecutorMediaInputV1 } from "./build-executor-media";
 
 export interface ExecutorTransportProfileV2 {
   version: "executor_transport_profile.v2";
@@ -348,11 +349,30 @@ export function measureExecutorCandidateRequest(
   };
 }
 
+export function executorMcpToolResult(response: unknown) {
+  const value = response as { action?: { kind?: string; batch?: { chunks: Array<{ media?: ExecutorMediaInputV1 }> } } };
+  const images: Array<{ type: "image"; mimeType: "image/png"; data: string }> = [];
+  let textResponse = response;
+  if (value?.action?.kind === "INPUT_BATCH" && value.action.batch) {
+    const chunks = value.action.batch.chunks.map(chunk => {
+      if (!chunk.media) return chunk;
+      const { media, ...textChunk } = chunk;
+      images.push(...media.images.map(image => ({ type: "image" as const, mimeType: "image/png" as const, data: image.data })));
+      return { ...textChunk, media: { ...executorMediaManifest(media), transcript: media.transcript } };
+    });
+    textResponse = { ...value, action: { ...value.action, batch: { ...value.action.batch, chunks } } };
+  }
+  return { content: [{ type: "text" as const, text: canonicalAutomaticBuildJson(textResponse) }, ...images], isError: false };
+}
+
 export function serializeExecutorMcpToolResult(response: unknown): string {
-  return canonicalAutomaticBuildJson({
-    content: [{ type: "text", text: canonicalAutomaticBuildJson(response) }],
-    isError: false,
-  });
+  return canonicalAutomaticBuildJson(executorMcpToolResult(response));
+}
+
+export function executorMcpResultByteLimit(response: unknown, textLimit: number): number {
+  const value = response as { action?: { kind?: string; batch?: { chunks: Array<{ media?: ExecutorMediaInputV1 }> } } };
+  return value?.action?.kind === "INPUT_BATCH" && value.action.batch?.chunks.some(chunk => chunk.media)
+    ? CODEX_EXECUTOR_MEDIA_CAPABILITY_V1.max_mcp_result_bytes : textLimit;
 }
 
 export function packExecutorTransportBatches<
@@ -399,7 +419,7 @@ export function packExecutorTransportBatches<
       const response = input.envelope_for_chunks(chunks);
       const serializedMcpResult = serializeExecutorMcpToolResult(response);
       const serializedMcpResultBytes = Buffer.byteLength(serializedMcpResult, "utf8");
-      if (serializedMcpResultBytes > limit.max_serialized_batch_bytes) break;
+      if (serializedMcpResultBytes > executorMcpResultByteLimit(response, limit.max_serialized_batch_bytes)) break;
       best = {
         first_ordinal: chunks[0].ordinal,
         last_ordinal: chunks.at(-1)!.ordinal,

@@ -81,8 +81,9 @@ fn ex12_source_list_error_explains_recovery_without_granting_sources() {
     let (_root, mut state, turn) = setup();
     let evidence_range = EvidenceRange { start_lid: "1.1".into(), end_lid: "1.1".into(), ranges: vec![] };
     let resolved = state.workspace.book.resolve_source(&evidence_range, "zh-CN", None).unwrap();
-    let binding = runtime::orchestrator::SourceBinding { source_ref_id: "source-observed".into(),
-        book_id: state.workspace.book.base.book_id.clone(), evidence_range,
+    let binding = runtime::orchestrator::SourceBinding {
+            media: None, source_ref_id: "source-observed".into(),
+        book_id: state.workspace.book.base.book_id.clone(), evidence_range: Some(evidence_range),
         evidence_text_digest: resolved.evidence_text_digest, label_snapshot: resolved.label,
         preview_snapshot: resolved.preview };
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
@@ -161,7 +162,8 @@ fn source_chips_match_reader_preview_and_keep_labels_out_of_answer_semantics() {
             lid: "1.1".into(), range: read_tools::SourceTextRange { start, end: start + 3 },
         }] };
         let resolved = state.workspace.book.resolve_source(&evidence_range, "zh-CN", None).unwrap();
-        runtime::orchestrator::SourceBinding { source_ref_id: format!("source-{index}"), book_id: state.workspace.book.base.book_id.clone(), evidence_range,
+        runtime::orchestrator::SourceBinding {
+            media: None, source_ref_id: format!("source-{index}"), book_id: state.workspace.book.base.book_id.clone(), evidence_range: Some(evidence_range),
             evidence_text_digest: resolved.evidence_text_digest, label_snapshot: resolved.label, preview_snapshot: resolved.preview }
     }).collect();
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));

@@ -1,0 +1,665 @@
+{
+  "status": "passed",
+  "publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+  },
+  "input_publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+  },
+  "question": "为什么输出是 3×3，hidden 到哪里去了？",
+  "queries": [
+    {
+      "query": "为什么输出是 3×3，hidden 到哪里去了？"
+    },
+    {
+      "query": "求和"
+    },
+    {
+      "query": "GPU serial number 序列号"
+    }
+  ],
+  "items": 3,
+  "relations": 2,
+  "comparison": [
+    {
+      "query": "为什么输出是 3×3，hidden 到哪里去了？",
+      "before": {
+        "visual": 7,
+        "discourse": 0
+      },
+      "after": {
+        "visual": 7,
+        "discourse": 3
+      }
+    },
+    {
+      "query": "求和",
+      "before": {
+        "visual": 0,
+        "discourse": 0
+      },
+      "after": {
+        "visual": 0,
+        "discourse": 3
+      }
+    },
+    {
+      "query": "GPU serial number 序列号",
+      "before": {
+        "visual": 0,
+        "discourse": 0
+      },
+      "after": {
+        "visual": 0,
+        "discourse": 0
+      }
+    }
+  ],
+  "relation_only_candidate": {
+    "discourse_id": "discourse:discourse-vi14-einsum:item-3",
+    "evidence": [
+      {
+        "support_role": "联合支持",
+        "target": {
+          "kind": "joint",
+          "members": [
+            {
+              "support_role": "说明枚举 sequence、hidden、C2 各变量全部可能取值的计算过程",
+              "target": {
+                "kind": "text",
+                "publication": {
+                  "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                  "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+                },
+                "text_range": {
+                  "lid": "191",
+                  "range": {
+                    "end": 156,
+                    "start": 0
+                  }
+                },
+                "transcript": {
+                  "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                  "transcript_revision": "1",
+                  "video": {
+                    "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                    "media_revision": "1"
+                  }
+                }
+              }
+            },
+            {
+              "support_role": "画面持续显示 seq1 hidden, hidden seq2 -> seq1 seq2 表达式，明确被枚举的索引上下文",
+              "target": {
+                "frames": [
+                  {
+                    "actual_pts_ms": 1211000,
+                    "height": 1080,
+                    "video": {
+                      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                      "media_revision": "1"
+                    },
+                    "width": 1920
+                  }
+                ],
+                "kind": "visual",
+                "publication": {
+                  "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                  "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+                },
+                "regions": []
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "local_function": "procedure_step",
+    "matched_terms": null,
+    "mode": "procedural",
+    "read_hints": [
+      {
+        "location": {
+          "end_ms": 1211000.001,
+          "start_ms": 1211000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "sampling": [
+          1211000
+        ]
+      }
+    ],
+    "rhetorical_move": "concept_elaboration",
+    "summary": "计算时枚举表达式中 seq1、hidden、seq2 的所有可能取值，并按输出规则对 hidden 汇总。",
+    "text_reads": [
+      {
+        "location": {
+          "end_ms": 1223840,
+          "start_ms": 1210820,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "segment_id": "segment-191",
+        "text_range": {
+          "lid": "191",
+          "range": {
+            "end": 156,
+            "start": 0
+          }
+        }
+      }
+    ],
+    "via": [
+      {
+        "matched_item_id": "discourse:discourse-vi14-einsum:item-2",
+        "relation": {
+          "confidence": 0.96,
+          "direction": "backward",
+          "evidence": [
+            {
+              "support_role": "联合支持",
+              "target": {
+                "kind": "joint",
+                "members": [
+                  {
+                    "support_role": "给出枚举全部变量取值的过程",
+                    "target": {
+                      "kind": "text",
+                      "publication": {
+                        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                        "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+                      },
+                      "text_range": {
+                        "lid": "191",
+                        "range": {
+                          "end": 156,
+                          "start": 0
+                        }
+                      },
+                      "transcript": {
+                        "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                        "transcript_revision": "1",
+                        "video": {
+                          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                          "media_revision": "1"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "support_role": "显示对应 einsum 索引表达式",
+                    "target": {
+                      "frames": [
+                        {
+                          "actual_pts_ms": 1211000,
+                          "height": 1080,
+                          "video": {
+                            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                            "media_revision": "1"
+                          },
+                          "width": 1920
+                        }
+                      ],
+                      "kind": "visual",
+                      "publication": {
+                        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                        "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+                      },
+                      "regions": []
+                    }
+                  },
+                  {
+                    "support_role": "给出输出保留索引与 hidden 求和规则",
+                    "target": {
+                      "kind": "text",
+                      "publication": {
+                        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                        "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+                      },
+                      "text_range": {
+                        "lid": "189",
+                        "range": {
+                          "end": 169,
+                          "start": 0
+                        }
+                      },
+                      "transcript": {
+                        "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                        "transcript_revision": "1",
+                        "video": {
+                          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                          "media_revision": "1"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "support_role": "显示规则及结果矩阵",
+                    "target": {
+                      "frames": [
+                        {
+                          "actual_pts_ms": 1196000,
+                          "height": 1080,
+                          "video": {
+                            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                            "media_revision": "1"
+                          },
+                          "width": 1920
+                        }
+                      ],
+                      "kind": "visual",
+                      "publication": {
+                        "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                        "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+                      },
+                      "regions": []
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "family": "expansion",
+          "rationale": "通过枚举各索引取值的计算步骤，解释 hidden 如何在保留 seq1、seq2 的输出中被汇总消去。",
+          "target_id": "discourse:discourse-vi14-einsum:item-2",
+          "type": "explains"
+        },
+        "source_id": "discourse:discourse-vi14-einsum:item-3",
+        "target_id": "discourse:discourse-vi14-einsum:item-2"
+      }
+    ],
+    "vu_ids": [
+      "lecture-v1/vu-0010/1"
+    ]
+  },
+  "matched_seed": {
+    "discourse_id": "discourse:discourse-vi14-einsum:item-2",
+    "evidence": [
+      {
+        "support_role": "联合支持",
+        "target": {
+          "kind": "joint",
+          "members": [
+            {
+              "support_role": "明确输出由两个保留维度索引，并说明 hidden 被求和消去",
+              "target": {
+                "kind": "text",
+                "publication": {
+                  "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                  "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+                },
+                "text_range": {
+                  "lid": "189",
+                  "range": {
+                    "end": 169,
+                    "start": 0
+                  }
+                },
+                "transcript": {
+                  "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+                  "transcript_revision": "1",
+                  "video": {
+                    "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                    "media_revision": "1"
+                  }
+                }
+              }
+            },
+            {
+              "support_role": "展示 einsum 表达式 seq1 hidden, hidden seq2 -> seq1 seq2 与结果矩阵 z",
+              "target": {
+                "frames": [
+                  {
+                    "actual_pts_ms": 1196000,
+                    "height": 1080,
+                    "video": {
+                      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                      "media_revision": "1"
+                    },
+                    "width": 1920
+                  }
+                ],
+                "kind": "visual",
+                "publication": {
+                  "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+                  "publication_id": "01a1259f-e01c-75c1-b3b8-1860a67888cf"
+                },
+                "regions": []
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "local_function": "explanation",
+    "matched_terms": [
+      "求和"
+    ],
+    "mode": "informative",
+    "read_hints": [
+      {
+        "location": {
+          "end_ms": 1196000.001,
+          "start_ms": 1196000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "sampling": [
+          1196000
+        ]
+      }
+    ],
+    "rhetorical_move": "main_point",
+    "summary": "输出保留 seq1、seq2 两个索引；未出现在输出侧的 hidden 被求和消去，得到矩阵 z。",
+    "text_reads": [
+      {
+        "location": {
+          "end_ms": 1209680,
+          "start_ms": 1194780,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "segment_id": "segment-189",
+        "text_range": {
+          "lid": "189",
+          "range": {
+            "end": 169,
+            "start": 0
+          }
+        }
+      }
+    ],
+    "via": [],
+    "vu_ids": [
+      "lecture-v1/vu-0009/1"
+    ]
+  },
+  "discourse_coverage": {
+    "accepted": [
+      {
+        "end_ms": 1225000,
+        "start_ms": 1180000,
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        }
+      }
+    ],
+    "capability": "discourse",
+    "failed": [],
+    "pending": [
+      {
+        "end_ms": 1180000,
+        "start_ms": 0,
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        }
+      },
+      {
+        "end_ms": 4641376.1450000005,
+        "start_ms": 1225000,
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        }
+      }
+    ]
+  },
+  "original_source_and_720_translations_preserved": true,
+  "prior_graph_and_visual_contributions_preserved": true,
+  "old_publication_unchanged": true,
+  "text_reads": [
+    {
+      "lid": "188",
+      "text": "I'm gonna have Y, that's the matrix, which has also rows and columns, which I'm gonna name hidden and seek two.\n\n"
+    },
+    {
+      "lid": "189",
+      "text": "And I'm going to produce a tensor, or a Heria matrix, where the dimensions are indexed by C1 and C2 and anything that is not mentioned here, the hidden, gets summed out.\n\n"
+    },
+    {
+      "lid": "191",
+      "text": "So the way this works is I'm going to sum over, enumerate over all possible values of all the variables that occur here, which are sequence, hidden, and C2.\n\n"
+    }
+  ],
+  "frame_requests": 2,
+  "checks": [
+    {
+      "discourse_id": "discourse:discourse-vi14-einsum:item-2",
+      "time": 1196000,
+      "read_hint": {
+        "location": {
+          "end_ms": 1196000.001,
+          "start_ms": 1196000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "sampling": [
+          1196000
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 1196000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 1196000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+        },
+        "requested_range": {
+          "end_ms": 1196000.001,
+          "start_ms": 1196000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 1209680,
+              "start_ms": 1194780,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-189",
+            "text": "And I'm going to produce a tensor, or a Heria matrix, where the dimensions are indexed by C1 and C2 and anything that is not mentioned here, the hidden, gets summed out.",
+            "text_range": {
+              "lid": "189",
+              "range": {
+                "end": 169,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a125c2-a726-7720-8e26-ec2d73ba3a18",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+          },
+          "model_request_id": "01a125c2-a6e9-7223-b085-1f6e76b926b5",
+          "frames": [
+            {
+              "requested_ms": 1196000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 1196000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "request_pixels_equal": true,
+      "source_pixels_equal": true
+    },
+    {
+      "discourse_id": "discourse:discourse-vi14-einsum:item-3",
+      "time": 1211000,
+      "read_hint": {
+        "location": {
+          "end_ms": 1211000.001,
+          "start_ms": 1211000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "sampling": [
+          1211000
+        ]
+      },
+      "read": {
+        "continuous_coverage": false,
+        "frames": [
+          {
+            "image_height": 1080,
+            "image_width": 1920,
+            "read": {
+              "frame": {
+                "actual_pts_ms": 1211000,
+                "height": 1080,
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "width": 1920
+              },
+              "requested_ms": 1211000
+            },
+            "region": null
+          }
+        ],
+        "observation_status": "pending_model_request",
+        "publication": {
+          "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+          "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+        },
+        "requested_range": {
+          "end_ms": 1211000.001,
+          "start_ms": 1211000,
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          }
+        },
+        "transcript": [
+          {
+            "location": {
+              "end_ms": 1223840,
+              "start_ms": 1210820,
+              "video": {
+                "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                "media_revision": "1"
+              }
+            },
+            "segment_id": "segment-191",
+            "text": "So the way this works is I'm going to sum over, enumerate over all possible values of all the variables that occur here, which are sequence, hidden, and C2.",
+            "text_range": {
+              "lid": "191",
+              "range": {
+                "end": 156,
+                "start": 0
+              }
+            },
+            "words": []
+          }
+        ]
+      },
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "01a125c2-b642-7c22-8b99-4ec104afde55",
+          "run_id": "vi5-probe",
+          "publication": {
+            "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+            "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+          },
+          "model_request_id": "01a125c2-b615-7603-b5cd-4f03ce33ecdf",
+          "frames": [
+            {
+              "requested_ms": 1211000,
+              "frame": {
+                "video": {
+                  "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+                  "media_revision": "1"
+                },
+                "actual_pts_ms": 1211000,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "request_pixels_equal": true,
+      "source_pixels_equal": true
+    }
+  ],
+  "extraction_model_runs": 1,
+  "extraction_elapsed_ms": 91349,
+  "usage": [
+    {
+      "task": "discourse-vi14-einsum",
+      "usage": {
+        "input_tokens": 140281,
+        "cached_input_tokens": 103296,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 3987,
+        "reasoning_output_tokens": 348
+      }
+    }
+  ],
+  "limitations": [
+    "Ablation establishes changed candidates and a relation-only route; no claim of reduced total reads or improved answer quality.",
+    "Real model extracted the teaching structure. Read-time HTTP recorder verifies transport/observation, not live-model answers.",
+    "Bounded lecture segment; whole-lecture production remains VI18."
+  ]
+}

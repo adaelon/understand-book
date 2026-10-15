@@ -1,0 +1,727 @@
+{
+  "status": "passed",
+  "material": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "video": {
+      "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+      "media_revision": "1"
+    },
+    "transcript": {
+      "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+      "transcript_revision": "1",
+      "video": {
+        "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+        "media_revision": "1"
+      }
+    }
+  },
+  "publication": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a12543-5248-76d0-9d6c-71a133a14357"
+  },
+  "baseline": {
+    "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+    "publication_id": "01a12534-8aad-7811-9953-a99121fa444b"
+  },
+  "scan": {
+    "sampled_frames": 4642,
+    "candidate_frames": 1743,
+    "elapsed_ms": 97416,
+    "decoded_bytes": 601603200,
+    "options": {
+      "interval_ms": 1000,
+      "supplement_ms": 15000,
+      "change_threshold": 0.06,
+      "content_rect": [
+        0,
+        0,
+        1,
+        0.89
+      ]
+    }
+  },
+  "semantic": {
+    "ranges": [
+      {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 550000,
+        "end_ms": 655000
+      },
+      {
+        "video": {
+          "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+          "media_revision": "1"
+        },
+        "start_ms": 1180000,
+        "end_ms": 1225000
+      }
+    ],
+    "units": 22,
+    "frames": 37,
+    "tasks": 10,
+    "png_bytes": 19026212,
+    "coverage": {
+      "capability": "visual_index",
+      "accepted": [
+        {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "start_ms": 550000,
+          "end_ms": 655000
+        },
+        {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "start_ms": 1180000,
+          "end_ms": 1225000
+        }
+      ],
+      "pending": [
+        {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "start_ms": 0,
+          "end_ms": 550000
+        },
+        {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "start_ms": 655000,
+          "end_ms": 1180000
+        },
+        {
+          "video": {
+            "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+            "media_revision": "1"
+          },
+          "start_ms": 1225000,
+          "end_ms": 4641376.1450000005
+        }
+      ],
+      "failed": []
+    }
+  },
+  "repeated": {
+    "units": 3,
+    "model_tasks": 1,
+    "skipped_model_tasks": 1,
+    "distinct_occurrences": true,
+    "transcript_contexts_preserved": true
+  },
+  "reread": [
+    {
+      "frame_id": "f00002",
+      "actual_pts_ms": 553000,
+      "original_pixels_equal": true,
+      "old_publication_pixels_equal": true
+    },
+    {
+      "frame_id": "f00003",
+      "actual_pts_ms": 554000,
+      "original_pixels_equal": true,
+      "old_publication_pixels_equal": true
+    },
+    {
+      "frame_id": "f00020",
+      "actual_pts_ms": 596000,
+      "original_pixels_equal": true,
+      "old_publication_pixels_equal": true
+    },
+    {
+      "frame_id": "f00023",
+      "actual_pts_ms": 618000,
+      "original_pixels_equal": true,
+      "old_publication_pixels_equal": true
+    },
+    {
+      "frame_id": "f00025",
+      "actual_pts_ms": 628000,
+      "original_pixels_equal": true,
+      "old_publication_pixels_equal": true
+    },
+    {
+      "frame_id": "f00028",
+      "actual_pts_ms": 647000,
+      "original_pixels_equal": true,
+      "old_publication_pixels_equal": true
+    },
+    {
+      "frame_id": "f00029",
+      "actual_pts_ms": 648000,
+      "original_pixels_equal": true,
+      "old_publication_pixels_equal": true
+    },
+    {
+      "frame_id": "f00033",
+      "actual_pts_ms": 1180000,
+      "original_pixels_equal": true,
+      "old_publication_pixels_equal": true
+    },
+    {
+      "frame_id": "f00036",
+      "actual_pts_ms": 1210000,
+      "original_pixels_equal": true,
+      "old_publication_pixels_equal": true
+    }
+  ],
+  "english_and_chinese_unchanged": true,
+  "completed_resume_preserves_candidates_and_attempts": true,
+  "completed_publication_reused": true,
+  "runs": [
+    {
+      "group": 0,
+      "elapsed_ms": 419176,
+      "exit_code": 0,
+      "complete": true,
+      "events": [
+        {
+          "type": "item.completed",
+          "item_type": "error"
+        },
+        {
+          "type": "error",
+          "message": "Reconnecting... 2/5 (stream disconnected before completion: tls handshake eof)"
+        },
+        {
+          "type": "error",
+          "message": "Reconnecting... 3/5 (stream disconnected before completion: tls handshake eof)"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "agent_message"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "agent_message"
+        },
+        {
+          "type": "turn.completed",
+          "usage": {
+            "input_tokens": 1369136,
+            "cached_input_tokens": 1252096,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 13866,
+            "reasoning_output_tokens": 10
+          }
+        }
+      ]
+    },
+    {
+      "group": 1,
+      "elapsed_ms": 257717,
+      "exit_code": 0,
+      "complete": true,
+      "events": [
+        {
+          "type": "item.completed",
+          "item_type": "error"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "agent_message"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "agent_message"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "agent_message"
+        },
+        {
+          "type": "turn.completed",
+          "usage": {
+            "input_tokens": 697147,
+            "cached_input_tokens": 624128,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 9284,
+            "reasoning_output_tokens": 44
+          }
+        }
+      ]
+    },
+    {
+      "group": 0,
+      "elapsed_ms": 143292,
+      "exit_code": 0,
+      "complete": true,
+      "events": [
+        {
+          "type": "item.completed",
+          "item_type": "error"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "agent_message"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.open",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.input.next",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.generation.start",
+          "status": "completed"
+        },
+        {
+          "type": "item.started",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "in_progress"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "mcp_tool_call",
+          "tool": "executor.submit_candidate",
+          "status": "completed"
+        },
+        {
+          "type": "item.completed",
+          "item_type": "agent_message"
+        },
+        {
+          "type": "turn.completed",
+          "usage": {
+            "input_tokens": 127047,
+            "cached_input_tokens": 96512,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 2916,
+            "reasoning_output_tokens": 0
+          }
+        }
+      ]
+    }
+  ],
+  "model": "CLI default, low reasoning",
+  "monetary_cost": null,
+  "publication_count": 4,
+  "media_bytes_per_publication": 225917024,
+  "total_published_media_bytes": 903668096,
+  "limitations": [
+    "Semantic acceptance covers 150 seconds plus the controlled fixture, not the whole lecture.",
+    "Semantic review observations are recorded separately; machine checks validate time/pixels/contracts.",
+    "Reader live Provider, DSH, Linux and installed package remain pending."
+  ]
+}

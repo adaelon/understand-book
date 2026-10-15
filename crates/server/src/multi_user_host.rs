@@ -116,6 +116,7 @@ impl Headers {
     }
 }
 pub(crate) struct HttpReply {
+    media: Option<PathBuf>,
     pub status: u16,
     pub body: Vec<u8>,
     pub content_type: String,
@@ -130,6 +131,7 @@ pub(crate) struct HttpReply {
 impl HttpReply {
     fn json(value: Value) -> Self {
         Self {
+            media: None,
             status: 200,
             body: value.to_string().into_bytes(),
             content_type: "application/json; charset=utf-8".into(),
@@ -147,6 +149,7 @@ impl HttpReply {
             result
         } else {
             Self {
+                media: None,
                 status: reply.status,
                 body: reply.body.into_bytes(),
                 content_type: "application/json; charset=utf-8".into(),
@@ -335,6 +338,7 @@ pub(crate) fn start_with_access(
 }
 
 fn respond(request: tiny_http::Request, reply: HttpReply) {
+    if let Some(path) = reply.media { crate::video_media::serve(request, &path); return; }
     let mut response = Response::from_data(reply.body).with_status_code(reply.status);
     if reply.content_type == "application/pdf" {
         // PDF bytes are already buffered. Keep their known Content-Length so the
@@ -385,6 +389,7 @@ pub(crate) fn dispatch(
             };
             if let Some((body, content_type)) = public {
                 return Ok(HttpReply {
+                    media: None,
                     status: 200,
                     body: body.as_bytes().to_vec(),
                     content_type: content_type.into(),
@@ -541,6 +546,30 @@ pub(crate) fn dispatch(
         }
         let context = access.context(principal, now)?;
         match capability {
+            Capability::Videos => {
+                expect_method(method, "GET")?;
+                let root = access.users.lock().unwrap().writer().root().to_path_buf();
+                Ok(HttpReply::json(json!({"videos":crate::video_media::catalog(&root, context.user_id())})))
+            }
+            Capability::Video(reference, leaf) => {
+                let root = access.users.lock().unwrap().writer().root().to_path_buf();
+                let dir = crate::video_media::authorized_dir(&root, context.user_id(), &reference)?;
+                match (leaf.as_str(), method) {
+                    ("status", "GET") => Ok(HttpReply::json(crate::video_media::projection(&dir)?)),
+                    ("transcript", "GET") => {
+                        let (publication, _) = crate::video_media::linked_publication(&dir)?;
+                        access.library.lock().unwrap().authorize(context.user_id(), &publication)?;
+                        Ok(HttpReply::json(crate::video_media::transcript(&dir)?))
+                    },
+                    ("media", "GET" | "HEAD") => {
+                        let mut reply = HttpReply::json(json!({}));
+                        reply.media = Some(crate::video_media::media_path(&dir)?);
+                        Ok(reply)
+                    }
+                    ("ask", "POST") => Err(crate::user_storage_paths::error("VIDEO_TRANSCRIPT_NOT_READY", "conflict", "全片转写与首个发布尚未就绪")),
+                    _ => Err(authorization::missing()),
+                }
+            }
             Capability::Library => {
                 expect_method(method, "GET")?;
                 Ok(HttpReply::json(
@@ -561,6 +590,13 @@ pub(crate) fn dispatch(
                 if !matches!(method, "GET" | "HEAD") {
                     return Err(method_error());
                 }
+                if leaf == "video/media" {
+                    let publication = library.load(context.user_id(), &reference)?;
+                    let (manifest, _) = publication.book.load_video_source(publication.directory())?;
+                    let mut reply = HttpReply::json(json!({}));
+                    reply.media = Some(publication.directory().join(manifest.source.imported_path));
+                    return Ok(reply);
+                }
                 let reply = if leaf.starts_with("assets/")
                     || matches!(leaf.as_str(), "pdf/original" | "original.pdf")
                 {
@@ -576,6 +612,7 @@ pub(crate) fn dispatch(
                         )
                         .map_err(|_| authorization::missing())?;
                     HttpReply {
+                        media: None,
                         status: asset.status,
                         body: asset.body,
                         content_type: asset.content_type,
@@ -782,6 +819,7 @@ pub(crate) fn dispatch(
                             .or_else(|| query.get("after").map(String::as_str)),
                     )?;
                     return Ok(HttpReply {
+                        media: None,
                         status: 200,
                         body: vec![],
                         content_type: "text/event-stream".into(),

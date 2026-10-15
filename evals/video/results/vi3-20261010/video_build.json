@@ -1,0 +1,188 @@
+{
+  "version": "video_build.v1",
+  "video": {
+    "media_id": "361e204a-50c7-40cd-9054-072b01a27659",
+    "media_revision": "1"
+  },
+  "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+  "transcript_id": "49abe5ce-f748-41b9-897a-ff13ea19e42c",
+  "profile": {
+    "engine": "faster-whisper",
+    "model": "small.en",
+    "language": "en",
+    "device": "cpu",
+    "compute_type": "int8",
+    "cpu_threads": 8,
+    "beam_size": 5,
+    "temperature": 0,
+    "word_timestamps": true,
+    "condition_on_previous_text": false,
+    "vad_filter": true,
+    "min_silence_duration_ms": 500
+  },
+  "stage": "ready",
+  "chunks": [
+    {
+      "id": "chunk-000",
+      "start_ms": 0,
+      "end_ms": 300000,
+      "input_start_ms": 0,
+      "input_end_ms": 302000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-001",
+      "start_ms": 300000,
+      "end_ms": 600000,
+      "input_start_ms": 298000,
+      "input_end_ms": 602000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-002",
+      "start_ms": 600000,
+      "end_ms": 900000,
+      "input_start_ms": 598000,
+      "input_end_ms": 902000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-003",
+      "start_ms": 900000,
+      "end_ms": 1200000,
+      "input_start_ms": 898000,
+      "input_end_ms": 1202000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-004",
+      "start_ms": 1200000,
+      "end_ms": 1500000,
+      "input_start_ms": 1198000,
+      "input_end_ms": 1502000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-005",
+      "start_ms": 1500000,
+      "end_ms": 1800000,
+      "input_start_ms": 1498000,
+      "input_end_ms": 1802000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-006",
+      "start_ms": 1800000,
+      "end_ms": 2100000,
+      "input_start_ms": 1798000,
+      "input_end_ms": 2102000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-007",
+      "start_ms": 2100000,
+      "end_ms": 2400000,
+      "input_start_ms": 2098000,
+      "input_end_ms": 2402000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-008",
+      "start_ms": 2400000,
+      "end_ms": 2700000,
+      "input_start_ms": 2398000,
+      "input_end_ms": 2702000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-009",
+      "start_ms": 2700000,
+      "end_ms": 3000000,
+      "input_start_ms": 2698000,
+      "input_end_ms": 3002000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-010",
+      "start_ms": 3000000,
+      "end_ms": 3300000,
+      "input_start_ms": 2998000,
+      "input_end_ms": 3302000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-011",
+      "start_ms": 3300000,
+      "end_ms": 3600000,
+      "input_start_ms": 3298000,
+      "input_end_ms": 3602000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-012",
+      "start_ms": 3600000,
+      "end_ms": 3900000,
+      "input_start_ms": 3598000,
+      "input_end_ms": 3902000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-013",
+      "start_ms": 3900000,
+      "end_ms": 4200000,
+      "input_start_ms": 3898000,
+      "input_end_ms": 4202000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-014",
+      "start_ms": 4200000,
+      "end_ms": 4500000,
+      "input_start_ms": 4198000,
+      "input_end_ms": 4502000,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    },
+    {
+      "id": "chunk-015",
+      "start_ms": 4500000,
+      "end_ms": 4641376.1450000005,
+      "input_start_ms": 4498000,
+      "input_end_ms": 4641376.1450000005,
+      "status": "completed",
+      "attempts": 1,
+      "failure": null
+    }
+  ],
+  "failure": null,
+  "receipt": "d4258ca83aa2c1ac83a003e1113cc8478b3e8f8cd66b5d874b19545c765e80b4"
+}

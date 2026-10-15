@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-10",
+  "web_unique_passed": 92,
+  "web_suites": {
+    "video-question.test.ts": 9,
+    "VideoReaderPane.test.ts": 7,
+    "MediaSourcePreview.test.ts": 3,
+    "RightRail.test.ts": 43,
+    "App.startup.test.ts": 22,
+    "NetworkApp.chat.test.ts": 5,
+    "SourceExcerpt.test.ts": 3
+  },
+  "server_command": "cargo test -p server --lib video_draft",
+  "server_passed": 4,
+  "runtime_command": "cargo test -p runtime --lib video_",
+  "runtime_passed": 4,
+  "web_typecheck": "passed",
+  "server_build": "passed",
+  "browser_command": "node evals/video/vi8b-browser.mjs",
+  "browser": "passed; real original video, local HTTP recorder without semantic inference",
+  "verification": "verification.json"
+}

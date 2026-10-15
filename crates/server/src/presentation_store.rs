@@ -290,7 +290,7 @@ fn validate_content(
     for binding in &content.source_bindings {
         if binding.book_id != owner.book_id
             || binding.source_ref_id.trim().is_empty()
-            || binding.evidence_text_digest.trim().is_empty()
+            || !binding.valid_evidence()
             || !refs.insert(&binding.source_ref_id)
         {
             return Err(invalid(

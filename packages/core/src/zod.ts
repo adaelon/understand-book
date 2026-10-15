@@ -3,6 +3,9 @@
 // 注:本文件是手写镜像;Rust 权威类型见 src/generated/*（ts-rs 生成）。
 import { z } from "zod";
 import { SUPPORTED_CONTENT_PROFILE_IDS } from "./content-profile";
+import { EvidenceTargetZ } from "./video-contract";
+
+export const GraphEvidenceZ = z.object({ target: EvidenceTargetZ, support_role: z.string().trim().min(1) });
 
 export const ProfileArtifactHeaderZ = z.object({
   book_id: z.string().min(1),
@@ -62,6 +65,8 @@ export const LidNodeZ = z.object({
 export const GraphNodeTypeZ = z.enum(["entity", "concept", "claim"]);
 
 export const GraphNodeZ = z.object({
+  identity: z.object({ kind: z.literal("video_object"), meaning: z.string().trim().min(1) }).optional(),
+  evidence: z.array(GraphEvidenceZ).optional(),
   id: z.string(),
   type: GraphNodeTypeZ,
   name: z.string(),
@@ -74,6 +79,7 @@ export const EdgeScopeZ = z.enum(["local", "long_range"]);
 export const DirectionZ = z.enum(["directed", "undirected"]);
 
 export const GraphEdgeZ = z.object({
+  evidence: z.array(GraphEvidenceZ).optional(),
   source: z.string(),
   target: z.string(),
   type: z.string(),

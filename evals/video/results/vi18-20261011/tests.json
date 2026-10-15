@@ -1,0 +1,12 @@
+{
+  "server_video_passed": 22,
+  "web_build": "passed",
+  "recorded_at": "2026-10-11T04:06:42.307Z",
+  "core_note": "Three import tests timed out at 5 seconds under load; all four import tests passed on rerun with a 30 second timeout.",
+  "server_video_ignored": 1,
+  "core_typecheck": "passed after candidate feedback",
+  "status": "passed",
+  "core_distinct_cases": 59,
+  "semantic_series_cases": 3,
+  "candidate_feedback_cases": 2
+}

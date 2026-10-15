@@ -37,6 +37,8 @@ pub(crate) enum Capability {
     EmailBinding,
     Password,
     Library,
+    Videos,
+    Video(base_schema::VideoSourceRef, String),
     Book(PublishedBookRef, String),
     History,
     Recap,
@@ -76,6 +78,7 @@ pub(crate) fn capability(path: &str) -> Result<Capability, ToolError> {
         "/account/usage" => Capability::AccountUsage,
         "/account/email/start" | "/account/email/resend" | "/account/email/complete" => Capability::EmailBinding,
         "/library" | "/book/library" => Capability::Library,
+        "/videos" => Capability::Videos,
         "/me/chats" | "/agent/history" => Capability::History,
         "/agent/history/recap" => Capability::Recap,
         "/workspaces" => Capability::NewWorkspace,
@@ -89,6 +92,9 @@ pub(crate) fn capability(path: &str) -> Result<Capability, ToolError> {
             Capability::Presentation(true)
         }
         _ => {
+            if let Some((reference, leaf)) = crate::video_media::route_parts(path) {
+                return Ok(Capability::Video(reference, leaf.into()));
+            }
             let parts: Vec<_> = path.trim_start_matches('/').split('/').collect();
             match parts.as_slice() {
                 ["books", book, "publications", publication, rest @ ..] if !rest.is_empty() => {
@@ -128,6 +134,9 @@ pub(crate) fn book_leaf_allowed(leaf: &str) -> bool {
             | "paper_reading_guide"
             | "source_fingerprint"
             | "source_manifest"
+            | "video_transcript"
+            | "video_context"
+            | "video/media"
             | "asset_manifest"
             | "formula_semantics"
             | "pdf_source_map"

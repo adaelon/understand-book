@@ -1162,13 +1162,14 @@ mod tests {
             profile_usage: Default::default(),
             memory_updates: Vec::new(),
             source_bindings: vec![SourceBinding {
+            media: None,
                 source_ref_id: "source_ref_safe".into(),
                 book_id: "CANARY_PRIVATE_BOOK".into(),
-                evidence_range: read_tools::EvidenceRange {
+                evidence_range: Some(read_tools::EvidenceRange {
                     start_lid: "1.1".into(),
                     end_lid: "1.1".into(),
                     ranges: Vec::new(),
-                },
+                }),
                 evidence_text_digest: "CANARY_PRIVATE_DIGEST".into(),
                 label_snapshot: "CANARY_PRIVATE_LABEL".into(),
                 preview_snapshot: "CANARY_PRIVATE_PREVIEW".into(),

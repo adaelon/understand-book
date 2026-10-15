@@ -1,0 +1,23 @@
+校正草稿 uncertain · 转写版本 1
+来源发布 01a125c2-840a-76d2-948c-0f427dd1ba88
+
+uncertain：segment-96 中“sarcastic”暂不修改。短音频机器复核同样识别为该词，但该词概率较低（约 0.65），且复核结果明确提示仍需回听，现有证据不足以确定原话。
+依据：audio:01a12837-520f-7e93-92a1-7b4263676197 — 短音频机器复核返回 sarcastic，但保留未消除的听辨疑点
+依据：text:segment-96 — 当前待复核文本中的原词位置与上下文
+
+原转写 text:segment-95 · 637.18–640.8 秒
+You want the dynamic range to not overflow and underflow.
+
+原转写 text:segment-96 · 641.36–649.58 秒
+And because things are kind of sloppy and sarcastic anyway, you don't need that much resolution, okay?
+
+原转写 text:segment-97 · 652.38–655.02 秒
+So let me actually skip over this, this part.
+
+原画面 image_1：{"kind":"visual","publication":{"book_id":"19ac880d-a788-43f4-9725-6c56f4980189","publication_id":"01a125c2-840a-76d2-948c-0f427dd1ba88"},"frames":[{"video":{"media_id":"361e204a-50c7-40cd-9054-072b01a27659","media_revision":"1"},"actual_pts_ms":648000,"width":1920,"height":1080}],"regions":[]}
+
+原画面 image_2：{"kind":"visual","publication":{"book_id":"19ac880d-a788-43f4-9725-6c56f4980189","publication_id":"01a125c2-840a-76d2-948c-0f427dd1ba88"},"frames":[{"video":{"media_id":"361e204a-50c7-40cd-9054-072b01a27659","media_revision":"1"},"actual_pts_ms":652000,"width":1920,"height":1080}],"regions":[]}
+
+原音频 audio:01a12837-520f-7e93-92a1-7b4263676197 · 640–650 秒
+and underflow, and because things are kind of sloppy and sarcastic anyway, you don't need that much resolution, okay?
+机器音频复核候选；词时间为识别估计，概率不等于正确性，未消除的听辨疑点仍须回听。

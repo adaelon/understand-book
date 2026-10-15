@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "task": {
+    "task": "discourse-vi14-einsum",
+    "reused": true
+  },
+  "publication": {
+    "reused": true,
+    "reference": {
+      "book_id": "19ac880d-a788-43f4-9725-6c56f4980189",
+      "publication_id": "01a125c2-840a-76d2-948c-0f427dd1ba88"
+    },
+    "elapsed_ms": 0
+  },
+  "model_runs_on_resume": 0,
+  "new_publications_on_resume": 0
+}
